@@ -4,6 +4,7 @@ use async_recursion::async_recursion;
 use futures::future::BoxFuture;
 use parking_lot::Mutex;
 use std::{
+    cell::RefCell,
     collections::BTreeMap,
     os::raw::{c_int, c_uint},
     sync::Arc,
@@ -182,6 +183,10 @@ impl Scope {
     fn free(&mut self, var: usize) {
         self.0[var] = None;
     }
+
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 #[derive(Clone, Default)]
@@ -354,7 +359,8 @@ impl Interpreter {
             scope.0.push(None);
         }
 
-        self.evaluate(blocks, stack, &mut scope, context).await
+        self.evaluate(blocks, stack, RefCell::new(scope), context)
+            .await
     }
 
     pub async fn call_function(
@@ -376,15 +382,17 @@ impl Interpreter {
     #[async_recursion]
     async fn evaluate(
         &self,
-        blocks: Vec<ir::BasicBlock>,
+        mut blocks: Vec<ir::BasicBlock>,
         stack: &mut Stack,
-        scope: &mut Scope,
+        mut scope: RefCell<Scope>,
         context: &Context,
     ) -> Result<(), Error> {
-        let mut block = &blocks[0];
+        let mut index = 0;
 
-        loop {
-            for statement in &block.statements {
+        'outer: loop {
+            let mut statements = blocks[index].statements.iter();
+
+            while let Some(statement) = statements.next() {
                 if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
                     eprintln!("\nRUN {} {:#?}", statement, stack.current_frame());
                 }
@@ -403,10 +411,10 @@ impl Interpreter {
                         stack.pop_frame();
                     }
                     ir::Statement::Initialize(var) => {
-                        scope.set(*var, stack.pop());
+                        scope.borrow_mut().set(*var, stack.pop());
                     }
                     ir::Statement::Free(var) => {
-                        scope.free(*var);
+                        scope.borrow_mut().free(*var);
                     }
                     ir::Statement::WithContext(ctx) => {
                         context.with(*ctx, stack.pop());
@@ -432,7 +440,7 @@ impl Interpreter {
                         }
                         ir::Expression::Float(float) => stack.push(Value::Float(*float)),
                         ir::Expression::Double(double) => stack.push(Value::Double(*double)),
-                        ir::Expression::Variable(var) => stack.push(scope.get(*var)),
+                        ir::Expression::Variable(var) => stack.push(scope.borrow_mut().get(*var)),
                         ir::Expression::Constant(label) => {
                             let value = self.evaluate_constant(*label, context).await?;
                             stack.push(value);
@@ -443,7 +451,7 @@ impl Interpreter {
                         ir::Expression::Closure(captures, label) => {
                             let mut closure_scope = Scope::new(captures.0.len());
                             for (captured, var) in &captures.0 {
-                                closure_scope.set(*var, scope.get(*captured));
+                                closure_scope.set(*var, scope.borrow_mut().get(*captured));
                             }
 
                             stack.push(Value::Function(closure_scope, *label));
@@ -460,6 +468,46 @@ impl Interpreter {
                                     stack.pop_frame();
                                 }
                                 Value::NativeFunction(f) => {
+                                    let output = f(input).await?;
+                                    stack.push(output);
+                                }
+                                _ => unreachable!(),
+                            };
+                        }
+                        ir::Expression::TailCall => {
+                            let input = stack.pop();
+
+                            match stack.pop() {
+                                Value::Function(func_scope, label) => {
+                                    // Tail call optimization only works for pure functions
+                                    if func_scope.is_empty() {
+                                        stack.push(input);
+
+                                        let (tail_vars, tail_blocks) =
+                                            self.inner.lock().labels[label].clone();
+
+                                        scope = Default::default();
+                                        scope.borrow_mut().0.reserve(tail_vars);
+                                        for _ in 0..tail_vars {
+                                            scope.borrow_mut().0.push(None);
+                                        }
+
+                                        blocks = tail_blocks;
+                                        index = 0;
+
+                                        continue 'outer;
+                                    } else {
+                                        stack.push_frame();
+                                        stack.push(input);
+                                        self.evaluate_label_in_scope(
+                                            label, stack, func_scope, &context,
+                                        )
+                                        .await?;
+                                        stack.pop_frame();
+                                    }
+                                }
+                                Value::NativeFunction(f) => {
+                                    // Tail call optimization has no effect on native functions
                                     let output = f(input).await?;
                                     stack.push(output);
                                 }
@@ -542,19 +590,16 @@ impl Interpreter {
             if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
                 eprintln!(
                     "\nRUN {} {:#?}",
-                    block.terminator.unwrap(),
+                    blocks[index].terminator.unwrap(),
                     stack.current_frame()
                 );
             }
 
-            match &block.terminator.unwrap() {
+            match &blocks[index].terminator.unwrap() {
                 ir::Terminator::Unreachable => unreachable!(),
-                ir::Terminator::Return => {
-                    assert!(stack.current_frame().len() == 1);
-                    return Ok(());
-                }
-                ir::Terminator::Jump(index) => {
-                    block = &blocks[*index];
+                ir::Terminator::Return => return Ok(()),
+                ir::Terminator::Jump(jump_index) => {
+                    index = *jump_index;
                 }
                 ir::Terminator::If(matching_discriminant, then_index, else_index) => {
                     let discriminant = match stack.pop() {
@@ -562,13 +607,11 @@ impl Interpreter {
                         _ => unreachable!("{:#?}", stack.current_frame()),
                     };
 
-                    let index = if discriminant == *matching_discriminant {
-                        then_index
+                    index = if discriminant == *matching_discriminant {
+                        *then_index
                     } else {
-                        else_index
+                        *else_index
                     };
-
-                    block = &blocks[*index];
                 }
             }
         }

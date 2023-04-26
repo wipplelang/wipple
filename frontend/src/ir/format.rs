@@ -91,6 +91,7 @@ impl std::fmt::Display for Expression {
             Expression::Function(label) => write!(f, "function #{label}"),
             Expression::Closure(captures, label) => write!(f, "closure {captures} #{label}"),
             Expression::Call => write!(f, "call"),
+            Expression::TailCall => write!(f, "tail call"),
             Expression::External(abi, identifier, count) => {
                 write!(f, "external {abi:?} {identifier:?} {count}")
             }
