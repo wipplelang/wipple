@@ -198,8 +198,6 @@ type: code
 -- Define our values
 Z : type
 S : N => type
-True : type
-False : type
 
 [allow-overlapping-instances]
 Add : A B Sum => trait
@@ -212,7 +210,7 @@ A => instance (Equal A A)
 A B where (Equal A B) => instance (Equal (S A) (S B))
 
 -- Find y if x = 1 and x + 1 = y.
-y :: X Y where (Equal X (S Z) True) (Add X (S Z) Y) => Y
+y :: X Y where (Equal X (S Z)) (Add X (S Z) Y) => Y
 y : ...
 
 ---
