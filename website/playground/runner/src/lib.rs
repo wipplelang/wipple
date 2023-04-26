@@ -924,7 +924,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
         decl.attributes.decl_attributes.help.clone()
     });
 
-    for (id, decl) in &analysis.program.declarations.constants {
+    for decl in analysis.program.declarations.constants.values() {
         for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
             if !within_hover(span.first()) {
                 continue;
@@ -935,24 +935,16 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                 ..Default::default()
             };
 
-            let reduced_ty = (|| {
-                if let Some(constant) = analysis.program.declarations.constants.get(id) {
-                    if let Some(ty) = &constant.reduced_ty {
-                        dbg!(&ty);
-                        return Some(ty.clone());
-                    }
-                }
-
-                None
-            })();
-
             hovers.push((
                 span.first(),
                 HoverOutput {
                     code: format!(
                         "{} :: {}",
                         decl.name,
-                        format_type(reduced_ty.unwrap_or_else(|| decl.ty.clone()), format)
+                        format_type(
+                            decl.reduced_ty.clone().unwrap_or_else(|| decl.ty.clone()),
+                            format
+                        )
                     ),
                     help: decl
                         .attributes

@@ -428,7 +428,10 @@ impl LanguageServer for Backend {
                 let mut contents = vec![code_segment(format!(
                     "{} :: {}",
                     decl.name,
-                    format_type(decl.ty.clone(), format)
+                    format_type(
+                        decl.reduced_ty.clone().unwrap_or_else(|| decl.ty.clone()),
+                        format
+                    )
                 ))];
 
                 contents.extend(
