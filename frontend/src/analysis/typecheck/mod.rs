@@ -1039,12 +1039,29 @@ impl Typechecker {
         trait_id: Option<TraitId>,
         id: ConstantId,
         use_span: SpanList,
-        mut use_ty: engine::UnresolvedType,
+        use_ty: engine::UnresolvedType,
         mut info: MonomorphizeInfo,
     ) -> Option<ItemId> {
-        use_ty.apply(&self.ctx);
+        // Cache constant, ignoring variables
+        let use_ty_for_caching = {
+            let mut use_ty_for_caching = use_ty.clone();
+            use_ty_for_caching.apply(&self.ctx);
 
-        if let Some(monomorphized_id) = info.cache.get(&(id, use_ty.clone())) {
+            // HACK: Replace all variables with the same variable
+            let ctx = self.ctx.clone();
+            let unused_var = engine::TypeVariable(usize::MAX);
+            for var in use_ty_for_caching.all_vars() {
+                ctx.substitutions
+                    .borrow_mut()
+                    .insert(var, engine::UnresolvedType::Variable(unused_var));
+            }
+
+            use_ty_for_caching.apply(&ctx);
+
+            use_ty_for_caching
+        };
+
+        if let Some(monomorphized_id) = info.cache.get(&(id, use_ty_for_caching.clone())) {
             return Some(*monomorphized_id);
         }
 
@@ -1073,7 +1090,7 @@ impl Typechecker {
 
         'check: for (index, candidate) in candidates.into_iter().enumerate() {
             info.cache
-                .insert((candidate, use_ty.clone()), monomorphized_id);
+                .insert((candidate, use_ty_for_caching.clone()), monomorphized_id);
 
             let mut info = info.clone();
 
