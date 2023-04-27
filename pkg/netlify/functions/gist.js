@@ -20,9 +20,14 @@ exports.handler = async (event, context) => {
         };
     }
 
+    const contentType = gist.data.files[file].type;
+
     return {
         statusCode: 200,
-        headers,
+        headers: {
+            ...headers,
+            "Content-Type": contentType,
+        },
         body: content,
     };
 };
