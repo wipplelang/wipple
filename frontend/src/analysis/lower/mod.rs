@@ -708,6 +708,10 @@ impl std::hash::Hash for AnyDeclaration {
 }
 
 impl AnyDeclaration {
+    pub fn as_any(self) -> Option<Self> {
+        Some(self)
+    }
+
     pub fn as_type(self) -> Option<TypeId> {
         match self {
             AnyDeclaration::Type(id) => Some(id),
@@ -1102,6 +1106,36 @@ impl Lowerer {
         results?.into_iter().find_map(kind)
     }
 
+    fn collect<'a>(
+        &'a self,
+        kind: impl Fn(AnyDeclaration) -> bool + 'a,
+        scope_id: &LoadedScopeId,
+    ) -> impl Iterator<Item = InternedString> + 'a {
+        let mut parent = Some(scope_id.clone());
+        let mut values = None;
+
+        std::iter::from_fn(move || loop {
+            if values.as_ref().map_or(true, Vec::is_empty) {
+                let scope_id = mem::take(&mut parent)?;
+
+                let scope = self
+                    .scopes
+                    .get(&scope_id)
+                    .unwrap_or_else(|| panic!("scope {scope_id:?} loaded out of order"));
+
+                values = Some(scope.values.clone().into_iter().collect::<Vec<_>>());
+
+                parent = scope.parent.clone();
+            }
+
+            if let Some((name, decl)) = values.as_mut()?.pop() {
+                if decl.into_iter().any(&kind) {
+                    break Some(name);
+                }
+            }
+        })
+    }
+
     fn declares_in(&mut self, var: VariableId, scope_id: &LoadedScopeId) -> bool {
         let scope = self.scopes.get(scope_id).unwrap().clone();
 
@@ -1333,7 +1367,7 @@ impl Lowerer {
                         None => TypeDeclarationKind::Marker,
                     };
 
-                    let attributes = self.lower_type_attributes(decl.attributes, &scope);
+                    let attributes = self.lower_type_attributes(decl.attributes, ctx, &scope);
 
                     self.declarations.types.get_mut(&id).unwrap().value = Some(TypeDeclaration {
                         parameters,
@@ -1362,7 +1396,7 @@ impl Lowerer {
                         },
                     });
 
-                    let attributes = self.lower_trait_attributes(decl.attributes, &scope);
+                    let attributes = self.lower_trait_attributes(decl.attributes, ctx, &scope);
 
                     self.declarations.traits.get_mut(&id).unwrap().value = Some(TraitDeclaration {
                         parameters,
@@ -1418,7 +1452,15 @@ impl Lowerer {
                         None => {
                             self.compiler.add_error(
                                 format!("cannot find trait `{trait_name}`"),
-                                vec![Note::primary(trait_span, "this name is not defined")],
+                                std::iter::once(Note::primary(trait_span, "no such trait"))
+                                    .chain(self.diagnostic_notes_for_unresolved_name(
+                                        trait_span,
+                                        trait_name,
+                                        ctx,
+                                        AnyDeclaration::as_trait,
+                                        scope,
+                                    ))
+                                    .collect(),
                             );
 
                             self.declarations.instances.remove(&id);
@@ -2181,7 +2223,11 @@ impl Lowerer {
                             format!("cannot find `{}`", expr.name),
                             std::iter::once(Note::primary(expr.span, "this name is not defined"))
                                 .chain(self.diagnostic_notes_for_unresolved_name(
-                                    expr.span, expr.name, ctx,
+                                    expr.span,
+                                    expr.name,
+                                    ctx,
+                                    AnyDeclaration::as_any,
+                                    scope,
                                 ))
                                 .collect(),
                         );
@@ -2741,8 +2787,19 @@ impl Lowerer {
                                     Some((id, _)) => Some(id),
                                     _ => {
                                         self.compiler.add_error(
-                                            format!("cannot find constant `{}`", name),
-                                            vec![Note::primary(span, "this name is not defined")],
+                                            format!("cannot find constant `{name}`"),
+                                            std::iter::once(Note::primary(
+                                                span,
+                                                "no such constant",
+                                            ))
+                                            .chain(self.diagnostic_notes_for_unresolved_name(
+                                                span,
+                                                name,
+                                                ctx,
+                                                AnyDeclaration::as_constant,
+                                                scope,
+                                            ))
+                                            .collect(),
                                         );
 
                                         None
@@ -3050,8 +3107,21 @@ impl Lowerer {
                     }
                 } else {
                     self.compiler.add_error(
-                        format!("cannot find type or variant `{}`", pattern.name),
-                        vec![Note::primary(pattern.name_span, "this name is not defined")],
+                        format!("cannot find pattern `{}`", pattern.name),
+                        std::iter::once(Note::primary(pattern.span, "no such type or variant"))
+                            .chain(self.diagnostic_notes_for_unresolved_name_with(
+                                pattern.name_span,
+                                pattern.name,
+                                ctx,
+                                |decl| {
+                                    decl.clone()
+                                        .as_constant()
+                                        .map_or(false, |(_, variant)| variant.is_some())
+                                        || decl.as_type().is_some()
+                                },
+                                scope,
+                            ))
+                            .collect(),
                     );
 
                     Pattern {
@@ -3247,7 +3317,15 @@ impl Lowerer {
                 } else {
                     self.compiler.add_error(
                         format!("cannot find type `{}`", ty.name),
-                        vec![Note::primary(ty.span, "no such type")],
+                        std::iter::once(Note::primary(ty.span, "no such type"))
+                            .chain(self.diagnostic_notes_for_unresolved_name(
+                                ty.span,
+                                ty.name,
+                                ctx,
+                                AnyDeclaration::as_type,
+                                scope,
+                            ))
+                            .collect(),
                     );
 
                     TypeAnnotation {
@@ -3386,10 +3464,18 @@ impl Lowerer {
                             } else {
                                 self.compiler.add_error(
                                     format!("cannot find trait `{}`", bound.trait_name),
-                                    vec![Note::primary(
+                                    std::iter::once(Note::primary(
                                         bound.trait_span,
-                                        "this name is not defined",
-                                    )],
+                                        "no such trait",
+                                    ))
+                                    .chain(self.diagnostic_notes_for_unresolved_name(
+                                        bound.trait_span,
+                                        bound.trait_name,
+                                        ctx,
+                                        AnyDeclaration::as_trait,
+                                        scope,
+                                    ))
+                                    .collect(),
                                 );
 
                                 return None;
@@ -3505,6 +3591,7 @@ impl Lowerer {
     fn lower_type_attributes(
         &mut self,
         attributes: &ast::StatementAttributes,
+        ctx: &Context,
         scope: &LoadedScopeId,
     ) -> TypeAttributes {
         // TODO: Raise errors for misused attributes
@@ -3532,7 +3619,15 @@ impl Lowerer {
                             } else {
                                 self.compiler.add_error(
                                     format!("cannot find type parameter `{name}`"),
-                                    vec![Note::primary(span, "no such type")],
+                                    std::iter::once(Note::primary(span, "no such type parameter"))
+                                        .chain(self.diagnostic_notes_for_unresolved_name(
+                                            span,
+                                            name,
+                                            ctx,
+                                            AnyDeclaration::as_type_parameter,
+                                            scope,
+                                        ))
+                                        .collect(),
                                 );
 
                                 return None;
@@ -3550,6 +3645,7 @@ impl Lowerer {
     fn lower_trait_attributes(
         &mut self,
         attributes: &ast::StatementAttributes,
+        ctx: &Context,
         scope: &LoadedScopeId,
     ) -> TraitAttributes {
         // TODO: Raise errors for misused attributes
@@ -3575,7 +3671,18 @@ impl Lowerer {
                             } else {
                                 self.compiler.add_error(
                                     format!("cannot find type parameter `{param_name}`"),
-                                    vec![Note::primary(param_span, "no such type parameter")],
+                                    std::iter::once(Note::primary(
+                                        param_span,
+                                        "no such type parameter",
+                                    ))
+                                    .chain(self.diagnostic_notes_for_unresolved_name(
+                                        param_span,
+                                        param_name,
+                                        ctx,
+                                        AnyDeclaration::as_type_parameter,
+                                        scope,
+                                    ))
+                                    .collect(),
                                 );
 
                                 return None;
@@ -3843,42 +3950,76 @@ impl Lowerer {
         captures
     }
 
-    fn diagnostic_notes_for_unresolved_name(
+    fn diagnostic_notes_for_unresolved_name<T>(
         &self,
         span: SpanList,
         name: InternedString,
         ctx: &Context,
-    ) -> impl Iterator<Item = Note> {
-        std::iter::empty().chain(
-            self.file_info
-                .diagnostic_aliases
-                .aliases
-                .get(&name)
-                .map(|alias| Note::secondary(span, format!("did you mean `{alias}`?"))),
+        kind: fn(AnyDeclaration) -> Option<T>,
+        scope: &LoadedScopeId,
+    ) -> Vec<Note> {
+        self.diagnostic_notes_for_unresolved_name_with(
+            span,
+            name,
+            ctx,
+            |decl| kind(decl).is_some(),
+            scope,
         )
-        .chain(ctx.caller_accepts_text.then(|| {
-            Note::secondary(
-                span,
-                format!("if you meant to provide text here, try using quotes: `\"{name}\"`"),
+    }
+
+    fn diagnostic_notes_for_unresolved_name_with(
+        &self,
+        span: SpanList,
+        name: InternedString,
+        ctx: &Context,
+        kind: impl Fn(AnyDeclaration) -> bool,
+        scope: &LoadedScopeId,
+    ) -> Vec<Note> {
+        let mut notes =
+            std::iter::empty().chain(
+                self.file_info
+                    .diagnostic_aliases
+                    .aliases
+                    .get(&name)
+                    .map(|alias| Note::secondary(span, format!("did you mean `{alias}`?"))),
             )
-        }))
-        .chain(did_you_mean::math(&name).map(|(lhs, op, rhs)| {
-            Note::secondary(
-                span,
-                format!("if you meant to write a mathematical expression, try using whitespace: `{lhs} {op} {rhs}`"),
-            )
-        }))
-        .chain(did_you_mean::trailing_colon(&name).map(|name| {
-            Note::secondary(
-                span,
-                format!("if you meant to assign to the name `{name}`, try putting a space before the colon: `{name} :`"),
-            )
-        }))
-        .chain(did_you_mean::comment(&name).map(|()| {
-            Note::secondary(
-                span,
-                format!("comments in Wipple begin with `--`"),
-            )
-        }))
+            .chain(ctx.caller_accepts_text.then(|| {
+                Note::secondary(
+                    span,
+                    format!("if you meant to provide text here, try using quotes: `\"{name}\"`"),
+                )
+            }))
+            .chain(did_you_mean::math(&name).map(|(lhs, op, rhs)| {
+                Note::secondary(
+                    span,
+                    format!("if you meant to write a mathematical expression, try using whitespace: `{lhs} {op} {rhs}`"),
+                )
+            }))
+            .chain(did_you_mean::trailing_colon(&name).map(|name| {
+                Note::secondary(
+                    span,
+                    format!("if you meant to assign to the name `{name}`, try putting a space before the colon: `{name} :`"),
+                )
+            }))
+            .chain(did_you_mean::comment(&name).map(|()| {
+                Note::secondary(
+                    span,
+                    format!("comments in Wipple begin with `--`"),
+                )
+            }))
+            .collect::<Vec<_>>();
+
+        if notes.is_empty() {
+            let candidates = self.collect(kind, scope).map(|name| name.as_str());
+
+            if let Some(suggestion) = did_you_mean::name(&name, candidates) {
+                notes.push(Note::secondary(
+                    span,
+                    format!("did you mean `{suggestion}`?"),
+                ));
+            }
+        }
+
+        notes
     }
 }
