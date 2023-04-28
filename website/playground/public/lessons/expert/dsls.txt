@@ -27,7 +27,7 @@ type: code
 ---
 
 Robot : type {
-	name :: Mutable Text
+	name :: Text
 }
 
 [context]
@@ -50,15 +50,15 @@ type: code
 ---
 
 Robot : type {
-	name :: Mutable Text
+	name :: Text
 }
 
 [context]
 robot :: Robot
 robot : crash "`robot` not initialized"
 
-with (robot : Robot { name : mutable "Bot" }) {
-	show (format "Hello, I'm _!" (name of robot . get))
+with (robot : Robot { name : "Bot" }) {
+	show (format "Hello, I'm _!" (name of robot))
 }
 
 ---
@@ -75,7 +75,7 @@ type: code
 ---
 
 Robot : type {
-	name :: Mutable Text
+	name :: Text
 }
 
 [context]
@@ -83,9 +83,9 @@ robot :: Robot
 robot : crash "`robot` not initialized"
 
 say-hello :: () -> ()
-say-hello : () -> show (format "Hello, I'm _!" (name of robot . get))
+say-hello : () -> show (format "Hello, I'm _!" (name of robot))
 
-with (robot : Robot { name : mutable "Bot" }) {
+with (robot : Robot { name : "Bot" }) {
 	say-hello ()
 }
 
@@ -103,7 +103,7 @@ type: code
 ---
 
 Robot : type {
-	name :: Mutable Text
+	name :: Text
 }
 
 [context]
@@ -111,13 +111,13 @@ robot :: Robot
 robot : crash "`robot` not initialized"
 
 say-hello :: () -> ()
-say-hello : () -> show (format "Hello, I'm _!" (name of robot . get))
+say-hello : () -> show (format "Hello, I'm _!" (name of robot))
 
 with-robot :: Text -> (() -> ()) -> ()
 with-robot : name f ->
-	with (robot : Robot { name : mutable name }) (f ())
+	with (robot : Robot { name }) (f ())
 
-with-robot "Bob" (() -> {
+with-robot "Bot" (() -> {
 	say-hello ()
 })
 
@@ -136,7 +136,7 @@ type: code
 
 with-robot : syntax {
 	with-robot 'name 'body ->
-		with (robot : Robot { name : mutable 'name }) 'body
+		with (robot : Robot { name : 'name }) 'body
 }
 
 ---
@@ -154,7 +154,7 @@ type: code
 
 with-robot : syntax {
 	with-robot 'name 'body ->
-		with (robot : Robot { name : mutable 'name }) 'body
+		with (robot : Robot { name : 'name }) 'body
 }
 
 with-robot "Bot" {
@@ -239,7 +239,7 @@ type: code
 ---
 
 Robot : type {
-	name :: Mutable Text
+	name :: Text
 }
 
 [context]
@@ -248,11 +248,11 @@ robot : crash "`robot` not initialized"
 
 with-robot : syntax {
 	with-robot 'name 'body ->
-		with (robot : Robot { name : mutable 'name }) 'body
+		with (robot : Robot { name : 'name }) 'body
 }
 
 say-hello : syntax {
-	say-hello -> show (format "Hello, I'm _!" (name of robot . get))
+	say-hello -> show (format "Hello, I'm _!" (name of robot))
 }
 
 with-robot "Bot" {
@@ -281,7 +281,7 @@ says : syntax {
 	'person says 'greeting -> show (format "_, I'm _!" 'greeting 'person)
 }
 
-"Bob" says "Hello"
+"Alice" says "Hello"
 
 ---
 id: 1RQ3ZYH9

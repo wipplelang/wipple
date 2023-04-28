@@ -104,7 +104,6 @@ Z : type
 S : N => type
 
 -- Define the relationship
-[allow-overlapping-instances]
 Add : A B Sum => trait
 
 -- Define our cases
@@ -116,8 +115,6 @@ id: vRnDBcKU
 type: text
 locked: true
 ---
-
-Notice we need to use `[allow-overlapping-instances]` because we want the first `instance` to be the base case and the second `instance` to be the recursive case.
 
 Alright, let's make a query using a `where` clause!
 
@@ -131,7 +128,6 @@ Z : type
 S : N => type
 
 -- Define the relationship
-[allow-overlapping-instances]
 Add : A B Sum => trait
 
 -- Define our cases
@@ -186,7 +182,7 @@ type: text
 locked: true
 ---
 
-And indeed, $2 = 1$ is false and $2 = 2$ is true!
+And indeed, $2 = 1$ is false and $2 = 2$ is true! Notice that we need to use `[allow-overlapping-instances]` because the `S A` and `S B` in the second `instance` could also potentially satisfy the `A` in the first instance if `A` and `B` are the same, so we need to tell Wipple to give the first `instance` priority.
 
 Let's combine both `Add` and `Equal` to do some algebra!
 
@@ -199,7 +195,6 @@ type: code
 Z : type
 S : N => type
 
-[allow-overlapping-instances]
 Add : A B Sum => trait
 B => instance (Add Z B B)
 A B Sum where (Add A B Sum) => instance (Add (S A) B (S Sum))
