@@ -3874,5 +3874,11 @@ impl Lowerer {
                 format!("if you meant to assign to the name `{name}`, try putting a space before the colon: `{name} :`"),
             )
         }))
+        .chain(did_you_mean::comment(&name).map(|()| {
+            Note::secondary(
+                span,
+                format!("comments in Wipple begin with `--`"),
+            )
+        }))
     }
 }

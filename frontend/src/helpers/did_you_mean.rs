@@ -25,3 +25,7 @@ pub fn trailing_colon(name: &str) -> Option<&str> {
 
     Some(captures.get(1).unwrap().as_str())
 }
+
+pub fn comment(name: &str) -> Option<()> {
+    (name == "//" || name == "#" || name == "/*" || name == "*/").then_some(())
+}
