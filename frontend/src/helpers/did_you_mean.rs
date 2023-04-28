@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -38,6 +39,7 @@ pub fn name<'a>(name: &str, candidates: impl IntoIterator<Item = &'a str>) -> Op
     candidates
         .into_iter()
         .filter(|candidate| (candidate.len() as f64 - len).abs() / len < THRESHOLD)
+        .sorted()
         .map(|candidate| {
             (
                 candidate,
