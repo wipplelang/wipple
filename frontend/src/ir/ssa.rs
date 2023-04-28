@@ -126,7 +126,17 @@ impl Compiler {
             items: program
                 .items
                 .iter()
-                .map(|(id, (_, item))| (*id, converter.convert_expr(item, true)))
+                .map(|(&id, (_, item))| {
+                    (
+                        id,
+                        converter.convert_expr(
+                            item,
+                            program
+                                .entrypoint
+                                .map_or(true, |entrypoint| id != entrypoint),
+                        ),
+                    )
+                })
                 .collect(),
             contexts: program.contexts.clone(),
             structures: converter.structures,
@@ -171,7 +181,7 @@ impl Converter<'_> {
                 analysis::ExpressionKind::Function(pattern, body, captures) => {
                     ExpressionKind::Function(
                         self.convert_pattern(pattern),
-                        Box::new(self.convert_expr(body, tail)),
+                        Box::new(self.convert_expr(body, captures.is_empty())),
                         captures.clone(),
                     )
                 }

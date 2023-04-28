@@ -147,6 +147,7 @@ pub mod reorder {
                                     (None, None) => return None,
                                 }
                             }
+                            Terminator::TailCall => Terminator::TailCall,
                         };
 
                         let index = indices.len();
@@ -192,6 +193,7 @@ pub mod reorder {
                                 let else_index = sort(else_index, blocks, sorted, indices);
                                 Terminator::If(variant, then_index, else_index)
                             }
+                            Terminator::TailCall => Terminator::TailCall,
                         };
 
                         sorted.insert(index, block);

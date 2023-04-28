@@ -394,7 +394,11 @@ impl Interpreter {
 
             while let Some(statement) = statements.next() {
                 if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
-                    eprintln!("\nRUN {} {:#?}", statement, stack.current_frame());
+                    eprintln!(
+                        "\nRUN {} {:#?} (bb{index})",
+                        statement,
+                        stack.current_frame()
+                    );
                 }
 
                 match statement {
@@ -468,46 +472,6 @@ impl Interpreter {
                                     stack.pop_frame();
                                 }
                                 Value::NativeFunction(f) => {
-                                    let output = f(input).await?;
-                                    stack.push(output);
-                                }
-                                _ => unreachable!(),
-                            };
-                        }
-                        ir::Expression::TailCall => {
-                            let input = stack.pop();
-
-                            match stack.pop() {
-                                Value::Function(func_scope, label) => {
-                                    // Tail call optimization only works for pure functions
-                                    if func_scope.is_empty() {
-                                        stack.push(input);
-
-                                        let (tail_vars, tail_blocks) =
-                                            self.inner.lock().labels[label].clone();
-
-                                        scope = Default::default();
-                                        scope.borrow_mut().0.reserve(tail_vars);
-                                        for _ in 0..tail_vars {
-                                            scope.borrow_mut().0.push(None);
-                                        }
-
-                                        blocks = tail_blocks;
-                                        index = 0;
-
-                                        continue 'outer;
-                                    } else {
-                                        stack.push_frame();
-                                        stack.push(input);
-                                        self.evaluate_label_in_scope(
-                                            label, stack, func_scope, &context,
-                                        )
-                                        .await?;
-                                        stack.pop_frame();
-                                    }
-                                }
-                                Value::NativeFunction(f) => {
-                                    // Tail call optimization has no effect on native functions
                                     let output = f(input).await?;
                                     stack.push(output);
                                 }
@@ -589,7 +553,7 @@ impl Interpreter {
 
             if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
                 eprintln!(
-                    "\nRUN {} {:#?}",
+                    "\nRUN {} {:#?} (bb{index})",
                     blocks[index].terminator.unwrap(),
                     stack.current_frame()
                 );
@@ -611,6 +575,46 @@ impl Interpreter {
                         *then_index
                     } else {
                         *else_index
+                    };
+                }
+                ir::Terminator::TailCall => {
+                    let input = stack.pop();
+
+                    match stack.pop() {
+                        Value::Function(func_scope, label) => {
+                            // Tail call optimization only works for pure functions
+                            if func_scope.is_empty() {
+                                let (tail_vars, tail_blocks) =
+                                    self.inner.lock().labels[label].clone();
+
+                                scope = Default::default();
+                                scope.borrow_mut().0.reserve(tail_vars);
+                                for _ in 0..tail_vars {
+                                    scope.borrow_mut().0.push(None);
+                                }
+
+                                blocks = tail_blocks;
+                                index = 0;
+
+                                stack.push(input);
+
+                                continue 'outer;
+                            } else {
+                                stack.push_frame();
+                                stack.push(input);
+                                self.evaluate_label_in_scope(label, stack, func_scope, &context)
+                                    .await?;
+                                stack.pop_frame();
+                                return Ok(());
+                            }
+                        }
+                        Value::NativeFunction(f) => {
+                            // Tail call optimization has no effect on native functions
+                            let output = f(input).await?;
+                            stack.push(output);
+                            return Ok(());
+                        }
+                        _ => unreachable!(),
                     };
                 }
             }

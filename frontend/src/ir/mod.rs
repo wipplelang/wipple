@@ -64,6 +64,7 @@ pub enum Terminator {
     Return,
     Jump(usize),
     If(VariantIndex, usize, usize),
+    TailCall,
 }
 
 #[derive(Debug, Clone)]
@@ -83,7 +84,6 @@ pub enum Expression {
     Function(usize),
     Closure(CaptureList, usize),
     Call,
-    TailCall,
     External(InternedString, InternedString, usize),
     Runtime(RuntimeFunction, usize),
     Tuple(usize),
@@ -298,14 +298,13 @@ impl IrGen {
                 self.gen_expr(*function, label, pos);
                 self.gen_expr(*input, label, pos);
 
-                self.statements_for(label, *pos).push(Statement::Expression(
-                    expr.ty,
-                    if expr.tail {
-                        Expression::TailCall
-                    } else {
-                        Expression::Call
-                    },
-                ));
+                if expr.tail {
+                    *self.terminator_for(label, *pos) = Some(Terminator::TailCall);
+                    *pos = self.new_basic_block(label, "following tail call");
+                } else {
+                    self.statements_for(label, *pos)
+                        .push(Statement::Expression(expr.ty, Expression::Call));
+                }
             }
             ssa::ExpressionKind::Function(pattern, body, captures) => {
                 let (input_ty, output_ty) = match &expr.ty {
