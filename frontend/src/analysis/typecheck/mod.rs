@@ -21,6 +21,7 @@ use crate::{
     TypeParameterId, VariableId, VariantIndex,
 };
 use itertools::Itertools;
+use parking_lot::Mutex;
 use std::{
     cell::RefCell,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
@@ -34,9 +35,9 @@ pub enum Progress {
     ResolvingDeclarations { count: usize, remaining: usize },
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct Program {
-    pub items: BTreeMap<ItemId, (Option<(Option<TraitId>, ConstantId)>, Expression)>,
+    pub items: BTreeMap<ItemId, Mutex<(Option<(Option<TraitId>, ConstantId)>, Expression)>>,
     pub contexts: BTreeMap<ConstantId, ItemId>,
     pub entrypoint: Option<ItemId>,
     pub declarations: Declarations,
@@ -733,7 +734,10 @@ impl Typechecker {
         // Build the final program
 
         Program {
-            items,
+            items: items
+                .into_iter()
+                .map(|(id, item)| (id, Mutex::new(item)))
+                .collect(),
             contexts: self.contexts,
             entrypoint: entrypoint_item,
             exported: self.exported.unwrap_or_default(),

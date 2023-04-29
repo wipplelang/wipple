@@ -4,6 +4,7 @@ use crate::{
     },
     Compiler, ItemId, Optimize, VariableId,
 };
+use parking_lot::Mutex;
 use std::{
     collections::{BTreeMap, BTreeSet},
     mem,
@@ -14,6 +15,9 @@ pub struct Options {
     /// Options for converting program to SSA form, enabling more optimizations.
     /// `None` disables this conversion.
     pub ssa: Option<ssa::Options>,
+
+    /// Options for propagating constants. `None` disables constant propagation.
+    pub propagate: Option<propagate::Options>,
 
     /// Options for inlining function calls. `None` disables inlining.
     pub inline: Option<inline::Options>,
@@ -27,6 +31,7 @@ impl Default for Options {
     fn default() -> Self {
         Options {
             ssa: Some(Default::default()),
+            propagate: Some(Default::default()),
             inline: Some(Default::default()),
             unused: Some(Default::default()),
         }
@@ -54,7 +59,7 @@ impl Optimize for Program {
             };
         }
 
-        passes!(ir, [ssa, inline, unused])
+        passes!(ir, [unused, ssa, propagate, inline, unused])
     }
 }
 
@@ -67,7 +72,10 @@ pub mod ssa {
 
     impl Program {
         pub(super) fn ssa(mut self, _options: Options, _compiler: &Compiler) -> Program {
-            for (_, expr) in self.items.values_mut() {
+            for item in self.items.values_mut() {
+                let mut item = item.lock();
+                let (_, expr) = &mut *item;
+
                 expr.traverse_mut(|expr| {
                     if let ExpressionKind::Block(exprs, _) = &mut expr.kind {
                         fn convert_block(exprs: &[Expression], span: SpanList) -> Vec<Expression> {
@@ -141,6 +149,126 @@ pub mod ssa {
     }
 }
 
+pub mod propagate {
+    use super::*;
+
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+    pub struct Options {
+        /// Perform no more than this many propagation passes. `None` indicates
+        /// no limit.
+        pub pass_limit: Option<usize>,
+    }
+
+    impl Program {
+        pub(super) fn propagate(self, options: Options, compiler: &Compiler) -> Program {
+            let item_ids = self.items.keys().cloned().collect::<Vec<_>>();
+
+            for &item_id in &item_ids {
+                let mut passes: usize = 1;
+
+                loop {
+                    let mut propagated = false;
+
+                    let mut item = self.items.get(&item_id).unwrap().lock();
+                    let (_, expr) = &mut *item;
+
+                    expr.traverse_mut(|expr| {
+                        let constant = match &expr.kind {
+                            ExpressionKind::Constant(constant) if *constant != item_id => *constant,
+                            _ => return,
+                        };
+
+                        let body = &self.items.get(&constant).unwrap().lock().1;
+
+                        if !body.is_pure(&self) {
+                            return;
+                        }
+
+                        propagated = true;
+                        *expr = body.clone();
+                        drop(body);
+
+                        // Replace the variables in the inlined constant with new variables
+
+                        let mut new_vars = BTreeMap::new();
+                        expr.traverse_mut(|expr| match &mut expr.kind {
+                            ExpressionKind::When(_, arms) => {
+                                for arm in arms {
+                                    for var in arm.pattern.variables() {
+                                        new_vars.insert(var, compiler.new_variable_id());
+                                    }
+
+                                    arm.pattern.traverse_mut(|pattern| {
+                                        if let PatternKind::Variable(var) = &mut pattern.kind {
+                                            *var = *new_vars.get(var).unwrap();
+                                        }
+                                    });
+                                }
+                            }
+                            ExpressionKind::Initialize(pattern, _) => {
+                                for var in pattern.variables() {
+                                    new_vars.insert(var, compiler.new_variable_id());
+                                }
+
+                                pattern.traverse_mut(|pattern| {
+                                    if let PatternKind::Variable(var) = &mut pattern.kind {
+                                        *var = *new_vars.get(var).unwrap();
+                                    }
+                                });
+                            }
+                            ExpressionKind::Function(pattern, _, captures) => {
+                                for var in pattern.variables() {
+                                    new_vars.insert(var, compiler.new_variable_id());
+                                }
+
+                                pattern.traverse_mut(|pattern| {
+                                    if let PatternKind::Variable(var) = &mut pattern.kind {
+                                        *var = *new_vars.get(var).unwrap();
+                                    }
+                                });
+
+                                for (var, _) in captures {
+                                    if let Some(v) = new_vars.get(var) {
+                                        *var = *v;
+                                    }
+                                }
+                            }
+                            _ => {}
+                        });
+
+                        expr.traverse_mut(|expr| match &mut expr.kind {
+                            ExpressionKind::Constant(c) if *c == constant => {
+                                expr.kind = ExpressionKind::ExpandedConstant(constant);
+                            }
+                            ExpressionKind::Variable(var) => {
+                                if let Some(v) = new_vars.get(var) {
+                                    *var = *v;
+                                }
+                            }
+                            ExpressionKind::Function(_, _, captures) => {
+                                for (var, _) in captures {
+                                    if let Some(v) = new_vars.get(var) {
+                                        *var = *v;
+                                    }
+                                }
+                            }
+                            _ => {}
+                        });
+                    });
+
+                    if !propagated || options.pass_limit.map_or(false, |limit| passes > limit) {
+                        break;
+                    }
+
+                    passes += 1;
+                }
+            }
+
+            self
+        }
+    }
+}
+
 pub mod inline {
     use super::*;
 
@@ -171,7 +299,7 @@ pub mod inline {
                 let mut inlined = false;
 
                 for item in self.items.keys().copied().collect::<Vec<_>>() {
-                    let (constant, mut expr) = self.items.get(&item).unwrap().clone();
+                    let (constant, mut expr) = self.items.get(&item).unwrap().lock().clone();
 
                     // Inline function calls
                     expr.traverse_mut_with(im::HashSet::new(), |expr, scope| {
@@ -292,7 +420,7 @@ pub mod inline {
                         }
                     });
 
-                    self.items.insert(item, (constant, expr));
+                    self.items.insert(item, Mutex::new((constant, expr)));
                 }
 
                 if !inlined || options.pass_limit.map_or(false, |limit| passes > limit) {
@@ -331,13 +459,23 @@ pub mod unused {
                 if let Some(entrypoint) = self.entrypoint {
                     let mut used = BTreeSet::from([entrypoint]);
 
-                    for (_, expr) in self.items.values() {
-                        expr.traverse(|expr| {
-                            if let ExpressionKind::Constant(item) = &expr.kind {
-                                used.insert(*item);
-                            }
-                        })
+                    fn track_used(program: &Program, item: ItemId, used: &mut BTreeSet<ItemId>) {
+                        if let Some(item) = program.items.get(&item) {
+                            let item = item.lock();
+                            let (_, expr) = &*item;
+
+                            expr.traverse(|expr| {
+                                if let ExpressionKind::Constant(item)
+                                | ExpressionKind::ExpandedConstant(item) = expr.kind
+                                {
+                                    used.insert(item);
+                                    track_used(program, item, used);
+                                }
+                            });
+                        }
                     }
+
+                    track_used(&self, entrypoint, &mut used);
 
                     for item in self.items.keys().cloned().collect::<Vec<_>>() {
                         if !used.contains(&item) {
@@ -425,12 +563,15 @@ mod util {
                 | ExpressionKind::With(_, _)
                 | ExpressionKind::ContextualConstant(_) => false,
                 ExpressionKind::Constant(constant) | ExpressionKind::ExpandedConstant(constant) => {
-                    program.items.get(constant).map_or(false, |(_, body)| {
+                    program.items.get(constant).map_or(false, |item| {
                         if stack.contains(constant) {
                             return false;
                         }
 
                         stack.push(*constant);
+
+                        let item = item.lock();
+                        let (_, body) = &*item;
 
                         let is_pure = body.is_pure_inner(program, function_call, stack);
                         stack.pop();

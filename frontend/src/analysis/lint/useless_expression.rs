@@ -8,7 +8,10 @@ impl Compiler {
             }
         }
 
-        for (_, expr) in program.items.values() {
+        for item in program.items.values() {
+            let item = item.lock();
+            let (_, expr) = &*item;
+
             self.check_useless_expression(expr, program);
         }
     }

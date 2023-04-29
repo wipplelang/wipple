@@ -14,54 +14,57 @@ impl fmt::Display for Program {
         )?;
         writeln!(f)?;
 
-        for decl in self.declarations.constants.values() {
-            write!(f, "{} :: ", decl.name)?;
-            decl.ty_annotation.display_with(f, self)?;
-            writeln!(f)?;
+        for item in self.items.values() {
+            let item = item.lock();
+            let (constant, expr) = &*item;
 
-            if let Some(value) = &decl.body {
-                write!(f, "{} : ", decl.name)?;
-                value.display_with(f, self, 0)?;
+            if let Some((tr, constant)) = constant {
+                if let Some(tr) = tr {
+                    let decl = self
+                        .declarations
+                        .instances
+                        .get(tr)
+                        .unwrap()
+                        .get(constant)
+                        .unwrap();
+
+                    let trait_name = self
+                        .declarations
+                        .traits
+                        .get(&decl.trait_id)
+                        .map(|tr| tr.name.to_string())
+                        .unwrap_or_else(|| format!("<unknown trait #{}>", decl.trait_id.counter));
+
+                    write!(f, "instance ({trait_name}")?;
+
+                    for ty in &decl.trait_param_annotations {
+                        write!(f, " ")?;
+                        ty.display_with(f, self)?;
+                    }
+
+                    write!(f, ")")?;
+
+                    write!(f, " : ")?;
+                    expr.display_with(f, self, 0)?;
+
+                    writeln!(f)?;
+                    writeln!(f)?;
+                } else {
+                    let decl = self.declarations.constants.get(constant).unwrap();
+
+                    write!(f, "{} :: ", decl.name)?;
+                    decl.ty_annotation.display_with(f, self)?;
+                    writeln!(f)?;
+
+                    write!(f, "{} : ", decl.name)?;
+                    expr.display_with(f, self, 0)?;
+
+                    writeln!(f)?;
+                    writeln!(f)?;
+                }
+            } else {
+                expr.display_with(f, self, 0)?;
             }
-
-            writeln!(f)?;
-            writeln!(f)?;
-        }
-
-        for decl in self
-            .declarations
-            .instances
-            .values()
-            .flat_map(|instances| instances.values())
-        {
-            let trait_name = self
-                .declarations
-                .traits
-                .get(&decl.trait_id)
-                .map(|tr| tr.name.to_string())
-                .unwrap_or_else(|| format!("<unknown trait #{}>", decl.trait_id.counter));
-
-            write!(f, "instance ({trait_name}")?;
-
-            for ty in &decl.trait_param_annotations {
-                write!(f, " ")?;
-                ty.display_with(f, self)?;
-            }
-
-            write!(f, ")")?;
-
-            if let Some(value) = &decl.body {
-                write!(f, " : ")?;
-                value.display_with(f, self, 0)?;
-            }
-
-            writeln!(f)?;
-            writeln!(f)?;
-        }
-
-        if let Some(entrypoint) = &self.entrypoint {
-            let (_, value) = self.items.get(entrypoint).unwrap();
-            value.display_with(f, self, 0)?;
         }
 
         Ok(())
@@ -93,30 +96,36 @@ impl Expression {
             }
             ExpressionKind::Constant(item) | ExpressionKind::ExpandedConstant(item) => {
                 match file.items.get(item) {
-                    Some((Some((tr, id)), _)) => {
-                        if let Some(tr) = tr {
-                            let name = file
-                                .declarations
-                                .traits
-                                .get(tr)
-                                .map(|tr| tr.name.to_string())
-                                .unwrap_or_else(|| format!("<unknown trait #{}>", tr.counter));
+                    Some(item) => {
+                        let item = item.lock();
+                        if let (Some((tr, id)), _) = *item {
+                            if let Some(tr) = tr {
+                                let name = file
+                                    .declarations
+                                    .traits
+                                    .get(&tr)
+                                    .map(|tr| tr.name.to_string())
+                                    .unwrap_or_else(|| format!("<unknown trait #{}>", tr.counter));
 
-                            write!(f, "{name}")?;
+                                write!(f, "{name}")?;
+                            } else {
+                                let name = file
+                                    .declarations
+                                    .constants
+                                    .get(&id)
+                                    .map(|constant| constant.name.to_string())
+                                    .unwrap_or_else(|| {
+                                        format!("<unknown constant #{}>", id.counter)
+                                    });
+
+                                write!(f, "{name}")?;
+                            }
                         } else {
-                            let name = file
-                                .declarations
-                                .constants
-                                .get(id)
-                                .map(|constant| constant.name.to_string())
-                                .unwrap_or_else(|| format!("<unknown constant #{}>", id.counter));
-
-                            write!(f, "{name}")?;
+                            write!(f, "<unknown constant>")?;
                         }
                     }
                     _ => {
                         write!(f, "<unknown constant>")?;
-                        return Ok(());
                     }
                 };
             }

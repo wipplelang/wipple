@@ -221,7 +221,10 @@ impl LanguageServer for Backend {
             }
         }
 
-        for (constant, expr) in document.program.items.values() {
+        for item in document.program.items.values() {
+            let item = item.lock();
+            let (constant, expr) = &*item;
+
             if constant.is_some() {
                 // Skip monomorphized constant types
                 continue;
@@ -330,7 +333,10 @@ impl LanguageServer for Backend {
 
         let mut hovers = Vec::new();
 
-        for (constant, expr) in document.program.items.values() {
+        for item in document.program.items.values() {
+            let item = item.lock();
+            let (constant, expr) = &*item;
+
             if constant.is_some() {
                 // Skip monomorphized constant types
                 continue;
@@ -339,7 +345,10 @@ impl LanguageServer for Backend {
             expr.traverse(|expr| {
                 // Don't show type of entire file
                 if let Some(entrypoint) = document.program.entrypoint {
-                    if let Some((_, item)) = document.program.items.get(&entrypoint) {
+                    if let Some(item) = document.program.items.get(&entrypoint) {
+                        let item = item.lock();
+                        let (_, item) = &*item;
+
                         if expr.span == item.span {
                             return;
                         }

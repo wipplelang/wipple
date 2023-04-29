@@ -126,7 +126,10 @@ impl Compiler {
             items: program
                 .items
                 .iter()
-                .map(|(&id, (_, item))| {
+                .map(|(&id, item)| {
+                    let item = item.lock();
+                    let (_, item) = &*item;
+
                     (
                         id,
                         converter.convert_expr(

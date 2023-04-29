@@ -425,7 +425,10 @@ fn get_syntax_highlighting(
         }
     }
 
-    for (constant, expr) in program.items.values() {
+    for item in program.items.values() {
+        let item = item.lock();
+        let (constant, expr) = &*item;
+
         if constant.is_some() {
             // Skip monomorphized constant types
             continue;
@@ -849,7 +852,10 @@ pub fn hover(start: usize, end: usize) -> JsValue {
 
     let mut hovers = Vec::new();
 
-    for (constant, expr) in analysis.program.items.values() {
+    for item in analysis.program.items.values() {
+        let item = item.lock();
+        let (constant, expr) = &*item;
+
         if constant.is_some() {
             // Skip monomorphized constant types
             continue;
@@ -858,7 +864,10 @@ pub fn hover(start: usize, end: usize) -> JsValue {
         expr.traverse(|expr| {
             // Don't show type of entire file
             if let Some(entrypoint) = &analysis.program.entrypoint {
-                if let Some((_, item)) = analysis.program.items.get(entrypoint) {
+                if let Some(item) = analysis.program.items.get(entrypoint) {
+                    let item = item.lock();
+                    let (_, item) = &*item;
+
                     if expr.span == item.span {
                         return;
                     }
