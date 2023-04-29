@@ -426,7 +426,7 @@ fn get_syntax_highlighting(
     }
 
     for item in program.items.values() {
-        let item = item.lock();
+        let item = item.read();
         let (constant, expr) = &*item;
 
         if constant.is_some() {
@@ -853,7 +853,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
     let mut hovers = Vec::new();
 
     for item in analysis.program.items.values() {
-        let item = item.lock();
+        let item = item.read();
         let (constant, expr) = &*item;
 
         if constant.is_some() {
@@ -865,7 +865,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
             // Don't show type of entire file
             if let Some(entrypoint) = &analysis.program.entrypoint {
                 if let Some(item) = analysis.program.items.get(entrypoint) {
-                    let item = item.lock();
+                    let item = item.read();
                     let (_, item) = &*item;
 
                     if expr.span == item.span {

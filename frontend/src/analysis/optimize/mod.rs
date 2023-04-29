@@ -4,7 +4,7 @@ use crate::{
     },
     Compiler, ItemId, Optimize, VariableId,
 };
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use std::{
     collections::{BTreeMap, BTreeSet},
     mem,
@@ -73,7 +73,7 @@ pub mod ssa {
     impl Program {
         pub(super) fn ssa(mut self, _options: Options, _compiler: &Compiler) -> Program {
             for item in self.items.values_mut() {
-                let mut item = item.lock();
+                let mut item = item.write();
                 let (_, expr) = &mut *item;
 
                 expr.traverse_mut(|expr| {
@@ -169,7 +169,7 @@ pub mod propagate {
                 loop {
                     let mut propagated = false;
 
-                    let mut item = self.items.get(&item_id).unwrap().lock();
+                    let mut item = self.items.get(&item_id).unwrap().write();
                     let (_, expr) = &mut *item;
 
                     expr.traverse_mut(|expr| {
@@ -178,7 +178,7 @@ pub mod propagate {
                             _ => return,
                         };
 
-                        let body = &self.items.get(&constant).unwrap().lock().1;
+                        let body = &self.items.get(&constant).unwrap().read().1;
 
                         if !body.is_pure(&self) {
                             return;
@@ -299,7 +299,7 @@ pub mod inline {
                 let mut inlined = false;
 
                 for item in self.items.keys().copied().collect::<Vec<_>>() {
-                    let (constant, mut expr) = self.items.get(&item).unwrap().lock().clone();
+                    let (constant, mut expr) = self.items.get(&item).unwrap().write().clone();
 
                     // Inline function calls
                     expr.traverse_mut_with(im::HashSet::new(), |expr, scope| {
@@ -420,7 +420,7 @@ pub mod inline {
                         }
                     });
 
-                    self.items.insert(item, Mutex::new((constant, expr)));
+                    self.items.insert(item, RwLock::new((constant, expr)));
                 }
 
                 if !inlined || options.pass_limit.map_or(false, |limit| passes > limit) {
@@ -461,7 +461,7 @@ pub mod unused {
 
                     fn track_used(program: &Program, item: ItemId, used: &mut BTreeSet<ItemId>) {
                         if let Some(item) = program.items.get(&item) {
-                            let item = item.lock();
+                            let item = item.read();
                             let (_, expr) = &*item;
 
                             expr.traverse(|expr| {
@@ -570,7 +570,7 @@ mod util {
 
                         stack.push(*constant);
 
-                        let item = item.lock();
+                        let item = item.read();
                         let (_, body) = &*item;
 
                         let is_pure = body.is_pure_inner(program, function_call, stack);

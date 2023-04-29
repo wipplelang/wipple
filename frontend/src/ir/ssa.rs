@@ -127,7 +127,7 @@ impl Compiler {
                 .items
                 .iter()
                 .map(|(&id, item)| {
-                    let item = item.lock();
+                    let item = item.read();
                     let (_, item) = &*item;
 
                     (

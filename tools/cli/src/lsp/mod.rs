@@ -222,7 +222,7 @@ impl LanguageServer for Backend {
         }
 
         for item in document.program.items.values() {
-            let item = item.lock();
+            let item = item.read();
             let (constant, expr) = &*item;
 
             if constant.is_some() {
@@ -334,7 +334,7 @@ impl LanguageServer for Backend {
         let mut hovers = Vec::new();
 
         for item in document.program.items.values() {
-            let item = item.lock();
+            let item = item.read();
             let (constant, expr) = &*item;
 
             if constant.is_some() {
@@ -346,7 +346,7 @@ impl LanguageServer for Backend {
                 // Don't show type of entire file
                 if let Some(entrypoint) = document.program.entrypoint {
                     if let Some(item) = document.program.items.get(&entrypoint) {
-                        let item = item.lock();
+                        let item = item.read();
                         let (_, item) = &*item;
 
                         if expr.span == item.span {

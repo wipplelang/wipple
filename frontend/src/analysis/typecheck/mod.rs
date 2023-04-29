@@ -21,7 +21,7 @@ use crate::{
     TypeParameterId, VariableId, VariantIndex,
 };
 use itertools::Itertools;
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use std::{
     cell::RefCell,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
@@ -37,7 +37,7 @@ pub enum Progress {
 
 #[derive(Debug, Default)]
 pub struct Program {
-    pub items: BTreeMap<ItemId, Mutex<(Option<(Option<TraitId>, ConstantId)>, Expression)>>,
+    pub items: BTreeMap<ItemId, RwLock<(Option<(Option<TraitId>, ConstantId)>, Expression)>>,
     pub contexts: BTreeMap<ConstantId, ItemId>,
     pub entrypoint: Option<ItemId>,
     pub declarations: Declarations,
@@ -736,7 +736,7 @@ impl Typechecker {
         Program {
             items: items
                 .into_iter()
-                .map(|(id, item)| (id, Mutex::new(item)))
+                .map(|(id, item)| (id, RwLock::new(item)))
                 .collect(),
             contexts: self.contexts,
             entrypoint: entrypoint_item,

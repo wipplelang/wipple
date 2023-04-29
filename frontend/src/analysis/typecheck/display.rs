@@ -15,7 +15,7 @@ impl fmt::Display for Program {
         writeln!(f)?;
 
         for item in self.items.values() {
-            let item = item.lock();
+            let item = item.read();
             let (constant, expr) = &*item;
 
             if let Some((tr, constant)) = constant {
@@ -97,7 +97,7 @@ impl Expression {
             ExpressionKind::Constant(item) | ExpressionKind::ExpandedConstant(item) => {
                 match file.items.get(item) {
                     Some(item) => {
-                        let item = item.lock();
+                        let item = item.read();
                         if let (Some((tr, id)), _) = *item {
                             if let Some(tr) = tr {
                                 let name = file
