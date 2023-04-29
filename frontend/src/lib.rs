@@ -3,6 +3,7 @@ mod macros;
 
 pub mod analysis;
 pub mod diagnostics;
+pub mod format;
 pub mod helpers;
 pub mod ir;
 pub mod parse;

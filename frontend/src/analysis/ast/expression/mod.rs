@@ -237,28 +237,30 @@ impl ExpressionSyntaxContext {
             1 => {
                 let expr = exprs.pop().unwrap();
 
-                if let parse::ExprKind::Name(name, name_scope) = expr.kind {
-                    if let Some(syntax) = self.ast_builder.try_get_syntax(
-                        name,
-                        expr.span,
-                        name_scope.unwrap_or(scope),
-                    ) {
-                        match syntax.operator_precedence {
-                            Some(_) => {
-                                self.ast_builder.compiler.add_error(
-                                    "expected values on both sides of operator",
-                                    vec![Note::primary(
-                                        expr.span,
-                                        "try providing values on either side of this",
-                                    )],
-                                );
+                if self.ast_builder.options.expand_syntax {
+                    if let parse::ExprKind::Name(name, name_scope) = expr.kind {
+                        if let Some(syntax) = self.ast_builder.try_get_syntax(
+                            name,
+                            expr.span,
+                            name_scope.unwrap_or(scope),
+                        ) {
+                            match syntax.operator_precedence {
+                                Some(_) => {
+                                    self.ast_builder.compiler.add_error(
+                                        "expected values on both sides of operator",
+                                        vec![Note::primary(
+                                            expr.span,
+                                            "try providing values on either side of this",
+                                        )],
+                                    );
 
-                                return Err(self.ast_builder.syntax_error(list_span));
-                            }
-                            None => {
-                                return self
-                                    .expand_syntax(expr.span, syntax, vec![expr], scope)
-                                    .await;
+                                    return Err(self.ast_builder.syntax_error(list_span));
+                                }
+                                None => {
+                                    return self
+                                        .expand_syntax(expr.span, syntax, vec![expr], scope)
+                                        .await;
+                                }
                             }
                         }
                     }
@@ -269,16 +271,20 @@ impl ExpressionSyntaxContext {
             _ => {
                 let operators = self.operators_in_list(exprs.iter().enumerate(), scope);
 
-                if operators.is_empty() {
-                    // TODO: Remove `[operator]` in favor of this logic
-                    for expr in &exprs {
-                        if let parse::ExprKind::Name(name, name_scope) = expr.kind {
-                            if let Some(syntax) = self.ast_builder.try_get_syntax(
-                                name,
-                                expr.span,
-                                name_scope.unwrap_or(scope),
-                            ) {
-                                return self.expand_syntax(expr.span, syntax, exprs, scope).await;
+                if operators.is_empty() || !self.ast_builder.options.expand_syntax {
+                    if self.ast_builder.options.expand_syntax {
+                        // TODO: Remove `[operator]` in favor of this logic
+                        for expr in &exprs {
+                            if let parse::ExprKind::Name(name, name_scope) = expr.kind {
+                                if let Some(syntax) = self.ast_builder.try_get_syntax(
+                                    name,
+                                    expr.span,
+                                    name_scope.unwrap_or(scope),
+                                ) {
+                                    return self
+                                        .expand_syntax(expr.span, syntax, exprs, scope)
+                                        .await;
+                                }
                             }
                         }
                     }

@@ -198,7 +198,7 @@ impl Compiler {
             stack.lock().push(resolved_path);
 
             let file = compiler
-                .build_ast(file, {
+                .build_ast(file, ast::Options::default(), {
                     let count = count.clone();
                     let files = files.clone();
                     let stack = stack.clone();

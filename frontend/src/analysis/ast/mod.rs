@@ -73,16 +73,31 @@ pub struct File {
     scopes: BTreeMap<ScopeId, Scope>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Options {
+    pub expand_syntax: bool,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            expand_syntax: true,
+        }
+    }
+}
+
 impl Compiler {
     pub(crate) async fn build_ast(
         &self,
         file: parse::File,
+        options: Options,
         load: impl Fn(Compiler, SpanList, FilePath) -> BoxFuture<'static, Option<Arc<File>>>
             + 'static
             + Send
             + Sync,
     ) -> File {
         let mut ast_builder = AstBuilder {
+            options,
             file: file.span.path,
             compiler: self.clone(),
             dependencies: Default::default(),
@@ -180,6 +195,7 @@ impl Compiler {
 
 #[derive(Clone)]
 struct AstBuilder {
+    options: Options,
     file: FilePath,
     compiler: Compiler,
     dependencies: Shared<Vec<Arc<File>>>,
