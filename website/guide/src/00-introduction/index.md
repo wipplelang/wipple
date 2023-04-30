@@ -10,4 +10,4 @@ Click the menu icon in the top left corner to see the table of contents. From th
 
 ## The Wipple Playground
 
-The [Wipple Playground](https://playground.wipple.dev) is a place to experiment with Wipple code in a Jupyter Notebook-like environment. The playground includes a beginner-friendly guide to learning Wipple as well!
+The [Wipple Playground](https://wipple.dev/playground) is a place to experiment with Wipple code in a Jupyter Notebook-like environment. The playground includes a beginner-friendly guide to learning Wipple as well!

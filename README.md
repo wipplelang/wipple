@@ -58,7 +58,7 @@ report-card : grade -> when grade {
 
 ## Learn Wipple
 
-The [Wipple Playground](https://playground.wipple.dev) has over 30 lessons for programmers of all experience levels. Try it out right in your browser!
+The [Wipple Playground](https://wipple.dev/playground) has over 30 lessons for programmers of all experience levels. Try it out right in your browser!
 
 ## Build Wipple
 
