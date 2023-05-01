@@ -181,12 +181,12 @@ const App = () => {
                     <div className="flex gap-4 text-gray-500 dark:text-gray-400">
                         <a href="?lesson=toc">Learn</a>
 
-                        <a target="_blank" href="https://forms.gle/ijfLtvJ5FT6heJsD7">
-                            Feedback
+                        <a target="_blank" href="https://github.com/wipplelang/wipple/discussions">
+                            Discuss
                         </a>
 
-                        <a target="_blank" href="https://github.com/wipplelang/wipple">
-                            Contribute
+                        <a target="_blank" href="https://forms.gle/ijfLtvJ5FT6heJsD7">
+                            Feedback
                         </a>
                     </div>
                 </div>
