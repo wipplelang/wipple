@@ -58,8 +58,29 @@ filter : include? container -> {
 	})
 }
 
--- reduce :: Container Element Result where (Iterate Container Element) => (Element -> Result -> Result) -> Container -> Iterator Result
--- reduce : TODO
+[help "Reduce an iterator down to a single item."]
+[help-group "Collections"]
+reduce :: Container Element Result where (Iterate Container Element) => Result -> (Element -> Result -> Result) -> Container -> Result
+reduce : result f container -> {
+	iterator : Iterate container
+	result : mutable result
+	loop {
+		when (next iterator) {
+			Some next -> {
+				result . set! (result . get . f next)
+				Continue
+			}
+			None -> Break ()
+		}
+	}
+
+	get result
+}
+
+[help "Find the sum of all the numbers in an iterator."]
+[help-group "Collections"]
+sum :: Container N where (Iterate Container N) (Numeric N) (Add N N N) => Container -> N
+sum : reduce (zero of Numeric) Add
 
 [help "Implement this trait to enable reducing an iterator into your collection type."]
 [help-group "Collections"]
