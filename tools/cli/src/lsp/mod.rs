@@ -653,7 +653,7 @@ impl LanguageServer for Backend {
 
 impl Backend {
     fn file_path_from(&self, uri: &Url) -> FilePath {
-        FilePath::Virtual(self.raw_file_path_from(uri))
+        FilePath::Path(self.raw_file_path_from(uri))
     }
 
     fn raw_file_path_from(&self, uri: &Url) -> InternedString {

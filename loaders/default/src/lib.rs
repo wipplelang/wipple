@@ -207,8 +207,17 @@ impl wipple_frontend::Loader for Loader {
 
                                 Ok(FilePath::Path(InternedString::new(path.to_str().unwrap())))
                             }
-                            FilePath::Virtual(_) => match self.base {
-                                Some(base) => match base {
+                            FilePath::Virtual(_) => {
+                                let base = match base {
+                                    FilePath::Url(_) | FilePath::Path(_) => base,
+                                    _ => self.base.ok_or_else(|| {
+                                        anyhow::Error::msg(
+                                            "attempt to load nested virtual path without base set",
+                                        )
+                                    })?,
+                                };
+
+                                match base {
                                     FilePath::Path(base) => {
                                         let path =
                                             PathBuf::from(base.as_str()).join(parsed_path).clean();
@@ -227,11 +236,8 @@ impl wipple_frontend::Loader for Loader {
                                         Ok(FilePath::Url(InternedString::new(url.as_str())))
                                     }
                                     _ => Err(anyhow::Error::msg("base must be a file path or URL")),
-                                },
-                                None => Err(anyhow::Error::msg(
-                                    "attempt to load nested virtual path without base set",
-                                )),
-                            },
+                                }
+                            }
                             _ => unimplemented!(),
                         }
                     }
