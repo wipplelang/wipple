@@ -62,19 +62,13 @@ filter : include? container -> {
 [help-group "Collections"]
 reduce :: Container Element Result where (Iterate Container Element) => Result -> (Element -> Result -> Result) -> Container -> Result
 reduce : result f container -> {
-	iterator : Iterate container
-	result : mutable result
-	loop {
-		when (next iterator) {
-			Some next -> {
-				result . set! (result . get . f next)
-				Continue
-			}
-			None -> Break ()
-		}
+	reduce-helper :: Element Result => Result -> (Element -> Result -> Result) -> Iterator Element -> Result
+	reduce-helper : result f iterator -> when (next iterator) {
+		Some next -> reduce-helper (f next result) f iterator
+		None -> result
 	}
 
-	get result
+	reduce-helper result f (Iterate container)
 }
 
 [help "Find the sum of all the numbers in an iterator."]
