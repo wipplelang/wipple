@@ -1,11 +1,11 @@
 [[no-std]]
 
-use "util.wpl"
-use "fp.wpl"
-use "mutable.wpl"
-use "list.wpl"
-use "logic.wpl"
-use "loop.wpl"
+use "util"
+use "fp"
+use "mutable"
+use "list"
+use "logic"
+use "loop"
 
 [help "A container for an iterable value that produces the `next` value on demand."]
 [help-group "Collections"]

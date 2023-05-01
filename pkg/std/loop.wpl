@@ -1,7 +1,7 @@
 [[no-std]]
 
-use "mutable.wpl"
-use "async.wpl"
+use "mutable"
+use "async"
 
 Control-Flow : A => type {
 	Break A

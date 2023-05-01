@@ -1,7 +1,7 @@
 [[no-std]]
 
-use "iterate.wpl"
-use "fp.wpl"
+use "iterate"
+use "fp"
 
 instance (Iterate Text Text) : text -> {
 	cursor : mutable text

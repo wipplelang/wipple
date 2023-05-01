@@ -1,8 +1,8 @@
 [[no-std]]
 
-use "util.wpl"
-use "fp.wpl"
-use "mutable.wpl"
+use "util"
+use "fp"
+use "mutable"
 
 [help "Create a `List` with the specified elements."]
 [help-group "Collections"]

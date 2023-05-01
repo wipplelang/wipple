@@ -1,8 +1,8 @@
 [[no-std]]
 
-use "fp.wpl"
-use "util.wpl"
-use "logic.wpl"
+use "fp"
+use "util"
+use "logic"
 
 [help "Implements the `+` operator."]
 [help-group "Math"]

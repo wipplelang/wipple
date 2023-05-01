@@ -1,10 +1,10 @@
 [[no-std]]
 
-use "fp.wpl"
-use "list.wpl"
-use "logic.wpl"
-use "util.wpl"
-use "iterate.wpl"
+use "fp"
+use "list"
+use "logic"
+use "util"
+use "iterate"
 
 [language "show"]
 [help "Implement this trait to enable `show`ing values of your type."]

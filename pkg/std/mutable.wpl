@@ -1,7 +1,7 @@
 [[no-std]]
 
-use "fp.wpl"
-use "math.wpl"
+use "fp"
+use "math"
 
 [help "Create a new `Mutable` value."]
 [help-group "Utilities"]

@@ -1,6 +1,6 @@
 [[no-std]]
 
-use "math.wpl"
+use "math"
 
 [help "Wait for a function to be called before returning."]
 [help-group "Control Flow"]

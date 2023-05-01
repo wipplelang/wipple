@@ -1,7 +1,7 @@
 [[no-std]]
 
-use "fp.wpl"
-use "logic.wpl"
+use "fp"
+use "logic"
 
 [help "Retrieve a field from a structure value without introducing a new variable into scope."]
 [help-group "Utilities"]
