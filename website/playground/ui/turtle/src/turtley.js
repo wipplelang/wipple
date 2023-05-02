@@ -150,33 +150,26 @@ turtley.Turtle = class Turtle {
             this._visibleCanvas.height = this._height;
         }
 
+        rescaleCanvas(this._visibleCanvas);
+
         const tempHiddenCanvasDupe = document.createElement("canvas");
         const tempHiddenCtx = tempHiddenCanvasDupe.getContext("2d");
-        tempHiddenCanvasDupe.width = this._hiddenCanvas.width;
-        tempHiddenCanvasDupe.height = this._hiddenCanvas.height;
-        tempHiddenCtx.drawImage(
-            this._hiddenCanvas,
-            0,
-            0,
-            this._hiddenCanvas.width,
-            this._hiddenCanvas.height
-        );
+        tempHiddenCanvasDupe.width = this._width;
+        tempHiddenCanvasDupe.height = this._height;
+        rescaleCanvas(tempHiddenCanvasDupe);
+        tempHiddenCtx.drawImage(this._hiddenCanvas, 0, 0, this._width, this._height);
 
-        this._hiddenCanvas.width = Math.max(
-            this._hiddenCanvas.width,
-            this._visibleCanvas.width * 1
-        );
-        this._hiddenCanvas.height = Math.max(
-            this._hiddenCanvas.height,
-            this._visibleCanvas.height * 1
-        );
+        this._hiddenCanvas.width = Math.max(this._width, this._width * 1);
+        this._hiddenCanvas.height = Math.max(this._height, this._height * 1);
+
+        rescaleCanvas(this._hiddenCanvas);
 
         this._hiddenCtx.drawImage(
             tempHiddenCanvasDupe,
-            Math.round(this._hiddenCanvas.width / 2 - tempHiddenCanvasDupe.width / 2),
-            Math.round(this._hiddenCanvas.height / 2 - tempHiddenCanvasDupe.height / 2),
-            tempHiddenCanvasDupe.width,
-            tempHiddenCanvasDupe.height
+            Math.round(this._width / 2 - this._width / 2),
+            Math.round(this._height / 2 - this._height / 2),
+            this._width,
+            this._height
         );
 
         this._draw();
@@ -187,7 +180,7 @@ turtley.Turtle = class Turtle {
 
         this._hiddenCtx.save();
 
-        this._hiddenCtx.translate(this._hiddenCanvas.width / 2, this._hiddenCanvas.height / 2);
+        this._hiddenCtx.translate(this._width / 2, this._height / 2);
 
         const current = this._queue[0];
 
@@ -256,10 +249,7 @@ turtley.Turtle = class Turtle {
             case "stepBackward":
                 this._hiddenCtx.save();
 
-                this._hiddenCtx.translate(
-                    -this._hiddenCanvas.width / 2,
-                    -this._hiddenCanvas.height / 2
-                );
+                this._hiddenCtx.translate(-this._width / 2, -this._height / 2);
 
                 if (
                     this._penDown &&
@@ -330,23 +320,20 @@ turtley.Turtle = class Turtle {
     _draw() {
         this._visibleCtx.save();
 
-        this._visibleCtx.clearRect(0, 0, this._visibleCanvas.width, this._visibleCanvas.height);
+        this._visibleCtx.clearRect(0, 0, this._width, this._height);
 
         this._visibleCtx.drawImage(
             this._hiddenCanvas,
-            this._visibleCanvas.width / 2 - this._hiddenCanvas.width / 2,
-            this._visibleCanvas.height / 2 - this._hiddenCanvas.height / 2,
-            this._hiddenCanvas.width,
-            this._hiddenCanvas.height
+            this._width / 2 - this._width / 2,
+            this._height / 2 - this._height / 2,
+            this._width,
+            this._height
         );
 
         if (this._showTurtle) {
             this._visibleCtx.save();
 
-            this._visibleCtx.translate(
-                this._visibleCanvas.width / 2 + this._x,
-                this._visibleCanvas.height / 2 + this._y
-            );
+            this._visibleCtx.translate(this._width / 2 + this._x, this._height / 2 + this._y);
 
             this._visibleCtx.rotate(-this._rotation);
             this._visibleCtx.rotate(Math.PI / 2);
@@ -380,7 +367,7 @@ turtley.Turtle = class Turtle {
 
         this._visibleCtx.globalCompositeOperation = "destination-over";
         this._visibleCtx.fillStyle = this._backgroundColor;
-        this._visibleCtx.fillRect(0, 0, this._visibleCanvas.width, this._visibleCanvas.height);
+        this._visibleCtx.fillRect(0, 0, this._width, this._height);
 
         this._visibleCtx.restore();
     }
@@ -617,5 +604,42 @@ turtley.Turtle = class Turtle {
         return this._visibleCanvas?.width ?? null;
     }
 };
+
+// https://www.keanw.com/2017/02/scaling-html-canvases-for-hidpi-screens.html
+function rescaleCanvas(canvas) {
+    // finally query the various pixel ratios
+
+    let ctx = canvas.getContext("2d");
+
+    let devicePixelRatio = window.devicePixelRatio || 1;
+
+    let backingStoreRatio =
+        ctx.webkitBackingStorePixelRatio ||
+        ctx.mozBackingStorePixelRatio ||
+        ctx.msBackingStorePixelRatio ||
+        ctx.oBackingStorePixelRatio ||
+        ctx.backingStorePixelRatio ||
+        1;
+
+    let ratio = devicePixelRatio / backingStoreRatio;
+
+    // upscale the canvas if the two ratios don't match
+    if (devicePixelRatio !== backingStoreRatio) {
+        let oldWidth = canvas.width;
+        let oldHeight = canvas.height;
+
+        canvas.width = oldWidth * ratio;
+        canvas.height = oldHeight * ratio;
+
+        canvas.style.width = oldWidth + "px";
+        canvas.style.height = oldHeight + "px";
+
+        // now scale the context to counter
+        // the fact that we've manually scaled
+        // our canvas element
+
+        ctx.scale(ratio, ratio);
+    }
+}
 
 export default turtley;
