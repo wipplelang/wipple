@@ -236,29 +236,6 @@ impl Stack {
         self.0.last_mut().unwrap()
     }
 
-    fn push_frame(&mut self) {
-        if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
-            eprintln!("PUSH FRAME");
-        }
-
-        self.0.push(Vec::new());
-    }
-
-    fn pop_frame(&mut self) {
-        let frame = self
-            .0
-            .pop()
-            .expect("stack is empty")
-            .pop()
-            .expect("stack is empty");
-
-        if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
-            eprintln!("POP FRAME {:#?}", frame);
-        }
-
-        self.push(frame);
-    }
-
     fn push(&mut self, value: Value) {
         if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
             eprintln!("PUSH {:?}", value);
@@ -408,12 +385,6 @@ impl Interpreter {
                     ir::Statement::Drop => {
                         stack.pop();
                     }
-                    ir::Statement::PushFrame => {
-                        stack.push_frame();
-                    }
-                    ir::Statement::PopFrame => {
-                        stack.pop_frame();
-                    }
                     ir::Statement::Initialize(var) => {
                         scope.borrow_mut().set(*var, stack.pop());
                     }
@@ -465,11 +436,9 @@ impl Interpreter {
 
                             match stack.pop() {
                                 Value::Function(scope, label) => {
-                                    stack.push_frame();
                                     stack.push(input);
                                     self.evaluate_label_in_scope(label, stack, scope, &context)
                                         .await?;
-                                    stack.pop_frame();
                                 }
                                 Value::NativeFunction(f) => {
                                     let output = f(input).await?;
@@ -600,11 +569,10 @@ impl Interpreter {
 
                                 continue 'outer;
                             } else {
-                                stack.push_frame();
                                 stack.push(input);
                                 self.evaluate_label_in_scope(label, stack, func_scope, &context)
                                     .await?;
-                                stack.pop_frame();
+
                                 return Ok(());
                             }
                         }

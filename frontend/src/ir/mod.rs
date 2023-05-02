@@ -48,8 +48,6 @@ pub struct BasicBlock {
 pub enum Statement {
     Copy,
     Drop,
-    PushFrame,
-    PopFrame,
     Initialize(usize),
     Free(usize),
     WithContext(usize),
@@ -276,7 +274,6 @@ impl IrGen {
                     ));
                 } else {
                     self.scopes.push(Vec::new());
-                    self.statements_for(label, *pos).push(Statement::PushFrame);
 
                     let mut drop_statement = None::<Statement>;
                     for (index, expr) in exprs.into_iter().enumerate() {
@@ -507,8 +504,6 @@ impl IrGen {
             let var = self.variable_for(label, var);
             self.statements_for(label, *pos).push(Statement::Free(var));
         }
-
-        self.statements_for(label, *pos).push(Statement::PopFrame);
     }
 
     fn gen_when(
