@@ -777,32 +777,45 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
         }
     });
 
-    let future = CancellableFuture::new(cancel_token.clone(), async move {
-        let result = interpreter.run(&program).await;
+    let future = CancellableFuture::new(cancel_token.clone(), {
+        let callback = callback.clone();
 
-        if let Err(error) = result {
-            let (completion_tx, completion_rx) = oneshot::channel();
-            send_display(
-                format!("fatal error: {error}"),
-                Box::new(|| completion_tx.send(()).unwrap()),
-            );
+        async move {
+            let result = interpreter.run(&program).await;
 
-            completion_rx.await.unwrap();
+            if let Err(error) = result {
+                let (completion_tx, completion_rx) = oneshot::channel();
+                send_display(
+                    format!("fatal error: {error}"),
+                    Box::new(|| completion_tx.send(()).unwrap()),
+                );
+
+                completion_rx.await.unwrap();
+            }
+
+            loop {
+                let completion_rx = match tasks.lock().pop() {
+                    Some(rx) => rx,
+                    None => break,
+                };
+
+                let _ = completion_rx.await;
+            }
+
+            callback.call1(&JsValue::NULL, &JsValue::TRUE).unwrap();
         }
-
-        loop {
-            let completion_rx = match tasks.lock().pop() {
-                Some(rx) => rx,
-                None => break,
-            };
-
-            let _ = completion_rx.await;
-        }
-
-        callback.call1(&JsValue::NULL, &JsValue::TRUE).unwrap();
     });
 
     wasm_bindgen_futures::spawn_local(async move {
+        let panic_hook = std::panic::take_hook();
+
+        let callback = SendWrapper::new(callback);
+
+        std::panic::set_hook(Box::new(move |info| {
+            callback.call1(&JsValue::NULL, &JsValue::FALSE).unwrap();
+            panic_hook(info);
+        }));
+
         future.await;
     });
 

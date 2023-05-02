@@ -97,6 +97,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 : { code, items: [item], diagnostics: [] }
         );
 
+    const [fatalError, setFatalError] = useState(false);
+
     const [completions, setCompletions] = useState<AnalysisOutputCompletions>();
 
     const [outputRef, { height: outputHeight }] = useMeasure();
@@ -126,6 +128,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     const analysis = await runner.analyze(code, lint);
                     setSyntaxHighlighting(analysis.syntaxHighlighting);
                     setOutput({ code: code, items: [], diagnostics: analysis.diagnostics });
+                    setFatalError(false);
                     setCompletions(analysis.completions);
                     setUiElements([]);
 
@@ -238,30 +241,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     }
                 } catch (error) {
                     console.error(error);
-
-                    setOutput((output) => ({
-                        code,
-                        type: "error",
-                        items: output!.items,
-                        diagnostics: [
-                            {
-                                level: "error",
-                                message:
-                                    "internal error: There was a problem running your code. Please reload the page and try again.",
-                                notes: [
-                                    {
-                                        code: "",
-                                        span: {
-                                            file: "playground",
-                                            start: 0,
-                                            end: 0,
-                                        },
-                                        messages: [],
-                                    },
-                                ],
-                            },
-                        ],
-                    }));
+                    setFatalError(true);
                 } finally {
                     setRunning(false);
                 }
@@ -665,7 +645,20 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
                                 return (
                                     <div>
-                                        {output.current.diagnostics.length ? (
+                                        {fatalError ? (
+                                            <div className="flex flex-col gap-4 p-6 text-red-500 bg-red-50 dark:bg-red-900 dark:bg-opacity-20">
+                                                <div className="flex items-center gap-2">
+                                                    <ErrorIcon fontSize="large" />
+                                                    <h1 className="text-xl">Internal Error</h1>
+                                                </div>
+
+                                                <p className="text-gray-500 dark:text-gray-400">
+                                                    Wipple encountered an internal error while
+                                                    running your code. Please reload the page and
+                                                    try again.
+                                                </p>
+                                            </div>
+                                        ) : output.current.diagnostics.length ? (
                                             props.settings.beginner ?? true ? (
                                                 output.current.diagnostics.find(
                                                     ({ level }) => level === "error"
