@@ -25,19 +25,21 @@ use "turtle"
 
 triangle :: Number -> ()
 triangle : size -> if (size > 5) {
-	size : size / 2
+	half : size / 2
 
-	triangle size -- first triangle
+	triangle half
+	forward (half pixels)
+
+	triangle half
+	forward (half pixels)
+	left (120 degrees)
+	forward (half pixels)
+
+	triangle half
+	forward (half pixels)
+	left (120 degrees)
 	forward (size pixels)
-	triangle size -- second triangle
-	backward (size pixels)
-	left (60 degrees)
-	forward (size pixels)
-	right (60 degrees)
-	triangle size -- third triangle
-	left (60 degrees)
-	backward (size pixels)
-	right (60 degrees)
+	left (120 degrees)
 }
 
 with-turtle {
