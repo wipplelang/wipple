@@ -56,19 +56,3 @@ loop-every : syntax {
 		}
 	}
 }
-
-[help "Repeatedly call a function the specified number of times."]
-[help-group "Control Flow"]
-times :: (Natural -> ()) -> Natural -> ()
-times : f n -> {
-	counter : mutable 0
-	loop {
-		if (get counter = n) {
-			Break ()
-		} {
-			f (get counter)
-			increment! counter
-			Continue
-		}
-	}
-}

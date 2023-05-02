@@ -239,7 +239,7 @@ impl Expression {
                     }
                 };
 
-                writeln!(f, "({name:?} {{")?;
+                writeln!(f, "({name} {{")?;
                 for (index, value) in fields.iter().enumerate() {
                     let name = field_names
                         .iter()

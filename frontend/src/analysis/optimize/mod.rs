@@ -192,6 +192,9 @@ pub mod propagate {
 
                         let mut new_vars = BTreeMap::new();
                         expr.traverse_mut(|expr| match &mut expr.kind {
+                            ExpressionKind::Constant(c) if *c == constant => {
+                                expr.kind = ExpressionKind::ExpandedConstant(constant);
+                            }
                             ExpressionKind::When(_, arms) => {
                                 for arm in arms {
                                     for var in arm.pattern.variables() {
@@ -217,6 +220,12 @@ pub mod propagate {
                                 });
                             }
                             ExpressionKind::Function(pattern, _, captures) => {
+                                for (var, _) in captures {
+                                    if let Some(v) = new_vars.get(var) {
+                                        *var = *v;
+                                    }
+                                }
+
                                 for var in pattern.variables() {
                                     new_vars.insert(var, compiler.new_variable_id());
                                 }
@@ -226,30 +235,10 @@ pub mod propagate {
                                         *var = *new_vars.get(var).unwrap();
                                     }
                                 });
-
-                                for (var, _) in captures {
-                                    if let Some(v) = new_vars.get(var) {
-                                        *var = *v;
-                                    }
-                                }
-                            }
-                            _ => {}
-                        });
-
-                        expr.traverse_mut(|expr| match &mut expr.kind {
-                            ExpressionKind::Constant(c) if *c == constant => {
-                                expr.kind = ExpressionKind::ExpandedConstant(constant);
                             }
                             ExpressionKind::Variable(var) => {
                                 if let Some(v) = new_vars.get(var) {
                                     *var = *v;
-                                }
-                            }
-                            ExpressionKind::Function(_, _, captures) => {
-                                for (var, _) in captures {
-                                    if let Some(v) = new_vars.get(var) {
-                                        *var = *v;
-                                    }
                                 }
                             }
                             _ => {}
@@ -394,27 +383,28 @@ pub mod inline {
                         if let ExpressionKind::When(input, arms) = &mut expr.kind {
                             if input.is_pure(&self) && arms.len() == 1 {
                                 let input = input.as_ref().clone();
+                                let arm = arms.first().unwrap();
 
-                                if let PatternKind::Variable(var) =
-                                    arms.first().unwrap().pattern.kind
-                                {
-                                    inlined = true;
+                                if let PatternKind::Variable(var) = arm.pattern.kind {
+                                    if arm.guard.is_none() {
+                                        inlined = true;
 
-                                    *expr = arms.pop().unwrap().body;
-                                    expr.traverse_mut(|expr| match &mut expr.kind {
-                                        ExpressionKind::Variable(v) => {
-                                            if *v == var {
-                                                *expr = input.clone();
+                                        *expr = arms.pop().unwrap().body;
+                                        expr.traverse_mut(|expr| match &mut expr.kind {
+                                            ExpressionKind::Variable(v) => {
+                                                if *v == var {
+                                                    *expr = input.clone();
+                                                }
                                             }
-                                        }
-                                        ExpressionKind::Function(_, _, captures) => {
-                                            *captures = mem::take(captures)
-                                                .into_iter()
-                                                .filter(|(v, _)| *v != var)
-                                                .collect();
-                                        }
-                                        _ => {}
-                                    });
+                                            ExpressionKind::Function(_, _, captures) => {
+                                                *captures = mem::take(captures)
+                                                    .into_iter()
+                                                    .filter(|(v, _)| *v != var)
+                                                    .collect();
+                                            }
+                                            _ => {}
+                                        });
+                                    }
                                 }
                             }
                         }
@@ -468,8 +458,9 @@ pub mod unused {
                                 if let ExpressionKind::Constant(item)
                                 | ExpressionKind::ExpandedConstant(item) = expr.kind
                                 {
-                                    used.insert(item);
-                                    track_used(program, item, used);
+                                    if used.insert(item) {
+                                        track_used(program, item, used);
+                                    }
                                 }
                             });
                         }
@@ -501,13 +492,13 @@ mod util {
         }
 
         pub fn is_pure(&self, program: &Program) -> bool {
-            self.is_pure_inner(program, false, &mut Vec::new())
+            self.is_pure_inner(program, None, &mut Vec::new())
         }
 
         fn is_pure_inner(
             &self,
             program: &Program,
-            function_call: bool,
+            function_call: Option<&BTreeSet<VariableId>>,
             stack: &mut Vec<ItemId>,
         ) -> bool {
             match &self.kind {
@@ -522,64 +513,105 @@ mod util {
                 | ExpressionKind::Unsigned(_)
                 | ExpressionKind::Float(_)
                 | ExpressionKind::Double(_) => true,
-                ExpressionKind::Variable(_) => !function_call,
-                ExpressionKind::Function(_, expr, _) => {
-                    !function_call || expr.is_pure_inner(program, function_call, stack)
+                ExpressionKind::Variable(var) => {
+                    function_call.map_or(false, |vars| vars.contains(var))
                 }
+                ExpressionKind::Function(_, _, _) => true,
                 ExpressionKind::Block(exprs, _) => exprs
                     .iter()
-                    .all(|expr| expr.is_pure_inner(program, false, stack)),
+                    .all(|expr| expr.is_pure_inner(program, function_call, stack)),
                 ExpressionKind::Call(func, input) => {
-                    func.is_pure_inner(program, true, stack)
-                        && input.is_pure_inner(program, false, stack)
+                    let mut func = func.as_ref().clone();
+                    let mut inner_function_call = None;
+                    loop {
+                        match &func.kind {
+                            ExpressionKind::Function(pattern, body, captures) => {
+                                let function_call =
+                                    inner_function_call.get_or_insert_with(BTreeSet::new);
+                                function_call.extend(pattern.variables());
+                                function_call.extend(captures.iter().map(|(var, _)| *var));
+
+                                func = body.as_ref().clone();
+                            }
+                            ExpressionKind::Constant(constant)
+                            | ExpressionKind::ExpandedConstant(constant) => {
+                                if let Some(body) = Self::constant_is_pure(
+                                    constant,
+                                    program,
+                                    inner_function_call.as_ref(),
+                                    stack,
+                                ) {
+                                    func = body;
+                                } else {
+                                    break;
+                                }
+                            }
+                            _ => break,
+                        }
+                    }
+
+                    func.is_pure_inner(program, inner_function_call.as_ref(), stack)
+                        && input.is_pure_inner(program, function_call, stack)
                 }
                 ExpressionKind::When(expr, arms) => {
-                    expr.is_pure_inner(program, false, stack)
+                    expr.is_pure_inner(program, function_call, stack)
                         && arms
                             .iter()
                             .map(|arm| &arm.body)
-                            .all(|expr| expr.is_pure_inner(program, false, stack))
+                            .all(|expr| expr.is_pure_inner(program, function_call, stack))
                 }
                 ExpressionKind::Structure(exprs) => exprs
                     .iter()
-                    .all(|expr| expr.is_pure_inner(program, false, stack)),
+                    .all(|expr| expr.is_pure_inner(program, function_call, stack)),
                 ExpressionKind::Variant(_, exprs) => exprs
                     .iter()
-                    .all(|expr| expr.is_pure_inner(program, false, stack)),
+                    .all(|expr| expr.is_pure_inner(program, function_call, stack)),
                 ExpressionKind::Tuple(exprs) => exprs
                     .iter()
-                    .all(|expr| expr.is_pure_inner(program, false, stack)),
+                    .all(|expr| expr.is_pure_inner(program, function_call, stack)),
                 ExpressionKind::Format(segments, _) => segments
                     .iter()
-                    .all(|(_, expr)| expr.is_pure_inner(program, false, stack)),
+                    .all(|(_, expr)| expr.is_pure_inner(program, function_call, stack)),
                 ExpressionKind::Runtime(func, inputs) => {
                     func.is_pure()
                         && inputs
                             .iter()
-                            .all(|expr| expr.is_pure_inner(program, false, stack))
+                            .all(|expr| expr.is_pure_inner(program, function_call, stack))
                 }
                 ExpressionKind::External(_, _, _)
                 | ExpressionKind::Initialize(_, _)
                 | ExpressionKind::With(_, _)
                 | ExpressionKind::ContextualConstant(_) => false,
                 ExpressionKind::Constant(constant) | ExpressionKind::ExpandedConstant(constant) => {
-                    program.items.get(constant).map_or(false, |item| {
-                        if stack.contains(constant) {
-                            return false;
-                        }
-
-                        stack.push(*constant);
-
-                        let item = item.read();
-                        let (_, body) = &*item;
-
-                        let is_pure = body.is_pure_inner(program, function_call, stack);
-                        stack.pop();
-
-                        is_pure
-                    })
+                    Self::constant_is_pure(constant, program, function_call, stack).is_some()
                 }
             }
+        }
+
+        fn constant_is_pure<'a>(
+            constant: &ItemId,
+            program: &'a Program,
+            function_call: Option<&BTreeSet<VariableId>>,
+            stack: &mut Vec<ItemId>,
+        ) -> Option<Expression> {
+            if stack.contains(constant) {
+                return None;
+            }
+
+            let item = match program.items.get(constant) {
+                Some(item) => item,
+                None => return None,
+            };
+
+            stack.push(*constant);
+
+            let item = item.read();
+            let (_, body) = &*item;
+
+            let is_pure = body.is_pure_inner(program, function_call, stack);
+            stack.pop();
+
+            is_pure.then(|| body.clone())
         }
     }
 
