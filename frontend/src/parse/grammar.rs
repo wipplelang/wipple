@@ -39,11 +39,8 @@ pub enum ExprKind {
     Text(InternedString),
     Number(InternedString),
     List(Vec<ListLine>),
-    // QuoteList(..),
     RepeatList(Vec<ListLine>),
     Block(Vec<Statement>),
-    // QuoteBlock(..),
-    // RepeatBlock(..),
 }
 
 impl Expr {
@@ -64,9 +61,7 @@ impl Expr {
 
     pub fn try_as_list_exprs(&self) -> Result<(SpanList, impl Iterator<Item = &Expr>), &Self> {
         match &self.kind {
-            ExprKind::List(lines) => {
-                Ok((self.span, lines.iter().flat_map(|line| &line.exprs)))
-            }
+            ExprKind::List(lines) => Ok((self.span, lines.iter().flat_map(|line| &line.exprs))),
             _ => Err(self),
         }
     }

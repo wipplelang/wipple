@@ -425,6 +425,14 @@ fn get_syntax_highlighting(
         }
     }
 
+    for instances in program.declarations.instances.values() {
+        for decl in instances.values() {
+            if let Some(expr) = &decl.body {
+                expr.traverse(&mut traverse_semantic_tokens);
+            }
+        }
+    }
+
     for item in program.items.values() {
         let item = item.read();
         let (constant, expr) = &*item;

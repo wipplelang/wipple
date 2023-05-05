@@ -406,6 +406,8 @@ impl ExpressionSyntaxContext {
                             kind: parse::ExprKind::List(vec![rhs.into()]),
                         };
 
+                        let list_span = SpanList::join(lhs_span, rhs_span);
+
                         self.expand_syntax(list_span, max_syntax, vec![lhs, operator, rhs], scope)
                             .await
                     }

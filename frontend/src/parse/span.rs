@@ -97,13 +97,9 @@ impl SpanList {
 
     #[must_use]
     pub fn merge(self, span: SpanList) -> SpanList {
-        let sources = std::iter::once(self.first)
-            .chain(span.sources.0.lock().iter().copied())
-            .collect::<Vec<_>>();
-
         SpanList {
             first: span.first,
-            sources: Intern::new(SpanSources(Mutex::new(sources))),
+            sources: self.sources,
         }
     }
 }
