@@ -14,6 +14,8 @@
         "@emotion/styled": "^11.10.6",
         "@mui/icons-material": "^5.11.9",
         "@mui/material": "^5.11.10",
+        "@sentry/browser": "^7.51.0",
+        "@sentry/react": "^7.51.0",
         "@tailwindcss/typography": "^0.5.9",
         "front-matter": "^4.0.2",
         "line-column": "^1.0.2",
@@ -40,6 +42,7 @@
         "vite-plugin-wasm": "^3.2.1"
     },
     "devDependencies": {
+        "@sentry/vite-plugin": "^0.7.2",
         "@types/js-yaml": "^4.0.5",
         "@types/line-column": "^1.0.0",
         "@types/node": "^18.14.1",

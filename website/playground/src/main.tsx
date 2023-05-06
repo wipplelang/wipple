@@ -1,7 +1,7 @@
 import { createTheme, ThemeProvider, useMediaQuery } from "@mui/material";
 import React, { useMemo } from "react";
 import ReactDOM from "react-dom/client";
-import { ErrorBoundary as ErrorBoundaryComponent } from "react-error-boundary";
+import * as Sentry from "@sentry/react";
 import App from "./App";
 import { wipple } from "./languages";
 import "./styles/globals.css";
@@ -9,8 +9,6 @@ import "./styles/language-wipple.css";
 import ErrorIcon from "@mui/icons-material/Error";
 
 wipple.register();
-
-const ErrorBoundary = ErrorBoundaryComponent as any;
 
 const Main = () => {
     const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
@@ -23,9 +21,9 @@ const Main = () => {
     return (
         <React.StrictMode>
             <ThemeProvider theme={theme}>
-                <ErrorBoundary fallbackRender={ErrorHandler}>
+                <Sentry.ErrorBoundary fallback={ErrorHandler}>
                     <App />
-                </ErrorBoundary>
+                </Sentry.ErrorBoundary>
             </ThemeProvider>
         </React.StrictMode>
     );
@@ -66,5 +64,7 @@ const ErrorHandler = (props: { error: any }) => {
         </div>
     );
 };
+
+Sentry.init({ dsn: import.meta.env.VITE_SENTRY_DSN });
 
 ReactDOM.createRoot(document.getElementById("root")!).render(<Main />);
