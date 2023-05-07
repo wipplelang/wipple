@@ -106,7 +106,7 @@ export const useRunner = () => {
                 runner.current!.postMessage({ operation: "analyze", code, lint });
             }),
         run: (handleConsole: (request: AnalysisConsoleRequest) => void) =>
-            new Promise<boolean>((resolve, reject) => {
+            new Promise<void>((resolve, reject) => {
                 let functions: any[] = [];
                 let resolveFunctionResult: ((value: any) => void) | undefined;
 
@@ -253,7 +253,12 @@ export const useRunner = () => {
                                 resolveFunctionResult = undefined;
                                 break;
                             case "done":
-                                resolve(event.data.success);
+                                if (event.data.error) {
+                                    reject(event.data.error);
+                                } else {
+                                    resolve();
+                                }
+
                                 runner.current!.onmessage = prevonmessage;
                                 break;
                             default:

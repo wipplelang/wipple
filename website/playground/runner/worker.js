@@ -5,6 +5,8 @@ let cancel;
 const consoleResponders = {};
 let resolveFunctionResult;
 
+Error.stackTraceLimit = 10000;
+
 onmessage = async (event) => {
     try {
         const runner = await import("./pkg");
@@ -17,8 +19,19 @@ onmessage = async (event) => {
                 }
 
                 const { code, lint } = event.data;
-                const analysis = await runner.analyze(code, lint);
+
+                const analysis = await new Promise((resolve, reject) => {
+                    runner.analyze(code, lint, (success, result) => {
+                        if (success) {
+                            resolve(result);
+                        } else {
+                            reject(result);
+                        }
+                    });
+                });
+
                 postMessage(analysis);
+
                 break;
             case "run":
                 functions = [];
@@ -87,13 +100,13 @@ onmessage = async (event) => {
                                 throw new Error("unhandled console request");
                         }
                     },
-                    (success) => {
+                    (error) => {
                         if (cancel) {
                             cancel();
                             cancel = undefined;
                         }
 
-                        postMessage({ type: "done", success });
+                        postMessage({ type: "done", error });
                     }
                 );
 

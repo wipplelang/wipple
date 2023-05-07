@@ -134,7 +134,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     setUiElements([]);
 
                     if (!analysis.diagnostics.find(({ level }) => level === "error")) {
-                        const success = await runner.run(async (request) => {
+                        await runner.run(async (request) => {
                             try {
                                 switch (request.type) {
                                     case "display":
@@ -240,10 +240,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                 console.error(`[code editor ${props.id}] error:`, error);
                             }
                         });
-
-                        if (!success) {
-                            throw new Error("runner failed");
-                        }
                     }
                 } catch (error) {
                     console.error(error);

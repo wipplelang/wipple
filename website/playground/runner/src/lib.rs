@@ -261,93 +261,115 @@ fn get_analysis<'a>() -> Option<MappedMutexGuard<'a, Analysis>> {
 }
 
 #[wasm_bindgen]
-pub async fn analyze(code: String, lint: bool) -> JsValue {
+pub fn analyze(code: String, lint: bool, callback: js_sys::Function) {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
-    LOADER
-        .virtual_paths()
-        .lock()
-        .insert(*PLAYGROUND_PATH, Arc::from(code));
+    wasm_bindgen_futures::spawn_local(async move {
+        let panic_hook = std::panic::take_hook();
 
-    let (program, diagnostics) = COMPILER
-        .analyze_with(
-            wipple_frontend::FilePath::Virtual(*PLAYGROUND_PATH),
-            &wipple_frontend::analysis::Options::new().lint(lint),
-        )
-        .await;
+        let callback = SendWrapper::new(callback);
 
-    let success = !diagnostics.contains_errors();
+        std::panic::set_hook({
+            let callback = callback.clone();
 
-    let diagnostics = diagnostics
-        .diagnostics
-        .into_iter()
-        .map(|diagnostic| {
-            let mut notes =
-                Vec::<(wipple_frontend::parse::Span, AnalysisOutputDiagnosticNote)>::new();
+            Box::new(move |info| {
+                callback
+                    .call2(&JsValue::NULL, &JsValue::FALSE, &info.to_string().into())
+                    .unwrap();
 
-            for note in diagnostic.notes {
-                let (first, rest) = note.span.split_iter();
-                let convert_span =
-                    |span: wipple_frontend::parse::Span| AnalysisOutputDiagnosticSpan {
-                        file: span.path.to_string(),
-                        start: span.start,
-                        end: span.end,
+                panic_hook(info);
+            })
+        });
+
+        LOADER
+            .virtual_paths()
+            .lock()
+            .insert(*PLAYGROUND_PATH, Arc::from(code));
+
+        let (program, diagnostics) = COMPILER
+            .analyze_with(
+                wipple_frontend::FilePath::Virtual(*PLAYGROUND_PATH),
+                &wipple_frontend::analysis::Options::new().lint(lint),
+            )
+            .await;
+
+        let success = !diagnostics.contains_errors();
+
+        let diagnostics = diagnostics
+            .diagnostics
+            .into_iter()
+            .map(|diagnostic| {
+                let mut notes =
+                    Vec::<(wipple_frontend::parse::Span, AnalysisOutputDiagnosticNote)>::new();
+
+                for note in diagnostic.notes {
+                    let (first, rest) = note.span.split_iter();
+                    let convert_span =
+                        |span: wipple_frontend::parse::Span| AnalysisOutputDiagnosticSpan {
+                            file: span.path.to_string(),
+                            start: span.start,
+                            end: span.end,
+                        };
+
+                    let get_code = |path: wipple_frontend::FilePath| {
+                        LOADER.source_map().lock().get(&path).unwrap().to_string()
                     };
 
-                let get_code = |path: wipple_frontend::FilePath| {
-                    LOADER.source_map().lock().get(&path).unwrap().to_string()
-                };
-
-                for (span, message) in std::iter::once((first, note.message))
-                    .chain(rest.map(|span| (span, String::from("actual error occurred here"))))
-                {
-                    if let Some(existing) = notes
-                        .iter_mut()
-                        .find(|(existing_span, _)| *existing_span == span)
+                    for (span, message) in std::iter::once((first, note.message))
+                        .chain(rest.map(|span| (span, String::from("actual error occurred here"))))
                     {
-                        existing.1.messages.push(message);
-                    } else {
-                        notes.push((
-                            span,
-                            AnalysisOutputDiagnosticNote {
-                                code: get_code(span.path),
-                                span: convert_span(span),
-                                messages: vec![message],
-                            },
-                        ));
+                        if let Some(existing) = notes
+                            .iter_mut()
+                            .find(|(existing_span, _)| *existing_span == span)
+                        {
+                            existing.1.messages.push(message);
+                        } else {
+                            notes.push((
+                                span,
+                                AnalysisOutputDiagnosticNote {
+                                    code: get_code(span.path),
+                                    span: convert_span(span),
+                                    messages: vec![message],
+                                },
+                            ));
+                        }
                     }
                 }
-            }
 
-            AnalysisOutputDiagnostic {
-                level: match diagnostic.level {
-                    wipple_frontend::diagnostics::DiagnosticLevel::Warning => {
-                        AnalysisOutputDiagnosticLevel::Warning
-                    }
-                    wipple_frontend::diagnostics::DiagnosticLevel::Error => {
-                        AnalysisOutputDiagnosticLevel::Error
-                    }
-                },
-                message: diagnostic.message,
-                notes: notes.into_iter().map(|(_, note)| note).collect(),
-            }
-        })
-        .dedup()
-        .collect();
+                AnalysisOutputDiagnostic {
+                    level: match diagnostic.level {
+                        wipple_frontend::diagnostics::DiagnosticLevel::Warning => {
+                            AnalysisOutputDiagnosticLevel::Warning
+                        }
+                        wipple_frontend::diagnostics::DiagnosticLevel::Error => {
+                            AnalysisOutputDiagnosticLevel::Error
+                        }
+                    },
+                    message: diagnostic.message,
+                    notes: notes.into_iter().map(|(_, note)| note).collect(),
+                }
+            })
+            .dedup()
+            .collect();
 
-    let syntax_highlighting = get_syntax_highlighting(&program);
-    let completions = get_completions(&program);
+        let syntax_highlighting = get_syntax_highlighting(&program);
+        let completions = get_completions(&program);
 
-    save_analysis(Analysis { program, success });
+        save_analysis(Analysis { program, success });
 
-    let output = AnalysisOutput {
-        diagnostics,
-        syntax_highlighting,
-        completions,
-    };
+        let output = AnalysisOutput {
+            diagnostics,
+            syntax_highlighting,
+            completions,
+        };
 
-    JsValue::from_serde(&output).unwrap()
+        let output = JsValue::from_serde(&output).unwrap();
+
+        callback
+            .call2(&JsValue::NULL, &JsValue::TRUE, &output)
+            .unwrap();
+    });
 }
 
 fn get_syntax_highlighting(
@@ -516,7 +538,9 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
     let analysis = match get_analysis() {
         Some(analysis) => analysis,
         None => {
-            callback.call1(&JsValue::NULL, &JsValue::FALSE).unwrap();
+            callback
+                .call1(&JsValue::NULL, &format!("program not compiled").into())
+                .unwrap();
 
             return JsValue::NULL;
         }
@@ -529,7 +553,9 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
     let program = match program {
         Some(program) => program,
         None => {
-            callback.call1(&JsValue::NULL, &JsValue::FALSE).unwrap();
+            callback
+                .call1(&JsValue::NULL, &format!("compilation failed").into())
+                .unwrap();
 
             return JsValue::NULL;
         }
@@ -810,7 +836,7 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
                 let _ = completion_rx.await;
             }
 
-            callback.call1(&JsValue::NULL, &JsValue::TRUE).unwrap();
+            callback.call1(&JsValue::NULL, &JsValue::UNDEFINED).unwrap();
         }
     });
 
@@ -820,7 +846,10 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
         let callback = SendWrapper::new(callback);
 
         std::panic::set_hook(Box::new(move |info| {
-            callback.call1(&JsValue::NULL, &JsValue::FALSE).unwrap();
+            callback
+                .call1(&JsValue::NULL, &info.to_string().into())
+                .unwrap();
+
             panic_hook(info);
         }));
 
