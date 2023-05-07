@@ -42,6 +42,7 @@ import ErrorIcon from "@mui/icons-material/Error";
 import lineColumn from "line-column";
 import { useRefState } from "../helpers";
 import { Settings } from "../App";
+import * as Sentry from "@sentry/react";
 
 export interface CodeEditorProps {
     id: string;
@@ -231,6 +232,11 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                         break;
                                 }
                             } catch (error) {
+                                Sentry.captureException(error, (ctx) => {
+                                    ctx.setContext("code-editor", { ...props });
+                                    return ctx;
+                                });
+
                                 console.error(`[code editor ${props.id}] error:`, error);
                             }
                         });
