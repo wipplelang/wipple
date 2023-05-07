@@ -175,9 +175,7 @@ onmessage = async (event) => {
     } catch (error) {
         console.error("[runner] error:", error);
 
-        setTimeout(() => {
-            throw error;
-        });
+        throw error;
     }
 };
 
