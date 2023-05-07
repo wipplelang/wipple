@@ -1,4 +1,7 @@
 import { v4 as uuid } from "uuid";
+import * as Sentry from "@sentry/browser";
+
+Sentry.init({ dsn: import.meta.env.VITE_SENTRY_DSN });
 
 let functions = [];
 let cancel;
@@ -188,7 +191,9 @@ onmessage = async (event) => {
     } catch (error) {
         console.error("[runner] error:", error);
 
-        throw error;
+        Sentry.captureException(error, (ctx) => {
+            ctx.setContext("runner-context", event.data);
+        });
     }
 };
 

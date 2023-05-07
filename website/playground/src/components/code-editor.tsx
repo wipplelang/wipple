@@ -117,7 +117,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
     const [uiElements, setUiElements] = useRefState<UiElement[]>([]);
     const [currentUiElementId, setCurrentUiElementId] = useRefState("");
 
-    const runner = useRunner();
+    const runner = useRunner({ id: props.id, code: props.code });
 
     const run = useMemo(
         () =>

@@ -75,7 +75,7 @@ export type AnalysisConsoleRequest =
           callback: (value: any) => void;
       };
 
-export const useRunner = () => {
+export const useRunner = (context: any) => {
     const runner = useRef<Worker | null>(null);
 
     useEffect(() => {
@@ -103,7 +103,7 @@ export const useRunner = () => {
                     runner.current!.onerror = prevonerror;
                 };
 
-                runner.current!.postMessage({ operation: "analyze", code, lint });
+                runner.current!.postMessage({ operation: "analyze", code, lint, context });
             }),
         run: (handleConsole: (request: AnalysisConsoleRequest) => void) =>
             new Promise<void>((resolve, reject) => {
@@ -276,7 +276,7 @@ export const useRunner = () => {
                     runner.current!.onerror = prevonerror;
                 };
 
-                runner.current!.postMessage({ operation: "run" });
+                runner.current!.postMessage({ operation: "run", context });
             }),
         hover: (start: number, end: number) =>
             new Promise<HoverOutput | null>((resolve, reject) => {
@@ -292,7 +292,7 @@ export const useRunner = () => {
                     runner.current!.onerror = prevonerror;
                 };
 
-                runner.current!.postMessage({ operation: "hover", start, end });
+                runner.current!.postMessage({ operation: "hover", start, end, context });
             }),
         completions: (position: number) =>
             new Promise<AnalysisOutputCompletions>((resolve, reject) => {
@@ -308,7 +308,7 @@ export const useRunner = () => {
                     runner.current!.onerror = prevonerror;
                 };
 
-                runner.current!.postMessage({ operation: "completions", position });
+                runner.current!.postMessage({ operation: "completions", position, context });
             }),
     };
 };
