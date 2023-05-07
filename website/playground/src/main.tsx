@@ -65,6 +65,8 @@ const ErrorHandler = (props: { error: any }) => {
     );
 };
 
-Sentry.init({ dsn: import.meta.env.VITE_SENTRY_DSN });
+if (import.meta.env.PROD) {
+    Sentry.init({ dsn: import.meta.env.VITE_SENTRY_DSN });
+}
 
 ReactDOM.createRoot(document.getElementById("root")!).render(<Main />);

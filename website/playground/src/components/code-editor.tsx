@@ -104,7 +104,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
     const [outputRef, { height: outputHeight }] = useMeasure();
     const animatedOutputStyle = useSpring(
-        output.current != null ? { opacity: 1, height: outputHeight } : { opacity: 0, height: 0 }
+        fatalError || output.current != null
+            ? { opacity: 1, height: outputHeight }
+            : { opacity: 0, height: 0 }
     );
 
     const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion)");
@@ -126,10 +128,10 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
                 try {
                     setSyntaxHighlighting([]); // FIXME: Prevent flashing
+                    setFatalError(false);
                     const analysis = await runner.analyze(code, lint);
                     setSyntaxHighlighting(analysis.syntaxHighlighting);
                     setOutput({ code: code, items: [], diagnostics: analysis.diagnostics });
-                    setFatalError(false);
                     setCompletions(analysis.completions);
                     setUiElements([]);
 
@@ -242,7 +244,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         });
                     }
                 } catch (error) {
-                    console.error(error);
                     setFatalError(true);
                 } finally {
                     setRunning(false);
@@ -641,26 +642,29 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     <animated.div style={animatedOutputStyle}>
                         <div ref={outputRef}>
                             {(() => {
+                                if (fatalError) {
+                                    return (
+                                        <div className="flex flex-col gap-4 p-6 text-red-500 bg-red-50 dark:bg-red-900 dark:bg-opacity-20">
+                                            <div className="flex items-center gap-2">
+                                                <ErrorIcon fontSize="large" />
+                                                <h1 className="text-xl">Internal Error</h1>
+                                            </div>
+
+                                            <p className="text-gray-500 dark:text-gray-400">
+                                                Wipple encountered an internal error while running
+                                                your code. Please reload the page and try again.
+                                            </p>
+                                        </div>
+                                    );
+                                }
+
                                 if (output.current == null) {
                                     return null;
                                 }
 
                                 return (
                                     <div>
-                                        {fatalError ? (
-                                            <div className="flex flex-col gap-4 p-6 text-red-500 bg-red-50 dark:bg-red-900 dark:bg-opacity-20">
-                                                <div className="flex items-center gap-2">
-                                                    <ErrorIcon fontSize="large" />
-                                                    <h1 className="text-xl">Internal Error</h1>
-                                                </div>
-
-                                                <p className="text-gray-500 dark:text-gray-400">
-                                                    Wipple encountered an internal error while
-                                                    running your code. Please reload the page and
-                                                    try again.
-                                                </p>
-                                            </div>
-                                        ) : output.current.diagnostics.length ? (
+                                        {output.current.diagnostics.length ? (
                                             props.settings.beginner ?? true ? (
                                                 output.current.diagnostics.find(
                                                     ({ level }) => level === "error"
