@@ -75,7 +75,7 @@ impl Compiler {
         options: &Options,
     ) -> (Program, FinalizedDiagnostics) {
         let files = self.expand_with(entrypoint, options).await;
-        if files.is_empty() {
+        if files.is_empty() || self.diagnostics.contains_errors() {
             return (Program::default(), self.finish_analysis());
         }
 
