@@ -1320,10 +1320,8 @@ impl Lowerer {
                                     )],
                                 );
 
-                                continue;
-                            }
-
-                            if !fields.is_empty() {
+                                TypeDeclarationKind::Marker
+                            } else if !fields.is_empty() {
                                 let field_names = fields
                                     .iter()
                                     .enumerate()
@@ -1361,7 +1359,7 @@ impl Lowerer {
                                     )],
                                 );
 
-                                continue;
+                                TypeDeclarationKind::Marker
                             }
                         }
                         None => TypeDeclarationKind::Marker,
