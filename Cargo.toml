@@ -4,7 +4,9 @@ members = [
     "backends/interpreter",
     "frontend",
     "loaders/default",
+    "syntax",
     "tools/cli",
     "tools/test",
+    "util",
     "website/playground/runner",
 ]

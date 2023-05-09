@@ -300,13 +300,15 @@ pub fn analyze(code: String, lint: bool, callback: js_sys::Function) {
             .diagnostics
             .into_iter()
             .map(|diagnostic| {
-                let mut notes =
-                    Vec::<(wipple_frontend::parse::Span, AnalysisOutputDiagnosticNote)>::new();
+                let mut notes = Vec::<(
+                    wipple_frontend::analysis::Span,
+                    AnalysisOutputDiagnosticNote,
+                )>::new();
 
                 for note in diagnostic.notes {
                     let (first, rest) = note.span.split_iter();
                     let convert_span =
-                        |span: wipple_frontend::parse::Span| AnalysisOutputDiagnosticSpan {
+                        |span: wipple_frontend::analysis::Span| AnalysisOutputDiagnosticSpan {
                             file: span.path.to_string(),
                             start: span.start,
                             end: span.end,
@@ -864,6 +866,7 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
 #[wasm_bindgen]
 pub fn hover(start: usize, end: usize) -> JsValue {
     use wipple_frontend::{
+        analysis::Span,
         analysis::{
             typecheck::{
                 format::{format_type, Format, TypeFunctionFormat},
@@ -872,7 +875,6 @@ pub fn hover(start: usize, end: usize) -> JsValue {
             ExpressionKind, Type,
         },
         helpers::InternedString,
-        parse::Span,
         FilePath,
     };
 

@@ -1,4 +1,4 @@
-use crate::{parse::SpanList, TraitId, TypeId, TypeParameterId};
+use crate::{analysis::SpanList, TraitId, TypeId, TypeParameterId};
 use std::{
     cell::{Cell, RefCell},
     collections::BTreeMap,

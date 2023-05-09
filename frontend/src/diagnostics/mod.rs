@@ -1,6 +1,6 @@
 use crate::{
+    analysis::{Span, SpanList},
     helpers::{Backtrace, Shared},
-    parse::{Span, SpanList},
     Compiler, FilePath, SourceMap,
 };
 use itertools::Itertools;

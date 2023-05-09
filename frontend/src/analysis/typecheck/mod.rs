@@ -13,10 +13,9 @@ pub use engine::{BottomTypeReason, BuiltinType, GenericSubstitutions, Type, Type
 pub use lower::{RuntimeFunction, TypeAnnotation, TypeAnnotationKind};
 
 use crate::{
-    analysis::lower,
+    analysis::{lower, SpanList},
     diagnostics::Note,
     helpers::{Backtrace, InternedString},
-    parse::SpanList,
     BuiltinTypeId, Compiler, ConstantId, FieldIndex, ItemId, SyntaxId, TraitId, TypeId,
     TypeParameterId, VariableId, VariantIndex,
 };

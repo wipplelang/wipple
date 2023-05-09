@@ -1,5 +1,5 @@
 use crate::{
-    analysis, helpers::InternedString, parse::SpanList, Compiler, ConstantId, EnumerationId,
+    analysis, analysis::SpanList, helpers::InternedString, Compiler, ConstantId, EnumerationId,
     FieldIndex, ItemId, StructureId, TypeId, VariableId, VariantIndex,
 };
 use std::{

@@ -3,10 +3,8 @@ mod macros;
 
 pub mod analysis;
 pub mod diagnostics;
-pub mod format;
 pub mod helpers;
 pub mod ir;
-pub mod parse;
 
 use async_trait::async_trait;
 use diagnostics::*;
@@ -31,7 +29,7 @@ pub trait Loader: Debug + Send + Sync + 'static {
 
     fn virtual_paths(&self) -> Shared<HashMap<InternedString, Arc<str>>>;
 
-    fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::ast::File>>>;
+    fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::ast::File<analysis::Analysis>>>>;
 
     fn source_map(&self) -> Shared<SourceMap>;
 }

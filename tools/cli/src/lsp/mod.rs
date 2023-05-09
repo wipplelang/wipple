@@ -9,11 +9,10 @@ use wipple_frontend::{
             format::{format_type, Format, TypeFunctionFormat},
             SyntaxDecl, TraitDecl, Type, TypeDecl, TypeDeclKind,
         },
-        Expression, ExpressionKind, Program,
+        Expression, ExpressionKind, Program, Span,
     },
     diagnostics::DiagnosticLevel,
     helpers::InternedString,
-    parse::Span,
     Compiler, FilePath,
 };
 
@@ -45,6 +44,7 @@ pub async fn run() {
     Server::new(stdin, stdout, socket).serve(service).await;
 }
 
+#[derive(Clone)]
 struct Backend {
     client: Client,
     compiler: Compiler,
@@ -676,9 +676,13 @@ impl Backend {
     }
 
     async fn on_change(&self, text_document: TextDocumentItem) {
-        let (program, diagnostics) = self.analyze(&text_document).await;
+        let backend = self.clone();
 
-        let path = self.file_path_from(&text_document.uri);
+        let analysis = backend.clone().analyze(&text_document);
+
+        let (program, diagnostics) = analysis.await;
+
+        let path = backend.file_path_from(&text_document.uri);
 
         let document = Document {
             path,
@@ -686,14 +690,15 @@ impl Backend {
             program,
         };
 
-        self.update_diagnostics(text_document.uri, &document, diagnostics)
+        backend
+            .update_diagnostics(text_document.uri, &document, diagnostics)
             .await;
 
-        self.documents.write().insert(path, document);
+        backend.documents.write().insert(path, document);
     }
 
     async fn analyze(
-        &self,
+        self,
         document: &TextDocumentItem,
     ) -> (Program, Vec<wipple_frontend::diagnostics::Diagnostic>) {
         let path = self.file_path_from(&document.uri);

@@ -6,7 +6,7 @@ use path_clean::PathClean;
 use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
 use url::Url;
 use wipple_frontend::{
-    analysis,
+    analysis::{self, Analysis},
     helpers::{InternedString, Shared},
     FilePath, SourceMap,
 };
@@ -20,7 +20,7 @@ pub struct Loader {
     base: Option<FilePath>,
     std_path: Option<FilePath>,
     source_map: Shared<SourceMap>,
-    cache: Shared<HashMap<FilePath, Arc<analysis::ast::File>>>,
+    cache: Shared<HashMap<FilePath, Arc<analysis::ast::File<Analysis>>>>,
 }
 
 #[derive(Default)]
@@ -280,7 +280,7 @@ impl wipple_frontend::Loader for Loader {
         self.virtual_paths.clone()
     }
 
-    fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::ast::File>>> {
+    fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::ast::File<Analysis>>>> {
         self.cache.clone()
     }
 

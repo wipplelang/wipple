@@ -12,6 +12,7 @@ anyhow = "1"
 clap = { version = "3", features = ["derive"] }
 codespan-reporting = "0.11"
 dialoguer = "0.10"
+futures = "0.3"
 handlebars = "4"
 indicatif = "0.16"
 itertools = "0.10"

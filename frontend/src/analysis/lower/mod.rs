@@ -1,10 +1,9 @@
 mod builtins;
 
 use crate::{
-    analysis::ast,
+    analysis::{ast, Analysis, Span, SpanList},
     diagnostics::Note,
     helpers::{did_you_mean, Backtrace, InternedString, Shared},
-    parse::{Span, SpanList},
     BuiltinTypeId, Compiler, ConstantId, FieldIndex, FilePath, ScopeId, SyntaxId, TraitId, TypeId,
     TypeParameterId, VariableId, VariantIndex,
 };
@@ -17,7 +16,7 @@ use std::{
 
 #[derive(Debug, Clone)]
 pub struct File<Decls = Declarations> {
-    pub span: Span,
+    pub span: SpanList,
     pub declarations: Decls,
     pub info: FileInfo,
     pub specializations: BTreeMap<ConstantId, Vec<ConstantId>>,
@@ -756,19 +755,19 @@ impl AnyDeclaration {
 }
 
 impl Compiler {
-    pub(crate) fn lower(&self, file: &ast::File, dependencies: Vec<Arc<File>>) -> File {
+    pub(crate) fn lower(&self, file: &ast::File<Analysis>, dependencies: Vec<Arc<File>>) -> File {
         let mut lowerer = Lowerer {
             compiler: self.clone(),
-            file: file.span.path,
+            file: file.span.first().path,
             file_info: Default::default(),
             declarations: Default::default(),
             specializations: Default::default(),
             scopes: Default::default(),
         };
 
-        let scope = lowerer.root_scope(file.root_scope);
+        let scope = lowerer.root_scope(file.file.root_scope);
 
-        for (id, value) in &file.syntax_declarations {
+        for (id, value) in &*file.file.syntax_declarations.lock() {
             lowerer
                 .declarations
                 .syntaxes
@@ -776,7 +775,7 @@ impl Compiler {
                 .or_insert_with(|| Declaration {
                     name: value.name,
                     span: value.span(),
-                    uses: value.uses.clone(),
+                    uses: value.uses.iter().copied().collect(),
                     value: SyntaxDeclaration {
                         operator: value.operator_precedence.is_some(),
                         keyword: value.keyword.is_some(),
@@ -1164,7 +1163,7 @@ struct Context {
 struct StatementDeclaration<'a> {
     span: SpanList,
     kind: StatementDeclarationKind<'a>,
-    attributes: &'a ast::StatementAttributes,
+    attributes: &'a ast::StatementAttributes<Analysis>,
 }
 
 #[derive(Debug)]
@@ -1176,17 +1175,17 @@ enum StatementDeclarationKind<'a> {
             LoadedScopeId,
             (Vec<TypeParameterId>, Vec<Bound>),
         )>,
-        &'a ast::TypeAssignmentValue,
+        &'a ast::TypeAssignmentValue<Analysis>,
     ),
     Trait(
         TraitId,
         Option<(LoadedScopeId, (Vec<TypeParameterId>, Vec<Bound>))>,
-        &'a ast::TraitAssignmentValue,
+        &'a ast::TraitAssignmentValue<Analysis>,
     ),
     Constant(
         ConstantId,
         (LoadedScopeId, (Vec<TypeParameterId>, Vec<Bound>)),
-        &'a ast::Type,
+        &'a ast::Type<Analysis>,
     ),
     Instance(
         ConstantId,
@@ -1195,23 +1194,23 @@ enum StatementDeclarationKind<'a> {
             SpanList,
             InternedString,
             LoadedScopeId,
-            &'a Vec<Result<ast::Type, ast::SyntaxError>>,
+            &'a Vec<Result<ast::Type<Analysis>, ast::SyntaxError<Analysis>>>,
         ),
-        Option<&'a ast::Expression>,
+        Option<&'a ast::Expression<Analysis>>,
     ),
     Queued(QueuedStatement<'a>),
 }
 
 #[derive(Debug)]
 enum QueuedStatement<'a> {
-    Assign(&'a ast::Pattern, &'a ast::Expression),
-    Expression(Cow<'a, ast::Expression>),
+    Assign(&'a ast::Pattern<Analysis>, &'a ast::Expression<Analysis>),
+    Expression(Cow<'a, ast::Expression<Analysis>>),
 }
 
 impl Lowerer {
     fn lower_statements(
         &mut self,
-        statements: &[Result<ast::Statement, ast::SyntaxError>],
+        statements: &[Result<ast::Statement<Analysis>, ast::SyntaxError<Analysis>>],
         scope: &LoadedScopeId,
         ctx: &Context,
     ) -> Vec<Expression> {
@@ -1746,7 +1745,7 @@ impl Lowerer {
 
     fn lower_statement<'a>(
         &mut self,
-        statement: &'a ast::Statement,
+        statement: &'a ast::Statement<Analysis>,
         scope: &LoadedScopeId,
         ctx: &Context,
     ) -> Option<StatementDeclaration<'a>> {
@@ -2170,7 +2169,7 @@ impl Lowerer {
 
     fn lower_expr(
         &mut self,
-        expr: &ast::Expression,
+        expr: &ast::Expression<Analysis>,
         scope: &LoadedScopeId,
         ctx: &Context,
     ) -> Expression {
@@ -2844,7 +2843,7 @@ impl Lowerer {
 
     fn lower_pattern(
         &mut self,
-        pattern: &ast::Pattern,
+        pattern: &ast::Pattern<Analysis>,
         scope: &LoadedScopeId,
         ctx: &Context,
     ) -> Pattern {
@@ -3198,7 +3197,7 @@ impl Lowerer {
     #[allow(clippy::only_used_in_recursion)]
     fn lower_type(
         &mut self,
-        ty: &ast::Type,
+        ty: &ast::Type<Analysis>,
         scope: &LoadedScopeId,
         ctx: &Context,
     ) -> TypeAnnotation {
@@ -3337,7 +3336,7 @@ impl Lowerer {
 
     fn lower_type_pattern(
         &mut self,
-        type_pattern: &ast::TypePattern,
+        type_pattern: &ast::TypePattern<Analysis>,
         scope: &LoadedScopeId,
         ctx: &Context,
     ) -> (Vec<TypeParameterId>, Vec<Bound>) {
@@ -3567,7 +3566,7 @@ impl Lowerer {
 
     fn lower_decl_attributes(
         &self,
-        statement_attributes: &ast::StatementAttributes,
+        statement_attributes: &ast::StatementAttributes<Analysis>,
         _scope: &LoadedScopeId,
     ) -> DeclarationAttributes {
         // TODO: Raise errors for misused attributes
@@ -3588,7 +3587,7 @@ impl Lowerer {
 
     fn lower_type_attributes(
         &mut self,
-        attributes: &ast::StatementAttributes,
+        attributes: &ast::StatementAttributes<Analysis>,
         ctx: &Context,
         scope: &LoadedScopeId,
     ) -> TypeAttributes {
@@ -3642,7 +3641,7 @@ impl Lowerer {
 
     fn lower_trait_attributes(
         &mut self,
-        attributes: &ast::StatementAttributes,
+        attributes: &ast::StatementAttributes<Analysis>,
         ctx: &Context,
         scope: &LoadedScopeId,
     ) -> TraitAttributes {
@@ -3698,7 +3697,7 @@ impl Lowerer {
 
     fn lower_constant_attributes(
         &mut self,
-        attributes: &ast::StatementAttributes,
+        attributes: &ast::StatementAttributes<Analysis>,
         scope: &LoadedScopeId,
     ) -> ConstantAttributes {
         // TODO: Raise errors for misused attributes
@@ -3712,7 +3711,7 @@ impl Lowerer {
 
     fn get_name_from_assignment(
         &mut self,
-        pattern: &ast::AssignmentPattern,
+        pattern: &ast::AssignmentPattern<Analysis>,
     ) -> Option<(SpanList, InternedString)> {
         if let ast::AssignmentPattern::Pattern(pattern) = pattern {
             if let ast::Pattern::Name(pattern) = &pattern.pattern {

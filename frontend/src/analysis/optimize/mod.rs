@@ -65,7 +65,7 @@ impl Optimize for Program {
 
 pub mod ssa {
     use super::*;
-    use crate::parse::SpanList;
+    use crate::analysis::SpanList;
 
     #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
     pub struct Options {}
