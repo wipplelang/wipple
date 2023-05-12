@@ -20,6 +20,22 @@ pub struct InstanceStatement<D: Driver> {
     pub attributes: StatementAttributes<D>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for InstanceStatement<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(InstanceStatement {
+            span: Default::default(),
+            instance_span: Default::default(),
+            pattern_span: Default::default(),
+            trait_span: Default::default(),
+            trait_name: arbitrary::Arbitrary::arbitrary(u)?,
+            trait_scope: Default::default(),
+            trait_parameters: arbitrary::Arbitrary::arbitrary(u)?,
+            attributes: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> InstanceStatement<D> {
     pub fn span(&self) -> D::Span {
         self.span

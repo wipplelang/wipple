@@ -14,6 +14,20 @@ pub struct OperatorPrecedenceStatementAttribute<D: Driver> {
     pub precedence: OperatorPrecedenceStatementAttributeKind,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a>
+    for OperatorPrecedenceStatementAttribute<D>
+{
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(OperatorPrecedenceStatementAttribute {
+            span: Default::default(),
+            operator_span: Default::default(),
+            precedence_span: Default::default(),
+            precedence: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> OperatorPrecedenceStatementAttribute<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -22,6 +36,7 @@ impl<D: Driver> OperatorPrecedenceStatementAttribute<D> {
 
 // TODO: User-defined precedences
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, strum::EnumString)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum OperatorPrecedenceStatementAttributeKind {
     #[strum(serialize = "Casting-Precedence")]
     Casting,

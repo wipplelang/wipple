@@ -13,6 +13,15 @@ pub struct ExpressionAssignmentValue<D: Driver> {
     pub expression: Expression<D>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for ExpressionAssignmentValue<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(ExpressionAssignmentValue {
+            expression: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> ExpressionAssignmentValue<D> {
     pub fn span(&self) -> D::Span {
         self.expression.span()

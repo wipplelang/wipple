@@ -14,6 +14,18 @@ pub struct HelpStatementAttribute<D: Driver> {
     pub help_text: D::InternedString,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for HelpStatementAttribute<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(HelpStatementAttribute {
+            span: Default::default(),
+            help_span: Default::default(),
+            help_text_span: Default::default(),
+            help_text: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> HelpStatementAttribute<D> {
     pub fn span(&self) -> D::Span {
         self.span

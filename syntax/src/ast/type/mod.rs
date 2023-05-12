@@ -19,7 +19,6 @@ use futures::{stream, StreamExt};
 use wipple_util::Shared;
 
 syntax_group! {
-    #[derive(Debug, Clone)]
     pub type Type<TypeSyntaxContext> {
         non_terminal: {
             Function,
@@ -38,6 +37,15 @@ pub struct PlaceholderType<D: Driver> {
     pub span: D::Span,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for PlaceholderType<D> {
+    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(PlaceholderType {
+            span: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> PlaceholderType<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -47,6 +55,15 @@ impl<D: Driver> PlaceholderType<D> {
 #[derive(Debug, Clone)]
 pub struct UnitType<D: Driver> {
     pub span: D::Span,
+}
+
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for UnitType<D> {
+    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(UnitType {
+            span: Default::default(),
+        })
+    }
 }
 
 impl<D: Driver> UnitType<D> {
@@ -62,6 +79,19 @@ pub struct NamedType<D: Driver> {
     pub name: D::InternedString,
     pub name_scope: D::Scope,
     pub parameters: Vec<Result<Type<D>, SyntaxError<D>>>,
+}
+
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NamedType<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(NamedType {
+            span: Default::default(),
+            name_span: Default::default(),
+            name: arbitrary::Arbitrary::arbitrary(u)?,
+            name_scope: arbitrary::Arbitrary::arbitrary(u)?,
+            parameters: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
 }
 
 impl<D: Driver> NamedType<D> {

@@ -9,7 +9,7 @@ use wipple_util::Backtrace;
 
 #[async_trait]
 pub trait Driver: Debug + Clone + Send + Sync + 'static {
-    type InternedString: Debug + Copy + AsRef<str> + Eq + Hash + Send + Sync;
+    type InternedString: Debug + Clone + AsRef<str> + Eq + Hash + Send + Sync;
     type Path: Debug + Copy + Send + Sync + 'static;
     type Span: Debug + Copy + Span + Send + Sync + 'static;
     type File: Debug + Clone + Send + Sync + File<Self> + 'static;
@@ -102,3 +102,18 @@ impl<D: Driver> DriverExt for D {
         }))
     }
 }
+
+#[cfg(feature = "arbitrary")]
+pub struct FuzzString(String);
+
+#[cfg(feature = "arbitrary")]
+impl<'a> arbitrary::Arbitrary<'a> for FuzzString {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(FuzzString(
+            ('a'..='z').nth(u.choose_index(16)?).unwrap().to_string(),
+        ))
+    }
+}
+
+#[cfg(feature = "arbitrary")]
+pub trait FuzzDriver: Driver<Span = (), Scope = (), InternedString = FuzzString> {}

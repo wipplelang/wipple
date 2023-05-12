@@ -37,7 +37,6 @@ use std::{cmp::Ordering, collections::VecDeque};
 use wipple_util::Shared;
 
 syntax_group! {
-    #[derive(Debug, Clone)]
     pub type Expression<ExpressionSyntaxContext> {
         non_terminal: {
             Function,
@@ -64,6 +63,15 @@ pub struct UnitExpression<D: Driver> {
     pub span: D::Span,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for UnitExpression<D> {
+    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(UnitExpression {
+            span: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> UnitExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -75,6 +83,17 @@ pub struct NameExpression<D: Driver> {
     pub span: D::Span,
     pub name: D::InternedString,
     pub scope: D::Scope,
+}
+
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NameExpression<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(NameExpression {
+            span: Default::default(),
+            name: arbitrary::Arbitrary::arbitrary(u)?,
+            scope: Default::default(),
+        })
+    }
 }
 
 impl<D: Driver> NameExpression<D> {
@@ -89,6 +108,16 @@ pub struct TextExpression<D: Driver> {
     pub text: D::InternedString,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TextExpression<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(TextExpression {
+            span: Default::default(),
+            text: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> TextExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -99,6 +128,16 @@ impl<D: Driver> TextExpression<D> {
 pub struct NumberExpression<D: Driver> {
     pub span: D::Span,
     pub number: D::InternedString,
+}
+
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NumberExpression<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(NumberExpression {
+            span: Default::default(),
+            number: crate::FuzzString(u.int_in_range(0..=100)?.to_string()),
+        })
+    }
 }
 
 impl<D: Driver> NumberExpression<D> {
@@ -114,6 +153,17 @@ pub struct CallExpression<D: Driver> {
     pub inputs: Vec<Result<Expression<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for CallExpression<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(CallExpression {
+            span: Default::default(),
+            function: arbitrary::Arbitrary::arbitrary(u)?,
+            inputs: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> CallExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -125,6 +175,17 @@ pub struct BlockExpression<D: Driver> {
     pub span: D::Span,
     pub statements: Vec<Result<Statement<D>, SyntaxError<D>>>,
     pub scope: D::Scope,
+}
+
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for BlockExpression<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(BlockExpression {
+            span: Default::default(),
+            statements: arbitrary::Arbitrary::arbitrary(u)?,
+            scope: Default::default(),
+        })
+    }
 }
 
 impl<D: Driver> BlockExpression<D> {
@@ -234,10 +295,10 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
             1 => {
                 let expr = exprs.pop().unwrap();
 
-                if let parse::ExprKind::Name(name, name_scope) = expr.kind {
+                if let parse::ExprKind::Name(name, name_scope) = &expr.kind {
                     let syntax = self.ast_builder.file.resolve_syntax(
                         expr.span,
-                        name,
+                        name.clone(),
                         name_scope.unwrap_or(scope),
                     );
 
@@ -268,10 +329,10 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                 if operators.is_empty() {
                     // TODO: Remove `[operator]` in favor of this logic
                     for expr in &exprs {
-                        if let parse::ExprKind::Name(name, name_scope) = expr.kind {
+                        if let parse::ExprKind::Name(name, name_scope) = &expr.kind {
                             let syntax = self.ast_builder.file.resolve_syntax(
                                 expr.span,
-                                name,
+                                name.clone(),
                                 name_scope.unwrap_or(scope),
                             );
 
@@ -412,10 +473,10 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
         exprs
             .into_iter()
             .filter_map(move |(index, expr)| {
-                if let parse::ExprKind::Name(name, name_scope) = expr.kind {
+                if let parse::ExprKind::Name(name, name_scope) = &expr.kind {
                     let syntax = self.ast_builder.file.resolve_syntax(
                         expr.span,
-                        name,
+                        name.clone(),
                         name_scope.unwrap_or(scope),
                     );
 

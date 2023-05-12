@@ -51,7 +51,6 @@ use async_trait::async_trait;
 use wipple_util::Shared;
 
 syntax_group! {
-    #[derive(Debug, Clone)]
     pub type StatementAttribute<StatementAttributeSyntaxContext> {
         non_terminal: {
             AllowOverlappingInstances,

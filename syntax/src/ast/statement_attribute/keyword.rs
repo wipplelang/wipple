@@ -11,6 +11,15 @@ pub struct KeywordStatementAttribute<D: Driver> {
     pub span: D::Span,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for KeywordStatementAttribute<D> {
+    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(KeywordStatementAttribute {
+            span: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> KeywordStatementAttribute<D> {
     pub fn span(&self) -> D::Span {
         self.span

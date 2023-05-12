@@ -19,7 +19,6 @@ use futures::{stream, StreamExt};
 use wipple_util::Shared;
 
 syntax_group! {
-    #[derive(Debug, Clone)]
     pub type TypePattern<TypePatternSyntaxContext> {
         non_terminal: {
             Default,
@@ -38,6 +37,16 @@ pub struct NameTypePattern<D: Driver> {
     pub name: D::InternedString,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NameTypePattern<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(NameTypePattern {
+            span: Default::default(),
+            name: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> NameTypePattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -48,6 +57,16 @@ impl<D: Driver> NameTypePattern<D> {
 pub struct ListTypePattern<D: Driver> {
     pub span: D::Span,
     pub patterns: Vec<Result<TypePattern<D>, SyntaxError<D>>>,
+}
+
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for ListTypePattern<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(ListTypePattern {
+            span: Default::default(),
+            patterns: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
 }
 
 impl<D: Driver> ListTypePattern<D> {
@@ -116,7 +135,7 @@ impl<D: Driver> SyntaxContext<D> for TypePatternSyntaxContext<D> {
             }
             Err(expr) => match expr.kind {
                 parse::ExprKind::Name(name, _) => {
-                    self.ast_builder.file.add_barrier(name, scope);
+                    self.ast_builder.file.add_barrier(name.clone(), scope);
 
                     Ok(NameTypePattern {
                         span: expr.span,

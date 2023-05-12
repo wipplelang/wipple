@@ -31,7 +31,6 @@ use wipple_util::Shared;
 
 syntax_group! {
     #[allow(clippy::large_enum_variant)]
-    #[derive(Debug, Clone)]
     pub type Statement<StatementSyntaxContext> {
         non_terminal: {
             Assign,

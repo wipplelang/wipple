@@ -9,7 +9,6 @@ use async_trait::async_trait;
 use wipple_util::Shared;
 
 syntax_group! {
-    #[derive(Debug, Clone)]
     pub type WhenBody<WhenBodySyntaxContext> {
         non_terminal: {},
         terminal: {
@@ -22,6 +21,16 @@ syntax_group! {
 pub struct BlockWhenBody<D: Driver> {
     pub span: D::Span,
     pub arms: Vec<Result<WhenArm<D>, SyntaxError<D>>>,
+}
+
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for BlockWhenBody<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(BlockWhenBody {
+            span: Default::default(),
+            arms: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
 }
 
 impl<D: Driver> BlockWhenBody<D> {

@@ -11,6 +11,8 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "arbitrary", arbitrary(bound = "D: crate::FuzzDriver"))]
 pub struct FileAttributes<D: Driver> {
     pub no_std: Option<NoStdFileAttribute<D>>,
     pub recursion_limit: Option<RecursionLimitFileAttribute<D>>,
@@ -26,6 +28,8 @@ impl<D: Driver> Default for FileAttributes<D> {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "arbitrary", arbitrary(bound = "D: crate::FuzzDriver"))]
 pub struct StatementAttributes<D: Driver> {
     pub language_item: Option<LanguageItemStatementAttribute<D>>,
     pub diagnostic_item: Option<DiagnosticItemStatementAttribute<D>>,

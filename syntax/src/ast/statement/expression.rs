@@ -14,6 +14,16 @@ pub struct ExpressionStatement<D: Driver> {
     pub attributes: StatementAttributes<D>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for ExpressionStatement<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(ExpressionStatement {
+            expression: arbitrary::Arbitrary::arbitrary(u)?,
+            attributes: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> ExpressionStatement<D> {
     pub fn span(&self) -> D::Span {
         self.expression.span()

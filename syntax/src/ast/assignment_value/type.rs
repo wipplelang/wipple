@@ -14,6 +14,17 @@ pub struct TypeAssignmentValue<D: Driver> {
     pub body: Option<Result<TypeBody<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TypeAssignmentValue<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(TypeAssignmentValue {
+            span: Default::default(),
+            type_span: Default::default(),
+            body: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> TypeAssignmentValue<D> {
     pub fn span(&self) -> D::Span {
         self.span

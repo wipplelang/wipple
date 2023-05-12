@@ -14,6 +14,18 @@ pub struct RecursionLimitFileAttribute<D: Driver> {
     pub limit: usize,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for RecursionLimitFileAttribute<D> {
+    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(RecursionLimitFileAttribute {
+            span: Default::default(),
+            recursion_limit_span: Default::default(),
+            limit_span: Default::default(),
+            limit: 64, // FIXME: Use `DEFAULT_RECURSION_LIMIT` instead
+        })
+    }
+}
+
 impl<D: Driver> RecursionLimitFileAttribute<D> {
     pub fn span(&self) -> D::Span {
         self.span

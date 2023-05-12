@@ -16,7 +16,6 @@ use futures::{stream, StreamExt};
 use wipple_util::Shared;
 
 syntax_group! {
-    #[derive(Debug, Clone)]
     pub type TypeMember<TypeMemberSyntaxContext> {
         non_terminal: {
             Field,
@@ -33,6 +32,18 @@ pub struct VariantTypeMember<D: Driver> {
     pub name_span: D::Span,
     pub name: D::InternedString,
     pub tys: Vec<Result<Type<D>, SyntaxError<D>>>,
+}
+
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for VariantTypeMember<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(VariantTypeMember {
+            span: Default::default(),
+            name_span: Default::default(),
+            name: arbitrary::Arbitrary::arbitrary(u)?,
+            tys: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
 }
 
 impl<D: Driver> VariantTypeMember<D> {

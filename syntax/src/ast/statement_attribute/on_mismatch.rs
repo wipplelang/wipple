@@ -15,6 +15,19 @@ pub struct OnMismatchStatementAttribute<D: Driver> {
     pub message: D::InternedString,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for OnMismatchStatementAttribute<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(OnMismatchStatementAttribute {
+            span: Default::default(),
+            on_mismatch_span: Default::default(),
+            type_parameter: Default::default(),
+            message_span: Default::default(),
+            message: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> OnMismatchStatementAttribute<D> {
     pub fn span(&self) -> D::Span {
         self.span

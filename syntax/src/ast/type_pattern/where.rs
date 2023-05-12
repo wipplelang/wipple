@@ -18,6 +18,18 @@ pub struct WhereTypePattern<D: Driver> {
     pub bounds: Vec<Result<WhereTypePatternBound<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for WhereTypePattern<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(WhereTypePattern {
+            span: Default::default(),
+            where_span: Default::default(),
+            pattern: arbitrary::Arbitrary::arbitrary(u)?,
+            bounds: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> WhereTypePattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -31,6 +43,19 @@ pub struct WhereTypePatternBound<D: Driver> {
     pub trait_name: D::InternedString,
     pub trait_scope: D::Scope,
     pub parameters: Vec<Result<Type<D>, SyntaxError<D>>>,
+}
+
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for WhereTypePatternBound<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(WhereTypePatternBound {
+            span: Default::default(),
+            trait_span: Default::default(),
+            trait_name: arbitrary::Arbitrary::arbitrary(u)?,
+            trait_scope: Default::default(),
+            parameters: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
 }
 
 impl<D: Driver> WhereTypePatternBound<D> {

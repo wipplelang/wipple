@@ -9,7 +9,6 @@ use async_trait::async_trait;
 use wipple_util::Shared;
 
 syntax_group! {
-    #[derive(Debug, Clone)]
     pub type TypeBody<TypeBodySyntaxContext> {
         non_terminal: {},
         terminal: {
@@ -22,6 +21,16 @@ syntax_group! {
 pub struct BlockTypeBody<D: Driver> {
     pub span: D::Span,
     pub members: Vec<Result<TypeMember<D>, SyntaxError<D>>>,
+}
+
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for BlockTypeBody<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(BlockTypeBody {
+            span: Default::default(),
+            members: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
 }
 
 impl<D: Driver> BlockTypeBody<D> {

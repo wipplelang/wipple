@@ -19,6 +19,19 @@ pub struct TypeFunctionAssignmentValue<D: Driver> {
     pub scope: D::Scope,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TypeFunctionAssignmentValue<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(TypeFunctionAssignmentValue {
+            span: Default::default(),
+            arrow_span: Default::default(),
+            pattern: arbitrary::Arbitrary::arbitrary(u)?,
+            value: arbitrary::Arbitrary::arbitrary(u)?,
+            scope: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> TypeFunctionAssignmentValue<D> {
     pub fn span(&self) -> D::Span {
         self.span
