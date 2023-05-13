@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         syntax::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
@@ -31,6 +32,16 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for AnnotatePattern<D> {
 impl<D: Driver> AnnotatePattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for AnnotatePattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({} :: {})",
+            self.pattern?.format()?,
+            self.ty?.format()?,
+        ))
     }
 }
 

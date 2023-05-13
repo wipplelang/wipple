@@ -1,6 +1,7 @@
 use crate::{
     ast::{
         assignment_value::AssignmentValueSyntaxContext,
+        format::Format,
         syntax::{Syntax, SyntaxContext, SyntaxRule, SyntaxRules},
         KeywordStatementAttribute, OperatorPrecedenceStatementAttribute, SyntaxBody,
         SyntaxBodySyntax, SyntaxBodySyntaxContext, SyntaxError,
@@ -37,6 +38,12 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for SyntaxAssignmentValu
 impl<D: Driver> SyntaxAssignmentValue<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for SyntaxAssignmentValue<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("(syntax {})", self.body?.format()?))
     }
 }
 

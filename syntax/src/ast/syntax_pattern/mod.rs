@@ -1,5 +1,7 @@
 use crate::{
     ast::{
+        format::Format,
+        macros::syntax_group,
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },
@@ -48,6 +50,12 @@ impl<D: Driver> UnitSyntaxPattern<D> {
     }
 }
 
+impl<D: Driver> Format<D> for UnitSyntaxPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(String::from("()"))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct NameSyntaxPattern<D: Driver> {
     pub span: D::Span,
@@ -72,10 +80,17 @@ impl<D: Driver> NameSyntaxPattern<D> {
     }
 }
 
+impl<D: Driver> Format<D> for NameSyntaxPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("{}", self.name.as_ref()))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TextSyntaxPattern<D: Driver> {
     pub span: D::Span,
     pub text: D::InternedString,
+    pub raw: D::InternedString,
 }
 
 #[cfg(feature = "arbitrary")]
@@ -84,6 +99,7 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TextSyntaxPattern<D>
         Ok(TextSyntaxPattern {
             span: Default::default(),
             text: arbitrary::Arbitrary::arbitrary(u)?,
+            raw: arbitrary::Arbitrary::arbitrary(u)?,
         })
     }
 }
@@ -94,12 +110,17 @@ impl<D: Driver> TextSyntaxPattern<D> {
     }
 }
 
+impl<D: Driver> Format<D> for TextSyntaxPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("\"{}\"", self.raw.as_ref()))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct NumberSyntaxPattern<D: Driver> {
     pub span: D::Span,
     pub number: D::InternedString,
 }
-
 #[cfg(feature = "arbitrary")]
 impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NumberSyntaxPattern<D> {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
@@ -113,6 +134,12 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NumberSyntaxPattern<
 impl<D: Driver> NumberSyntaxPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for NumberSyntaxPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("{}", self.number.as_ref()))
     }
 }
 
@@ -133,6 +160,12 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for UnderscoreSyntaxPatt
 impl<D: Driver> UnderscoreSyntaxPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for UnderscoreSyntaxPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(String::from("_"))
     }
 }
 
@@ -158,6 +191,12 @@ impl<D: Driver> VariableSyntaxPattern<D> {
     }
 }
 
+impl<D: Driver> Format<D> for VariableSyntaxPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("'{}", self.name.as_ref()))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct VariableRepetitionSyntaxPattern<D: Driver> {
     pub span: D::Span,
@@ -177,6 +216,12 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for VariableRepetitionSy
 impl<D: Driver> VariableRepetitionSyntaxPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for VariableRepetitionSyntaxPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("...{}", self.name.as_ref()))
     }
 }
 
@@ -202,6 +247,19 @@ impl<D: Driver> ListSyntaxPattern<D> {
     }
 }
 
+impl<D: Driver> Format<D> for ListSyntaxPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({})",
+            self.patterns
+                .into_iter()
+                .map(|pattern| pattern?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join(" ")
+        ))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ListRepetitionSyntaxPattern<D: Driver> {
     pub span: D::Span,
@@ -224,10 +282,36 @@ impl<D: Driver> ListRepetitionSyntaxPattern<D> {
     }
 }
 
+impl<D: Driver> Format<D> for ListRepetitionSyntaxPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "...({})",
+            self.patterns
+                .into_iter()
+                .map(|pattern| pattern?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join(" ")
+        ))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct BlockSyntaxPattern<D: Driver> {
     pub span: D::Span,
     pub statements: Vec<Result<SyntaxPattern<D>, SyntaxError<D>>>,
+}
+
+impl<D: Driver> Format<D> for BlockSyntaxPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "{{\n{}\n}}",
+            self.statements
+                .into_iter()
+                .map(|statement| statement?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join("\n")
+        ))
+    }
 }
 
 #[cfg(feature = "arbitrary")]
@@ -342,9 +426,10 @@ impl<D: Driver> SyntaxContext<D> for SyntaxPatternSyntaxContext<D> {
                         name,
                     }
                     .into()),
-                    parse::ExprKind::Text(text, _) => Ok(TextSyntaxPattern {
+                    parse::ExprKind::Text(text, raw) => Ok(TextSyntaxPattern {
                         span: expr.span,
                         text,
+                        raw,
                     }
                     .into()),
                     parse::ExprKind::Number(number) => Ok(NumberSyntaxPattern {

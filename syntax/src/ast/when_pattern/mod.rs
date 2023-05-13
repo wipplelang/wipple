@@ -9,6 +9,7 @@ use r#where::*;
 
 use crate::{
     ast::{
+        macros::syntax_group,
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, DestructuringSyntax, PatternSyntaxContext, StatementAttributes,
     },

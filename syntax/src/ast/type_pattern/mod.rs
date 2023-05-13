@@ -9,6 +9,8 @@ use r#where::*;
 
 use crate::{
     ast::{
+        format::Format,
+        macros::syntax_group,
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },
@@ -53,10 +55,29 @@ impl<D: Driver> NameTypePattern<D> {
     }
 }
 
+impl<D: Driver> Format<D> for NameTypePattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("{}", self.name.as_ref()))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ListTypePattern<D: Driver> {
     pub span: D::Span,
     pub patterns: Vec<Result<TypePattern<D>, SyntaxError<D>>>,
+}
+
+impl<D: Driver> Format<D> for ListTypePattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({})",
+            self.patterns
+                .into_iter()
+                .map(|pattern| pattern?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join(" ")
+        ))
+    }
 }
 
 #[cfg(feature = "arbitrary")]

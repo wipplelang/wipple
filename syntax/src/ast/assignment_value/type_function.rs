@@ -1,6 +1,7 @@
 use crate::{
     ast::{
         assignment_value::AssignmentValueSyntaxContext,
+        format::Format,
         syntax::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
@@ -35,6 +36,16 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TypeFunctionAssignme
 impl<D: Driver> TypeFunctionAssignmentValue<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for TypeFunctionAssignmentValue<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({} => {})",
+            self.pattern?.format()?,
+            self.value?.format()?
+        ))
     }
 }
 

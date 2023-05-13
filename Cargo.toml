@@ -3,10 +3,10 @@ resolver = "2"
 members = [
     "backends/interpreter",
     "frontend",
+    "fuzz",
     "loaders/default",
     "syntax",
     "tools/cli",
-    "tools/fuzz",
     "tools/test",
     "util",
     "website/playground/runner",

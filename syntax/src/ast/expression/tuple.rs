@@ -1,6 +1,7 @@
 use crate::{
     ast::{
         expression::{Expression, ExpressionSyntaxContext},
+        format::Format,
         syntax::{OperatorAssociativity, Syntax, SyntaxError, SyntaxRule, SyntaxRules},
         ExpressionSyntax,
     },
@@ -29,6 +30,19 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TupleExpression<D> {
 impl<D: Driver> TupleExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for TupleExpression<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({})",
+            self.exprs
+                .into_iter()
+                .map(|result| result?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join(" , ")
+        ))
     }
 }
 

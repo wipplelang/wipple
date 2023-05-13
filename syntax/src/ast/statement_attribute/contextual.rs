@@ -1,7 +1,9 @@
 use crate::{
     ast::{
+        format::Format,
         statement_attribute::StatementAttributeSyntaxContext,
         syntax::{Syntax, SyntaxRule, SyntaxRules},
+        SyntaxError,
     },
     Driver,
 };
@@ -22,6 +24,12 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for ContextualStatementA
 impl<D: Driver> ContextualStatementAttribute<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for ContextualStatementAttribute<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        unimplemented!("call `StatementAttributes::format` instead")
     }
 }
 

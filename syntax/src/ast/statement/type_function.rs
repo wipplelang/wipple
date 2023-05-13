@@ -1,10 +1,12 @@
 use crate::{
     ast::{
+        format::Format,
         statement::StatementSyntaxContext,
         syntax::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
-        Statement, StatementSyntax, TypePattern, TypePatternSyntax, TypePatternSyntaxContext,
+        Statement, StatementAttributes, StatementSyntax, TypePattern, TypePatternSyntax,
+        TypePatternSyntaxContext,
     },
     parse, Driver, File,
 };
@@ -16,6 +18,7 @@ pub struct TypeFunctionStatement<D: Driver> {
     pub pattern: Result<TypePattern<D>, SyntaxError<D>>,
     pub value: Result<Box<Statement<D>>, SyntaxError<D>>,
     pub scope: D::Scope,
+    pub attributes: StatementAttributes<D>,
 }
 
 #[cfg(feature = "arbitrary")]
@@ -27,6 +30,7 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TypeFunctionStatemen
             pattern: arbitrary::Arbitrary::arbitrary(u)?,
             value: arbitrary::Arbitrary::arbitrary(u)?,
             scope: Default::default(),
+            attributes: Default::default(),
         })
     }
 }
@@ -34,6 +38,17 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TypeFunctionStatemen
 impl<D: Driver> TypeFunctionStatement<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for TypeFunctionStatement<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "{}{} => {}",
+            self.attributes.format()?,
+            self.pattern?.format()?,
+            self.value?.format()?
+        ))
     }
 }
 
@@ -76,6 +91,7 @@ impl<D: Driver> Syntax<D> for TypeFunctionStatementSyntax {
                     pattern,
                     value: value.map(Box::new),
                     scope,
+                    attributes: context.statement_attributes.unwrap().lock().clone(),
                 }
                 .into())
             },

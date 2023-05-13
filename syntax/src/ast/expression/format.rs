@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         syntax::{Syntax, SyntaxError, SyntaxRule, SyntaxRules},
         Expression, ExpressionSyntax, ExpressionSyntaxContext,
     },
@@ -12,6 +13,7 @@ pub struct FormatExpression<D: Driver> {
     pub span: D::Span,
     pub format_span: D::Span,
     pub text_span: D::Span,
+    pub raw_text: D::InternedString,
     pub segments: Vec<(D::InternedString, Result<Expression<D>, SyntaxError<D>>)>,
     pub trailing_segment: Option<D::InternedString>,
 }
@@ -23,6 +25,7 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for FormatExpression<D> 
             span: Default::default(),
             format_span: Default::default(),
             text_span: Default::default(),
+            raw_text: arbitrary::Arbitrary::arbitrary(u)?,
             segments: arbitrary::Arbitrary::arbitrary(u)?,
             trailing_segment: arbitrary::Arbitrary::arbitrary(u)?,
         })
@@ -32,6 +35,20 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for FormatExpression<D> 
 impl<D: Driver> FormatExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for FormatExpression<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "(format \"{}\" {})",
+            self.raw_text.as_ref(),
+            self.segments
+                .into_iter()
+                .map(|(_, expr)| expr?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join(" ")
+        ))
     }
 }
 
@@ -108,6 +125,7 @@ impl<D: Driver> Syntax<D> for FormatExpressionSyntax {
                     span,
                     format_span,
                     text_span,
+                    raw_text: format_text,
                     segments,
                     trailing_segment,
                 }

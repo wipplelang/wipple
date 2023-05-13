@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         r#type::{Type, TypeSyntaxContext},
         syntax::{OperatorAssociativity, Syntax, SyntaxError, SyntaxRule, SyntaxRules},
         TypeSyntax,
@@ -30,6 +31,16 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for FunctionType<D> {
 impl<D: Driver> FunctionType<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for FunctionType<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({} -> {})",
+            self.input?.format()?,
+            self.output?.format()?,
+        ))
     }
 }
 

@@ -1,5 +1,7 @@
 use crate::{
     ast::{
+        format::Format,
+        macros::syntax_group,
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes, SyntaxRule, SyntaxRuleSyntax,
     },
@@ -36,6 +38,19 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for BlockSyntaxBody<D> {
 impl<D: Driver> BlockSyntaxBody<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for BlockSyntaxBody<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "{{\n{}\n}}",
+            self.rules
+                .into_iter()
+                .map(|rule| rule?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join("\n")
+        ))
     }
 }
 

@@ -1,6 +1,7 @@
 use crate::{
     ast::{
         assignment_pattern::AssignmentPatternSyntaxContext,
+        format::Format,
         syntax::{Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules},
         Type, TypeSyntax, TypeSyntaxContext,
     },
@@ -37,6 +38,20 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for InstanceAssignmentPa
 impl<D: Driver> InstanceAssignmentPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for InstanceAssignmentPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "(instance ({} {}))",
+            self.trait_name.as_ref(),
+            self.trait_parameters
+                .into_iter()
+                .map(|result| result?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join(" ")
+        ))
     }
 }
 

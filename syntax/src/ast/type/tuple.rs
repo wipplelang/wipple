@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         r#type::{Type, TypeSyntaxContext},
         syntax::{OperatorAssociativity, Syntax, SyntaxError, SyntaxRule, SyntaxRules},
         TypeSyntax,
@@ -29,6 +30,19 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TupleType<D> {
 impl<D: Driver> TupleType<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for TupleType<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({})",
+            self.tys
+                .into_iter()
+                .map(|result| result?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join(" , ")
+        ))
     }
 }
 

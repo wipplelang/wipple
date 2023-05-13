@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         syntax::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
@@ -36,6 +37,20 @@ impl<D: Driver> WhereTypePattern<D> {
     }
 }
 
+impl<D: Driver> Format<D> for WhereTypePattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({} where {})",
+            self.pattern?.format()?,
+            self.bounds
+                .into_iter()
+                .map(|bound| bound?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join(" ")
+        ))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct WhereTypePatternBound<D: Driver> {
     pub span: D::Span,
@@ -61,6 +76,19 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for WhereTypePatternBoun
 impl<D: Driver> WhereTypePatternBound<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for WhereTypePatternBound<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({}{})",
+            self.trait_name.as_ref(),
+            self.parameters
+                .into_iter()
+                .map(|param| Ok(format!(" {}", param?.format()?)))
+                .collect::<Result<String, _>>()?
+        ))
     }
 }
 

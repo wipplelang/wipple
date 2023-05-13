@@ -1,7 +1,9 @@
 use crate::{
     ast::{
+        format::Format,
         statement_attribute::StatementAttributeSyntaxContext,
         syntax::{Syntax, SyntaxRule, SyntaxRules},
+        SyntaxError,
     },
     parse, Driver,
 };
@@ -31,6 +33,12 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a>
 impl<D: Driver> OperatorPrecedenceStatementAttribute<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for OperatorPrecedenceStatementAttribute<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        unimplemented!("call `StatementAttributes::format` instead")
     }
 }
 

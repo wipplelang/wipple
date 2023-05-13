@@ -1,9 +1,10 @@
 use crate::{
     ast::{
         expression::{Expression, ExpressionSyntax, ExpressionSyntaxContext},
+        format::Format,
         statement::StatementSyntaxContext,
         syntax::{Syntax, SyntaxContext, SyntaxRules},
-        Statement, StatementAttributes,
+        Statement, StatementAttributes, SyntaxError,
     },
     Driver,
 };
@@ -19,7 +20,7 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for ExpressionStatement<
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
         Ok(ExpressionStatement {
             expression: arbitrary::Arbitrary::arbitrary(u)?,
-            attributes: arbitrary::Arbitrary::arbitrary(u)?,
+            attributes: Default::default(),
         })
     }
 }
@@ -27,6 +28,16 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for ExpressionStatement<
 impl<D: Driver> ExpressionStatement<D> {
     pub fn span(&self) -> D::Span {
         self.expression.span()
+    }
+}
+
+impl<D: Driver> Format<D> for ExpressionStatement<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "{}{}",
+            self.attributes.format()?,
+            self.expression.format()?
+        ))
     }
 }
 

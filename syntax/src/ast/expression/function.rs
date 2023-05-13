@@ -1,6 +1,7 @@
 use crate::{
     ast::{
         expression::ExpressionSyntaxContext,
+        format::Format,
         syntax::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
@@ -35,6 +36,16 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for FunctionExpression<D
 impl<D: Driver> FunctionExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for FunctionExpression<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({} -> {})",
+            self.pattern?.format()?,
+            self.body?.format()?,
+        ))
     }
 }
 

@@ -103,8 +103,54 @@ impl<D: Driver> DriverExt for D {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct SingleFile(pub String);
+
+impl<D: FuzzDriver> File<D> for SingleFile {
+    fn code(&self) -> &str {
+        &self.0
+    }
+
+    fn root_scope(&self) -> D::Scope {
+        ()
+    }
+
+    fn make_scope(&self, _parent: D::Scope) -> D::Scope {
+        ()
+    }
+
+    fn define_syntax(
+        &self,
+        _name: D::InternedString,
+        _scope: D::Scope,
+        _value: ast::SyntaxAssignmentValue<D>,
+    ) {
+        // do nothing
+    }
+
+    fn add_barrier(&self, _name: D::InternedString, _scope: D::Scope) {
+        // do nothing
+    }
+
+    fn resolve_syntax(
+        &self,
+        _span: D::Span,
+        _name: D::InternedString,
+        _scope: D::Scope,
+    ) -> Option<ast::SyntaxAssignmentValue<D>> {
+        None
+    }
+}
+
 #[cfg(feature = "arbitrary")]
-pub struct FuzzString(String);
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FuzzString(pub String);
+
+impl AsRef<str> for FuzzString {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
 
 #[cfg(feature = "arbitrary")]
 impl<'a> arbitrary::Arbitrary<'a> for FuzzString {
@@ -115,5 +161,22 @@ impl<'a> arbitrary::Arbitrary<'a> for FuzzString {
     }
 }
 
+impl Span for () {
+    fn join(_left: Self, _right: Self) -> Self {
+        ()
+    }
+
+    fn merge(&mut self, _other: Self) {
+        // do nothing
+    }
+
+    fn range(self) -> Range<usize> {
+        0..0
+    }
+}
+
 #[cfg(feature = "arbitrary")]
-pub trait FuzzDriver: Driver<Span = (), Scope = (), InternedString = FuzzString> {}
+pub trait FuzzDriver:
+    Driver<InternedString = FuzzString, Span = (), File = SingleFile, Scope = ()>
+{
+}

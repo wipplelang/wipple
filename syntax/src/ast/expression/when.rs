@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         syntax::{Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules},
         Expression, ExpressionSyntax, ExpressionSyntaxContext, WhenBody, WhenBodySyntax,
         WhenBodySyntaxContext,
@@ -30,6 +31,16 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for WhenExpression<D> {
 impl<D: Driver> WhenExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for WhenExpression<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "(when {} {})",
+            self.input?.format()?,
+            self.body?.format()?,
+        ))
     }
 }
 

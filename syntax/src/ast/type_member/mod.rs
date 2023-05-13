@@ -6,6 +6,8 @@ use field::*;
 
 use crate::{
     ast::{
+        format::Format,
+        macros::syntax_group,
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes, Type, TypeSyntax, TypeSyntaxContext,
     },
@@ -49,6 +51,19 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for VariantTypeMember<D>
 impl<D: Driver> VariantTypeMember<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for VariantTypeMember<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({}{})",
+            self.name.as_ref(),
+            self.tys
+                .into_iter()
+                .map(|ty| Ok(format!(" {}", ty?.format()?)))
+                .collect::<Result<String, _>>()?
+        ))
     }
 }
 

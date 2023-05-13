@@ -1,19 +1,18 @@
 use crate::{
     ast::{
-        AllowOverlappingInstancesStatementAttribute, ContextualStatementAttribute,
+        format::Format, AllowOverlappingInstancesStatementAttribute, ContextualStatementAttribute,
         DiagnosticAliasStatementAttribute, DiagnosticItemStatementAttribute,
         HelpGroupStatementAttribute, HelpStatementAttribute, KeywordStatementAttribute,
         LanguageItemStatementAttribute, NoStdFileAttribute, OnMismatchStatementAttribute,
         OnUnimplementedStatementAttribute, OperatorPrecedenceStatementAttribute,
-        RecursionLimitFileAttribute, SpecializeStatementAttribute,
+        RecursionLimitFileAttribute, SpecializeStatementAttribute, SyntaxError,
     },
-    Driver,
+    parse, Driver,
 };
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-#[cfg_attr(feature = "arbitrary", arbitrary(bound = "D: crate::FuzzDriver"))]
 pub struct FileAttributes<D: Driver> {
+    pub raw: Vec<parse::Attribute<D>>,
     pub no_std: Option<NoStdFileAttribute<D>>,
     pub recursion_limit: Option<RecursionLimitFileAttribute<D>>,
 }
@@ -21,16 +20,36 @@ pub struct FileAttributes<D: Driver> {
 impl<D: Driver> Default for FileAttributes<D> {
     fn default() -> Self {
         Self {
+            raw: Default::default(),
             no_std: Default::default(),
             recursion_limit: Default::default(),
         }
     }
 }
 
+impl<D: Driver> Format<D> for FileAttributes<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(self
+            .raw
+            .into_iter()
+            .map(|attribute| {
+                Ok(format!(
+                    "[[{}]]\n",
+                    attribute
+                        .exprs
+                        .into_iter()
+                        .map(Format::format)
+                        .collect::<Result<Vec<_>, _>>()?
+                        .join(" ")
+                ))
+            })
+            .collect::<Result<String, _>>()?)
+    }
+}
+
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-#[cfg_attr(feature = "arbitrary", arbitrary(bound = "D: crate::FuzzDriver"))]
 pub struct StatementAttributes<D: Driver> {
+    pub raw: Vec<parse::Attribute<D>>,
     pub language_item: Option<LanguageItemStatementAttribute<D>>,
     pub diagnostic_item: Option<DiagnosticItemStatementAttribute<D>>,
     pub diagnostic_aliases: Vec<DiagnosticAliasStatementAttribute<D>>,
@@ -48,6 +67,7 @@ pub struct StatementAttributes<D: Driver> {
 impl<D: Driver> Default for StatementAttributes<D> {
     fn default() -> Self {
         Self {
+            raw: Default::default(),
             language_item: Default::default(),
             diagnostic_item: Default::default(),
             diagnostic_aliases: Default::default(),
@@ -61,5 +81,25 @@ impl<D: Driver> Default for StatementAttributes<D> {
             keyword: Default::default(),
             contextual: Default::default(),
         }
+    }
+}
+
+impl<D: Driver> Format<D> for StatementAttributes<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(self
+            .raw
+            .into_iter()
+            .map(|attribute| {
+                Ok(format!(
+                    "[{}]\n",
+                    attribute
+                        .exprs
+                        .into_iter()
+                        .map(Format::format)
+                        .collect::<Result<Vec<_>, _>>()?
+                        .join(" ")
+                ))
+            })
+            .collect::<Result<String, _>>()?)
     }
 }

@@ -1,6 +1,7 @@
 use crate::{
     ast::{
         assignment_value::AssignmentValueSyntaxContext,
+        format::Format,
         syntax::{Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules},
         Type, TypeSyntax, TypeSyntaxContext,
     },
@@ -28,6 +29,15 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TraitAssignmentValue
 impl<D: Driver> TraitAssignmentValue<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for TraitAssignmentValue<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(match self.ty {
+            Some(ty) => format!("(trait {})", ty?.format()?),
+            None => format!("trait"),
+        })
     }
 }
 

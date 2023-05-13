@@ -1,7 +1,9 @@
 use crate::{
     ast::{
+        format::Format,
         statement_attribute::StatementAttributeSyntaxContext,
         syntax::{Syntax, SyntaxRule, SyntaxRules},
+        SyntaxError,
     },
     parse, Driver,
 };
@@ -37,6 +39,12 @@ impl<D: Driver> DiagnosticItemStatementAttribute<D> {
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum DiagnosticItemStatementAttributeKind {
     AcceptsText,
+}
+
+impl<D: Driver> Format<D> for DiagnosticItemStatementAttribute<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        unimplemented!("call `StatementAttributes::format` instead")
+    }
 }
 
 pub struct DiagnosticItemStatementAttributeSyntax;

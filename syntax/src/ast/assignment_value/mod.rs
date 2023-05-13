@@ -18,6 +18,7 @@ use type_function::*;
 
 use crate::{
     ast::{
+        macros::syntax_group,
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, ExpressionSyntaxContext, StatementAttributes, StatementSyntax,
     },

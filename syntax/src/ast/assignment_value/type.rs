@@ -2,7 +2,7 @@ use crate::{
     ast::{
         assignment_value::AssignmentValueSyntaxContext,
         syntax::{Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules},
-        TypeBody, TypeBodySyntax, TypeBodySyntaxContext,
+        TypeBody, TypeBodySyntax, TypeBodySyntaxContext, format::Format,
     },
     Driver,
 };
@@ -28,6 +28,15 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TypeAssignmentValue<
 impl<D: Driver> TypeAssignmentValue<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for TypeAssignmentValue<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(match self.body {
+            Some(body) => format!("(type {})", body?.format()?),
+            None => format!("type"),
+        })
     }
 }
 

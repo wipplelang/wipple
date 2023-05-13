@@ -6,6 +6,8 @@ use assign::*;
 
 use crate::{
     ast::{
+        format::Format,
+        macros::syntax_group,
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },
@@ -50,6 +52,12 @@ impl<D: Driver> NameDestructuring<D> {
     }
 }
 
+impl<D: Driver> Format<D> for NameDestructuring<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("{}", self.name.as_ref()))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ListDestructuring<D: Driver> {
     pub span: D::Span,
@@ -69,6 +77,17 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for ListDestructuring<D>
 impl<D: Driver> ListDestructuring<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for ListDestructuring<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(self
+            .names
+            .into_iter()
+            .map(|result| Ok(result?.name.as_ref().to_string()))
+            .collect::<Result<Vec<_>, _>>()?
+            .join(" "))
     }
 }
 

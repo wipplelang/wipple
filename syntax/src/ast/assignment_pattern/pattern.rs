@@ -1,9 +1,10 @@
 use crate::{
     ast::{
         assignment_pattern::AssignmentPatternSyntaxContext,
+        format::Format,
         pattern::{Pattern, PatternSyntax, PatternSyntaxContext},
         syntax::{Syntax, SyntaxContext, SyntaxRules},
-        AssignmentPattern,
+        AssignmentPattern, SyntaxError,
     },
     Driver,
 };
@@ -25,6 +26,12 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for PatternAssignmentPat
 impl<D: Driver> PatternAssignmentPattern<D> {
     pub fn span(&self) -> D::Span {
         self.pattern.span()
+    }
+}
+
+impl<D: Driver> Format<D> for PatternAssignmentPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        self.pattern.format()
     }
 }
 

@@ -2,8 +2,9 @@ use crate::{
     ast::{
         assignment_value::AssignmentValueSyntaxContext,
         expression::{Expression, ExpressionSyntax, ExpressionSyntaxContext},
+        format::Format,
         syntax::{Syntax, SyntaxContext, SyntaxRules},
-        AssignmentValue,
+        AssignmentValue, SyntaxError,
     },
     Driver,
 };
@@ -25,6 +26,12 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for ExpressionAssignment
 impl<D: Driver> ExpressionAssignmentValue<D> {
     pub fn span(&self) -> D::Span {
         self.expression.span()
+    }
+}
+
+impl<D: Driver> Format<D> for ExpressionAssignmentValue<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        self.expression.format()
     }
 }
 

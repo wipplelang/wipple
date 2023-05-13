@@ -1,6 +1,7 @@
 use crate::{
     ast::{
         destructuring::DestructuringSyntaxContext,
+        format::Format,
         syntax::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
@@ -34,6 +35,16 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for AssignDestructuring<
 impl<D: Driver> AssignDestructuring<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for AssignDestructuring<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "{} : {}",
+            self.name.as_ref(),
+            self.pattern?.format()?
+        ))
     }
 }
 

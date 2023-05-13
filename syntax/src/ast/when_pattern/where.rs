@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         syntax::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
@@ -33,6 +34,16 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for WhereWhenPattern<D> 
 impl<D: Driver> WhereWhenPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for WhereWhenPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({} where {})",
+            self.pattern?.format()?,
+            self.condition?.format()?,
+        ))
     }
 }
 

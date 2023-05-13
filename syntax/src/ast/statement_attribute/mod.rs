@@ -42,6 +42,8 @@ use specialize::*;
 
 use crate::{
     ast::{
+        format::Format,
+        macros::syntax_group,
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },
@@ -66,7 +68,35 @@ syntax_group! {
             OperatorPrecedence,
             Specialize,
         },
-        terminal: {},
+        terminal: {
+            Unknown,
+        },
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct UnknownStatementAttribute<D: Driver> {
+    pub span: D::Span,
+}
+
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for UnknownStatementAttribute<D> {
+    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(UnknownStatementAttribute {
+            span: Default::default(),
+        })
+    }
+}
+
+impl<D: Driver> UnknownStatementAttribute<D> {
+    pub fn span(&self) -> D::Span {
+        self.span
+    }
+}
+
+impl<D: Driver> Format<D> for UnknownStatementAttribute<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        unimplemented!("call `StatementAttributes::format` instead")
     }
 }
 
@@ -108,7 +138,9 @@ impl<D: Driver> SyntaxContext<D> for StatementAttributeSyntaxContext<D> {
             .driver
             .syntax_error(span, "expected attribute");
 
-        Err(self.ast_builder.syntax_error(span))
+        Ok(StatementAttribute::Unknown(UnknownStatementAttribute {
+            span,
+        }))
     }
 
     async fn build_terminal(
@@ -120,6 +152,8 @@ impl<D: Driver> SyntaxContext<D> for StatementAttributeSyntaxContext<D> {
             .driver
             .syntax_error(expr.span, "expected attribute");
 
-        Err(self.ast_builder.syntax_error(expr.span))
+        Ok(StatementAttribute::Unknown(UnknownStatementAttribute {
+            span: expr.span,
+        }))
     }
 }

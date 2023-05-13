@@ -1,7 +1,9 @@
 use crate::{
     ast::{
         file_attribute::FileAttributeSyntaxContext,
+        format::Format,
         syntax::{Syntax, SyntaxRule, SyntaxRules},
+        SyntaxError,
     },
     parse, Driver,
 };
@@ -23,6 +25,12 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for RecursionLimitFileAt
             limit_span: Default::default(),
             limit: 64, // FIXME: Use `DEFAULT_RECURSION_LIMIT` instead
         })
+    }
+}
+
+impl<D: Driver> Format<D> for RecursionLimitFileAttribute<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("[[recursion-limit {}]]", self.limit))
     }
 }
 

@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         syntax::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
@@ -28,7 +29,7 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for AssignStatement<D> {
             colon_span: Default::default(),
             pattern: arbitrary::Arbitrary::arbitrary(u)?,
             value: arbitrary::Arbitrary::arbitrary(u)?,
-            attributes: arbitrary::Arbitrary::arbitrary(u)?,
+            attributes: Default::default(),
         })
     }
 }
@@ -36,6 +37,16 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for AssignStatement<D> {
 impl<D: Driver> AssignStatement<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for AssignStatement<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "{} : {}",
+            self.pattern?.format()?,
+            self.value?.format()?,
+        ))
     }
 }
 

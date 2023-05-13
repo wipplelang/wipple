@@ -1,9 +1,10 @@
 use crate::{
     ast::{
         constant_type_annotation::ConstantTypeAnnotationSyntaxContext,
+        format::Format,
         r#type::{Type, TypeSyntax, TypeSyntaxContext},
         syntax::{Syntax, SyntaxContext, SyntaxRules},
-        ConstantTypeAnnotation,
+        ConstantTypeAnnotation, SyntaxError,
     },
     Driver,
 };
@@ -25,6 +26,12 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TypeConstantTypeAnno
 impl<D: Driver> TypeConstantTypeAnnotation<D> {
     pub fn span(&self) -> D::Span {
         self.ty.span()
+    }
+}
+
+impl<D: Driver> Format<D> for TypeConstantTypeAnnotation<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        self.ty.format()
     }
 }
 

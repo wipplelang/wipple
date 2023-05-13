@@ -9,6 +9,7 @@ use recursion_limit::*;
 
 use crate::{
     ast::{
+        macros::syntax_group,
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },

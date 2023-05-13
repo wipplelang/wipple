@@ -5,7 +5,7 @@ use crate::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
         ConstantTypeAnnotation, ConstantTypeAnnotationSyntax, TypePattern, TypePatternSyntax,
-        TypePatternSyntaxContext,
+        TypePatternSyntaxContext, format::Format,
     },
     parse, Driver, File,
 };
@@ -35,6 +35,12 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TypeFunctionConstant
 impl<D: Driver> TypeFunctionConstantTypeAnnotation<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for TypeFunctionConstantTypeAnnotation<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("({} => {})", self.pattern?.format()?, self.annotation?.format()?))
     }
 }
 

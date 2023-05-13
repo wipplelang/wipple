@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         statement::StatementSyntaxContext,
         syntax::{Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules},
         StatementAttributes, Type, TypeSyntax, TypeSyntaxContext,
@@ -31,7 +32,7 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for InstanceStatement<D>
             trait_name: arbitrary::Arbitrary::arbitrary(u)?,
             trait_scope: Default::default(),
             trait_parameters: arbitrary::Arbitrary::arbitrary(u)?,
-            attributes: arbitrary::Arbitrary::arbitrary(u)?,
+            attributes: Default::default(),
         })
     }
 }
@@ -39,6 +40,20 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for InstanceStatement<D>
 impl<D: Driver> InstanceStatement<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for InstanceStatement<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "{}instance ({}{})",
+            self.attributes.format()?,
+            self.trait_name.as_ref(),
+            self.trait_parameters
+                .into_iter()
+                .map(|param| Ok(format!(" {}", param?.format()?)))
+                .collect::<Result<String, _>>()?
+        ))
     }
 }
 

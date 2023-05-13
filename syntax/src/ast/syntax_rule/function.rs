@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         syntax::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
@@ -14,7 +15,7 @@ use futures::{stream, StreamExt};
 pub struct FunctionSyntaxRule<D: Driver> {
     pub span: D::Span,
     pub arrow_span: D::Span,
-    pub pattern: Result<Vec<SyntaxPattern<D>>, SyntaxError<D>>,
+    pub pattern: Vec<Result<SyntaxPattern<D>, SyntaxError<D>>>,
     pub body: Result<Box<SyntaxPattern<D>>, SyntaxError<D>>,
 }
 
@@ -33,6 +34,20 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for FunctionSyntaxRule<D
 impl<D: Driver> FunctionSyntaxRule<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for FunctionSyntaxRule<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "{} -> {}",
+            self.pattern
+                .into_iter()
+                .map(|pattern| pattern?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join(" "),
+            self.body?.format()?
+        ))
     }
 }
 

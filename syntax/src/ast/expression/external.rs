@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         syntax::{Syntax, SyntaxError, SyntaxRule, SyntaxRules},
         Expression, ExpressionSyntax, ExpressionSyntaxContext,
     },
@@ -36,6 +37,21 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for ExternalExpression<D
 impl<D: Driver> ExternalExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for ExternalExpression<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "(external \"{}\" \"{}\" {})",
+            self.namespace.as_ref(),
+            self.identifier.as_ref(),
+            self.inputs
+                .into_iter()
+                .map(|result| result?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join(" ")
+        ))
     }
 }
 
