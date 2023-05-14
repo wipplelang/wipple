@@ -113,3 +113,8 @@ left : { deg } -> handle of turtle . message "left" deg
 [help-group "Turtle Graphics"]
 right :: Angle -> ()
 right : { deg } -> handle of turtle . message "right" deg
+
+[help "Rotate the turtle to the specified angle."]
+[help-group "Turtle Graphics"]
+rotate :: Angle -> ()
+rotate : { deg } -> handle of turtle . message "rotate" deg

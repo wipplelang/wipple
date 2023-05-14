@@ -297,11 +297,17 @@ turtley.Turtle = class Turtle {
 
                 break;
             case "rotateLeft":
-            case "rotateRight":
+            case "rotateRight": {
                 const moveByRadians =
                     ((moveBy * Math.PI) / 180) * (current.type === "rotateLeft" ? 1 : -1);
                 this._rotation += moveByRadians;
                 break;
+            }
+            case "rotate": {
+                const moveByRadians = (moveBy * Math.PI) / 180;
+                this._rotation = moveByRadians;
+                break;
+            }
             default:
                 throw new Error(`Unrecognized action "${current.type}"`);
         }
@@ -561,6 +567,22 @@ turtley.Turtle = class Turtle {
 
             this._queue.push({
                 type: "rotateRight",
+                count: degrees,
+                whenDone: resolve,
+                error: reject,
+            });
+        });
+    }
+
+    rotate(degrees) {
+        return new Promise((resolve, reject) => {
+            if (!this._init) return reject("Turtle not yet initialized");
+
+            if (typeof degrees !== "number") return reject(`Parameter "degrees" must be a number`);
+            if (degrees < 0) return reject(`Parameter "degrees" must be at least 0`);
+
+            this._queue.push({
+                type: "rotate",
                 count: degrees,
                 whenDone: resolve,
                 error: reject,

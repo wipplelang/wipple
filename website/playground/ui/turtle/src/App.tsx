@@ -93,6 +93,9 @@ export const App = (props: AppProps) => {
                         case "right":
                             await turtle.rotateRight(value);
                             break;
+                        case "rotate":
+                            await turtle.rotate(value);
+                            break;
                         default:
                             throw new Error("unknown message");
                     }
