@@ -11,7 +11,7 @@ pre[class*="language-"] .token.comment {
 }
 
 pre[class*="language-"] .token.keyword {
-    color: #d73a49;
+    color: #e36209;
 }
 
 pre[class*="language-"] .token.class-name {
@@ -48,7 +48,7 @@ pre[class*="language-"] .token.punctuation {
     }
 
     pre[class*="language-"] .token.keyword {
-        color: #f97583;
+        color: #ffab70;
     }
 
     pre[class*="language-"] .token.class-name {
