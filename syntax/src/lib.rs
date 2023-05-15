@@ -106,7 +106,7 @@ impl<D: Driver> DriverExt for D {
 #[derive(Debug, Clone)]
 pub struct SingleFile(pub String);
 
-impl<D: FuzzDriver> File<D> for SingleFile {
+impl<D: Driver<Span = (), File = SingleFile, Scope = ()>> File<D> for SingleFile {
     fn code(&self) -> &str {
         &self.0
     }
@@ -146,6 +146,7 @@ impl<D: FuzzDriver> File<D> for SingleFile {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FuzzString(pub String);
 
+#[cfg(feature = "arbitrary")]
 impl AsRef<str> for FuzzString {
     fn as_ref(&self) -> &str {
         &self.0
