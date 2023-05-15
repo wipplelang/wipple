@@ -1,6 +1,6 @@
-#[macro_use]
-mod macros;
 mod attributes;
+mod format;
+mod macros;
 mod syntax;
 
 mod assignment_pattern;
@@ -25,6 +25,7 @@ mod when_pattern;
 mod with_clause;
 
 pub use attributes::*;
+pub use format::Format;
 pub use syntax::SyntaxError;
 
 pub use assignment_pattern::*;
@@ -50,16 +51,62 @@ pub use with_clause::*;
 
 use crate::{parse, Driver, DriverExt, File as _, Span};
 use futures::{future::BoxFuture, stream, StreamExt};
+
 use sync_wrapper::SyncFuture;
 use syntax::{Syntax, SyntaxContext};
 use wipple_util::Shared;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct File<D: Driver> {
     pub span: D::Span,
     pub attributes: FileAttributes<D>,
     pub statements: Vec<Result<Statement<D>, SyntaxError<D>>>,
     pub file: D::File,
+}
+
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for File<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(File {
+            span: Default::default(),
+            attributes: Default::default(),
+            statements: arbitrary::Arbitrary::arbitrary(u)?,
+            file: crate::SingleFile(String::new()),
+        })
+    }
+}
+
+impl<D: Driver> Format<D> for File<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "{}\n{}",
+            self.attributes.format()?,
+            self.statements
+                .into_iter()
+                .map(|statement| statement?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join("\n")
+        ))
+    }
+}
+
+impl<D: Driver> std::fmt::Debug for File<D> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO: Make `Format::format` take `self` by reference
+        match self.clone().format() {
+            Ok(code) => write!(f, "{}", code)?,
+            Err(_) => write!(f, "<syntax error>")?,
+        }
+
+        writeln!(f)?;
+
+        f.debug_struct("File")
+            .field("span", &self.span)
+            .field("attributes", &self.attributes)
+            .field("statements", &self.statements)
+            .field("file", &self.file)
+            .finish()
+    }
 }
 
 pub(crate) async fn build<D: Driver>(
@@ -221,6 +268,8 @@ impl<D: Driver> AstBuilder<D> {
                 .unzip();
 
             let attribute_exprs = attribute_exprs.into_iter().flatten().collect::<Vec<_>>();
+            attributes.lock().raw = attribute_exprs.clone();
+
             let attributes_span = attribute_exprs
                 .first()
                 .map(|attribute| Span::join(attribute.span, attribute_exprs.last().unwrap().span));

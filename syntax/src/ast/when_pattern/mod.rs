@@ -9,6 +9,7 @@ use r#where::*;
 
 use crate::{
     ast::{
+        macros::syntax_group,
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, DestructuringSyntax, PatternSyntaxContext, StatementAttributes,
     },
@@ -18,7 +19,6 @@ use async_trait::async_trait;
 use wipple_util::Shared;
 
 syntax_group! {
-    #[derive(Debug, Clone)]
     pub type WhenPattern<WhenPatternSyntaxContext> {
         non_terminal: {
             Where,

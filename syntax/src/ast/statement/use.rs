@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         syntax::{Syntax, SyntaxError, SyntaxRule, SyntaxRules},
         StatementAttributes, StatementSyntaxContext,
     },
@@ -14,14 +15,44 @@ pub struct UseStatement<D: Driver> {
     pub attributes: StatementAttributes<D>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for UseStatement<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(UseStatement {
+            span: Default::default(),
+            use_span: Default::default(),
+            // This should prevent `use` statements from being generated
+            kind: Err(arbitrary::Arbitrary::arbitrary(u)?),
+            attributes: Default::default(),
+        })
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum UseStatementKind<D: Driver> {
-    File(D::Span, D::InternedString, Option<D::Path>),
+    File(
+        D::Span,
+        D::InternedString,
+        D::InternedString,
+        Option<D::Path>,
+    ),
 }
 
 impl<D: Driver> UseStatement<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for UseStatement<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "{}use {}",
+            self.attributes.format()?,
+            match self.kind? {
+                UseStatementKind::File(_, _, raw_file, _) => format!("\"{}\"", raw_file.as_ref()),
+            }
+        ))
     }
 }
 
@@ -45,8 +76,9 @@ impl<D: Driver> Syntax<D> for UseStatementSyntax {
 
                 let input = exprs.pop().unwrap();
                 let kind = match input.kind {
-                    parse::ExprKind::Text(text, _) => {
-                        let path = context.ast_builder.driver.make_path(text);
+                    parse::ExprKind::Text(text, raw) => {
+                        let path = context.ast_builder.driver.make_path(text.clone());
+
                         if let Some(path) = path {
                             context
                                 .ast_builder
@@ -62,7 +94,7 @@ impl<D: Driver> Syntax<D> for UseStatementSyntax {
                                 .await;
                         }
 
-                        Ok(UseStatementKind::File(input.span, text, path))
+                        Ok(UseStatementKind::File(input.span, text, raw, path))
                     }
                     _ => {
                         context

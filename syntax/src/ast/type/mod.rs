@@ -9,6 +9,8 @@ use tuple::*;
 
 use crate::{
     ast::{
+        format::Format,
+        macros::syntax_group,
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },
@@ -19,7 +21,6 @@ use futures::{stream, StreamExt};
 use wipple_util::Shared;
 
 syntax_group! {
-    #[derive(Debug, Clone)]
     pub type Type<TypeSyntaxContext> {
         non_terminal: {
             Function,
@@ -38,9 +39,24 @@ pub struct PlaceholderType<D: Driver> {
     pub span: D::Span,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for PlaceholderType<D> {
+    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(PlaceholderType {
+            span: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> PlaceholderType<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for PlaceholderType<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(String::from("_"))
     }
 }
 
@@ -49,9 +65,24 @@ pub struct UnitType<D: Driver> {
     pub span: D::Span,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for UnitType<D> {
+    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(UnitType {
+            span: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> UnitType<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for UnitType<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(String::from("()"))
     }
 }
 
@@ -64,9 +95,35 @@ pub struct NamedType<D: Driver> {
     pub parameters: Vec<Result<Type<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NamedType<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(NamedType {
+            span: Default::default(),
+            name_span: Default::default(),
+            name: arbitrary::Arbitrary::arbitrary(u)?,
+            name_scope: arbitrary::Arbitrary::arbitrary(u)?,
+            parameters: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> NamedType<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for NamedType<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({}{})",
+            self.name.as_ref(),
+            self.parameters
+                .into_iter()
+                .map(|ty| Ok(format!(" {}", ty?.format()?)))
+                .collect::<Result<String, _>>()?
+        ))
     }
 }
 

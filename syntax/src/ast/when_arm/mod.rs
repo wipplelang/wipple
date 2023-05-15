@@ -6,6 +6,7 @@ use function::*;
 
 use crate::{
     ast::{
+        macros::syntax_group,
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },
@@ -15,7 +16,6 @@ use async_trait::async_trait;
 use wipple_util::Shared;
 
 syntax_group! {
-    #[derive(Debug, Clone)]
     pub type WhenArm<WhenArmSyntaxContext> {
         non_terminal: {
             Function,

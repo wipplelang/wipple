@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "backends/interpreter",
     "frontend",
+    "fuzz",
     "loaders/default",
     "syntax",
     "tools/cli",

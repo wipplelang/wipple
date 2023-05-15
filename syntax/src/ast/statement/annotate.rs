@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         syntax::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
@@ -19,9 +20,36 @@ pub struct AnnotateStatement<D: Driver> {
     pub attributes: StatementAttributes<D>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for AnnotateStatement<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(AnnotateStatement {
+            span: Default::default(),
+            colon_span: Default::default(),
+            value: arbitrary::Arbitrary::arbitrary(u)?,
+            annotation: arbitrary::Arbitrary::arbitrary(u)?,
+            attributes: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> AnnotateStatement<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for AnnotateStatement<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "{}{} :: {}",
+            self.attributes.format()?,
+            match self.value {
+                Ok((_, name)) => name.as_ref().to_string(),
+                Err(expr) => expr?.format()?,
+            },
+            self.annotation?.format()?,
+        ))
     }
 }
 

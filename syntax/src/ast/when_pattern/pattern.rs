@@ -1,9 +1,10 @@
 use crate::{
     ast::{
+        format::Format,
         pattern::{Pattern, PatternSyntax, PatternSyntaxContext},
         syntax::{Syntax, SyntaxContext, SyntaxRules},
         when_pattern::WhenPatternSyntaxContext,
-        WhenPattern,
+        SyntaxError, WhenPattern,
     },
     Driver,
 };
@@ -13,9 +14,24 @@ pub struct PatternWhenPattern<D: Driver> {
     pub pattern: Pattern<D>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for PatternWhenPattern<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(PatternWhenPattern {
+            pattern: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> PatternWhenPattern<D> {
     pub fn span(&self) -> D::Span {
         self.pattern.span()
+    }
+}
+
+impl<D: Driver> Format<D> for PatternWhenPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        self.pattern.format()
     }
 }
 

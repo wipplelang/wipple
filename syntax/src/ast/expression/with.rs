@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         syntax::{Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules},
         Expression, ExpressionSyntax, ExpressionSyntaxContext, WithClause, WithClauseSyntax,
         WithClauseSyntaxContext,
@@ -15,9 +16,31 @@ pub struct WithExpression<D: Driver> {
     pub body: Result<Box<Expression<D>>, SyntaxError<D>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for WithExpression<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(WithExpression {
+            span: Default::default(),
+            when_span: Default::default(),
+            clause: arbitrary::Arbitrary::arbitrary(u)?,
+            body: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> WithExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for WithExpression<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "(with {} {})",
+            self.clause?.format()?,
+            self.body?.format()?,
+        ))
     }
 }
 

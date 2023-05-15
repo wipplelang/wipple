@@ -1,5 +1,7 @@
 use crate::{
     ast::{
+        format::Format,
+        macros::syntax_group,
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes, TypeMember, TypeMemberSyntax,
     },
@@ -9,7 +11,6 @@ use async_trait::async_trait;
 use wipple_util::Shared;
 
 syntax_group! {
-    #[derive(Debug, Clone)]
     pub type TypeBody<TypeBodySyntaxContext> {
         non_terminal: {},
         terminal: {
@@ -24,9 +25,32 @@ pub struct BlockTypeBody<D: Driver> {
     pub members: Vec<Result<TypeMember<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for BlockTypeBody<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(BlockTypeBody {
+            span: Default::default(),
+            members: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> BlockTypeBody<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for BlockTypeBody<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "{{\n{}\n}}",
+            self.members
+                .into_iter()
+                .map(|member| member?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join("\n")
+        ))
     }
 }
 

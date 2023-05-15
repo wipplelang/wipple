@@ -8,6 +8,13 @@ pub struct Backtrace {
 }
 
 impl Backtrace {
+    pub fn empty() -> Self {
+        Backtrace {
+            #[cfg(debug_assertions)]
+            trace: None,
+        }
+    }
+
     #[cfg(debug_assertions)]
     pub fn into_inner(self) -> Option<backtrace::Backtrace> {
         self.trace.map(|trace| {

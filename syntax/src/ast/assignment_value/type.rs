@@ -2,7 +2,7 @@ use crate::{
     ast::{
         assignment_value::AssignmentValueSyntaxContext,
         syntax::{Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules},
-        TypeBody, TypeBodySyntax, TypeBodySyntaxContext,
+        TypeBody, TypeBodySyntax, TypeBodySyntaxContext, format::Format,
     },
     Driver,
 };
@@ -14,9 +14,29 @@ pub struct TypeAssignmentValue<D: Driver> {
     pub body: Option<Result<TypeBody<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TypeAssignmentValue<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(TypeAssignmentValue {
+            span: Default::default(),
+            type_span: Default::default(),
+            body: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> TypeAssignmentValue<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for TypeAssignmentValue<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(match self.body {
+            Some(body) => format!("(type {})", body?.format()?),
+            None => format!("type"),
+        })
     }
 }
 

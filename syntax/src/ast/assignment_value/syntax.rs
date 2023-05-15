@@ -1,6 +1,7 @@
 use crate::{
     ast::{
         assignment_value::AssignmentValueSyntaxContext,
+        format::Format,
         syntax::{Syntax, SyntaxContext, SyntaxRule, SyntaxRules},
         KeywordStatementAttribute, OperatorPrecedenceStatementAttribute, SyntaxBody,
         SyntaxBodySyntax, SyntaxBodySyntaxContext, SyntaxError,
@@ -19,9 +20,30 @@ pub struct SyntaxAssignmentValue<D: Driver> {
     pub uses: Vec<D::Span>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for SyntaxAssignmentValue<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(SyntaxAssignmentValue {
+            span: Default::default(),
+            syntax_span: Default::default(),
+            name: Default::default(),
+            body: arbitrary::Arbitrary::arbitrary(u)?,
+            operator_precedence: Default::default(),
+            keyword: Default::default(),
+            uses: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> SyntaxAssignmentValue<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for SyntaxAssignmentValue<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("(syntax {})", self.body?.format()?))
     }
 }
 
@@ -68,7 +90,7 @@ impl<D: Driver> Syntax<D> for SyntaxAssignmentValueSyntax {
                 };
 
                 if let Some((name, _, scope, did_create_syntax)) = context.assigned_name {
-                    value.name = Some(name);
+                    value.name = Some(name.clone());
 
                     context
                         .ast_builder

@@ -54,6 +54,18 @@ pub struct SyntaxError<D: Driver> {
     pub trace: Backtrace,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: Driver> arbitrary::Arbitrary<'a> for SyntaxError<D>
+where
+    D::Span: Default,
+{
+    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        // Make the fuzzer generate more useful results by preventing syntax
+        // errors from being generated
+        Err(arbitrary::Error::IncorrectFormat)
+    }
+}
+
 impl<D: Driver> AstBuilder<D> {
     pub fn syntax_error(&self, span: D::Span) -> SyntaxError<D> {
         SyntaxError {
@@ -385,7 +397,7 @@ impl<D: Driver> AstBuilder<D> {
         let mut occurrences = VecDeque::new();
 
         for (index, expr) in exprs.iter().enumerate() {
-            if let parse::ExprKind::Name(expr_name, _) = expr.kind {
+            if let parse::ExprKind::Name(expr_name, _) = &expr.kind {
                 if expr_name.as_ref() == name {
                     occurrences.push_back(index);
                 }

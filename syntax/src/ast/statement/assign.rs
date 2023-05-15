@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         syntax::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
@@ -20,9 +21,32 @@ pub struct AssignStatement<D: Driver> {
     pub attributes: StatementAttributes<D>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for AssignStatement<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(AssignStatement {
+            span: Default::default(),
+            colon_span: Default::default(),
+            pattern: arbitrary::Arbitrary::arbitrary(u)?,
+            value: arbitrary::Arbitrary::arbitrary(u)?,
+            attributes: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> AssignStatement<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for AssignStatement<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "{} : {}",
+            self.pattern?.format()?,
+            self.value?.format()?,
+        ))
     }
 }
 
@@ -40,12 +64,12 @@ impl<D: Driver> Syntax<D> for AssignStatementSyntax {
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
                 let pattern = match &lhs.kind {
                     parse::ExprKind::Name(name, _) => {
-                        declared_name = Some(*name);
+                        declared_name = Some(name.clone());
 
                         Ok(AssignmentPattern::Pattern(PatternAssignmentPattern {
                             pattern: Pattern::Name(NamePattern {
                                 span: lhs.span,
-                                name: *name,
+                                name: name.clone(),
                                 scope,
                             }),
                         }))
@@ -72,7 +96,7 @@ impl<D: Driver> Syntax<D> for AssignStatementSyntax {
                 if let Ok(AssignmentPattern::Pattern(pattern)) = &pattern {
                     if let Pattern::Name(pattern) = &pattern.pattern {
                         value_context = value_context.with_assigned_name(
-                            pattern.name,
+                            pattern.name.clone(),
                             pattern.span,
                             scope,
                             did_create_syntax.clone()

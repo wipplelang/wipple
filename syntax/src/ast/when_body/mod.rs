@@ -1,5 +1,7 @@
 use crate::{
     ast::{
+        format::Format,
+        macros::syntax_group,
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes, WhenArm, WhenArmSyntax,
     },
@@ -9,7 +11,6 @@ use async_trait::async_trait;
 use wipple_util::Shared;
 
 syntax_group! {
-    #[derive(Debug, Clone)]
     pub type WhenBody<WhenBodySyntaxContext> {
         non_terminal: {},
         terminal: {
@@ -24,9 +25,32 @@ pub struct BlockWhenBody<D: Driver> {
     pub arms: Vec<Result<WhenArm<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for BlockWhenBody<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(BlockWhenBody {
+            span: Default::default(),
+            arms: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> BlockWhenBody<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for BlockWhenBody<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "{{\n{}\n}}",
+            self.arms
+                .into_iter()
+                .map(|arm| arm?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join("\n")
+        ))
     }
 }
 

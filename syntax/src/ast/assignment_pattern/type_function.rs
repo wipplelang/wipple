@@ -1,6 +1,7 @@
 use crate::{
     ast::{
         assignment_pattern::AssignmentPatternSyntaxContext,
+        format::Format,
         syntax::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
@@ -17,6 +18,29 @@ pub struct TypeFunctionAssignmentPattern<D: Driver> {
     pub type_pattern: Result<TypePattern<D>, SyntaxError<D>>,
     pub assignment_pattern: Result<Box<AssignmentPattern<D>>, SyntaxError<D>>,
     pub scope: D::Scope,
+}
+
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TypeFunctionAssignmentPattern<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(TypeFunctionAssignmentPattern {
+            span: Default::default(),
+            arrow_span: Default::default(),
+            type_pattern: arbitrary::Arbitrary::arbitrary(u)?,
+            assignment_pattern: arbitrary::Arbitrary::arbitrary(u)?,
+            scope: Default::default(),
+        })
+    }
+}
+
+impl<D: Driver> Format<D> for TypeFunctionAssignmentPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({} => {})",
+            self.type_pattern?.format()?,
+            self.assignment_pattern?.format()?
+        ))
+    }
 }
 
 impl<D: Driver> TypeFunctionAssignmentPattern<D> {

@@ -1,5 +1,7 @@
 use crate::{
     ast::{
+        format::Format,
+        macros::syntax_group,
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes, SyntaxRule, SyntaxRuleSyntax,
     },
@@ -9,7 +11,6 @@ use async_trait::async_trait;
 use wipple_util::Shared;
 
 syntax_group! {
-    #[derive(Debug, Clone)]
     pub type SyntaxBody<SyntaxBodySyntaxContext> {
         non_terminal: {},
         terminal: {
@@ -24,9 +25,32 @@ pub struct BlockSyntaxBody<D: Driver> {
     pub rules: Vec<Result<SyntaxRule<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for BlockSyntaxBody<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(BlockSyntaxBody {
+            span: Default::default(),
+            rules: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> BlockSyntaxBody<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for BlockSyntaxBody<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "{{\n{}\n}}",
+            self.rules
+                .into_iter()
+                .map(|rule| rule?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join("\n")
+        ))
     }
 }
 

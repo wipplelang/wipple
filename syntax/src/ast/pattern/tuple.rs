@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         pattern::{Pattern, PatternSyntaxContext},
         syntax::{OperatorAssociativity, Syntax, SyntaxError, SyntaxRule, SyntaxRules},
         PatternSyntax,
@@ -15,9 +16,33 @@ pub struct TuplePattern<D: Driver> {
     pub patterns: Vec<Result<Pattern<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TuplePattern<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(TuplePattern {
+            span: Default::default(),
+            comma_span: Default::default(),
+            patterns: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> TuplePattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for TuplePattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({})",
+            self.patterns
+                .into_iter()
+                .map(|result| result?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join(" , ")
+        ))
     }
 }
 

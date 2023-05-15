@@ -24,6 +24,8 @@ use with::*;
 
 use crate::{
     ast::{
+        format::Format,
+        macros::syntax_group,
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, OperatorAssociativity, OperatorPrecedenceStatementAttributeKind, Statement,
         StatementAttributes, StatementSyntax, SyntaxAssignmentValue, SyntaxBody, SyntaxPattern,
@@ -37,7 +39,6 @@ use std::{cmp::Ordering, collections::VecDeque};
 use wipple_util::Shared;
 
 syntax_group! {
-    #[derive(Debug, Clone)]
     pub type Expression<ExpressionSyntaxContext> {
         non_terminal: {
             Function,
@@ -64,9 +65,24 @@ pub struct UnitExpression<D: Driver> {
     pub span: D::Span,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for UnitExpression<D> {
+    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(UnitExpression {
+            span: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> UnitExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for UnitExpression<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(String::from("()"))
     }
 }
 
@@ -77,9 +93,26 @@ pub struct NameExpression<D: Driver> {
     pub scope: D::Scope,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NameExpression<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(NameExpression {
+            span: Default::default(),
+            name: arbitrary::Arbitrary::arbitrary(u)?,
+            scope: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> NameExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for NameExpression<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("{}", self.name.as_ref()))
     }
 }
 
@@ -87,11 +120,29 @@ impl<D: Driver> NameExpression<D> {
 pub struct TextExpression<D: Driver> {
     pub span: D::Span,
     pub text: D::InternedString,
+    pub raw: D::InternedString,
+}
+
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TextExpression<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(TextExpression {
+            span: Default::default(),
+            text: arbitrary::Arbitrary::arbitrary(u)?,
+            raw: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
 }
 
 impl<D: Driver> TextExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for TextExpression<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("\"{}\"", self.raw.as_ref()))
     }
 }
 
@@ -101,9 +152,25 @@ pub struct NumberExpression<D: Driver> {
     pub number: D::InternedString,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NumberExpression<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(NumberExpression {
+            span: Default::default(),
+            number: crate::FuzzString(u.int_in_range(0..=100)?.to_string()),
+        })
+    }
+}
+
 impl<D: Driver> NumberExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for NumberExpression<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("{}", self.number.as_ref()))
     }
 }
 
@@ -114,9 +181,34 @@ pub struct CallExpression<D: Driver> {
     pub inputs: Vec<Result<Expression<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for CallExpression<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(CallExpression {
+            span: Default::default(),
+            function: arbitrary::Arbitrary::arbitrary(u)?,
+            inputs: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> CallExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for CallExpression<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({}{})",
+            self.function?.format()?,
+            self.inputs
+                .into_iter()
+                .map(|input| Ok(format!(" {}", input?.format()?)))
+                .collect::<Result<Vec<_>, _>>()?
+                .join(" ")
+        ))
     }
 }
 
@@ -127,9 +219,33 @@ pub struct BlockExpression<D: Driver> {
     pub scope: D::Scope,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for BlockExpression<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(BlockExpression {
+            span: Default::default(),
+            statements: arbitrary::Arbitrary::arbitrary(u)?,
+            scope: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> BlockExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for BlockExpression<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "{{\n{}\n}}",
+            self.statements
+                .into_iter()
+                .map(|statement| statement?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join("\n")
+        ))
     }
 }
 
@@ -195,9 +311,10 @@ impl<D: Driver> SyntaxContext<D> for ExpressionSyntaxContext<D> {
                     scope, // TODO: Hygiene (use `name_scope`)
                 }
                 .into()),
-                parse::ExprKind::Text(text, _) => Ok(TextExpression {
+                parse::ExprKind::Text(text, raw) => Ok(TextExpression {
                     span: expr.span,
                     text,
+                    raw,
                 }
                 .into()),
                 parse::ExprKind::Number(number) => Ok(NumberExpression {
@@ -234,10 +351,10 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
             1 => {
                 let expr = exprs.pop().unwrap();
 
-                if let parse::ExprKind::Name(name, name_scope) = expr.kind {
+                if let parse::ExprKind::Name(name, name_scope) = &expr.kind {
                     let syntax = self.ast_builder.file.resolve_syntax(
                         expr.span,
-                        name,
+                        name.clone(),
                         name_scope.unwrap_or(scope),
                     );
 
@@ -268,10 +385,10 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                 if operators.is_empty() {
                     // TODO: Remove `[operator]` in favor of this logic
                     for expr in &exprs {
-                        if let parse::ExprKind::Name(name, name_scope) = expr.kind {
+                        if let parse::ExprKind::Name(name, name_scope) = &expr.kind {
                             let syntax = self.ast_builder.file.resolve_syntax(
                                 expr.span,
-                                name,
+                                name.clone(),
                                 name_scope.unwrap_or(scope),
                             );
 
@@ -412,10 +529,10 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
         exprs
             .into_iter()
             .filter_map(move |(index, expr)| {
-                if let parse::ExprKind::Name(name, name_scope) = expr.kind {
+                if let parse::ExprKind::Name(name, name_scope) = &expr.kind {
                     let syntax = self.ast_builder.file.resolve_syntax(
                         expr.span,
-                        name,
+                        name.clone(),
                         name_scope.unwrap_or(scope),
                     );
 
@@ -445,7 +562,9 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
         for rule in body.rules.into_iter().flatten() {
             let SyntaxRule::<D>::Function(rule) = rule;
 
-            let (pattern, body) = match (rule.pattern, rule.body) {
+            let pattern = rule.pattern.into_iter().collect::<Result<Vec<_>, _>>();
+
+            let (pattern, body) = match (pattern, rule.body) {
                 (Ok(pattern), Ok(body)) => (pattern, *body),
                 _ => continue,
             };

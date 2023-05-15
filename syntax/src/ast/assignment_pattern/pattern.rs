@@ -1,9 +1,10 @@
 use crate::{
     ast::{
         assignment_pattern::AssignmentPatternSyntaxContext,
+        format::Format,
         pattern::{Pattern, PatternSyntax, PatternSyntaxContext},
         syntax::{Syntax, SyntaxContext, SyntaxRules},
-        AssignmentPattern,
+        AssignmentPattern, SyntaxError,
     },
     Driver,
 };
@@ -13,9 +14,24 @@ pub struct PatternAssignmentPattern<D: Driver> {
     pub pattern: Pattern<D>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for PatternAssignmentPattern<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(PatternAssignmentPattern {
+            pattern: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> PatternAssignmentPattern<D> {
     pub fn span(&self) -> D::Span {
         self.pattern.span()
+    }
+}
+
+impl<D: Driver> Format<D> for PatternAssignmentPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        self.pattern.format()
     }
 }
 

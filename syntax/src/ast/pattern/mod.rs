@@ -12,6 +12,8 @@ use tuple::*;
 
 use crate::{
     ast::{
+        format::Format,
+        macros::syntax_group,
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, Destructuring, DestructuringSyntax, StatementAttributes,
     },
@@ -22,7 +24,6 @@ use futures::{stream, StreamExt};
 use wipple_util::Shared;
 
 syntax_group! {
-    #[derive(Debug, Clone)]
     pub type Pattern<PatternSyntaxContext> {
         non_terminal: {
             Tuple,
@@ -48,9 +49,26 @@ pub struct NamePattern<D: Driver> {
     pub scope: D::Scope,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NamePattern<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(NamePattern {
+            span: Default::default(),
+            name: arbitrary::Arbitrary::arbitrary(u)?,
+            scope: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> NamePattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for NamePattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("{}", self.name.as_ref()))
     }
 }
 
@@ -58,11 +76,29 @@ impl<D: Driver> NamePattern<D> {
 pub struct TextPattern<D: Driver> {
     pub span: D::Span,
     pub text: D::InternedString,
+    pub raw: D::InternedString,
+}
+
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TextPattern<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(TextPattern {
+            span: Default::default(),
+            text: arbitrary::Arbitrary::arbitrary(u)?,
+            raw: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
 }
 
 impl<D: Driver> TextPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for TextPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("\"{}\"", self.raw.as_ref()))
     }
 }
 
@@ -72,9 +108,25 @@ pub struct NumberPattern<D: Driver> {
     pub number: D::InternedString,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NumberPattern<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(NumberPattern {
+            span: Default::default(),
+            number: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> NumberPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for NumberPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("{}", self.number.as_ref()))
     }
 }
 
@@ -83,9 +135,24 @@ pub struct UnitPattern<D: Driver> {
     pub span: D::Span,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for UnitPattern<D> {
+    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(UnitPattern {
+            span: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> UnitPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for UnitPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(String::from("()"))
     }
 }
 
@@ -97,9 +164,34 @@ pub struct VariantPattern<D: Driver> {
     pub values: Vec<Result<Pattern<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for VariantPattern<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(VariantPattern {
+            span: Default::default(),
+            name_span: Default::default(),
+            name: arbitrary::Arbitrary::arbitrary(u)?,
+            values: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> VariantPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for VariantPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({}{})",
+            self.name.as_ref(),
+            self.values
+                .into_iter()
+                .map(|value| Ok(format!(" {}", value?.format()?)))
+                .collect::<Result<String, _>>()?
+        ))
     }
 }
 
@@ -109,9 +201,32 @@ pub struct DestructurePattern<D: Driver> {
     pub destructurings: Vec<Result<Destructuring<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for DestructurePattern<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(DestructurePattern {
+            span: Default::default(),
+            destructurings: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> DestructurePattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for DestructurePattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "{{\n{}\n}}",
+            self.destructurings
+                .into_iter()
+                .map(|destructuring| destructuring?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join("\n")
+        ))
     }
 }
 
@@ -120,9 +235,24 @@ pub struct WildcardPattern<D: Driver> {
     pub span: D::Span,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for WildcardPattern<D> {
+    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(WildcardPattern {
+            span: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> WildcardPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for WildcardPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(String::from("_"))
     }
 }
 
@@ -174,7 +304,7 @@ impl<D: Driver> SyntaxContext<D> for PatternSyntaxContext<D> {
     ) -> Result<Self::Body, SyntaxError<D>> {
         match expr.kind {
             parse::ExprKind::Name(name, _sc) => {
-                self.ast_builder.file.add_barrier(name, scope);
+                self.ast_builder.file.add_barrier(name.clone(), scope);
 
                 Ok(NamePattern {
                     span: expr.span,
@@ -183,9 +313,10 @@ impl<D: Driver> SyntaxContext<D> for PatternSyntaxContext<D> {
                 }
                 .into())
             }
-            parse::ExprKind::Text(text, _) => Ok(TextPattern {
+            parse::ExprKind::Text(text, raw) => Ok(TextPattern {
                 span: expr.span,
                 text,
+                raw,
             }
             .into()),
             parse::ExprKind::Number(number) => Ok(NumberPattern {

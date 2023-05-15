@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         syntax::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
@@ -19,9 +20,32 @@ pub struct FunctionWhenArm<D: Driver> {
     pub scope: D::Scope,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for FunctionWhenArm<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(FunctionWhenArm {
+            span: Default::default(),
+            arrow_span: Default::default(),
+            pattern: arbitrary::Arbitrary::arbitrary(u)?,
+            body: arbitrary::Arbitrary::arbitrary(u)?,
+            scope: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> FunctionWhenArm<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for FunctionWhenArm<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({} -> {})",
+            self.pattern?.format()?,
+            self.body?.format()?,
+        ))
     }
 }
 

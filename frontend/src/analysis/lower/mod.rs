@@ -2155,7 +2155,7 @@ impl Lowerer {
                 }
             }
             ast::Statement::Use(statement) => match statement.kind.as_ref().ok()? {
-                ast::UseStatementKind::File(_, _, _) => None,
+                ast::UseStatementKind::File(..) => None,
             },
             ast::Statement::Expression(statement) => Some(StatementDeclaration {
                 span: statement.span(),

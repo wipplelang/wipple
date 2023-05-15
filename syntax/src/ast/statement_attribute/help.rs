@@ -1,7 +1,9 @@
 use crate::{
     ast::{
+        format::Format,
         statement_attribute::StatementAttributeSyntaxContext,
         syntax::{Syntax, SyntaxRule, SyntaxRules},
+        SyntaxError,
     },
     parse, Driver,
 };
@@ -14,9 +16,27 @@ pub struct HelpStatementAttribute<D: Driver> {
     pub help_text: D::InternedString,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for HelpStatementAttribute<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(HelpStatementAttribute {
+            span: Default::default(),
+            help_span: Default::default(),
+            help_text_span: Default::default(),
+            help_text: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> HelpStatementAttribute<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for HelpStatementAttribute<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        unimplemented!("call `StatementAttributes::format` instead")
     }
 }
 

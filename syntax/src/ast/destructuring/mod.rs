@@ -6,6 +6,8 @@ use assign::*;
 
 use crate::{
     ast::{
+        format::Format,
+        macros::syntax_group,
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },
@@ -15,7 +17,6 @@ use async_trait::async_trait;
 use wipple_util::Shared;
 
 syntax_group! {
-    #[derive(Debug, Clone)]
     pub type Destructuring<DestructuringSyntaxContext> {
         non_terminal: {
             Assign,
@@ -34,9 +35,26 @@ pub struct NameDestructuring<D: Driver> {
     pub scope: D::Scope,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NameDestructuring<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(NameDestructuring {
+            span: Default::default(),
+            name: arbitrary::Arbitrary::arbitrary(u)?,
+            scope: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> NameDestructuring<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for NameDestructuring<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("{}", self.name.as_ref()))
     }
 }
 
@@ -46,9 +64,30 @@ pub struct ListDestructuring<D: Driver> {
     pub names: Vec<Result<NameDestructuring<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for ListDestructuring<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(ListDestructuring {
+            span: Default::default(),
+            names: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> ListDestructuring<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for ListDestructuring<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(self
+            .names
+            .into_iter()
+            .map(|result| Ok(result?.name.as_ref().to_string()))
+            .collect::<Result<Vec<_>, _>>()?
+            .join(" "))
     }
 }
 

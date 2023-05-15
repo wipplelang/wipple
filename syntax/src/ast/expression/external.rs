@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         syntax::{Syntax, SyntaxError, SyntaxRule, SyntaxRules},
         Expression, ExpressionSyntax, ExpressionSyntaxContext,
     },
@@ -18,9 +19,39 @@ pub struct ExternalExpression<D: Driver> {
     pub inputs: Vec<Result<Expression<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for ExternalExpression<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(ExternalExpression {
+            span: Default::default(),
+            external_span: Default::default(),
+            namespace_span: Default::default(),
+            namespace: arbitrary::Arbitrary::arbitrary(u)?,
+            identifier_span: Default::default(),
+            identifier: arbitrary::Arbitrary::arbitrary(u)?,
+            inputs: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> ExternalExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for ExternalExpression<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "(external \"{}\" \"{}\" {})",
+            self.namespace.as_ref(),
+            self.identifier.as_ref(),
+            self.inputs
+                .into_iter()
+                .map(|result| result?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join(" ")
+        ))
     }
 }
 

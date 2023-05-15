@@ -1,7 +1,9 @@
 use crate::{
     ast::{
         file_attribute::FileAttributeSyntaxContext,
+        format::Format,
         syntax::{Syntax, SyntaxRule, SyntaxRules},
+        SyntaxError,
     },
     parse, Driver,
 };
@@ -12,6 +14,24 @@ pub struct RecursionLimitFileAttribute<D: Driver> {
     pub recursion_limit_span: D::Span,
     pub limit_span: D::Span,
     pub limit: usize,
+}
+
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for RecursionLimitFileAttribute<D> {
+    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(RecursionLimitFileAttribute {
+            span: Default::default(),
+            recursion_limit_span: Default::default(),
+            limit_span: Default::default(),
+            limit: 64, // FIXME: Use `DEFAULT_RECURSION_LIMIT` instead
+        })
+    }
+}
+
+impl<D: Driver> Format<D> for RecursionLimitFileAttribute<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("[[recursion-limit {}]]", self.limit))
+    }
 }
 
 impl<D: Driver> RecursionLimitFileAttribute<D> {

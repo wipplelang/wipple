@@ -1,4 +1,3 @@
-#[macro_export]
 macro_rules! syntax_group {
     ($(#[$attr:meta])* $vis:vis type $name:ident<$context:ty> {
         non_terminal: {
@@ -9,7 +8,7 @@ macro_rules! syntax_group {
         },
     }) => {
         paste::paste! {
-            group! {
+            $crate::ast::macros::group! {
                 $(#[$attr])*
                 $vis enum $name {
                     $($wrapping_kind([<$wrapping_kind $name>]),)*
@@ -38,6 +37,9 @@ macro_rules! group {
         $($kind:ident($data:ident)),* $(,)?
     }) => {
         $(#[$attr])*
+        #[derive(Debug, Clone)]
+        #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+        #[cfg_attr(feature = "arbitrary", arbitrary(bound = "D: crate::FuzzDriver"))]
         $vis enum $name<D: $crate::Driver> {
             $($kind($data<D>),)*
         }
@@ -59,5 +61,18 @@ macro_rules! group {
                 }
             }
         )*
+
+        impl<D: $crate::Driver> $crate::ast::format::Format<D> for $name<D> {
+            fn format(self) -> Result<String, SyntaxError<D>> {
+                match self {
+                    $(
+                        $name::$kind(value) => $crate::ast::format::Format::format(value),
+                    )*
+                }
+            }
+        }
     };
 }
+
+pub(crate) use syntax_group;
+pub(crate) use group;

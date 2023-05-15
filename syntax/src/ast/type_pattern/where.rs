@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         syntax::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
@@ -18,9 +19,35 @@ pub struct WhereTypePattern<D: Driver> {
     pub bounds: Vec<Result<WhereTypePatternBound<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for WhereTypePattern<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(WhereTypePattern {
+            span: Default::default(),
+            where_span: Default::default(),
+            pattern: arbitrary::Arbitrary::arbitrary(u)?,
+            bounds: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> WhereTypePattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for WhereTypePattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({} where {})",
+            self.pattern?.format()?,
+            self.bounds
+                .into_iter()
+                .map(|bound| bound?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join(" ")
+        ))
     }
 }
 
@@ -33,9 +60,35 @@ pub struct WhereTypePatternBound<D: Driver> {
     pub parameters: Vec<Result<Type<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for WhereTypePatternBound<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(WhereTypePatternBound {
+            span: Default::default(),
+            trait_span: Default::default(),
+            trait_name: arbitrary::Arbitrary::arbitrary(u)?,
+            trait_scope: Default::default(),
+            parameters: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> WhereTypePatternBound<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for WhereTypePatternBound<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({}{})",
+            self.trait_name.as_ref(),
+            self.parameters
+                .into_iter()
+                .map(|param| Ok(format!(" {}", param?.format()?)))
+                .collect::<Result<String, _>>()?
+        ))
     }
 }
 

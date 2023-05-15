@@ -6,6 +6,8 @@ use field::*;
 
 use crate::{
     ast::{
+        format::Format,
+        macros::syntax_group,
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes, Type, TypeSyntax, TypeSyntaxContext,
     },
@@ -16,7 +18,6 @@ use futures::{stream, StreamExt};
 use wipple_util::Shared;
 
 syntax_group! {
-    #[derive(Debug, Clone)]
     pub type TypeMember<TypeMemberSyntaxContext> {
         non_terminal: {
             Field,
@@ -35,9 +36,34 @@ pub struct VariantTypeMember<D: Driver> {
     pub tys: Vec<Result<Type<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for VariantTypeMember<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(VariantTypeMember {
+            span: Default::default(),
+            name_span: Default::default(),
+            name: arbitrary::Arbitrary::arbitrary(u)?,
+            tys: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> VariantTypeMember<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for VariantTypeMember<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({}{})",
+            self.name.as_ref(),
+            self.tys
+                .into_iter()
+                .map(|ty| Ok(format!(" {}", ty?.format()?)))
+                .collect::<Result<String, _>>()?
+        ))
     }
 }
 

@@ -1,6 +1,7 @@
 use crate::{
     ast::{
         destructuring::DestructuringSyntaxContext,
+        format::Format,
         syntax::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
@@ -18,9 +19,32 @@ pub struct AssignDestructuring<D: Driver> {
     pub pattern: Result<Pattern<D>, SyntaxError<D>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for AssignDestructuring<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(AssignDestructuring {
+            span: Default::default(),
+            colon_span: Default::default(),
+            name_span: Default::default(),
+            name: arbitrary::Arbitrary::arbitrary(u)?,
+            pattern: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> AssignDestructuring<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for AssignDestructuring<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "{} : {}",
+            self.name.as_ref(),
+            self.pattern?.format()?
+        ))
     }
 }
 
@@ -71,7 +95,7 @@ impl<D: Driver> Syntax<D> for AssignDestructuringSyntax {
                     }
                 };
 
-                context.ast_builder.file.add_barrier(name, scope);
+                context.ast_builder.file.add_barrier(name.clone(), scope);
 
                 Ok(AssignDestructuring {
                     span,

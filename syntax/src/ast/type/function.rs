@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        format::Format,
         r#type::{Type, TypeSyntaxContext},
         syntax::{OperatorAssociativity, Syntax, SyntaxError, SyntaxRule, SyntaxRules},
         TypeSyntax,
@@ -15,9 +16,31 @@ pub struct FunctionType<D: Driver> {
     pub output: Result<Box<Type<D>>, SyntaxError<D>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for FunctionType<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(FunctionType {
+            span: Default::default(),
+            arrow_span: Default::default(),
+            input: arbitrary::Arbitrary::arbitrary(u)?,
+            output: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> FunctionType<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for FunctionType<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "({} -> {})",
+            self.input?.format()?,
+            self.output?.format()?,
+        ))
     }
 }
 

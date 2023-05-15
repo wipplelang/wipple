@@ -21,6 +21,7 @@ use type_function::*;
 
 use crate::{
     ast::{
+        macros::syntax_group,
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, ExpressionSyntaxContext, StatementAttributes,
     },
@@ -31,7 +32,6 @@ use wipple_util::Shared;
 
 syntax_group! {
     #[allow(clippy::large_enum_variant)]
-    #[derive(Debug, Clone)]
     pub type Statement<StatementSyntaxContext> {
         non_terminal: {
             Assign,

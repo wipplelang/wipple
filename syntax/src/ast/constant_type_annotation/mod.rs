@@ -9,6 +9,7 @@ use type_function::*;
 
 use crate::{
     ast::{
+        macros::syntax_group,
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes, TypeSyntaxContext,
     },
@@ -18,7 +19,6 @@ use async_trait::async_trait;
 use wipple_util::Shared;
 
 syntax_group! {
-    #[derive(Debug, Clone)]
     pub type ConstantTypeAnnotation<ConstantTypeAnnotationSyntaxContext> {
         non_terminal: {
             TypeFunction,

@@ -1,7 +1,9 @@
 use crate::{
     ast::{
         file_attribute::FileAttributeSyntaxContext,
+        format::Format,
         syntax::{Syntax, SyntaxRule, SyntaxRules},
+        SyntaxError,
     },
     Driver,
 };
@@ -11,9 +13,24 @@ pub struct NoStdFileAttribute<D: Driver> {
     pub span: D::Span,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NoStdFileAttribute<D> {
+    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(NoStdFileAttribute {
+            span: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> NoStdFileAttribute<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for NoStdFileAttribute<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(String::from("[[no-std]]"))
     }
 }
 

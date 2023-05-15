@@ -1,6 +1,7 @@
 use crate::{
     ast::{
         assignment_value::AssignmentValueSyntaxContext,
+        format::Format,
         syntax::{Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules},
         Type, TypeSyntax, TypeSyntaxContext,
     },
@@ -14,9 +15,29 @@ pub struct TraitAssignmentValue<D: Driver> {
     pub ty: Option<Result<Type<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TraitAssignmentValue<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(TraitAssignmentValue {
+            span: Default::default(),
+            trait_span: Default::default(),
+            ty: arbitrary::Arbitrary::arbitrary(u)?,
+        })
+    }
+}
+
 impl<D: Driver> TraitAssignmentValue<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for TraitAssignmentValue<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(match self.ty {
+            Some(ty) => format!("(trait {})", ty?.format()?),
+            None => format!("trait"),
+        })
     }
 }
 

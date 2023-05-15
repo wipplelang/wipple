@@ -1,6 +1,7 @@
 use crate::{
     ast::{
         assignment_pattern::AssignmentPatternSyntaxContext,
+        format::Format,
         syntax::{Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules},
         Type, TypeSyntax, TypeSyntaxContext,
     },
@@ -19,9 +20,38 @@ pub struct InstanceAssignmentPattern<D: Driver> {
     pub trait_parameters: Vec<Result<Type<D>, SyntaxError<D>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for InstanceAssignmentPattern<D> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(InstanceAssignmentPattern {
+            span: Default::default(),
+            instance_span: Default::default(),
+            pattern_span: Default::default(),
+            trait_span: Default::default(),
+            trait_name: arbitrary::Arbitrary::arbitrary(u)?,
+            trait_scope: Default::default(),
+            trait_parameters: Default::default(),
+        })
+    }
+}
+
 impl<D: Driver> InstanceAssignmentPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
+    }
+}
+
+impl<D: Driver> Format<D> for InstanceAssignmentPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "(instance ({} {}))",
+            self.trait_name.as_ref(),
+            self.trait_parameters
+                .into_iter()
+                .map(|result| result?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join(" ")
+        ))
     }
 }
 
