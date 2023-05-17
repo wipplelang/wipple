@@ -47,7 +47,7 @@ id: eEkBVKu6
 type: code
 ---
 
-1+2
+"one" + 2
 
 ---
 id: IG0ROGDj
