@@ -30,6 +30,14 @@ code {
     word-break: break-all !important;
 }
 
+.code-editor-outlined {
+    @apply bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 overflow-clip;
+}
+
+.code-editor-button {
+    @apply code-editor-outlined -my-0.5 hover:bg-gray-200 dark:hover:bg-gray-800 dark:bg-gray-900;
+}
+
 .bouncing-loader {
     display: flex;
     justify-content: flex-start;

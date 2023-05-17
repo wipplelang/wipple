@@ -16,6 +16,7 @@ import {
     MenuList,
     Select,
     TextField,
+    Tooltip,
     useMediaQuery,
 } from "@mui/material";
 import { Globals as SpringGlobals, useSpring, animated } from "react-spring";
@@ -36,7 +37,10 @@ import {
 } from "../../runner";
 import KeyboardReturn from "@mui/icons-material/KeyboardReturn";
 import Refresh from "@mui/icons-material/Refresh";
-import Add from "@mui/icons-material/Add";
+import AddRounded from "@mui/icons-material/AddRounded";
+import SubjectRounded from "@mui/icons-material/SubjectRounded";
+import PlayArrowRounded from "@mui/icons-material/PlayArrowRounded";
+import PauseRounded from "@mui/icons-material/PauseRounded";
 import getCaretCoordinates from "textarea-caret";
 import ErrorIcon from "@mui/icons-material/Error";
 import lineColumn from "line-column";
@@ -47,6 +51,8 @@ import * as Sentry from "@sentry/react";
 export interface CodeEditorProps {
     id: string;
     code: string;
+    autoRun: boolean;
+    onChangeAutoRun: (autoRun: boolean) => void;
     lint: boolean;
     settings: Settings;
     autoFocus: boolean;
@@ -82,6 +88,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
     const containerID = `code-editor-container-${props.id}`;
     const editorID = `code-editor-editor-${props.id}`;
     const textAreaID = `code-editor-text-${props.id}`;
+
+    const codeEditorRef = useRef<SimpleCodeEditor>(null);
 
     const [syntaxHighlighting, setSyntaxHighlighting] = useState<
         AnalysisOutputSyntaxHighlightingItem[]
@@ -253,8 +261,10 @@ export const CodeEditor = (props: CodeEditorProps) => {
     );
 
     useEffect(() => {
-        run(props.code, props.lint);
-    }, [run, props.code, props.lint]);
+        if (props.autoRun) {
+            run(props.code, props.lint);
+        }
+    }, [run, props.code, props.lint, props.autoRun]);
 
     const [hover, setHover] = useState<Hover>();
 
@@ -608,11 +618,76 @@ export const CodeEditor = (props: CodeEditorProps) => {
         setContextMenuAnchor(undefined);
     };
 
+    const buttonIconStyles = {
+        fontSize: "14pt",
+        width: 26,
+        marginTop: "-0.125rem",
+    };
+
     return (
         <div>
-            <div id={containerID} className="relative">
-                <div className="bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-lg overflow-clip">
+            <div id={containerID} className="relative -mt-3.5">
+                <div className="flex flex-row justify-end w-full pr-4 -mb-3.5">
+                    <div className="code-editor-outlined rounded-md shadow-lg shadow-gray-100 dark:shadow-gray-900 h-7 text-gray-500 text-opacity-50">
+                        <Tooltip title="Insert">
+                            <button
+                                className="code-editor-button -ml-0.5"
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    showContextMenu();
+                                }}
+                            >
+                                <AddRounded sx={buttonIconStyles} />
+                            </button>
+                        </Tooltip>
+
+                        <Tooltip title="Format">
+                            <button
+                                className="code-editor-button -mx-0.5"
+                                onMouseDown={async (e) => {
+                                    const formatted = await runner.format(props.code);
+
+                                    if (formatted != null) {
+                                        const codeEditor = document.getElementById(
+                                            textAreaID
+                                        ) as HTMLTextAreaElement | null;
+                                        if (!codeEditor) return;
+
+                                        codeEditorRef.current!.session.history.stack.push({
+                                            timestamp: new Date().valueOf(),
+                                            value: props.code,
+                                            selectionStart: codeEditor.selectionStart,
+                                            selectionEnd: codeEditor.selectionEnd,
+                                        });
+
+                                        props.onChange(formatted.trimEnd());
+                                    }
+                                }}
+                            >
+                                <SubjectRounded sx={buttonIconStyles} />
+                            </button>
+                        </Tooltip>
+
+                        <Tooltip title={props.autoRun ? "Pause Running" : "Run"}>
+                            <button
+                                className="code-editor-button -mr-0.5"
+                                onMouseDown={(e) => {
+                                    props.onChangeAutoRun(!props.autoRun);
+                                }}
+                            >
+                                {props.autoRun ? (
+                                    <PauseRounded sx={buttonIconStyles} />
+                                ) : (
+                                    <PlayArrowRounded sx={buttonIconStyles} />
+                                )}
+                            </button>
+                        </Tooltip>
+                    </div>
+                </div>
+
+                <div className="code-editor-outlined rounded-lg">
                     <SimpleCodeEditor
+                        ref={codeEditorRef}
                         id={editorID}
                         textareaId={textAreaID}
                         className="code-editor m-4 dark:caret-white"
@@ -633,8 +708,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         highlight={(code) =>
                             prism.highlight(code, prism.languages.wipple, "wipple")
                         }
-                        tabSize={1}
-                        insertSpaces={false}
                         placeholder="Write your code here!"
                         autoFocus={props.autoFocus}
                     />
@@ -960,114 +1033,95 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 </div>
 
                 {completions && (
-                    <>
-                        <animated.div className="absolute" style={animatedContextMenuTriggerStyle}>
-                            <IconButton
-                                color="primary"
-                                onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    showContextMenu();
-                                }}
-                            >
-                                <Add />
-                            </IconButton>
-                        </animated.div>
+                    <Menu
+                        open={contextMenuAnchor != null}
+                        anchorEl={contextMenuAnchor}
+                        onClose={hideContextMenu}
+                        style={{ maxHeight: 500 }}
+                    >
+                        <MenuList disablePadding>
+                            {(() => {
+                                const renderCompletionItem = (
+                                    { name, kind, help }: Completion,
+                                    index: number
+                                ) =>
+                                    help ? (
+                                        <MenuItem
+                                            key={index}
+                                            onClick={() => {
+                                                const code = props.code;
 
-                        <Menu
-                            open={contextMenuAnchor != null}
-                            anchorEl={contextMenuAnchor}
-                            onClose={hideContextMenu}
-                            style={{ maxHeight: 500 }}
-                        >
-                            <MenuList disablePadding>
-                                {(() => {
-                                    const renderCompletionItem = (
-                                        { name, kind, help }: Completion,
-                                        index: number
-                                    ) =>
-                                        help ? (
-                                            <MenuItem
-                                                key={index}
-                                                onClick={() => {
-                                                    const code = props.code;
+                                                const before = code.slice(
+                                                    0,
+                                                    textEditor!.selectionEnd
+                                                );
+                                                const padBefore = (
+                                                    before[before.length - 1] ?? " "
+                                                ).match(/\s/)
+                                                    ? ""
+                                                    : " ";
 
-                                                    const before = code.slice(
-                                                        0,
-                                                        textEditor!.selectionEnd
-                                                    );
-                                                    const padBefore = (
-                                                        before[before.length - 1] ?? " "
-                                                    ).match(/\s/)
-                                                        ? ""
-                                                        : " ";
+                                                const after = code.slice(textEditor!.selectionEnd);
+                                                const padAfter = (after[0] ?? " ").match(/\s/)
+                                                    ? ""
+                                                    : " ";
 
-                                                    const after = code.slice(
-                                                        textEditor!.selectionEnd
-                                                    );
-                                                    const padAfter = (after[0] ?? " ").match(/\s/)
-                                                        ? ""
-                                                        : " ";
+                                                props.onChange(
+                                                    before + padBefore + name + padAfter + after
+                                                );
 
-                                                    props.onChange(
-                                                        before + padBefore + name + padAfter + after
-                                                    );
+                                                hideContextMenu();
+                                            }}
+                                            style={{ maxWidth: 400, whiteSpace: "normal" }}
+                                        >
+                                            <ListItemText>
+                                                <pre className="language-wipple">
+                                                    <span className={`token ${kind}`}>{name}</span>
+                                                </pre>
 
-                                                    hideContextMenu();
-                                                }}
-                                                style={{ maxWidth: 400, whiteSpace: "normal" }}
-                                            >
-                                                <ListItemText>
-                                                    <pre className="language-wipple">
-                                                        <span className={`token ${kind}`}>
-                                                            {name}
-                                                        </span>
-                                                    </pre>
+                                                <ReactMarkdown
+                                                    remarkPlugins={[
+                                                        remarkMath,
+                                                        remarkGfm,
+                                                        remarkSmartypants,
+                                                    ]}
+                                                    rehypePlugins={[rehypeRaw, rehypeKatex]}
+                                                    linkTarget="_blank"
+                                                >
+                                                    {help}
+                                                </ReactMarkdown>
+                                            </ListItemText>
+                                        </MenuItem>
+                                    ) : null;
 
-                                                    <ReactMarkdown
-                                                        remarkPlugins={[
-                                                            remarkMath,
-                                                            remarkGfm,
-                                                            remarkSmartypants,
-                                                        ]}
-                                                        rehypePlugins={[rehypeRaw, rehypeKatex]}
-                                                        linkTarget="_blank"
-                                                    >
-                                                        {help}
-                                                    </ReactMarkdown>
-                                                </ListItemText>
-                                            </MenuItem>
-                                        ) : null;
+                                const variablesSection =
+                                    completions.variables.map(renderCompletionItem);
 
-                                    const variablesSection =
-                                        completions.variables.map(renderCompletionItem);
+                                const groupedConstantsSection = completions.groupedConstants.map(
+                                    ([group, completions], index) => (
+                                        <div key={index}>
+                                            <Divider />
+                                            <ListSubheader>{group}</ListSubheader>
+                                            <Divider />
+                                            {...completions.map(renderCompletionItem)}
+                                        </div>
+                                    )
+                                );
 
-                                    const groupedConstantsSection =
-                                        completions.groupedConstants.map(
-                                            ([group, completions], index) => (
-                                                <div key={index}>
-                                                    <Divider />
-                                                    <ListSubheader>{group}</ListSubheader>
-                                                    <Divider />
-                                                    {...completions.map(renderCompletionItem)}
-                                                </div>
-                                            )
-                                        );
+                                const ungroupedConstantsSection =
+                                    completions.ungroupedConstants.map(renderCompletionItem);
 
-                                    const ungroupedConstantsSection =
-                                        completions.ungroupedConstants.map(renderCompletionItem);
-
-                                    return (
-                                        <>
-                                            {variablesSection}
-                                            {groupedConstantsSection}
-                                            {ungroupedConstantsSection.length && <Divider />}
-                                            {ungroupedConstantsSection}
-                                        </>
-                                    );
-                                })()}
-                            </MenuList>
-                        </Menu>
-                    </>
+                                return (
+                                    <>
+                                        {variablesSection}
+                                        {groupedConstantsSection}
+                                        {ungroupedConstantsSection.length && <Divider />}
+                                        {ungroupedConstantsSection}
+                                    </>
+                                );
+                            })()}
+                        </MenuList>
+                    </Menu>
                 )}
             </div>
 

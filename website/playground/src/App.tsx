@@ -36,7 +36,7 @@ import { useRefState } from "./helpers";
 import { useMemo } from "react";
 
 type Section = { id: string; value: string } & (
-    | { type: "code"; lint?: boolean }
+    | { type: "code"; lint?: boolean; autoRun?: boolean }
     | { type: "text"; locked?: boolean }
 );
 
@@ -169,7 +169,7 @@ const App = () => {
     return (
         <main>
             <div className="full-height-container flex flex-col p-6 mb-8 mx-auto max-w-4xl">
-                <div className="flex items-center justify-between pb-4">
+                <div className="flex items-center justify-between pb-6">
                     <a
                         href="/playground"
                         className="flex items-center gap-3 text-black dark:text-white"
@@ -636,11 +636,20 @@ const SectionContainer = (props: {
                     id={props.section.id}
                     code={props.section.value}
                     lint={props.section.lint ?? true}
+                    autoRun={props.section.autoRun ?? true}
+                    onChangeAutoRun={(autoRun) => {
+                        props.onChange({
+                            ...props.section,
+                            type: "code",
+                            autoRun,
+                        });
+                    }}
                     autoFocus={props.autoFocus}
                     settings={props.settings}
                     onChange={(code) => {
                         props.onChange({
                             ...props.section,
+                            type: "code",
                             value: code,
                         });
                     }}
@@ -654,6 +663,7 @@ const SectionContainer = (props: {
                     onChange={(text) => {
                         props.onChange({
                             ...props.section,
+                            type: "text",
                             value: text,
                         });
                     }}

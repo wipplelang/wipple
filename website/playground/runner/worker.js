@@ -17,7 +17,7 @@ onmessage = async (event) => {
         const runner = await import("./pkg");
 
         switch (event.data.operation) {
-            case "analyze":
+            case "analyze": {
                 if (cancel) {
                     cancel();
                     cancel = undefined;
@@ -38,7 +38,8 @@ onmessage = async (event) => {
                 postMessage(analysis);
 
                 break;
-            case "run":
+            }
+            case "run": {
                 functions = [];
 
                 cancel = runner.run(
@@ -116,16 +117,25 @@ onmessage = async (event) => {
                 );
 
                 break;
-            case "hover":
+            }
+            case "hover": {
                 const { start, end } = event.data;
                 const hover = runner.hover(start, end);
                 postMessage(hover);
                 break;
-            case "completions":
+            }
+            case "completions": {
                 const { position } = event.data;
                 const completions = runner.completions(position);
                 postMessage(completions);
                 break;
+            }
+            case "format": {
+                const { code } = event.data;
+                const formatted = runner.format(code);
+                postMessage(formatted);
+                break;
+            }
             case "displayCallback":
                 await consoleResponders[event.data.id].callback();
                 consoleResponders[event.data.id] = undefined;

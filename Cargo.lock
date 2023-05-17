@@ -2808,6 +2808,7 @@ dependencies = [
  "wipple-default-loader",
  "wipple-frontend",
  "wipple-interpreter-backend",
+ "wipple-syntax",
 ]
 
 [[package]]

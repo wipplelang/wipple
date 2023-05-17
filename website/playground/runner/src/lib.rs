@@ -1053,6 +1053,11 @@ pub fn hover(start: usize, end: usize) -> JsValue {
     JsValue::from_serde(&hover).unwrap()
 }
 
+#[wasm_bindgen]
+pub fn format(code: &str) -> Option<String> {
+    wipple_syntax::parse::format(code)
+}
+
 fn wipple_to_js(
     interpreter: &wipple_interpreter_backend::Interpreter,
     context: &wipple_interpreter_backend::Context,

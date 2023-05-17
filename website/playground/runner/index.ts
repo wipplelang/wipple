@@ -310,5 +310,21 @@ export const useRunner = (context: any) => {
 
                 runner.current!.postMessage({ operation: "completions", position, context });
             }),
+        format: (code: string) =>
+            new Promise<string | undefined>((resolve, reject) => {
+                const prevonmessage = runner.current!.onmessage;
+                runner.current!.onmessage = (event) => {
+                    resolve(event.data);
+                    runner.current!.onmessage = prevonmessage;
+                };
+
+                const prevonerror = runner.current!.onerror;
+                runner.current!.onerror = (event) => {
+                    reject(event.error);
+                    runner.current!.onerror = prevonerror;
+                };
+
+                runner.current!.postMessage({ operation: "format", code, context });
+            }),
     };
 };
