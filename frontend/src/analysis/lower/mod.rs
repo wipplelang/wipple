@@ -3972,8 +3972,8 @@ impl Lowerer {
         kind: impl Fn(AnyDeclaration) -> bool,
         scope: &LoadedScopeId,
     ) -> Vec<Note> {
-        let mut notes =
-            std::iter::empty().chain(
+        let mut notes = std::iter::empty()
+            .chain(
                 self.file_info
                     .diagnostic_aliases
                     .aliases
@@ -3986,24 +3986,10 @@ impl Lowerer {
                     format!("if you meant to provide text here, try using quotes: `\"{name}\"`"),
                 )
             }))
-            .chain(did_you_mean::math(&name).map(|(lhs, op, rhs)| {
-                Note::secondary(
-                    span,
-                    format!("if you meant to write a mathematical expression, try using whitespace: `{lhs} {op} {rhs}`"),
-                )
-            }))
-            .chain(did_you_mean::trailing_colon(&name).map(|name| {
-                Note::secondary(
-                    span,
-                    format!("if you meant to assign to the name `{name}`, try putting a space before the colon: `{name} :`"),
-                )
-            }))
-            .chain(did_you_mean::comment(&name).map(|()| {
-                Note::secondary(
-                    span,
-                    format!("comments in Wipple begin with `--`"),
-                )
-            }))
+            .chain(
+                did_you_mean::comment(&name)
+                    .map(|()| Note::secondary(span, format!("comments in Wipple begin with `--`"))),
+            )
             .collect::<Vec<_>>();
 
         if notes.is_empty() {

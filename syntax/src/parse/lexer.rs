@@ -51,13 +51,13 @@ pub enum Token<'src> {
     #[regex(r#"--.*"#, |lex| &lex.slice()[2..], priority = 2)]
     Comment(&'src str),
 
-    #[regex(r#"'[^\n\t \(\)\[\]\{\}"]+"#, |lex| &lex.slice()[1..])]
+    #[regex(r#"'[A-Za-z\-_]+[!?']?"#, |lex| &lex.slice()[1..])]
     QuoteName(&'src str),
 
-    #[regex(r#"\.\.\.[^\n\t \(\)\[\]\{\}"]+"#, |lex| &lex.slice()[3..])]
+    #[regex(r#"\.\.\.[A-Za-z\-_]+[!?']?"#, |lex| &lex.slice()[3..])]
     RepeatName(&'src str),
 
-    #[regex(r#"[^\n\t \(\)\[\]\{\}"]+"#, |lex| lex.slice())]
+    #[regex(r#"[A-Za-z\-_]+[!?']?|[~`!@#$%^&*\-+=\\\|:;<,>.?/]+"#, |lex| lex.slice())]
     Name(&'src str),
 
     #[regex(r#""[^"\\]*(?s:\\.[^"\\]*)*""#, |lex| &lex.slice()[1..(lex.slice().len() - 1)])]

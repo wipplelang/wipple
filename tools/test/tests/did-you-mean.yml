@@ -24,24 +24,6 @@ diagnostics: |
       │      this name is not defined
       │      if you meant to provide text here, try using quotes: `"hello"`
 
-    error: cannot find `sum:`
-      ┌─ test:3:1
-      │
-    3 │ sum: 1+2 // comment
-      │ ^^^^
-      │ │
-      │ this name is not defined
-      │ if you meant to assign to the name `sum`, try putting a space before the colon: `sum :`
-
-    error: cannot find `1+2`
-      ┌─ test:3:6
-      │
-    3 │ sum: 1+2 // comment
-      │      ^^^
-      │      │
-      │      this name is not defined
-      │      if you meant to write a mathematical expression, try using whitespace: `1 + 2`
-
     error: cannot find `//`
       ┌─ test:3:10
       │
