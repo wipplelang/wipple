@@ -55,6 +55,7 @@ enum Args {
         clear: bool,
     },
     Lsp,
+    Format,
 }
 
 #[derive(Parser)]
@@ -383,6 +384,14 @@ async fn run() -> anyhow::Result<()> {
         }
         Args::Lsp => {
             lsp::run().await;
+        }
+        Args::Format => {
+            let code = std::io::read_to_string(io::stdin())?;
+
+            let formatted = wipple_syntax::parse::format(&code)
+                .ok_or_else(|| anyhow::Error::msg("syntax error"))?; // TODO: Show syntax errors
+
+            io::stdout().write_all(formatted.as_bytes())?;
         }
     }
 

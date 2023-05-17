@@ -786,8 +786,8 @@ impl<D: Driver> SyntaxPattern<D> {
                                     Self::expand(ast_builder, pattern?, vars, source_span, scope)?;
 
                                 Ok(parse::Statement {
-                                    leading_lines: 0,
                                     line: parse::ListLine {
+                                        leading_lines: 0,
                                         attributes: Vec::new(),
                                         exprs: match statement.try_into_list_exprs() {
                                             Ok((_, exprs)) => exprs.collect(),

@@ -42,7 +42,7 @@ pub enum Token<'src> {
     #[token("_")]
     Underscore,
 
-    #[regex(r#"\n+"#)]
+    #[regex(r#"\n"#)]
     LineBreak,
 
     #[regex(r#"[\t ]+"#, logos::skip)]

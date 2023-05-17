@@ -31,3 +31,4 @@ which = "4"
 wipple-default-loader = { path = "../../loaders/default" }
 wipple-frontend = { path = "../../frontend" }
 wipple-interpreter-backend = { path = "../../backends/interpreter" }
+wipple-syntax = { path = "../../syntax" }

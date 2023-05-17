@@ -8,6 +8,7 @@ use std::{iter::Peekable, ops::Range};
 pub struct File<D: Driver> {
     pub span: D::Span,
     pub shebang: Option<D::InternedString>,
+    pub comments: Vec<ListLine<D>>,
     pub attributes: Vec<Attribute<D>>,
     pub statements: Vec<Statement<D>>,
 }
@@ -16,6 +17,7 @@ pub struct File<D: Driver> {
 pub struct Attribute<D: Driver> {
     pub span: D::Span,
     pub exprs: Vec<Expr<D>>,
+    pub comment: Option<D::InternedString>,
 }
 
 #[derive(Debug, Clone)]
@@ -96,7 +98,6 @@ impl<D: Driver> Expr<D> {
 
 #[derive(Debug, Clone)]
 pub struct Statement<D: Driver> {
-    pub leading_lines: u32,
     pub line: ListLine<D>,
 }
 
@@ -108,6 +109,7 @@ impl<D: Driver> Statement<D> {
 
 #[derive(Debug, Clone)]
 pub struct ListLine<D: Driver> {
+    pub leading_lines: u32,
     pub attributes: Vec<Attribute<D>>,
     pub exprs: Vec<Expr<D>>,
     pub comment: Option<D::InternedString>,
@@ -116,6 +118,7 @@ pub struct ListLine<D: Driver> {
 impl<D: Driver> From<Vec<Expr<D>>> for ListLine<D> {
     fn from(exprs: Vec<Expr<D>>) -> Self {
         ListLine {
+            leading_lines: 0,
             attributes: Vec::new(),
             exprs,
             comment: None,
@@ -148,9 +151,27 @@ pub enum ParseError {
 }
 
 impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
-    pub fn parse_file(&mut self) -> (Vec<Attribute<D>>, Vec<Statement<D>>) {
-        while let (_, Some(Token::Comment(_) | Token::LineBreak)) = self.peek() {
-            self.consume();
+    pub fn parse_file(&mut self) -> (Vec<ListLine<D>>, Vec<Attribute<D>>, Vec<Statement<D>>) {
+        let mut comments = Vec::new();
+        loop {
+            let mut leading_lines = 0;
+            while let (_, Some(Token::LineBreak)) = self.peek() {
+                leading_lines += 1;
+                self.consume();
+            }
+
+            if let (_, Some(Token::Comment(c))) = self.peek() {
+                comments.push(ListLine {
+                    leading_lines,
+                    attributes: Vec::new(),
+                    exprs: Vec::new(),
+                    comment: Some(self.driver.intern(c)),
+                });
+
+                self.consume();
+            } else {
+                break;
+            }
         }
 
         let attributes = self.parse_file_attributes();
@@ -162,7 +183,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                 .syntax_error(span, format!("expected end of file, found {token}"));
         }
 
-        (attributes, statements)
+        (comments, attributes, statements)
     }
 
     pub fn parse_file_attributes(&mut self) -> Vec<Attribute<D>> {
@@ -178,11 +199,22 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
 
         self.consume();
 
+        if let (_, Some(Token::LineBreak)) = self.peek() {
+            self.consume();
+        }
+
         let (lines, end_span) = self.parse_list_contents(Token::RightFileBracket);
+
+        let mut comment = None;
+        if let (_, Some(Token::Comment(c))) = self.peek() {
+            comment = Some(self.driver.intern(c));
+            self.consume();
+        }
 
         Some(Attribute {
             span: Span::join(span, end_span),
             exprs: lines.into_iter().flat_map(|line| line.exprs).collect(),
+            comment,
         })
     }
 
@@ -253,14 +285,16 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                 }
             }
 
-            statements.push(Statement {
-                leading_lines,
-                line: ListLine {
-                    attributes,
-                    exprs,
-                    comment,
-                },
-            });
+            if leading_lines > 0 || attributes.len() > 0 || exprs.len() > 0 || comment.is_some() {
+                statements.push(Statement {
+                    line: ListLine {
+                        leading_lines,
+                        attributes,
+                        exprs,
+                        comment,
+                    },
+                });
+            }
 
             if let Some(end_span) = end_span {
                 break end_span;
@@ -279,11 +313,22 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
 
         self.consume();
 
+        if let (_, Some(Token::LineBreak)) = self.peek() {
+            self.consume();
+        }
+
         let (lines, end_span) = self.parse_list_contents(Token::RightAttrBracket);
+
+        let mut comment = None;
+        if let (_, Some(Token::Comment(c))) = self.peek() {
+            comment = Some(self.driver.intern(c));
+            self.consume();
+        }
 
         Some(Attribute {
             span: Span::join(span, end_span),
             exprs: lines.into_iter().flat_map(|line| line.exprs).collect(),
+            comment,
         })
     }
 
@@ -464,6 +509,10 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
             Some(Token::LeftParenthesis) => {
                 self.consume();
 
+                if let (_, Some(Token::LineBreak)) = self.peek() {
+                    self.consume();
+                }
+
                 let (lines, end_span) = self.parse_list_contents(Token::RightParenthesis);
 
                 Ok(Expr::new(Span::join(span, end_span), ExprKind::List(lines)))
@@ -479,6 +528,10 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
         match token {
             Some(Token::RepeatLeftParenthesis) => {
                 self.consume();
+
+                if let (_, Some(Token::LineBreak)) = self.peek() {
+                    self.consume();
+                }
 
                 let (lines, end_span) = self.parse_list_contents(Token::RightParenthesis);
 
@@ -498,7 +551,9 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
 
         let (parsed_end_token, end_span) = loop {
             // Consume line breaks
+            let mut leading_lines = 0;
             while let (_, Some(Token::LineBreak)) = self.peek() {
+                leading_lines += 1;
                 self.consume();
             }
 
@@ -538,11 +593,14 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                 }
             })();
 
-            lines.push(ListLine {
-                attributes: Vec::new(),
-                exprs,
-                comment,
-            });
+            if leading_lines > 0 || exprs.len() > 0 || comment.is_some() {
+                lines.push(ListLine {
+                    leading_lines,
+                    attributes: Vec::new(),
+                    exprs,
+                    comment,
+                });
+            }
 
             if let Some(end_span) = end_span {
                 break (token, end_span);
@@ -565,6 +623,10 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
         match token {
             Some(Token::LeftBrace) => {
                 self.consume();
+
+                if let (_, Some(Token::LineBreak)) = self.peek() {
+                    self.consume();
+                }
 
                 let (statements, end_span) = self.parse_statements(Some(Token::RightBrace));
 
