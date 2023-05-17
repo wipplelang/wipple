@@ -1,7 +1,7 @@
 Music : type {
-	tempo :: Mutable Number
-	handle :: UI
-	task-group :: Task-Group
+    tempo :: Mutable Number
+    handle :: UI
+    task-group :: Task-Group
 }
 
 [context]
@@ -9,21 +9,21 @@ music :: Music
 music : crash "use of music outside `with-music`"
 
 with-music : syntax {
-	with-music 'body -> {
-		with-ui "/playground/ui/music/index.js" (handle -> {
-			handle . message "wait-for-play-button" ()
+    with-music 'body -> {
+        with-ui "/playground/ui/music/index.js" (handle -> {
+            handle . message "wait-for-play-button" ()
 
-			with-task-group (task-group -> {
-				with (music : Music {
-					tempo : mutable 120
-					handle
-					task-group
-				}) 'body
-			})
+            with-task-group (task-group -> {
+                with (music : Music {
+                    tempo : mutable 120
+                    handle
+                    task-group
+                }) 'body
+            })
 
-			handle . message "done" ()
-		})
-	}
+            handle . message "done" ()
+        })
+    }
 }
 
 [help "Set the tempo of the music."]
@@ -32,14 +32,14 @@ tempo :: Number -> ()
 tempo : new-tempo -> tempo of music . set! new-tempo
 
 Instrument-Name : type {
-	name :: Text
+    name :: Text
 }
 
 instance (As Text Instrument-Name) : name -> Instrument-Name { name }
 
 Instrument : type {
-	name :: Instrument-Name
-	delta :: Mutable Number
+    name :: Instrument-Name
+    delta :: Mutable Number
 }
 
 [context]
@@ -47,34 +47,34 @@ instrument :: Instrument
 instrument : crash "use of instrument outside `with-instrument`"
 
 with-instrument : syntax {
-	with-instrument 'name 'body -> {
-		instrument-name : ('name :: Instrument-Name)
-		handle of music . message "load-instrument" (name of instrument-name)
+    with-instrument 'name 'body -> {
+        instrument-name : ('name :: Instrument-Name)
+        handle of music . message "load-instrument" (name of instrument-name)
 
-		with (instrument : Instrument {
-			name : instrument-name
-			delta : mutable 0
-		}) {
-			task-group of music . task 'body
-		}
-	}
+        with (instrument : Instrument {
+            name : instrument-name
+            delta : mutable 0
+        }) {
+            task-group of music . task 'body
+        }
+    }
 }
 
 Note-Length : type {
-	ms-from-tempo :: Number -> Number
+    ms-from-tempo :: Number -> Number
 }
 
 instance (As Duration Note-Length) : { ms } -> Note-Length {
-	ms-from-tempo : just (ms as Number)
+    ms-from-tempo : just (ms as Number)
 }
 
 beats' :: Number -> Note-Length
 beats' : beats -> Note-Length {
-	ms-from-tempo : tempo -> 60000 / tempo * beats
+    ms-from-tempo : tempo -> 60000 / tempo * beats
 }
 
 beats : syntax {
-	'n beats -> beats' 'n
+    'n beats -> beats' 'n
 }
 
 [help "Play a note on an instrument. The note name should be in the format `C4` or `Eb5`."]
@@ -86,15 +86,15 @@ note : note -> length -> notes (list note) length
 [help-group "Music"]
 notes :: Collection where (Iterate Collection Text) => Collection -> Note-Length -> ()
 notes : notes -> { ms-from-tempo } -> {
-	instrument-name : name of name of instrument
-	delta : get (delta of instrument)
-	ms : ms-from-tempo (get (tempo of music)) - delta
-	notes : notes . transform (note -> format "_," note) . collect :: Text
+    instrument-name : name of name of instrument
+    delta : get (delta of instrument)
+    ms : ms-from-tempo (get (tempo of music)) - delta
+    notes : notes . transform (note -> format "_," note) . collect :: Text
 
-	delta : handle of music . message "notes" (format "_ _ _" instrument-name ms notes)
-	if (delta < 0) (crash "music stopped")
+    delta : handle of music . message "notes" (format "_ _ _" instrument-name ms notes)
+    if (delta < 0) (crash "music stopped")
 
-	delta of instrument . set! delta
+    delta of instrument . set! delta
 }
 
 [help "Rest for a period of time."]

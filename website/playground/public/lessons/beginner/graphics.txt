@@ -42,7 +42,7 @@ type: code
 use "turtle"
 
 with-turtle {
-	-- More to follow...
+    -- More to follow...
 }
 
 ---
@@ -61,7 +61,7 @@ type: code
 use "turtle"
 
 with-turtle {
-	forward (50 pixels)
+    forward (50 pixels)
 }
 
 ---
@@ -80,14 +80,14 @@ type: code
 use "turtle"
 
 with-turtle {
-	forward (50 pixels)
-	left (90 degrees)
-	forward (50 pixels)
-	left (90 degrees)
-	forward (50 pixels)
-	left (90 degrees)
-	forward (50 pixels)
-	left (90 degrees)
+    forward (50 pixels)
+    left (90 degrees)
+    forward (50 pixels)
+    left (90 degrees)
+    forward (50 pixels)
+    left (90 degrees)
+    forward (50 pixels)
+    left (90 degrees)
 }
 
 ---
@@ -106,14 +106,14 @@ type: code
 use "turtle"
 
 with-turtle {
-	width (500 pixels)
-	right (90 degrees)
-	color "red"
-	forward (50 pixels)
-	color "green"
-	forward (50 pixels)
-	color "blue"
-	forward (50 pixels)
+    width (500 pixels)
+    right (90 degrees)
+    color "red"
+    forward (50 pixels)
+    color "green"
+    forward (50 pixels)
+    color "blue"
+    forward (50 pixels)
 }
 
 ---

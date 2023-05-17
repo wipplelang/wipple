@@ -45,10 +45,7 @@ pub enum Token<'src> {
     #[regex(r#"\n+"#)]
     LineBreak,
 
-    #[regex(r#"\t+"#, |lex| lex.slice().len() as u32)]
-    Indent(u32),
-
-    #[regex(r#" +"#, logos::skip)]
+    #[regex(r#"[\t ]+"#, logos::skip)]
     Space,
 
     #[regex(r#"--.*"#, |lex| &lex.slice()[2..], priority = 2)]
@@ -90,7 +87,6 @@ impl<'src> fmt::Display for Token<'src> {
             Token::RightBrace => write!(f, "`}}`"),
             Token::Underscore => write!(f, "`_`"),
             Token::LineBreak => write!(f, "line break"),
-            Token::Indent(_) => write!(f, "indent"),
             Token::Space => unreachable!(),
             Token::Comment(_) => write!(f, "comment"),
             Token::QuoteName(name) => write!(f, "`'{name}`"),

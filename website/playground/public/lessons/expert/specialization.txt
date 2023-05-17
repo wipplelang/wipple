@@ -23,26 +23,26 @@ type: code
 ---
 
 Counter : type {
-	count :: Mutable Natural
-	max :: Natural
+    count :: Mutable Natural
+    max :: Natural
 }
 
 instance (Iterate Counter Natural) : { count max } -> {
-	iterator (() -> {
-		n : get count
-		if (n = max) {
-			None
-		} {
-			increment! count
-			Some n
-		}
-	})
+    iterator (() -> {
+        n : get count
+        if (n = max) {
+            None
+        } {
+            increment! count
+            Some n
+        }
+    })
 }
 
 count-up-to :: Natural -> Counter
 count-up-to : max -> Counter {
-	count : mutable 0
-	max
+    count : mutable 0
+    max
 }
 
 show (count (count-up-to 10))
@@ -63,7 +63,7 @@ type: code
 ---
 
 Counter : type {
-	max :: Natural -- we only care about `max` in this example
+    max :: Natural -- we only care about `max` in this example
 }
 
 instance (Iterate Counter Natural) : ...

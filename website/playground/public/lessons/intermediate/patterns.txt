@@ -41,10 +41,10 @@ type: code
 n : prompt "Enter a number"
 
 show (when n {
-	0 -> "zero"
-	1 -> "one"
-	2 -> "two"
-	_ -> "error"
+    0 -> "zero"
+    1 -> "one"
+    2 -> "two"
+    _ -> "error"
 })
 
 ---
@@ -66,8 +66,8 @@ type: code
 
 key : prompt "Enter the secret key"
 show (when key {
-	"Wipple" -> "access granted"
-	_ -> "access denied"
+    "Wipple" -> "access granted"
+    _ -> "access denied"
 })
 
 ---
@@ -85,8 +85,8 @@ lint: false
 ---
 
 when "hi" {
-	x -> show (format "x is _" x)
-	y -> show (format "y is _" y)
+    x -> show (format "x is _" x)
+    y -> show (format "y is _" y)
 }
 
 ---
@@ -107,8 +107,8 @@ type: code
 name : "Wipple"
 
 greeting : when name {
-	"Wipple" -> "My favorite language!"
-	_ -> format "Hello, _!" name
+    "Wipple" -> "My favorite language!"
+    _ -> format "Hello, _!" name
 }
 
 show greeting
@@ -129,9 +129,9 @@ type: code
 name : "Wipple"
 
 greeting : when name {
-	"Wipple" -> "My favorite language!"
-	"Python" or "JavaScript" -> format "_ is cool too!" name
-	_ -> format "Hello, _!" name
+    "Wipple" -> "My favorite language!"
+    "Python" or "JavaScript" -> format "_ is cool too!" name
+    _ -> format "Hello, _!" name
 }
 
 show greeting
@@ -150,11 +150,11 @@ type: code
 ---
 
 when (1 + 1) {
-	2 -> {
-		show "Woohoo!"
-		show "Math works!"
-	}
-	_ -> show "Uh oh..."
+    2 -> {
+        show "Woohoo!"
+        show "Math works!"
+    }
+    _ -> show "Uh oh..."
 }
 
 ---

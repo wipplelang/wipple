@@ -50,7 +50,7 @@ lint: false
 url : "https://pkg.wipple.dev/gist/a9d2b553609030d94d4e8c00e8d26669/ui-test.js"
 
 with-ui url (ui -> {
-	-- TODO
+    -- TODO
 })
 
 ---
@@ -69,7 +69,7 @@ type: code
 url : "https://pkg.wipple.dev/gist/a9d2b553609030d94d4e8c00e8d26669/ui-test.js"
 
 with-ui url (ui -> {
-	ui . message "display-text" "Hello, world!"
+    ui . message "display-text" "Hello, world!"
 })
 
 ---
@@ -86,7 +86,7 @@ type: code
 ---
 
 My-Interface : type {
-	ui :: UI
+    ui :: UI
 }
 
 [context]
@@ -94,20 +94,20 @@ my-interface :: My-Interface
 my-interface : crash "`my-interface` used outside `with-my-interface`"
 
 with-my-interface : syntax {
-	with-my-interface 'body -> {
-		url : "https://pkg.wipple.dev/gist/a9d2b553609030d94d4e8c00e8d26669/ui-test.js"
+    with-my-interface 'body -> {
+        url : "https://pkg.wipple.dev/gist/a9d2b553609030d94d4e8c00e8d26669/ui-test.js"
 
-		with-ui url (ui -> {
-			with (my-interface : My-Interface { ui }) 'body
-		})
-	}
+        with-ui url (ui -> {
+            with (my-interface : My-Interface { ui }) 'body
+        })
+    }
 }
 
 display-text :: Text -> ()
 display-text : text -> ui of my-interface . message "display-text" text
 
 with-my-interface {
-	display-text "Hello, world!"
+    display-text "Hello, world!"
 }
 
 ---
@@ -126,7 +126,7 @@ type: code
 use "https://pkg.wipple.dev/gist/2ff0db15f051a39080ff5aa4a2e9a6bf/my-interface"
 
 with-my-interface {
-	display-text "Hello, world!"
+    display-text "Hello, world!"
 }
 
 ---

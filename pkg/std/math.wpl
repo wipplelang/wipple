@@ -11,7 +11,7 @@ Add : Left Right Sum => trait (Left -> Right -> Sum)
 
 [operator Addition-Precedence]
 + : syntax {
-	'a + 'b -> Add 'a 'b
+    'a + 'b -> Add 'a 'b
 }
 
 instance (Add Number Number Number) : a b -> external "runtime" "add-number" a b
@@ -31,7 +31,7 @@ Subtract : Left Right Difference => trait (Left -> Right -> Difference)
 
 [operator Addition-Precedence]
 - : syntax {
-	'a - 'b -> Subtract 'a 'b
+    'a - 'b -> Subtract 'a 'b
 }
 
 instance (Subtract Number Number Number) : a b -> external "runtime" "subtract-number" a b
@@ -50,7 +50,7 @@ Multiply : Left Right Product => trait (Left -> Right -> Product)
 
 [operator Multiplication-Precedence]
 * : syntax {
-	'a * 'b -> Multiply 'a 'b
+    'a * 'b -> Multiply 'a 'b
 }
 
 instance (Multiply Number Number Number) : a b -> external "runtime" "multiply-number" a b
@@ -69,7 +69,7 @@ Divide : Left Right Quotient => trait (Left -> Right -> Quotient)
 
 [operator Multiplication-Precedence]
 / : syntax {
-	'a / 'b -> Divide 'a 'b
+    'a / 'b -> Divide 'a 'b
 }
 
 instance (Divide Number Number Number) : a b -> external "runtime" "divide-number" a b
@@ -88,7 +88,7 @@ Modulo : Left Right Remainder => trait (Left -> Right -> Remainder)
 
 [operator Multiplication-Precedence]
 mod : syntax {
-	'a mod 'b -> Modulo 'a 'b
+    'a mod 'b -> Modulo 'a 'b
 }
 
 instance (Modulo Number Number Number) : a b -> external "runtime" "modulo-number" a b
@@ -107,7 +107,7 @@ Power : Left Right Power => trait (Left -> Right -> Power)
 
 [operator Exponentiation-Precedence]
 ^ : syntax {
-	'a ^ 'b -> Power 'a 'b
+    'a ^ 'b -> Power 'a 'b
 }
 
 instance (Power Number Number Number) : a b -> external "runtime" "power-number" a b

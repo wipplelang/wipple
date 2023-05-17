@@ -23,7 +23,7 @@ type: code
 use "graphing"
 
 with-graph {
-	plot (x -> x ^ 2)
+    plot (x -> x ^ 2)
 }
 
 ---
@@ -42,10 +42,10 @@ type: code
 use "graphing"
 
 with-graph {
-	min-y 0
-	max-y 100
-	color "blue"
-	plot (x -> x ^ 2)
+    min-y 0
+    max-y 100
+    color "blue"
+    plot (x -> x ^ 2)
 }
 
 ---
@@ -64,14 +64,14 @@ type: code
 use "graphing"
 
 with-graph {
-	color "red"
-	plot (x -> x)
+    color "red"
+    plot (x -> x)
 
-	color "green"
-	plot (x -> x ^ 2)
+    color "green"
+    plot (x -> x ^ 2)
 
-	color "blue"
-	plot (x -> x ^ 3)
+    color "blue"
+    plot (x -> x ^ 3)
 }
 
 ---
@@ -90,7 +90,7 @@ type: code
 use "graphing"
 
 with-graph {
-	plot (x -> x mod 2)
+    plot (x -> x mod 2)
 }
 
 ---

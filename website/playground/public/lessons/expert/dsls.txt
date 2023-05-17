@@ -27,7 +27,7 @@ type: code
 ---
 
 Robot : type {
-	name :: Text
+    name :: Text
 }
 
 [context]
@@ -50,7 +50,7 @@ type: code
 ---
 
 Robot : type {
-	name :: Text
+    name :: Text
 }
 
 [context]
@@ -58,7 +58,7 @@ robot :: Robot
 robot : crash "`robot` not initialized"
 
 with (robot : Robot { name : "Bot" }) {
-	show (format "Hello, I'm _!" (name of robot))
+    show (format "Hello, I'm _!" (name of robot))
 }
 
 ---
@@ -75,7 +75,7 @@ type: code
 ---
 
 Robot : type {
-	name :: Text
+    name :: Text
 }
 
 [context]
@@ -86,7 +86,7 @@ say-hello :: () -> ()
 say-hello : () -> show (format "Hello, I'm _!" (name of robot))
 
 with (robot : Robot { name : "Bot" }) {
-	say-hello ()
+    say-hello ()
 }
 
 ---
@@ -103,7 +103,7 @@ type: code
 ---
 
 Robot : type {
-	name :: Text
+    name :: Text
 }
 
 [context]
@@ -115,10 +115,10 @@ say-hello : () -> show (format "Hello, I'm _!" (name of robot))
 
 with-robot :: Text -> (() -> ()) -> ()
 with-robot : name f ->
-	with (robot : Robot { name }) (f ())
+    with (robot : Robot { name }) (f ())
 
 with-robot "Bot" (() -> {
-	say-hello ()
+    say-hello ()
 })
 
 ---
@@ -135,8 +135,8 @@ type: code
 ---
 
 with-robot : syntax {
-	with-robot 'name 'body ->
-		with (robot : Robot { name : 'name }) 'body
+    with-robot 'name 'body ->
+        with (robot : Robot { name : 'name }) 'body
 }
 
 ---
@@ -153,12 +153,12 @@ type: code
 ---
 
 with-robot : syntax {
-	with-robot 'name 'body ->
-		with (robot : Robot { name : 'name }) 'body
+    with-robot 'name 'body ->
+        with (robot : Robot { name : 'name }) 'body
 }
 
 with-robot "Bot" {
-	...
+    ...
 }
 
 ---
@@ -177,7 +177,7 @@ type: code
 ---
 
 add : syntax {
-	add 'a 'b -> 'a + 'b
+    add 'a 'b -> 'a + 'b
 }
 
 show (add 1 2)
@@ -196,7 +196,7 @@ type: code
 ---
 
 subtract : syntax {
-	subtract 'a from 'b -> 'b - 'a
+    subtract 'a from 'b -> 'b - 'a
 }
 
 show (subtract 7 from 10)
@@ -215,7 +215,7 @@ type: code
 ---
 
 add : syntax {
-	add ...x -> 0 ...(+ 'x)
+    add ...x -> 0 ...(+ 'x)
 }
 
 show (add)
@@ -239,7 +239,7 @@ type: code
 ---
 
 Robot : type {
-	name :: Text
+    name :: Text
 }
 
 [context]
@@ -247,16 +247,16 @@ robot :: Robot
 robot : crash "`robot` not initialized"
 
 with-robot : syntax {
-	with-robot 'name 'body ->
-		with (robot : Robot { name : 'name }) 'body
+    with-robot 'name 'body ->
+        with (robot : Robot { name : 'name }) 'body
 }
 
 say-hello : syntax {
-	say-hello -> show (format "Hello, I'm _!" (name of robot))
+    say-hello -> show (format "Hello, I'm _!" (name of robot))
 }
 
 with-robot "Bot" {
-	say-hello
+    say-hello
 }
 
 ---
@@ -278,7 +278,7 @@ type: code
 
 [operator Addition-Precedence]
 says : syntax {
-	'person says 'greeting -> show (format "_, I'm _!" 'greeting 'person)
+    'person says 'greeting -> show (format "_, I'm _!" 'greeting 'person)
 }
 
 "Alice" says "Hello"
@@ -303,5 +303,5 @@ type: code
 use "https://pkg.wipple.dev/gist/ab49093029b9c72772a4165d7d8a85ff/robot"
 
 with-robot "Bot" {
-	say-hello
+    say-hello
 }

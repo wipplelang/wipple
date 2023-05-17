@@ -3,42 +3,42 @@
 use "iterate"
 
 Range : N => type {
-	min :: N
-	max :: N
-	step :: N
+    min :: N
+    max :: N
+    step :: N
 }
 
 N where (Numeric N) (Order N) (Add N N N) => instance (Iterate (Range N) N) : range -> {
-	{ zero } : Numeric
-	{ min max step } : range
-	current : mutable min
+    { zero } : Numeric
+    { min max step } : range
+    current : mutable min
 
-	if (max < min) {
-		crash "`max` must be greater than `min`"
-	}
+    if (max < min) {
+        crash "`max` must be greater than `min`"
+    }
 
-	if (step < zero) {
-		crash "`step` must be positive"
-	}
+    if (step < zero) {
+        crash "`step` must be positive"
+    }
 
-	iterator (() -> {
-		if (get current >= max) {
-			None
-		} {
-			n : get current
-			current . add! step
-			Some n
-		}
-	})
+    iterator (() -> {
+        if (get current >= max) {
+            None
+        } {
+            n : get current
+            current . add! step
+            Some n
+        }
+    })
 }
 
 [operator Composition-Precedence]
 to : syntax {
-	'min to 'max -> Range {
-		min : 'min
-		max : 'max
-		step : 1
-	}
+    'min to 'max -> Range {
+        min : 'min
+        max : 'max
+        step : 1
+    }
 }
 
 [help "Repeatedly call a function the specified number of times."]

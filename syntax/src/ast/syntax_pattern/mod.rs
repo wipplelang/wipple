@@ -787,15 +787,14 @@ impl<D: Driver> SyntaxPattern<D> {
 
                                 Ok(parse::Statement {
                                     leading_lines: 0,
-                                    indent: 0,
-                                    lines: vec![parse::ListLine {
+                                    line: parse::ListLine {
                                         attributes: Vec::new(),
                                         exprs: match statement.try_into_list_exprs() {
                                             Ok((_, exprs)) => exprs.collect(),
                                             Err(statement) => vec![statement],
                                         },
                                         comment: None,
-                                    }],
+                                    },
                                 })
                             })
                             .collect::<Result<_, _>>()?,

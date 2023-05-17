@@ -25,32 +25,32 @@ use "turtle"
 
 triangle :: Number -> ()
 triangle : size -> if (size > 5) {
-	half : size / 2
+    half : size / 2
 
-	triangle half
-	forward (half pixels)
+    triangle half
+    forward (half pixels)
 
-	triangle half
-	forward (half pixels)
-	left (120 degrees)
-	forward (half pixels)
+    triangle half
+    forward (half pixels)
+    left (120 degrees)
+    forward (half pixels)
 
-	triangle half
-	forward (half pixels)
-	left (120 degrees)
-	forward (size pixels)
-	left (120 degrees)
+    triangle half
+    forward (half pixels)
+    left (120 degrees)
+    forward (size pixels)
+    left (120 degrees)
 }
 
 with-turtle {
-	speed 10
+    speed 10
 
-	-- Set up
-	position (30 pixels , 30 pixels)
-	left (30 degrees)
+    -- Set up
+    position (30 pixels , 30 pixels)
+    left (30 degrees)
 
-	-- Draw the fractal
-	triangle 100
+    -- Draw the fractal
+    triangle 100
 }
 
 ---
@@ -73,19 +73,19 @@ scale : 0.8
 
 tree :: Number -> ()
 tree : size -> if (size > 5) {
-	forward (size pixels)
-	right (30 degrees)
-	tree (size * scale)
-	left (60 degrees)
-	tree (size * scale)
-	right (30 degrees)
-	backward (size pixels)
+    forward (size pixels)
+    right (30 degrees)
+    tree (size * scale)
+    left (60 degrees)
+    tree (size * scale)
+    right (30 degrees)
+    backward (size pixels)
 }
 
 with-turtle {
-	speed 10
-	position (0 pixels , 50 pixels)
-	tree 25
+    speed 10
+    position (0 pixels , 50 pixels)
+    tree 25
 }
 
 ---

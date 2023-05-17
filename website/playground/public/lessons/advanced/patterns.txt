@@ -25,8 +25,8 @@ type: code
 ---
 
 always-one : when 1 {
-	1 -> 1
-	_ -> crash "not 1!"
+    1 -> 1
+    _ -> crash "not 1!"
 }
 
 show always-one
@@ -49,8 +49,8 @@ type: code
 ---
 
 My-Maybe : type {
-	Some Number
-	None
+    Some Number
+    None
 }
 
 ---
@@ -70,8 +70,8 @@ lint: false
 ---
 
 My-Maybe : type {
-	Some Number
-	None
+    Some Number
+    None
 }
 
 maybe-a-number :: My-Maybe
@@ -91,16 +91,16 @@ type: code
 ---
 
 My-Maybe : type {
-	Some Number
-	None
+    Some Number
+    None
 }
 
 maybe-a-number :: My-Maybe
 maybe-a-number : Some 42
 
 when maybe-a-number {
-	Some n -> show (format "The number is _" n)
-	None -> show "There is no number"
+    Some n -> show (format "The number is _" n)
+    None -> show "There is no number"
 }
 
 ---
@@ -119,8 +119,8 @@ type: code
 ---
 
 My-Maybe : A => type {
-	Some A
-	None
+    Some A
+    None
 }
 
 -- Change these values and watch how the output changes!
@@ -129,19 +129,19 @@ maybe-a-text : Some "Hello!"
 maybe-a-maybe : Some (Some 1) -- yes, you can put a My-Maybe inside a My-Maybe!
 
 when maybe-a-number {
-	Some number -> show (format "maybe-a-number holds _" number)
-	None -> show "maybe-a-number holds nothing"
+    Some number -> show (format "maybe-a-number holds _" number)
+    None -> show "maybe-a-number holds nothing"
 }
 
 when maybe-a-text {
-	Some text -> show (format "maybe-a-text holds _" text)
-	None -> show "maybe-a-text holds nothing"
+    Some text -> show (format "maybe-a-text holds _" text)
+    None -> show "maybe-a-text holds nothing"
 }
 
 when maybe-a-maybe {
-	Some (Some number) -> show (format "maybe-a-maybe holds a maybe holding _" number)
-	Some None -> show "maybe-a-maybe holds a maybe holding nothing"
-	None -> show "maybe-a-maybe holds nothing"
+    Some (Some number) -> show (format "maybe-a-maybe holds a maybe holding _" number)
+    Some None -> show "maybe-a-maybe holds a maybe holding nothing"
+    None -> show "maybe-a-maybe holds nothing"
 }
 
 ---
@@ -158,24 +158,24 @@ type: code
 ---
 
 My-Maybe : A => type {
-	Some A
-	None
+    Some A
+    None
 }
 
 instance (Show (My-Maybe Number)) : maybe -> when maybe {
-	Some x -> format "(Some _)" x
-	None -> "None"
+    Some x -> format "(Some _)" x
+    None -> "None"
 }
 
 instance (Show (My-Maybe Text)) : maybe -> when maybe {
-	Some x -> format "(Some _)" x
-	None -> "None"
+    Some x -> format "(Some _)" x
+    None -> "None"
 }
 
 instance (Show (My-Maybe (My-Maybe Number))) : maybe -> when maybe {
-	Some (Some x) -> format "(Some (Some _))" x
-	Some None -> "(Some None)"
-	None -> "None"
+    Some (Some x) -> format "(Some (Some _))" x
+    Some None -> "(Some None)"
+    None -> "None"
 }
 
 maybe-a-number : Some 42
@@ -200,13 +200,13 @@ type: code
 ---
 
 My-Maybe : A => type {
-	Some A
-	None
+    Some A
+    None
 }
 
 A => instance (Show (My-Maybe A)) : maybe -> when maybe {
-	Some x -> format "(Some _)" x
-	None -> "None"
+    Some x -> format "(Some _)" x
+    None -> "None"
 }
 
 ---
@@ -238,13 +238,13 @@ type: code
 ---
 
 My-Maybe : A => type {
-	Some A
-	None
+    Some A
+    None
 }
 
 A where (Show A) => instance (Show (My-Maybe A)) : maybe -> when maybe {
-	Some x -> format "(Some _)" x
-	None -> "None"
+    Some x -> format "(Some _)" x
+    None -> "None"
 }
 
 show (Some 42)

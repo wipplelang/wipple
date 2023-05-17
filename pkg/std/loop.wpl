@@ -4,55 +4,55 @@ use "mutable"
 use "async"
 
 Control-Flow : A => type {
-	Break A
-	Continue
+    Break A
+    Continue
 }
 
 loop' :: A => (() -> Control-Flow A) -> A
 loop' : body -> when (body ()) {
-	Break value -> value
-	Continue -> loop' body
+    Break value -> value
+    Continue -> loop' body
 }
 
 [keyword]
 loop : syntax {
-	loop 'body -> loop' (() -> 'body)
+    loop 'body -> loop' (() -> 'body)
 }
 
 [keyword]
 while : syntax {
-	while 'condition 'body -> loop {
-		if 'condition {
-			'body
-			Continue :: Control-Flow ()
-		} {
-			Break ()
-		}
-	}
+    while 'condition 'body -> loop {
+        if 'condition {
+            'body
+            Continue :: Control-Flow ()
+        } {
+            Break ()
+        }
+    }
 }
 
 [keyword]
 unless : syntax {
-	unless 'condition 'body -> while (not 'condition) 'body
+    unless 'condition 'body -> while (not 'condition) 'body
 }
 
 [keyword]
 forever : syntax {
-	forever 'body -> loop {
-		'body :: ()
-		Continue
-	}
+    forever 'body -> loop {
+        'body :: ()
+        Continue
+    }
 }
 
 [keyword]
 loop-every : syntax {
-	loop-every 'duration 'body -> loop {
-		when 'body {
-			Continue -> {
-				delay 'duration
-				Continue
-			}
-			Break value -> Break value
-		}
-	}
+    loop-every 'duration 'body -> loop {
+        when 'body {
+            Continue -> {
+                delay 'duration
+                Continue
+            }
+            Break value -> Break value
+        }
+    }
 }

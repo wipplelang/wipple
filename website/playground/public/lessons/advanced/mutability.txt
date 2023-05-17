@@ -25,15 +25,15 @@ type: code
 ---
 
 counter : {
-	-- Enclose `count` in a block to prevent it from being accessible outside
-	-- the `counter` function
-	count : mutable 1
+    -- Enclose `count` in a block to prevent it from being accessible outside
+    -- the `counter` function
+    count : mutable 1
 
-	() -> {
-		value : get count
-		show value
-		count . set! (value + 1)
-	}
+    () -> {
+        value : get count
+        show value
+        count . set! (value + 1)
+    }
 }
 
 counter ()

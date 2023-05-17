@@ -25,7 +25,7 @@ show x
 
 -- Is equivalent to:
 when 42 {
-	x -> show x
+    x -> show x
 }
 
 ---
@@ -49,11 +49,11 @@ show sum
 
 -- Is equivalent to:
 when 1 {
-	a -> when 2 {
-		b -> when (a + b) {
-			sum -> show sum
-		}
-	}
+    a -> when 2 {
+        b -> when (a + b) {
+            sum -> show sum
+        }
+    }
 }
 
 ---

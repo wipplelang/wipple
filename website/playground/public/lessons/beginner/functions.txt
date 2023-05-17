@@ -48,8 +48,8 @@ type: code
 ---
 
 greet : name -> {
-	greeting : format "Hello, _!" name
-	show greeting
+    greeting : format "Hello, _!" name
+    show greeting
 }
 
 greet "Alice"
@@ -161,14 +161,14 @@ type: code
 use "turtle"
 
 with-turtle {
-	forward (50 pixels)
-	left (90 degrees)
-	forward (50 pixels)
-	left (90 degrees)
-	forward (50 pixels)
-	left (90 degrees)
-	forward (50 pixels)
-	left (90 degrees)
+    forward (50 pixels)
+    left (90 degrees)
+    forward (50 pixels)
+    left (90 degrees)
+    forward (50 pixels)
+    left (90 degrees)
+    forward (50 pixels)
+    left (90 degrees)
 }
 
 ---
@@ -187,14 +187,14 @@ type: code
 use "turtle"
 
 draw-square-part : _ -> {
-	forward (50 pixels)
-	left (90 degrees)
+    forward (50 pixels)
+    left (90 degrees)
 }
 
 draw-square : () -> times draw-square-part 4
 
 with-turtle {
-	draw-square ()
+    draw-square ()
 }
 
 ---
@@ -213,19 +213,19 @@ type: code
 use "turtle"
 
 draw-square-part : size _ -> {
-	forward size
-	left (90 degrees)
+    forward size
+    left (90 degrees)
 }
 
 draw-square : size -> times (draw-square-part size) 4
 
 with-turtle {
-	speed 2
-	draw-square (10 pixels)
-	draw-square (20 pixels)
-	draw-square (30 pixels)
-	draw-square (40 pixels)
-	draw-square (50 pixels)
+    speed 2
+    draw-square (10 pixels)
+    draw-square (20 pixels)
+    draw-square (30 pixels)
+    draw-square (40 pixels)
+    draw-square (50 pixels)
 }
 
 ---

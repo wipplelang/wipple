@@ -27,11 +27,11 @@ type: code
 grade : "A"
 
 report-card : when grade {
-	"A" -> "Top of the class"
-	"B" -> "Good work"
-	"C" -> "Getting there"
-	"D" or "F" -> "Need to study"
-	_ -> "Invalid grade"
+    "A" -> "Top of the class"
+    "B" -> "Good work"
+    "C" -> "Getting there"
+    "D" or "F" -> "Need to study"
+    _ -> "Invalid grade"
 }
 
 show report-card
@@ -52,11 +52,11 @@ type: code
 ---
 
 Grade : type {
-	A
-	B
-	C
-	D
-	F
+    A
+    B
+    C
+    D
+    F
 }
 
 ---
@@ -75,20 +75,20 @@ type: code
 ---
 
 Grade : type {
-	A
-	B
-	C
-	D
-	F
+    A
+    B
+    C
+    D
+    F
 }
 
 grade : A
 
 report-card : when grade {
-	A -> "Top of the class"
-	B -> "Good work"
-	C -> "Getting there"
-	D or F -> "Need to study"
+    A -> "Top of the class"
+    B -> "Good work"
+    C -> "Getting there"
+    D or F -> "Need to study"
 }
 
 show report-card
@@ -107,11 +107,11 @@ type: code
 ---
 
 Grade : type {
-	A
-	B
-	C
-	D
-	F
+    A
+    B
+    C
+    D
+    F
 }
 
 grade : E
@@ -130,19 +130,19 @@ type: code
 ---
 
 Grade : type {
-	A
-	B
-	C
-	D
-	F
+    A
+    B
+    C
+    D
+    F
 }
 
 grade : A
 
 report-card : when grade {
-	A -> "Top of the class"
-	B -> "Good work"
-	D -> "Need to study"
+    A -> "Top of the class"
+    B -> "Good work"
+    D -> "Need to study"
 }
 
 show report-card

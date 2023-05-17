@@ -22,9 +22,9 @@ type: code
 use "music"
 
 with-music {
-	with-instrument acoustic-grand-piano {
-		note "C4" (4 beats)
-	}
+    with-instrument acoustic-grand-piano {
+        note "C4" (4 beats)
+    }
 }
 
 ---
@@ -50,59 +50,59 @@ type: code
 use "music"
 
 with-music {
-	tempo 144
+    tempo 144
 
-	with-instrument violin {
-		note "G4" ((1 / 2) beats)
-		note "G4" ((1 / 2) beats)
-		note "G4" ((1 / 2) beats)
-		note "Eb4" (4 beats)
-		rest (2 beats)
+    with-instrument violin {
+        note "G4" ((1 / 2) beats)
+        note "G4" ((1 / 2) beats)
+        note "G4" ((1 / 2) beats)
+        note "Eb4" (4 beats)
+        rest (2 beats)
 
-		note "F4" ((1 / 2) beats)
-		note "F4" ((1 / 2) beats)
-		note "F4" ((1 / 2) beats)
-		note "D4" (4 beats)
-	}
+        note "F4" ((1 / 2) beats)
+        note "F4" ((1 / 2) beats)
+        note "F4" ((1 / 2) beats)
+        note "D4" (4 beats)
+    }
 
-	with-instrument viola {
-		note "G3" ((1 / 2) beats)
-		note "G3" ((1 / 2) beats)
-		note "G3" ((1 / 2) beats)
-		note "Eb3" (4 beats)
-		rest (2 beats)
+    with-instrument viola {
+        note "G3" ((1 / 2) beats)
+        note "G3" ((1 / 2) beats)
+        note "G3" ((1 / 2) beats)
+        note "Eb3" (4 beats)
+        rest (2 beats)
 
-		note "F3" ((1 / 2) beats)
-		note "F3" ((1 / 2) beats)
-		note "F3" ((1 / 2) beats)
-		note "D3" (4 beats)
-	}
+        note "F3" ((1 / 2) beats)
+        note "F3" ((1 / 2) beats)
+        note "F3" ((1 / 2) beats)
+        note "D3" (4 beats)
+    }
 
-	with-instrument cello {
-		note "G2" ((1 / 2) beats)
-		note "G2" ((1 / 2) beats)
-		note "G2" ((1 / 2) beats)
-		note "Eb2" (4 beats)
-		rest (2 beats)
+    with-instrument cello {
+        note "G2" ((1 / 2) beats)
+        note "G2" ((1 / 2) beats)
+        note "G2" ((1 / 2) beats)
+        note "Eb2" (4 beats)
+        rest (2 beats)
 
-		note "F2" ((1 / 2) beats)
-		note "F2" ((1 / 2) beats)
-		note "F2" ((1 / 2) beats)
-		note "D2" (4 beats)
-	}
+        note "F2" ((1 / 2) beats)
+        note "F2" ((1 / 2) beats)
+        note "F2" ((1 / 2) beats)
+        note "D2" (4 beats)
+    }
 
-	with-instrument contrabass {
-		note "G2" ((1 / 2) beats)
-		note "G2" ((1 / 2) beats)
-		note "G2" ((1 / 2) beats)
-		note "Eb2" (4 beats)
-		rest (2 beats)
+    with-instrument contrabass {
+        note "G2" ((1 / 2) beats)
+        note "G2" ((1 / 2) beats)
+        note "G2" ((1 / 2) beats)
+        note "Eb2" (4 beats)
+        rest (2 beats)
 
-		note "F2" ((1 / 2) beats)
-		note "F2" ((1 / 2) beats)
-		note "F2" ((1 / 2) beats)
-		note "D2" (4 beats)
-	}
+        note "F2" ((1 / 2) beats)
+        note "F2" ((1 / 2) beats)
+        note "F2" ((1 / 2) beats)
+        note "D2" (4 beats)
+    }
 }
 
 ---
@@ -121,28 +121,28 @@ type: code
 use "music"
 
 with-music {
-	tempo 132
+    tempo 132
 
-	with-instrument marimba {
-		melody : _ -> {
-			notes (list "C5" "C4") ((1 / 4) beats)
-			note "Bb4" ((1 / 4) beats)
-			note "G4" ((1 / 2) beats)
-			note "C5" ((1 / 2) beats)
-			notes (list "F4" "Bb3") ((1 / 2) beats)
-			note "C5" ((1 / 2) beats)
-			note "Bb4" ((1 / 2) beats)
-			note "C5" ((1 / 2) beats)
-			notes (list "F4" "A3") ((1 / 2) beats)
-			rest ((3 / 2) beats)
-			notes (list "G4" "Eb4") (1 beats)
-			notes (list "G4" "C4") ((1 / 2) beats)
-			notes (list "Bb4" "Eb4") ((1 / 2) beats)
-			notes (list "C5" "F4") ((1 / 2) beats)
-		}
+    with-instrument marimba {
+        melody : _ -> {
+            notes (list "C5" "C4") ((1 / 4) beats)
+            note "Bb4" ((1 / 4) beats)
+            note "G4" ((1 / 2) beats)
+            note "C5" ((1 / 2) beats)
+            notes (list "F4" "Bb3") ((1 / 2) beats)
+            note "C5" ((1 / 2) beats)
+            note "Bb4" ((1 / 2) beats)
+            note "C5" ((1 / 2) beats)
+            notes (list "F4" "A3") ((1 / 2) beats)
+            rest ((3 / 2) beats)
+            notes (list "G4" "Eb4") (1 beats)
+            notes (list "G4" "C4") ((1 / 2) beats)
+            notes (list "Bb4" "Eb4") ((1 / 2) beats)
+            notes (list "C5" "F4") ((1 / 2) beats)
+        }
 
-		times melody 4
-	}
+        times melody 4
+    }
 }
 
 ---

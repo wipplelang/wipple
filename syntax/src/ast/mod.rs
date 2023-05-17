@@ -261,13 +261,8 @@ impl<D: Driver> AstBuilder<D> {
         SyncFuture::new(Box::pin(async move {
             let attributes = Shared::new(StatementAttributes::default());
 
-            let (attribute_exprs, exprs): (Vec<_>, Vec<_>) = statement
-                .lines
-                .into_iter()
-                .map(|line| (line.attributes, line.exprs))
-                .unzip();
+            let (attribute_exprs, exprs) = (statement.line.attributes, statement.line.exprs);
 
-            let attribute_exprs = attribute_exprs.into_iter().flatten().collect::<Vec<_>>();
             attributes.lock().raw = attribute_exprs.clone();
 
             let attributes_span = attribute_exprs
@@ -298,8 +293,6 @@ impl<D: Driver> AstBuilder<D> {
                         .await;
                 }
             }
-
-            let exprs = exprs.into_iter().flatten().collect::<Vec<_>>();
 
             if exprs.is_empty() {
                 if let Some(span) = attributes_span {

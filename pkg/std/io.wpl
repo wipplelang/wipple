@@ -34,22 +34,19 @@ instance (Show Index-Error) : just "invalid index"
 instance (Show None-Error) : just "found `None`"
 
 Value where (Show Value) => instance (Show (Maybe Value)) : x? -> when x? {
-	Some x -> format "Some _" (Show x)
-	None -> "None"
+    Some x -> format "Some _" (Show x)
+    None -> "None"
 }
 
-Success Failure where (Show Success) (Show Failure) =>
-	instance (Show (Result Success Failure)) : x? -> when x? {
-		OK x -> format "OK _" x
-		Error e -> format "Error _" e
-	}
+Success Failure where (Show Success) (Show Failure) => instance (Show (Result Success Failure)) : x? -> when x? {
+    OK x -> format "OK _" x
+    Error e -> format "Error _" e
+}
 
-Success Failure where (Show Failure) =>
-	instance (Expect (Result Success Failure) Success) :
-		message -> x? -> when x? {
-			OK x -> x
-			Error e -> crash (format "_: _" message e)
-		}
+Success Failure where (Show Failure) => instance (Expect (Result Success Failure) Success) : message -> x? -> when x? {
+    OK x -> x
+    Error e -> crash (format "_: _" message e)
+}
 
 [help "Implement the `read` function."]
 [help-group "Input and Output"]
@@ -79,7 +76,7 @@ prompt : prompt -> external "runtime" "prompt" prompt (Read :: (Text -> Maybe A)
 [help-group "Input and Output"]
 choice :: Element where (Show Element) => Text -> List Element -> Element
 choice : prompt items -> {
-	descriptions : items . transform (((item :: Element) -> Show item) :: (Element -> Text)) . collect :: List Text
-	index : external "runtime" "choice" prompt descriptions
-	items . nth index . unwrap
+    descriptions : items . transform (((item :: Element) -> Show item) :: (Element -> Text)) . collect :: List Text
+    index : external "runtime" "choice" prompt descriptions
+    items . nth index . unwrap
 }

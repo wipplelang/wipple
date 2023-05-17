@@ -7,10 +7,10 @@ use "logic"
 [help-group "Utilities"]
 [operator Accessor-Precedence]
 of : syntax {
-	'field of 'value -> {
-		{ 'field } : 'value
-		'field
-	}
+    'field of 'value -> {
+        { 'field } : 'value
+        'field
+    }
 }
 
 [help "Crash the program with the provided message."]
@@ -27,8 +27,8 @@ crash : message -> external "runtime" "crash" message
 [help-group "Utilities"]
 [on-mismatch Value "try handling the case where the `Maybe` is `None`, eg. using `when`, `try` or `expect`"]
 Maybe : Value => type {
-	None
-	Some Value
+    None
+    Some Value
 }
 
 [help "Represents the success or failure of an operation."]
@@ -36,8 +36,8 @@ Maybe : Value => type {
 [on-mismatch Success "try handling the case where the `Result` is `Error`, eg. using `when`, `try` or `expect`"]
 [on-mismatch Failure "try converting the error to the correct type, eg. using `as` or `try`"]
 Result : Success Failure => type {
-	OK Success
-	Error Failure
+    OK Success
+    Error Failure
 }
 
 [help "Implement this trait to enable usage of your type in error handling."]
@@ -51,36 +51,31 @@ None-Error : type
 Expect : Container Value => trait (Text -> Container -> Value)
 
 Value => instance (Expect (Maybe Value) Value) : message -> x? -> when x? {
-	Some x -> x
-	None -> crash message
+    Some x -> x
+    None -> crash message
 }
 
 Unwrap-Message : Container => trait (Container -> Text)
 
-Value => instance (Unwrap-Message (Maybe Value)) :
-	just "called `unwrap` on `None`"
+Value => instance (Unwrap-Message (Maybe Value)) : just "called `unwrap` on `None`"
 
-Success Failure => instance (Unwrap-Message (Result Success Failure)) :
-	just "called `unwrap` on `Error`"
+Success Failure => instance (Unwrap-Message (Result Success Failure)) : just "called `unwrap` on `Error`"
 
 [help "Produces the `Some` value contained within a `Maybe`, or crashes the program with the provided message."]
 [help-group "Utilities"]
-expect :: Container Value where (Expect Container Value) =>
-	Text -> Container -> Value
+expect :: Container Value where (Expect Container Value) => Text -> Container -> Value
 expect : Expect
 
 [help "Produces the `Some` value contained within a `Maybe`, or crashes the program."]
 [help-group "Utilities"]
-unwrap :: Container Value
-	where (Expect Container Value) (Unwrap-Message Container) =>
-	Container -> Value
+unwrap :: Container Value where (Expect Container Value) (Unwrap-Message Container) => Container -> Value
 unwrap : x? -> expect (Unwrap-Message x?) x?
 
 As : Input Output => trait (Input -> Output)
 
 [operator Casting-Precedence]
 as : syntax {
-	'x as 't -> (As 'x :: 't)
+    'x as 't -> (As 'x :: 't)
 }
 
 A => instance (As A A) : it
@@ -90,7 +85,7 @@ As? : Input Output => trait (Input -> Maybe Output)
 
 [operator Casting-Precedence]
 as? : syntax {
-	'x as? 't -> (As? 'x :: Maybe 't)
+    'x as? 't -> (As? 'x :: Maybe 't)
 }
 
 A => instance (As? A A) : Some
@@ -98,7 +93,7 @@ instance (As? Number Natural) : n -> external "runtime" "number-to-natural" n
 
 [operator Casting-Precedence]
 as! : syntax {
-	'x as! 't -> 'x as? 't . expect "conversion failed"
+    'x as! 't -> 'x as? 't . expect "conversion failed"
 }
 
 [help "Represents the default or initial value of a type."]

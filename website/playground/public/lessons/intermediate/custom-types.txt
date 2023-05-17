@@ -23,7 +23,7 @@ type: code
 ---
 
 display-person : name age favorite-color ->
-	show (format "_ is _ years old and their favorite color is _" name age favorite-color)
+    show (format "_ is _ years old and their favorite color is _" name age favorite-color)
 
 alice-name : "Alice"
 alice-age : 25
@@ -55,9 +55,9 @@ type: code
 ---
 
 Person : type {
-	name :: Text
-	age :: Number
-	favorite-color :: Text
+    name :: Text
+    age :: Number
+    favorite-color :: Text
 }
 
 ---
@@ -77,21 +77,21 @@ lint: false
 ---
 
 Person : type {
-	name :: Text
-	age :: Number
-	favorite-color :: Text
+    name :: Text
+    age :: Number
+    favorite-color :: Text
 }
 
 alice : Person {
-	name : "Alice"
-	age : 25
-	favorite-color : "red"
+    name : "Alice"
+    age : 25
+    favorite-color : "red"
 }
 
 bob : Person {
-	name : "Bob"
-	age : 30
-	favorite-color : "blue"
+    name : "Bob"
+    age : 30
+    favorite-color : "blue"
 }
 
 ---
@@ -110,15 +110,15 @@ type: code
 ---
 
 Person : type {
-	name :: Text
-	age :: Number
-	favorite-color :: Text
+    name :: Text
+    age :: Number
+    favorite-color :: Text
 }
 
 alice : Person {
-	name : "Alice"
-	age : 25
-	favorite-color : "red"
+    name : "Alice"
+    age : 25
+    favorite-color : "red"
 }
 
 show (name of alice)
@@ -137,24 +137,24 @@ type: code
 ---
 
 Person : type {
-	name :: Text
-	age :: Number
-	favorite-color :: Text
+    name :: Text
+    age :: Number
+    favorite-color :: Text
 }
 
 display-person : person ->
-	show (format "_ is _ years old and their favorite color is _" (name of person) (age of person) (favorite-color of person))
+    show (format "_ is _ years old and their favorite color is _" (name of person) (age of person) (favorite-color of person))
 
 alice : Person {
-	name : "Alice"
-	age : 25
-	favorite-color : "red"
+    name : "Alice"
+    age : 25
+    favorite-color : "red"
 }
 
 bob : Person {
-	name : "Bob"
-	age : 30
-	favorite-color : "blue"
+    name : "Bob"
+    age : 30
+    favorite-color : "blue"
 }
 
 display-person alice

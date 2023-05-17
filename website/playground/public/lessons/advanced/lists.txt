@@ -42,8 +42,8 @@ lint: false
 ---
 
 Item : type {
-	Number-Item Number
-	Text-Item Text
+    Number-Item Number
+    Text-Item Text
 }
 
 my-list : list (Number-Item 1) (Text-Item "hi")
@@ -115,23 +115,23 @@ type: code
 ---
 
 Person : type {
-	name :: Text
-	age :: Number
+    name :: Text
+    age :: Number
 }
 
 alice : Person {
-	name : "Alice"
-	age : 25
+    name : "Alice"
+    age : 25
 }
 
 bob : Person {
-	name : "Bob"
-	age : 30
+    name : "Bob"
+    age : 30
 }
 
 charlie : Person {
-	name : "Charlie"
-	age : 35
+    name : "Charlie"
+    age : 35
 }
 
 people : list alice bob charlie
@@ -171,22 +171,22 @@ type: code
 ---
 
 Counter : type {
-	start :: Natural
-	end :: Natural
+    start :: Natural
+    end :: Natural
 }
 
 instance (Iterate Counter Natural) : counter -> {
-	count : mutable (start of counter)
+    count : mutable (start of counter)
 
-	iterator (() -> {
-		n : get count
-		if (n = (end of counter)) {
-			None
-		} {
-			increment! count
-			Some n
-		}
-	})
+    iterator (() -> {
+        n : get count
+        if (n = (end of counter)) {
+            None
+        } {
+            increment! count
+            Some n
+        }
+    })
 }
 
 count :: Natural -> Natural -> Counter

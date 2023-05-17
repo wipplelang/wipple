@@ -12,5 +12,5 @@ just : x _ -> x
 
 [operator Composition-Precedence]
 . : syntax {
-	'x . 'f -> 'f 'x
+    'x . 'f -> 'f 'x
 }

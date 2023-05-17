@@ -4,30 +4,30 @@ use "iterate"
 use "fp"
 
 instance (Iterate Text Text) : text -> {
-	cursor : mutable text
+    cursor : mutable text
 
-	Iterator {
-		next : () -> when (external "runtime" "text-head-tail" (get cursor)) {
-			Some (head , tail) -> {
-				cursor . set! tail
-				Some head
-			}
-			None -> None
-		}
-	}
+    Iterator {
+        next : () -> when (external "runtime" "text-head-tail" (get cursor)) {
+            Some (head , tail) -> {
+                cursor . set! tail
+                Some head
+            }
+            None -> None
+        }
+    }
 }
 
 instance (Collect Text Text) : { next } -> {
-	text : mutable ""
-	loop {
-		when (next ()) {
-			Some x -> {
-				text . set! (get text + x)
-				Continue
-			}
-			None -> Break ()
-		}
-	}
+    text : mutable ""
+    loop {
+        when (next ()) {
+            Some x -> {
+                text . set! (get text + x)
+                Continue
+            }
+            None -> Break ()
+        }
+    }
 
-	get text
+    get text
 }

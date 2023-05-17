@@ -1,5 +1,5 @@
 Graph : type {
-	handle :: UI
+    handle :: UI
 }
 
 [context]
@@ -7,11 +7,11 @@ graph :: Graph
 graph : crash "use of graphing outside `with-graph`"
 
 with-graph : syntax {
-	with-graph 'body -> {
-		with-ui "/playground/ui/graphing/index.js" (handle -> {
-			with (graph : Graph { handle }) 'body
-		})
-	}
+    with-graph 'body -> {
+        with-ui "/playground/ui/graphing/index.js" (handle -> {
+            with (graph : Graph { handle }) 'body
+        })
+    }
 }
 
 [help "Set the color of the graph."]

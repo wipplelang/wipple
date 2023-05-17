@@ -94,25 +94,15 @@ impl<D: Driver> Expr<D> {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Statement<D: Driver> {
     pub leading_lines: u32,
-    pub indent: u32,
-    pub lines: Vec<ListLine<D>>,
+    pub line: ListLine<D>,
 }
 
 impl<D: Driver> Statement<D> {
     pub fn into_list_exprs(self) -> (Vec<Attribute<D>>, Vec<Expr<D>>) {
-        let (attributes, exprs): (Vec<_>, Vec<_>) = self
-            .lines
-            .into_iter()
-            .map(|line| (line.attributes, line.exprs))
-            .unzip();
-
-        let attributes = attributes.into_iter().flatten().collect();
-        let exprs = exprs.into_iter().flatten().collect();
-
-        (attributes, exprs)
+        (self.line.attributes, self.line.exprs)
     }
 }
 
@@ -211,14 +201,6 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                 self.consume();
             }
 
-            // Consume indentation and count
-            let indent = if let (_, Some(Token::Indent(indent))) = self.peek() {
-                self.consume();
-                indent
-            } else {
-                0
-            };
-
             // Consume expressions
             let (attributes, exprs, parsed_end_token, end_span, comment) = (|| {
                 let mut attributes = Vec::new();
@@ -271,23 +253,13 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                 }
             }
 
-            let last_indent = statements
-                .last()
-                .map(|statement| statement.indent)
-                .unwrap_or(indent);
-
-            if indent <= last_indent {
-                statements.push(Statement {
-                    leading_lines,
-                    indent,
-                    lines: Vec::new(),
-                })
-            }
-
-            statements.last_mut().unwrap().lines.push(ListLine {
-                attributes,
-                exprs,
-                comment,
+            statements.push(Statement {
+                leading_lines,
+                line: ListLine {
+                    attributes,
+                    exprs,
+                    comment,
+                },
             });
 
             if let Some(end_span) = end_span {
@@ -525,8 +497,8 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
         let mut error = false;
 
         let (parsed_end_token, end_span) = loop {
-            // Consume line breaks and indentation
-            while let (_, Some(Token::LineBreak | Token::Indent(_))) = self.peek() {
+            // Consume line breaks
+            while let (_, Some(Token::LineBreak)) = self.peek() {
                 self.consume();
             }
 

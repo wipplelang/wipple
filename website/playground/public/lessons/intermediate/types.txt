@@ -67,7 +67,7 @@ type: code
 use "turtle"
 
 with-turtle {
-	forward 50 -- replace with `(50 pixels)` to fix the error
+    forward 50 -- replace with `(50 pixels)` to fix the error
 }
 
 ---
