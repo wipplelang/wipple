@@ -490,6 +490,29 @@ impl Pattern {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LiteralKind {
+    Number,
+    Text,
+}
+
+impl Expression {
+    pub fn literal_kind(&self) -> Option<LiteralKind> {
+        match &self.kind {
+            ExpressionKind::Number(_)
+            | ExpressionKind::Integer(_)
+            | ExpressionKind::Natural(_)
+            | ExpressionKind::Byte(_)
+            | ExpressionKind::Signed(_)
+            | ExpressionKind::Unsigned(_)
+            | ExpressionKind::Float(_)
+            | ExpressionKind::Double(_) => Some(LiteralKind::Number),
+            ExpressionKind::Text(_) => Some(LiteralKind::Text),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Error {
     pub error: engine::TypeError,

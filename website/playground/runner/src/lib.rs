@@ -2,6 +2,7 @@ use futures::channel::oneshot;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use loader::Fetcher;
+use nonoverlapping_interval_tree::NonOverlappingIntervalTree;
 use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
 use send_wrapper::SendWrapper;
 use serde::Serialize;
@@ -55,7 +56,7 @@ struct AnalysisOutputDiagnosticSpan {
     pub end: usize,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AnalysisOutputSyntaxHighlightingItem {
     start: usize,
@@ -63,7 +64,7 @@ struct AnalysisOutputSyntaxHighlightingItem {
     kind: &'static str,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct HoverOutput {
     code: String,
@@ -381,6 +382,10 @@ fn get_syntax_highlighting(
 
     let mut items = Vec::new();
 
+    const ORDER: [&str; 9] = [
+        "type", "trait", "variable", "function", "number", "text", "keyword", "operator", "syntax",
+    ];
+
     macro_rules! insert_semantic_tokens {
         ($kind:ident, $token:expr) => {
             for (id, decl) in &program.declarations.$kind {
@@ -440,6 +445,15 @@ fn get_syntax_highlighting(
                 end: expr.span.first().end,
                 kind: "function",
             });
+        } else if let Some(literal_kind) = expr.literal_kind() {
+            items.push(AnalysisOutputSyntaxHighlightingItem {
+                start: expr.span.first().start,
+                end: expr.span.first().end,
+                kind: match literal_kind {
+                    wipple_frontend::analysis::LiteralKind::Number => "number",
+                    wipple_frontend::analysis::LiteralKind::Text => "text",
+                },
+            });
         }
     };
 
@@ -469,11 +483,18 @@ fn get_syntax_highlighting(
         expr.traverse(&mut traverse_semantic_tokens);
     }
 
-    items.reverse();
-    items.sort_by_key(|item| item.start);
-    items.dedup_by_key(|item| (item.start, item.end));
+    let items = items
+        .into_iter()
+        .sorted_by_key(|item| (item.start, ORDER.iter().position(|&s| s == item.kind)));
 
-    items
+    let mut tree = NonOverlappingIntervalTree::new();
+    for item in items {
+        tree.insert_replace(item.start..item.end, Some(item));
+    }
+
+    tree.range_mut(0..usize::MAX)
+        .map(|(_, value)| value.value_mut().take().unwrap())
+        .collect()
 }
 
 fn get_completions(program: &wipple_frontend::analysis::Program) -> AnalysisOutputCompletions {

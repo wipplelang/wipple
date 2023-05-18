@@ -11,7 +11,7 @@
 }
 
 .language-wipple .token.number {
-    color: #005cc5;
+    color: #032f62;
 }
 
 .language-wipple .token.text {
@@ -39,7 +39,7 @@
 }
 
 .language-wipple .token.syntax {
-    color: #6f42c1;
+    color: #e36209;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -56,7 +56,7 @@
     }
 
     .language-wipple .token.number {
-        color: #79b8ff;
+        color: #9ecbff;
     }
 
     .language-wipple .token.text {
@@ -84,7 +84,7 @@
     }
 
     .language-wipple .token.syntax {
-        color: #a473ff;
+        color: #ffab70;
     }
 }
 
