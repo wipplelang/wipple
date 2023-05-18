@@ -262,6 +262,10 @@ impl<D: Driver> ListLine<D> {
         }
 
         if let Some(comment) = &self.comment {
+            if !self.exprs.is_empty() {
+                write!(f, " ")?;
+            }
+
             write!(f, "--{}", comment.as_ref())?;
         }
 
