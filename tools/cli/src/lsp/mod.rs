@@ -131,6 +131,7 @@ impl LanguageServer for Backend {
                 ),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 completion_provider: Some(CompletionOptions::default()),
+                document_formatting_provider: Some(OneOf::Left(true)),
                 ..ServerCapabilities::default()
             },
         })
@@ -652,6 +653,32 @@ impl LanguageServer for Backend {
         // add(&document.program.exported);
 
         Ok(Some(CompletionResponse::Array(items)))
+    }
+
+    async fn formatting(
+        &self,
+        params: DocumentFormattingParams,
+    ) -> jsonrpc::Result<Option<Vec<TextEdit>>> {
+        let document = self.document_from(&params.text_document.uri)?;
+
+        let formatted = match wipple_syntax::parse::format(&document.source) {
+            Some(code) => code,
+            None => return Ok(None),
+        };
+
+        let line_col_lookup = document.line_col_lookup();
+        let (start_line, start_col) = line_col_lookup.get(0);
+        let (end_line, end_col) = line_col_lookup.get(document.source.len());
+
+        let range = Range::new(
+            Position::new(start_line as u32 - 1, start_col as u32 - 1),
+            Position::new(end_line as u32 - 1, end_col as u32 - 1),
+        );
+
+        Ok(Some(vec![TextEdit {
+            range,
+            new_text: formatted,
+        }]))
     }
 
     async fn shutdown(&self) -> jsonrpc::Result<()> {
