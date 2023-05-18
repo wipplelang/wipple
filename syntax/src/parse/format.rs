@@ -119,7 +119,7 @@ impl<D: Driver> Expr<D> {
             ExprKind::List(lines) => {
                 write!(f, "(")?;
 
-                if self.is_multiline() {
+                if self.is_multiline(false) {
                     writeln!(f)?;
 
                     for (index, line) in lines.iter().enumerate() {
@@ -137,7 +137,7 @@ impl<D: Driver> Expr<D> {
             ExprKind::RepeatList(lines) => {
                 write!(f, "...(")?;
 
-                if self.is_multiline() {
+                if self.is_multiline(false) {
                     writeln!(f)?;
 
                     for (index, line) in lines.iter().enumerate() {
@@ -155,7 +155,7 @@ impl<D: Driver> Expr<D> {
             ExprKind::Block(statements) => {
                 write!(f, "{{")?;
 
-                if self.is_multiline() {
+                if self.is_multiline(true) {
                     writeln!(f)?;
 
                     for (index, statement) in statements.iter().enumerate() {
@@ -179,7 +179,7 @@ impl<D: Driver> Expr<D> {
         Ok(())
     }
 
-    fn is_multiline(&self) -> bool {
+    fn is_multiline(&self, in_block: bool) -> bool {
         match &self.kind {
             ExprKind::Underscore
             | ExprKind::Name(_, _)
@@ -187,19 +187,16 @@ impl<D: Driver> Expr<D> {
             | ExprKind::RepeatName(_)
             | ExprKind::Number(_) => false,
             ExprKind::Text(_, raw) => raw.as_ref().contains('\n'),
-            ExprKind::List(lines) | ExprKind::RepeatList(lines) => {
-                lines.len() > 1
-                    || lines.first().map_or(false, |line| {
-                        !line.attributes.is_empty() || line.exprs.iter().any(Expr::is_multiline)
-                    })
-            }
-            ExprKind::Block(statements) => {
-                statements.len() > 1
-                    || statements.first().map_or(false, |statement| {
-                        !statement.line.attributes.is_empty()
-                            || statement.line.exprs.iter().any(Expr::is_multiline)
-                    })
-            }
+            ExprKind::List(lines) | ExprKind::RepeatList(lines) => match lines.len() {
+                0 => false,
+                1 => lines.first().unwrap().is_multiline(in_block),
+                _ => true,
+            },
+            ExprKind::Block(statements) => match statements.len() {
+                0 => false,
+                1 => statements.first().unwrap().line.is_multiline(true),
+                _ => true,
+            },
         }
     }
 }
@@ -270,5 +267,16 @@ impl<D: Driver> ListLine<D> {
         }
 
         Ok(())
+    }
+
+    fn is_multiline(&self, in_block: bool) -> bool {
+        !self.attributes.is_empty()
+            || (in_block
+                && self
+                    .exprs
+                    .iter()
+                    .filter(|expr| expr.is_multiline(in_block))
+                    .count()
+                    > 0)
     }
 }
