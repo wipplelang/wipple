@@ -17,15 +17,13 @@ N where (Numeric N) (Order N) (Add N N N) => instance (Iterate (Range N) N) : ra
 
   if (step < zero) { crash "`step` must be positive" }
 
-  iterator (
-    () -> {
-      if (get current >= max) { None } {
-        n : get current
-        current . add! step
-        Some n
-      }
+  iterator (() -> {
+    if (get current >= max) { None } {
+      n : get current
+      current . add! step
+      Some n
     }
-  )
+  })
 }
 
 [operator Composition-Precedence]

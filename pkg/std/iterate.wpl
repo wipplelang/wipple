@@ -33,12 +33,10 @@ transform :: Container Element Result where (Iterate Container Element) => (Elem
 transform : f container -> {
   base : Iterate container
 
-  iterator (
-    () -> when (next base) {
-      Some x -> Some (f x)
-      None -> None
-    }
-  )
+  iterator (() -> when (next base) {
+    Some x -> Some (f x)
+    None -> None
+  })
 }
 
 [help "Keep only the items in an iterator that satisfy the provided condition."]
@@ -47,14 +45,12 @@ filter :: Container Element where (Iterate Container Element) => (Element -> Boo
 filter : include? container -> {
   base : Iterate container
 
-  iterator (
-    () -> loop {
-      when (next base) {
-        Some x -> if (include? x) (Break (Some x)) Continue
-        None -> Break None
-      }
+  iterator (() -> loop {
+    when (next base) {
+      Some x -> if (include? x) (Break (Some x)) Continue
+      None -> Break None
     }
-  )
+  })
 }
 
 [help "Reduce an iterator down to a single item."]
@@ -102,15 +98,13 @@ Element => instance (Collect Element (List Element)) : iterator -> {
 A => instance (Iterate (List A) A) : list -> {
   index : mutable 0
 
-  iterator (
-    () -> when (list . nth (get index)) {
-      OK element -> {
-        increment! index
-        Some element
-      }
-      Error _ -> None
+  iterator (() -> when (list . nth (get index)) {
+    OK element -> {
+      increment! index
+      Some element
     }
-  )
+    Error _ -> None
+  })
 }
 
 instance (Collect () ()) : iterator -> {
@@ -134,27 +128,21 @@ split-by : separator? -> collection -> {
   base : Iterate collection
   group : mutable (Some (list))
 
-  iterator (
-    () -> loop {
-      when (next base) {
-        Some x -> {
-          if (separator? x) { Break (take! group) } {
-            group . set! (
-              Some (
-                when (get group) {
-                  Some inner -> inner . append x
-                  None -> list x
-                }
-              )
-            )
+  iterator (() -> loop {
+    when (next base) {
+      Some x -> {
+        if (separator? x) { Break (take! group) } {
+          group . set! (Some (when (get group) {
+            Some inner -> inner . append x
+            None -> list x
+          }))
 
-            Continue
-          }
+          Continue
         }
-        None -> Break (take! group)
       }
+      None -> Break (take! group)
     }
-  )
+  })
 }
 
 [help "Split an iterator into groups of consecutive items equal to a value."]
