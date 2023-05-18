@@ -9,9 +9,7 @@ use "loop"
 
 [help "A container for an iterable value that produces the `next` value on demand."]
 [help-group "Collections"]
-Iterator : Element => type {
-    next :: () -> Maybe Element
-}
+Iterator : Element => type { next :: () -> Maybe Element }
 
 [help "Create an iterator from a function."]
 [help-group "Collections"]
@@ -33,39 +31,43 @@ Element => instance (Iterate (Iterator Element) Element) : it
 [help-group "Collections"]
 transform :: Container Element Result where (Iterate Container Element) => (Element -> Result) -> Container -> Iterator Result
 transform : f container -> {
-    base : Iterate container
+  base : Iterate container
 
-    iterator (() -> when (next base) {
-        Some x -> Some (f x)
-        None -> None
-    })
+  iterator (
+    () -> when (next base) {
+      Some x -> Some (f x)
+      None -> None
+    }
+  )
 }
 
 [help "Keep only the items in an iterator that satisfy the provided condition."]
 [help-group "Collections"]
 filter :: Container Element where (Iterate Container Element) => (Element -> Boolean) -> Container -> Iterator Element
 filter : include? container -> {
-    base : Iterate container
+  base : Iterate container
 
-    iterator (() -> loop {
-        when (next base) {
-            Some x -> if (include? x) (Break (Some x)) Continue
-            None -> Break None
-        }
-    })
+  iterator (
+    () -> loop {
+      when (next base) {
+        Some x -> if (include? x) (Break (Some x)) Continue
+        None -> Break None
+      }
+    }
+  )
 }
 
 [help "Reduce an iterator down to a single item."]
 [help-group "Collections"]
 reduce :: Container Element Result where (Iterate Container Element) => Result -> (Element -> Result -> Result) -> Container -> Result
 reduce : result f container -> {
-    reduce-helper :: Element Result => Result -> (Element -> Result -> Result) -> Iterator Element -> Result
-    reduce-helper : result f iterator -> when (next iterator) {
-        Some next -> reduce-helper (f next result) f iterator
-        None -> result
-    }
+  reduce-helper :: Element Result => Result -> (Element -> Result -> Result) -> Iterator Element -> Result
+  reduce-helper : result f iterator -> when (next iterator) {
+    Some next -> reduce-helper (f next result) f iterator
+    None -> result
+  }
 
-    reduce-helper result f (Iterate container)
+  reduce-helper result f (Iterate container)
 }
 
 [help "Find the sum of all the numbers in an iterator."]
@@ -83,39 +85,41 @@ collect :: Input Element Output where (Iterate Input Element) (Collect Element O
 collect : input -> Collect (Iterate input)
 
 Element => instance (Collect Element (List Element)) : iterator -> {
-    list : mutable (list)
-    loop {
-        when (next iterator) {
-            Some x -> {
-                list . append! x
-                Continue
-            }
-            None -> Break ()
-        }
+  list : mutable (list)
+  loop {
+    when (next iterator) {
+      Some x -> {
+        list . append! x
+        Continue
+      }
+      None -> Break ()
     }
+  }
 
-    get list
+  get list
 }
 
 A => instance (Iterate (List A) A) : list -> {
-    index : mutable 0
+  index : mutable 0
 
-    iterator (() -> when (list . nth (get index)) {
-        OK element -> {
-            increment! index
-            Some element
-        }
-        Error _ -> None
-    })
+  iterator (
+    () -> when (list . nth (get index)) {
+      OK element -> {
+        increment! index
+        Some element
+      }
+      Error _ -> None
+    }
+  )
 }
 
 instance (Collect () ()) : iterator -> {
-    loop {
-        when (next iterator) {
-            Some () -> Continue
-            None -> Break ()
-        }
+  loop {
+    when (next iterator) {
+      Some () -> Continue
+      None -> Break ()
     }
+  }
 }
 
 [help "Perform an action for each item in an iterator."]
@@ -127,26 +131,30 @@ each : f container -> container . transform f . collect
 [help-group "Collections"]
 split-by :: Collection Element where (Iterate Collection Element) => (Element -> Boolean) -> Collection -> Iterator (List Element)
 split-by : separator? -> collection -> {
-    base : Iterate collection
-    group : mutable (Some (list))
+  base : Iterate collection
+  group : mutable (Some (list))
 
-    iterator (() -> loop {
-        when (next base) {
-            Some x -> {
-                if (separator? x) {
-                    Break (take! group)
-                } {
-                    group . set! (Some (when (get group) {
-                        Some inner -> inner . append x
-                        None -> list x
-                    }))
-
-                    Continue
+  iterator (
+    () -> loop {
+      when (next base) {
+        Some x -> {
+          if (separator? x) { Break (take! group) } {
+            group . set! (
+              Some (
+                when (get group) {
+                  Some inner -> inner . append x
+                  None -> list x
                 }
-            }
-            None -> Break (take! group)
+              )
+            )
+
+            Continue
+          }
         }
-    })
+        None -> Break (take! group)
+      }
+    }
+  )
 }
 
 [help "Split an iterator into groups of consecutive items equal to a value."]
@@ -156,18 +164,18 @@ split : separator -> split-by (x -> x = separator)
 
 count :: Collection Element where (Iterate Collection Element) => Collection -> Natural
 count : collection -> {
-    iterator : Iterate collection
+  iterator : Iterate collection
 
-    count : mutable 0
-    loop {
-        when (next iterator :: Maybe Element) {
-            Some _ -> {
-                increment! count
-                Continue
-            }
-            None -> Break ()
-        }
+  count : mutable 0
+  loop {
+    when (next iterator :: Maybe Element) {
+      Some _ -> {
+        increment! count
+        Continue
+      }
+      None -> Break ()
     }
+  }
 
-    get count
+  get count
 }

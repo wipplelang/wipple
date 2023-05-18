@@ -10,9 +10,7 @@ use "logic"
 Add : Left Right Sum => trait (Left -> Right -> Sum)
 
 [operator Addition-Precedence]
-+ : syntax {
-    'a + 'b -> Add 'a 'b
-}
++ : syntax { 'a + 'b -> Add 'a 'b }
 
 instance (Add Number Number Number) : a b -> external "runtime" "add-number" a b
 instance (Add Integer Integer Integer) : a b -> external "runtime" "add-integer" a b
@@ -30,9 +28,7 @@ instance (Add Text Text Text) : a b -> format "__" a b
 Subtract : Left Right Difference => trait (Left -> Right -> Difference)
 
 [operator Addition-Precedence]
-- : syntax {
-    'a - 'b -> Subtract 'a 'b
-}
+- : syntax { 'a - 'b -> Subtract 'a 'b }
 
 instance (Subtract Number Number Number) : a b -> external "runtime" "subtract-number" a b
 instance (Subtract Integer Integer Integer) : a b -> external "runtime" "subtract-integer" a b
@@ -49,9 +45,7 @@ instance (Subtract Double Double Double) : a b -> external "runtime" "subtract-d
 Multiply : Left Right Product => trait (Left -> Right -> Product)
 
 [operator Multiplication-Precedence]
-* : syntax {
-    'a * 'b -> Multiply 'a 'b
-}
+* : syntax { 'a * 'b -> Multiply 'a 'b }
 
 instance (Multiply Number Number Number) : a b -> external "runtime" "multiply-number" a b
 instance (Multiply Integer Integer Integer) : a b -> external "runtime" "multiply-integer" a b
@@ -68,9 +62,7 @@ instance (Multiply Double Double Double) : a b -> external "runtime" "multiply-d
 Divide : Left Right Quotient => trait (Left -> Right -> Quotient)
 
 [operator Multiplication-Precedence]
-/ : syntax {
-    'a / 'b -> Divide 'a 'b
-}
+/ : syntax { 'a / 'b -> Divide 'a 'b }
 
 instance (Divide Number Number Number) : a b -> external "runtime" "divide-number" a b
 instance (Divide Integer Integer Integer) : a b -> external "runtime" "divide-integer" a b
@@ -87,9 +79,7 @@ instance (Divide Double Double Double) : a b -> external "runtime" "divide-doubl
 Modulo : Left Right Remainder => trait (Left -> Right -> Remainder)
 
 [operator Multiplication-Precedence]
-mod : syntax {
-    'a mod 'b -> Modulo 'a 'b
-}
+mod : syntax { 'a mod 'b -> Modulo 'a 'b }
 
 instance (Modulo Number Number Number) : a b -> external "runtime" "modulo-number" a b
 instance (Modulo Integer Integer Integer) : a b -> external "runtime" "modulo-integer" a b
@@ -106,9 +96,7 @@ instance (Modulo Double Double Double) : a b -> external "runtime" "modulo-doubl
 Power : Left Right Power => trait (Left -> Right -> Power)
 
 [operator Exponentiation-Precedence]
-^ : syntax {
-    'a ^ 'b -> Power 'a 'b
-}
+^ : syntax { 'a ^ 'b -> Power 'a 'b }
 
 instance (Power Number Number Number) : a b -> external "runtime" "power-number" a b
 instance (Power Integer Integer Integer) : a b -> external "runtime" "power-integer" a b

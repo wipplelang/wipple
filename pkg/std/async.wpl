@@ -15,20 +15,14 @@ with-task-group : f -> external "runtime" "with-task-group" f
 task' :: (() -> ()) -> Task-Group -> ()
 task' : f group -> external "runtime" "task" group f
 
-task : syntax {
-    task 'body -> task' (() -> 'body)
-}
+task : syntax { task 'body -> task' (() -> 'body) }
 
 in-background' :: (() -> ()) -> ()
 in-background' : f -> external "runtime" "in-background" f
 
-in-background : syntax {
-    in-background 'body -> in-background' (() -> 'body)
-}
+in-background : syntax { in-background 'body -> in-background' (() -> 'body) }
 
-Duration : type {
-    ms :: Natural
-}
+Duration : type { ms :: Natural }
 
 [help "Create a duration in milliseconds."]
 [help-group "Control Flow"]

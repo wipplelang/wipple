@@ -22,9 +22,9 @@ set! : x m -> external "runtime" "set-mutable" m x
 [help-group "Utilities"]
 swap! :: A => Mutable A -> Mutable A -> ()
 swap! : a b -> {
-    temp : get a
-    a . set! (get b)
-    b . set! temp
+  temp : get a
+  a . set! (get b)
+  b . set! temp
 }
 
 [help "Add a value to a `Mutable` value."]
@@ -41,7 +41,7 @@ increment! : add! 1
 [help-group "Utilities"]
 take! :: A where (Default A) => Mutable A -> A
 take! : m -> {
-    value : get m
-    m . set! Default
-    value
+  value : get m
+  m . set! Default
+  value
 }

@@ -11,6 +11,4 @@ just :: A => A -> _ -> A
 just : x _ -> x
 
 [operator Composition-Precedence]
-. : syntax {
-    'x . 'f -> 'f 'x
-}
+. : syntax { 'x . 'f -> 'f 'x }
