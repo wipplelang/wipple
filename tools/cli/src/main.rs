@@ -55,7 +55,9 @@ enum Args {
         clear: bool,
     },
     Lsp,
-    Format,
+    Format {
+        files: Vec<PathBuf>,
+    },
 }
 
 #[derive(Parser)]
@@ -385,13 +387,29 @@ async fn run() -> anyhow::Result<()> {
         Args::Lsp => {
             lsp::run().await;
         }
-        Args::Format => {
-            let code = std::io::read_to_string(io::stdin())?;
+        Args::Format { files } => {
+            if files.is_empty() {
+                let code = io::read_to_string(io::stdin())?;
 
-            let formatted = wipple_syntax::parse::format(&code)
-                .ok_or_else(|| anyhow::Error::msg("syntax error"))?; // TODO: Show syntax errors
+                let formatted = wipple_syntax::parse::format(&code)
+                    .ok_or_else(|| anyhow::Error::msg("syntax error"))?; // TODO: Show syntax errors
 
-            io::stdout().write_all(formatted.as_bytes())?;
+                io::stdout().write_all(formatted.as_bytes())?;
+            } else {
+                let files = files
+                    .into_iter()
+                    .map(|file| {
+                        let code = fs::read_to_string(&file)?;
+                        Ok((file, code))
+                    })
+                    .collect::<io::Result<Vec<_>>>()?;
+
+                for (file, code) in files {
+                    if let Some(formatted) = wipple_syntax::parse::format(&code) {
+                        fs::write(file, formatted)?;
+                    }
+                }
+            }
         }
     }
 
