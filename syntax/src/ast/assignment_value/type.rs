@@ -1,8 +1,9 @@
 use crate::{
     ast::{
         assignment_value::AssignmentValueSyntaxContext,
+        format::Format,
         syntax::{Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules},
-        TypeBody, TypeBodySyntax, TypeBodySyntaxContext, format::Format,
+        TypeBody, TypeBodySyntax, TypeBodySyntaxContext,
     },
     Driver,
 };
@@ -88,4 +89,8 @@ impl<D: Driver> Syntax<D> for TypeAssignmentValueSyntax {
             },
         ))
     }
+}
+
+pub(crate) fn builtin_syntax_definitions() -> Vec<crate::ast::BuiltinSyntaxDefinition> {
+    vec![crate::ast::BuiltinSyntaxDefinition::TYPE]
 }

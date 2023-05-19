@@ -94,3 +94,7 @@ impl<D: Driver> Syntax<D> for TypeFunctionAssignmentValueSyntax {
         ))
     }
 }
+
+pub(crate) fn builtin_syntax_definitions() -> Vec<crate::ast::BuiltinSyntaxDefinition> {
+    vec![crate::ast::BuiltinSyntaxDefinition::TYPE_FUNCTION]
+}

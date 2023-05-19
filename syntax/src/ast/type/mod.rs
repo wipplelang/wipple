@@ -1,16 +1,12 @@
-mod function;
-mod tuple;
-
-pub use function::FunctionType;
-pub use tuple::TupleType;
-
-use function::*;
-use tuple::*;
+definitions! {
+    mod function;
+    mod tuple;
+}
 
 use crate::{
     ast::{
         format::Format,
-        macros::syntax_group,
+        macros::{definitions, syntax_group},
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },

@@ -1,31 +1,17 @@
-mod annotate;
-mod external;
-mod format;
-mod function;
-mod tuple;
-mod when;
-mod with;
-
-pub use annotate::AnnotateExpression;
-pub use external::ExternalExpression;
-pub use format::FormatExpression;
-pub use function::FunctionExpression;
-pub use tuple::TupleExpression;
-pub use when::WhenExpression;
-pub use with::WithExpression;
-
-use annotate::*;
-use external::*;
-use format::*;
-use function::*;
-use tuple::*;
-use when::*;
-use with::*;
+definitions! {
+    mod annotate;
+    mod external;
+    mod format;
+    mod function;
+    mod tuple;
+    mod when;
+    mod with;
+}
 
 use crate::{
     ast::{
         format::Format,
-        macros::syntax_group,
+        macros::{definitions, syntax_group},
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, OperatorAssociativity, OperatorPrecedenceStatementAttributeKind, Statement,
         StatementAttributes, StatementSyntax, SyntaxAssignmentValue, SyntaxBody, SyntaxPattern,

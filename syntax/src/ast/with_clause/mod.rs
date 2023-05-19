@@ -1,12 +1,10 @@
-mod assign;
-
-pub use assign::AssignWithClause;
-
-use assign::*;
+definitions! {
+    mod assign;
+}
 
 use crate::{
     ast::{
-        macros::syntax_group,
+        macros::{definitions, syntax_group},
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },

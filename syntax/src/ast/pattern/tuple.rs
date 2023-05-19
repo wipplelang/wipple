@@ -79,3 +79,7 @@ impl<D: Driver> Syntax<D> for TuplePatternSyntax {
         ))
     }
 }
+
+pub(crate) fn builtin_syntax_definitions() -> Vec<crate::ast::BuiltinSyntaxDefinition> {
+    vec![crate::ast::BuiltinSyntaxDefinition::COMMA]
+}

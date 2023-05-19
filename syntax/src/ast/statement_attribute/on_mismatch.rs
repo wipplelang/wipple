@@ -128,3 +128,7 @@ impl<D: Driver> Syntax<D> for OnMismatchStatementAttributeSyntax {
         ))
     }
 }
+
+pub(crate) fn builtin_syntax_definitions() -> Vec<crate::ast::BuiltinSyntaxDefinition> {
+    vec![]
+}

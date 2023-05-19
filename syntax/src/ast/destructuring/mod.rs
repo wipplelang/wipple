@@ -1,13 +1,11 @@
-mod assign;
-
-pub use assign::AssignDestructuringSyntax;
-
-use assign::*;
+definitions! {
+    mod assign;
+}
 
 use crate::{
     ast::{
         format::Format,
-        macros::syntax_group,
+        macros::{definitions, syntax_group},
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },

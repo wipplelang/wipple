@@ -1,16 +1,12 @@
-mod default;
-mod r#where;
-
-pub use default::DefaultTypePattern;
-pub use r#where::{WhereTypePattern, WhereTypePatternBound};
-
-use default::*;
-use r#where::*;
+definitions! {
+    mod default;
+    mod r#where;
+}
 
 use crate::{
     ast::{
         format::Format,
-        macros::syntax_group,
+        macros::{definitions, syntax_group},
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },

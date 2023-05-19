@@ -108,3 +108,7 @@ impl<D: Driver> Syntax<D> for DiagnosticItemStatementAttributeSyntax {
         ))
     }
 }
+
+pub(crate) fn builtin_syntax_definitions() -> Vec<crate::ast::BuiltinSyntaxDefinition> {
+    vec![]
+}

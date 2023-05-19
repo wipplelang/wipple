@@ -57,3 +57,7 @@ impl<D: Driver> From<WhenPatternSyntaxContext<D>> for PatternSyntaxContext<D> {
             .with_statement_attributes(context.statement_attributes.unwrap())
     }
 }
+
+pub(crate) fn builtin_syntax_definitions() -> Vec<crate::ast::BuiltinSyntaxDefinition> {
+    vec![]
+}

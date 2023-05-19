@@ -16,7 +16,7 @@ pub use wipple_syntax::ast;
 use crate::{
     diagnostics::*,
     helpers::{InternedString, Shared},
-    Compiler, FilePath, ScopeId, SyntaxId,
+    BuiltinSyntaxId, Compiler, FilePath, ScopeId, SyntaxId,
 };
 use async_trait::async_trait;
 use futures::future::BoxFuture;
@@ -24,7 +24,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     sync::{atomic::AtomicUsize, Arc},
 };
-use wipple_syntax::DriverExt;
+use wipple_syntax::{ast::builtin_syntax_definitions, DriverExt};
 use wipple_util::Backtrace;
 
 #[derive(Clone)]
@@ -371,6 +371,7 @@ impl wipple_syntax::Driver for Analysis {
             syntax_declarations: Default::default(),
             root_scope,
             scopes: Shared::new(scopes),
+            builtin_syntax_uses: Default::default(),
         };
 
         self.stack.lock().pop();
@@ -440,6 +441,16 @@ pub struct File {
         Shared<BTreeMap<SyntaxId, wipple_syntax::ast::SyntaxAssignmentValue<Analysis>>>,
     root_scope: ScopeId,
     scopes: Shared<BTreeMap<ScopeId, Scope>>,
+    builtin_syntax_uses: Shared<
+        HashMap<
+            &'static str,
+            (
+                BuiltinSyntaxId,
+                wipple_syntax::ast::BuiltinSyntaxDefinition,
+                Vec<SpanList>,
+            ),
+        >,
+    >,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -522,5 +533,24 @@ impl wipple_syntax::File<Analysis> for File {
         }
 
         None
+    }
+
+    fn use_builtin_syntax(&self, span: SpanList, name: &'static str) {
+        let compiler = self.compiler.clone();
+        let mut builtin_syntax_uses = self.builtin_syntax_uses.lock();
+
+        if let Some((_, _, uses)) = builtin_syntax_uses.get_mut(&name) {
+            uses.push(span);
+        } else {
+            if let Some(definition) = builtin_syntax_definitions()
+                .into_iter()
+                .find(|definition| definition.name == name)
+            {
+                builtin_syntax_uses.insert(
+                    name,
+                    (compiler.new_builtin_syntax_id(), definition, vec![span]),
+                );
+            }
+        }
     }
 }

@@ -1,15 +1,11 @@
-mod r#type;
-mod type_function;
-
-pub use r#type::TypeConstantTypeAnnotation;
-pub use type_function::TypeFunctionConstantTypeAnnotation;
-
-use r#type::*;
-use type_function::*;
+definitions! {
+    mod r#type;
+    mod type_function;
+}
 
 use crate::{
     ast::{
-        macros::syntax_group,
+        macros::{definitions, syntax_group},
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes, TypeSyntaxContext,
     },

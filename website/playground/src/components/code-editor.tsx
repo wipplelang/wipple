@@ -436,6 +436,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
         let start = 0;
 
+        console.log(JSON.stringify(syntaxHighlighting, null, 4));
+
         for (const item of syntaxHighlighting) {
             while (item.start !== start && item.end !== start + currentNode.innerText.length) {
                 start += currentNode.innerText.length;
@@ -539,21 +541,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
     const [caretPosition, setCaretPosition] =
         useState<ReturnType<typeof getCodeEditorCaretPosition>>();
-
-    const animatedContextMenuTriggerStyle = useSpring(
-        caretPosition != null
-            ? {
-                  opacity: 1,
-                  top: caretPosition.midY - 4,
-                  right: 8,
-                  zIndex: 9999,
-                  pointerEvents: "inherit",
-              }
-            : {
-                  opacity: 0,
-                  pointerEvents: "none",
-              }
-    );
 
     const updateContextMenuTrigger = useCallback(() => {
         requestAnimationFrame(() => {
@@ -1094,6 +1081,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                         </MenuItem>
                                     ) : null;
 
+                                const languageSection =
+                                    completions.language.map(renderCompletionItem);
                                 const variablesSection =
                                     completions.variables.map(renderCompletionItem);
 
@@ -1111,14 +1100,19 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                 const ungroupedConstantsSection =
                                     completions.ungroupedConstants.map(renderCompletionItem);
 
-                                return (
-                                    <>
-                                        {variablesSection}
-                                        {groupedConstantsSection}
-                                        {ungroupedConstantsSection.length && <Divider />}
-                                        {ungroupedConstantsSection}
-                                    </>
-                                );
+                                return [
+                                    languageSection,
+                                    <Divider key="languageDivider" />,
+                                    variablesSection,
+                                    variablesSection.length ? (
+                                        <Divider key="variablesDivider" />
+                                    ) : null,
+                                    groupedConstantsSection,
+                                    ungroupedConstantsSection.length ? (
+                                        <Divider key="ungroupedConstantsDivider" />
+                                    ) : null,
+                                    ungroupedConstantsSection,
+                                ];
                             })()}
                         </MenuList>
                     </Menu>
@@ -1206,7 +1200,15 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                 contentEditable={false}
                             />
 
-                            {hover.output.help ? <p>{hover.output.help}</p> : null}
+                            {hover.output.help ? (
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkMath, remarkGfm, remarkSmartypants]}
+                                    rehypePlugins={[rehypeRaw, rehypeKatex]}
+                                    linkTarget="_blank"
+                                >
+                                    {hover.output.help}
+                                </ReactMarkdown>
+                            ) : null}
                         </div>
                     ) : null}
                 </div>

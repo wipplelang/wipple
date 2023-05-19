@@ -3,58 +3,114 @@ mod format;
 mod macros;
 mod syntax;
 
-mod assignment_pattern;
-mod assignment_value;
-mod constant_type_annotation;
-mod destructuring;
-mod expression;
-mod file_attribute;
-mod pattern;
-mod statement;
-mod statement_attribute;
-mod syntax_body;
-mod syntax_pattern;
-mod syntax_rule;
-mod r#type;
-mod type_body;
-mod type_member;
-mod type_pattern;
-mod when_arm;
-mod when_body;
-mod when_pattern;
-mod with_clause;
+definitions! {
+    mod assignment_pattern;
+    mod assignment_value;
+    mod constant_type_annotation;
+    mod destructuring;
+    mod expression;
+    mod file_attribute;
+    mod pattern;
+    mod statement;
+    mod statement_attribute;
+    mod syntax_body;
+    mod syntax_pattern;
+    mod syntax_rule;
+    mod r#type;
+    mod type_body;
+    mod type_member;
+    mod type_pattern;
+    mod when_arm;
+    mod when_body;
+    mod when_pattern;
+    mod with_clause;
+}
 
 pub use attributes::*;
 pub use format::Format;
 pub use syntax::SyntaxError;
 
-pub use assignment_pattern::*;
-pub use assignment_value::*;
-pub use constant_type_annotation::*;
-pub use destructuring::*;
-pub use expression::*;
-pub use file_attribute::*;
-pub use pattern::*;
-pub use r#type::*;
-pub use statement::*;
-pub use statement_attribute::*;
-pub use syntax_body::*;
-pub use syntax_pattern::*;
-pub use syntax_rule::*;
-pub use type_body::*;
-pub use type_member::*;
-pub use type_pattern::*;
-pub use when_arm::*;
-pub use when_body::*;
-pub use when_pattern::*;
-pub use with_clause::*;
-
-use crate::{parse, Driver, DriverExt, File as _, Span};
+use crate::{ast::macros::definitions, parse, Driver, DriverExt, File as _, Span};
 use futures::{future::BoxFuture, stream, StreamExt};
 
 use sync_wrapper::SyncFuture;
 use syntax::{Syntax, SyntaxContext};
 use wipple_util::Shared;
+
+#[derive(Debug, Clone)]
+pub struct BuiltinSyntaxDefinition {
+    pub name: &'static str,
+    pub operator: bool,
+    pub help: &'static str,
+}
+
+impl BuiltinSyntaxDefinition {
+    pub(crate) const fn function(name: &'static str, help: &'static str) -> Self {
+        BuiltinSyntaxDefinition {
+            name,
+            operator: false,
+            help,
+        }
+    }
+
+    pub(crate) const fn operator(name: &'static str, help: &'static str) -> Self {
+        BuiltinSyntaxDefinition {
+            name,
+            operator: true,
+            help,
+        }
+    }
+}
+
+impl BuiltinSyntaxDefinition {
+    pub(crate) const INSTANCE: Self = Self::function(
+        "instance",
+        "Define a trait's value for a specific type or types.",
+    );
+
+    pub(crate) const TYPE_FUNCTION: Self = Self::operator("=>", "Define a type function.");
+
+    pub(crate) const SYNTAX: Self = Self::function("syntax", "Define custom syntax.");
+
+    pub(crate) const TRAIT: Self = Self::function("trait", "Define a trait.");
+
+    pub(crate) const TYPE: Self = Self::function("type", "Define a type.");
+
+    pub(crate) const ASSIGN: Self = Self::operator(":", "Assign a value to a name.");
+
+    pub(crate) const ANNOTATE: Self = Self::operator("::", "Annotate a value with a type.");
+
+    pub(crate) const EXTERNAL: Self = Self::function(
+        "external",
+        "Call a function defined in a different programming language.",
+    );
+
+    pub(crate) const FORMAT: Self = Self::function(
+        "format",
+        "Replace all the `_` placeholders in a piece of text with values.",
+    );
+
+    pub(crate) const FUNCTION: Self = Self::operator("->", "Define a function.");
+
+    pub(crate) const COMMA: Self = Self::operator(",", "Create a tuple.");
+
+    pub(crate) const WHEN: Self = Self::function("when", "Make a choice by matching patterns.");
+
+    pub(crate) const WITH: Self =
+        Self::function("with", "Override the value of a contextual constant.");
+
+    pub(crate) const OR: Self = Self::operator(
+        "or",
+        "Match multiple patterns in succession, or compare two `Boolean` values.",
+    );
+
+    pub(crate) const WHERE: Self = Self::operator(
+        "where",
+        "Add bounds to a type function, or a condition to a pattern.",
+    );
+
+    pub(crate) const USE: Self = Self::function("use", "Include code from another file.");
+}
 
 #[derive(Clone)]
 pub struct File<D: Driver> {

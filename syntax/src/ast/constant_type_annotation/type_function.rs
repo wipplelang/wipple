@@ -1,11 +1,12 @@
 use crate::{
     ast::{
         constant_type_annotation::ConstantTypeAnnotationSyntaxContext,
+        format::Format,
         syntax::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
         ConstantTypeAnnotation, ConstantTypeAnnotationSyntax, TypePattern, TypePatternSyntax,
-        TypePatternSyntaxContext, format::Format,
+        TypePatternSyntaxContext,
     },
     parse, Driver, File,
 };
@@ -40,7 +41,11 @@ impl<D: Driver> TypeFunctionConstantTypeAnnotation<D> {
 
 impl<D: Driver> Format<D> for TypeFunctionConstantTypeAnnotation<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
-        Ok(format!("({} => {})", self.pattern?.format()?, self.annotation?.format()?))
+        Ok(format!(
+            "({} => {})",
+            self.pattern?.format()?,
+            self.annotation?.format()?
+        ))
     }
 }
 
@@ -88,4 +93,8 @@ impl<D: Driver> Syntax<D> for TypeFunctionConstantTypeAnnotationSyntax {
             },
         ))
     }
+}
+
+pub(crate) fn builtin_syntax_definitions() -> Vec<crate::ast::BuiltinSyntaxDefinition> {
+    vec![crate::ast::BuiltinSyntaxDefinition::TYPE_FUNCTION]
 }

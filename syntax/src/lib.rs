@@ -62,6 +62,8 @@ pub trait File<D: Driver> {
         name: D::InternedString,
         scope: D::Scope,
     ) -> Option<ast::SyntaxAssignmentValue<D>>;
+
+    fn use_builtin_syntax(&self, span: D::Span, name: &'static str);
 }
 
 pub trait Span {
@@ -139,6 +141,10 @@ impl<D: Driver<Span = (), File = SingleFile, Scope = ()>> File<D> for SingleFile
         _scope: D::Scope,
     ) -> Option<ast::SyntaxAssignmentValue<D>> {
         None
+    }
+
+    fn use_builtin_syntax(&self, _span: D::Span, _name: &'static str) {
+        // do nothing
     }
 }
 

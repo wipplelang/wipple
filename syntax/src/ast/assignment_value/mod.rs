@@ -1,24 +1,14 @@
-mod expression;
-mod syntax;
-mod r#trait;
-mod r#type;
-mod type_function;
-
-pub use expression::ExpressionAssignmentValue;
-pub use r#trait::TraitAssignmentValue;
-pub use r#type::TypeAssignmentValue;
-pub use syntax::SyntaxAssignmentValue;
-pub use type_function::TypeFunctionAssignmentValue;
-
-use expression::*;
-use r#trait::*;
-use r#type::*;
-use syntax::*;
-use type_function::*;
+definitions! {
+    mod expression;
+    mod syntax;
+    mod r#trait;
+    mod r#type;
+    mod type_function;
+}
 
 use crate::{
     ast::{
-        macros::syntax_group,
+        macros::{definitions, syntax_group},
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, ExpressionSyntaxContext, StatementAttributes, StatementSyntax,
     },

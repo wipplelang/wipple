@@ -57,3 +57,7 @@ impl<D: Driver> From<AssignmentValueSyntaxContext<D>> for ExpressionSyntaxContex
             .with_statement_attributes(context.statement_attributes.unwrap())
     }
 }
+
+pub(crate) fn builtin_syntax_definitions() -> Vec<crate::ast::BuiltinSyntaxDefinition> {
+    vec![]
+}

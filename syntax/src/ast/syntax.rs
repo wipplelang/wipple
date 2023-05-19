@@ -1,6 +1,6 @@
 use crate::{
     ast::{AstBuilder, StatementAttributes},
-    parse, Driver, Span,
+    parse, Driver, File, Span,
 };
 use async_trait::async_trait;
 use futures::{future::BoxFuture, Future};
@@ -360,7 +360,13 @@ impl<D: Driver> AstBuilder<D> {
                 let exprs = exprs.cloned().collect();
 
                 return Some(Box::pin(async move {
-                    Some(apply(context, span, syntax_span, exprs, scope)?.await)
+                    Some(match apply(context, span, syntax_span, exprs, scope) {
+                        Some(result) => {
+                            self.file.use_builtin_syntax(syntax_span, name);
+                            result.await
+                        }
+                        None => return None,
+                    })
                 }));
             }
         }
@@ -471,15 +477,20 @@ impl<D: Driver> AstBuilder<D> {
 
             return Some(Box::pin(async move {
                 Some(
-                    apply(
+                    match apply(
                         context,
                         span,
                         (span, exprs),
                         operator_span,
                         (operator_span, Vec::new()),
                         scope,
-                    )?
-                    .await,
+                    ) {
+                        Some(result) => {
+                            self.file.use_builtin_syntax(operator_span, name);
+                            result.await
+                        }
+                        None => return None,
+                    },
                 )
             }));
         }
@@ -541,15 +552,20 @@ impl<D: Driver> AstBuilder<D> {
 
         Some(Box::pin(async move {
             Some(
-                apply(
+                match apply(
                     context,
                     span,
                     (lhs_span, lhs),
                     operator_span,
                     (rhs_span, rhs),
                     scope,
-                )?
-                .await,
+                ) {
+                    Some(result) => {
+                        self.file.use_builtin_syntax(operator_span, name);
+                        result.await
+                    }
+                    None => return None,
+                },
             )
         }))
     }

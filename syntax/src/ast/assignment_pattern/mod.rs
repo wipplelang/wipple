@@ -1,18 +1,12 @@
-mod instance;
-mod pattern;
-mod type_function;
-
-pub use instance::InstanceAssignmentPattern;
-pub use pattern::PatternAssignmentPattern;
-pub use type_function::TypeFunctionAssignmentPattern;
-
-use instance::*;
-use pattern::*;
-use type_function::*;
+definitions! {
+    mod instance;
+    mod pattern;
+    mod type_function;
+}
 
 use crate::{
     ast::{
-        macros::syntax_group,
+        macros::{definitions, syntax_group},
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, DestructuringSyntax, PatternSyntaxContext, StatementAttributes,
     },

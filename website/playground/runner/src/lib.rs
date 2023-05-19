@@ -9,6 +9,7 @@ use serde::Serialize;
 use std::{
     collections::HashMap,
     future::Future,
+    mem,
     pin::Pin,
     sync::{atomic::AtomicBool, Arc},
 };
@@ -74,12 +75,13 @@ struct HoverOutput {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AnalysisOutputCompletions {
-    variables: Vec<Completion>,
+    language: Vec<Completion>,
     grouped_constants: Vec<(String, Vec<Completion>)>,
     ungrouped_constants: Vec<Completion>,
+    variables: Vec<Completion>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Completion {
     kind: Option<&'static str>,
@@ -425,6 +427,16 @@ fn get_syntax_highlighting(
             }
         }
     );
+    insert_semantic_tokens!(
+        builtin_syntaxes,
+        |_, syntax: &wipple_frontend::analysis::typecheck::BuiltinSyntaxDecl| {
+            if syntax.definition.operator {
+                "operator"
+            } else {
+                "keyword"
+            }
+        }
+    );
     insert_semantic_tokens!(builtin_types, |_, _| "type");
     insert_semantic_tokens!(type_parameters, |_, _| "type");
     insert_semantic_tokens!(variables, |_, _| "variable");
@@ -498,8 +510,33 @@ fn get_syntax_highlighting(
 }
 
 fn get_completions(program: &wipple_frontend::analysis::Program) -> AnalysisOutputCompletions {
+    let mut language = Vec::new();
+    for decl in wipple_syntax::ast::builtin_syntax_definitions() {
+        let completion = Completion {
+            kind: Some(if decl.operator { "operator" } else { "syntax" }),
+            name: decl.name.to_string(),
+            help: decl.help.to_string(),
+        };
+
+        language.push(completion);
+    }
+
     let mut grouped_constants = HashMap::<String, Vec<Completion>>::new();
     let mut ungrouped_constants = Vec::new();
+
+    macro_rules! add {
+        ($group:expr, $completion:ident) => {{
+            if let Some(group) = $group {
+                grouped_constants
+                    .entry(group.to_string())
+                    .or_default()
+                    .push($completion);
+            } else {
+                ungrouped_constants.push($completion);
+            }
+        }};
+    }
+
     for decl in program.declarations.constants.values() {
         let completion = Completion {
             kind: matches!(decl.ty, wipple_frontend::analysis::Type::Function(_, _))
@@ -508,14 +545,17 @@ fn get_completions(program: &wipple_frontend::analysis::Program) -> AnalysisOutp
             help: decl.attributes.decl_attributes.help.iter().join("\n"),
         };
 
-        if let Some(group) = decl.attributes.decl_attributes.help_group {
-            grouped_constants
-                .entry(group.to_string())
-                .or_default()
-                .push(completion);
-        } else {
-            ungrouped_constants.push(completion);
-        }
+        add!(decl.attributes.decl_attributes.help_group, completion);
+    }
+
+    for decl in program.declarations.syntaxes.values() {
+        let completion = Completion {
+            kind: Some("syntax"),
+            name: decl.name.to_string(),
+            help: decl.attributes.decl_attributes.help.iter().join("\n"),
+        };
+
+        add!(decl.attributes.decl_attributes.help_group, completion);
     }
 
     let mut variables = Vec::new();
@@ -531,12 +571,13 @@ fn get_completions(program: &wipple_frontend::analysis::Program) -> AnalysisOutp
         });
     }
 
-    for completions in std::iter::once(&mut variables)
+    for completions in std::iter::once(&mut language)
         .chain(grouped_constants.values_mut())
         .chain(std::iter::once(&mut ungrouped_constants))
+        .chain(std::iter::once(&mut variables))
     {
+        *completions = mem::take(completions).into_iter().unique().collect();
         completions.sort_by(|a, b| a.name.cmp(&b.name));
-        completions.dedup_by(|a, b| a.name == b.name);
     }
 
     let grouped_constants = grouped_constants
@@ -545,9 +586,10 @@ fn get_completions(program: &wipple_frontend::analysis::Program) -> AnalysisOutp
         .collect::<Vec<_>>();
 
     AnalysisOutputCompletions {
-        variables,
+        language,
         grouped_constants,
         ungrouped_constants,
+        variables,
     }
 }
 
@@ -1061,6 +1103,45 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                         format_type(decl.ty.clone(), Format::default())
                     ),
                     help: String::new(),
+                },
+            ));
+        }
+    }
+
+    for decl in analysis.program.declarations.builtin_syntaxes.values() {
+        for span in decl.uses.iter().copied() {
+            if !within_hover(span.first()) {
+                continue;
+            }
+
+            hovers.push((
+                span.first(),
+                HoverOutput {
+                    code: format!("{} : syntax", decl.definition.name),
+                    help: decl.definition.help.to_string(),
+                },
+            ));
+        }
+    }
+
+    for decl in analysis.program.declarations.syntaxes.values() {
+        for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
+            if !within_hover(span.first()) {
+                continue;
+            }
+
+            hovers.push((
+                span.first(),
+                HoverOutput {
+                    code: format!("{} : syntax", decl.name),
+                    help: decl
+                        .attributes
+                        .decl_attributes
+                        .help
+                        .iter()
+                        .map(|line| line.to_string())
+                        .collect::<Vec<_>>()
+                        .join("\n"),
                 },
             ));
         }

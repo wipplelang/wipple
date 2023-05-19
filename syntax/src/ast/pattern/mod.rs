@@ -1,19 +1,13 @@
-mod annotate;
-mod or;
-mod tuple;
-
-pub use annotate::AnnotatePattern;
-pub use or::OrPattern;
-pub use tuple::TuplePattern;
-
-use annotate::*;
-use or::*;
-use tuple::*;
+definitions! {
+    mod annotate;
+    mod or;
+    mod tuple;
+}
 
 use crate::{
     ast::{
         format::Format,
-        macros::syntax_group,
+        macros::{definitions, syntax_group},
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, Destructuring, DestructuringSyntax, StatementAttributes,
     },

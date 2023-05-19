@@ -1,27 +1,15 @@
-mod annotate;
-mod assign;
-mod expression;
-mod instance;
-mod type_function;
-mod r#use;
-
-pub use annotate::AnnotateStatement;
-pub use assign::AssignStatement;
-pub use expression::ExpressionStatement;
-pub use instance::InstanceStatement;
-pub use r#use::{UseStatement, UseStatementKind};
-pub use type_function::TypeFunctionStatement;
-
-use annotate::*;
-use assign::*;
-use expression::*;
-use instance::*;
-use r#use::*;
-use type_function::*;
+definitions! {
+    mod annotate;
+    mod assign;
+    mod expression;
+    mod instance;
+    mod type_function;
+    mod r#use;
+}
 
 use crate::{
     ast::{
-        macros::syntax_group,
+        macros::{definitions, syntax_group},
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, ExpressionSyntaxContext, StatementAttributes,
     },

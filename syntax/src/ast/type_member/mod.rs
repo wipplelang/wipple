@@ -1,13 +1,11 @@
-mod field;
-
-pub use field::FieldTypeMember;
-
-use field::*;
+definitions! {
+    mod field;
+}
 
 use crate::{
     ast::{
         format::Format,
-        macros::syntax_group,
+        macros::{definitions, syntax_group},
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes, Type, TypeSyntax, TypeSyntaxContext,
     },

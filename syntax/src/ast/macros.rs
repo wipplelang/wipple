@@ -1,3 +1,21 @@
+macro_rules! definitions {
+    ($(mod $name:ident;)*) => {
+        $(mod $name;)*
+
+        $(pub use $name::*;)*
+
+        pub fn builtin_syntax_definitions() -> Vec<$crate::ast::BuiltinSyntaxDefinition> {
+            let definitions: Vec<Vec<$crate::ast::BuiltinSyntaxDefinition>> =
+                vec![$($name::builtin_syntax_definitions()),*];
+
+            definitions
+                .into_iter()
+                .flatten()
+                .collect()
+        }
+    };
+}
+
 macro_rules! syntax_group {
     ($(#[$attr:meta])* $vis:vis type $name:ident<$context:ty> {
         non_terminal: {
@@ -74,5 +92,6 @@ macro_rules! group {
     };
 }
 
-pub(crate) use syntax_group;
+pub(crate) use definitions;
 pub(crate) use group;
+pub(crate) use syntax_group;

@@ -4,8 +4,8 @@ use crate::{
     analysis::{ast, Analysis, Span, SpanList},
     diagnostics::Note,
     helpers::{did_you_mean, Backtrace, InternedString, Shared},
-    BuiltinTypeId, Compiler, ConstantId, FieldIndex, FilePath, ScopeId, SyntaxId, TraitId, TypeId,
-    TypeParameterId, VariableId, VariantIndex,
+    BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, FieldIndex, FilePath, ScopeId, SyntaxId,
+    TraitId, TypeId, TypeParameterId, VariableId, VariantIndex,
 };
 use std::{
     borrow::Cow,
@@ -35,6 +35,7 @@ pub struct Declarations {
     pub constants: BTreeMap<ConstantId, Declaration<ConstantDeclaration>>,
     pub instances: BTreeMap<ConstantId, Declaration<InstanceDeclaration>>,
     pub variables: BTreeMap<VariableId, Declaration<VariableDeclaration>>,
+    pub builtin_syntaxes: BTreeMap<BuiltinSyntaxId, Declaration<BuiltinSyntaxDeclaration>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -47,6 +48,7 @@ struct UnresolvedDeclarations {
     constants: BTreeMap<ConstantId, Declaration<Option<UnresolvedConstantDeclaration>>>,
     instances: BTreeMap<ConstantId, Declaration<Option<InstanceDeclaration>>>,
     variables: BTreeMap<VariableId, Declaration<VariableDeclaration>>,
+    builtin_syntaxes: BTreeMap<BuiltinSyntaxId, Declaration<BuiltinSyntaxDeclaration>>,
 }
 
 impl UnresolvedDeclarations {
@@ -80,6 +82,7 @@ impl UnresolvedDeclarations {
                 .map(|(id, decl)| (id, decl.resolve()))
                 .collect(),
             variables: self.variables,
+            builtin_syntaxes: self.builtin_syntaxes,
         }
     }
 }
@@ -164,6 +167,13 @@ pub struct DeclarationAttributes {
 pub struct SyntaxDeclaration {
     pub operator: bool,
     pub keyword: bool,
+    pub attributes: SyntaxAttributes,
+}
+
+#[derive(Debug, Clone, Default)]
+#[non_exhaustive]
+pub struct SyntaxAttributes {
+    pub decl_attributes: DeclarationAttributes,
 }
 
 #[derive(Debug, Clone)]
@@ -313,6 +323,11 @@ pub struct InstanceDeclaration {
 
 #[derive(Debug, Clone)]
 pub struct VariableDeclaration;
+
+#[derive(Debug, Clone)]
+pub struct BuiltinSyntaxDeclaration {
+    pub definition: wipple_syntax::ast::BuiltinSyntaxDefinition,
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct FileInfo {
@@ -767,20 +782,38 @@ impl Compiler {
 
         let scope = lowerer.root_scope(file.file.root_scope);
 
-        for (id, value) in &*file.file.syntax_declarations.lock() {
+        for (&name, (id, definition, uses)) in &*file.file.builtin_syntax_uses.lock() {
             lowerer
                 .declarations
-                .syntaxes
+                .builtin_syntaxes
                 .entry(*id)
                 .or_insert_with(|| Declaration {
+                    name: Some(InternedString::new(name)),
+                    span: SpanList::from(Span::builtin()),
+                    uses: Default::default(),
+                    value: BuiltinSyntaxDeclaration {
+                        definition: definition.clone(),
+                    },
+                })
+                .uses
+                .extend(uses);
+        }
+
+        for (id, value) in &*file.file.syntax_declarations.lock() {
+            if !lowerer.declarations.syntaxes.contains_key(id) {
+                let decl = Declaration {
                     name: value.name,
                     span: value.span(),
                     uses: value.uses.iter().copied().collect(),
                     value: SyntaxDeclaration {
                         operator: value.operator_precedence.is_some(),
                         keyword: value.keyword.is_some(),
+                        attributes: lowerer.lower_syntax_attributes(&value.attributes, &scope),
                     },
-                });
+                };
+
+                lowerer.declarations.syntaxes.insert(*id, decl);
+            }
         }
 
         for dependency in dependencies {
@@ -3582,6 +3615,16 @@ impl Lowerer {
                 .help_group
                 .as_ref()
                 .map(|attribute| attribute.help_group_text),
+        }
+    }
+
+    fn lower_syntax_attributes(
+        &self,
+        statement_attributes: &ast::StatementAttributes<Analysis>,
+        scope: &LoadedScopeId,
+    ) -> SyntaxAttributes {
+        SyntaxAttributes {
+            decl_attributes: self.lower_decl_attributes(statement_attributes, scope),
         }
     }
 

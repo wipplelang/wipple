@@ -1,15 +1,11 @@
-mod pattern;
-mod r#where;
-
-pub use pattern::PatternWhenPattern;
-pub use r#where::WhereWhenPattern;
-
-use pattern::*;
-use r#where::*;
+definitions! {
+    mod pattern;
+    mod r#where;
+}
 
 use crate::{
     ast::{
-        macros::syntax_group,
+        macros::{definitions, syntax_group},
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, DestructuringSyntax, PatternSyntaxContext, StatementAttributes,
     },

@@ -95,3 +95,7 @@ impl<D: Driver> Syntax<D> for RecursionLimitFileAttributeSyntax {
         ))
     }
 }
+
+pub(crate) fn builtin_syntax_definitions() -> Vec<crate::ast::BuiltinSyntaxDefinition> {
+    vec![]
+}

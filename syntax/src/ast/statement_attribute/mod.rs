@@ -1,49 +1,22 @@
-mod allow_overlapping_instances;
-mod contextual;
-mod diagnostic_alias;
-mod diagnostic_item;
-mod help;
-mod help_group;
-mod keyword;
-mod language_item;
-mod on_mismatch;
-mod on_unimplemented;
-mod operator_precedence;
-mod specialize;
-
-pub use allow_overlapping_instances::AllowOverlappingInstancesStatementAttribute;
-pub use contextual::ContextualStatementAttribute;
-pub use diagnostic_alias::DiagnosticAliasStatementAttribute;
-pub use diagnostic_item::{DiagnosticItemStatementAttribute, DiagnosticItemStatementAttributeKind};
-pub use help::HelpStatementAttribute;
-pub use help_group::HelpGroupStatementAttribute;
-pub use keyword::KeywordStatementAttribute;
-pub use language_item::{LanguageItemStatementAttribute, LanguageItemStatementAttributeKind};
-pub use on_mismatch::OnMismatchStatementAttribute;
-pub use on_unimplemented::OnUnimplementedStatementAttribute;
-pub use operator_precedence::{
-    OperatorAssociativity, OperatorPrecedenceStatementAttribute,
-    OperatorPrecedenceStatementAttributeKind,
-};
-pub use specialize::SpecializeStatementAttribute;
-
-use allow_overlapping_instances::*;
-use contextual::*;
-use diagnostic_alias::*;
-use diagnostic_item::*;
-use help::*;
-use help_group::*;
-use keyword::*;
-use language_item::*;
-use on_mismatch::*;
-use on_unimplemented::*;
-use operator_precedence::*;
-use specialize::*;
+definitions! {
+    mod allow_overlapping_instances;
+    mod contextual;
+    mod diagnostic_alias;
+    mod diagnostic_item;
+    mod help;
+    mod help_group;
+    mod keyword;
+    mod language_item;
+    mod on_mismatch;
+    mod on_unimplemented;
+    mod operator_precedence;
+    mod specialize;
+}
 
 use crate::{
     ast::{
         format::Format,
-        macros::syntax_group,
+        macros::{definitions, syntax_group},
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },

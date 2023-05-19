@@ -117,3 +117,7 @@ impl<D: Driver> Syntax<D> for UseStatementSyntax {
         ))
     }
 }
+
+pub(crate) fn builtin_syntax_definitions() -> Vec<crate::ast::BuiltinSyntaxDefinition> {
+    vec![crate::ast::BuiltinSyntaxDefinition::USE]
+}

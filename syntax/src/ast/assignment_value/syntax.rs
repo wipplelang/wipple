@@ -3,8 +3,8 @@ use crate::{
         assignment_value::AssignmentValueSyntaxContext,
         format::Format,
         syntax::{Syntax, SyntaxContext, SyntaxRule, SyntaxRules},
-        KeywordStatementAttribute, OperatorPrecedenceStatementAttribute, SyntaxBody,
-        SyntaxBodySyntax, SyntaxBodySyntaxContext, SyntaxError,
+        KeywordStatementAttribute, OperatorPrecedenceStatementAttribute, StatementAttributes,
+        SyntaxBody, SyntaxBodySyntax, SyntaxBodySyntaxContext, SyntaxError,
     },
     Driver, File,
 };
@@ -17,6 +17,7 @@ pub struct SyntaxAssignmentValue<D: Driver> {
     pub body: Result<SyntaxBody<D>, SyntaxError<D>>,
     pub operator_precedence: Option<OperatorPrecedenceStatementAttribute<D>>,
     pub keyword: Option<KeywordStatementAttribute<D>>,
+    pub attributes: StatementAttributes<D>,
     pub uses: Vec<D::Span>,
 }
 
@@ -30,6 +31,7 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for SyntaxAssignmentValu
             body: arbitrary::Arbitrary::arbitrary(u)?,
             operator_precedence: Default::default(),
             keyword: Default::default(),
+            attributes: Default::default(),
             uses: Default::default(),
         })
     }
@@ -86,6 +88,7 @@ impl<D: Driver> Syntax<D> for SyntaxAssignmentValueSyntax {
                     body,
                     operator_precedence: statement_attributes.operator_precedence.clone(),
                     keyword: statement_attributes.keyword.clone(),
+                    attributes: statement_attributes.clone(),
                     uses: Vec::new(),
                 };
 
@@ -104,4 +107,8 @@ impl<D: Driver> Syntax<D> for SyntaxAssignmentValueSyntax {
             },
         ))
     }
+}
+
+pub(crate) fn builtin_syntax_definitions() -> Vec<crate::ast::BuiltinSyntaxDefinition> {
+    vec![crate::ast::BuiltinSyntaxDefinition::SYNTAX]
 }

@@ -33,9 +33,10 @@ export interface HoverOutput {
 }
 
 export interface AnalysisOutputCompletions {
-    variables: Completion[];
+    language: Completion[];
     groupedConstants: [string, Completion[]][];
     ungroupedConstants: Completion[];
+    variables: Completion[];
 }
 
 export interface Completion {

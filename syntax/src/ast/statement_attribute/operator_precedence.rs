@@ -160,3 +160,7 @@ impl<D: Driver> Syntax<D> for OperatorPrecedenceStatementAttributeSyntax {
         ))
     }
 }
+
+pub(crate) fn builtin_syntax_definitions() -> Vec<crate::ast::BuiltinSyntaxDefinition> {
+    vec![]
+}

@@ -1,15 +1,11 @@
-mod no_std;
-mod recursion_limit;
-
-pub use no_std::NoStdFileAttribute;
-pub use recursion_limit::RecursionLimitFileAttribute;
-
-use no_std::*;
-use recursion_limit::*;
+definitions! {
+    mod no_std;
+    mod recursion_limit;
+}
 
 use crate::{
     ast::{
-        macros::syntax_group,
+        macros::{definitions, syntax_group},
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },

@@ -1,7 +1,9 @@
+definitions! {}
+
 use crate::{
     ast::{
         format::Format,
-        macros::syntax_group,
+        macros::{definitions, syntax_group},
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes, TypeMember, TypeMemberSyntax,
     },

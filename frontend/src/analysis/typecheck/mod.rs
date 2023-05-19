@@ -16,8 +16,8 @@ use crate::{
     analysis::{lower, SpanList},
     diagnostics::Note,
     helpers::{Backtrace, InternedString},
-    BuiltinTypeId, Compiler, ConstantId, FieldIndex, ItemId, SyntaxId, TraitId, TypeId,
-    TypeParameterId, VariableId, VariantIndex,
+    BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, FieldIndex, ItemId, SyntaxId, TraitId,
+    TypeId, TypeParameterId, VariableId, VariantIndex,
 };
 use itertools::Itertools;
 use parking_lot::RwLock;
@@ -56,6 +56,7 @@ macro_rules! declarations {
             pub type_parameters: $($container)::+<TypeParameterId, TypeParameterDecl>,
             /// NOTE: Not all variables will be listed here, only ones that passed typechecking
             pub variables: $($container)::+<VariableId, VariableDecl>,
+            pub builtin_syntaxes: $($container)::+<BuiltinSyntaxId, BuiltinSyntaxDecl>,
         }
     };
 }
@@ -74,6 +75,7 @@ impl From<DeclarationsInner> for Declarations {
             builtin_types: decls.builtin_types.into_iter().collect(),
             type_parameters: decls.type_parameters.into_iter().collect(),
             variables: decls.variables.into_iter().collect(),
+            builtin_syntaxes: decls.builtin_syntaxes.into_iter().collect(),
         }
     }
 }
@@ -84,6 +86,7 @@ pub struct SyntaxDecl {
     pub span: SpanList,
     pub operator: bool,
     pub keyword: bool,
+    pub attributes: lower::SyntaxAttributes,
     pub uses: HashSet<SpanList>,
 }
 
@@ -178,6 +181,14 @@ pub struct VariableDecl {
     pub name: Option<InternedString>,
     pub span: SpanList,
     pub ty: engine::Type,
+    pub uses: HashSet<SpanList>,
+}
+
+#[derive(Debug, Clone)]
+pub struct BuiltinSyntaxDecl {
+    pub name: InternedString,
+    pub span: SpanList,
+    pub definition: wipple_syntax::ast::BuiltinSyntaxDefinition,
     pub uses: HashSet<SpanList>,
 }
 
@@ -903,6 +914,7 @@ impl Typechecker {
             builtin_type,
             type_parameter,
             // variables are handled inside `finalize_pattern`
+            builtin_syntax as builtin_syntaxes,
         );
     }
 
@@ -3213,6 +3225,7 @@ impl Typechecker {
             operator: decl.value.operator,
             keyword: decl.value.keyword,
             uses: decl.uses,
+            attributes: decl.value.attributes,
         };
 
         Some(f(self
@@ -3638,6 +3651,39 @@ impl Typechecker {
             .declarations
             .borrow_mut()
             .variables
+            .entry(id)
+            .or_insert(decl)))
+    }
+
+    fn with_builtin_syntax_decl<T>(
+        &mut self,
+        id: BuiltinSyntaxId,
+        f: impl FnOnce(&BuiltinSyntaxDecl) -> T,
+    ) -> Option<T> {
+        if let Some(decl) = self.declarations.borrow().builtin_syntaxes.get(&id) {
+            return Some(f(decl));
+        }
+
+        let decl = self
+            .entrypoint
+            .declarations
+            .builtin_syntaxes
+            .get(&id)?
+            .clone();
+
+        let decl = BuiltinSyntaxDecl {
+            name: decl
+                .name
+                .unwrap_or_else(|| InternedString::new("<unknown>")),
+            span: decl.span,
+            definition: decl.value.definition,
+            uses: decl.uses,
+        };
+
+        Some(f(self
+            .declarations
+            .borrow_mut()
+            .builtin_syntaxes
             .entry(id)
             .or_insert(decl)))
     }

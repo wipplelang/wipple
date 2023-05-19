@@ -139,6 +139,7 @@ file_ids!(
     r#type,
     type_parameter,
     variable,
+    builtin_syntax,
 );
 
 macro_rules! ids {

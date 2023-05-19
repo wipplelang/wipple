@@ -1,12 +1,10 @@
-mod function;
-
-pub use function::FunctionWhenArm;
-
-use function::*;
+definitions! {
+    mod function;
+}
 
 use crate::{
     ast::{
-        macros::syntax_group,
+        macros::{definitions, syntax_group},
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },
