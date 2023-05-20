@@ -22,8 +22,7 @@ id: OvrEYGel
 type: code
 ---
 
-display-person : name age favorite-color ->
-    show (format "_ is _ years old and their favorite color is _" name age favorite-color)
+display-person : name age favorite-color -> show (format "_ is _ years old and their favorite color is _" name age favorite-color)
 
 alice-name : "Alice"
 alice-age : 25
@@ -142,8 +141,7 @@ Person : type {
     favorite-color :: Text
 }
 
-display-person : person ->
-    show (format "_ is _ years old and their favorite color is _" (name of person) (age of person) (favorite-color of person))
+display-person : person -> show (format "_ is _ years old and their favorite color is _" (name of person) (age of person) (favorite-color of person))
 
 alice : Person {
     name : "Alice"
