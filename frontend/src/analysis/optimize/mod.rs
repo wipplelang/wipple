@@ -105,17 +105,13 @@ pub mod ssa {
                                                             remaining.first().map_or(
                                                                 span,
                                                                 |expr| {
-                                                                    expr.span
-                                                                        .first()
-                                                                        .with_end(
-                                                                            remaining
-                                                                                .last()
-                                                                                .unwrap()
-                                                                                .span
-                                                                                .first()
-                                                                                .end,
-                                                                        )
-                                                                        .into()
+                                                                    SpanList::join(
+                                                                        expr.span,
+                                                                        remaining
+                                                                            .last()
+                                                                            .unwrap()
+                                                                            .span,
+                                                                    )
                                                                 },
                                                             ),
                                                         ),

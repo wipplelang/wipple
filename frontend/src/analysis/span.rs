@@ -1,21 +1,21 @@
 use crate::FilePath;
 use internment::Intern;
 use parking_lot::Mutex;
-use std::{fmt, hash::Hash, ops::Range};
+use std::{hash::Hash, ops::Range};
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Span {
     pub path: FilePath,
-    pub start: usize,
-    pub end: usize,
+    pub primary: (usize, usize),
+    pub caller: Option<(usize, usize)>,
 }
 
 impl Span {
     pub fn new(path: FilePath, range: Range<usize>) -> Self {
         Span {
             path,
-            start: range.start,
-            end: range.end,
+            primary: (range.start, range.end),
+            caller: None,
         }
     }
 
@@ -24,33 +24,41 @@ impl Span {
     }
 
     pub fn join(left: Span, right: Span) -> Self {
-        left.with_end(right.end)
-    }
-
-    pub fn with_start(self, start: usize) -> Self {
-        Span { start, ..self }
-    }
-
-    pub fn with_end(self, end: usize) -> Self {
-        Span { end, ..self }
-    }
-
-    pub fn offset(self, range: usize) -> Self {
         Span {
-            start: self.start + range,
-            end: self.end + range,
-            ..self
+            path: left.path,
+            primary: (left.primary_start(), right.primary_end()),
+            caller: None,
         }
     }
 
-    pub fn is_subspan_of(self, other: Span) -> bool {
-        self.path == other.path && self.start >= other.start && self.end <= other.end
+    pub fn primary_start(self) -> usize {
+        self.primary.0
     }
-}
 
-impl fmt::Debug for Span {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} @ {}..{}", self.path, self.start, self.end)
+    pub fn primary_end(self) -> usize {
+        self.primary.1
+    }
+
+    pub fn primary_range(self) -> Range<usize> {
+        self.primary_start()..self.primary_end()
+    }
+
+    pub fn caller_start(self) -> Option<usize> {
+        self.caller.map(|(start, _)| start)
+    }
+
+    pub fn caller_end(self) -> Option<usize> {
+        self.caller.map(|(_, end)| end)
+    }
+
+    pub fn caller_range(self) -> Option<Range<usize>> {
+        Some(self.caller_start()?..self.caller_end()?)
+    }
+
+    pub fn is_subspan_of(self, other: Span) -> bool {
+        self.path == other.path
+            && self.primary_start() >= other.primary_start()
+            && self.primary_end() <= other.primary_end()
     }
 }
 
@@ -92,6 +100,12 @@ impl SpanList {
         SpanList {
             first: Span::join(left.first, right.first),
             sources: left.sources,
+        }
+    }
+
+    pub fn set_caller(&mut self, caller: SpanList) {
+        if self.first.path == caller.first.path {
+            self.first.caller = Some((caller.first.primary_start(), caller.first.primary_end()));
         }
     }
 

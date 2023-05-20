@@ -295,10 +295,7 @@ impl Converter<'_> {
                                     .map(|expr| self.convert_type(&expr.ty))
                                     .unwrap_or_else(|| Type::Tuple(Vec::new())),
                                 span: remaining.first().map(|expr| {
-                                    expr.span
-                                        .first()
-                                        .with_end(remaining.last().unwrap().span.first().end)
-                                        .into()
+                                    SpanList::join(expr.span, remaining.last().unwrap().span)
                                 }),
                                 kind: ExpressionKind::Block(self.convert_block(remaining, tail)),
                             },

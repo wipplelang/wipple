@@ -310,19 +310,38 @@ pub fn analyze(code: String, lint: bool, callback: js_sys::Function) {
 
                 for note in diagnostic.notes {
                     let (first, rest) = note.span.split_iter();
-                    let convert_span =
-                        |span: wipple_frontend::analysis::Span| AnalysisOutputDiagnosticSpan {
+                    let convert_span = |span: wipple_frontend::analysis::Span, use_caller: bool| {
+                        let range = use_caller
+                            .then(|| span.caller_range())
+                            .flatten()
+                            .unwrap_or_else(|| span.primary_range());
+
+                        AnalysisOutputDiagnosticSpan {
                             file: span.path.to_string(),
-                            start: span.start,
-                            end: span.end,
-                        };
+                            start: range.start,
+                            end: range.end,
+                        }
+                    };
 
                     let get_code = |path: wipple_frontend::FilePath| {
                         LOADER.source_map().lock().get(&path).unwrap().to_string()
                     };
 
-                    for (span, message) in std::iter::once((first, note.message))
-                        .chain(rest.map(|span| (span, String::from("actual error occurred here"))))
+                    for (span, message) in
+                        std::iter::once((first, note.message)).chain(rest.map(|span| {
+                            (
+                                span,
+                                format!(
+                                    "actual {} occurred here",
+                                    match diagnostic.level {
+                                        wipple_frontend::diagnostics::DiagnosticLevel::Error =>
+                                            "error",
+                                        wipple_frontend::diagnostics::DiagnosticLevel::Warning =>
+                                            "warning",
+                                    }
+                                ),
+                            )
+                        }))
                     {
                         if let Some(existing) = notes
                             .iter_mut()
@@ -334,7 +353,7 @@ pub fn analyze(code: String, lint: bool, callback: js_sys::Function) {
                                 span,
                                 AnalysisOutputDiagnosticNote {
                                     code: get_code(span.path),
-                                    span: convert_span(span),
+                                    span: convert_span(span, note.use_caller_if_available),
                                     messages: vec![message],
                                 },
                             ));
@@ -393,8 +412,16 @@ fn get_syntax_highlighting(
             for (id, decl) in &program.declarations.$kind {
                 if decl.span.first().path == playground_path {
                     items.push(AnalysisOutputSyntaxHighlightingItem {
-                        start: decl.span.first().start,
-                        end: decl.span.first().end,
+                        start: decl
+                            .span
+                            .first()
+                            .caller_start()
+                            .unwrap_or_else(|| decl.span.first().primary_start()),
+                        end: decl
+                            .span
+                            .first()
+                            .caller_end()
+                            .unwrap_or_else(|| decl.span.first().primary_end()),
                         kind: $token(id, decl),
                     });
                 }
@@ -402,8 +429,14 @@ fn get_syntax_highlighting(
                 for &span in &decl.uses {
                     if span.first().path == playground_path {
                         items.push(AnalysisOutputSyntaxHighlightingItem {
-                            start: span.first().start,
-                            end: span.first().end,
+                            start: span
+                                .first()
+                                .caller_start()
+                                .unwrap_or_else(|| span.first().primary_start()),
+                            end: span
+                                .first()
+                                .caller_end()
+                                .unwrap_or_else(|| span.first().primary_end()),
                             kind: $token(id, decl),
                         });
                     }
@@ -453,14 +486,14 @@ fn get_syntax_highlighting(
         ) && matches!(expr.ty, wipple_frontend::analysis::Type::Function(_, _))
         {
             items.push(AnalysisOutputSyntaxHighlightingItem {
-                start: expr.span.first().start,
-                end: expr.span.first().end,
+                start: expr.span.first().primary_start(),
+                end: expr.span.first().primary_end(),
                 kind: "function",
             });
         } else if let Some(literal_kind) = expr.literal_kind() {
             items.push(AnalysisOutputSyntaxHighlightingItem {
-                start: expr.span.first().start,
-                end: expr.span.first().end,
+                start: expr.span.first().primary_start(),
+                end: expr.span.first().primary_end(),
                 kind: match literal_kind {
                     wipple_frontend::analysis::LiteralKind::Number => "number",
                     wipple_frontend::analysis::LiteralKind::Text => "text",
@@ -947,7 +980,9 @@ pub fn hover(start: usize, end: usize) -> JsValue {
     };
 
     let within_hover = |span: Span| {
-        span.path == FilePath::Virtual(*PLAYGROUND_PATH) && start >= span.start && end <= span.end
+        span.path == FilePath::Virtual(*PLAYGROUND_PATH)
+            && start >= span.primary_start()
+            && end <= span.primary_end()
     };
 
     macro_rules! getter {
@@ -1149,7 +1184,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
 
     let hover = hovers
         .into_iter()
-        .min_by_key(|(span, _)| span.end - span.start)
+        .min_by_key(|(span, _)| span.primary_end() - span.primary_start())
         .map(|(_, hover)| hover);
 
     JsValue::from_serde(&hover).unwrap()

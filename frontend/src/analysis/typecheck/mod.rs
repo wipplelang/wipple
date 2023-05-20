@@ -4395,18 +4395,19 @@ impl Typechecker {
 
                 self.compiler.error_with(
                     error_message,
-                    std::iter::once(Note::primary(error.span, note_message))
-                        .chain(
-                            bound_span
-                                .map(|span| Note::secondary(span, "required by this bound here")),
+                    std::iter::once(
+                        Note::primary(error.span, note_message).use_caller_if_available(),
+                    )
+                    .chain(
+                        bound_span.map(|span| Note::secondary(span, "required by this bound here")),
+                    )
+                    .chain(error_candidates.into_iter().map(|span| {
+                        Note::secondary(
+                            span,
+                            "this instance could apply, but its bounds weren't satisfied",
                         )
-                        .chain(error_candidates.into_iter().map(|span| {
-                            Note::secondary(
-                                span,
-                                "this instance could apply, but its bounds weren't satisfied",
-                            )
-                        }))
-                        .collect(),
+                    }))
+                    .collect(),
                     error.trace,
                 )
             }

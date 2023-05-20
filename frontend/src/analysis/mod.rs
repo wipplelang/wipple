@@ -426,8 +426,12 @@ impl wipple_syntax::Span for SpanList {
         *self = SpanList::merge(*self, other);
     }
 
+    fn set_caller(&mut self, caller: Self) {
+        self.set_caller(caller);
+    }
+
     fn range(self) -> std::ops::Range<usize> {
-        self.first().start..self.first().end
+        self.first().primary_range()
     }
 }
 

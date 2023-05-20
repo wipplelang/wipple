@@ -69,6 +69,7 @@ pub trait File<D: Driver> {
 pub trait Span {
     fn join(left: Self, right: Self) -> Self;
     fn merge(&mut self, other: Self);
+    fn set_caller(&mut self, caller: Self);
     fn range(self) -> Range<usize>;
 }
 
@@ -174,6 +175,10 @@ impl Span for () {
     }
 
     fn merge(&mut self, _other: Self) {
+        // do nothing
+    }
+
+    fn set_caller(&mut self, _caller: Self) {
         // do nothing
     }
 

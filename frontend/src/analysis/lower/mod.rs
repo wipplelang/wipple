@@ -2225,7 +2225,7 @@ impl Lowerer {
                     };
 
                     Expression {
-                        span: Span::join(result.span.first(), next.span.first()).into(),
+                        span: SpanList::join(result.span, next.span),
                         kind: ExpressionKind::Call(Box::new(result), Box::new(next)),
                     }
                 })
@@ -3907,7 +3907,7 @@ impl Lowerer {
                 ),
             },
             |result, next| TypeAnnotation {
-                span: Span::join(next.span.first(), result.span.first()).into(),
+                span: SpanList::join(next.span, result.span),
                 kind: TypeAnnotationKind::Function(Box::new(next.clone()), Box::new(result)),
             },
         );

@@ -15,7 +15,12 @@ diagnostics: |
       │  ^^^^ did you mean to use the result, eg. `show` it?
 
     warning: this expression doesn't do anything
-      ┌─ test:2:1
-      │
-    2 │ 1 + 2
-      │ ^^^^^ did you mean to use the result, eg. `show` it?
+       ┌─ test:2:1
+       │
+     2 │ 1 + 2
+       │ ^^^^^ did you mean to use the result, eg. `show` it?
+       │
+       ┌─ <dir>/std/math.wpl:13:25
+       │
+    13 │ + : syntax { 'a + 'b -> Add 'a 'b }
+       │                         --- actual warning occurred here

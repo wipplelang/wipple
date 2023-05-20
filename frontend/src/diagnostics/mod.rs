@@ -54,6 +54,7 @@ pub struct Note {
     pub level: NoteLevel,
     pub span: SpanList,
     pub message: String,
+    pub use_caller_if_available: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -176,6 +177,7 @@ impl Note {
             level,
             span: span.into(),
             message: message.to_string(),
+            use_caller_if_available: false,
         }
     }
 
@@ -185,6 +187,11 @@ impl Note {
 
     pub fn secondary(span: impl Into<SpanList>, message: impl ToString) -> Self {
         Note::new(NoteLevel::Secondary, span, message)
+    }
+
+    pub fn use_caller_if_available(mut self) -> Self {
+        self.use_caller_if_available = true;
+        self
     }
 }
 
@@ -248,7 +255,7 @@ impl FinalizedDiagnostics {
 
         let mut tracked_files = HashMap::<FilePath, usize>::new();
         for diagnostic in diagnostics {
-            let mut make_note = |style: LabelStyle, span: Span, message: &str| {
+            let mut make_note = |style: LabelStyle, span: Span, message: &str, use_caller: bool| {
                 self.source_map.get(&span.path).map(|src| {
                     let file = match tracked_files.entry(span.path) {
                         Entry::Occupied(entry) => *entry.get(),
@@ -259,7 +266,13 @@ impl FinalizedDiagnostics {
                         }
                     };
 
-                    Label::new(style, file, span.start..span.end).with_message(message)
+                    let range = if use_caller {
+                        span.caller_range().unwrap_or_else(|| span.primary_range())
+                    } else {
+                        span.primary_range()
+                    };
+
+                    Label::new(style, file, range).with_message(message)
                 })
             };
 
@@ -286,12 +299,28 @@ impl FinalizedDiagnostics {
                 .into_iter()
                 .flat_map(|note| {
                     let (first, _) = note.span.split_iter();
-                    make_note(note.level.into(), first, &note.message)
+                    make_note(
+                        note.level.into(),
+                        first,
+                        &note.message,
+                        note.use_caller_if_available,
+                    )
                 })
                 .collect::<Vec<_>>()
                 .into_iter()
                 .chain(rest.flat_map(|span| {
-                    make_note(LabelStyle::Secondary, span, "actual error occurred here")
+                    make_note(
+                        LabelStyle::Secondary,
+                        span,
+                        &format!(
+                            "actual {} occurred here",
+                            match diagnostic.level {
+                                DiagnosticLevel::Error => "error",
+                                DiagnosticLevel::Warning => "warning",
+                            }
+                        ),
+                        false,
+                    )
                 }))
                 .collect();
 

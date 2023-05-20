@@ -263,7 +263,7 @@ impl LanguageServer for Backend {
         }
 
         semantic_tokens.reverse();
-        semantic_tokens.sort_by_key(|(span, _)| span.first().start);
+        semantic_tokens.sort_by_key(|(span, _)| span.first().primary_start());
         semantic_tokens.dedup_by_key(|(span, _)| *span);
 
         let mut pre_line = 0;
@@ -273,8 +273,18 @@ impl LanguageServer for Backend {
         let data = semantic_tokens
             .into_iter()
             .filter_map(|(span, semantic_token_type)| {
-                let (line, start_col) = line_col_lookup.get(span.first().start)?;
-                let (_, end_col) = line_col_lookup.get(span.first().end - 1)?;
+                let (line, start_col) = line_col_lookup.get(
+                    span.first()
+                        .caller_start()
+                        .unwrap_or_else(|| span.first().primary_start()),
+                )?;
+
+                let (_, end_col) = line_col_lookup.get(
+                    span.first()
+                        .caller_end()
+                        .unwrap_or_else(|| span.first().primary_end())
+                        - 1,
+                )?;
 
                 let line = line - 1;
                 let start_col = start_col - 1;
@@ -326,8 +336,8 @@ impl LanguageServer for Backend {
         let within_hover = |span: Span| hover_span.is_subspan_of(span);
 
         let range_from = |span: Span| {
-            let (start_line, start_col) = line_col_lookup.get(span.start)?;
-            let (end_line, end_col) = line_col_lookup.get(span.end)?;
+            let (start_line, start_col) = line_col_lookup.get(span.primary_start())?;
+            let (end_line, end_col) = line_col_lookup.get(span.primary_end())?;
 
             Some(Range::new(
                 Position::new(start_line as u32 - 1, start_col as u32 - 1),
@@ -532,7 +542,7 @@ impl LanguageServer for Backend {
 
         Ok(hovers
             .into_iter()
-            .min_by_key(|(span, _)| span.first().end - span.first().start)
+            .min_by_key(|(span, _)| span.first().primary_end() - span.first().primary_start())
             .map(|(_, hover)| hover))
     }
 
@@ -786,9 +796,14 @@ impl Backend {
     ) {
         let diagnostics = {
             let line_col_lookup = document.line_col_lookup();
-            let range_from = |span: Span| {
-                let (start_line, start_col) = line_col_lookup.get(span.start)?;
-                let (end_line, end_col) = line_col_lookup.get(span.end)?;
+            let range_from = |span: Span, use_caller: bool| {
+                let range = use_caller
+                    .then(|| span.caller_range())
+                    .flatten()
+                    .unwrap_or_else(|| span.primary_range());
+
+                let (start_line, start_col) = line_col_lookup.get(range.start)?;
+                let (end_line, end_col) = line_col_lookup.get(range.end)?;
 
                 Some(Range::new(
                     Position::new(start_line as u32 - 1, start_col as u32 - 1),
@@ -811,7 +826,10 @@ impl Backend {
                     DiagnosticLevel::Error => DiagnosticSeverity::ERROR,
                 };
 
-                let range = match range_from(primary_note.span.first()) {
+                let range = match range_from(
+                    primary_note.span.first(),
+                    primary_note.use_caller_if_available,
+                ) {
                     Some(range) => range,
                     None => continue,
                 };
@@ -829,7 +847,7 @@ impl Backend {
                         continue;
                     }
 
-                    let range = match range_from(note.span.first()) {
+                    let range = match range_from(note.span.first(), note.use_caller_if_available) {
                         Some(range) => range,
                         None => continue,
                     };
