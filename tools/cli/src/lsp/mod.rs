@@ -58,12 +58,30 @@ struct Document {
 }
 
 impl Document {
-    fn line_col_lookup(&self) -> line_col::LineColLookup {
-        line_col::LineColLookup::new(&self.source)
+    fn line_col_lookup(&self) -> LineColLookup {
+        LineColLookup::new(&self.source)
     }
 
     fn offset_lookup(&self) -> OffsetLookup {
         OffsetLookup::new(&self.source)
+    }
+}
+
+struct LineColLookup<'a> {
+    len: usize,
+    lookup: line_col::LineColLookup<'a>,
+}
+
+impl<'a> LineColLookup<'a> {
+    fn new(src: &'a str) -> Self {
+        LineColLookup {
+            len: src.len(),
+            lookup: line_col::LineColLookup::new(src),
+        }
+    }
+
+    fn get(&self, pos: usize) -> Option<(usize, usize)> {
+        (pos <= self.len).then(|| self.lookup.get(pos))
     }
 }
 
@@ -141,6 +159,8 @@ impl LanguageServer for Backend {
         self.client
             .log_message(MessageType::INFO, "Wipple language server initialized")
             .await;
+
+        std::env::set_var("RUST_BACKTRACE", "1");
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
@@ -253,8 +273,8 @@ impl LanguageServer for Backend {
         let data = semantic_tokens
             .into_iter()
             .filter_map(|(span, semantic_token_type)| {
-                let (line, start_col) = line_col_lookup.get(span.first().start);
-                let (_, end_col) = line_col_lookup.get(span.first().end - 1);
+                let (line, start_col) = line_col_lookup.get(span.first().start)?;
+                let (_, end_col) = line_col_lookup.get(span.first().end - 1)?;
 
                 let line = line - 1;
                 let start_col = start_col - 1;
@@ -306,13 +326,13 @@ impl LanguageServer for Backend {
         let within_hover = |span: Span| hover_span.is_subspan_of(span);
 
         let range_from = |span: Span| {
-            let (start_line, start_col) = line_col_lookup.get(span.start);
-            let (end_line, end_col) = line_col_lookup.get(span.end);
+            let (start_line, start_col) = line_col_lookup.get(span.start)?;
+            let (end_line, end_col) = line_col_lookup.get(span.end)?;
 
-            Range::new(
+            Some(Range::new(
                 Position::new(start_line as u32 - 1, start_col as u32 - 1),
                 Position::new(end_line as u32 - 1, end_col as u32 - 1),
-            )
+            ))
         };
 
         fn code_segment(code: impl ToString) -> MarkedString {
@@ -375,16 +395,17 @@ impl LanguageServer for Backend {
                     return;
                 }
 
-                let range = range_from(expr.span.first());
-                let contents = code_segment(format_type(expr.ty.clone(), Format::default()));
+                if let Some(range) = range_from(expr.span.first()) {
+                    let contents = code_segment(format_type(expr.ty.clone(), Format::default()));
 
-                hovers.push((
-                    expr.span,
-                    Hover {
-                        range: Some(range),
-                        contents: HoverContents::Scalar(contents),
-                    },
-                ));
+                    hovers.push((
+                        expr.span,
+                        Hover {
+                            range: Some(range),
+                            contents: HoverContents::Scalar(contents),
+                        },
+                    ));
+                }
             })
         }
 
@@ -396,7 +417,10 @@ impl LanguageServer for Backend {
                             continue;
                         }
 
-                        let range = range_from(span.first());
+                        let range = match range_from(span.first()) {
+                            Some(range) => range,
+                            None => continue,
+                        };
 
                         #[allow(unused_mut)]
                         let mut contents = vec![code_segment(format!("{} : {}", decl.name, $str))];
@@ -436,7 +460,10 @@ impl LanguageServer for Backend {
                     continue;
                 }
 
-                let range = range_from(span.first());
+                let range = match range_from(span.first()) {
+                    Some(range) => range,
+                    None => continue,
+                };
 
                 let format = Format {
                     type_function: TypeFunctionFormat::Arrow(&decl.bounds),
@@ -477,7 +504,10 @@ impl LanguageServer for Backend {
                     continue;
                 }
 
-                let range = range_from(span.first());
+                let range = match range_from(span.first()) {
+                    Some(range) => range,
+                    None => continue,
+                };
 
                 let name = match decl.name {
                     Some(name) => name,
@@ -667,8 +697,16 @@ impl LanguageServer for Backend {
         };
 
         let line_col_lookup = document.line_col_lookup();
-        let (start_line, start_col) = line_col_lookup.get(0);
-        let (end_line, end_col) = line_col_lookup.get(document.source.len());
+
+        let (start_line, start_col) = match line_col_lookup.get(0) {
+            Some(range) => range,
+            None => return Ok(None),
+        };
+
+        let (end_line, end_col) = match line_col_lookup.get(document.source.len()) {
+            Some(range) => range,
+            None => return Ok(None),
+        };
 
         let range = Range::new(
             Position::new(start_line as u32 - 1, start_col as u32 - 1),
@@ -749,13 +787,13 @@ impl Backend {
         let diagnostics = {
             let line_col_lookup = document.line_col_lookup();
             let range_from = |span: Span| {
-                let (start_line, start_col) = line_col_lookup.get(span.start);
-                let (end_line, end_col) = line_col_lookup.get(span.end);
+                let (start_line, start_col) = line_col_lookup.get(span.start)?;
+                let (end_line, end_col) = line_col_lookup.get(span.end)?;
 
-                Range::new(
+                Some(Range::new(
                     Position::new(start_line as u32 - 1, start_col as u32 - 1),
                     Position::new(end_line as u32 - 1, end_col as u32 - 1),
-                )
+                ))
             };
 
             let mut result = Vec::new();
@@ -773,7 +811,10 @@ impl Backend {
                     DiagnosticLevel::Error => DiagnosticSeverity::ERROR,
                 };
 
-                let range = range_from(primary_note.span.first());
+                let range = match range_from(primary_note.span.first()) {
+                    Some(range) => range,
+                    None => continue,
+                };
 
                 result.push(Diagnostic {
                     range,
@@ -788,7 +829,10 @@ impl Backend {
                         continue;
                     }
 
-                    let range = range_from(note.span.first());
+                    let range = match range_from(note.span.first()) {
+                        Some(range) => range,
+                        None => continue,
+                    };
 
                     result.push(Diagnostic {
                         range,
