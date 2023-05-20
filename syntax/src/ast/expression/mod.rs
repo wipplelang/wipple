@@ -492,10 +492,13 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                             kind: parse::ExprKind::List(vec![rhs.into()]),
                         };
 
-                        let list_span = Span::join(lhs_span, rhs_span);
-
-                        self.expand_syntax(list_span, max_syntax, vec![lhs, operator, rhs], scope)
-                            .await
+                        self.expand_syntax(
+                            max_expr.span,
+                            max_syntax,
+                            vec![lhs, operator, rhs],
+                            scope,
+                        )
+                        .await
                     }
                 }
             }
