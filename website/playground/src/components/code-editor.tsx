@@ -436,8 +436,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
         let start = 0;
 
-        console.log(JSON.stringify(syntaxHighlighting, null, 4));
-
         for (const item of syntaxHighlighting) {
             while (item.start !== start && item.end !== start + currentNode.innerText.length) {
                 start += currentNode.innerText.length;

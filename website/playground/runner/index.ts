@@ -79,14 +79,13 @@ export type AnalysisConsoleRequest =
 export const useRunner = (context: any) => {
     const runner = useRef<Worker | null>(null);
 
+    const reset = () => {
+        runner.current?.terminate();
+        runner.current = new Runner();
+    };
+
     useEffect(() => {
-        const setup = async () => {
-            runner.current = new Runner();
-        };
-
-        setup();
-
-        return () => runner.current!.terminate();
+        reset();
     }, []);
 
     return {
@@ -98,10 +97,9 @@ export const useRunner = (context: any) => {
                     runner.current!.onmessage = prevonmessage;
                 };
 
-                const prevonerror = runner.current!.onerror;
                 runner.current!.onerror = (event) => {
                     reject(event.error);
-                    runner.current!.onerror = prevonerror;
+                    reset();
                 };
 
                 runner.current!.postMessage({ operation: "analyze", code, lint, context });
@@ -173,10 +171,9 @@ export const useRunner = (context: any) => {
                                                 runner.current!.onmessage = prevonmessage;
                                             };
 
-                                            const prevonerror = runner.current!.onerror;
                                             runner.current!.onerror = (event) => {
                                                 reject(event.error);
-                                                runner.current!.onerror = prevonerror;
+                                                reset();
                                             };
 
                                             runner.current!.postMessage({
@@ -271,10 +268,9 @@ export const useRunner = (context: any) => {
                     }
                 };
 
-                const prevonerror = runner.current!.onerror;
                 runner.current!.onerror = (event) => {
                     reject(event.error);
-                    runner.current!.onerror = prevonerror;
+                    reset();
                 };
 
                 runner.current!.postMessage({ operation: "run", context });
@@ -287,10 +283,9 @@ export const useRunner = (context: any) => {
                     runner.current!.onmessage = prevonmessage;
                 };
 
-                const prevonerror = runner.current!.onerror;
                 runner.current!.onerror = (event) => {
                     reject(event.error);
-                    runner.current!.onerror = prevonerror;
+                    reset();
                 };
 
                 runner.current!.postMessage({ operation: "hover", start, end, context });
@@ -303,10 +298,9 @@ export const useRunner = (context: any) => {
                     runner.current!.onmessage = prevonmessage;
                 };
 
-                const prevonerror = runner.current!.onerror;
                 runner.current!.onerror = (event) => {
                     reject(event.error);
-                    runner.current!.onerror = prevonerror;
+                    reset();
                 };
 
                 runner.current!.postMessage({ operation: "completions", position, context });
@@ -319,10 +313,9 @@ export const useRunner = (context: any) => {
                     runner.current!.onmessage = prevonmessage;
                 };
 
-                const prevonerror = runner.current!.onerror;
                 runner.current!.onerror = (event) => {
                     reject(event.error);
-                    runner.current!.onerror = prevonerror;
+                    reset();
                 };
 
                 runner.current!.postMessage({ operation: "format", code, context });

@@ -796,7 +796,10 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
                                         };
 
                                     wasm_bindgen_futures::future_to_promise(async move {
-                                        completion(
+                                        // We can ignore the result of calling `completion` here
+                                        // because if the runner fails, the whole program will be
+                                        // reset
+                                        let _ = completion(
                                             Box::new(move |message, value, context, callback| {
                                                 let callback = Closure::once({
                                                     let interpreter = interpreter.clone();
@@ -845,8 +848,7 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
                                                     .unwrap();
                                             }),
                                         )
-                                        .await
-                                        .expect("error in UI element");
+                                        .await;
 
                                         Ok(JsValue::UNDEFINED)
                                     })
