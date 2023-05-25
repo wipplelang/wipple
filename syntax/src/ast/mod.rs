@@ -42,22 +42,33 @@ pub struct BuiltinSyntaxDefinition {
     pub name: &'static str,
     pub operator: bool,
     pub help: &'static str,
+    pub template: &'static str,
 }
 
 impl BuiltinSyntaxDefinition {
-    pub(crate) const fn function(name: &'static str, help: &'static str) -> Self {
+    pub(crate) const fn function(
+        name: &'static str,
+        help: &'static str,
+        template: &'static str,
+    ) -> Self {
         BuiltinSyntaxDefinition {
             name,
             operator: false,
             help,
+            template,
         }
     }
 
-    pub(crate) const fn operator(name: &'static str, help: &'static str) -> Self {
+    pub(crate) const fn operator(
+        name: &'static str,
+        help: &'static str,
+        template: &'static str,
+    ) -> Self {
         BuiltinSyntaxDefinition {
             name,
             operator: true,
             help,
+            template,
         }
     }
 }
@@ -66,50 +77,77 @@ impl BuiltinSyntaxDefinition {
     pub(crate) const INSTANCE: Self = Self::function(
         "instance",
         "Define a trait's value for a specific type or types.",
+        "instance (*trait*)",
     );
 
-    pub(crate) const TYPE_FUNCTION: Self = Self::operator("=>", "Define a type function.");
+    pub(crate) const TYPE_FUNCTION: Self = Self::operator(
+        "=>",
+        "Define a type function.",
+        "(*parameters*) => (*type*)",
+    );
 
-    pub(crate) const SYNTAX: Self = Self::function("syntax", "Define custom syntax.");
+    pub(crate) const SYNTAX: Self = Self::function(
+        "syntax",
+        "Define custom syntax.",
+        "syntax { (*rule*) -> (*expression*) }}",
+    );
 
-    pub(crate) const TRAIT: Self = Self::function("trait", "Define a trait.");
+    pub(crate) const TRAIT: Self = Self::function("trait", "Define a trait.", "trait (*type*)");
 
-    pub(crate) const TYPE: Self = Self::function("type", "Define a type.");
+    pub(crate) const TYPE: Self = Self::function("type", "Define a type.", "type { (*fields*) }");
 
-    pub(crate) const ASSIGN: Self = Self::operator(":", "Assign a value to a name.");
+    pub(crate) const ASSIGN: Self =
+        Self::operator(":", "Assign a value to a name.", "(*name*) : (*value*)");
 
-    pub(crate) const ANNOTATE: Self = Self::operator("::", "Annotate a value with a type.");
+    pub(crate) const ANNOTATE: Self = Self::operator(
+        "::",
+        "Annotate a value with a type.",
+        "(*value*) :: (*type*)",
+    );
 
     pub(crate) const EXTERNAL: Self = Self::function(
         "external",
         "Call a function defined in a different programming language.",
+        "external (*namespace*) (*identifier*) (*parameters*)",
     );
 
     pub(crate) const FORMAT: Self = Self::function(
         "format",
         "Replace all the `_` placeholders in a piece of text with values.",
+        "format (*text*) (*parameters*)",
     );
 
-    pub(crate) const FUNCTION: Self = Self::operator("->", "Define a function.");
+    pub(crate) const FUNCTION: Self =
+        Self::operator("->", "Define a function.", "(*input*) -> (*output*)");
 
-    pub(crate) const COMMA: Self = Self::operator(",", "Create a tuple.");
+    pub(crate) const COMMA: Self = Self::operator(",", "Create a tuple.", "(*left*) , (*right*)");
 
-    pub(crate) const WHEN: Self = Self::function("when", "Make a choice by matching patterns.");
+    pub(crate) const WHEN: Self = Self::function(
+        "when",
+        "Make a choice by matching patterns.",
+        "when {value} { (*pattern*) -> (*value*) }",
+    );
 
-    pub(crate) const WITH: Self =
-        Self::function("with", "Override the value of a contextual constant.");
+    pub(crate) const WITH: Self = Self::function(
+        "with",
+        "Override the value of a contextual constant.",
+        "with ((*constant*) : (*value*)) { (*code*) }",
+    );
 
     pub(crate) const OR: Self = Self::operator(
         "or",
         "Match multiple patterns in succession, or compare two `Boolean` values.",
+        "(*left*) or (*right*)",
     );
 
     pub(crate) const WHERE: Self = Self::operator(
         "where",
         "Add bounds to a type function, or a condition to a pattern.",
+        "(*parameters*) where (*bounds*)",
     );
 
-    pub(crate) const USE: Self = Self::function("use", "Include code from another file.");
+    pub(crate) const USE: Self =
+        Self::function("use", "Include code from another file.", "use (*file*)");
 }
 
 #[derive(Clone)]

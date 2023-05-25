@@ -43,6 +43,7 @@ export interface Completion {
     kind: string;
     name: string;
     help: string;
+    template: string;
 }
 
 export type AnalysisConsoleRequest =

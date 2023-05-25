@@ -13,6 +13,7 @@ Show : A => trait (A -> Text)
 
 [help "Display a value on the screen."]
 [help-group "Input and Output"]
+[help-template "show (*text*)"]
 [diagnostic "accepts-text"]
 [diagnostic-alias "print"]
 [diagnostic-alias "println"]

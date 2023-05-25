@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import SimpleCodeEditor from "react-simple-code-editor";
+import SimpleCodeEditor from "./react-simple-code-editor";
 import * as prism from "prismjs";
 import {
     Button,
@@ -127,21 +127,31 @@ export const CodeEditor = (props: CodeEditorProps) => {
     const [uiElements, setUiElements] = useRefState<UiElement[]>([]);
     const [currentUiElementId, setCurrentUiElementId] = useRefState("");
 
+    const [containsTemplates, setContainsTemplates] = useRefState(false);
+    const [showTemplatesWarning, setShowTemplatesWarning] = useState(false);
+
     const runner = useRunner({ id: props.id, code: props.code });
 
     const run = useMemo(
         () =>
             debounce(async (code: string, lint: boolean) => {
-                setRunning(true);
-
                 try {
+                    setRunning(true);
                     setSyntaxHighlighting([]); // FIXME: Prevent flashing
                     setFatalError(false);
+
                     const analysis = await runner.analyze(code, lint);
                     setSyntaxHighlighting(analysis.syntaxHighlighting);
-                    setOutput({ code: code, items: [], diagnostics: analysis.diagnostics });
+
+                    setOutput({
+                        code: code,
+                        items: [],
+                        diagnostics: containsTemplates.current ? [] : analysis.diagnostics,
+                    });
+
                     setCompletions(analysis.completions);
                     setUiElements([]);
+                    setShowTemplatesWarning(containsTemplates.current);
 
                     if (!analysis.diagnostics.find(({ level }) => level === "error")) {
                         await runner.run(async (request) => {
@@ -261,6 +271,13 @@ export const CodeEditor = (props: CodeEditorProps) => {
     );
 
     useEffect(() => {
+        const containsTemplates =
+            document.querySelectorAll<HTMLSpanElement>(
+                `#${editorID} .language-wipple span.token.template-content`
+            ).length > 0;
+
+        setContainsTemplates(containsTemplates);
+
         if (props.autoRun) {
             run(props.code, props.lint);
         }
@@ -579,6 +596,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
     useEffect(updateContextMenuTrigger, [props.id, mousePosition]);
 
     const [contextMenuAnchor, setContextMenuAnchor] = useState<HTMLElement>();
+    const [contextMenuSearch, setContextMenuSearch] = useState("");
 
     const showContextMenu = () => {
         if (!caretPosition) {
@@ -601,6 +619,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
         contextMenuAnchor.remove();
         setContextMenuAnchor(undefined);
+        setContextMenuSearch("");
     };
 
     const buttonIconStyles = {
@@ -608,6 +627,89 @@ export const CodeEditor = (props: CodeEditorProps) => {
         width: 26,
         marginTop: "-0.125rem",
     };
+
+    const insertCompletion = (completion: Completion) => {
+        const code = props.code;
+
+        const before = code.slice(0, textEditor!.selectionEnd);
+        const padBefore = (before[before.length - 1] ?? " ").match(/\s/) ? "" : " ";
+
+        const after = code.slice(textEditor!.selectionEnd);
+        const padAfter = (after[0] ?? " ").match(/\s/) ? "" : " ";
+
+        props.onChange(before + padBefore + completion.template + padAfter + after);
+    };
+
+    useEffect(() => {
+        const textArea = document.getElementById(textAreaID)! as HTMLTextAreaElement;
+
+        let isSelectingGroup = false;
+        const handler = (e: MouseEvent | KeyboardEvent) => {
+            requestAnimationFrame(() => {
+                let isAttemptingSelection = false;
+                if (e instanceof MouseEvent) {
+                    isAttemptingSelection = textArea.selectionStart === textArea.selectionEnd;
+                } else if (e instanceof KeyboardEvent) {
+                    isAttemptingSelection = e.key === "ArrowLeft" || e.key === "ArrowRight";
+                }
+
+                if (!isAttemptingSelection) {
+                    return;
+                }
+
+                if (isSelectingGroup) {
+                    textArea.setSelectionRange(textArea.selectionEnd, textArea.selectionEnd);
+                    isSelectingGroup = false;
+                    return;
+                }
+
+                const nodes = [
+                    ...document.querySelectorAll<HTMLSpanElement>(
+                        `#${editorID} .language-wipple span.token`
+                    ),
+                ];
+
+                interface NodeGroup {
+                    start: number;
+                    end: number;
+                }
+
+                const nodeGroups: NodeGroup[] = [];
+                let start = 0;
+
+                while (nodes.length !== 0) {
+                    const node = nodes.shift()!;
+
+                    if (node.classList.contains("template-before")) {
+                        nodeGroups.push({ start, end: start });
+                    } else if (node.classList.contains("template-after")) {
+                        nodeGroups[nodeGroups.length - 1].end = start + node.innerText.length;
+                    }
+
+                    start += node.innerText.length;
+                }
+
+                const nodeGroup = nodeGroups.find(
+                    (group) =>
+                        textArea.selectionStart >= group.start && textArea.selectionEnd <= group.end
+                );
+
+                if (nodeGroup) {
+                    textArea.setSelectionRange(nodeGroup.start, nodeGroup.end, "forward");
+                }
+
+                isSelectingGroup = nodeGroup != null;
+            });
+        };
+
+        textArea.addEventListener("mousedown", handler);
+        textArea.addEventListener("keydown", handler);
+
+        return () => {
+            textArea.removeEventListener("mousedown", handler);
+            textArea.removeEventListener("keydown", handler);
+        };
+    }, []);
 
     return (
         <div>
@@ -653,14 +755,26 @@ export const CodeEditor = (props: CodeEditorProps) => {
                             </button>
                         </Tooltip>
 
-                        <Tooltip title={props.autoRun ? "Pause Running" : "Run"}>
+                        <Tooltip
+                            title={
+                                containsTemplates.current
+                                    ? "Running Paused"
+                                    : props.autoRun
+                                    ? "Pause Running"
+                                    : "Run"
+                            }
+                        >
                             <button
                                 className="code-editor-button -mr-0.5"
                                 onMouseDown={(e) => {
+                                    if (containsTemplates.current) {
+                                        return;
+                                    }
+
                                     props.onChangeAutoRun(!props.autoRun);
                                 }}
                             >
-                                {props.autoRun ? (
+                                {props.autoRun && !containsTemplates.current ? (
                                     <PauseRounded sx={buttonIconStyles} />
                                 ) : (
                                     <PlayArrowRounded sx={buttonIconStyles} />
@@ -711,6 +825,22 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                             <p className="text-gray-500 dark:text-gray-400">
                                                 Wipple encountered an internal error while running
                                                 your code. Please reload the page and try again.
+                                            </p>
+                                        </div>
+                                    );
+                                }
+
+                                if (showTemplatesWarning) {
+                                    return (
+                                        <div className="flex flex-col gap-4 p-6 text-blue-500 bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20">
+                                            <div className="flex items-center gap-2">
+                                                <SubjectRounded fontSize="large" />
+                                                <h1 className="text-xl">Placeholders in Code</h1>
+                                            </div>
+
+                                            <p className="text-gray-500 dark:text-gray-400">
+                                                Your code contains placeholders that need to be
+                                                filled before your program can be run.
                                             </p>
                                         </div>
                                     );
@@ -1024,44 +1154,39 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         onClose={hideContextMenu}
                         style={{ maxHeight: 500 }}
                     >
+                        <TextField
+                            inputMode="search"
+                            value={contextMenuSearch}
+                            onChange={(e) => setContextMenuSearch(e.target.value)}
+                            placeholder="Search"
+                            fullWidth
+                        />
+
                         <MenuList disablePadding>
                             {(() => {
+                                const includeCompletion = (completion: Completion) =>
+                                    !contextMenuSearch ||
+                                    contextMenuSearch.includes(completion.name) ||
+                                    completion.name.includes(contextMenuSearch);
+
                                 const renderCompletionItem = (
-                                    { name, kind, help }: Completion,
+                                    completion: Completion,
                                     index: number
                                 ) =>
-                                    help ? (
+                                    completion.help ? (
                                         <MenuItem
                                             key={index}
                                             onClick={() => {
-                                                const code = props.code;
-
-                                                const before = code.slice(
-                                                    0,
-                                                    textEditor!.selectionEnd
-                                                );
-                                                const padBefore = (
-                                                    before[before.length - 1] ?? " "
-                                                ).match(/\s/)
-                                                    ? ""
-                                                    : " ";
-
-                                                const after = code.slice(textEditor!.selectionEnd);
-                                                const padAfter = (after[0] ?? " ").match(/\s/)
-                                                    ? ""
-                                                    : " ";
-
-                                                props.onChange(
-                                                    before + padBefore + name + padAfter + after
-                                                );
-
+                                                insertCompletion(completion);
                                                 hideContextMenu();
                                             }}
                                             style={{ maxWidth: 400, whiteSpace: "normal" }}
                                         >
                                             <ListItemText>
                                                 <pre className="language-wipple">
-                                                    <span className={`token ${kind}`}>{name}</span>
+                                                    <span className={`token ${completion.kind}`}>
+                                                        {completion.name}
+                                                    </span>
                                                 </pre>
 
                                                 <ReactMarkdown
@@ -1073,34 +1198,44 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                     rehypePlugins={[rehypeRaw, rehypeKatex]}
                                                     linkTarget="_blank"
                                                 >
-                                                    {help}
+                                                    {completion.help}
                                                 </ReactMarkdown>
                                             </ListItemText>
                                         </MenuItem>
                                     ) : null;
 
-                                const languageSection =
-                                    completions.language.map(renderCompletionItem);
-                                const variablesSection =
-                                    completions.variables.map(renderCompletionItem);
+                                const languageSection = completions.language
+                                    .filter(includeCompletion)
+                                    .map(renderCompletionItem);
+
+                                const variablesSection = completions.variables
+                                    .filter(includeCompletion)
+                                    .map(renderCompletionItem);
 
                                 const groupedConstantsSection = completions.groupedConstants.map(
-                                    ([group, completions], index) => (
-                                        <div key={index}>
-                                            <Divider />
-                                            <ListSubheader>{group}</ListSubheader>
-                                            <Divider />
-                                            {...completions.map(renderCompletionItem)}
-                                        </div>
-                                    )
+                                    ([group, completions], index) => {
+                                        const filtered = completions.filter(includeCompletion);
+
+                                        return filtered.length ? (
+                                            <div key={index}>
+                                                <Divider />
+                                                <ListSubheader>{group}</ListSubheader>
+                                                <Divider />
+                                                {...filtered.map(renderCompletionItem)}
+                                            </div>
+                                        ) : null;
+                                    }
                                 );
 
-                                const ungroupedConstantsSection =
-                                    completions.ungroupedConstants.map(renderCompletionItem);
+                                const ungroupedConstantsSection = completions.ungroupedConstants
+                                    .filter(includeCompletion)
+                                    .map(renderCompletionItem);
 
                                 return [
                                     languageSection,
-                                    <Divider key="languageDivider" />,
+                                    languageSection.length ? (
+                                        <Divider key="languageDivider" />
+                                    ) : null,
                                     variablesSection,
                                     variablesSection.length ? (
                                         <Divider key="variablesDivider" />

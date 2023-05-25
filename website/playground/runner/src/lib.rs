@@ -87,6 +87,7 @@ struct Completion {
     kind: Option<&'static str>,
     name: String,
     help: String,
+    template: String,
 }
 
 // SAFETY: This is safe because Wasm is single-threaded
@@ -549,6 +550,7 @@ fn get_completions(program: &wipple_frontend::analysis::Program) -> AnalysisOutp
             kind: Some(if decl.operator { "operator" } else { "syntax" }),
             name: decl.name.to_string(),
             help: decl.help.to_string(),
+            template: decl.template.to_string(),
         };
 
         language.push(completion);
@@ -576,6 +578,12 @@ fn get_completions(program: &wipple_frontend::analysis::Program) -> AnalysisOutp
                 .then_some("function"),
             name: decl.name.to_string(),
             help: decl.attributes.decl_attributes.help.iter().join("\n"),
+            template: decl
+                .attributes
+                .decl_attributes
+                .help_template
+                .map(|template| template.to_string())
+                .unwrap_or_else(|| decl.name.to_string()),
         };
 
         add!(decl.attributes.decl_attributes.help_group, completion);
@@ -586,6 +594,12 @@ fn get_completions(program: &wipple_frontend::analysis::Program) -> AnalysisOutp
             kind: Some("syntax"),
             name: decl.name.to_string(),
             help: decl.attributes.decl_attributes.help.iter().join("\n"),
+            template: decl
+                .attributes
+                .decl_attributes
+                .help_template
+                .map(|template| template.to_string())
+                .unwrap_or_else(|| decl.name.to_string()),
         };
 
         add!(decl.attributes.decl_attributes.help_group, completion);
@@ -593,14 +607,17 @@ fn get_completions(program: &wipple_frontend::analysis::Program) -> AnalysisOutp
 
     let mut variables = Vec::new();
     for decl in program.declarations.variables.values() {
+        let name = match decl.name {
+            Some(name) => name.to_string(),
+            None => continue,
+        };
+
         variables.push(Completion {
             kind: matches!(decl.ty, wipple_frontend::analysis::Type::Function(_, _))
                 .then_some("function"),
-            name: match decl.name {
-                Some(name) => name.to_string(),
-                None => continue,
-            },
+            name: name.clone(),
             help: String::new(),
+            template: name,
         });
     }
 

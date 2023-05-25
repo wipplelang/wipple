@@ -5,6 +5,7 @@ definitions! {
     mod diagnostic_item;
     mod help;
     mod help_group;
+    mod help_template;
     mod keyword;
     mod language_item;
     mod on_mismatch;
@@ -34,6 +35,7 @@ syntax_group! {
             DiagnosticItem,
             Help,
             HelpGroup,
+            HelpTemplate,
             Keyword,
             LanguageItem,
             OnMismatch,

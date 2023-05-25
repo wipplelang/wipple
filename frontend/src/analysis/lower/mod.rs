@@ -161,6 +161,7 @@ impl<T> Declaration<T> {
 pub struct DeclarationAttributes {
     pub help: Vec<InternedString>,
     pub help_group: Option<InternedString>,
+    pub help_template: Option<InternedString>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -3615,6 +3616,10 @@ impl Lowerer {
                 .help_group
                 .as_ref()
                 .map(|attribute| attribute.help_group_text),
+            help_template: statement_attributes
+                .help_template
+                .as_ref()
+                .map(|attribute| attribute.help_template_text)
         }
     }
 

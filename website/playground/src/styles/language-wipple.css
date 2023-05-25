@@ -2,6 +2,23 @@
     color: #24292e;
 }
 
+.language-wipple .token.template-before,
+.language-wipple .token.template-after {
+    @apply text-white text-opacity-10 bg-blue-500;
+}
+
+.language-wipple .token.template-before {
+    @apply rounded-l-lg;
+}
+
+.language-wipple .token.template-after {
+    @apply rounded-r-lg;
+}
+
+.language-wipple .token.template-content {
+    @apply text-white bg-blue-500;
+}
+
 .language-wipple .token.punctuation {
     color: #24292e;
 }
