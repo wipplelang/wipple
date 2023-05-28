@@ -48,8 +48,8 @@ pub enum Token<'src> {
     #[regex(r#"[\t ]+"#, logos::skip)]
     Space,
 
-    #[regex(r#"\(\*[^\(\)\*]*\*\)"#, logos::skip)]
-    Template,
+    #[regex(r#"\(\*[^\(\)\*]*\*\)"#, |lex| &lex.slice()[2..(lex.slice().len() - 2)])]
+    Placeholder(&'src str),
 
     #[regex(r#"--.*"#, |lex| &lex.slice()[2..], priority = 2)]
     Comment(&'src str),
@@ -90,7 +90,8 @@ impl<'src> fmt::Display for Token<'src> {
             Token::RightBrace => write!(f, "`}}`"),
             Token::Underscore => write!(f, "`_`"),
             Token::LineBreak => write!(f, "line break"),
-            Token::Space | Token::Template => unreachable!(),
+            Token::Placeholder(placeholder) => write!(f, "(*{placeholder}*)"),
+            Token::Space => unreachable!(),
             Token::Comment(_) => write!(f, "comment"),
             Token::QuoteName(name) => write!(f, "`'{name}`"),
             Token::RepeatName(name) => write!(f, "`...{name}`"),

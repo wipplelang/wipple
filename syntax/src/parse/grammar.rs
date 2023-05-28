@@ -28,6 +28,7 @@ pub struct Expr<D: Driver> {
 
 #[derive(Debug, Clone)]
 pub enum ExprKind<D: Driver> {
+    Placeholder(D::InternedString),
     Underscore,
     Name(D::InternedString, Option<D::Scope>),
     QuoteName(D::InternedString),
@@ -368,6 +369,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
         }
 
         parse_each!(
+            try_parse_placeholder,
             try_parse_underscore,
             try_parse_name,
             try_parse_quote_name,
@@ -378,6 +380,23 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
             try_parse_repeat_list,
             try_parse_block,
         )
+    }
+
+    pub fn try_parse_placeholder(&mut self) -> Result<Expr<D>, ParseError> {
+        let (span, token) = self.peek();
+
+        match token {
+            Some(Token::Placeholder(placeholder)) => {
+                self.consume();
+
+                Ok(Expr::new(
+                    span,
+                    ExprKind::Placeholder(self.driver.intern(placeholder)),
+                ))
+            }
+            Some(_) => Err(ParseError::WrongTokenType),
+            None => Err(ParseError::EndOfFile),
+        }
     }
 
     pub fn try_parse_underscore(&mut self) -> Result<Expr<D>, ParseError> {
