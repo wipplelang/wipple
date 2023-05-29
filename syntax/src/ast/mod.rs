@@ -89,7 +89,7 @@ impl BuiltinSyntaxDefinition {
     pub(crate) const SYNTAX: Self = Self::function(
         "syntax",
         "Define custom syntax.",
-        "syntax { (*rule*) -> (*expression*) }}",
+        "syntax { (*rule*) -> (*expression*) }",
     );
 
     pub(crate) const TRAIT: Self = Self::function("trait", "Define a trait.", "trait (*type*)");
