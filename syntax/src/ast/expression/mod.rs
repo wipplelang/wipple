@@ -17,7 +17,7 @@ use crate::{
         StatementAttributes, StatementSyntax, SyntaxAssignmentValue, SyntaxBody, SyntaxPattern,
         SyntaxRule,
     },
-    parse, Driver, File, Span,
+    parse, Driver, File, Fix, FixRange, Span,
 };
 use async_trait::async_trait;
 use futures::{stream, StreamExt};
@@ -440,16 +440,19 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                                     }
                                 }
                                 OperatorAssociativity::None => {
-                                    self.ast_builder.driver.syntax_error_with([
-                                        (
-                                            exprs[index].span,
-                                            String::from("only one of this operator may be provided at a time"),
-                                        ),
-                                        (
-                                            exprs[max_index].span,
-                                            String::from("first use of this operator"),
-                                        ),
-                                    ]);
+                                    self.ast_builder.driver.syntax_error_with(
+                                        [
+                                            (
+                                                exprs[index].span,
+                                                String::from("only one of this operator may be provided at a time"),
+                                            ),
+                                            (
+                                                exprs[max_index].span,
+                                                String::from("first use of this operator"),
+                                            ),
+                                        ],
+                                        Some(Fix::new("remove this operator", FixRange::replace(exprs[index].span), "")),
+                                    );
 
                                     return Err(self.ast_builder.syntax_error(list_span));
                                 }
@@ -461,17 +464,31 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                     let mut lhs = exprs;
                     let operator = lhs.pop().unwrap();
 
-                    if rhs.is_empty() {
-                        self.ast_builder.driver.syntax_error(
-                            max_expr.span,
-                            "expected values on right side of operator",
+                    if lhs.is_empty() {
+                        self.ast_builder.driver.syntax_error_with(
+                            [(
+                                max_expr.span,
+                                String::from("expected values on left side of operator"),
+                            )],
+                            Some(Fix::new(
+                                "insert a value to the left of the operator",
+                                FixRange::before(max_expr.span),
+                                "(*value*) ",
+                            )),
                         );
 
                         Err(self.ast_builder.syntax_error(list_span))
-                    } else if lhs.is_empty() {
-                        self.ast_builder.driver.syntax_error(
-                            max_expr.span,
-                            "expected values on left side of operator",
+                    } else if rhs.is_empty() {
+                        self.ast_builder.driver.syntax_error_with(
+                            [(
+                                max_expr.span,
+                                String::from("expected values on right side of operator"),
+                            )],
+                            Some(Fix::new(
+                                "insert a value to the right of the operator",
+                                FixRange::after(max_expr.span),
+                                " (*value*)",
+                            )),
                         );
 
                         Err(self.ast_builder.syntax_error(list_span))
@@ -569,13 +586,13 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                 .await;
         }
 
-        self.ast_builder.driver.syntax_error_with([
-            (
-                span,
-                String::from("expected values on right side of operator"),
-            ),
-            (syntax.syntax_span, String::from("syntax defined here")),
-        ]);
+        self.ast_builder.driver.syntax_error_with(
+            [
+                (span, String::from("syntax did not match any rules")),
+                (syntax.syntax_span, String::from("syntax defined here")),
+            ],
+            None,
+        );
 
         Err(self.ast_builder.syntax_error(span))
     }

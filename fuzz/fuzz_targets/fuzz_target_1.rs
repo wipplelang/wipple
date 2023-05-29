@@ -54,7 +54,11 @@ impl wipple_syntax::Driver for Driver {
         })
     }
 
-    fn syntax_error_with(&self, _msgs: impl IntoIterator<Item = (Self::Span, String)>) {
+    fn syntax_error_with(
+        &self,
+        _msgs: impl IntoIterator<Item = (Self::Span, String)>,
+        _fix: Option<wipple_syntax::Fix>,
+    ) {
         // do nothing
     }
 

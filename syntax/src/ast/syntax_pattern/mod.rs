@@ -603,13 +603,16 @@ impl<D: Driver> SyntaxPattern<D> {
         (exprs.len() == 1)
             .then(|| exprs.pop().unwrap())
             .ok_or_else(|| {
-                ast_builder.driver.syntax_error_with([
-                    (
-                        body_span,
-                        String::from("syntax body must produce a single expression"),
-                    ),
-                    (body_span, String::from("try wrapping this in `()` or `{}`")),
-                ]);
+                ast_builder.driver.syntax_error_with(
+                    [
+                        (
+                            body_span,
+                            String::from("syntax body must produce a single expression"),
+                        ),
+                        (body_span, String::from("try wrapping this in `()` or `{}`")),
+                    ],
+                    None,
+                );
 
                 ast_builder.syntax_error(body_span)
             })

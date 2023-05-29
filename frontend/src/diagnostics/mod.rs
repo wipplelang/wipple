@@ -86,7 +86,7 @@ pub struct Fix {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FixRange(Range<usize>);
+pub struct FixRange(pub Range<usize>);
 
 impl FixRange {
     pub fn replace(span: Span) -> FixRange {

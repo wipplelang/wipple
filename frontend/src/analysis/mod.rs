@@ -398,7 +398,11 @@ impl wipple_syntax::Driver for Analysis {
         Some(file)
     }
 
-    fn syntax_error_with(&self, msgs: impl IntoIterator<Item = (Self::Span, String)>) {
+    fn syntax_error_with(
+        &self,
+        msgs: impl IntoIterator<Item = (Self::Span, String)>,
+        fix: Option<wipple_syntax::Fix>,
+    ) {
         let mut msgs = msgs.into_iter();
         let mut notes = Vec::with_capacity(msgs.size_hint().0);
 
@@ -409,7 +413,16 @@ impl wipple_syntax::Driver for Analysis {
             notes.push(Note::secondary(span, msg));
         }
 
-        self.compiler.add_error("syntax error", notes);
+        let mut error = self.compiler.error("syntax error", notes);
+        if let Some(fix) = fix {
+            error = error.with_fix(
+                fix.description,
+                FixRange(fix.range.range()),
+                fix.replacement,
+            );
+        }
+
+        self.compiler.add_diagnostic(error);
     }
 
     fn backtrace(&self) -> Backtrace {
@@ -430,7 +443,7 @@ impl wipple_syntax::Span for SpanList {
         self.set_caller(caller);
     }
 
-    fn range(self) -> std::ops::Range<usize> {
+    fn range(&self) -> std::ops::Range<usize> {
         self.first().primary_range()
     }
 }

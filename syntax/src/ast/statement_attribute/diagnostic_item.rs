@@ -71,13 +71,16 @@ impl<D: Driver> Syntax<D> for DiagnosticItemStatementAttributeSyntax {
                         match text.as_ref().parse::<DiagnosticItemStatementAttributeKind>() {
                             Ok(item) => item,
                             Err(_) => {
-                                context.ast_builder.driver.syntax_error_with([
-                                    (expr.span, String::from("invalid `diagnostic` item")),
-                                    (
-                                        expr.span,
-                                        String::from("see the Wipple source code for a list of diagnostic items"),
-                                    ),
-                                ]);
+                                context.ast_builder.driver.syntax_error_with(
+                                    [
+                                        (expr.span, String::from("invalid `diagnostic` item")),
+                                        (
+                                            expr.span,
+                                            String::from("see the Wipple source code for a list of diagnostic items"),
+                                        ),
+                                    ],
+                                    None,
+                                );
 
                                 return Err(context.ast_builder.syntax_error(span));
                             }

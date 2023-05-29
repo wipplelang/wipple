@@ -1,7 +1,7 @@
 use crate::{
     ast,
     parse::{self, Attribute, Expr, ExprKind, File, ListLine},
-    Driver, SingleFile,
+    Driver, Fix, SingleFile,
 };
 use async_trait::async_trait;
 use std::{
@@ -55,7 +55,11 @@ pub fn format(code: &str) -> Option<String> {
             unimplemented!()
         }
 
-        fn syntax_error_with(&self, _msgs: impl IntoIterator<Item = (Self::Span, String)>) {
+        fn syntax_error_with(
+            &self,
+            _msgs: impl IntoIterator<Item = (Self::Span, String)>,
+            _fix: Option<Fix>,
+        ) {
             // TODO: Store syntax errors (right now they will also be reported by the compiler)
             self.valid
                 .store(false, std::sync::atomic::Ordering::Relaxed);

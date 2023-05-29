@@ -119,15 +119,18 @@ impl<D: Driver> Syntax<D> for OperatorPrecedenceStatementAttributeSyntax {
                     ) {
                         Ok(precedence) => precedence,
                         Err(_) => {
-                            context.ast_builder.driver.syntax_error_with([
-                                (expr.span, String::from("invalid `operator` precedence")),
-                                (
-                                    expr.span,
-                                    String::from(
-                                        "custom operator precedences are not yet supported",
+                            context.ast_builder.driver.syntax_error_with(
+                                [
+                                    (expr.span, String::from("invalid `operator` precedence")),
+                                    (
+                                        expr.span,
+                                        String::from(
+                                            "custom operator precedences are not yet supported",
+                                        ),
                                     ),
-                                ),
-                            ]);
+                                ],
+                                None,
+                            );
 
                             return Err(context.ast_builder.syntax_error(span));
                         }

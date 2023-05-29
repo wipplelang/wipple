@@ -72,13 +72,16 @@ impl<D: Driver> Syntax<D> for LanguageItemStatementAttributeSyntax {
                         match text.as_ref().parse::<LanguageItemStatementAttributeKind>() {
                             Ok(item) => item,
                             Err(_) => {
-                                context.ast_builder.driver.syntax_error_with([
-                                    (expr.span, String::from("invalid `language` item")),
-                                    (
-                                        expr.span,
-                                        String::from("see the Wipple source code for a list of language items"),
-                                    ),
-                                ]);
+                                context.ast_builder.driver.syntax_error_with(
+                                    [
+                                        (expr.span, String::from("invalid `language` item")),
+                                        (
+                                            expr.span,
+                                            String::from("see the Wipple source code for a list of language items"),
+                                        ),
+                                    ],
+                                    None,
+                                );
 
                                 return Err(context.ast_builder.syntax_error(span));
                             }

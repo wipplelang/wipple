@@ -31,10 +31,14 @@ pub trait Driver: Debug + Clone + Send + Sync + 'static {
             + 'static,
     ) -> Option<Arc<ast::File<Self>>>;
 
-    fn syntax_error_with(&self, msgs: impl IntoIterator<Item = (Self::Span, String)>);
+    fn syntax_error_with(
+        &self,
+        msgs: impl IntoIterator<Item = (Self::Span, String)>,
+        fix: Option<Fix>,
+    );
 
     fn syntax_error(&self, span: Self::Span, msg: impl ToString) {
-        self.syntax_error_with([(span, msg.to_string())])
+        self.syntax_error_with([(span, msg.to_string())], None)
     }
 
     fn backtrace(&self) -> Backtrace;
@@ -70,7 +74,7 @@ pub trait Span {
     fn join(left: Self, right: Self) -> Self;
     fn merge(&mut self, other: Self);
     fn set_caller(&mut self, caller: Self);
-    fn range(self) -> Range<usize>;
+    fn range(&self) -> Range<usize>;
 }
 
 pub trait DriverExt: Driver {
@@ -103,6 +107,44 @@ impl<D: Driver> DriverExt for D {
             })
             .await
         }))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Fix {
+    pub description: String,
+    pub range: FixRange,
+    pub replacement: String,
+}
+
+impl Fix {
+    pub fn new(description: impl ToString, range: FixRange, replacement: impl ToString) -> Self {
+        Fix {
+            description: description.to_string(),
+            range,
+            replacement: replacement.to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FixRange(Range<usize>);
+
+impl FixRange {
+    pub fn replace(span: impl Span) -> FixRange {
+        FixRange(span.range())
+    }
+
+    pub fn before(span: impl Span) -> FixRange {
+        FixRange(span.range().start..span.range().start)
+    }
+
+    pub fn after(span: impl Span) -> FixRange {
+        FixRange(span.range().end..span.range().end)
+    }
+
+    pub fn range(&self) -> Range<usize> {
+        self.0.clone()
     }
 }
 
@@ -182,7 +224,7 @@ impl Span for () {
         // do nothing
     }
 
-    fn range(self) -> Range<usize> {
+    fn range(&self) -> Range<usize> {
         0..0
     }
 }

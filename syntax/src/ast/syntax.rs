@@ -1,6 +1,6 @@
 use crate::{
     ast::{AstBuilder, StatementAttributes},
-    parse, Driver, File, Span,
+    parse, Driver, File, Fix, FixRange, Span,
 };
 use async_trait::async_trait;
 use futures::{future::BoxFuture, Future};
@@ -441,16 +441,30 @@ impl<D: Driver> AstBuilder<D> {
                         if let Some(operator_index) = operator_index {
                             let operator_span = exprs[operator_index].span;
 
-                            self.driver.syntax_error(
-                                operator_span,
-                                "expected values on right side of operator",
+                            self.driver.syntax_error_with(
+                                [(
+                                    operator_span,
+                                    String::from("expected values on right side of operator"),
+                                )],
+                                Some(Fix::new(
+                                    "insert a value to the right of the operator",
+                                    FixRange::after(operator_span),
+                                    " (*value*)",
+                                )),
                             );
                         } else {
                             let operator_span = exprs[*occurrences.front().unwrap()].span;
 
-                            self.driver.syntax_error(
-                                operator_span,
-                                "expected values on left side of operator",
+                            self.driver.syntax_error_with(
+                                [(
+                                    operator_span,
+                                    String::from("expected values on left side of operator"),
+                                )],
+                                Some(Fix::new(
+                                    "insert a value to the left of the operator",
+                                    FixRange::before(operator_span),
+                                    "(*value*) ",
+                                )),
                             );
                         }
 
@@ -508,16 +522,25 @@ impl<D: Driver> AstBuilder<D> {
                     let (first, rest) = occurrences.split_first().unwrap();
 
                     for occurrence in rest {
-                        self.driver.syntax_error_with([
-                            (
-                                exprs[*occurrence].span,
-                                String::from("only one of this operator may be provided at a time"),
-                            ),
-                            (
-                                exprs[*first].span,
-                                String::from("first use of this operator"),
-                            ),
-                        ]);
+                        self.driver.syntax_error_with(
+                            [
+                                (
+                                    exprs[*occurrence].span,
+                                    String::from(
+                                        "only one of this operator may be provided at a time",
+                                    ),
+                                ),
+                                (
+                                    exprs[*first].span,
+                                    String::from("first use of this operator"),
+                                ),
+                            ],
+                            Some(Fix::new(
+                                "remove this operator",
+                                FixRange::replace(exprs[*occurrence].span),
+                                "",
+                            )),
+                        );
                     }
 
                     let error = self.syntax_error(span);
@@ -533,15 +556,33 @@ impl<D: Driver> AstBuilder<D> {
         let mut lhs = exprs;
         lhs.pop().unwrap();
 
-        if rhs.is_empty() {
-            self.driver
-                .syntax_error(operator_span, "expected values on right side of operator");
+        if lhs.is_empty() {
+            self.driver.syntax_error_with(
+                [(
+                    operator_span,
+                    String::from("expected values on left side of operator"),
+                )],
+                Some(Fix::new(
+                    "insert a value to the left of the operator",
+                    FixRange::before(operator_span),
+                    "(*value*) ",
+                )),
+            );
 
             let error = self.syntax_error(span);
             return Some(Box::pin(async move { Some(Err(error)) }));
-        } else if lhs.is_empty() {
-            self.driver
-                .syntax_error(operator_span, "expected values on left side of operator");
+        } else if rhs.is_empty() {
+            self.driver.syntax_error_with(
+                [(
+                    operator_span,
+                    String::from("expected values on right side of operator"),
+                )],
+                Some(Fix::new(
+                    "insert a value to the right of the operator",
+                    FixRange::after(operator_span),
+                    " (*value*)",
+                )),
+            );
 
             let error = self.syntax_error(span);
             return Some(Box::pin(async move { Some(Err(error)) }));
