@@ -3418,10 +3418,13 @@ impl Typechecker {
                 id,
                 (
                     true,
-                    decl.value.value.unwrap_or_else(|| lower::Expression {
-                        span: decl.span,
-                        kind: lower::ExpressionKind::error(&self.compiler),
-                    }),
+                    decl.value
+                        .value
+                        .map(|instance_value| instance_value.value)
+                        .unwrap_or_else(|| lower::Expression {
+                            span: decl.span,
+                            kind: lower::ExpressionKind::error(&self.compiler),
+                        }),
                 ),
             );
         }
@@ -4312,7 +4315,7 @@ impl Typechecker {
                     self.format_type(actual, format)
                 );
 
-                self.compiler.error_with(
+                self.compiler.error_with_trace(
                     "mismatched types",
                     std::iter::once(Note::primary(error.span, message))
                         .chain(actual_ty.and_then(|(actual_ty, mut actual_params)| {
@@ -4393,7 +4396,7 @@ impl Typechecker {
                     self.format_type(format::FormattableType::r#trait(id, params), format)
                 );
 
-                self.compiler.error_with(
+                self.compiler.error_with_trace(
                     error_message,
                     std::iter::once(
                         Note::primary(error.span, note_message).use_caller_if_available(),
@@ -4427,7 +4430,7 @@ impl Typechecker {
                     )
                 });
 
-                self.compiler.error_with(
+                self.compiler.error_with_trace(
                     "could not determine the type of this expression",
                     std::iter::once(Note::primary(
                         error.span,
@@ -4450,7 +4453,7 @@ impl Typechecker {
                     self.format_type(ty, format)
                 );
 
-                self.compiler.error_with(
+                self.compiler.error_with_trace(
                     message,
                     vec![Note::primary(error.span, "invalid numeric literal")],
                     error.trace,

@@ -32,6 +32,7 @@ struct AnalysisOutputDiagnostic {
     level: AnalysisOutputDiagnosticLevel,
     message: String,
     notes: Vec<AnalysisOutputDiagnosticNote>,
+    fix: Option<AnalysisOutputDiagnosticFix>,
 }
 
 #[derive(PartialEq, Eq, Serialize)]
@@ -47,6 +48,14 @@ struct AnalysisOutputDiagnosticNote {
     code: String,
     span: AnalysisOutputDiagnosticSpan,
     messages: Vec<String>,
+}
+
+#[derive(PartialEq, Eq, Serialize)]
+pub struct AnalysisOutputDiagnosticFix {
+    pub description: String,
+    pub start: usize,
+    pub end: usize,
+    pub replacement: String,
 }
 
 #[derive(PartialEq, Eq, Serialize)]
@@ -373,6 +382,12 @@ pub fn analyze(code: String, lint: bool, callback: js_sys::Function) {
                     },
                     message: diagnostic.message,
                     notes: notes.into_iter().map(|(_, note)| note).collect(),
+                    fix: diagnostic.fix.map(|fix| AnalysisOutputDiagnosticFix {
+                        description: fix.description,
+                        start: fix.range.range().start,
+                        end: fix.range.range().end,
+                        replacement: fix.replacement,
+                    }),
                 }
             })
             .dedup()

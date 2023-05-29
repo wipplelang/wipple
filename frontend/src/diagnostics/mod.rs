@@ -7,6 +7,7 @@ use itertools::Itertools;
 use std::{
     cmp::Ordering,
     collections::{hash_map::Entry, HashMap},
+    ops::Range,
     sync::Arc,
 };
 
@@ -15,12 +16,16 @@ pub struct Diagnostic {
     pub level: DiagnosticLevel,
     pub message: String,
     pub notes: Vec<Note>,
+    pub fix: Option<Fix>,
     pub trace: Backtrace,
 }
 
 impl PartialEq for Diagnostic {
     fn eq(&self, other: &Self) -> bool {
-        self.level == other.level && self.message == other.message && self.notes == other.notes
+        self.level == other.level
+            && self.message == other.message
+            && self.notes == other.notes
+            && self.fix == other.fix
     }
 }
 
@@ -31,6 +36,7 @@ impl std::hash::Hash for Diagnostic {
         self.level.hash(state);
         self.message.hash(state);
         self.notes.hash(state);
+        self.fix.hash(state);
     }
 }
 
@@ -72,18 +78,65 @@ impl From<NoteLevel> for codespan_reporting::diagnostic::LabelStyle {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Fix {
+    pub description: String,
+    pub range: FixRange,
+    pub replacement: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FixRange(Range<usize>);
+
+impl FixRange {
+    pub fn replace(span: Span) -> FixRange {
+        FixRange(span.primary_range())
+    }
+
+    pub fn before(span: Span) -> FixRange {
+        FixRange(span.primary_start()..span.primary_start())
+    }
+
+    pub fn after(span: Span) -> FixRange {
+        FixRange(span.primary_end()..span.primary_end())
+    }
+
+    pub fn range(&self) -> Range<usize> {
+        self.0.clone()
+    }
+}
+
+impl Diagnostic {
+    pub fn with_fix(
+        mut self,
+        description: impl ToString,
+        range: FixRange,
+        replacement: impl ToString,
+    ) -> Self {
+        self.fix = Some(Fix {
+            description: description.to_string(),
+            range,
+            replacement: replacement.to_string(),
+        });
+
+        self
+    }
+}
+
 #[allow(unused)]
 impl Compiler {
+    #[must_use]
     pub(crate) fn diagnostic(
         &self,
         level: DiagnosticLevel,
         message: impl ToString,
         notes: Vec<Note>,
     ) -> Diagnostic {
-        self.diagnostic_with(level, message, notes, self.backtrace())
+        self.diagnostic_with_trace(level, message, notes, self.backtrace())
     }
 
-    pub(crate) fn diagnostic_with(
+    #[must_use]
+    pub(crate) fn diagnostic_with_trace(
         &self,
         level: DiagnosticLevel,
         message: impl ToString,
@@ -94,43 +147,43 @@ impl Compiler {
             level,
             message: message.to_string(),
             notes,
+            fix: None,
             trace,
         }
     }
 
+    #[must_use]
     pub(crate) fn warning(&self, message: impl ToString, notes: Vec<Note>) -> Diagnostic {
         self.diagnostic(DiagnosticLevel::Warning, message, notes)
     }
 
+    #[must_use]
     pub(crate) fn error(&self, message: impl ToString, notes: Vec<Note>) -> Diagnostic {
         self.diagnostic(DiagnosticLevel::Error, message, notes)
     }
 
-    pub(crate) fn warning_with(
+    #[must_use]
+    pub(crate) fn warning_with_trace(
         &self,
         message: impl ToString,
         notes: Vec<Note>,
         trace: Backtrace,
     ) -> Diagnostic {
-        self.diagnostic_with(DiagnosticLevel::Warning, message, notes, trace)
+        self.diagnostic_with_trace(DiagnosticLevel::Warning, message, notes, trace)
     }
 
-    pub(crate) fn error_with(
+    #[must_use]
+    pub(crate) fn error_with_trace(
         &self,
         message: impl ToString,
         notes: Vec<Note>,
         trace: Backtrace,
     ) -> Diagnostic {
-        self.diagnostic_with(DiagnosticLevel::Error, message, notes, trace)
+        self.diagnostic_with_trace(DiagnosticLevel::Error, message, notes, trace)
     }
 
-    pub(crate) fn add_diagnostic(
-        &self,
-        level: DiagnosticLevel,
-        message: impl ToString,
-        notes: Vec<Note>,
-    ) {
-        self.add_diagnostic_with(level, message, notes, self.backtrace());
+    pub(crate) fn add_diagnostic(&self, diagnostic: Diagnostic) {
+        self.diagnostics.add(diagnostic);
     }
 
     pub(crate) fn add_diagnostic_with(
@@ -138,36 +191,44 @@ impl Compiler {
         level: DiagnosticLevel,
         message: impl ToString,
         notes: Vec<Note>,
+    ) {
+        self.add_diagnostic_with_trace(level, message, notes, self.backtrace());
+    }
+
+    pub(crate) fn add_diagnostic_with_trace(
+        &self,
+        level: DiagnosticLevel,
+        message: impl ToString,
+        notes: Vec<Note>,
         trace: Backtrace,
     ) {
-        self.diagnostics
-            .add(self.diagnostic_with(level, message, notes, trace));
+        self.add_diagnostic(self.diagnostic_with_trace(level, message, notes, trace));
     }
 
     pub(crate) fn add_warning(&self, message: impl ToString, notes: Vec<Note>) {
-        self.add_diagnostic(DiagnosticLevel::Warning, message, notes);
+        self.add_diagnostic_with(DiagnosticLevel::Warning, message, notes);
     }
 
     pub(crate) fn add_error(&self, message: impl ToString, notes: Vec<Note>) {
-        self.add_diagnostic(DiagnosticLevel::Error, message, notes);
+        self.add_diagnostic_with(DiagnosticLevel::Error, message, notes);
     }
 
-    pub(crate) fn add_warning_with(
+    pub(crate) fn add_warning_with_trace(
         &self,
         message: impl ToString,
         notes: Vec<Note>,
         trace: Backtrace,
     ) {
-        self.add_diagnostic_with(DiagnosticLevel::Warning, message, notes, trace);
+        self.add_diagnostic_with_trace(DiagnosticLevel::Warning, message, notes, trace);
     }
 
-    pub(crate) fn add_error_with(
+    pub(crate) fn add_error_with_trace(
         &self,
         message: impl ToString,
         notes: Vec<Note>,
         trace: Backtrace,
     ) {
-        self.add_diagnostic_with(DiagnosticLevel::Error, message, notes, trace);
+        self.add_diagnostic_with_trace(DiagnosticLevel::Error, message, notes, trace);
     }
 }
 

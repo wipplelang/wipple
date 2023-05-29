@@ -34,6 +34,7 @@ import {
     AnalysisOutputCompletions,
     Completion,
     useRunner,
+    AnalysisConsoleDiagnosticFix,
 } from "../../runner";
 import KeyboardReturn from "@mui/icons-material/KeyboardReturn";
 import Refresh from "@mui/icons-material/Refresh";
@@ -285,6 +286,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
     const [hover, setHover] = useState<Hover>();
 
+    const container = document.getElementById(containerID) as HTMLDivElement | null;
     const textEditor = document.getElementById(textAreaID) as HTMLTextAreaElement | null;
 
     const [mousePosition, setMousePosition] = useState<[number, number]>();
@@ -304,7 +306,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
     }, [setMousePosition]);
 
     useEffect(() => {
-        if (!textEditor) return;
+        if (!container || !textEditor) return;
 
         let hoverTimer: NodeJS.Timeout | undefined = undefined;
         let hoverElement: HTMLElement | undefined = undefined;
@@ -315,20 +317,40 @@ export const CodeEditor = (props: CodeEditorProps) => {
             const mouseX = e.x;
             const mouseY = e.y;
 
-            for (const el of document.querySelectorAll<HTMLSpanElement>(`#${editorID} .token`)) {
-                const rect = el.getBoundingClientRect();
+            const rectContainsMouse = (rect: DOMRect) =>
+                mouseX >= rect.left &&
+                mouseX < rect.right &&
+                mouseY >= rect.top &&
+                mouseY < rect.bottom;
 
-                if (
-                    mouseX >= rect.left &&
-                    mouseX < rect.right &&
-                    mouseY >= rect.top &&
-                    mouseY < rect.bottom
-                ) {
+            if (hoverElement) {
+                if (rectContainsMouse(hoverElement.getBoundingClientRect())) {
+                    return;
+                }
+            }
+
+            const hover = document.querySelector(`${containerID} #hover`);
+
+            if (hover && rectContainsMouse(hover.getBoundingClientRect())) {
+                return;
+            }
+
+            let foundHoverElement = false;
+            for (const el of document.querySelectorAll<HTMLSpanElement>(`#${editorID} .token`)) {
+                if (rectContainsMouse(el.getBoundingClientRect())) {
                     setHover(undefined);
                     hoverElement?.classList.remove(...hoverClasses);
                     hoverElement = el;
+                    foundHoverElement = true;
                     break;
                 }
+            }
+
+            if (!foundHoverElement) {
+                setHover(undefined);
+                hoverElement?.classList.remove(...hoverClasses);
+                hoverElement = undefined;
+                return;
             }
 
             clearTimeout(hoverTimer);
@@ -371,25 +393,20 @@ export const CodeEditor = (props: CodeEditorProps) => {
             }, 250);
         };
 
-        const handleMouseEnter = () => {
-            textEditor.addEventListener("mousemove", handleMouseMove);
-        };
-
         const handleMouseLeave = () => {
             setHover(undefined);
-            clearTimeout(hoverTimer);
             hoverElement?.classList.remove(...hoverClasses);
-            textEditor.removeEventListener("mousemove", handleMouseMove);
+            hoverElement = undefined;
         };
 
-        textEditor.addEventListener("mouseenter", handleMouseEnter);
-        textEditor.addEventListener("mouseleave", handleMouseLeave);
+        container.addEventListener("mouseleave", handleMouseLeave);
+        textEditor.addEventListener("mousemove", handleMouseMove);
 
         return () => {
-            textEditor.removeEventListener("mouseenter", handleMouseEnter);
-            textEditor.removeEventListener("mouseleave", handleMouseLeave);
+            container.removeEventListener("mouseleave", handleMouseLeave);
+            textEditor.removeEventListener("mousemove", handleMouseMove);
         };
-    }, [textEditor]);
+    }, [container, textEditor]);
 
     useEffect(() => {
         const nodes = [
@@ -711,9 +728,14 @@ export const CodeEditor = (props: CodeEditorProps) => {
         };
     }, []);
 
+    const applyFix = (fix: AnalysisConsoleDiagnosticFix) => {
+        const fixed = props.code.slice(0, fix.start) + fix.replacement + props.code.slice(fix.end);
+        props.onChange(fixed);
+    };
+
     return (
-        <div>
-            <div id={containerID} className="relative -mt-3.5">
+        <div id={containerID}>
+            <div className="relative -mt-3.5">
                 <div className="flex flex-row justify-end w-full pr-4 -mb-3.5">
                     <div className="code-editor-outlined rounded-md shadow-lg shadow-gray-100 dark:shadow-gray-900 h-7 text-gray-500 text-opacity-50">
                         <Tooltip title="Insert">
@@ -1254,7 +1276,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
             {hover && (
                 <div
-                    className="absolute mt-2 p-2 overflow-clip bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-lg text-black dark:text-white"
+                    id="hover"
+                    className="absolute pt-2"
                     style={{
                         left: hover.x,
                         top: hover.y,
@@ -1262,88 +1285,104 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         zIndex: 9999,
                     }}
                 >
-                    {hover.diagnostic ? (
-                        <div className="flex flex-col">
-                            <div
-                                className={`font-bold ${
-                                    hover.diagnostic[0].level === "error"
-                                        ? "text-red-600 dark:text-red-500"
-                                        : "text-yellow-600 dark:text-yellow-500"
-                                }`}
-                            >
-                                <ReactMarkdown
-                                    remarkPlugins={[remarkMath, remarkGfm, remarkSmartypants]}
-                                    rehypePlugins={[rehypeRaw, rehypeKatex]}
-                                    linkTarget="_blank"
-                                >
-                                    {`${hover.diagnostic[0].level}: ${hover.diagnostic[0].message}`}
-                                </ReactMarkdown>
-                            </div>
-
+                    <div className="p-2 overflow-clip bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-lg text-black dark:text-white">
+                        {hover.diagnostic ? (
                             <div className="flex flex-col">
-                                {hover.diagnostic[2].messages.map((message, messageIndex) => (
-                                    <div
-                                        key={messageIndex}
-                                        className={
-                                            messageIndex === 0 && hover.diagnostic![1]
-                                                ? hover.diagnostic![0].level === "error"
-                                                    ? "text-red-600 dark:text-red-500"
-                                                    : "text-yellow-600 dark:text-yellow-500"
-                                                : "opacity-75"
-                                        }
-                                    >
-                                        <ReactMarkdown
-                                            remarkPlugins={[
-                                                remarkMath,
-                                                remarkGfm,
-                                                remarkSmartypants,
-                                            ]}
-                                            rehypePlugins={[rehypeRaw, rehypeKatex]}
-                                            linkTarget="_blank"
-                                        >
-                                            {message}
-                                        </ReactMarkdown>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {hover.output && (
-                                <div className="h-0.5 my-2 bg-gray-100 dark:bg-gray-700"></div>
-                            )}
-                        </div>
-                    ) : null}
-
-                    {hover.output?.code ? (
-                        <div className="pointer-events-none">
-                            <SimpleCodeEditor
-                                className="code-editor dark:caret-white"
-                                textareaClassName="outline-0"
-                                preClassName="language-wipple"
-                                style={{
-                                    fontFamily: "'JetBrains Mono', monospace",
-                                    fontStyle: props.code ? "normal" : "italic",
-                                    fontVariantLigatures: "none",
-                                    wordWrap: "break-word",
-                                }}
-                                value={hover.output.code}
-                                highlight={(code) =>
-                                    prism.highlight(code, prism.languages.wipple, "wipple")
-                                }
-                                onValueChange={() => {}}
-                                contentEditable={false}
-                            />
-
-                            {hover.output.help ? (
-                                <ReactMarkdown
-                                    remarkPlugins={[remarkMath, remarkGfm, remarkSmartypants]}
-                                    rehypePlugins={[rehypeRaw, rehypeKatex]}
-                                    linkTarget="_blank"
+                                <div
+                                    className={`font-bold ${
+                                        hover.diagnostic[0].level === "error"
+                                            ? "text-red-600 dark:text-red-500"
+                                            : "text-yellow-600 dark:text-yellow-500"
+                                    }`}
                                 >
-                                    {hover.output.help}
-                                </ReactMarkdown>
-                            ) : null}
-                        </div>
-                    ) : null}
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkMath, remarkGfm, remarkSmartypants]}
+                                        rehypePlugins={[rehypeRaw, rehypeKatex]}
+                                        linkTarget="_blank"
+                                    >
+                                        {`${hover.diagnostic[0].level}: ${hover.diagnostic[0].message}`}
+                                    </ReactMarkdown>
+                                </div>
+
+                                <div className="flex flex-col">
+                                    {hover.diagnostic[2].messages.map((message, messageIndex) => (
+                                        <div
+                                            key={messageIndex}
+                                            className={
+                                                messageIndex === 0 && hover.diagnostic![1]
+                                                    ? hover.diagnostic![0].level === "error"
+                                                        ? "text-red-600 dark:text-red-500"
+                                                        : "text-yellow-600 dark:text-yellow-500"
+                                                    : "opacity-75"
+                                            }
+                                        >
+                                            <ReactMarkdown
+                                                remarkPlugins={[
+                                                    remarkMath,
+                                                    remarkGfm,
+                                                    remarkSmartypants,
+                                                ]}
+                                                rehypePlugins={[rehypeRaw, rehypeKatex]}
+                                                linkTarget="_blank"
+                                            >
+                                                {message}
+                                            </ReactMarkdown>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {hover.diagnostic[0].fix && (
+                                    <div className="flex">
+                                        <button
+                                            className="mt-1.5 px-1.5 py-0.5 rounded-md bg-blue-500 text-white"
+                                            onClick={() => {
+                                                applyFix(hover.diagnostic![0].fix!);
+                                                setHover(undefined);
+                                            }}
+                                        >
+                                            {hover.diagnostic[0].fix.description}
+                                        </button>
+                                    </div>
+                                )}
+
+                                {hover.output && (
+                                    <div className="h-0.5 my-2 bg-gray-100 dark:bg-gray-700"></div>
+                                )}
+                            </div>
+                        ) : null}
+
+                        {hover.output?.code ? (
+                            <div className="pointer-events-none">
+                                <SimpleCodeEditor
+                                    className="code-editor dark:caret-white"
+                                    textareaClassName="outline-0"
+                                    preClassName="language-wipple"
+                                    style={{
+                                        fontFamily: "'JetBrains Mono', monospace",
+                                        fontStyle: props.code ? "normal" : "italic",
+                                        fontVariantLigatures: "none",
+                                        wordWrap: "break-word",
+                                    }}
+                                    value={hover.output.code}
+                                    highlight={(code) =>
+                                        prism.highlight(code, prism.languages.wipple, "wipple")
+                                    }
+                                    onValueChange={() => {}}
+                                    contentEditable={false}
+                                />
+
+                                {hover.output.help ? (
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkMath, remarkGfm, remarkSmartypants]}
+                                        rehypePlugins={[rehypeRaw, rehypeKatex]}
+                                        linkTarget="_blank"
+                                    >
+                                        {hover.output.help}
+                                    </ReactMarkdown>
+                                ) : null}
+                            </div>
+                        ) : null}
+                    </div>
                 </div>
             )}
         </div>

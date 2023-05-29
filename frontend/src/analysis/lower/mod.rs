@@ -2,7 +2,7 @@ mod builtins;
 
 use crate::{
     analysis::{ast, Analysis, Span, SpanList},
-    diagnostics::Note,
+    diagnostics::{FixRange, Note},
     helpers::{did_you_mean, Backtrace, InternedString, Shared},
     BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, FieldIndex, FilePath, ScopeId, SyntaxId,
     TraitId, TypeId, TypeParameterId, VariableId, VariantIndex,
@@ -319,7 +319,13 @@ pub struct InstanceDeclaration {
     pub tr_span: SpanList,
     pub tr: TraitId,
     pub tr_parameters: Vec<TypeAnnotation>,
-    pub value: Option<Expression>,
+    pub value: Option<InstanceValue>,
+}
+
+#[derive(Debug, Clone)]
+pub struct InstanceValue {
+    pub colon_span: Option<SpanList>,
+    pub value: Expression,
 }
 
 #[derive(Debug, Clone)]
@@ -906,30 +912,53 @@ impl Compiler {
             }
 
             let trait_has_value = tr_decl.value.as_ref().unwrap().ty.is_some();
-            let instance_has_value = instance.value.as_ref().unwrap().value.is_some();
+            let instance_value = &instance.value.as_ref().unwrap().value;
 
-            match (trait_has_value, instance_has_value) {
-                (true, false) => {
-                    self.add_error(
-                        "expected instance to have value",
-                        vec![Note::primary(
-                            instance.span,
-                            "try adding `:` after the instance declaration to give it a value",
-                        )],
+            match (trait_has_value, instance_value) {
+                (true, None) => {
+                    self.add_diagnostic(
+                        self.error(
+                            "expected instance to have value",
+                            vec![Note::primary(
+                                instance.span,
+                                "try adding `:` after the instance declaration to give it a value",
+                            )],
+                        )
+                        .with_fix(
+                            "give this instance a value",
+                            FixRange::after(instance.span.first()),
+                            " : (*value*)",
+                        ),
                     );
 
-                    instance.value.as_mut().unwrap().value = Some(Expression {
-                        span: instance.span,
-                        kind: ExpressionKind::error(self),
+                    instance.value.as_mut().unwrap().value = Some(InstanceValue {
+                        colon_span: None,
+                        value: Expression {
+                            span: instance.span,
+                            kind: ExpressionKind::error(self),
+                        },
                     });
                 }
-                (false, true) => {
-                    self.add_error(
-                        "instance has value, but the trait doesn't store a value",
-                        vec![Note::primary(
-                            instance.span,
-                            "try removing this instance's value",
-                        )],
+                (false, Some(instance_value)) => {
+                    self.add_diagnostic(
+                        self.error(
+                            "instance has value, but the trait doesn't store a value",
+                            vec![Note::primary(
+                                instance.span,
+                                "try removing this instance's value",
+                            )],
+                        )
+                        .with_fix(
+                            "remove this value",
+                            FixRange::replace(
+                                SpanList::join(
+                                    instance_value.colon_span.unwrap(),
+                                    instance_value.value.span,
+                                )
+                                .first(),
+                            ),
+                            "",
+                        ),
                     );
                 }
                 _ => {}
@@ -1230,7 +1259,7 @@ enum StatementDeclarationKind<'a> {
             LoadedScopeId,
             &'a Vec<Result<ast::Type<Analysis>, ast::SyntaxError<Analysis>>>,
         ),
-        Option<&'a ast::Expression<Analysis>>,
+        Option<(SpanList, &'a ast::Expression<Analysis>)>,
     ),
     Queued(QueuedStatement<'a>),
 }
@@ -1510,7 +1539,10 @@ impl Lowerer {
                         })
                         .collect::<Vec<_>>();
 
-                    let value = value.map(|value| self.lower_expr(value, scope, ctx));
+                    let value = value.map(|(colon_span, value)| InstanceValue {
+                        colon_span: Some(colon_span),
+                        value: self.lower_expr(value, scope, ctx),
+                    });
 
                     self.declarations.instances.get_mut(&id).unwrap().value =
                         Some(InstanceDeclaration {
@@ -2066,7 +2098,7 @@ impl Lowerer {
                                             self.assert_loaded_scope(pattern.trait_scope),
                                             &pattern.trait_parameters,
                                         ),
-                                        Some(&value.expression),
+                                        Some((statement.colon_span, &value.expression)),
                                     ),
                                     attributes: &statement.attributes,
                                 })
@@ -2100,7 +2132,7 @@ impl Lowerer {
                                                     self.assert_loaded_scope(pattern.trait_scope),
                                                     &pattern.trait_parameters,
                                                 ),
-                                                Some(&value.expression),
+                                                Some((statement.colon_span, &value.expression)),
                                             ),
                                             attributes: &statement.attributes,
                                         })
@@ -3619,7 +3651,7 @@ impl Lowerer {
             help_template: statement_attributes
                 .help_template
                 .as_ref()
-                .map(|attribute| attribute.help_template_text)
+                .map(|attribute| attribute.help_template_text),
         }
     }
 

@@ -10,6 +10,7 @@ export interface AnalysisOutput {
 export interface AnalysisOutputDiagnostic {
     level: "warning" | "error";
     message: string;
+    fix?: AnalysisConsoleDiagnosticFix;
     notes: {
         code: string;
         span: {
@@ -19,6 +20,13 @@ export interface AnalysisOutputDiagnostic {
         };
         messages: string[];
     }[];
+}
+
+export interface AnalysisConsoleDiagnosticFix {
+    description: String;
+    start: number;
+    end: number;
+    replacement: String;
 }
 
 export interface AnalysisOutputSyntaxHighlightingItem {
