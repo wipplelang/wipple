@@ -85,6 +85,16 @@ pub struct Fix {
     pub replacement: String,
 }
 
+impl Fix {
+    pub fn new(description: impl ToString, range: FixRange, replacement: impl ToString) -> Self {
+        Fix {
+            description: description.to_string(),
+            range,
+            replacement: replacement.to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FixRange(pub Range<usize>);
 
@@ -107,19 +117,18 @@ impl FixRange {
 }
 
 impl Diagnostic {
-    pub fn with_fix(
-        mut self,
+    pub fn fix(mut self, fix: impl Into<Option<Fix>>) -> Self {
+        self.fix = fix.into();
+        self
+    }
+
+    pub fn fix_with(
+        self,
         description: impl ToString,
         range: FixRange,
         replacement: impl ToString,
     ) -> Self {
-        self.fix = Some(Fix {
-            description: description.to_string(),
-            range,
-            replacement: replacement.to_string(),
-        });
-
-        self
+        self.fix(Fix::new(description, range, replacement))
     }
 }
 

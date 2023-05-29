@@ -415,7 +415,7 @@ impl wipple_syntax::Driver for Analysis {
 
         let mut error = self.compiler.error("syntax error", notes);
         if let Some(fix) = fix {
-            error = error.with_fix(
+            error = error.fix_with(
                 fix.description,
                 FixRange(fix.range.range()),
                 fix.replacement,

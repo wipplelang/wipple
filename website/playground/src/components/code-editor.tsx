@@ -1340,7 +1340,17 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                 setHover(undefined);
                                             }}
                                         >
-                                            {hover.diagnostic[0].fix.description}
+                                            <ReactMarkdown
+                                                remarkPlugins={[
+                                                    remarkMath,
+                                                    remarkGfm,
+                                                    remarkSmartypants,
+                                                ]}
+                                                rehypePlugins={[rehypeRaw, rehypeKatex]}
+                                                linkTarget="_blank"
+                                            >
+                                                {hover.diagnostic[0].fix.description}
+                                            </ReactMarkdown>
                                         </button>
                                     </div>
                                 )}

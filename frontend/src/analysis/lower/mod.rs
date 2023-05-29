@@ -2,14 +2,14 @@ mod builtins;
 
 use crate::{
     analysis::{ast, Analysis, Span, SpanList},
-    diagnostics::{FixRange, Note},
+    diagnostics::{Fix, FixRange, Note},
     helpers::{did_you_mean, Backtrace, InternedString, Shared},
     BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, FieldIndex, FilePath, ScopeId, SyntaxId,
     TraitId, TypeId, TypeParameterId, VariableId, VariantIndex,
 };
 use std::{
     borrow::Cow,
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque},
     mem,
     sync::Arc,
 };
@@ -924,7 +924,7 @@ impl Compiler {
                                 "try adding `:` after the instance declaration to give it a value",
                             )],
                         )
-                        .with_fix(
+                        .fix_with(
                             "give this instance a value",
                             FixRange::after(instance.span.first()),
                             " : (*value*)",
@@ -948,7 +948,7 @@ impl Compiler {
                                 "try removing this instance's value",
                             )],
                         )
-                        .with_fix(
+                        .fix_with(
                             "remove this value",
                             FixRange::replace(
                                 SpanList::join(
@@ -1510,17 +1510,23 @@ impl Lowerer {
                             tr
                         }
                         None => {
-                            self.compiler.add_error(
-                                format!("cannot find trait `{trait_name}`"),
-                                std::iter::once(Note::primary(trait_span, "no such trait"))
-                                    .chain(self.diagnostic_notes_for_unresolved_name(
-                                        trait_span,
-                                        trait_name,
-                                        ctx,
-                                        AnyDeclaration::as_trait,
-                                        scope,
-                                    ))
-                                    .collect(),
+                            let (notes, fix) = self.diagnostic_notes_for_unresolved_name(
+                                trait_span,
+                                trait_name,
+                                ctx,
+                                AnyDeclaration::as_trait,
+                                scope,
+                            );
+
+                            self.compiler.add_diagnostic(
+                                self.compiler
+                                    .error(
+                                        format!("cannot find trait `{trait_name}`"),
+                                        std::iter::once(Note::primary(trait_span, "no such trait"))
+                                            .chain(notes)
+                                            .collect(),
+                                    )
+                                    .fix(fix),
                             );
 
                             self.declarations.instances.remove(&id);
@@ -2282,17 +2288,26 @@ impl Lowerer {
                         kind: value,
                     },
                     None => {
-                        self.compiler.add_error(
-                            format!("cannot find `{}`", expr.name),
-                            std::iter::once(Note::primary(expr.span, "this name is not defined"))
-                                .chain(self.diagnostic_notes_for_unresolved_name(
-                                    expr.span,
-                                    expr.name,
-                                    ctx,
-                                    AnyDeclaration::as_any,
-                                    scope,
-                                ))
-                                .collect(),
+                        let (notes, fix) = self.diagnostic_notes_for_unresolved_name(
+                            expr.span,
+                            expr.name,
+                            ctx,
+                            AnyDeclaration::as_any,
+                            scope,
+                        );
+
+                        self.compiler.add_diagnostic(
+                            self.compiler
+                                .error(
+                                    format!("cannot find `{}`", expr.name),
+                                    std::iter::once(Note::primary(
+                                        expr.span,
+                                        "this name is not defined",
+                                    ))
+                                    .chain(notes)
+                                    .collect(),
+                                )
+                                .fix(fix),
                         );
 
                         Expression {
@@ -2849,20 +2864,27 @@ impl Lowerer {
                                 match self.get(name, span, AnyDeclaration::as_constant, scope) {
                                     Some((id, _)) => Some(id),
                                     _ => {
-                                        self.compiler.add_error(
-                                            format!("cannot find constant `{name}`"),
-                                            std::iter::once(Note::primary(
-                                                span,
-                                                "no such constant",
-                                            ))
-                                            .chain(self.diagnostic_notes_for_unresolved_name(
+                                        let (notes, fix) = self
+                                            .diagnostic_notes_for_unresolved_name(
                                                 span,
                                                 name,
                                                 ctx,
                                                 AnyDeclaration::as_constant,
                                                 scope,
-                                            ))
-                                            .collect(),
+                                            );
+
+                                        self.compiler.add_diagnostic(
+                                            self.compiler
+                                                .error(
+                                                    format!("cannot find constant `{name}`"),
+                                                    std::iter::once(Note::primary(
+                                                        span,
+                                                        "no such constant",
+                                                    ))
+                                                    .chain(notes)
+                                                    .collect(),
+                                                )
+                                                .fix(fix),
                                         );
 
                                         None
@@ -3169,22 +3191,31 @@ impl Lowerer {
                         ),
                     }
                 } else {
-                    self.compiler.add_error(
-                        format!("cannot find pattern `{}`", pattern.name),
-                        std::iter::once(Note::primary(pattern.span, "no such type or variant"))
-                            .chain(self.diagnostic_notes_for_unresolved_name_with(
-                                pattern.name_span,
-                                pattern.name,
-                                ctx,
-                                |decl| {
-                                    decl.clone()
-                                        .as_constant()
-                                        .map_or(false, |(_, variant)| variant.is_some())
-                                        || decl.as_type().is_some()
-                                },
-                                scope,
-                            ))
-                            .collect(),
+                    let (notes, fix) = self.diagnostic_notes_for_unresolved_name_with(
+                        pattern.name_span,
+                        pattern.name,
+                        ctx,
+                        |decl| {
+                            decl.clone()
+                                .as_constant()
+                                .map_or(false, |(_, variant)| variant.is_some())
+                                || decl.as_type().is_some()
+                        },
+                        scope,
+                    );
+
+                    self.compiler.add_diagnostic(
+                        self.compiler
+                            .error(
+                                format!("cannot find pattern `{}`", pattern.name),
+                                std::iter::once(Note::primary(
+                                    pattern.span,
+                                    "no such type or variant",
+                                ))
+                                .chain(notes)
+                                .collect(),
+                            )
+                            .fix(fix),
                     );
 
                     Pattern {
@@ -3378,17 +3409,23 @@ impl Lowerer {
                         kind: TypeAnnotationKind::Builtin(builtin, parameters),
                     }
                 } else {
-                    self.compiler.add_error(
-                        format!("cannot find type `{}`", ty.name),
-                        std::iter::once(Note::primary(ty.span, "no such type"))
-                            .chain(self.diagnostic_notes_for_unresolved_name(
-                                ty.span,
-                                ty.name,
-                                ctx,
-                                AnyDeclaration::as_type,
-                                scope,
-                            ))
-                            .collect(),
+                    let (notes, fix) = self.diagnostic_notes_for_unresolved_name(
+                        ty.span,
+                        ty.name,
+                        ctx,
+                        AnyDeclaration::as_type,
+                        scope,
+                    );
+
+                    self.compiler.add_diagnostic(
+                        self.compiler
+                            .error(
+                                format!("cannot find type `{}`", ty.name),
+                                std::iter::once(Note::primary(ty.span, "no such type"))
+                                    .chain(notes)
+                                    .collect(),
+                            )
+                            .fix(fix),
                     );
 
                     TypeAnnotation {
@@ -3525,20 +3562,26 @@ impl Lowerer {
 
                                 tr
                             } else {
-                                self.compiler.add_error(
-                                    format!("cannot find trait `{}`", bound.trait_name),
-                                    std::iter::once(Note::primary(
-                                        bound.trait_span,
-                                        "no such trait",
-                                    ))
-                                    .chain(self.diagnostic_notes_for_unresolved_name(
-                                        bound.trait_span,
-                                        bound.trait_name,
-                                        ctx,
-                                        AnyDeclaration::as_trait,
-                                        scope,
-                                    ))
-                                    .collect(),
+                                let (notes, fix) = self.diagnostic_notes_for_unresolved_name(
+                                    bound.trait_span,
+                                    bound.trait_name,
+                                    ctx,
+                                    AnyDeclaration::as_trait,
+                                    scope,
+                                );
+
+                                self.compiler.add_diagnostic(
+                                    self.compiler
+                                        .error(
+                                            format!("cannot find trait `{}`", bound.trait_name),
+                                            std::iter::once(Note::primary(
+                                                bound.trait_span,
+                                                "no such trait",
+                                            ))
+                                            .chain(notes)
+                                            .collect(),
+                                        )
+                                        .fix(fix),
                                 );
 
                                 return None;
@@ -3694,17 +3737,26 @@ impl Lowerer {
 
                                 Some(param)
                             } else {
-                                self.compiler.add_error(
-                                    format!("cannot find type parameter `{name}`"),
-                                    std::iter::once(Note::primary(span, "no such type parameter"))
-                                        .chain(self.diagnostic_notes_for_unresolved_name(
-                                            span,
-                                            name,
-                                            ctx,
-                                            AnyDeclaration::as_type_parameter,
-                                            scope,
-                                        ))
-                                        .collect(),
+                                let (notes, fix) = self.diagnostic_notes_for_unresolved_name(
+                                    span,
+                                    name,
+                                    ctx,
+                                    AnyDeclaration::as_type_parameter,
+                                    scope,
+                                );
+
+                                self.compiler.add_diagnostic(
+                                    self.compiler
+                                        .error(
+                                            format!("cannot find type parameter `{name}`"),
+                                            std::iter::once(Note::primary(
+                                                span,
+                                                "no such type parameter",
+                                            ))
+                                            .chain(notes)
+                                            .collect(),
+                                        )
+                                        .fix(fix),
                                 );
 
                                 return None;
@@ -3746,20 +3798,26 @@ impl Lowerer {
                             ) {
                                 id
                             } else {
-                                self.compiler.add_error(
-                                    format!("cannot find type parameter `{param_name}`"),
-                                    std::iter::once(Note::primary(
-                                        param_span,
-                                        "no such type parameter",
-                                    ))
-                                    .chain(self.diagnostic_notes_for_unresolved_name(
-                                        param_span,
-                                        param_name,
-                                        ctx,
-                                        AnyDeclaration::as_type_parameter,
-                                        scope,
-                                    ))
-                                    .collect(),
+                                let (notes, fix) = self.diagnostic_notes_for_unresolved_name(
+                                    param_span,
+                                    param_name,
+                                    ctx,
+                                    AnyDeclaration::as_type_parameter,
+                                    scope,
+                                );
+
+                                self.compiler.add_diagnostic(
+                                    self.compiler
+                                        .error(
+                                            format!("cannot find type parameter `{param_name}`"),
+                                            std::iter::once(Note::primary(
+                                                param_span,
+                                                "no such type parameter",
+                                            ))
+                                            .chain(notes)
+                                            .collect(),
+                                        )
+                                        .fix(fix),
                                 );
 
                                 return None;
@@ -4034,7 +4092,7 @@ impl Lowerer {
         ctx: &Context,
         kind: fn(AnyDeclaration) -> Option<T>,
         scope: &LoadedScopeId,
-    ) -> Vec<Note> {
+    ) -> (Vec<Note>, Option<Fix>) {
         self.diagnostic_notes_for_unresolved_name_with(
             span,
             name,
@@ -4051,30 +4109,37 @@ impl Lowerer {
         ctx: &Context,
         kind: impl Fn(AnyDeclaration) -> bool,
         scope: &LoadedScopeId,
-    ) -> Vec<Note> {
+    ) -> (Vec<Note>, Option<Fix>) {
         let mut notes = std::iter::empty()
             .chain(
                 self.file_info
                     .diagnostic_aliases
                     .aliases
                     .get(&name)
-                    .map(|alias| Note::secondary(span, format!("did you mean `{alias}`?"))),
+                    .map(|alias| (
+                        Note::secondary(span, format!("did you mean `{alias}`?")),
+                        Fix::new(format!("replace with `{alias}`"), FixRange::replace(span.first()), alias),
+                    )),
             )
-            .chain(ctx.caller_accepts_text.then(|| {
+            .chain(ctx.caller_accepts_text.then(|| (
                 Note::secondary(
                     span,
                     format!("if you meant to provide text here, try using quotes: `\"{name}\"`"),
-                )
-            }))
-            .chain(did_you_mean::math(&name).map(|(lhs, op, rhs)| {
+                ),
+                Fix::new("surround with quotes", FixRange::replace(span.first()), format!("\"{name}\"")),
+            )))
+            .chain(did_you_mean::math(&name).map(|(lhs, op, rhs)| (
                 Note::secondary(
                     span,
                     format!("if you meant to write a mathematical expression, try using whitespace: `{lhs} {op} {rhs}`"),
-                )
-            }))
+                ),
+                Fix::new("add whitespace around operator", FixRange::replace(span.first()), format!("{lhs} {op} {rhs}")),
+            )))
             .chain(
-                did_you_mean::comment(&name)
-                    .map(|()| Note::secondary(span, format!("comments in Wipple begin with `--`"))),
+                did_you_mean::comment(&name).map(|()| (
+                    Note::secondary(span, format!("comments in Wipple begin with `--`")),
+                    Fix::new("replace with `--`", FixRange::replace(span.first()), "--"),
+                )),
             )
             .collect::<Vec<_>>();
 
@@ -4082,13 +4147,19 @@ impl Lowerer {
             let candidates = self.collect(kind, scope).map(|name| name.as_str());
 
             if let Some(suggestion) = did_you_mean::name(&name, candidates) {
-                notes.push(Note::secondary(
-                    span,
-                    format!("did you mean `{suggestion}`?"),
+                notes.push((
+                    Note::secondary(span, format!("did you mean `{suggestion}`?")),
+                    Fix::new(
+                        format!("replace with `{suggestion}`"),
+                        FixRange::replace(span.first()),
+                        suggestion,
+                    ),
                 ));
             }
         }
 
-        notes
+        let (notes, mut fixes): (Vec<_>, VecDeque<_>) = notes.into_iter().unzip();
+
+        (notes, fixes.pop_front())
     }
 }

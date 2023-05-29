@@ -23,10 +23,10 @@ export interface AnalysisOutputDiagnostic {
 }
 
 export interface AnalysisConsoleDiagnosticFix {
-    description: String;
+    description: string;
     start: number;
     end: number;
-    replacement: String;
+    replacement: string;
 }
 
 export interface AnalysisOutputSyntaxHighlightingItem {
