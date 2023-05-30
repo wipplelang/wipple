@@ -4363,6 +4363,48 @@ impl Typechecker {
                     }
                 }
 
+                if let engine::UnresolvedType::Function(actual_input, actual_output) = &actual {
+                    if let engine::UnresolvedType::Function(expected_input, expected_output) =
+                        &expected
+                    {
+                        if self
+                            .ctx
+                            .clone()
+                            .unify(
+                                actual_output.as_ref().clone(),
+                                expected_output.as_ref().clone(),
+                            )
+                            .is_err()
+                        {
+                            notes.push(Note::secondary(
+                                error.span,
+                                format!(
+                                    "this function returns {}, but it should return {}",
+                                    self.format_type(actual_output.as_ref().clone(), format),
+                                    self.format_type(expected_output.as_ref().clone(), format)
+                                ),
+                            ));
+                        } else if self
+                            .ctx
+                            .clone()
+                            .unify(
+                                actual_input.as_ref().clone(),
+                                expected_input.as_ref().clone(),
+                            )
+                            .is_err()
+                        {
+                            notes.push(Note::secondary(
+                                error.span,
+                                format!(
+                                    "this function accepts {}, but it should accept {}",
+                                    self.format_type(actual_input.as_ref().clone(), format),
+                                    self.format_type(expected_input.as_ref().clone(), format)
+                                ),
+                            ));
+                        }
+                    }
+                }
+
                 if let Some((actual_ty, actual_params)) = actual_ty {
                     if let Some(note) =
                         actual_ty

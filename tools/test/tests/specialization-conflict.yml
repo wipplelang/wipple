@@ -36,6 +36,7 @@ diagnostics: |
        │ │
        │ expected `A -> Text` for any type `A`, but found `Bar -> Number`
        │ this constant must have a more specific type than the original constant
+       │ this function returns `Number`, but it should return `Text`
 
     error: missing instance
        ┌─ test:20:1
