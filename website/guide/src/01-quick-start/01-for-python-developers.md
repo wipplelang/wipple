@@ -363,7 +363,7 @@ Great — now our code won't crash and we can choose how to handle the error in
 
 ## Exceptions
 
-Wipple doesn't have exceptions. Instead, functions that can produce errors return the `Result` type. Similar to `Maybe`, `Result` stores either an `OK x` or an `Error e`. Let's refactor our `fetch-user` example to return a `Result` instead of a `Maybe`:
+Wipple doesn't have exceptions. Instead, functions that can produce errors return the `Result` type. Similar to `Maybe`, `Result` stores either an `Ok x` or an `Error e`. Let's refactor our `fetch-user` example to return a `Result` instead of a `Maybe`:
 
 ```wipple
 Database-Error : type {
@@ -378,7 +378,7 @@ fetch-user : id -> database -> {
     table : database . table "users"
 
     if (table . contains? id)
-        (OK (table . get id))
+        (Ok (table . get id))
         (Error (Database-Error { message : format "no user with id _" id }))
 }
 ```
@@ -387,7 +387,7 @@ And we can handle the error using `when`:
 
 ```wipple
 when (database . fetch-user 42) {
-    OK bob -> show bob
+    Ok bob -> show bob
     Error error -> show error
 }
 ```
@@ -396,7 +396,7 @@ To propagate the error up, you can use `end`:
 
 ```wipple
 bob : when (database . fetch-user 42) {
-    OK user -> user
+    Ok user -> user
     Error error -> end (Error error)
 }
 

@@ -56,9 +56,9 @@ insert : index new list -> external "runtime" "list-insert" list index new
 [help-group "Collections"]
 insert! :: A => Natural -> A -> Mutable (List A) -> Result () Index-Error
 insert! : index new list -> when (list . get . insert index new) {
-  OK new-list -> {
+  Ok new-list -> {
     list . set! new-list
-    OK ()
+    Ok ()
   }
   Error e -> Error e
 }
@@ -72,9 +72,9 @@ remove : index list -> external "runtime" "list-remove" list index
 [help-group "Collections"]
 remove! :: Natural -> Mutable (List _) -> Result () Index-Error
 remove! : index list -> when (list . get . remove index) {
-  OK new-list -> {
+  Ok new-list -> {
     list . set! new-list
-    OK ()
+    Ok ()
   }
   Error e -> Error e
 }

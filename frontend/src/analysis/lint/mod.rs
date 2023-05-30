@@ -18,4 +18,9 @@ macro_rules! lints {
     };
 }
 
-lints!(unused_variable, useless_bounds, useless_expression);
+lints!(
+    naming_conventions,
+    unused_variable,
+    useless_bounds,
+    useless_expression,
+);

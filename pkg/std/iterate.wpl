@@ -99,7 +99,7 @@ A => instance (Iterate (List A) A) : list -> {
   index : mutable 0
 
   iterator (() -> when (list . nth (get index)) {
-    OK element -> {
+    Ok element -> {
       increment! index
       Some element
     }

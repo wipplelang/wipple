@@ -1,0 +1,50 @@
+code: |
+    mySyntax : syntax {}
+
+    myType : type
+
+    myTrait : trait
+
+    myConstant :: a => ()
+    myConstant : ()
+
+    myVariable : 42
+
+output: |
+
+diagnostics: |
+    warning: type should be written in title case with dashes
+      ┌─ test:3:1
+      │
+    3 │ myType : type
+      │ ^^^^^^ try writing the type like this: `My-Type`
+
+    warning: trait should be written in title case with dashes
+      ┌─ test:5:1
+      │
+    5 │ myTrait : trait
+      │ ^^^^^^^ try writing the trait like this: `My-Trait`
+
+    warning: constant should be written in lowercase with dashes
+      ┌─ test:7:1
+      │
+    7 │ myConstant :: a => ()
+      │ ^^^^^^^^^^ try writing the constant like this: `my-constant`
+
+    warning: type parameter should be written in title case with dashes
+      ┌─ test:7:15
+      │
+    7 │ myConstant :: a => ()
+      │               ^ try writing the type parameter like this: `A`
+
+    warning: variable should be written in lowercase with dashes
+       ┌─ test:10:1
+       │
+    10 │ myVariable : 42
+       │ ^^^^^^^^^^ try writing the variable like this: `my-variable`
+
+    warning: unused variable
+       ┌─ test:10:1
+       │
+    10 │ myVariable : 42
+       │ ^^^^^^^^^^ `myVariable` is never used

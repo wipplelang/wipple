@@ -135,6 +135,7 @@ pub struct ConstantDecl {
     pub ty: engine::Type,
     pub reduced_ty: Option<engine::Type>,
     pub specializations: Vec<ConstantId>,
+    pub is_variant: bool,
     pub attributes: lower::ConstantAttributes,
     pub body: Option<Expression>,
     pub uses: HashSet<SpanList>,
@@ -3378,6 +3379,7 @@ impl Typechecker {
                 .get(&id)
                 .cloned()
                 .unwrap_or_default(),
+            is_variant: decl.value.is_variant,
             attributes: decl.value.attributes,
             body: None,
             uses: decl.uses,
@@ -4335,7 +4337,10 @@ impl Typechecker {
                             self.compiler.source_code_for_span(error.span.first())
                         {
                             let (description, replacement) = if num_inputs == 1 {
-                                (String::from("provide input"), format!("({source_code} (*input*))"))
+                                (
+                                    String::from("provide input"),
+                                    format!("({source_code} (*input*))"),
+                                )
                             } else {
                                 (
                                     format!("provide {num_inputs} inputs"),

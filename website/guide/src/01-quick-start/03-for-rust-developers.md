@@ -304,7 +304,7 @@ fetch-user : id -> database -> {
     table : database . table "users"
 
     if (table . contains? id)
-        (OK (table . get id))
+        (Ok (table . get id))
         (Error (Database-Error { message : format "no user with id _" id }))
 }
 

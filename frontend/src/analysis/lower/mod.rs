@@ -268,6 +268,7 @@ pub struct ConstantDeclaration {
     pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
     pub value: Expression,
+    pub is_variant: bool,
     pub attributes: ConstantAttributes,
 }
 
@@ -277,6 +278,7 @@ pub struct UnresolvedConstantDeclaration {
     pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
     pub value: Shared<Option<Expression>>,
+    pub is_variant: bool,
     pub attributes: ConstantAttributes,
 }
 
@@ -287,6 +289,7 @@ impl From<ConstantDeclaration> for UnresolvedConstantDeclaration {
             bounds: decl.bounds,
             ty: decl.ty,
             value: Shared::new(Some(decl.value)),
+            is_variant: decl.is_variant,
             attributes: decl.attributes,
         }
     }
@@ -299,6 +302,7 @@ impl Resolve<ConstantDeclaration> for UnresolvedConstantDeclaration {
             bounds: self.bounds,
             ty: self.ty,
             value: self.value.into_unique().expect("uninitialized constant"),
+            is_variant: self.is_variant,
             attributes: self.attributes,
         }
     }
@@ -1477,6 +1481,7 @@ impl Lowerer {
                             bounds,
                             ty,
                             value: Default::default(),
+                            is_variant: false,
                             attributes,
                         });
 
@@ -4059,6 +4064,7 @@ impl Lowerer {
                     bounds: Vec::new(),
                     ty: constructor_ty,
                     value: Shared::new(Some(constructor)),
+                    is_variant: true,
                     attributes: Default::default(),
                 },
             )

@@ -56,11 +56,8 @@ id: H3x_2qDZ
 type: code
 ---
 
-origin-2d :: Number , Number
-origin-2d : 0 , 0
-
-origin-3d :: Number , Number , Number
-origin-3d : 0 , 0 , 0
+origin :: Number , Number
+origin : 0 , 0
 
 ---
 id: bL5YRsGG

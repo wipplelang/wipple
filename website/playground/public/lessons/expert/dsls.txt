@@ -114,8 +114,7 @@ say-hello :: () -> ()
 say-hello : () -> show (format "Hello, I'm _!" (name of robot))
 
 with-robot :: Text -> (() -> ()) -> ()
-with-robot : name f ->
-    with (robot : Robot { name }) (f ())
+with-robot : name f -> with (robot : Robot { name }) (f ())
 
 with-robot "Bot" (() -> {
     say-hello ()
@@ -135,8 +134,7 @@ type: code
 ---
 
 with-robot : syntax {
-    with-robot 'name 'body ->
-        with (robot : Robot { name : 'name }) 'body
+    with-robot 'name 'body -> with (robot : Robot { name : 'name }) 'body
 }
 
 ---
@@ -153,8 +151,7 @@ type: code
 ---
 
 with-robot : syntax {
-    with-robot 'name 'body ->
-        with (robot : Robot { name : 'name }) 'body
+    with-robot 'name 'body -> with (robot : Robot { name : 'name }) 'body
 }
 
 with-robot "Bot" {
@@ -247,8 +244,7 @@ robot :: Robot
 robot : crash "`robot` not initialized"
 
 with-robot : syntax {
-    with-robot 'name 'body ->
-        with (robot : Robot { name : 'name }) 'body
+    with-robot 'name 'body -> with (robot : Robot { name : 'name }) 'body
 }
 
 say-hello : syntax {

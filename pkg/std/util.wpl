@@ -36,7 +36,7 @@ Maybe : Value => type {
 [on-mismatch Success "try handling the case where the `Result` is `Error`, eg. using `when`, `try` or `expect`"]
 [on-mismatch Failure "try converting the error to the correct type, eg. using `as` or `try`"]
 Result : Success Failure => type {
-  OK Success
+  Ok Success
   Error Failure
 }
 
