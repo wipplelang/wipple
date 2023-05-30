@@ -1,5 +1,6 @@
 definitions! {
     mod default;
+    mod infer;
     mod r#where;
 }
 
@@ -20,6 +21,7 @@ syntax_group! {
     pub type TypePattern<TypePatternSyntaxContext> {
         non_terminal: {
             Default,
+            Infer,
             Where,
         },
         terminal: {

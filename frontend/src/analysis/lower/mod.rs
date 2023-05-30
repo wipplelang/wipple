@@ -218,6 +218,7 @@ pub struct EnumerationVariant {
 
 #[derive(Debug, Clone)]
 pub struct TypeParameterDeclaration {
+    pub infer: bool,
     pub default: Option<TypeAnnotation>,
 }
 
@@ -3452,7 +3453,7 @@ impl Lowerer {
             ($params:expr) => {
                 $params
                     .into_iter()
-                    .map(|((name_span, name), default)| {
+                    .map(|((name_span, name), default, infer)| {
                         let id = self.compiler.new_type_parameter_id_in(self.file);
 
                         self.declarations.type_parameters.insert(
@@ -3460,7 +3461,7 @@ impl Lowerer {
                             Declaration::resolved(
                                 Some(name),
                                 name_span,
-                                TypeParameterDeclaration { default },
+                                TypeParameterDeclaration { infer, default },
                             ),
                         );
 
@@ -3478,34 +3479,46 @@ impl Lowerer {
                     Ok(lhs) => {
                         let params = match lhs.as_ref() {
                             ast::TypePattern::Name(pattern) => {
-                                vec![((pattern.span, pattern.name), None)]
+                                vec![((pattern.span, pattern.name), None, false)]
                             }
                             ast::TypePattern::Default(pattern) => {
                                 match (&pattern.name, &pattern.ty) {
                                     (Ok((name_span, name)), Ok(ty)) => {
                                         let ty = self.lower_type(ty, scope, ctx);
-                                        vec![((*name_span, *name), Some(ty))]
+                                        vec![((*name_span, *name), Some(ty), false)]
                                     }
                                     _ => Vec::new(),
                                 }
                             }
+                            ast::TypePattern::Infer(pattern) => match &pattern.name {
+                                Ok((name_span, name)) => {
+                                    vec![((*name_span, *name), None, true)]
+                                }
+                                _ => Vec::new(),
+                            },
                             ast::TypePattern::List(pattern) => pattern
                                 .patterns
                                 .iter()
                                 .filter_map(|pattern| match pattern {
                                     Ok(pattern) => match pattern {
                                         ast::TypePattern::Name(pattern) => {
-                                            Some(((pattern.span, pattern.name), None))
+                                            Some(((pattern.span, pattern.name), None, false))
                                         }
                                         ast::TypePattern::Default(pattern) => {
                                             match (&pattern.name, &pattern.ty) {
                                                 (Ok((name_span, name)), Ok(ty)) => {
                                                     let ty = self.lower_type(ty, scope, ctx);
-                                                    Some(((*name_span, *name), Some(ty)))
+                                                    Some(((*name_span, *name), Some(ty), false))
                                                 }
                                                 _ => None,
                                             }
                                         }
+                                        ast::TypePattern::Infer(pattern) => match &pattern.name {
+                                            Ok((name_span, name)) => {
+                                                Some(((*name_span, *name), None, true))
+                                            }
+                                            _ => None,
+                                        },
                                         ast::TypePattern::List(pattern) => {
                                             self.compiler.add_error(
                                                 "higher-kinded types are not yet supported",
@@ -3618,13 +3631,22 @@ impl Lowerer {
                 (params, bounds)
             }
             ast::TypePattern::Name(pattern) => {
-                let params = generate_type_parameters!(vec![((pattern.span, pattern.name), None)]);
+                let params =
+                    generate_type_parameters!(vec![((pattern.span, pattern.name), None, false)]);
                 (params, Vec::new())
             }
             ast::TypePattern::Default(pattern) => match (&pattern.name, &pattern.ty) {
                 (Ok((name_span, name)), Ok(ty)) => {
                     let ty = self.lower_type(ty, scope, ctx);
-                    let params = generate_type_parameters!(vec![((*name_span, *name), Some(ty))]);
+                    let params =
+                        generate_type_parameters!(vec![((*name_span, *name), Some(ty), false)]);
+                    (params, Vec::new())
+                }
+                _ => (Vec::new(), Vec::new()),
+            },
+            ast::TypePattern::Infer(pattern) => match &pattern.name {
+                Ok((name_span, name)) => {
+                    let params = generate_type_parameters!(vec![((*name_span, *name), None, true)]);
                     (params, Vec::new())
                 }
                 _ => (Vec::new(), Vec::new()),
@@ -3636,17 +3658,21 @@ impl Lowerer {
                     .filter_map(|pattern| match pattern {
                         Ok(pattern) => match pattern {
                             ast::TypePattern::Name(pattern) => {
-                                Some(((pattern.span, pattern.name), None))
+                                Some(((pattern.span, pattern.name), None, false))
                             }
                             ast::TypePattern::Default(pattern) => {
                                 match (&pattern.name, &pattern.ty) {
                                     (Ok((name_span, name)), Ok(ty)) => {
                                         let ty = self.lower_type(ty, scope, ctx);
-                                        Some(((*name_span, *name), Some(ty)))
+                                        Some(((*name_span, *name), Some(ty), false))
                                     }
                                     _ => None,
                                 }
                             }
+                            ast::TypePattern::Infer(pattern) => match &pattern.name {
+                                Ok((name_span, name)) => Some(((*name_span, *name), None, true)),
+                                _ => None,
+                            },
                             ast::TypePattern::List(pattern) => {
                                 self.compiler.add_error(
                                     "higher-kinded types are not yet supported",

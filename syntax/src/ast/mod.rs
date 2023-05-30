@@ -120,6 +120,12 @@ impl BuiltinSyntaxDefinition {
     pub(crate) const FUNCTION: Self =
         Self::operator("->", "Define a function.", "(*input*) -> (*output*)");
 
+    pub(crate) const INFER: Self = Self::function(
+        "infer",
+        "Mark a type parameter as inferred.",
+        "infer (*type*)",
+    );
+
     pub(crate) const COMMA: Self = Self::operator(",", "Create a tuple.", "(*left*) , (*right*)");
 
     pub(crate) const WHEN: Self = Self::function(
