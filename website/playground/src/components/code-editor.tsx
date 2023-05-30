@@ -1070,12 +1070,12 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                     switch (item.type) {
                                                         case "output":
                                                             return (
-                                                                <div
+                                                                <Markdown
                                                                     key={index}
                                                                     className="prose prose-sky dark:prose-invert max-w-none"
                                                                 >
-                                                                    <Markdown>{item.text}</Markdown>
-                                                                </div>
+                                                                    {item.text}
+                                                                </Markdown>
                                                             );
                                                         case "prompt":
                                                             return (
@@ -1414,13 +1414,14 @@ const DropdownField = (props: {
     );
 };
 
-const Markdown = (props: { children: string }) => (
-    <ReactMarkdown
-        remarkPlugins={[remarkMath, remarkGfm, remarkSmartypants]}
-        rehypePlugins={[rehypeRaw, rehypeKatex]}
-        linkTarget="_blank"
-        className="code-editor-markdown"
-    >
-        {props.children}
-    </ReactMarkdown>
+const Markdown = (props: { children: string; className?: string }) => (
+    <div className={"code-editor-markdown " + props.className ?? ""}>
+        <ReactMarkdown
+            remarkPlugins={[remarkMath, remarkGfm, remarkSmartypants]}
+            rehypePlugins={[rehypeRaw, rehypeKatex]}
+            linkTarget="_blank"
+        >
+            {props.children}
+        </ReactMarkdown>
+    </div>
 );
