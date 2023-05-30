@@ -14,7 +14,7 @@ pub use lower::{RuntimeFunction, TypeAnnotation, TypeAnnotationKind};
 
 use crate::{
     analysis::{lower, SpanList},
-    diagnostics::Note,
+    diagnostics::{Fix, FixRange, Note},
     helpers::{Backtrace, InternedString},
     BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, FieldIndex, ItemId, SyntaxId, TraitId,
     TypeId, TypeParameterId, VariableId, VariantIndex,
@@ -4281,7 +4281,6 @@ impl Typechecker {
             surround_in_backticks: true,
         };
 
-        #[allow(unused_mut)]
         let mut diagnostic = match error.error {
             engine::TypeError::ErrorExpression => return,
             engine::TypeError::Recursive(_) => self.compiler.error(
@@ -4312,42 +4311,83 @@ impl Typechecker {
                 let message = format!(
                     "expected {}, but found {}",
                     self.format_type(expected.clone(), format),
-                    self.format_type(actual, format)
+                    self.format_type(actual.clone(), format)
                 );
 
-                self.compiler.error_with_trace(
-                    "mismatched types",
-                    std::iter::once(Note::primary(error.span, message))
-                        .chain(actual_ty.and_then(|(actual_ty, mut actual_params)| {
-                            actual_ty
-                                .attributes
-                                .on_mismatch
-                                .iter()
-                                .find_map(|(param, message)| {
-                                    param
-                                        .as_ref()
-                                        .map_or(true, |param| {
-                                            let param = actual_ty
-                                                .params
-                                                .iter()
-                                                .position(|p| p == param)
-                                                .expect(
-                                                    "type parameter associated with wrong type",
-                                                );
+                let mut notes = vec![Note::primary(error.span, message)];
+                let mut fix = None;
 
-                                            let inner_ty = actual_params[param].clone();
+                {
+                    let mut output = actual.clone();
+                    let mut num_inputs = 0usize;
+                    while let engine::UnresolvedType::Function(_, ty) = output {
+                        output = *ty;
+                        num_inputs += 1;
+                    }
 
-                                            self.ctx
-                                                .clone()
-                                                .unify(inner_ty, expected.clone())
-                                                .is_ok()
-                                        })
-                                        .then(|| Note::secondary(error.span, message))
-                                })
-                        }))
-                        .collect(),
-                    error.trace,
-                )
+                    if self.ctx.clone().unify(output, expected.clone()).is_ok() {
+                        notes.push(Note::secondary(
+                            error.span,
+                            "try providing an input to this function",
+                        ));
+
+                        if let Some(source_code) =
+                            self.compiler.source_code_for_span(error.span.first())
+                        {
+                            let (description, replacement) = if num_inputs == 1 {
+                                (String::from("provide input"), format!("({source_code} (*input*))"))
+                            } else {
+                                (
+                                    format!("provide {num_inputs} inputs"),
+                                    format!(
+                                        "({}{})",
+                                        source_code,
+                                        (0..num_inputs)
+                                            .map(|n| format!(" (*input {}*)", n + 1)) // TODO: Use parameter name defined in function
+                                            .collect::<String>(),
+                                    ),
+                                )
+                            };
+
+                            fix = Some(Fix::new(
+                                description,
+                                FixRange::replace(error.span.first()),
+                                replacement,
+                            ));
+                        }
+                    }
+                }
+
+                if let Some((actual_ty, actual_params)) = actual_ty {
+                    if let Some(note) =
+                        actual_ty
+                            .attributes
+                            .on_mismatch
+                            .iter()
+                            .find_map(|(param, message)| {
+                                param
+                                    .as_ref()
+                                    .map_or(true, |param| {
+                                        let param = actual_ty
+                                            .params
+                                            .iter()
+                                            .position(|p| p == param)
+                                            .expect("type parameter associated with wrong type");
+
+                                        let inner_ty = actual_params[param].clone();
+
+                                        self.ctx.clone().unify(inner_ty, expected.clone()).is_ok()
+                                    })
+                                    .then(|| Note::secondary(error.span, message))
+                            })
+                    {
+                        notes.push(note);
+                    }
+                }
+
+                self.compiler
+                    .error_with_trace("mismatched types", notes, error.trace)
+                    .fix(fix)
             }
             engine::TypeError::MissingInstance(id, params, bound_span, error_candidates) => {
                 let trait_attributes = self

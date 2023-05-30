@@ -571,3 +571,9 @@ impl wipple_syntax::File<Analysis> for File {
         }
     }
 }
+
+impl Compiler {
+    fn source_code_for_span(&self, span: Span) -> Option<String> {
+        Some(self.loader.source_map().lock().get(&span.path)?[span.primary_range()].to_string())
+    }
+}
