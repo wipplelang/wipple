@@ -38,6 +38,20 @@ code {
     @apply code-editor-outlined -my-0.5 hover:bg-gray-200 dark:hover:bg-gray-800 dark:bg-gray-900;
 }
 
+.diagnostic-errors {
+    @apply bg-red-50 dark:bg-red-900 dark:bg-opacity-40;
+}
+
+.diagnostic-warnings {
+    @apply bg-yellow-50 dark:bg-yellow-900 dark:bg-opacity-40;
+}
+
+.code-editor-markdown code,
+.diagnostic-errors code,
+.diagnostic-warnings code {
+    @apply bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-50 rounded-md px-1.5;
+}
+
 .bouncing-loader {
     display: flex;
     justify-content: flex-start;

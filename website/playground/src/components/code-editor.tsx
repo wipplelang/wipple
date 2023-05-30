@@ -893,12 +893,12 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                 ) : null
                                             ) : (
                                                 <div
-                                                    className={`p-4 flex flex-col gap-4 text-black dark:text-white ${
+                                                    className={`p-4 flex flex-col gap-4 text-gray-900 dark:text-gray-50 ${
                                                         output.current.diagnostics.find(
                                                             ({ level }) => level === "error"
                                                         )
-                                                            ? "bg-red-50 dark:bg-red-900 dark:bg-opacity-40"
-                                                            : "bg-yellow-50 dark:bg-yellow-900 dark:bg-opacity-40"
+                                                            ? "diagnostic-errors"
+                                                            : "diagnostic-warnings"
                                                     }`}
                                                 >
                                                     {output.current.diagnostics.map(
@@ -924,20 +924,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                                                 : "text-yellow-600 dark:text-yellow-500"
                                                                         }`}
                                                                     >
-                                                                        <ReactMarkdown
-                                                                            remarkPlugins={[
-                                                                                remarkMath,
-                                                                                remarkGfm,
-                                                                                remarkSmartypants,
-                                                                            ]}
-                                                                            rehypePlugins={[
-                                                                                rehypeRaw,
-                                                                                rehypeKatex,
-                                                                            ]}
-                                                                            linkTarget="_blank"
-                                                                        >
+                                                                        <Markdown>
                                                                             {`${diagnostic.level}: ${diagnostic.message}`}
-                                                                        </ReactMarkdown>
+                                                                        </Markdown>
                                                                     </div>
 
                                                                     {diagnostic.notes.map(
@@ -1055,22 +1044,11 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                                                                         )}
                                                                                                 </pre>
 
-                                                                                                <ReactMarkdown
-                                                                                                    remarkPlugins={[
-                                                                                                        remarkMath,
-                                                                                                        remarkGfm,
-                                                                                                        remarkSmartypants,
-                                                                                                    ]}
-                                                                                                    rehypePlugins={[
-                                                                                                        rehypeRaw,
-                                                                                                        rehypeKatex,
-                                                                                                    ]}
-                                                                                                    linkTarget="_blank"
-                                                                                                >
+                                                                                                <Markdown>
                                                                                                     {
                                                                                                         message
                                                                                                     }
-                                                                                                </ReactMarkdown>
+                                                                                                </Markdown>
                                                                                             </div>
                                                                                         )
                                                                                     )}
@@ -1096,20 +1074,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                                     key={index}
                                                                     className="prose prose-sky dark:prose-invert max-w-none"
                                                                 >
-                                                                    <ReactMarkdown
-                                                                        remarkPlugins={[
-                                                                            remarkMath,
-                                                                            remarkGfm,
-                                                                            remarkSmartypants,
-                                                                        ]}
-                                                                        rehypePlugins={[
-                                                                            rehypeRaw,
-                                                                            rehypeKatex,
-                                                                        ]}
-                                                                        linkTarget="_blank"
-                                                                    >
-                                                                        {item.text}
-                                                                    </ReactMarkdown>
+                                                                    <Markdown>{item.text}</Markdown>
                                                                 </div>
                                                             );
                                                         case "prompt":
@@ -1211,17 +1176,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                     </span>
                                                 </pre>
 
-                                                <ReactMarkdown
-                                                    remarkPlugins={[
-                                                        remarkMath,
-                                                        remarkGfm,
-                                                        remarkSmartypants,
-                                                    ]}
-                                                    rehypePlugins={[rehypeRaw, rehypeKatex]}
-                                                    linkTarget="_blank"
-                                                >
-                                                    {completion.help}
-                                                </ReactMarkdown>
+                                                <Markdown>{completion.help}</Markdown>
                                             </ListItemText>
                                         </MenuItem>
                                     ) : null;
@@ -1295,13 +1250,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                             : "text-yellow-600 dark:text-yellow-500"
                                     }`}
                                 >
-                                    <ReactMarkdown
-                                        remarkPlugins={[remarkMath, remarkGfm, remarkSmartypants]}
-                                        rehypePlugins={[rehypeRaw, rehypeKatex]}
-                                        linkTarget="_blank"
-                                    >
+                                    <Markdown>
                                         {`${hover.diagnostic[0].level}: ${hover.diagnostic[0].message}`}
-                                    </ReactMarkdown>
+                                    </Markdown>
                                 </div>
 
                                 <div className="flex flex-col">
@@ -1316,17 +1267,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                     : "opacity-75"
                                             }
                                         >
-                                            <ReactMarkdown
-                                                remarkPlugins={[
-                                                    remarkMath,
-                                                    remarkGfm,
-                                                    remarkSmartypants,
-                                                ]}
-                                                rehypePlugins={[rehypeRaw, rehypeKatex]}
-                                                linkTarget="_blank"
-                                            >
-                                                {message}
-                                            </ReactMarkdown>
+                                            <Markdown>{message}</Markdown>
                                         </div>
                                     ))}
                                 </div>
@@ -1340,17 +1281,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                 setHover(undefined);
                                             }}
                                         >
-                                            <ReactMarkdown
-                                                remarkPlugins={[
-                                                    remarkMath,
-                                                    remarkGfm,
-                                                    remarkSmartypants,
-                                                ]}
-                                                rehypePlugins={[rehypeRaw, rehypeKatex]}
-                                                linkTarget="_blank"
-                                            >
+                                            <Markdown>
                                                 {hover.diagnostic[0].fix.description}
-                                            </ReactMarkdown>
+                                            </Markdown>
                                         </button>
                                     </div>
                                 )}
@@ -1382,13 +1315,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                 />
 
                                 {hover.output.help ? (
-                                    <ReactMarkdown
-                                        remarkPlugins={[remarkMath, remarkGfm, remarkSmartypants]}
-                                        rehypePlugins={[rehypeRaw, rehypeKatex]}
-                                        linkTarget="_blank"
-                                    >
-                                        {hover.output.help}
-                                    </ReactMarkdown>
+                                    <Markdown>{hover.output.help}</Markdown>
                                 ) : null}
                             </div>
                         ) : null}
@@ -1486,3 +1413,14 @@ const DropdownField = (props: {
         </div>
     );
 };
+
+const Markdown = (props: { children: string }) => (
+    <ReactMarkdown
+        remarkPlugins={[remarkMath, remarkGfm, remarkSmartypants]}
+        rehypePlugins={[rehypeRaw, rehypeKatex]}
+        linkTarget="_blank"
+        className="code-editor-markdown"
+    >
+        {props.children}
+    </ReactMarkdown>
+);
