@@ -4769,6 +4769,26 @@ impl Typechecker {
                     }
                 }
 
+                let mut var_counts = actual.vars().into_iter().counts().into_iter();
+                if let Some((var, count)) = var_counts.next() {
+                    if var_counts.next().is_none() && count > 1 {
+                        notes.push(Note::secondary(
+                            error.span,
+                            format!(
+                                "all uses of {} must resolve to the same type",
+                                self.format_type(
+                                    engine::UnresolvedType::Variable(var),
+                                    format::Format {
+                                        surround_in_backticks: true,
+                                        type_function: format::TypeFunctionFormat::None,
+                                        type_variable: format::TypeVariableFormat::Standalone,
+                                    }
+                                )
+                            ),
+                        ));
+                    }
+                }
+
                 self.compiler
                     .error_with_trace("mismatched types", notes, error.trace)
                     .fix(fix)

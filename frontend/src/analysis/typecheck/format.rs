@@ -35,6 +35,7 @@ pub enum TypeVariableFormat {
     #[default]
     None,
     Numeric,
+    Standalone,
     Description,
 }
 
@@ -168,7 +169,9 @@ fn format_type_with(
     let var_names = |var: TypeVariable| match format.type_variable {
         TypeVariableFormat::None => String::from("_"),
         TypeVariableFormat::Numeric => format!("{{{}}}", var.0),
-        TypeVariableFormat::Description => ty_vars.get(&var).unwrap().clone(),
+        TypeVariableFormat::Standalone | TypeVariableFormat::Description => {
+            ty_vars.get(&var).unwrap().clone()
+        }
     };
 
     fn format_type_inner(
@@ -402,7 +405,7 @@ fn format_type_with(
         TypeFunctionFormat::None | TypeFunctionFormat::Arrow(_) => unreachable!(),
         TypeFunctionFormat::Description => match ty_param_names.len() {
             0 => unreachable!(),
-            1 => format!("for any type `{}`", ty_param_names.pop().unwrap()),
+            1 => format!(" for any type `{}`", ty_param_names.pop().unwrap()),
             _ => {
                 let mut vars = ty_param_names
                     .into_iter()
@@ -411,17 +414,18 @@ fn format_type_with(
 
                 let last = vars.pop().unwrap();
 
-                format!("for any types {} and {}", vars.join(", "), last)
+                format!(" for any types {} and {}", vars.join(", "), last)
             }
         },
     };
 
     let var_description = || match format.type_variable {
         TypeVariableFormat::None | TypeVariableFormat::Numeric => unreachable!(),
+        TypeVariableFormat::Standalone => String::new(),
         TypeVariableFormat::Description => match ty_vars.len() {
             0 => unreachable!(),
             1 => format!(
-                "for some unknown type `{}`",
+                " for some unknown type `{}`",
                 ty_vars.iter().next().unwrap().1
             ),
             _ => {
@@ -432,7 +436,7 @@ fn format_type_with(
 
                 let last = vars.pop().unwrap();
 
-                format!("for some unknown types {} and {}", vars.join(", "), last)
+                format!(" for some unknown types {} and {}", vars.join(", "), last)
             }
         },
     };
@@ -442,16 +446,16 @@ fn format_type_with(
             TypeFunctionFormat::None | TypeFunctionFormat::Arrow(_),
             TypeVariableFormat::None | TypeVariableFormat::Numeric,
         ) => formatted,
-        (TypeFunctionFormat::None, _) => format!("{} {}", formatted, var_description()),
+        (TypeFunctionFormat::None, _) => format!("{}{}", formatted, var_description()),
         (
             TypeFunctionFormat::Description,
             TypeVariableFormat::None | TypeVariableFormat::Numeric,
         ) => {
-            format!("{} {}", formatted, param_description())
+            format!("{}{}", formatted, param_description())
         }
-        (TypeFunctionFormat::Arrow(_), _) => format!("{} {}", formatted, var_description()),
+        (TypeFunctionFormat::Arrow(_), _) => format!("{}{}", formatted, var_description()),
         _ => format!(
-            "{} {} and {}",
+            "{}{} and{}",
             formatted,
             param_description(),
             var_description()
