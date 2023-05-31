@@ -174,6 +174,7 @@ pub struct TypeParameterDecl {
     pub name: Option<InternedString>,
     pub span: SpanList,
     pub default: Option<engine::Type>,
+    pub infer: bool,
     pub uses: HashSet<SpanList>,
 }
 
@@ -2697,12 +2698,26 @@ impl Typechecker {
             return Ok(None);
         }
 
-        let mut params = match ty_or_params {
+        let mut params = match ty_or_params.clone() {
             Ok(ty) => self.extract_params(tr, ty),
-            Err(params) => params,
+            Err(params) => params
+                .into_iter()
+                .zip(
+                    self.with_trait_decl(tr, |decl| {
+                        decl.params
+                            .iter()
+                            .map(|&param| {
+                                self.with_type_parameter_decl(param, |param| param.infer)
+                                    .unwrap_or(false)
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .expect("trait should have already been accessed at least once"),
+                )
+                .collect::<Vec<_>>(),
         };
 
-        for param in &mut params {
+        for (param, _) in &mut params {
             param.apply(&self.ctx);
         }
 
@@ -2715,7 +2730,8 @@ impl Typechecker {
                 .find_map(|(id, stack_params)| {
                     let ctx = self.ctx.clone();
                     let mut error = false;
-                    for (param, stack_param) in params.clone().into_iter().zip(stack_params.clone())
+                    for ((param, _), stack_param) in
+                        params.clone().into_iter().zip(stack_params.clone())
                     {
                         if ctx.unify_generic(param, stack_param).is_err() {
                             error = true;
@@ -2742,9 +2758,9 @@ impl Typechecker {
                         let params = params
                             .clone()
                             .into_iter()
-                            .map(|mut ty| {
+                            .map(|(mut ty, infer)| {
                                 ty.finalize_numeric_variables(&self.ctx);
-                                ty
+                                (ty, infer)
                             })
                             .collect::<Vec<_>>();
 
@@ -2759,15 +2775,18 @@ impl Typechecker {
             }};
             (@find $params:expr, $resolve:expr) => {{
                 let params = $params;
-                let mut candidates = $resolve(params.clone())
+                let mut candidates = $resolve(params.clone())?
                     .into_iter()
-                    .unique_by(|(_, id, _)| *id)
+                    .unique_by(|(_, _, inferred_param_indices, _)| {
+                        inferred_param_indices.clone()
+                    })
+                    .unique_by(|(_, id, _, _)| *id)
                     .collect::<Vec<_>>();
 
                 match candidates.len() {
                     0 => None,
                     1 => {
-                        let (ctx, id, _) = candidates.pop().unwrap();
+                        let (ctx, id, _, _) = candidates.pop().unwrap();
                         self.ctx = ctx;
 
                         Some(Ok(id))
@@ -2778,33 +2797,63 @@ impl Typechecker {
         }
 
         let bound_instances = info.bound_instances.get(&tr).cloned().unwrap_or_default();
-        find_instance!(|params: Vec<engine::UnresolvedType>| {
+        find_instance!(|params: Vec<(engine::UnresolvedType, bool)>| {
             let mut candidates = Vec::new();
             for (instance_id, instance_params, span) in bound_instances.clone() {
                 let prev_ctx = self.ctx.clone();
 
+                let inferred_param_indices = params
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, (_, infer))| infer.then_some(index))
+                    .collect::<Vec<_>>();
+
                 let mut all_unify = true;
-                for (param_ty, instance_param_ty) in params.clone().into_iter().zip(instance_params)
+                let mut inferred_params = Vec::new();
+                for ((param_ty, infer), instance_param_ty) in
+                    params.clone().into_iter().zip(instance_params.clone())
                 {
-                    if self.ctx.unify_generic(param_ty, instance_param_ty).is_err() {
-                        all_unify = false;
-                        break;
+                    if infer {
+                        inferred_params.push((param_ty, instance_param_ty));
+                    } else {
+                        if self.ctx.unify_generic(param_ty, instance_param_ty).is_err() {
+                            all_unify = false;
+                            break;
+                        }
                     }
                 }
 
-                if all_unify {
-                    let ctx = mem::replace(&mut self.ctx, prev_ctx);
-                    candidates.push((ctx, instance_id, span));
-                } else {
+                if !all_unify {
                     self.ctx = prev_ctx;
+                    continue;
                 }
+
+                for (param_ty, instance_param_ty) in inferred_params {
+                    if self.ctx.unify_generic(param_ty, instance_param_ty).is_err() {
+                        self.ctx = prev_ctx;
+
+                        let use_ty = match ty_or_params.clone() {
+                            Ok(ty) => ty,
+                            Err(params) => self.substitute_trait_params(tr, params, use_span),
+                        };
+
+                        let trait_ty = self.substitute_trait_params(tr, instance_params, use_span);
+
+                        return Err(Some(
+                            self.error(engine::TypeError::Mismatch(trait_ty, use_ty), use_span),
+                        ));
+                    }
+                }
+
+                let ctx = mem::replace(&mut self.ctx, prev_ctx);
+                candidates.push((ctx, instance_id, inferred_param_indices, span));
             }
 
-            candidates
+            Ok(candidates)
         });
 
         let declared_instances = self.instances.get(&tr).cloned().unwrap_or_default();
-        find_instance!(|params: Vec<engine::UnresolvedType>| {
+        find_instance!(|params: Vec<(engine::UnresolvedType, bool)>| {
             let mut candidates = Vec::new();
             'check: for id in declared_instances.clone() {
                 let (mut instance_params, instance_span, bounds) =
@@ -2833,8 +2882,15 @@ impl Typechecker {
 
                 let prev_ctx = self.ctx.clone();
 
+                let inferred_param_indices = params
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, (_, infer))| infer.then_some(index))
+                    .collect::<Vec<_>>();
+
                 let mut all_unify = true;
-                for (mut param_ty, mut instance_param_ty) in
+                let mut inferred_params = Vec::new();
+                for ((mut param_ty, infer), mut instance_param_ty) in
                     params.clone().into_iter().zip(instance_params.clone())
                 {
                     if !info.is_generic {
@@ -2842,9 +2898,13 @@ impl Typechecker {
                         self.add_substitutions(&mut instance_param_ty, &mut substitutions);
                     }
 
-                    if self.ctx.unify_generic(param_ty, instance_param_ty).is_err() {
-                        all_unify = false;
-                        break;
+                    if infer {
+                        inferred_params.push((param_ty, instance_param_ty));
+                    } else {
+                        if self.ctx.unify_generic(param_ty, instance_param_ty).is_err() {
+                            all_unify = false;
+                            break;
+                        }
                     }
                 }
 
@@ -2884,17 +2944,39 @@ impl Typechecker {
                     }
                 }
 
+                for (param_ty, instance_param_ty) in inferred_params {
+                    if self.ctx.unify_generic(param_ty, instance_param_ty).is_err() {
+                        self.ctx = prev_ctx;
+
+                        let use_ty = match ty_or_params.clone() {
+                            Ok(ty) => ty,
+                            Err(params) => self.substitute_trait_params(tr, params, use_span),
+                        };
+
+                        let trait_ty = self.substitute_trait_params(tr, instance_params, use_span);
+
+                        return Err(Some(
+                            self.error(engine::TypeError::Mismatch(trait_ty, use_ty), use_span),
+                        ));
+                    }
+                }
+
                 let ctx = mem::replace(&mut self.ctx, prev_ctx);
 
-                candidates.push((ctx, Some(id), instance_span));
+                candidates.push((ctx, Some(id), inferred_param_indices, instance_span));
 
                 if tr_decl.attributes.allow_overlapping_instances {
                     break 'check; // use the first available instance
                 }
             }
 
-            candidates
+            Ok(candidates)
         });
+
+        let params = params
+            .into_iter()
+            .map(|(param, _)| param)
+            .collect::<Vec<_>>();
 
         Err(Some(self.error(
             engine::TypeError::MissingInstance(tr, params, bound_span, error_candidates),
@@ -2906,7 +2988,7 @@ impl Typechecker {
         &mut self,
         tr: TraitId,
         ty: engine::UnresolvedType,
-    ) -> Vec<engine::UnresolvedType> {
+    ) -> Vec<(engine::UnresolvedType, bool)> {
         let (tr_ty, tr_params) = self
             .with_trait_decl(tr, |decl| {
                 (
@@ -2924,9 +3006,15 @@ impl Typechecker {
         tr_params
             .into_iter()
             .map(|param| {
-                params.get(&param).cloned().unwrap_or_else(|| {
+                let infer = self
+                    .with_type_parameter_decl(param, |param| param.infer)
+                    .unwrap_or(false);
+
+                let param = params.get(&param).cloned().unwrap_or_else(|| {
                     engine::UnresolvedType::Variable(self.ctx.new_variable(None))
-                })
+                });
+
+                (param, infer)
             })
             .collect()
     }
@@ -3211,7 +3299,7 @@ impl Typechecker {
 }
 
 impl Typechecker {
-    fn with_syntax_decl<T>(&mut self, id: SyntaxId, f: impl FnOnce(&SyntaxDecl) -> T) -> Option<T> {
+    fn with_syntax_decl<T>(&self, id: SyntaxId, f: impl FnOnce(&SyntaxDecl) -> T) -> Option<T> {
         if let Some(decl) = self.declarations.borrow().syntaxes.get(&id) {
             return Some(f(decl));
         }
@@ -3237,7 +3325,7 @@ impl Typechecker {
             .or_insert(decl)))
     }
 
-    fn with_type_decl<T>(&mut self, id: TypeId, f: impl FnOnce(&TypeDecl) -> T) -> Option<T> {
+    fn with_type_decl<T>(&self, id: TypeId, f: impl FnOnce(&TypeDecl) -> T) -> Option<T> {
         if let Some(decl) = self.declarations.borrow().types.get(&id) {
             return Some(f(decl));
         }
@@ -3296,7 +3384,7 @@ impl Typechecker {
             .or_insert(decl)))
     }
 
-    fn with_trait_decl<T>(&mut self, id: TraitId, f: impl FnOnce(&TraitDecl) -> T) -> Option<T> {
+    fn with_trait_decl<T>(&self, id: TraitId, f: impl FnOnce(&TraitDecl) -> T) -> Option<T> {
         if let Some(decl) = self.declarations.borrow().traits.get(&id) {
             return Some(f(decl));
         }
@@ -3437,13 +3525,17 @@ impl Typechecker {
             .clone()
             .into_iter()
             .map(|ty| self.convert_generic_type_annotation(ty))
+            .zip(tr.params.iter().map(|&param| {
+                self.with_type_parameter_decl(param, |param| param.infer.then_some(param.span))
+                    .flatten()
+            }))
             .collect::<Vec<_>>();
 
         for param in tr.params.iter().skip(params.len()) {
             let name = match self.with_type_parameter_decl(*param, |decl| decl.name) {
                 Some(name) => name,
                 None => {
-                    params.push(engine::Type::Error);
+                    params.push((engine::Type::Error, None));
                     continue;
                 }
             };
@@ -3459,7 +3551,7 @@ impl Typechecker {
                 )],
             );
 
-            params.push(engine::Type::Error);
+            params.push((engine::Type::Error, None));
         }
 
         let has_bounds = !decl.value.bounds.is_empty();
@@ -3503,9 +3595,13 @@ impl Typechecker {
                     let mut substitutions = engine::GenericSubstitutions::new();
 
                     let mut all_unify = true;
-                    for (instance_param_ty, other_param_ty) in
+                    for ((instance_param_ty, infer_span), other_param_ty) in
                         params.clone().into_iter().zip(other.trait_params)
                     {
+                        if infer_span.is_some() {
+                            continue;
+                        }
+
                         let mut instance_param_ty = engine::UnresolvedType::from(instance_param_ty);
                         self.add_substitutions(&mut instance_param_ty, &mut substitutions);
 
@@ -3536,6 +3632,9 @@ impl Typechecker {
                             "try making this instance more specific"
                         },
                     ))
+                    .chain(params.iter().filter_map(|(_, infer_span)| *infer_span).map(|infer_span| {
+                        Note::secondary(infer_span, "this type parameter is inferred and cannot be different across instances with otherwise the same types")
+                    }))
                     .chain(colliding_instances.into_iter().map(|span| {
                         Note::secondary(span, "this instance could apply to the same type(s)")
                     }))
@@ -3555,7 +3654,7 @@ impl Typechecker {
                 .map(|bound| (bound.tr, bound.parameters))
                 .collect(),
             trait_id,
-            trait_params: params,
+            trait_params: params.into_iter().map(|(param, _)| param).collect(),
             trait_param_annotations: decl.value.tr_parameters,
             body: None,
             item,
@@ -3572,7 +3671,7 @@ impl Typechecker {
     }
 
     fn with_builtin_type_decl<T>(
-        &mut self,
+        &self,
         id: BuiltinTypeId,
         f: impl FnOnce(&BuiltinTypeDecl) -> T,
     ) -> Option<T> {
@@ -3622,6 +3721,7 @@ impl Typechecker {
                 .value
                 .default
                 .map(|ty| self.convert_generic_type_annotation(ty)),
+            infer: decl.value.infer,
             uses: decl.uses,
         };
 
@@ -3634,7 +3734,7 @@ impl Typechecker {
     }
 
     fn with_variable_decl<T>(
-        &mut self,
+        &self,
         id: VariableId,
         ty: engine::Type,
         f: impl FnOnce(&VariableDecl) -> T,
@@ -3661,7 +3761,7 @@ impl Typechecker {
     }
 
     fn with_builtin_syntax_decl<T>(
-        &mut self,
+        &self,
         id: BuiltinSyntaxId,
         f: impl FnOnce(&BuiltinSyntaxDecl) -> T,
     ) -> Option<T> {
@@ -3757,6 +3857,7 @@ impl Typechecker {
                             name: None,
                             span,
                             default: None,
+                            infer: false,
                             uses: HashSet::from([span]),
                         },
                     );
@@ -3772,7 +3873,7 @@ impl Typechecker {
         })
     }
 
-    fn convert_finalized_type_annotation(&mut self, annotation: TypeAnnotation) -> engine::Type {
+    fn convert_finalized_type_annotation(&self, annotation: TypeAnnotation) -> engine::Type {
         let span = annotation.span;
 
         let ty = self.convert_type_annotation_inner(annotation, &|_, _| None, &mut Vec::new());
@@ -4367,21 +4468,43 @@ impl Typechecker {
                     if let engine::UnresolvedType::Function(expected_input, expected_output) =
                         &expected
                     {
+                        let mut actual_output = actual_output.as_ref().clone();
+                        let mut expected_output = expected_output.as_ref().clone();
+
+                        loop {
+                            if let (
+                                engine::UnresolvedType::Function(_, actual_output_inner),
+                                engine::UnresolvedType::Function(_, expected_output_inner),
+                            ) = (&actual_output, &expected_output)
+                            {
+                                actual_output = actual_output_inner.as_ref().clone();
+                                expected_output = expected_output_inner.as_ref().clone();
+
+                                if self
+                                    .ctx
+                                    .clone()
+                                    .unify(actual_output.clone(), expected_output.clone())
+                                    .is_err()
+                                {
+                                    break;
+                                }
+                            } else {
+                                break;
+                            }
+                        }
+
                         if self
                             .ctx
                             .clone()
-                            .unify(
-                                actual_output.as_ref().clone(),
-                                expected_output.as_ref().clone(),
-                            )
+                            .unify(actual_output.clone(), expected_output.clone())
                             .is_err()
                         {
                             notes.push(Note::secondary(
                                 error.span,
                                 format!(
                                     "this function returns {}, but it should return {}",
-                                    self.format_type(actual_output.as_ref().clone(), format),
-                                    self.format_type(expected_output.as_ref().clone(), format)
+                                    self.format_type(actual_output, format),
+                                    self.format_type(expected_output, format)
                                 ),
                             ));
                         } else if self
