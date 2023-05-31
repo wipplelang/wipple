@@ -23,7 +23,7 @@ next : { next } -> next ()
 
 [help "Implement this trait to enable traversing your collection type."]
 [help-group "Collections"]
-Iterate : Container Element => trait (Container -> Iterator Element)
+Iterate : Container (infer Element) => trait (Container -> Iterator Element)
 
 Element => instance (Iterate (Iterator Element) Element) : it
 
@@ -73,7 +73,7 @@ sum : reduce (zero of Numeric) Add
 
 [help "Implement this trait to enable reducing an iterator into your collection type."]
 [help-group "Collections"]
-Collect : Element Container => trait (Iterator Element -> Container)
+Collect : (infer Element) Container => trait (Iterator Element -> Container)
 
 [help "Collect an iterator into a single value, like a `List`."]
 [help-group "Collections"]

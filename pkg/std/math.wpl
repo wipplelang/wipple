@@ -7,7 +7,7 @@ use "logic"
 [help "Implements the `+` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot add `_` to `_`" Left Right]
-Add : Left Right Sum => trait (Left -> Right -> Sum)
+Add : Left Right (infer Sum) => trait (Left -> Right -> Sum)
 
 [operator Addition-Precedence]
 + : syntax { 'a + 'b -> Add 'a 'b }
@@ -25,7 +25,7 @@ instance (Add Text Text Text) : a b -> format "__" a b
 [help "Implements the `-` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot subtract `_` from `_`" Right Left]
-Subtract : Left Right Difference => trait (Left -> Right -> Difference)
+Subtract : Left Right (infer Difference) => trait (Left -> Right -> Difference)
 
 [operator Addition-Precedence]
 - : syntax { 'a - 'b -> Subtract 'a 'b }
@@ -42,7 +42,7 @@ instance (Subtract Double Double Double) : a b -> external "runtime" "subtract-d
 [help "Implements the `*` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot multiply `_` by `_`" Left Right]
-Multiply : Left Right Product => trait (Left -> Right -> Product)
+Multiply : Left Right (infer Product) => trait (Left -> Right -> Product)
 
 [operator Multiplication-Precedence]
 * : syntax { 'a * 'b -> Multiply 'a 'b }
@@ -59,7 +59,7 @@ instance (Multiply Double Double Double) : a b -> external "runtime" "multiply-d
 [help "Implements the `/` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot divide `_` by `_`" Left Right]
-Divide : Left Right Quotient => trait (Left -> Right -> Quotient)
+Divide : Left Right (infer Quotient) => trait (Left -> Right -> Quotient)
 
 [operator Multiplication-Precedence]
 / : syntax { 'a / 'b -> Divide 'a 'b }
@@ -76,7 +76,7 @@ instance (Divide Double Double Double) : a b -> external "runtime" "divide-doubl
 [help "Implements the `mod` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot divide `_` by `_`" Left Right]
-Modulo : Left Right Remainder => trait (Left -> Right -> Remainder)
+Modulo : Left Right (infer Remainder) => trait (Left -> Right -> Remainder)
 
 [operator Multiplication-Precedence]
 mod : syntax { 'a mod 'b -> Modulo 'a 'b }
@@ -93,7 +93,7 @@ instance (Modulo Double Double Double) : a b -> external "runtime" "modulo-doubl
 [help "Implements the `^` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot raise `_` to the power of `_`" Left Right]
-Power : Left Right Power => trait (Left -> Right -> Power)
+Power : Left Right (infer Power) => trait (Left -> Right -> Power)
 
 [operator Exponentiation-Precedence]
 ^ : syntax { 'a ^ 'b -> Power 'a 'b }
