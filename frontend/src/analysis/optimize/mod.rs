@@ -65,26 +65,33 @@ impl Optimize for Program {
 
 pub mod ssa {
     use super::*;
-    use crate::analysis::SpanList;
+    use crate::{analysis::SpanList, ConstantId};
 
     #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
     pub struct Options {}
 
     impl Program {
-        pub(super) fn ssa(mut self, _options: Options, _compiler: &Compiler) -> Program {
+        pub(super) fn ssa(mut self, _options: Options, compiler: &Compiler) -> Program {
             for item in self.items.values_mut() {
                 let mut item = item.write();
-                let (_, expr) = &mut *item;
+                let (id, expr) = &mut *item;
+                let id = id.map(|(_, id)| id);
 
                 expr.traverse_mut(|expr| {
                     if let ExpressionKind::Block(exprs, _) = &mut expr.kind {
-                        fn convert_block(exprs: &[Expression], span: SpanList) -> Vec<Expression> {
+                        fn convert_block(
+                            exprs: &[Expression],
+                            span: SpanList,
+                            id: Option<ConstantId>,
+                            compiler: &Compiler,
+                        ) -> Vec<Expression> {
                             let mut result = Vec::new();
                             for (index, expr) in exprs.iter().enumerate() {
                                 if let ExpressionKind::Initialize(pattern, value) = &expr.kind {
                                     let remaining = &exprs[(index + 1)..];
 
                                     result.push(Expression {
+                                        id: expr.id,
                                         span: expr.span,
                                         ty: expr.ty.clone(),
                                         kind: ExpressionKind::When(
@@ -94,6 +101,7 @@ pub mod ssa {
                                                 pattern: pattern.clone(),
                                                 guard: None,
                                                 body: Expression {
+                                                    id: compiler.new_expression_id(id),
                                                     ty: remaining
                                                         .last()
                                                         .map(|expr| expr.ty.clone())
@@ -114,6 +122,8 @@ pub mod ssa {
                                                                     )
                                                                 },
                                                             ),
+                                                            id,
+                                                            compiler,
                                                         ),
                                                         false,
                                                     ),
@@ -131,7 +141,7 @@ pub mod ssa {
                             result
                         }
 
-                        *exprs = convert_block(exprs, expr.span);
+                        *exprs = convert_block(exprs, expr.span, id, compiler);
 
                         if exprs.len() == 1 {
                             *expr = exprs.pop().unwrap();
@@ -305,7 +315,7 @@ pub mod inline {
                                     }
                                 }
                             }
-                            ExpressionKind::Call(func, input) => {
+                            ExpressionKind::Call(func, input, _first) => {
                                 let (pattern, body, captures) = match &func.kind {
                                     ExpressionKind::Function(pattern, body, captures) => {
                                         (pattern, body, captures)
@@ -516,7 +526,7 @@ mod util {
                 ExpressionKind::Block(exprs, _) => exprs
                     .iter()
                     .all(|expr| expr.is_pure_inner(program, function_call, stack)),
-                ExpressionKind::Call(func, input) => {
+                ExpressionKind::Call(func, input, _) => {
                     let mut func = func.as_ref().clone();
                     let mut inner_function_call = None;
                     loop {

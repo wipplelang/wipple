@@ -177,7 +177,7 @@ impl Converter<'_> {
                 analysis::ExpressionKind::Block(exprs, _) => {
                     ExpressionKind::Block(self.convert_block(exprs, tail))
                 }
-                analysis::ExpressionKind::Call(func, input) => ExpressionKind::Call(
+                analysis::ExpressionKind::Call(func, input, _first) => ExpressionKind::Call(
                     Box::new(self.convert_expr(func, false)),
                     Box::new(self.convert_expr(input, false)),
                 ),

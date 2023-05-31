@@ -424,7 +424,7 @@ pub enum ExpressionKind {
     Text(InternedString),
     Number(InternedString),
     Block(Vec<Expression>, bool),
-    Call(Box<Expression>, Box<Expression>),
+    Call(Box<Expression>, Box<Expression>, bool),
     Function(Pattern, Box<Expression>, CaptureList),
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
@@ -465,7 +465,7 @@ impl Expression {
                     statement.traverse_mut_inner(f);
                 }
             }
-            ExpressionKind::Call(func, input) => {
+            ExpressionKind::Call(func, input, _) => {
                 func.traverse_mut_inner(f);
                 input.traverse_mut_inner(f);
             }
@@ -2253,27 +2253,37 @@ impl Lowerer {
     ) -> Expression {
         macro_rules! function_call {
             ($function:expr, $inputs:expr) => {{
-                $inputs.into_iter().fold($function, |result, next| {
-                    let mut ctx = ctx.clone();
-                    ctx.caller_accepts_text = false;
-                    if let ExpressionKind::Constant(id) = result.kind {
-                        ctx.caller_accepts_text =
-                            self.file_info.diagnostic_items.accepts_text.contains(&id);
-                    }
+                let inputs = $inputs;
+                let len = inputs.len();
 
-                    let next = match next {
-                        Ok(expr) => self.lower_expr(expr, scope, &ctx),
-                        Err(error) => Expression {
-                            span: error.span,
-                            kind: ExpressionKind::error(&self.compiler),
-                        },
-                    };
+                inputs
+                    .into_iter()
+                    .enumerate()
+                    .fold($function, |result, (index, next)| {
+                        let mut ctx = ctx.clone();
+                        ctx.caller_accepts_text = false;
+                        if let ExpressionKind::Constant(id) = result.kind {
+                            ctx.caller_accepts_text =
+                                self.file_info.diagnostic_items.accepts_text.contains(&id);
+                        }
 
-                    Expression {
-                        span: SpanList::join(result.span, next.span),
-                        kind: ExpressionKind::Call(Box::new(result), Box::new(next)),
-                    }
-                })
+                        let next = match next {
+                            Ok(expr) => self.lower_expr(expr, scope, &ctx),
+                            Err(error) => Expression {
+                                span: error.span,
+                                kind: ExpressionKind::error(&self.compiler),
+                            },
+                        };
+
+                        Expression {
+                            span: SpanList::join(result.span, next.span),
+                            kind: ExpressionKind::Call(
+                                Box::new(result),
+                                Box::new(next),
+                                index + 1 == len,
+                            ),
+                        }
+                    })
             }};
         }
 

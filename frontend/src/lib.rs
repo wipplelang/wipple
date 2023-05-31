@@ -64,6 +64,7 @@ pub struct Compiler {
     pub loader: Arc<dyn Loader>,
     diagnostics: Diagnostics,
     file_ids: FileIds,
+    node_ids: NodeIds,
     ids: Ids,
     pub(crate) cache: Shared<indexmap::IndexMap<FilePath, Arc<analysis::lower::File>>>,
     #[cfg(debug_assertions)]
@@ -142,6 +143,53 @@ file_ids!(
     builtin_syntax,
 );
 
+macro_rules! node_ids {
+    ($($(#[$meta:meta])* $id:ident),* $(,)?) => {
+        paste::paste! {
+            #[derive(Debug, Clone, Default)]
+            struct NodeIds {
+                $([<next_ $id _id>]: Shared<HashMap<Option<ConstantId>, usize>>,)*
+            }
+
+            $(
+                $(#[$meta])*
+                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+                pub struct [<$id:camel Id>] {
+                    pub owner: Option<ConstantId>, // `None` if entrypoint
+                    pub counter: usize,
+                }
+            )*
+
+            #[allow(unused)]
+            impl NodeIds {
+                $(
+                    fn [<new_ $id _id>](&self, owner: impl Into<Option<ConstantId>>) -> [<$id:camel Id>] {
+                        let owner = owner.into();
+
+                        let mut storage = self.[<next_ $id _id>].lock();
+                        let storage = storage.entry(owner).or_default();
+                        let counter = *storage;
+                        *storage += 1;
+
+                        [<$id:camel Id>] { owner, counter }
+                    }
+                )*
+            }
+
+            #[allow(unused)]
+            impl Compiler {
+                $(
+                    fn [<new_ $id _id>](&self, owner: impl Into<Option<ConstantId>>) -> [<$id:camel Id>] {
+                        self.node_ids.[<new_ $id _id>](owner)
+                    }
+                )*
+            }
+        }
+    };
+}
+
+node_ids!(expression, pattern);
+
 macro_rules! ids {
     ($($(#[$meta:meta])* $id:ident),* $(,)?) => {
         paste::paste! {
@@ -212,6 +260,7 @@ impl Compiler {
             loader: Arc::new(loader),
             diagnostics: Default::default(),
             file_ids: Default::default(),
+            node_ids: Default::default(),
             ids: Default::default(),
             cache: Default::default(),
             #[cfg(debug_assertions)]

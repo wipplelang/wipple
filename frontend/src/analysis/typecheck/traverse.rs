@@ -3,72 +3,73 @@ use super::{
 };
 
 macro_rules! traverse_expr_impl {
-    ($prefix:literal, $f:expr, $expr:expr, $context:expr, $traverse:ident, &$($mut:tt)?) => {{
+    ($prefix:literal, $f:expr, $expr:expr, $parent:expr, $context:expr, $pass_parent:expr, $traverse:ident, &$($mut:tt)?) => {{
         paste::paste! {
             use super::[<$prefix ExpressionKind>]::*;
 
             let f = $f;
             let expr = $expr;
+            let parent = $parent;
             let mut context = $context;
 
-            f(expr, &mut context);
+            f(expr, parent, &mut context);
 
             match &$($mut)? expr.kind {
                 Block(statements, _) => {
                     for statement in statements {
-                        statement.$traverse(context.clone(), f);
+                        statement.$traverse($pass_parent!(expr), context.clone(), f);
                     }
                 }
-                Call(function, input) => {
-                    function.$traverse(context.clone(), f);
-                    input.$traverse(context.clone(), f);
+                Call(function, input, _) => {
+                    function.$traverse($pass_parent!(expr), context.clone(), f);
+                    input.$traverse($pass_parent!(expr), context.clone(), f);
                 }
-                Function(_, body, _) => body.$traverse(context.clone(), f),
+                Function(_, body, _) => body.$traverse($pass_parent!(expr), context.clone(), f),
                 When(input, arms) => {
-                    input.$traverse(context.clone(), f);
+                    input.$traverse($pass_parent!(expr), context.clone(), f);
 
                     for arm in arms {
                         if let Some(guard) = &$($mut)? arm.guard {
-                            guard.$traverse(context.clone(), f);
+                            guard.$traverse($pass_parent!(expr), context.clone(), f);
                         }
 
-                        arm.body.$traverse(context.clone(), f);
+                        arm.body.$traverse($pass_parent!(expr), context.clone(), f);
                     }
                 },
-                Initialize(_, value) => value.$traverse(context.clone(), f),
+                Initialize(_, value) => value.$traverse($pass_parent!(expr), context.clone(), f),
                 External(_, _, inputs) => {
                     for input in inputs {
-                        input.$traverse(context.clone(), f);
+                        input.$traverse($pass_parent!(expr), context.clone(), f);
                     }
                 }
                 Runtime(_, inputs) => {
                     for input in inputs {
-                        input.$traverse(context.clone(), f);
+                        input.$traverse($pass_parent!(expr), context.clone(), f);
                     }
                 }
                 Structure(fields) => {
                     for field in fields {
-                        field.$traverse(context.clone(), f);
+                        field.$traverse($pass_parent!(expr), context.clone(), f);
                     }
                 }
                 Variant(_, values) => {
                     for value in values {
-                        value.$traverse(context.clone(), f);
+                        value.$traverse($pass_parent!(expr), context.clone(), f);
                     }
                 }
                 Tuple(values) => {
                     for value in values {
-                        value.$traverse(context.clone(), f);
+                        value.$traverse($pass_parent!(expr), context.clone(), f);
                     }
                 }
                 Format(segments, _) => {
                     for (_, expr) in segments {
-                        expr.$traverse(context.clone(), f);
+                        expr.$traverse($pass_parent!(expr), context.clone(), f);
                     }
                 }
                 With((_, value), body) => {
-                    value.$traverse(context.clone(), f);
-                    body.$traverse(context.clone(), f);
+                    value.$traverse($pass_parent!(expr), context.clone(), f);
+                    body.$traverse($pass_parent!(expr), context.clone(), f);
                 }
                 _ => {}
             }
@@ -81,16 +82,26 @@ macro_rules! traverse_expr {
         paste::paste! {
             #[allow(unused)]
             impl [<$prefix Expression>] {
-                pub fn traverse(&self, mut f: impl FnMut(&Self)) {
+                pub fn traverse<'a>(&'a self, mut f: impl FnMut(&'a Self)) {
                     self.traverse_with((), |expr, ()| f(expr));
                 }
 
-                pub fn traverse_with<T: Clone>(&self, context: T, mut f: impl FnMut(&Self, &mut T)) {
-                    self.traverse_inner(context, &mut f);
+                pub fn traverse_with_parent<'a>(&'a self, mut f: impl FnMut(&'a Self, Option<&'a Self>)) {
+                    self.traverse_inner(None, (), &mut |expr, parent, ()| f(expr, parent));
                 }
 
-                fn traverse_inner<T: Clone>(&self, context: T, f: &mut impl FnMut(&Self, &mut T)) {
-                    traverse_expr_impl!($prefix, f, self, context, traverse_inner, &)
+                pub fn traverse_with<'a, T: Clone>(&'a self, context: T, mut f: impl FnMut(&'a Self, &mut T)) {
+                    self.traverse_inner(None, context, &mut |expr, _, context| f(expr, context));
+                }
+
+                fn traverse_inner<'a, T: Clone>(&'a self, parent: Option<&'a Self>, context: T, f: &mut impl FnMut(&'a Self, Option<&'a Self>, &mut T)) {
+                    macro_rules! pass_through {
+                        ($expr:expr) => {
+                            Some($expr)
+                        }
+                    }
+
+                    traverse_expr_impl!($prefix, f, self, parent, context, pass_through, traverse_inner, &)
                 }
 
                 pub fn traverse_mut(&mut self, mut f: impl FnMut(&mut Self)) {
@@ -98,11 +109,17 @@ macro_rules! traverse_expr {
                 }
 
                 pub fn traverse_mut_with<T: Clone>(&mut self, context: T, mut f: impl FnMut(&mut Self, &mut T)) {
-                    self.traverse_mut_inner(context, &mut f);
+                    self.traverse_mut_inner(None, context, &mut |expr, _, context| f(expr, context));
                 }
 
-                fn traverse_mut_inner<T: Clone>(&mut self, context: T, f: &mut impl FnMut(&mut Self, &mut T)) {
-                    traverse_expr_impl!($prefix, f, self, context, traverse_mut_inner, &mut)
+                fn traverse_mut_inner<T: Clone>(&mut self, parent: Option<()>, context: T, f: &mut impl FnMut(&mut Self, Option<()>, &mut T)) {
+                    macro_rules! ignore {
+                        ($expr:expr) => {
+                            None
+                        }
+                    }
+
+                    traverse_expr_impl!($prefix, f, self, None, context, ignore, traverse_mut_inner, &mut)
                 }
             }
         }

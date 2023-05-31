@@ -1,0 +1,20 @@
+code: |
+    accepts-text :: Text -> ()
+    accepts-text : ...
+
+    accepts-text (1 + 2) -- should display 'expected `Text`, found `Number`' rather
+                         -- than 'cannot find instance `Add Number Number Text`'
+
+output: |
+
+diagnostics: |
+    error: mismatched types
+       ┌─ test:4:15
+       │
+     4 │ accepts-text (1 + 2) -- should display 'expected `Text`, found `Number`' rather
+       │               ^^^^^ expected `Text`, but found `Number`
+       │
+       ┌─ <dir>/std/math.wpl:13:25
+       │
+    13 │ + : syntax { 'a + 'b -> Add 'a 'b }
+       │                         --- actual error occurred here

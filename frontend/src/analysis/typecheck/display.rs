@@ -157,7 +157,7 @@ impl Expression {
                 }
                 write!(f, "{}}}", "\t".repeat(indent))?;
             }
-            ExpressionKind::Call(func, input) => {
+            ExpressionKind::Call(func, input, _) => {
                 write!(f, "(")?;
                 func.display_with(f, file, indent)?;
                 write!(f, " ")?;
