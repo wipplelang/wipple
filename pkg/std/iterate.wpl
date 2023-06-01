@@ -29,7 +29,7 @@ Element => instance (Iterate (Iterator Element) Element) : it
 
 [help "Transform each item in an iterator, producing a new iterator."]
 [help-group "Collections"]
-transform :: Container Element Result where (Iterate Container Element) => (Element -> Result) -> Container -> Iterator Result
+transform :: Container (infer Element) Result where (Iterate Container Element) => (Element -> Result) -> Container -> Iterator Result
 transform : f container -> {
   base : Iterate container
 
@@ -41,7 +41,7 @@ transform : f container -> {
 
 [help "Keep only the items in an iterator that satisfy the provided condition."]
 [help-group "Collections"]
-filter :: Container Element where (Iterate Container Element) => (Element -> Boolean) -> Container -> Iterator Element
+filter :: Container (infer Element) where (Iterate Container Element) => (Element -> Boolean) -> Container -> Iterator Element
 filter : include? container -> {
   base : Iterate container
 
@@ -77,7 +77,7 @@ Collect : (infer Element) Container => trait (Iterator Element -> Container)
 
 [help "Collect an iterator into a single value, like a `List`."]
 [help-group "Collections"]
-collect :: Input Element Output where (Iterate Input Element) (Collect Element Output) => Input -> Output
+collect :: Input (infer Element) Output where (Collect Element Output) (Iterate Input Element)  => Input -> Output -- FIXME: bound order shouldn't matter, but putting `Iterate` first breaks type inference
 collect : input -> Collect (Iterate input)
 
 Element => instance (Collect Element (List Element)) : iterator -> {
@@ -95,7 +95,7 @@ Element => instance (Collect Element (List Element)) : iterator -> {
   get list
 }
 
-A => instance (Iterate (List A) A) : list -> {
+Element => instance (Iterate (List Element) Element) : list -> {
   index : mutable 0
 
   iterator (() -> when (list . nth (get index)) {
@@ -118,12 +118,12 @@ instance (Collect () ()) : iterator -> {
 
 [help "Perform an action for each item in an iterator."]
 [help-group "Collections"]
-each :: Container Element where (Iterate Container Element) => (Element -> ()) -> Container -> ()
+each :: Container (infer Element) where (Iterate Container Element) => (Element -> ()) -> Container -> ()
 each : f container -> container . transform f . collect
 
 [help "Split an iterator into groups of consecutive items satisfying a condition."]
 [help-group "Collections"]
-split-by :: Collection Element where (Iterate Collection Element) => (Element -> Boolean) -> Collection -> Iterator (List Element)
+split-by :: Collection (infer Element) where (Iterate Collection Element) => (Element -> Boolean) -> Collection -> Iterator (List Element)
 split-by : separator? -> collection -> {
   base : Iterate collection
   group : mutable (Some (list))
@@ -147,10 +147,10 @@ split-by : separator? -> collection -> {
 
 [help "Split an iterator into groups of consecutive items equal to a value."]
 [help-group "Collections"]
-split :: Collection Element where (Iterate Collection Element) (Equal Element) => Element -> Collection -> Iterator (List Element)
+split :: Collection (infer Element) where (Iterate Collection Element) (Equal Element) => Element -> Collection -> Iterator (List Element)
 split : separator -> split-by (x -> x = separator)
 
-count :: Collection Element where (Iterate Collection Element) => Collection -> Natural
+count :: Collection (infer Element) where (Iterate Collection Element) => Collection -> Natural
 count : collection -> {
   iterator : Iterate collection
 

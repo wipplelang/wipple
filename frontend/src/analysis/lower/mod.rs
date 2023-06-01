@@ -4,8 +4,8 @@ use crate::{
     analysis::{ast, Analysis, Span, SpanList},
     diagnostics::{Fix, FixRange, Note},
     helpers::{did_you_mean, Backtrace, InternedString, Shared},
-    BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, FieldIndex, FilePath, ScopeId, SyntaxId,
-    TraitId, TypeId, TypeParameterId, VariableId, VariantIndex,
+    BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, ExpressionId, FieldIndex, FilePath,
+    ScopeId, SyntaxId, TraitId, TypeId, TypeParameterId, VariableId, VariantIndex,
 };
 use std::{
     borrow::Cow,
@@ -410,6 +410,7 @@ impl DiagnosticAliases {
 
 #[derive(Debug, Clone)]
 pub struct Expression {
+    pub id: ExpressionId,
     pub span: SpanList,
     pub kind: ExpressionKind,
 }
@@ -872,7 +873,7 @@ impl Compiler {
         let ctx = Context::default();
         let statements = lowerer.lower_statements(&file.statements, &scope, &ctx);
 
-        for constant in lowerer.declarations.constants.values() {
+        for (&constant_id, constant) in &lowerer.declarations.constants {
             constant
                 .value
                 .as_ref()
@@ -892,13 +893,14 @@ impl Compiler {
                     );
 
                     Expression {
+                        id: lowerer.compiler.new_expression_id(constant_id),
                         span: constant.span,
                         kind: ExpressionKind::error(self),
                     }
                 });
         }
 
-        for instance in lowerer.declarations.instances.values_mut() {
+        for (&instance_id, instance) in &mut lowerer.declarations.instances {
             let tr = instance.value.as_ref().unwrap().tr;
             let tr_decl = lowerer.declarations.traits.get(&tr).unwrap();
 
@@ -939,6 +941,7 @@ impl Compiler {
                     instance.value.as_mut().unwrap().value = Some(InstanceValue {
                         colon_span: None,
                         value: Expression {
+                            id: lowerer.compiler.new_expression_id(instance_id),
                             span: instance.span,
                             kind: ExpressionKind::error(self),
                         },
@@ -1224,6 +1227,7 @@ impl Lowerer {
 #[derive(Debug, Clone, Default)]
 #[non_exhaustive]
 struct Context {
+    owner: Option<ConstantId>,
     caller_accepts_text: bool,
 }
 
@@ -1705,6 +1709,7 @@ impl Lowerer {
                             let pattern = self.lower_pattern(pattern, scope, ctx);
 
                             Some(Expression {
+                                id: self.compiler.new_expression_id(ctx.owner),
                                 span: span.into(),
                                 kind: ExpressionKind::Initialize(pattern, Box::new(value)),
                             })
@@ -2270,12 +2275,14 @@ impl Lowerer {
                         let next = match next {
                             Ok(expr) => self.lower_expr(expr, scope, &ctx),
                             Err(error) => Expression {
+                                id: self.compiler.new_expression_id(ctx.owner),
                                 span: error.span,
                                 kind: ExpressionKind::error(&self.compiler),
                             },
                         };
 
                         Expression {
+                            id: self.compiler.new_expression_id(ctx.owner),
                             span: SpanList::join(result.span, next.span),
                             kind: ExpressionKind::Call(
                                 Box::new(result),
@@ -2289,10 +2296,12 @@ impl Lowerer {
 
         match expr {
             ast::Expression::Text(expr) => Expression {
+                id: self.compiler.new_expression_id(ctx.owner),
                 span: expr.span,
                 kind: ExpressionKind::Text(expr.text),
             },
             ast::Expression::Number(expr) => Expression {
+                id: self.compiler.new_expression_id(ctx.owner),
                 span: expr.span,
                 kind: ExpressionKind::Number(expr.number),
             },
@@ -2300,6 +2309,7 @@ impl Lowerer {
                 let name_scope = self.assert_loaded_scope(expr.scope);
                 match self.resolve_value(expr.span, expr.name, &name_scope) {
                     Some(value) => Expression {
+                        id: self.compiler.new_expression_id(ctx.owner),
                         span: expr.span,
                         kind: value,
                     },
@@ -2327,6 +2337,7 @@ impl Lowerer {
                         );
 
                         Expression {
+                            id: self.compiler.new_expression_id(ctx.owner),
                             span: expr.span,
                             kind: ExpressionKind::error(&self.compiler),
                         }
@@ -2338,6 +2349,7 @@ impl Lowerer {
                 let statements = self.lower_statements(&expr.statements, &scope, ctx);
 
                 Expression {
+                    id: self.compiler.new_expression_id(ctx.owner),
                     span: expr.span,
                     kind: ExpressionKind::Block(statements, false),
                 }
@@ -2347,6 +2359,7 @@ impl Lowerer {
                     Ok(expr) => expr,
                     Err(_) => {
                         return Expression {
+                            id: self.compiler.new_expression_id(ctx.owner),
                             span: expr.span,
                             kind: ExpressionKind::error(&self.compiler),
                         };
@@ -2367,6 +2380,7 @@ impl Lowerer {
                                 );
 
                                 return Expression {
+                                    id: self.compiler.new_expression_id(ctx.owner),
                                     span: expr.span,
                                     kind: ExpressionKind::error(&self.compiler),
                                 };
@@ -2377,6 +2391,7 @@ impl Lowerer {
                             Ok(expr) => expr,
                             Err(error) => {
                                 return Expression {
+                                    id: self.compiler.new_expression_id(ctx.owner),
                                     span: error.span,
                                     kind: ExpressionKind::error(&self.compiler),
                                 };
@@ -2530,12 +2545,14 @@ impl Lowerer {
                                         );
 
                                         return Expression {
+                                            id: self.compiler.new_expression_id(ctx.owner),
                                             span: expr.span,
                                             kind: ExpressionKind::error(&self.compiler),
                                         };
                                     }
 
                                     Expression {
+                                        id: self.compiler.new_expression_id(ctx.owner),
                                         span: expr.span,
                                         kind: ExpressionKind::Instantiate(id, fields),
                                     }
@@ -2558,6 +2575,7 @@ impl Lowerer {
                                             );
 
                                                 return Expression {
+                                                    id: self.compiler.new_expression_id(ctx.owner),
                                                     span: expr.span,
                                                     kind: ExpressionKind::error(&self.compiler),
                                                 };
@@ -2577,6 +2595,7 @@ impl Lowerer {
                                                 );
 
                                             return Expression {
+                                                id: self.compiler.new_expression_id(ctx.owner),
                                                 span: expr.span,
                                                 kind: ExpressionKind::error(&self.compiler),
                                             };
@@ -2585,6 +2604,7 @@ impl Lowerer {
 
                                     function_call!(
                                         Expression {
+                                            id: self.compiler.new_expression_id(ctx.owner),
                                             span: expr.span,
                                             kind: ExpressionKind::Constant(
                                                 variant_types[index.into_inner()].constructor
@@ -2622,6 +2642,7 @@ impl Lowerer {
                             );
 
                             Expression {
+                                id: self.compiler.new_expression_id(ctx.owner),
                                 span: expr.span,
                                 kind: ExpressionKind::error(&self.compiler),
                             }
@@ -2647,6 +2668,7 @@ impl Lowerer {
                             );
 
                             Expression {
+                                id: self.compiler.new_expression_id(ctx.owner),
                                 span: expr.span,
                                 kind: ExpressionKind::error(&self.compiler),
                             }
@@ -2671,6 +2693,7 @@ impl Lowerer {
                 let mut body = match &expr.body {
                     Ok(expr) => self.lower_expr(expr, &scope, ctx),
                     Err(error) => Expression {
+                        id: self.compiler.new_expression_id(ctx.owner),
                         span: error.span,
                         kind: ExpressionKind::error(&self.compiler),
                     },
@@ -2679,6 +2702,7 @@ impl Lowerer {
                 let captures = self.generate_capture_list(&mut body, &scope);
 
                 Expression {
+                    id: self.compiler.new_expression_id(ctx.owner),
                     span: expr.span(),
                     kind: ExpressionKind::Function(pattern, Box::new(body), captures),
                 }
@@ -2687,6 +2711,7 @@ impl Lowerer {
                 let input = match &expr.input {
                     Ok(expr) => self.lower_expr(expr, scope, ctx),
                     Err(error) => Expression {
+                        id: self.compiler.new_expression_id(ctx.owner),
                         span: error.span,
                         kind: ExpressionKind::error(&self.compiler),
                     },
@@ -2696,6 +2721,7 @@ impl Lowerer {
                     Ok(body) => body,
                     Err(error) => {
                         return Expression {
+                            id: self.compiler.new_expression_id(ctx.owner),
                             span: error.span,
                             kind: ExpressionKind::error(&self.compiler),
                         };
@@ -2703,6 +2729,7 @@ impl Lowerer {
                 };
 
                 Expression {
+                    id: self.compiler.new_expression_id(ctx.owner),
                     span: expr.span(),
                     kind: ExpressionKind::When(
                         Box::new(input),
@@ -2727,6 +2754,7 @@ impl Lowerer {
                                             let condition = match pattern.condition.as_deref() {
                                                 Ok(value) => self.lower_expr(value, &scope, ctx),
                                                 Err(error) => Expression {
+                                                    id: self.compiler.new_expression_id(ctx.owner),
                                                     span: error.span,
                                                     kind: ExpressionKind::error(&self.compiler),
                                                 },
@@ -2751,6 +2779,7 @@ impl Lowerer {
                                 let body = match &arm.body {
                                     Ok(expr) => self.lower_expr(expr, &scope, ctx),
                                     Err(error) => Expression {
+                                        id: self.compiler.new_expression_id(ctx.owner),
                                         span: error.span,
                                         kind: ExpressionKind::error(&self.compiler),
                                     },
@@ -2774,6 +2803,7 @@ impl Lowerer {
                     .map(|expr| match expr {
                         Ok(expr) => self.lower_expr(expr, scope, ctx),
                         Err(error) => Expression {
+                            id: self.compiler.new_expression_id(ctx.owner),
                             span: error.span,
                             kind: ExpressionKind::error(&self.compiler),
                         },
@@ -2793,6 +2823,7 @@ impl Lowerer {
                             );
 
                             return Expression {
+                                id: self.compiler.new_expression_id(ctx.owner),
                                 span: expr.span(),
                                 kind: ExpressionKind::error(&self.compiler),
                             };
@@ -2800,11 +2831,13 @@ impl Lowerer {
                     };
 
                     Expression {
+                        id: self.compiler.new_expression_id(ctx.owner),
                         span: expr.span(),
                         kind: ExpressionKind::Runtime(func, inputs),
                     }
                 } else {
                     Expression {
+                        id: self.compiler.new_expression_id(ctx.owner),
                         span: expr.span(),
                         kind: ExpressionKind::External(expr.namespace, expr.identifier, inputs),
                     }
@@ -2814,6 +2847,7 @@ impl Lowerer {
                 let value = match &expr.expr {
                     Ok(expr) => self.lower_expr(expr, scope, ctx),
                     Err(error) => Expression {
+                        id: self.compiler.new_expression_id(ctx.owner),
                         span: error.span,
                         kind: ExpressionKind::error(&self.compiler),
                     },
@@ -2828,11 +2862,13 @@ impl Lowerer {
                 };
 
                 Expression {
+                    id: self.compiler.new_expression_id(ctx.owner),
                     span: expr.span(),
                     kind: ExpressionKind::Annotate(Box::new(value), ty),
                 }
             }
             ast::Expression::Tuple(expr) => Expression {
+                id: self.compiler.new_expression_id(ctx.owner),
                 span: expr.span(),
                 kind: ExpressionKind::Tuple(
                     expr.exprs
@@ -2840,6 +2876,7 @@ impl Lowerer {
                         .map(|expr| match expr {
                             Ok(expr) => self.lower_expr(expr, scope, ctx),
                             Err(error) => Expression {
+                                id: self.compiler.new_expression_id(ctx.owner),
                                 span: error.span,
                                 kind: ExpressionKind::error(&self.compiler),
                             },
@@ -2848,6 +2885,7 @@ impl Lowerer {
                 ),
             },
             ast::Expression::Format(expr) => Expression {
+                id: self.compiler.new_expression_id(ctx.owner),
                 span: expr.span(),
                 kind: ExpressionKind::Format(
                     expr.segments
@@ -2858,6 +2896,7 @@ impl Lowerer {
                                 match expr {
                                     Ok(expr) => self.lower_expr(expr, scope, ctx),
                                     Err(error) => Expression {
+                                        id: self.compiler.new_expression_id(ctx.owner),
                                         span: error.span,
                                         kind: ExpressionKind::error(&self.compiler),
                                     },
@@ -2869,6 +2908,7 @@ impl Lowerer {
                 ),
             },
             ast::Expression::Unit(expr) => Expression {
+                id: self.compiler.new_expression_id(ctx.owner),
                 span: expr.span(),
                 kind: ExpressionKind::Tuple(Vec::new()),
             },
@@ -2913,6 +2953,7 @@ impl Lowerer {
                         let value = match &clause.value {
                             Ok(expr) => self.lower_expr(expr, scope, ctx),
                             Err(error) => Expression {
+                                id: self.compiler.new_expression_id(ctx.owner),
                                 span: error.span,
                                 kind: ExpressionKind::error(&self.compiler),
                             },
@@ -2923,6 +2964,7 @@ impl Lowerer {
                     Err(error) => (
                         None,
                         Expression {
+                            id: self.compiler.new_expression_id(ctx.owner),
                             span: error.span,
                             kind: ExpressionKind::error(&self.compiler),
                         },
@@ -2932,12 +2974,14 @@ impl Lowerer {
                 let body = match &expr.body {
                     Ok(expr) => self.lower_expr(expr, scope, ctx),
                     Err(error) => Expression {
+                        id: self.compiler.new_expression_id(ctx.owner),
                         span: error.span,
                         kind: ExpressionKind::error(&self.compiler),
                     },
                 };
 
                 Expression {
+                    id: self.compiler.new_expression_id(ctx.owner),
                     span: expr.span(),
                     kind: ExpressionKind::With((constant, Box::new(value)), Box::new(body)),
                 }
@@ -4064,6 +4108,7 @@ impl Lowerer {
 
         let constructor = variables.iter().enumerate().rev().fold(
             Expression {
+                id: self.compiler.new_expression_id(constructor_id),
                 span,
                 kind: ExpressionKind::Variant(
                     id,
@@ -4071,6 +4116,7 @@ impl Lowerer {
                     variables
                         .iter()
                         .map(|&(var, span)| Expression {
+                            id: self.compiler.new_expression_id(constructor_id),
                             span,
                             kind: ExpressionKind::Variable(var),
                         })
@@ -4078,6 +4124,7 @@ impl Lowerer {
                 ),
             },
             |result, (index, (var, span))| Expression {
+                id: self.compiler.new_expression_id(constructor_id),
                 span: *span,
                 kind: ExpressionKind::Function(
                     Pattern {

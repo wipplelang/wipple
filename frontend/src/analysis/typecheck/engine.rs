@@ -161,10 +161,10 @@ impl Context {
         &self,
         actual: UnresolvedType,
         expected: impl Into<UnresolvedType>,
-    ) -> (GenericSubstitutions, Result<(), TypeError>) {
+    ) -> GenericSubstitutions {
         let mut params = GenericSubstitutions::new();
-        let result = self.unify_internal(actual, expected.into(), false, false, &mut params);
-        (params, result)
+        let _ = self.unify_internal(actual, expected.into(), false, false, Some(&mut params));
+        params
     }
 
     pub fn unify(
@@ -172,13 +172,7 @@ impl Context {
         actual: UnresolvedType,
         expected: impl Into<UnresolvedType>,
     ) -> Result<(), TypeError> {
-        self.unify_internal(
-            actual,
-            expected.into(),
-            false,
-            false,
-            &mut GenericSubstitutions::new(),
-        )
+        self.unify_internal(actual, expected.into(), false, false, None)
     }
 
     pub fn unify_reverse(
@@ -186,13 +180,7 @@ impl Context {
         actual: impl Into<UnresolvedType>,
         expected: UnresolvedType,
     ) -> Result<(), TypeError> {
-        self.unify_internal(
-            actual.into(),
-            expected,
-            false,
-            true,
-            &mut GenericSubstitutions::new(),
-        )
+        self.unify_internal(actual.into(), expected, false, true, None)
     }
 
     pub fn unify_generic(
@@ -200,13 +188,7 @@ impl Context {
         actual: UnresolvedType,
         expected: impl Into<UnresolvedType>,
     ) -> Result<(), TypeError> {
-        self.unify_internal(
-            actual,
-            expected.into(),
-            true,
-            false,
-            &mut GenericSubstitutions::new(),
-        )
+        self.unify_internal(actual, expected.into(), true, false, None)
     }
 
     fn unify_internal(
@@ -215,12 +197,12 @@ impl Context {
         mut expected: UnresolvedType,
         generic: bool,
         reverse: bool,
-        params: &mut BTreeMap<TypeParameterId, UnresolvedType>,
+        mut params: Option<&mut BTreeMap<TypeParameterId, UnresolvedType>>,
     ) -> Result<(), TypeError> {
         actual.apply(self);
         expected.apply(self);
 
-        if !generic {
+        if let Some(params) = params.as_mut() {
             if let UnresolvedType::Parameter(param) = expected {
                 params.insert(param, actual.clone());
             }
@@ -243,11 +225,13 @@ impl Context {
             ) if generic => {
                 if actual_param == expected_param {
                     Ok(())
-                } else {
+                } else if params.is_none() {
                     Err(mismatch!(
                         UnresolvedType::Parameter(actual_param),
                         UnresolvedType::Parameter(expected_param),
                     ))
+                } else {
+                    Ok(())
                 }
             }
             (_, UnresolvedType::Parameter(_)) if !generic => Ok(()),
@@ -263,7 +247,11 @@ impl Context {
                 }
 
                 if ty.contains(&var) {
-                    Err(TypeError::Recursive(var))
+                    if params.is_none() {
+                        Err(TypeError::Recursive(var))
+                    } else {
+                        Ok(())
+                    }
                 } else {
                     if let UnresolvedType::Variable(other) = ty {
                         let mut defaults = self.defaults.borrow_mut();
@@ -289,12 +277,18 @@ impl Context {
                     }
                     UnresolvedType::Builtin(ty) if ty.is_numeric() => {}
                     _ => {
-                        return Err(mismatch!(UnresolvedType::NumericVariable(var), ty));
+                        if params.is_none() {
+                            return Err(mismatch!(UnresolvedType::NumericVariable(var), ty));
+                        }
                     }
                 }
 
                 if ty.contains(&var) {
-                    Err(TypeError::Recursive(var))
+                    if params.is_none() {
+                        Err(TypeError::Recursive(var))
+                    } else {
+                        Ok(())
+                    }
                 } else {
                     self.numeric_substitutions.borrow_mut().insert(var, ty);
                     Ok(())
@@ -309,12 +303,18 @@ impl Context {
                     }
                     UnresolvedType::Builtin(ty) if ty.is_numeric() => {}
                     _ => {
-                        return Err(mismatch!(ty, UnresolvedType::NumericVariable(var)));
+                        if params.is_none() {
+                            return Err(mismatch!(ty, UnresolvedType::NumericVariable(var)));
+                        }
                     }
                 }
 
                 if ty.contains(&var) {
-                    Err(TypeError::Recursive(var))
+                    if params.is_none() {
+                        Err(TypeError::Recursive(var))
+                    } else {
+                        Ok(())
+                    }
                 } else {
                     self.numeric_substitutions.borrow_mut().insert(var, ty);
                     Ok(())
@@ -332,17 +332,17 @@ impl Context {
                             expected.clone(),
                             generic,
                             reverse,
-                            params,
+                            params.as_mut().map(|params| &mut **params),
                         ) {
                             if let TypeError::Mismatch(_, _) = e {
                                 error = true;
-                            } else {
+                            } else if params.is_none() {
                                 return Err(e);
                             }
                         }
                     }
 
-                    if error {
+                    if error && params.is_none() {
                         return Err(mismatch!(
                             UnresolvedType::Named(actual_id, actual_params, actual_structure),
                             UnresolvedType::Named(expected_id, expected_params, expected_structure),
@@ -350,11 +350,13 @@ impl Context {
                     }
 
                     Ok(())
-                } else {
+                } else if params.is_none() {
                     Err(mismatch!(
                         UnresolvedType::Named(actual_id, actual_params, actual_structure),
                         UnresolvedType::Named(expected_id, expected_params, expected_structure),
                     ))
+                } else {
+                    Ok(())
                 }
             }
             (
@@ -368,11 +370,11 @@ impl Context {
                     (*expected_input).clone(),
                     generic,
                     reverse,
-                    params,
+                    params.as_mut().map(|params| &mut **params),
                 ) {
                     if let TypeError::Mismatch(_, _) = e {
                         error = true;
-                    } else {
+                    } else if params.is_none() {
                         return Err(e);
                     }
                 }
@@ -382,16 +384,16 @@ impl Context {
                     (*expected_output).clone(),
                     generic,
                     reverse,
-                    params,
+                    params.as_mut().map(|params| &mut **params),
                 ) {
                     if let TypeError::Mismatch(_, _) = e {
                         error = true;
-                    } else {
+                    } else if params.is_none() {
                         return Err(e);
                     }
                 }
 
-                if error {
+                if error && params.is_none() {
                     return Err(mismatch!(
                         UnresolvedType::Function(actual_input, actual_output),
                         UnresolvedType::Function(expected_input, expected_output),
@@ -401,7 +403,7 @@ impl Context {
                 Ok(())
             }
             (UnresolvedType::Tuple(actual_tys), UnresolvedType::Tuple(expected_tys)) => {
-                if actual_tys.len() != expected_tys.len() {
+                if actual_tys.len() != expected_tys.len() && params.is_none() {
                     return Err(mismatch!(
                         UnresolvedType::Tuple(actual_tys),
                         UnresolvedType::Tuple(expected_tys),
@@ -415,17 +417,17 @@ impl Context {
                         expected.clone(),
                         generic,
                         reverse,
-                        params,
+                        params.as_mut().map(|params| &mut **params),
                     ) {
                         if let TypeError::Mismatch(_, _) = e {
                             error = true;
-                        } else {
+                        } else if params.is_none() {
                             return Err(e);
                         }
                     }
                 }
 
-                if error {
+                if error && params.is_none() {
                     return Err(mismatch!(
                         UnresolvedType::Tuple(actual_tys),
                         UnresolvedType::Tuple(expected_tys),
@@ -455,16 +457,18 @@ impl Context {
                         (*expected_element).clone(),
                         generic,
                         reverse,
-                        params,
+                        params.as_mut().map(|params| &mut **params),
                     ) {
-                        return Err(if let TypeError::Mismatch(_, _) = error {
-                            mismatch!(
-                                UnresolvedType::Builtin(BuiltinType::List(actual_element)),
-                                UnresolvedType::Builtin(BuiltinType::List(expected_element)),
-                            )
-                        } else {
-                            error
-                        });
+                        if params.is_none() {
+                            return Err(if let TypeError::Mismatch(_, _) = error {
+                                mismatch!(
+                                    UnresolvedType::Builtin(BuiltinType::List(actual_element)),
+                                    UnresolvedType::Builtin(BuiltinType::List(expected_element)),
+                                )
+                            } else {
+                                error
+                            });
+                        }
                     }
 
                     Ok(())
@@ -475,27 +479,41 @@ impl Context {
                         (*expected_element).clone(),
                         generic,
                         reverse,
-                        params,
+                        params.as_mut().map(|params| &mut **params),
                     ) {
-                        return Err(if let TypeError::Mismatch(_, _) = error {
-                            mismatch!(
-                                UnresolvedType::Builtin(BuiltinType::Mutable(actual_element)),
-                                UnresolvedType::Builtin(BuiltinType::Mutable(expected_element)),
-                            )
-                        } else {
-                            error
-                        });
+                        if params.is_none() {
+                            return Err(if let TypeError::Mismatch(_, _) = error {
+                                mismatch!(
+                                    UnresolvedType::Builtin(BuiltinType::Mutable(actual_element)),
+                                    UnresolvedType::Builtin(BuiltinType::Mutable(expected_element)),
+                                )
+                            } else {
+                                error
+                            });
+                        }
                     }
 
                     Ok(())
                 }
-                (actual_builtin, expected_builtin) => Err(mismatch!(
-                    UnresolvedType::Builtin(actual_builtin),
-                    UnresolvedType::Builtin(expected_builtin),
-                )),
+                (actual_builtin, expected_builtin) => {
+                    if params.is_none() {
+                        Err(mismatch!(
+                            UnresolvedType::Builtin(actual_builtin),
+                            UnresolvedType::Builtin(expected_builtin),
+                        ))
+                    } else {
+                        Ok(())
+                    }
+                }
             },
             (_, UnresolvedType::Error) | (UnresolvedType::Error, _) => Ok(()),
-            (actual, expected) => Err(mismatch!(actual, expected)),
+            (actual, expected) => {
+                if params.is_none() {
+                    Err(mismatch!(actual, expected))
+                } else {
+                    Ok(())
+                }
+            }
         }
     }
 }
@@ -767,9 +785,7 @@ impl UnresolvedType {
         Some(match ty.clone() {
             UnresolvedType::Variable(_) => return None,
             UnresolvedType::Parameter(param) => Type::Parameter(param),
-            UnresolvedType::NumericVariable(_) => {
-                unreachable!()
-            }
+            UnresolvedType::NumericVariable(_) => unreachable!(),
             UnresolvedType::Named(id, params, structure) => Type::Named(
                 id,
                 params
