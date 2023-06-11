@@ -4721,64 +4721,65 @@ impl Typechecker {
             // If a function's type doesn't match but its inputs do, then
             // display the error at the start of the call chain instead of the
             // function itself
-            if let engine::UnresolvedType::Function(actual_input, actual_output) = &actual {
-                if let engine::UnresolvedType::Function(expected_input, expected_output) = &expected
-                {
-                    let mut actual_input = actual_input.as_ref().clone();
-                    let mut actual_output = actual_output.as_ref().clone();
-                    let mut expected_input = expected_input.as_ref().clone();
-                    let mut expected_output = expected_output.as_ref().clone();
+            let mut should_swap = false;
+            loop {
+                if let engine::UnresolvedType::Function(actual_input, actual_output) = &actual {
+                    if let engine::UnresolvedType::Function(expected_input, expected_output) =
+                        &expected
+                    {
+                        let actual_input = actual_input.as_ref().clone();
+                        let actual_output = actual_output.as_ref().clone();
+                        let expected_input = expected_input.as_ref().clone();
+                        let expected_output = expected_output.as_ref().clone();
 
-                    loop {
-                        if let (
-                            engine::UnresolvedType::Function(
-                                actual_input_inner,
-                                actual_output_inner,
-                            ),
-                            engine::UnresolvedType::Function(
-                                expected_input_inner,
-                                expected_output_inner,
-                            ),
-                        ) = (&actual_output, &expected_output)
-                        {
-                            actual_input = actual_input_inner.as_ref().clone();
-                            actual_output = actual_output_inner.as_ref().clone();
-                            expected_input = expected_input_inner.as_ref().clone();
-                            expected_output = expected_output_inner.as_ref().clone();
-                        } else {
-                            break;
-                        }
-                    }
-
-                    if let Some(id) = error.expr {
-                        if let Some(root) = self.root_for(id.owner) {
-                            if let Some((call, input)) = root.as_root_query_start_of_call_chain(id)
-                            {
+                        if let Some(id) = error.expr {
+                            if let Some(root) = self.root_for(id.owner) {
                                 if self
                                     .ctx
                                     .clone()
                                     .unify(actual_output.clone(), expected_output.clone())
                                     .is_err()
                                 {
-                                    *actual = expected_output;
-                                    *expected = actual_output;
-                                    error.expr = Some(call.id);
-                                    error.span = call.span;
+                                    if let Some(call) = root.as_root_query_parent_of(id) {
+                                        should_swap = true;
+
+                                        *actual = expected_output;
+                                        *expected = actual_output;
+                                        error.expr = Some(call.id);
+                                        error.span = call.span;
+                                        continue;
+                                    } else {
+                                        break;
+                                    }
                                 } else if self
                                     .ctx
                                     .clone()
                                     .unify(actual_input.clone(), expected_input.clone())
                                     .is_err()
                                 {
-                                    *actual = expected_input;
-                                    *expected = actual_input;
-                                    error.expr = Some(input.id);
-                                    error.span = input.span;
+                                    if let ExpressionKind::Call(_, input, _) =
+                                        &root.as_root_query_parent_of(id).unwrap().kind
+                                    {
+                                        should_swap = true;
+
+                                        *actual = actual_input;
+                                        *expected = expected_input;
+                                        error.expr = Some(input.id);
+                                        error.span = input.span;
+                                    }
+
+                                    break;
                                 }
                             }
                         }
                     }
                 }
+
+                break;
+            }
+
+            if should_swap {
+                mem::swap(actual, expected);
             }
         }
 
@@ -4918,8 +4919,8 @@ impl Typechecker {
                                 error.span,
                                 format!(
                                     "this function accepts {}, but it should accept {}",
-                                    self.format_type(actual_input.as_ref().clone(), format),
-                                    self.format_type(expected_input.as_ref().clone(), format)
+                                    self.format_type(expected_input.as_ref().clone(), format),
+                                    self.format_type(actual_input.as_ref().clone(), format)
                                 ),
                             ));
                         }
