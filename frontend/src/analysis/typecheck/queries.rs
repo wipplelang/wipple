@@ -32,11 +32,14 @@ impl Expression {
         parent
     }
 
-    pub fn as_root_query_start_of_call_chain(&self, id: ExpressionId) -> Option<&Expression> {
+    pub fn as_root_query_start_of_call_chain(
+        &self,
+        id: ExpressionId,
+    ) -> Option<(&Expression, &Expression)> {
         let mut parent = self.as_root_query_parent_of(id)?;
-        while let ExpressionKind::Call(_, _, first) = &parent.kind {
+        while let ExpressionKind::Call(_, input, first) = &parent.kind {
             if *first {
-                return Some(parent);
+                return Some((parent, input));
             }
 
             parent = self.as_root_query_parent_of(parent.id)?;

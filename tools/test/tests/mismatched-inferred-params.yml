@@ -1,0 +1,14 @@
+code: |
+    list 1 2 3 . transform ((_ :: Text) -> ())
+
+output: |
+
+diagnostics: |
+    error: mismatched types
+      ┌─ test:1:24
+      │
+    1 │ list 1 2 3 . transform ((_ :: Text) -> ())
+      │                        ^^^^^^^^^^^^^^^^^^^
+      │                        │
+      │                        expected `Text -> ()`, but found `Number -> ()`
+      │                        this function accepts `Text`, but it should accept `Number`
