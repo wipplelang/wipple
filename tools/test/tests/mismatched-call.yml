@@ -2,16 +2,17 @@ code: |
     accepts-text :: Text -> ()
     accepts-text : ...
 
-    accepts-text (1 + 2) -- should display 'expected `Text`, found `Number`' rather
-                         -- than 'cannot find instance `Add Number Number Text`'
+    -- should display 'expected `Text`, found `Number`' rather than
+    -- 'cannot find instance `Add Number Number Text`'
+    accepts-text (1 + 2)
 
 output: |
 
 diagnostics: |
     error: mismatched types
-       ┌─ test:4:15
+       ┌─ test:6:15
        │
-     4 │ accepts-text (1 + 2) -- should display 'expected `Text`, found `Number`' rather
+     6 │ accepts-text (1 + 2)
        │               ^^^^^ expected `Text`, but found `Number`
        │
        ┌─ <dir>/std/math.wpl:13:25

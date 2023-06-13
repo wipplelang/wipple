@@ -10,5 +10,5 @@ diagnostics: |
     1 │ list 1 2 3 . transform ((_ :: Text) -> ())
       │                        ^^^^^^^^^^^^^^^^^^^
       │                        │
-      │                        expected `Text -> ()`, but found `Number -> ()`
+      │                        expected `Number -> ()`, but found `Text -> ()`
       │                        this function accepts `Text`, but it should accept `Number`

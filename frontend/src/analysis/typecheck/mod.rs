@@ -1629,19 +1629,19 @@ impl Typechecker {
                 }
             }
             lower::ExpressionKind::Call(function, input, first) => {
-                let function = self.convert_expr(*function, info);
                 let input = self.convert_expr(*input, info);
+                let function = self.convert_expr(*function, info);
 
                 let output_ty = engine::UnresolvedType::Variable(self.ctx.new_variable(None));
 
                 if let Err(error) = self.unify(
                     function.id,
                     function.span,
-                    function.ty.clone(),
                     engine::UnresolvedType::Function(
                         Box::new(input.ty.clone()),
                         Box::new(output_ty.clone()),
                     ),
+                    function.ty.clone(),
                 ) {
                     self.add_error(error);
                 }
@@ -2393,27 +2393,8 @@ impl Typechecker {
                     )
                 }
                 MonomorphizedExpressionKind::Call(func, input, first) => {
-                    // If the input is another function, monomorphize the outer
-                    // function first for optimal type inference
-
-                    let func = *func;
-                    let input = *input;
-
-                    let input_is_function = {
-                        let mut input_ty = input.ty.clone();
-                        input_ty.apply(&self.ctx);
-                        matches!(input_ty, engine::UnresolvedType::Function(_, _))
-                    };
-
-                    let (func, input) = if input_is_function {
-                        let func = self.monomorphize_expr(func, info);
-                        let input = self.monomorphize_expr(input, info);
-                        (func, input)
-                    } else {
-                        let input = self.monomorphize_expr(input, info);
-                        let func = self.monomorphize_expr(func, info);
-                        (func, input)
-                    };
+                    let input = self.monomorphize_expr(*input, info);
+                    let func = self.monomorphize_expr(*func, info);
 
                     MonomorphizedExpressionKind::Call(Box::new(func), Box::new(input), first)
                 }
@@ -2894,7 +2875,7 @@ impl Typechecker {
             use_span,
             None,
             Some((generic_trait_ty, ty)),
-            fresh_parameters.into_values().collect(), // NOTE: relies on the parameters being in order
+            fresh_parameters.into_values().collect(), // NOTE: relies on the parameter IDs being in order
             info,
         )
     }
@@ -3135,9 +3116,13 @@ impl Typechecker {
                                 &mut bound_substitutions,
                             );
 
-                            if let Err(error) =
-                                self.ctx.unify(original_ty, inferred_original_ty.clone())
-                            {
+                            let result = if ty_or_params.is_ok() {
+                                self.ctx.unify(inferred_original_ty, original_ty)
+                            } else {
+                                self.ctx.unify(original_ty, inferred_original_ty)
+                            };
+
+                            if let Err(error) = result {
                                 self.ctx = $prev_ctx;
 
                                 return Err(FindInstanceError::TypeError(
@@ -4721,7 +4706,6 @@ impl Typechecker {
             // If a function's type doesn't match but its inputs do, then
             // display the error at the start of the call chain instead of the
             // function itself
-            let mut should_swap = false;
             loop {
                 if let engine::UnresolvedType::Function(actual_input, actual_output) = &actual {
                     if let engine::UnresolvedType::Function(expected_input, expected_output) =
@@ -4741,10 +4725,8 @@ impl Typechecker {
                                     .is_err()
                                 {
                                     if let Some(call) = root.as_root_query_parent_of(id) {
-                                        should_swap = true;
-
-                                        *actual = expected_output;
-                                        *expected = actual_output;
+                                        *actual = actual_output;
+                                        *expected = expected_output;
                                         error.expr = Some(call.id);
                                         error.span = call.span;
                                         continue;
@@ -4760,8 +4742,6 @@ impl Typechecker {
                                     if let ExpressionKind::Call(_, input, _) =
                                         &root.as_root_query_parent_of(id).unwrap().kind
                                     {
-                                        should_swap = true;
-
                                         *actual = actual_input;
                                         *expected = expected_input;
                                         error.expr = Some(input.id);
@@ -4776,10 +4756,6 @@ impl Typechecker {
                 }
 
                 break;
-            }
-
-            if should_swap {
-                mem::swap(actual, expected);
             }
         }
 
@@ -4919,8 +4895,8 @@ impl Typechecker {
                                 error.span,
                                 format!(
                                     "this function accepts {}, but it should accept {}",
-                                    self.format_type(expected_input.as_ref().clone(), format),
-                                    self.format_type(actual_input.as_ref().clone(), format)
+                                    self.format_type(actual_input.as_ref().clone(), format),
+                                    self.format_type(expected_input.as_ref().clone(), format)
                                 ),
                             ));
                         }
