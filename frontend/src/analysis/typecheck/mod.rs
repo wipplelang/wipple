@@ -97,6 +97,7 @@ pub struct TypeDecl {
     pub span: SpanList,
     pub params: Vec<TypeParameterId>,
     pub kind: TypeDeclKind,
+    pub convert_from: Vec<(Type, wipple_syntax::parse::Expr<super::Analysis>)>,
     pub attributes: lower::TypeAttributes,
     pub uses: HashSet<SpanList>,
 }
@@ -3652,6 +3653,19 @@ impl Typechecker {
                     }
                 }
             },
+            convert_from: decl
+                .value
+                .attributes
+                .convert_from
+                .iter()
+                .cloned()
+                .map(|(annotation, replacement)| {
+                    (
+                        self.convert_finalized_type_annotation(annotation),
+                        replacement,
+                    )
+                })
+                .collect(),
             attributes: decl.value.attributes,
             uses: decl.uses,
         };
@@ -4927,6 +4941,44 @@ impl Typechecker {
                             })
                     {
                         notes.push(note);
+                    }
+                }
+
+                if let engine::UnresolvedType::Named(id, _, _) = &expected {
+                    let ty = self.declarations.borrow().types.get(id).unwrap().clone();
+
+                    if let Some(source_code) =
+                        self.compiler.source_code_for_span(error.span.first())
+                    {
+                        if let Some(replacement) =
+                            ty.convert_from.iter().find_map(|(ty, replacement)| {
+                                self.ctx
+                                    .clone()
+                                    .unify(actual.clone(), ty.clone())
+                                    .is_ok()
+                                    .then_some(replacement)
+                            })
+                        {
+                            let mut replacement = replacement.clone();
+                            wipple_syntax::parse::substitute(
+                                &mut replacement,
+                                InternedString::new("value"),
+                                wipple_syntax::parse::Expr::new(
+                                    error.span,
+                                    wipple_syntax::parse::ExprKind::SourceCode(source_code),
+                                ),
+                            );
+
+                            fix = Some(Fix::new(
+                                format!(
+                                    "convert the {} into {}",
+                                    self.format_type(actual.clone(), format),
+                                    self.format_type(expected.clone(), format)
+                                ),
+                                FixRange::replace(error.span.first()),
+                                replacement,
+                            ));
+                        }
                     }
                 }
 

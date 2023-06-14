@@ -35,3 +35,38 @@ pub fn parse<D: Driver>(driver: &D, path: D::Path, code: &str) -> File<D> {
         statements,
     }
 }
+
+pub fn substitute<D: Driver>(
+    expr: &mut Expr<D>,
+    replacement_name: D::InternedString,
+    replacement: Expr<D>,
+) {
+    match &mut expr.kind {
+        ExprKind::QuoteName(name) => {
+            if *name == replacement_name {
+                *expr = replacement.clone();
+            }
+        }
+        ExprKind::List(lines) | ExprKind::RepeatList(lines) => {
+            for line in lines {
+                for expr in &mut line.exprs {
+                    substitute(expr, replacement_name.clone(), replacement.clone());
+                }
+            }
+        }
+        ExprKind::Block(statements) => {
+            for statement in statements {
+                for expr in &mut statement.line.exprs {
+                    substitute(expr, replacement_name.clone(), replacement.clone());
+                }
+            }
+        }
+        ExprKind::Placeholder(_)
+        | ExprKind::Underscore
+        | ExprKind::Name(_, _)
+        | ExprKind::RepeatName(_)
+        | ExprKind::Text(_, _)
+        | ExprKind::Number(_)
+        | ExprKind::SourceCode(_) => {}
+    }
+}

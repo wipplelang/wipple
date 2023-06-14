@@ -1,6 +1,7 @@
 definitions! {
     mod allow_overlapping_instances;
     mod contextual;
+    mod convert_from;
     mod diagnostic_alias;
     mod diagnostic_item;
     mod help;
@@ -31,6 +32,7 @@ syntax_group! {
         non_terminal: {
             AllowOverlappingInstances,
             Contextual,
+            ConvertFrom,
             DiagnosticAlias,
             DiagnosticItem,
             Help,

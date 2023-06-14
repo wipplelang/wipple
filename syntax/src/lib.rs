@@ -9,7 +9,7 @@ use wipple_util::Backtrace;
 
 #[async_trait]
 pub trait Driver: Debug + Clone + Send + Sync + 'static {
-    type InternedString: Debug + Clone + AsRef<str> + Eq + Hash + Send + Sync;
+    type InternedString: Debug + Clone + Eq + AsRef<str> + Eq + Hash + Send + Sync;
     type Path: Debug + Copy + Send + Sync + 'static;
     type Span: Debug + Copy + Span + Send + Sync + 'static;
     type File: Debug + Clone + Send + Sync + File<Self> + 'static;

@@ -1,3 +1,4 @@
+[convert-from Number ('value degrees)]
 Angle : type {
     deg :: Number
 }
@@ -16,6 +17,7 @@ radians : syntax {
     'n radians -> radians' 'n
 }
 
+[convert-from Number ('value pixels)]
 Pixels : type {
     px :: Number
 }

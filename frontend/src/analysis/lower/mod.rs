@@ -199,6 +199,7 @@ pub enum TypeDeclarationKind {
 pub struct TypeAttributes {
     pub decl_attributes: DeclarationAttributes,
     pub on_mismatch: Vec<(Option<TypeParameterId>, InternedString)>,
+    pub convert_from: Vec<(TypeAnnotation, wipple_syntax::parse::Expr<Analysis>)>,
 }
 
 #[derive(Debug, Clone)]
@@ -793,6 +794,7 @@ impl Compiler {
             scopes: Default::default(),
         };
 
+        let ctx = Context::default();
         let scope = lowerer.root_scope(file.file.root_scope);
 
         for (&name, (id, definition, uses)) in &*file.file.builtin_syntax_uses.lock() {
@@ -821,7 +823,11 @@ impl Compiler {
                     value: SyntaxDeclaration {
                         operator: value.operator_precedence.is_some(),
                         keyword: value.keyword.is_some(),
-                        attributes: lowerer.lower_syntax_attributes(&value.attributes, &scope),
+                        attributes: lowerer.lower_syntax_attributes(
+                            &value.attributes,
+                            &ctx,
+                            &scope,
+                        ),
                     },
                 };
 
@@ -870,7 +876,6 @@ impl Compiler {
             lowerer.extend(dependency.exported.clone(), &scope);
         }
 
-        let ctx = Context::default();
         let statements = lowerer.lower_statements(&file.statements, &scope, &ctx);
 
         for (&constant_id, constant) in &lowerer.declarations.constants {
@@ -1478,7 +1483,7 @@ impl Lowerer {
                 StatementDeclarationKind::Constant(id, (scope, (parameters, bounds)), ty) => {
                     let ty = self.lower_type(ty, &scope, ctx);
 
-                    let attributes = self.lower_constant_attributes(decl.attributes, &scope);
+                    let attributes = self.lower_constant_attributes(decl.attributes, &scope, ctx);
 
                     self.declarations.constants.get_mut(&id).unwrap().value =
                         Some(UnresolvedConstantDeclaration {
@@ -3784,8 +3789,9 @@ impl Lowerer {
     }
 
     fn lower_syntax_attributes(
-        &self,
+        &mut self,
         statement_attributes: &ast::StatementAttributes<Analysis>,
+        _ctx: &Context,
         scope: &LoadedScopeId,
     ) -> SyntaxAttributes {
         SyntaxAttributes {
@@ -3853,6 +3859,21 @@ impl Lowerer {
                     Some((param, attribute.message))
                 })
                 .collect::<Vec<_>>(),
+            convert_from: attributes
+                .convert_from
+                .iter()
+                .map(|attribute| {
+                    let ty = match &attribute.ty {
+                        Ok(ty) => self.lower_type(ty, scope, ctx),
+                        Err(error) => TypeAnnotation {
+                            span: error.span,
+                            kind: TypeAnnotationKind::error(&self.compiler),
+                        },
+                    };
+
+                    (ty, attribute.replacement.clone())
+                })
+                .collect(),
         }
     }
 
@@ -3922,6 +3943,7 @@ impl Lowerer {
         &mut self,
         attributes: &ast::StatementAttributes<Analysis>,
         scope: &LoadedScopeId,
+        _ctx: &Context,
     ) -> ConstantAttributes {
         // TODO: Raise errors for misused attributes
 

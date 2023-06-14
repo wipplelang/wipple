@@ -111,6 +111,12 @@ impl<D: Driver> fmt::Display for File<D> {
     }
 }
 
+impl<D: Driver> fmt::Display for Expr<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.fmt(f, 0)
+    }
+}
+
 impl<D: Driver> Expr<D> {
     fn fmt(&self, f: &mut fmt::Formatter, indent: usize) -> fmt::Result {
         match &self.kind {
@@ -179,6 +185,7 @@ impl<D: Driver> Expr<D> {
 
                 write!(f, "}}")?;
             }
+            ExprKind::SourceCode(code) => write!(f, "{}", code)?,
         }
 
         Ok(())
@@ -203,6 +210,7 @@ impl<D: Driver> Expr<D> {
                 1 => statements.first().unwrap().line.is_multiline(true),
                 _ => true,
             },
+            ExprKind::SourceCode(code) => code.contains("\n"),
         }
     }
 }

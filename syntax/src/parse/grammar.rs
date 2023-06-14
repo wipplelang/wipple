@@ -38,6 +38,7 @@ pub enum ExprKind<D: Driver> {
     List(Vec<ListLine<D>>),
     RepeatList(Vec<ListLine<D>>),
     Block(Vec<Statement<D>>),
+    SourceCode(String),
 }
 
 impl<D: Driver> Expr<D> {

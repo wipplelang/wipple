@@ -1,10 +1,10 @@
 use crate::{
     ast::{
         format::Format, AllowOverlappingInstancesStatementAttribute, ContextualStatementAttribute,
-        DiagnosticAliasStatementAttribute, DiagnosticItemStatementAttribute,
-        HelpGroupStatementAttribute, HelpStatementAttribute, HelpTemplateStatementAttribute,
-        KeywordStatementAttribute, LanguageItemStatementAttribute, NoStdFileAttribute,
-        OnMismatchStatementAttribute, OnUnimplementedStatementAttribute,
+        ConvertFromStatementAttribute, DiagnosticAliasStatementAttribute,
+        DiagnosticItemStatementAttribute, HelpGroupStatementAttribute, HelpStatementAttribute,
+        HelpTemplateStatementAttribute, KeywordStatementAttribute, LanguageItemStatementAttribute,
+        NoStdFileAttribute, OnMismatchStatementAttribute, OnUnimplementedStatementAttribute,
         OperatorPrecedenceStatementAttribute, RecursionLimitFileAttribute,
         SpecializeStatementAttribute, SyntaxError,
     },
@@ -64,6 +64,7 @@ pub struct StatementAttributes<D: Driver> {
     pub operator_precedence: Option<OperatorPrecedenceStatementAttribute<D>>,
     pub keyword: Option<KeywordStatementAttribute<D>>,
     pub contextual: Option<ContextualStatementAttribute<D>>,
+    pub convert_from: Vec<ConvertFromStatementAttribute<D>>,
 }
 
 impl<D: Driver> Default for StatementAttributes<D> {
@@ -83,6 +84,7 @@ impl<D: Driver> Default for StatementAttributes<D> {
             operator_precedence: Default::default(),
             keyword: Default::default(),
             contextual: Default::default(),
+            convert_from: Default::default(),
         }
     }
 }

@@ -46,6 +46,7 @@ impl<D: Driver> Format<D> for parse::Expr<D> {
                     .collect::<Result<Vec<_>, _>>()?
                     .join("\n")
             ),
+            parse::ExprKind::SourceCode(code) => code,
         })
     }
 }
