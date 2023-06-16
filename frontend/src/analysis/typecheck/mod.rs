@@ -3040,7 +3040,7 @@ impl Typechecker {
         }
 
         macro_rules! unify_instance_params {
-            ($params:expr, $instance_params:expr, $substitutions:expr, $prev_ctx:expr) => {{
+            ($candidates:expr, $params:expr, $instance_params:expr, $substitutions:expr, $prev_ctx:expr) => {{
                 let mut error = None;
                 for ((param_ty, (_, inferred)), instance_param_ty) in
                     $params.clone().into_iter().zip($instance_params.clone())
@@ -3124,11 +3124,13 @@ impl Typechecker {
                             };
 
                             if let Err(error) = result {
-                                self.ctx = $prev_ctx;
+                                if $candidates.is_empty() {
+                                    self.ctx = $prev_ctx;
 
-                                return Err(FindInstanceError::TypeError(
-                                    self.error(error, use_id, use_span),
-                                ));
+                                    return Err(FindInstanceError::TypeError(
+                                        self.error(error, use_id, use_span),
+                                    ));
+                                }
                             }
                         }
                     }
@@ -3150,7 +3152,13 @@ impl Typechecker {
                     self.add_substitutions_skipping_inferred(ty, &mut substitutions);
                 }
 
-                unify_instance_params!(params, instance_params, substitutions, prev_ctx);
+                unify_instance_params!(
+                    candidates,
+                    params,
+                    instance_params,
+                    substitutions,
+                    prev_ctx
+                );
 
                 let ctx = mem::replace(&mut self.ctx, prev_ctx);
                 candidates.push((ctx, instance_id, span));
@@ -3192,7 +3200,13 @@ impl Typechecker {
                     self.add_substitutions_skipping_inferred(ty, &mut substitutions);
                 }
 
-                unify_instance_params!(params, instance_params, substitutions, prev_ctx);
+                unify_instance_params!(
+                    candidates,
+                    params,
+                    instance_params,
+                    substitutions,
+                    prev_ctx
+                );
 
                 for generic_bound in generic_bounds {
                     info.recursion_count += 1;
