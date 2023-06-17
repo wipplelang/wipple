@@ -11,7 +11,8 @@ export const register = () => {
         },
 
         keyword: {
-            pattern: /_|use|when|type|trait|instance|where|external|syntax|format|with/,
+            pattern:
+                /(?<=\s|^)(?:_|use|when|type|trait|instance|where|external|syntax|format|with)(?=\s|$)/,
             greedy: true,
         },
         operator: { pattern: /:|::|->|=>|\.|\|/, greedy: true },
