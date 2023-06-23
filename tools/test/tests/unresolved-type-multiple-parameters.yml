@@ -1,0 +1,47 @@
+code: |
+    T : A => type
+    U : A B => type
+
+    f :: A => T A -> ()
+    f : _ -> ()
+
+    f T
+
+    same-types :: A => U A A -> ()
+    same-types : _ -> ()
+
+    different-types :: A B => U A B -> ()
+    different-types : _ -> ()
+
+    same-types U
+    different-types U
+
+output: |
+
+diagnostics: |
+    error: could not determine the type of this expression
+      ┌─ test:7:1
+      │
+    7 │ f T
+      │ ^
+      │ │
+      │ try annotating the type with `::`
+      │ this has type `T _ -> ()`
+
+    error: could not determine the type of this expression
+       ┌─ test:15:1
+       │
+    15 │ same-types U
+       │ ^^^^^^^^^^
+       │ │
+       │ try annotating the type with `::`
+       │ this has type `U a a -> ()` for some unknown type `a`
+
+    error: could not determine the type of this expression
+       ┌─ test:16:1
+       │
+    16 │ different-types U
+       │ ^^^^^^^^^^^^^^^
+       │ │
+       │ try annotating the type with `::`
+       │ this has type `U _ _ -> ()`

@@ -5056,7 +5056,11 @@ impl Typechecker {
                     },
                 );
 
-                let format = if params.iter().fold(0, |n, ty| n + ty.vars().len()) <= 1 {
+                let format = if params.iter().fold(0, |n, ty| n + ty.vars().len())
+                    == params
+                        .iter()
+                        .fold(0, |n, ty| n + ty.vars().into_iter().unique().count())
+                {
                     single_var_format
                 } else {
                     multi_var_format
@@ -5088,7 +5092,7 @@ impl Typechecker {
             engine::TypeError::UnresolvedType(mut ty) => {
                 ty.apply(&self.ctx);
 
-                let format = if ty.vars().len() <= 1 {
+                let format = if ty.vars().len() == ty.vars().into_iter().unique().count() {
                     single_var_format
                 } else {
                     multi_var_format
@@ -5113,7 +5117,7 @@ impl Typechecker {
                 )
             }
             engine::TypeError::InvalidNumericLiteral(ty) => {
-                let format = if ty.vars().len() <= 1 {
+                let format = if ty.vars().len() == ty.vars().into_iter().unique().count() {
                     single_var_format
                 } else {
                     multi_var_format
