@@ -5020,7 +5020,11 @@ impl Typechecker {
                     .error_with_trace("mismatched types", notes, error.trace)
                     .fix(fix)
             }
-            engine::TypeError::MissingInstance(id, params, bound_span, error_candidates) => {
+            engine::TypeError::MissingInstance(id, mut params, bound_span, error_candidates) => {
+                for param in &mut params {
+                    param.apply(&self.ctx);
+                }
+
                 let trait_attributes = self
                     .declarations
                     .borrow()
@@ -5056,10 +5060,14 @@ impl Typechecker {
                     },
                 );
 
-                let format = if params.iter().fold(0, |n, ty| n + ty.vars().len())
+                let format = if params
+                    .iter()
+                    .map(|ty| ty.visible_vars().len())
+                    .sum::<usize>()
                     == params
                         .iter()
-                        .fold(0, |n, ty| n + ty.vars().into_iter().unique().count())
+                        .map(|ty| ty.visible_vars().into_iter().unique().count())
+                        .sum()
                 {
                     single_var_format
                 } else {
@@ -5092,11 +5100,12 @@ impl Typechecker {
             engine::TypeError::UnresolvedType(mut ty) => {
                 ty.apply(&self.ctx);
 
-                let format = if ty.vars().len() == ty.vars().into_iter().unique().count() {
-                    single_var_format
-                } else {
-                    multi_var_format
-                };
+                let format =
+                    if ty.visible_vars().len() == ty.visible_vars().into_iter().unique().count() {
+                        single_var_format
+                    } else {
+                        multi_var_format
+                    };
 
                 let note = (!matches!(ty, engine::UnresolvedType::Variable(_))).then(|| {
                     Note::primary(
@@ -5117,11 +5126,12 @@ impl Typechecker {
                 )
             }
             engine::TypeError::InvalidNumericLiteral(ty) => {
-                let format = if ty.vars().len() == ty.vars().into_iter().unique().count() {
-                    single_var_format
-                } else {
-                    multi_var_format
-                };
+                let format =
+                    if ty.visible_vars().len() == ty.visible_vars().into_iter().unique().count() {
+                        single_var_format
+                    } else {
+                        multi_var_format
+                    };
 
                 let message = format!(
                     "number does not fit into a {}",

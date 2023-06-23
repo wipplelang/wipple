@@ -655,6 +655,26 @@ impl UnresolvedType {
         }
     }
 
+    pub fn visible_vars(&self) -> Vec<TypeVariable> {
+        match self {
+            UnresolvedType::Variable(var) => vec![*var],
+            UnresolvedType::Function(input, output) => {
+                let mut vars = input.visible_vars();
+                vars.extend(output.visible_vars());
+                vars
+            }
+            UnresolvedType::Named(_, params, _) => {
+                params.iter().flat_map(|ty| ty.visible_vars()).collect()
+            }
+            UnresolvedType::Tuple(tys) => tys.iter().flat_map(|ty| ty.visible_vars()).collect(),
+            UnresolvedType::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.visible_vars(),
+                _ => Vec::new(),
+            },
+            _ => Vec::new(),
+        }
+    }
+
     pub fn all_vars(&self) -> Vec<TypeVariable> {
         match self {
             UnresolvedType::Variable(var) | UnresolvedType::NumericVariable(var) => vec![*var],
