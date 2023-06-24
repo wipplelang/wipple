@@ -1329,114 +1329,171 @@ impl Lowerer {
                                 Err(_) => continue,
                             };
 
-                            let mut fields = Vec::new();
-                            let mut variants = Vec::new();
-                            for (index, member) in ty.members.iter().enumerate() {
-                                let member = match member {
-                                    Ok(member) => member,
-                                    Err(_) => continue,
-                                };
+                            (|| {
+                                if let [Ok(member)] = ty.members.as_slice() {
+                                    if let ast::TypeMember::Variant(member) = member {
+                                        if let Some(name_list) = &member.name_list {
+                                            let variants = name_list
+                                                .iter()
+                                                .enumerate()
+                                                .map(|(index, (span, name))| {
+                                                    let index = VariantIndex::new(index);
 
-                                match member {
-                                    ast::TypeMember::Field(field) => {
-                                        let ty = match &field.ty {
-                                            Ok(ty) => self.lower_type(ty, &scope, ctx),
-                                            Err(error) => TypeAnnotation {
-                                                span: error.span,
-                                                kind: TypeAnnotationKind::error(&self.compiler),
-                                            },
-                                        };
+                                                    EnumerationVariant {
+                                                        name_span: *span,
+                                                        name: *name,
+                                                        tys: Vec::new(),
+                                                        constructor: self
+                                                            .generate_variant_constructor(
+                                                                id,
+                                                                *name,
+                                                                *span,
+                                                                index,
+                                                                &parameters,
+                                                                &[],
+                                                            ),
+                                                    }
+                                                })
+                                                .collect::<Vec<_>>();
 
-                                        fields.push(StructureField {
-                                            name_span: field.name_span,
-                                            name: field.name,
-                                            ty,
-                                        });
+                                            let variant_names = variants
+                                                .iter()
+                                                .enumerate()
+                                                .map(|(index, variant)| {
+                                                    let index = VariantIndex::new(index);
+
+                                                    self.insert(
+                                                        variant.name,
+                                                        AnyDeclaration::Constant(
+                                                            variant.constructor,
+                                                            Some((id, index)),
+                                                        ),
+                                                        &parent_scope,
+                                                    );
+
+                                                    (variant.name, index)
+                                                })
+                                                .collect();
+
+                                            return TypeDeclarationKind::Enumeration(
+                                                variants,
+                                                variant_names,
+                                            );
+                                        }
                                     }
-                                    ast::TypeMember::Variant(variant) => {
-                                        let index = VariantIndex::new(index);
+                                }
 
-                                        let tys = variant
-                                            .tys
-                                            .iter()
-                                            .map(|ty| match ty {
+                                let mut fields = Vec::new();
+                                let mut variants = Vec::new();
+                                for (index, member) in ty.members.iter().enumerate() {
+                                    let member = match member {
+                                        Ok(member) => member,
+                                        Err(_) => continue,
+                                    };
+
+                                    match member {
+                                        ast::TypeMember::Field(field) => {
+                                            let ty = match &field.ty {
                                                 Ok(ty) => self.lower_type(ty, &scope, ctx),
                                                 Err(error) => TypeAnnotation {
                                                     span: error.span,
                                                     kind: TypeAnnotationKind::error(&self.compiler),
                                                 },
-                                            })
-                                            .collect::<Vec<_>>();
+                                            };
 
-                                        let constructor = self.generate_variant_constructor(
-                                            id,
-                                            variant.name,
-                                            variant.span,
-                                            index,
-                                            &parameters,
-                                            &tys,
-                                        );
+                                            fields.push(StructureField {
+                                                name_span: field.name_span,
+                                                name: field.name,
+                                                ty,
+                                            });
+                                        }
+                                        ast::TypeMember::Variant(variant) => {
+                                            let index = VariantIndex::new(index);
 
-                                        variants.push(EnumerationVariant {
-                                            name_span: variant.name_span,
-                                            name: variant.name,
-                                            tys,
-                                            constructor,
-                                        });
+                                            let tys = variant
+                                                .tys
+                                                .iter()
+                                                .map(|ty| match ty {
+                                                    Ok(ty) => self.lower_type(ty, &scope, ctx),
+                                                    Err(error) => TypeAnnotation {
+                                                        span: error.span,
+                                                        kind: TypeAnnotationKind::error(
+                                                            &self.compiler,
+                                                        ),
+                                                    },
+                                                })
+                                                .collect::<Vec<_>>();
+
+                                            let constructor = self.generate_variant_constructor(
+                                                id,
+                                                variant.name,
+                                                variant.span,
+                                                index,
+                                                &parameters,
+                                                &tys,
+                                            );
+
+                                            variants.push(EnumerationVariant {
+                                                name_span: variant.name_span,
+                                                name: variant.name,
+                                                tys,
+                                                constructor,
+                                            });
+                                        }
                                     }
                                 }
-                            }
 
-                            if !fields.is_empty() && !variants.is_empty() {
-                                self.compiler.add_error(
-                                    "cannot mix fields and variants in a single `type` declaration",
-                                    vec![Note::primary(
-                                        ty.span,
-                                        "type must contain all fields or all variants",
-                                    )],
-                                );
+                                if !fields.is_empty() && !variants.is_empty() {
+                                    self.compiler.add_error(
+                                        "cannot mix fields and variants in a single `type` declaration",
+                                        vec![Note::primary(
+                                            ty.span,
+                                            "type must contain all fields or all variants",
+                                        )],
+                                    );
 
-                                TypeDeclarationKind::Marker
-                            } else if !fields.is_empty() {
-                                let field_names = fields
-                                    .iter()
-                                    .enumerate()
-                                    .map(|(index, field)| (field.name, FieldIndex::new(index)))
-                                    .collect();
+                                    TypeDeclarationKind::Marker
+                                } else if !fields.is_empty() {
+                                    let field_names = fields
+                                        .iter()
+                                        .enumerate()
+                                        .map(|(index, field)| (field.name, FieldIndex::new(index)))
+                                        .collect();
 
-                                TypeDeclarationKind::Structure(fields, field_names)
-                            } else if !variants.is_empty() {
-                                let variant_names = variants
-                                    .iter()
-                                    .enumerate()
-                                    .map(|(index, variant)| {
-                                        let index = VariantIndex::new(index);
+                                    TypeDeclarationKind::Structure(fields, field_names)
+                                } else if !variants.is_empty() {
+                                    let variant_names = variants
+                                        .iter()
+                                        .enumerate()
+                                        .map(|(index, variant)| {
+                                            let index = VariantIndex::new(index);
 
-                                        self.insert(
-                                            variant.name,
-                                            AnyDeclaration::Constant(
-                                                variant.constructor,
-                                                Some((id, index)),
-                                            ),
-                                            &parent_scope,
-                                        );
+                                            self.insert(
+                                                variant.name,
+                                                AnyDeclaration::Constant(
+                                                    variant.constructor,
+                                                    Some((id, index)),
+                                                ),
+                                                &parent_scope,
+                                            );
 
-                                        (variant.name, index)
-                                    })
-                                    .collect();
+                                            (variant.name, index)
+                                        })
+                                        .collect();
 
-                                TypeDeclarationKind::Enumeration(variants, variant_names)
-                            } else {
-                                self.compiler.add_error(
-                                    "`type` must contain at least one field or variant",
-                                    vec![Note::primary(
-                                        ty.span,
-                                        "to create a marker type, remove the `{}`",
-                                    )],
-                                );
+                                    TypeDeclarationKind::Enumeration(variants, variant_names)
+                                } else {
+                                    self.compiler.add_error(
+                                        "`type` must contain at least one field or variant",
+                                        vec![Note::primary(
+                                            ty.span,
+                                            "to create a marker type, remove the `{}`",
+                                        )],
+                                    );
 
-                                TypeDeclarationKind::Marker
-                            }
+                                    TypeDeclarationKind::Marker
+                                }
+                            })()
                         }
                         None => TypeDeclarationKind::Marker,
                     };

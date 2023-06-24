@@ -29,6 +29,7 @@ syntax_group! {
 #[derive(Debug, Clone)]
 pub struct VariantTypeMember<D: Driver> {
     pub span: D::Span,
+    pub name_list: Option<Vec<(D::Span, D::InternedString)>>,
     pub name_span: D::Span,
     pub name: D::InternedString,
     pub tys: Vec<Result<Type<D>, SyntaxError<D>>>,
@@ -39,6 +40,7 @@ impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for VariantTypeMember<D>
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
         Ok(VariantTypeMember {
             span: Default::default(),
+            name_list: None,
             name_span: Default::default(),
             name: arbitrary::Arbitrary::arbitrary(u)?,
             tys: arbitrary::Arbitrary::arbitrary(u)?,
@@ -111,6 +113,19 @@ impl<D: Driver> SyntaxContext<D> for TypeMemberSyntaxContext<D> {
         expr: parse::Expr<D>,
         scope: D::Scope,
     ) -> Result<Self::Body, SyntaxError<D>> {
+        let name_list = expr
+            .clone()
+            .try_into_list_exprs()
+            .ok()
+            .and_then(|(_, exprs)| {
+                exprs
+                    .map(|expr| match &expr.kind {
+                        parse::ExprKind::Name(name, _) => Some((expr.span, name.clone())),
+                        _ => None,
+                    })
+                    .collect()
+            });
+
         match expr.try_into_list_exprs() {
             Ok((span, mut list)) => {
                 let name_expr = match list.next() {
@@ -151,6 +166,7 @@ impl<D: Driver> SyntaxContext<D> for TypeMemberSyntaxContext<D> {
 
                 Ok(VariantTypeMember {
                     span,
+                    name_list,
                     name_span: name_expr.span,
                     name,
                     tys,
@@ -160,6 +176,7 @@ impl<D: Driver> SyntaxContext<D> for TypeMemberSyntaxContext<D> {
             Err(expr) => match expr.kind {
                 parse::ExprKind::Name(name, _) => Ok(VariantTypeMember {
                     span: expr.span,
+                    name_list,
                     name_span: expr.span,
                     name,
                     tys: Vec::new(),

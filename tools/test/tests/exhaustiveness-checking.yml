@@ -1,11 +1,5 @@
 code: |
-    Grade : type {
-        A
-        B
-        C
-        D
-        F
-    }
+    Grade : type { A B C D F }
 
     report-card :: Grade -> Text
     report-card : grade -> when grade {
@@ -23,21 +17,21 @@ output: |
 
 diagnostics: |
     error: `when` expression not handle all possible values of `Grade`
-       ┌─ test:10:24
-       │
-    10 │   report-card : grade -> when grade {
-       │ ╭────────────────────────^
-    11 │ │     Grade A -> "top of the class"
-    12 │ │     Grade B -> "good job"
-    13 │ │     Grade C -> "need to study"
-    14 │ │ }
-       │ ╰─^ try adding cases for the `D` and `F` patterns
+      ┌─ test:4:24
+      │
+    4 │   report-card : grade -> when grade {
+      │ ╭────────────────────────^
+    5 │ │     Grade A -> "top of the class"
+    6 │ │     Grade B -> "good job"
+    7 │ │     Grade C -> "need to study"
+    8 │ │ }
+      │ ╰─^ try adding cases for the `D` and `F` patterns
 
     error: `when` expression not handle all possible values of `Maybe A` for any type `A`
-       ┌─ test:17:15
+       ┌─ test:11:15
        │
-    17 │   unwrap : x -> when x {
+    11 │   unwrap : x -> when x {
        │ ╭───────────────^
-    18 │ │     Some x -> x
-    19 │ │ }
+    12 │ │     Some x -> x
+    13 │ │ }
        │ ╰─^ try adding a case for the `None` pattern

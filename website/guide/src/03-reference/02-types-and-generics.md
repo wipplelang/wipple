@@ -57,13 +57,7 @@ s : Structure {
 Enumeration types can be declared using the `type` template followed by a block of variants:
 
 ```wipple
-Grade : type {
-    A
-    B
-    C
-    D
-    F
-}
+Grade : type { A B C D F }
 ```
 
 You can also add associated values to each variant:

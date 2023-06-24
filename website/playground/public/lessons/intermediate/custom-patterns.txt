@@ -51,13 +51,7 @@ id: JgKd1gCI
 type: code
 ---
 
-Grade : type {
-    A
-    B
-    C
-    D
-    F
-}
+Grade : type { A B C D F }
 
 ---
 id: 3WYlp_7e
@@ -74,13 +68,7 @@ id: eh5hTssi
 type: code
 ---
 
-Grade : type {
-    A
-    B
-    C
-    D
-    F
-}
+Grade : type { A B C D F }
 
 grade : A
 
@@ -106,13 +94,7 @@ id: QUfEDFSB
 type: code
 ---
 
-Grade : type {
-    A
-    B
-    C
-    D
-    F
-}
+Grade : type { A B C D F }
 
 grade : E
 
@@ -129,13 +111,7 @@ id: WxdRae0l
 type: code
 ---
 
-Grade : type {
-    A
-    B
-    C
-    D
-    F
-}
+Grade : type { A B C D F }
 
 grade : A
 
