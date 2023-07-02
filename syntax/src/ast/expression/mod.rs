@@ -1,5 +1,6 @@
 definitions! {
     mod annotate;
+    mod end;
     mod external;
     mod format;
     mod function;
@@ -30,6 +31,7 @@ syntax_group! {
             Function,
             Tuple,
             Annotate,
+            End,
             External,
             Format,
             With,

@@ -438,6 +438,7 @@ pub enum ExpressionKind {
     Tuple(Vec<Expression>),
     Format(Vec<(InternedString, Expression)>, Option<InternedString>),
     With((Option<ConstantId>, Box<Expression>), Box<Expression>),
+    End(Box<Expression>),
 }
 
 impl ExpressionKind {
@@ -515,6 +516,9 @@ impl Expression {
             ExpressionKind::With((_, value), body) => {
                 value.traverse_mut_inner(f);
                 body.traverse_mut_inner(f);
+            }
+            ExpressionKind::End(expr) => {
+                expr.traverse_mut_inner(f);
             }
         }
     }
@@ -1234,6 +1238,7 @@ impl Lowerer {
 struct Context {
     owner: Option<ConstantId>,
     caller_accepts_text: bool,
+    in_function: bool,
 }
 
 #[derive(Debug)]
@@ -2752,8 +2757,11 @@ impl Lowerer {
                     },
                 };
 
+                let mut ctx = ctx.clone();
+                ctx.in_function = true;
+
                 let mut body = match &expr.body {
-                    Ok(expr) => self.lower_expr(expr, &scope, ctx),
+                    Ok(expr) => self.lower_expr(expr, &scope, &ctx),
                     Err(error) => Expression {
                         id: self.compiler.new_expression_id(ctx.owner),
                         span: error.span,
@@ -3046,6 +3054,35 @@ impl Lowerer {
                     id: self.compiler.new_expression_id(ctx.owner),
                     span: expr.span(),
                     kind: ExpressionKind::With((constant, Box::new(value)), Box::new(body)),
+                }
+            }
+            ast::Expression::End(expr) => {
+                let value = match &expr.value {
+                    Ok(expr) => self.lower_expr(expr, scope, ctx),
+                    Err(error) => Expression {
+                        id: self.compiler.new_expression_id(ctx.owner),
+                        span: error.span,
+                        kind: ExpressionKind::error(&self.compiler),
+                    },
+                };
+
+                if !ctx.in_function {
+                    self.compiler.add_error(
+                        "cannot use `end` outside a function",
+                        vec![Note::primary(expr.span(), "not allowed here")],
+                    );
+
+                    return Expression {
+                        id: self.compiler.new_expression_id(ctx.owner),
+                        span: expr.span(),
+                        kind: ExpressionKind::error(&self.compiler),
+                    };
+                }
+
+                Expression {
+                    id: self.compiler.new_expression_id(ctx.owner),
+                    span: expr.span(),
+                    kind: ExpressionKind::End(Box::new(value)),
                 }
             }
         }

@@ -587,7 +587,8 @@ mod util {
                 ExpressionKind::External(_, _, _)
                 | ExpressionKind::Initialize(_, _)
                 | ExpressionKind::With(_, _)
-                | ExpressionKind::ContextualConstant(_) => false,
+                | ExpressionKind::ContextualConstant(_)
+                | ExpressionKind::End(_) => false,
                 ExpressionKind::Constant(constant) | ExpressionKind::ExpandedConstant(constant) => {
                     Self::constant_is_pure(constant, program, function_call, stack).is_some()
                 }

@@ -105,6 +105,12 @@ impl BuiltinSyntaxDefinition {
         "(*value*) :: (*type*)",
     );
 
+    pub(crate) const END: Self = Self::function(
+        "end",
+        "Return from a function early with a value.",
+        "end (*value*)",
+    );
+
     pub(crate) const EXTERNAL: Self = Self::function(
         "external",
         "Call a function defined in a different programming language.",

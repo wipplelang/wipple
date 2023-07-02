@@ -226,6 +226,7 @@ macro_rules! expr {
                 Format(Vec<(InternedString, [<$prefix Expression>])>, Option<InternedString>),
                 With((Option<ConstantId>, Box<[<$prefix Expression>]>), Box<[<$prefix Expression>]>),
                 ContextualConstant(ConstantId),
+                End(Box<[<$prefix Expression>]>),
                 $($kinds)*
             }
 
@@ -387,6 +388,9 @@ impl From<UnresolvedExpression> for MonomorphizedExpression {
                 }
                 UnresolvedExpressionKind::ContextualConstant(id) => {
                     MonomorphizedExpressionKind::ContextualConstant(id)
+                }
+                UnresolvedExpressionKind::End(value) => {
+                    MonomorphizedExpressionKind::End(Box::new((*value).into()))
                 }
             },
         }
@@ -1486,6 +1490,7 @@ struct ConvertInfo {
     id: Option<ConstantId>,
     variables: BTreeMap<VariableId, engine::UnresolvedType>,
     existing_types: BTreeMap<ExpressionId, engine::UnresolvedType>,
+    function_end_value: Option<UnresolvedExpression>,
 }
 
 impl ConvertInfo {
@@ -1494,6 +1499,7 @@ impl ConvertInfo {
             id: id.into(),
             variables: Default::default(),
             existing_types: Default::default(),
+            function_end_value: Default::default(),
         }
     }
 }
@@ -1661,7 +1667,23 @@ impl Typechecker {
             lower::ExpressionKind::Function(pattern, body, captures) => {
                 let input_ty = engine::UnresolvedType::Variable(self.ctx.new_variable(None));
                 let pattern = self.convert_pattern(pattern, input_ty.clone(), None, info);
+
+                let prev_function_end_value = info.function_end_value.take();
+
                 let body = self.convert_expr(*body, info);
+
+                if let Some(end_value_expr) =
+                    mem::replace(&mut info.function_end_value, prev_function_end_value)
+                {
+                    if let Err(error) = self.unify(
+                        end_value_expr.id,
+                        end_value_expr.span,
+                        end_value_expr.ty,
+                        body.ty.clone(),
+                    ) {
+                        self.add_error(error);
+                    }
+                }
 
                 UnresolvedExpression {
                     id: expr.id,
@@ -2089,6 +2111,26 @@ impl Typechecker {
                     span: expr.span,
                     ty: body.ty.clone(),
                     kind: UnresolvedExpressionKind::With((id, Box::new(value)), Box::new(body)),
+                }
+            }
+            lower::ExpressionKind::End(value) => {
+                let value = self.convert_expr(*value, info);
+
+                if let Some(existing_value) = info.function_end_value.replace(value.clone()) {
+                    if let Err(error) =
+                        self.unify(value.id, value.span, value.ty.clone(), existing_value.ty)
+                    {
+                        self.add_error(error);
+                    }
+                }
+
+                UnresolvedExpression {
+                    id: expr.id,
+                    span: expr.span,
+                    ty: engine::UnresolvedType::Variable(
+                        self.ctx.new_variable(Some(Type::Tuple(Vec::new()))),
+                    ),
+                    kind: UnresolvedExpressionKind::End(Box::new(value)),
                 }
             }
         }
@@ -2544,6 +2586,9 @@ impl Typechecker {
                         Ok(_) => MonomorphizedExpressionKind::ContextualConstant(id),
                         Err(error) => expr_for_error(self, Err(id), error),
                     }
+                }
+                MonomorphizedExpressionKind::End(value) => {
+                    MonomorphizedExpressionKind::End(Box::new(self.monomorphize_expr(*value, info)))
                 }
             })(),
         }
@@ -3454,6 +3499,9 @@ impl Typechecker {
             ),
             MonomorphizedExpressionKind::ContextualConstant(id) => {
                 ExpressionKind::ContextualConstant(id)
+            }
+            MonomorphizedExpressionKind::End(value) => {
+                ExpressionKind::End(Box::new(self.finalize_expr(*value)))
             }
         })();
 

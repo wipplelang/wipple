@@ -347,6 +347,11 @@ impl Expression {
 
                 write!(f, "{name}")?;
             }
+            ExpressionKind::End(value) => {
+                write!(f, "(end ")?;
+                value.display_with(f, file, indent)?;
+                write!(f, ")")?;
+            }
         }
 
         Ok(())

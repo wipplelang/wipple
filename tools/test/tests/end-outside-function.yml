@@ -1,0 +1,11 @@
+code: |
+    end 5
+
+output: |
+
+diagnostics: |
+    error: cannot use `end` outside a function
+      ┌─ test:1:1
+      │
+    1 │ end 5
+      │ ^^^^^ not allowed here

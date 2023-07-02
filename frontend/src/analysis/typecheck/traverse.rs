@@ -63,13 +63,16 @@ macro_rules! traverse_expr_impl {
                     }
                 }
                 Format(segments, _) => {
-                    for (_, expr) in segments {
-                        expr.$traverse($pass_parent!(expr), context.clone(), f);
+                    for (_, segment) in segments {
+                        segment.$traverse($pass_parent!(expr), context.clone(), f);
                     }
                 }
                 With((_, value), body) => {
                     value.$traverse($pass_parent!(expr), context.clone(), f);
                     body.$traverse($pass_parent!(expr), context.clone(), f);
+                }
+                End(value) => {
+                    value.$traverse($pass_parent!(expr), context.clone(), f);
                 }
                 _ => {}
             }

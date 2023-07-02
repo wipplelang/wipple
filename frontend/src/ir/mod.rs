@@ -496,6 +496,12 @@ impl IrGen {
                 self.statements_for(label, *pos)
                     .push(Statement::Expression(expr.ty, Expression::Context(id)));
             }
+            ssa::ExpressionKind::End(value) => {
+                self.gen_expr(*value, label, pos);
+                self.gen_end(label, pos);
+                *self.terminator_for(label, *pos) = Some(Terminator::Return);
+                *pos = self.new_basic_block(label, "following function end");
+            }
         }
     }
 

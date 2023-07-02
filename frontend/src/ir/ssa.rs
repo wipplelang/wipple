@@ -76,6 +76,7 @@ pub enum ExpressionKind {
     Constant(ItemId),
     With((ConstantId, Box<Expression>), Box<Expression>),
     ContextualConstant(ConstantId),
+    End(Box<Expression>),
 }
 
 #[derive(Debug, Clone)]
@@ -264,6 +265,9 @@ impl Converter<'_> {
                 }
                 analysis::ExpressionKind::ContextualConstant(id) => {
                     ExpressionKind::ContextualConstant(*id)
+                }
+                analysis::ExpressionKind::End(value) => {
+                    ExpressionKind::End(Box::new(self.convert_expr(value, true)))
                 }
             },
         }
