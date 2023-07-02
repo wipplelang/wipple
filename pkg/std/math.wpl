@@ -9,6 +9,8 @@ use "logic"
 [on-unimplemented "cannot add `_` to `_`" Left Right]
 Add : Left Right (infer Sum) => trait (Left -> Right -> Sum)
 
+[help "Add two values together, returning the sum."]
+[help-group "Math"]
 [operator Addition-Precedence]
 + : syntax { 'a + 'b -> Add 'a 'b }
 
@@ -27,6 +29,8 @@ instance (Add Text Text Text) : a b -> format "__" a b
 [on-unimplemented "cannot subtract `_` from `_`" Right Left]
 Subtract : Left Right (infer Difference) => trait (Left -> Right -> Difference)
 
+[help "Subtract the right side from the left side, returning the difference."]
+[help-group "Math"]
 [operator Addition-Precedence]
 - : syntax { 'a - 'b -> Subtract 'a 'b }
 
@@ -44,6 +48,8 @@ instance (Subtract Double Double Double) : a b -> external "runtime" "subtract-d
 [on-unimplemented "cannot multiply `_` by `_`" Left Right]
 Multiply : Left Right (infer Product) => trait (Left -> Right -> Product)
 
+[help "Multiply two values together, returning the product."]
+[help-group "Math"]
 [operator Multiplication-Precedence]
 * : syntax { 'a * 'b -> Multiply 'a 'b }
 
@@ -61,6 +67,8 @@ instance (Multiply Double Double Double) : a b -> external "runtime" "multiply-d
 [on-unimplemented "cannot divide `_` by `_`" Left Right]
 Divide : Left Right (infer Quotient) => trait (Left -> Right -> Quotient)
 
+[help "Divide the left side by the right side, returning the quotient."]
+[help-group "Math"]
 [operator Multiplication-Precedence]
 / : syntax { 'a / 'b -> Divide 'a 'b }
 
@@ -78,6 +86,8 @@ instance (Divide Double Double Double) : a b -> external "runtime" "divide-doubl
 [on-unimplemented "cannot divide `_` by `_`" Left Right]
 Modulo : Left Right (infer Remainder) => trait (Left -> Right -> Remainder)
 
+[help "Divide the left side by the right side, returning the remainder."]
+[help-group "Math"]
 [operator Multiplication-Precedence]
 mod : syntax { 'a mod 'b -> Modulo 'a 'b }
 
@@ -95,6 +105,8 @@ instance (Modulo Double Double Double) : a b -> external "runtime" "modulo-doubl
 [on-unimplemented "cannot raise `_` to the power of `_`" Left Right]
 Power : Left Right (infer Power) => trait (Left -> Right -> Power)
 
+[help "Raise the left side to the power of the right side."]
+[help-group "Math"]
 [operator Exponentiation-Precedence]
 ^ : syntax { 'a ^ 'b -> Power 'a 'b }
 

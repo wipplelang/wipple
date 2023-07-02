@@ -15,7 +15,7 @@ diagnostics: |
      6 │ accepts-text (1 + 2)
        │               ^^^^^ expected `Text`, but found `Number`
        │
-       ┌─ <dir>/std/math.wpl:13:25
+       ┌─ <dir>/std/math.wpl:15:25
        │
-    13 │ + : syntax { 'a + 'b -> Add 'a 'b }
+    15 │ + : syntax { 'a + 'b -> Add 'a 'b }
        │                         --- actual error occurred here

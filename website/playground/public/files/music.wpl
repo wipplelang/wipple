@@ -8,6 +8,8 @@ Music : type {
 music :: Music
 music : crash "use of music outside `with-music`"
 
+[help "Begin playing music."]
+[help-group "Music"]
 with-music : syntax {
   with-music 'body -> {
     with-ui "/playground/ui/music/index.js" (handle -> {
@@ -44,6 +46,8 @@ Instrument : type {
 instrument :: Instrument
 instrument : crash "use of instrument outside `with-instrument`"
 
+[help "Play an instrument."]
+[help-group "Music"]
 with-instrument : syntax {
   with-instrument 'name 'body -> {
     instrument-name : ('name :: Instrument-Name)
@@ -63,6 +67,8 @@ instance (As Duration Note-Length) : { ms } -> Note-Length { ms-from-tempo : jus
 beats' :: Number -> Note-Length
 beats' : beats -> Note-Length { ms-from-tempo : tempo -> 60000 / tempo * beats }
 
+[help "Specify how many beats a note or rest should last."]
+[help-group "Music"]
 beats : syntax { 'n beats -> beats' 'n }
 
 [help "Play a note on an instrument. The note name should be in the format `C4` or `Eb5`."]

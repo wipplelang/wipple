@@ -20,7 +20,7 @@ diagnostics: |
      2 │ 1 + 2
        │ ^^^^^ did you mean to use the result, eg. `show` it?
        │
-       ┌─ <dir>/std/math.wpl:13:25
+       ┌─ <dir>/std/math.wpl:15:25
        │
-    13 │ + : syntax { 'a + 'b -> Add 'a 'b }
+    15 │ + : syntax { 'a + 'b -> Add 'a 'b }
        │                         --- actual warning occurred here

@@ -1,49 +1,39 @@
 [convert-from Number ('value degrees)]
-Angle : type {
-    deg :: Number
-}
+Angle : type { deg :: Number }
 
 degrees' :: Number -> Angle
 degrees' : deg -> Angle { deg }
 
-degrees : syntax {
-    'n degrees -> degrees' 'n
-}
+[help "Specify an angle in degrees."]
+[help-group "Turtle Graphics"]
+degrees : syntax { 'n degrees -> degrees' 'n }
 
 radians' :: Number -> Angle
 radians' : radians -> degrees' (radians * 180 / 3.14159)
 
-radians : syntax {
-    'n radians -> radians' 'n
-}
+[help "Specify an angle in radians."]
+[help-group "Turtle Graphics"]
+radians : syntax { 'n radians -> radians' 'n }
 
 [convert-from Number ('value pixels)]
-Pixels : type {
-    px :: Number
-}
+Pixels : type { px :: Number }
 
 pixels' :: Number -> Pixels
 pixels' : px -> Pixels { px }
 
-pixels : syntax {
-    'n pixels -> pixels' 'n
-}
+[help "Specify a distance in pixels."]
+[help-group "Turtle Graphics"]
+pixels : syntax { 'n pixels -> pixels' 'n }
 
-Turtle : type {
-    handle :: UI
-}
+Turtle : type { handle :: UI }
 
 [context]
 turtle :: Turtle
 turtle : crash "use of turtle graphics outside `with-turtle`"
 
-with-turtle : syntax {
-    with-turtle 'body -> {
-        with-ui "/playground/ui/turtle/index.js" (handle -> {
-            with (turtle : Turtle { handle }) 'body
-        })
-    }
-}
+[help "Create a new turtle drawing."]
+[help-group "Turtle Graphics"]
+with-turtle : syntax { with-turtle 'body -> { with-ui "/playground/ui/turtle/index.js" (handle -> { with (turtle : Turtle { handle }) 'body }) } }
 
 [help "Set the width of the canvas."]
 [help-group "Turtle Graphics"]
@@ -64,16 +54,16 @@ background : color -> handle of turtle . message "background" color
 [help-group "Turtle Graphics"]
 speed :: Number -> ()
 speed : speed -> {
-    if (speed < 0) (crash "`speed` must be at least 0")
-    handle of turtle . message "speed" speed
+  if (speed < 0) (crash "`speed` must be at least 0")
+  handle of turtle . message "speed" speed
 }
 
 [help "Set the x-y position of the turtle."]
 [help-group "Turtle Graphics"]
 position :: (Pixels , Pixels) -> ()
 position : ({ px : x } , { px : y }) -> {
-    handle of turtle . message "position-x" x
-    handle of turtle . message "position-y" y
+  handle of turtle . message "position-x" x
+  handle of turtle . message "position-y" y
 }
 
 [help "Lift the pen up, allowing the turtle to move without drawing."]

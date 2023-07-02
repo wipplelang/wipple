@@ -14,9 +14,13 @@ loop' : body -> when (body ()) {
   Continue -> loop' body
 }
 
+[help "Execute code repeatedly until it evaluates to `Break`."]
+[help-group "Control Flow"]
 [keyword]
 loop : syntax { loop 'body -> loop' (() -> 'body) }
 
+[help "Execute code repeatedly so long as the input is `True`."]
+[help-group "Control Flow"]
 [keyword]
 while : syntax {
   while 'condition 'body -> loop {
@@ -27,9 +31,13 @@ while : syntax {
   }
 }
 
+[help "Execute code repeatedly so long as the input is `False`."]
+[help-group "Control Flow"]
 [keyword]
 unless : syntax { unless 'condition 'body -> while (not 'condition) 'body }
 
+[help "Execute code repeatedly until the program exits."]
+[help-group "Control Flow"]
 [keyword]
 forever : syntax {
   forever 'body -> loop {
@@ -38,6 +46,8 @@ forever : syntax {
   }
 }
 
+[help "Execute code repeatedly with a delay between each repetition."]
+[help-group "Control Flow"]
 [keyword]
 loop-every : syntax {
   loop-every 'duration 'body -> loop {

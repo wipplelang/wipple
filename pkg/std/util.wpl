@@ -73,6 +73,8 @@ unwrap : x? -> expect (Unwrap-Message x?) x?
 
 As : Input Output => trait (Input -> Output)
 
+[help "Convert a value of one type into a value of a different type."]
+[help-group "Utilities"]
 [operator Casting-Precedence]
 as : syntax { 'x as 't -> (As 'x :: 't) }
 
@@ -81,12 +83,16 @@ instance (As Natural Number) : n -> external "runtime" "natural-to-number" n
 
 As? : Input Output => trait (Input -> Maybe Output)
 
+[help "Convert a value of one type into a value of a different type, or `None` if the conversion fails."]
+[help-group "Utilities"]
 [operator Casting-Precedence]
 as? : syntax { 'x as? 't -> (As? 'x :: Maybe 't) }
 
 A => instance (As? A A) : Some
 instance (As? Number Natural) : n -> external "runtime" "number-to-natural" n
 
+[help "Convert a value of one type into a value of a different type, or crash if the conversion fails."]
+[help-group "Utilities"]
 [operator Casting-Precedence]
 as! : syntax { 'x as! 't -> 'x as? 't . expect "conversion failed" }
 

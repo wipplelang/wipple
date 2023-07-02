@@ -15,11 +15,15 @@ with-task-group : f -> external "runtime" "with-task-group" f
 task' :: (() -> ()) -> Task-Group -> ()
 task' : f group -> external "runtime" "task" group f
 
+[help "Run a task in a task group."]
+[help-group "Control Flow"]
 task : syntax { task 'body -> task' (() -> 'body) }
 
 in-background' :: (() -> ()) -> ()
 in-background' : f -> external "runtime" "in-background" f
 
+[help "Execute code in the background without waiting for it to finish."]
+[help-group "Control Flow"]
 in-background : syntax { in-background 'body -> in-background' (() -> 'body) }
 
 Duration : type { ms :: Natural }

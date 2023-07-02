@@ -26,6 +26,8 @@ N where (Numeric N) (Order N) (Add N N N) => instance (Iterate (Range N) N) : ra
   })
 }
 
+[help "Form a range between two numbers."]
+[help-group "Math"]
 [operator Composition-Precedence]
 to : syntax {
   'min to 'max -> Range {
