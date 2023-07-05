@@ -445,6 +445,7 @@ impl From<UnresolvedPattern> for MonomorphizedPattern {
 }
 
 expr!(pub, "", engine::Type, {
+    PluginOutput(lower::Expression),
     Number(rust_decimal::Decimal),
     Integer(i64),
     Natural(u64),
@@ -476,6 +477,36 @@ impl Expression {
         });
 
         contains_error
+    }
+
+    pub fn find_deepest_unresolved_plugin(&self) -> Option<ExpressionId> {
+        let mut deepest_plugin = None;
+        self.traverse(|expr| {
+            if let ExpressionKind::Plugin(_, inputs) = &expr.kind {
+                deepest_plugin = Some(
+                    deepest_plugin
+                        .or_else(|| {
+                            inputs
+                                .iter()
+                                .find_map(Expression::find_deepest_unresolved_plugin)
+                        })
+                        .unwrap_or(expr.id),
+                )
+            }
+        });
+
+        deepest_plugin
+    }
+
+    pub fn find_plugin_output(&self) -> Option<ExpressionId> {
+        let mut plugin_output = None;
+        self.traverse(|expr| {
+            if let ExpressionKind::PluginOutput(_) = &expr.kind {
+                plugin_output = Some(plugin_output.unwrap_or(expr.id));
+            }
+        });
+
+        plugin_output
     }
 }
 
@@ -607,6 +638,7 @@ struct QueuedItem {
     info: MonomorphizeInfo,
     contextual: bool,
     entrypoint: bool,
+    replace: Option<ExpressionId>,
 }
 
 impl Typechecker {
@@ -677,6 +709,7 @@ impl Typechecker {
                 info,
                 contextual: false,
                 entrypoint: true,
+                replace: None,
             });
 
             entrypoint_id
@@ -690,14 +723,15 @@ impl Typechecker {
         if lowering_is_complete {
             let mut count = 0;
             let total = self.item_queue.len();
-            while let Some(item) = self.item_queue.pop_back() {
+            while let Some(mut item) = self.item_queue.pop_back() {
                 count += 1;
                 progress(count, total);
 
                 self.items.insert(item.id, (item.generic_id, None));
 
-                let expr = self.repeatedly_monomorphize_expr(item.expr, item.info);
+                let expr = self.repeatedly_monomorphize_expr(item.expr, &mut item.info);
                 let expr = self.finalize_expr(expr);
+                let expr = self.resolve_plugins(expr, item.generic_id.map(|(_, id)| id), item.info);
 
                 if item.contextual {
                     if let Some((_, id)) = item.generic_id {
@@ -829,7 +863,7 @@ impl Typechecker {
     fn repeatedly_monomorphize_expr(
         &mut self,
         expr: UnresolvedExpression,
-        mut info: MonomorphizeInfo,
+        info: &mut MonomorphizeInfo,
     ) -> MonomorphizedExpression {
         let recursion_limit = self
             .entrypoint
@@ -855,7 +889,7 @@ impl Typechecker {
             }
 
             info.has_resolved_trait = false;
-            expr = self.monomorphize_expr(expr, &mut info);
+            expr = self.monomorphize_expr(expr, info);
 
             let is_unresolved = || {
                 let mut is_unresolved = false;
@@ -1118,8 +1152,9 @@ impl Typechecker {
             }
         }
 
-        let expr = self.repeatedly_monomorphize_expr(expr, monomorphize_info);
+        let expr = self.repeatedly_monomorphize_expr(expr, &mut monomorphize_info);
         let expr = self.finalize_expr(expr);
+        let expr = self.resolve_plugins(expr, Some(id), monomorphize_info);
 
         if let Some(tr) = tr {
             self.declarations
@@ -1356,6 +1391,7 @@ impl Typechecker {
                 info,
                 contextual,
                 entrypoint: false,
+                replace: None,
             });
 
             break 'check;
@@ -3675,6 +3711,94 @@ impl Typechecker {
             })(),
         }
     }
+
+    fn resolve_plugins(
+        &mut self,
+        expr: Expression,
+        constant_id: Option<ConstantId>,
+        info: MonomorphizeInfo,
+    ) -> Expression {
+        loop {
+            let mut resolved_plugin = false;
+
+            while let Some(id) = expr.find_plugin_output() {
+                resolved_plugin = true;
+
+                // Find the plugin output
+                let expr = expr.as_root_query(id).unwrap().clone();
+                let ty = expr.ty;
+                let expr = match expr.kind {
+                    ExpressionKind::PluginOutput(expr) => expr,
+                    _ => unreachable!(),
+                };
+
+                // Convert it to a typecheckable expression
+                let mut convert_info = ConvertInfo::new(constant_id);
+                let expr = self.convert_expr(expr, &mut convert_info);
+
+                // Make sure the type unifies with the type of the original expression
+                if let Err(error) = self.unify(expr.id, expr.span, expr.ty.clone(), ty) {
+                    self.add_error(error);
+                }
+
+                // Add the expression to the monomorphization queue
+                self.item_queue.push_back(QueuedItem {
+                    generic_id: None,
+                    id: self
+                        .compiler
+                        .new_item_id_with(constant_id.and_then(|id| id.file)),
+                    expr,
+                    info: info.clone(),
+                    contextual: false,
+                    entrypoint: false,
+                    replace: Some(id),
+                });
+            }
+
+            if let Some(id) = expr.find_deepest_unresolved_plugin() {
+                resolved_plugin = true;
+
+                // Find the plugin call
+                let expr = expr.as_root_query(id).unwrap().clone();
+                let ty = expr.ty;
+                let (path, inputs) = match expr.kind {
+                    ExpressionKind::Plugin(path, inputs) => (path, inputs),
+                    _ => unreachable!(),
+                };
+
+                // Run the plugin
+                let expr = self.run_plugin(&path, ty.clone(), inputs);
+
+                // Convert it to a typecheckable expression
+                let mut convert_info = ConvertInfo::new(constant_id);
+                let expr = self.convert_expr(expr, &mut convert_info);
+
+                // Make sure the type unifies with the type of the original expression
+                if let Err(error) = self.unify(expr.id, expr.span, expr.ty.clone(), ty) {
+                    self.add_error(error);
+                }
+
+                // Add the expression to the monomorphization queue
+                self.item_queue.push_back(QueuedItem {
+                    generic_id: None,
+                    id: self
+                        .compiler
+                        .new_item_id_with(constant_id.and_then(|id| id.file)),
+                    expr,
+                    info: info.clone(),
+                    contextual: false,
+                    entrypoint: false,
+                    replace: Some(id),
+                });
+            }
+
+            if !resolved_plugin {
+                break;
+            }
+        }
+
+        expr
+    }
 }
 
 impl Typechecker {
@@ -4699,6 +4823,12 @@ impl Typechecker {
     fn get_default_for_param(&self, param: TypeParameterId) -> Option<Type> {
         self.with_type_parameter_decl(param, |decl| decl.default.clone())
             .flatten()
+    }
+}
+
+impl Typechecker {
+    fn run_plugin(&mut self, path: &str, ty: Type, inputs: Vec<Expression>) -> lower::Expression {
+        todo!()
     }
 }
 

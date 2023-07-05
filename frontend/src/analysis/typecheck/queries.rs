@@ -19,6 +19,18 @@ impl Expression {
         expr
     }
 
+    /// See [`Expression::as_root_query`].
+    pub fn as_root_query_mut(&self, id: ExpressionId) -> Option<&Expression> {
+        let mut expr = None;
+        self.traverse(|e| {
+            if e.id == id {
+                expr = Some(e);
+            }
+        });
+
+        expr
+    }
+
     /// Treating `self` as the root expression, find the parent of the
     /// expression with the provided ID.
     pub fn as_root_query_parent_of(&self, id: ExpressionId) -> Option<&Expression> {

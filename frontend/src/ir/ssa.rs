@@ -210,6 +210,10 @@ impl Converter<'_> {
                         .map(|expr| self.convert_expr(expr, false))
                         .collect(),
                 ),
+                analysis::ExpressionKind::Plugin(_, _)
+                | analysis::ExpressionKind::PluginOutput(_) => {
+                    panic!("found unresolved plugin")
+                }
                 analysis::ExpressionKind::Initialize(_, _) => {
                     unreachable!(
                         "variable initialization is handled specially by convert_block_to_ssa"
