@@ -219,6 +219,7 @@ macro_rules! expr {
                 When(Box<[<$prefix Expression>]>, Vec<[<$prefix Arm>]>),
                 External(InternedString, InternedString, Vec<[<$prefix Expression>]>),
                 Runtime(RuntimeFunction, Vec<[<$prefix Expression>]>),
+                Plugin(InternedString, Vec<[<$prefix Expression>]>),
                 Initialize([<$prefix Pattern>], Box<[<$prefix Expression>]>),
                 Structure(Vec<[<$prefix Expression>]>),
                 Variant(VariantIndex, Vec<[<$prefix Expression>]>),
@@ -339,6 +340,12 @@ impl From<UnresolvedExpression> for MonomorphizedExpression {
                 UnresolvedExpressionKind::Runtime(func, inputs) => {
                     MonomorphizedExpressionKind::Runtime(
                         func,
+                        inputs.into_iter().map(From::from).collect(),
+                    )
+                }
+                UnresolvedExpressionKind::Plugin(path, inputs) => {
+                    MonomorphizedExpressionKind::Plugin(
+                        path,
                         inputs.into_iter().map(From::from).collect(),
                     )
                 }
@@ -1755,6 +1762,19 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Runtime(func, inputs),
                 }
             }
+            lower::ExpressionKind::Plugin(path, inputs) => {
+                let inputs = inputs
+                    .into_iter()
+                    .map(|expr| self.convert_expr(expr, info))
+                    .collect();
+
+                UnresolvedExpression {
+                    id: expr.id,
+                    span: expr.span,
+                    ty: engine::UnresolvedType::Variable(self.ctx.new_variable(None)),
+                    kind: UnresolvedExpressionKind::Plugin(path, inputs),
+                }
+            }
             lower::ExpressionKind::Annotate(value, ty) => {
                 let ty = self.convert_type_annotation(ty);
                 let value = self.convert_expr(*value, info);
@@ -2480,6 +2500,15 @@ impl Typechecker {
                 MonomorphizedExpressionKind::Runtime(func, inputs) => {
                     MonomorphizedExpressionKind::Runtime(
                         func,
+                        inputs
+                            .into_iter()
+                            .map(|expr| self.monomorphize_expr(expr, info))
+                            .collect(),
+                    )
+                }
+                MonomorphizedExpressionKind::Plugin(path, inputs) => {
+                    MonomorphizedExpressionKind::Plugin(
+                        path,
                         inputs
                             .into_iter()
                             .map(|expr| self.monomorphize_expr(expr, info))
@@ -3452,6 +3481,13 @@ impl Typechecker {
             }
             MonomorphizedExpressionKind::Runtime(func, inputs) => ExpressionKind::Runtime(
                 func,
+                inputs
+                    .into_iter()
+                    .map(|expr| self.finalize_expr(expr))
+                    .collect(),
+            ),
+            MonomorphizedExpressionKind::Plugin(path, inputs) => ExpressionKind::Plugin(
+                path,
                 inputs
                     .into_iter()
                     .map(|expr| self.finalize_expr(expr))

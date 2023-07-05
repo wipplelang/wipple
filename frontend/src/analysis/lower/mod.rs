@@ -431,6 +431,7 @@ pub enum ExpressionKind {
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
     Runtime(RuntimeFunction, Vec<Expression>),
+    Plugin(InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
     Initialize(Pattern, Box<Expression>),
     Instantiate(TypeId, Vec<((SpanList, InternedString), Expression)>),
@@ -462,7 +463,8 @@ impl Expression {
             | ExpressionKind::Trait(_)
             | ExpressionKind::Variable(_)
             | ExpressionKind::Text(_)
-            | ExpressionKind::Number(_) => {}
+            | ExpressionKind::Number(_)
+            | ExpressionKind::Plugin(_, _) => {}
             ExpressionKind::Block(statements, _) => {
                 for statement in statements {
                     statement.traverse_mut_inner(f);
@@ -2880,37 +2882,45 @@ impl Lowerer {
                     })
                     .collect::<Vec<_>>();
 
-                if expr.namespace.as_str() == "runtime" {
-                    let func = match expr.identifier.as_str().parse::<RuntimeFunction>() {
-                        Ok(func) => func,
-                        Err(_) => {
-                            self.compiler.add_error(
-                                "unknown runtime function",
-                                vec![Note::primary(
-                                    expr.span(),
-                                    "check the Wipple source code for the latest list of runtime functions"
-                                )],
-                            );
+                match expr.namespace.as_str() {
+                    "runtime" => {
+                        let func = match expr.identifier.as_str().parse::<RuntimeFunction>() {
+                            Ok(func) => func,
+                            Err(_) => {
+                                self.compiler.add_error(
+                                    "unknown runtime function",
+                                    vec![Note::primary(
+                                        expr.span(),
+                                        "check the Wipple source code for the latest list of runtime functions"
+                                    )],
+                                );
 
-                            return Expression {
-                                id: self.compiler.new_expression_id(ctx.owner),
-                                span: expr.span(),
-                                kind: ExpressionKind::error(&self.compiler),
-                            };
+                                return Expression {
+                                    id: self.compiler.new_expression_id(ctx.owner),
+                                    span: expr.span(),
+                                    kind: ExpressionKind::error(&self.compiler),
+                                };
+                            }
+                        };
+
+                        Expression {
+                            id: self.compiler.new_expression_id(ctx.owner),
+                            span: expr.span(),
+                            kind: ExpressionKind::Runtime(func, inputs),
                         }
-                    };
-
-                    Expression {
-                        id: self.compiler.new_expression_id(ctx.owner),
-                        span: expr.span(),
-                        kind: ExpressionKind::Runtime(func, inputs),
                     }
-                } else {
-                    Expression {
+                    "plugin" => {
+                        Expression {
+                            id: self.compiler.new_expression_id(ctx.owner),
+                            span: expr.span(),
+                            kind: ExpressionKind::Plugin(expr.identifier, inputs),
+                        }
+                    }
+                    _ => Expression {
                         id: self.compiler.new_expression_id(ctx.owner),
                         span: expr.span(),
                         kind: ExpressionKind::External(expr.namespace, expr.identifier, inputs),
-                    }
+                    },
                 }
             }
             ast::Expression::Annotate(expr) => {
