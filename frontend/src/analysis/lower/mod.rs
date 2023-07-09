@@ -7,6 +7,7 @@ use crate::{
     BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, ExpressionId, FieldIndex, FilePath,
     ScopeId, SyntaxId, TraitId, TypeId, TypeParameterId, VariableId, VariantIndex,
 };
+use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque},
@@ -409,16 +410,16 @@ impl DiagnosticAliases {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Expression {
     pub id: ExpressionId,
     pub span: SpanList,
     pub kind: ExpressionKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub enum ExpressionKind {
-    Error(Backtrace),
+    Error(#[serde(skip)] Backtrace),
     Marker(TypeId),
     Constant(ConstantId),
     Trait(TraitId),
@@ -526,7 +527,7 @@ impl Expression {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Arm {
     pub span: SpanList,
     pub pattern: Pattern,
@@ -534,15 +535,15 @@ pub struct Arm {
     pub body: Expression,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Pattern {
     pub span: SpanList,
     pub kind: PatternKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub enum PatternKind {
-    Error(Backtrace),
+    Error(#[serde(skip)] Backtrace),
     Wildcard,
     Number(InternedString),
     Text(InternedString),
@@ -560,15 +561,15 @@ impl PatternKind {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct TypeAnnotation {
     pub span: SpanList,
     pub kind: TypeAnnotationKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub enum TypeAnnotationKind {
-    Error(Backtrace),
+    Error(#[serde(skip)] Backtrace),
     Placeholder,
     Named(TypeId, Vec<TypeAnnotation>),
     Parameter(TypeParameterId),
@@ -593,7 +594,8 @@ pub struct Bound {
 
 pub type CaptureList = Vec<(VariableId, SpanList)>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumString, strum::Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumString, strum::Display, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum RuntimeFunction {
     Crash,
@@ -2909,13 +2911,11 @@ impl Lowerer {
                             kind: ExpressionKind::Runtime(func, inputs),
                         }
                     }
-                    "plugin" => {
-                        Expression {
-                            id: self.compiler.new_expression_id(ctx.owner),
-                            span: expr.span(),
-                            kind: ExpressionKind::Plugin(expr.identifier, inputs),
-                        }
-                    }
+                    "plugin" => Expression {
+                        id: self.compiler.new_expression_id(ctx.owner),
+                        span: expr.span(),
+                        kind: ExpressionKind::Plugin(expr.identifier, inputs),
+                    },
                     _ => Expression {
                         id: self.compiler.new_expression_id(ctx.owner),
                         span: expr.span(),

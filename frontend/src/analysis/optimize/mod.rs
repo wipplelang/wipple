@@ -584,7 +584,7 @@ mod util {
                             .iter()
                             .all(|expr| expr.is_pure_inner(program, function_call, stack))
                 }
-                ExpressionKind::Plugin(_, _) | ExpressionKind::PluginOutput(_) => {
+                ExpressionKind::Plugin(_, _) => {
                     panic!("found unresolved plugin")
                 }
                 ExpressionKind::External(_, _, _)

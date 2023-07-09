@@ -49,3 +49,21 @@ impl fmt::Debug for InternedString {
         write!(f, "{:?}", self.as_str())
     }
 }
+
+impl serde::Serialize for InternedString {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.to_string().serialize(serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for InternedString {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        String::deserialize(deserializer).map(InternedString::new)
+    }
+}

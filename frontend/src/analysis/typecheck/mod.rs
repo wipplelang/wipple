@@ -20,8 +20,10 @@ use crate::{
     BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, ExpressionId, FieldIndex, ItemId,
     PatternId, SyntaxId, TraitId, TypeId, TypeParameterId, VariableId, VariantIndex,
 };
+use async_trait::async_trait;
 use itertools::Itertools;
 use parking_lot::RwLock;
+use serde::Serialize;
 use std::{
     cell::RefCell,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
@@ -199,7 +201,7 @@ pub struct BuiltinSyntaxDecl {
 macro_rules! expr {
     ($vis:vis, $prefix:literal, $type:ty, { $($kinds:tt)* }) => {
         paste::paste! {
-            #[derive(Debug, Clone)]
+            #[derive(Debug, Clone, Serialize)]
             $vis struct [<$prefix Expression>] {
                 $vis id: ExpressionId,
                 $vis span: SpanList,
@@ -207,9 +209,9 @@ macro_rules! expr {
                 $vis kind: [<$prefix ExpressionKind>],
             }
 
-            #[derive(Debug, Clone)]
+            #[derive(Debug, Clone, Serialize)]
             $vis enum [<$prefix ExpressionKind>] {
-                Error(Backtrace),
+                Error(#[serde(skip)] Backtrace),
                 Marker,
                 Variable(VariableId),
                 Text(InternedString),
@@ -231,7 +233,7 @@ macro_rules! expr {
                 $($kinds)*
             }
 
-            #[derive(Debug, Clone)]
+            #[derive(Debug, Clone, Serialize)]
             $vis struct [<$prefix Arm>] {
                 $vis span: SpanList,
                 $vis pattern: [<$prefix Pattern>],
@@ -252,16 +254,16 @@ macro_rules! expr {
 macro_rules! pattern {
     ($vis:vis, $prefix:literal, { $($kinds:tt)* }) => {
         paste::paste! {
-            #[derive(Debug, Clone)]
+            #[derive(Debug, Clone, Serialize)]
             $vis struct [<$prefix Pattern>] {
                 $vis id: PatternId,
                 $vis span: SpanList,
                 $vis kind: [<$prefix PatternKind>],
             }
 
-            #[derive(Debug, Clone)]
+            #[derive(Debug, Clone, Serialize)]
             $vis enum [<$prefix PatternKind>] {
-                Error(Backtrace),
+                Error(#[serde(skip)] Backtrace),
                 Wildcard,
                 Text(InternedString),
                 Variable(VariableId),
@@ -445,7 +447,7 @@ impl From<UnresolvedPattern> for MonomorphizedPattern {
 }
 
 expr!(pub, "", engine::Type, {
-    PluginOutput(lower::Expression),
+    // PluginOutput(#[serde(skip)] lower::Expression),
     Number(rust_decimal::Decimal),
     Integer(i64),
     Natural(u64),
@@ -496,17 +498,6 @@ impl Expression {
         });
 
         deepest_plugin
-    }
-
-    pub fn find_plugin_output(&self) -> Option<ExpressionId> {
-        let mut plugin_output = None;
-        self.traverse(|expr| {
-            if let ExpressionKind::PluginOutput(_) = &expr.kind {
-                plugin_output = Some(plugin_output.unwrap_or(expr.id));
-            }
-        });
-
-        plugin_output
     }
 }
 
@@ -594,7 +585,7 @@ impl Error {
 }
 
 impl Compiler {
-    pub(crate) fn typecheck_with_progress(
+    pub(crate) async fn typecheck_with_progress(
         &self,
         entrypoint: lower::File,
         complete: bool,
@@ -605,9 +596,11 @@ impl Compiler {
         progress(Progress::CollectingTypes);
         typechecker.collect_types();
 
-        typechecker.resolve(complete, |count, remaining| {
-            progress(Progress::ResolvingDeclarations { count, remaining });
-        })
+        typechecker
+            .resolve(complete, |count, remaining| {
+                progress(Progress::ResolvingDeclarations { count, remaining });
+            })
+            .await
     }
 }
 
@@ -638,7 +631,6 @@ struct QueuedItem {
     info: MonomorphizeInfo,
     contextual: bool,
     entrypoint: bool,
-    replace: Option<ExpressionId>,
 }
 
 impl Typechecker {
@@ -691,7 +683,7 @@ impl Typechecker {
         self.errors.borrow_mut().push_back(error);
     }
 
-    pub fn resolve(
+    pub async fn resolve(
         mut self,
         lowering_is_complete: bool,
         mut progress: impl FnMut(usize, usize),
@@ -709,7 +701,6 @@ impl Typechecker {
                 info,
                 contextual: false,
                 entrypoint: true,
-                replace: None,
             });
 
             entrypoint_id
@@ -730,8 +721,12 @@ impl Typechecker {
                 self.items.insert(item.id, (item.generic_id, None));
 
                 let expr = self.repeatedly_monomorphize_expr(item.expr, &mut item.info);
+
                 let expr = self.finalize_expr(expr);
-                let expr = self.resolve_plugins(expr, item.generic_id.map(|(_, id)| id), item.info);
+
+                let expr = self
+                    .resolve_plugins(expr, item.generic_id.map(|(_, id)| id), item.info)
+                    .await;
 
                 if item.contextual {
                     if let Some((_, id)) = item.generic_id {
@@ -759,7 +754,8 @@ impl Typechecker {
         // Typecheck generic constants
 
         for (id, (instance, body)) in self.generic_constants.clone() {
-            self.typecheck_generic_constant_expr(id, instance, body);
+            self.typecheck_generic_constant_expr(id, instance, body)
+                .await;
         }
 
         // Report errors if needed
@@ -987,7 +983,7 @@ impl Typechecker {
         );
     }
 
-    fn typecheck_generic_constant_expr(
+    async fn typecheck_generic_constant_expr(
         &mut self,
         id: ConstantId,
         instance: bool,
@@ -1153,8 +1149,12 @@ impl Typechecker {
         }
 
         let expr = self.repeatedly_monomorphize_expr(expr, &mut monomorphize_info);
+
         let expr = self.finalize_expr(expr);
-        let expr = self.resolve_plugins(expr, Some(id), monomorphize_info);
+
+        let expr = self
+            .resolve_plugins(expr, Some(id), monomorphize_info)
+            .await;
 
         if let Some(tr) = tr {
             self.declarations
@@ -1391,7 +1391,6 @@ impl Typechecker {
                 info,
                 contextual,
                 entrypoint: false,
-                replace: None,
             });
 
             break 'check;
@@ -3712,54 +3711,22 @@ impl Typechecker {
         }
     }
 
-    fn resolve_plugins(
+    async fn resolve_plugins(
         &mut self,
         expr: Expression,
         constant_id: Option<ConstantId>,
-        info: MonomorphizeInfo,
+        mut info: MonomorphizeInfo,
     ) -> Expression {
+        let mut final_expr = expr;
+
         loop {
             let mut resolved_plugin = false;
 
-            while let Some(id) = expr.find_plugin_output() {
-                resolved_plugin = true;
-
-                // Find the plugin output
-                let expr = expr.as_root_query(id).unwrap().clone();
-                let ty = expr.ty;
-                let expr = match expr.kind {
-                    ExpressionKind::PluginOutput(expr) => expr,
-                    _ => unreachable!(),
-                };
-
-                // Convert it to a typecheckable expression
-                let mut convert_info = ConvertInfo::new(constant_id);
-                let expr = self.convert_expr(expr, &mut convert_info);
-
-                // Make sure the type unifies with the type of the original expression
-                if let Err(error) = self.unify(expr.id, expr.span, expr.ty.clone(), ty) {
-                    self.add_error(error);
-                }
-
-                // Add the expression to the monomorphization queue
-                self.item_queue.push_back(QueuedItem {
-                    generic_id: None,
-                    id: self
-                        .compiler
-                        .new_item_id_with(constant_id.and_then(|id| id.file)),
-                    expr,
-                    info: info.clone(),
-                    contextual: false,
-                    entrypoint: false,
-                    replace: Some(id),
-                });
-            }
-
-            if let Some(id) = expr.find_deepest_unresolved_plugin() {
+            if let Some(id) = final_expr.find_deepest_unresolved_plugin() {
                 resolved_plugin = true;
 
                 // Find the plugin call
-                let expr = expr.as_root_query(id).unwrap().clone();
+                let expr = final_expr.as_root_query(id).unwrap().clone();
                 let ty = expr.ty;
                 let (path, inputs) = match expr.kind {
                     ExpressionKind::Plugin(path, inputs) => (path, inputs),
@@ -3767,7 +3734,9 @@ impl Typechecker {
                 };
 
                 // Run the plugin
-                let expr = self.run_plugin(&path, ty.clone(), inputs);
+                let expr = self
+                    .resolve_plugin_expr(&path, expr.id, expr.span, ty.clone(), inputs)
+                    .await;
 
                 // Convert it to a typecheckable expression
                 let mut convert_info = ConvertInfo::new(constant_id);
@@ -3778,18 +3747,11 @@ impl Typechecker {
                     self.add_error(error);
                 }
 
-                // Add the expression to the monomorphization queue
-                self.item_queue.push_back(QueuedItem {
-                    generic_id: None,
-                    id: self
-                        .compiler
-                        .new_item_id_with(constant_id.and_then(|id| id.file)),
-                    expr,
-                    info: info.clone(),
-                    contextual: false,
-                    entrypoint: false,
-                    replace: Some(id),
-                });
+                let expr = self.repeatedly_monomorphize_expr(expr, &mut info);
+                let expr = self.finalize_expr(expr);
+
+                let replaced = final_expr.as_root_replace(id, expr);
+                assert!(replaced);
             }
 
             if !resolved_plugin {
@@ -3797,7 +3759,7 @@ impl Typechecker {
             }
         }
 
-        expr
+        final_expr
     }
 }
 
@@ -4827,8 +4789,50 @@ impl Typechecker {
 }
 
 impl Typechecker {
-    fn run_plugin(&mut self, path: &str, ty: Type, inputs: Vec<Expression>) -> lower::Expression {
-        todo!()
+    async fn resolve_plugin_expr(
+        &mut self,
+        name: &str,
+        id: ExpressionId,
+        span: SpanList,
+        ty: Type,
+        inputs: Vec<Expression>,
+    ) -> lower::Expression {
+        struct PluginApi;
+
+        #[async_trait]
+        impl crate::PluginApi for PluginApi {
+            // TODO
+        }
+
+        let output = self
+            .compiler
+            .loader
+            .plugin(
+                name,
+                crate::PluginInput::Expression {
+                    span,
+                    ty: ty.clone(),
+                    inputs,
+                },
+                &PluginApi,
+            )
+            .await;
+
+        match output {
+            Ok(output) => output.expr,
+            Err(error) => {
+                self.compiler.add_error(
+                    format!("error while resolving plugin: {error}"),
+                    vec![Note::primary(span, "see plugin documentation for details")],
+                );
+
+                lower::Expression {
+                    id,
+                    span,
+                    kind: lower::ExpressionKind::error(&self.compiler),
+                }
+            }
+        }
     }
 }
 

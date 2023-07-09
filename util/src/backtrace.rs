@@ -1,7 +1,7 @@
 #[cfg(debug_assertions)]
 use crate::Shared;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Backtrace {
     #[cfg(debug_assertions)]
     pub trace: Option<Shared<backtrace::Backtrace>>,

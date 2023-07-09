@@ -9,6 +9,7 @@ pub mod ir;
 use async_trait::async_trait;
 use diagnostics::*;
 use helpers::{InternedString, Shared};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
@@ -27,6 +28,13 @@ pub trait Loader: Debug + Send + Sync + 'static {
 
     async fn load(&self, path: FilePath) -> anyhow::Result<Arc<str>>;
 
+    async fn plugin(
+        &self,
+        name: &str,
+        input: PluginInput,
+        api: &dyn PluginApi,
+    ) -> anyhow::Result<PluginOutput>;
+
     fn virtual_paths(&self) -> Shared<HashMap<InternedString, Arc<str>>>;
 
     fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::ast::File<analysis::Analysis>>>>;
@@ -34,7 +42,7 @@ pub trait Loader: Debug + Send + Sync + 'static {
     fn source_map(&self) -> Shared<SourceMap>;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum FilePath {
     Path(InternedString),
     Url(InternedString),
@@ -59,6 +67,29 @@ impl fmt::Display for FilePath {
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub enum PluginInput {
+    Expression {
+        span: analysis::SpanList,
+        ty: analysis::Type,
+        inputs: Vec<analysis::Expression>,
+    },
+    Instance {
+        span: analysis::SpanList,
+        id: ConstantId,
+    },
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PluginOutput {
+    pub expr: analysis::lower::Expression,
+}
+
+#[async_trait]
+pub trait PluginApi: Send + Sync {
+    // TODO
+}
+
 #[derive(Debug, Clone)]
 pub struct Compiler {
     pub loader: Arc<dyn Loader>,
@@ -81,7 +112,7 @@ macro_rules! file_ids {
 
             $(
                 $(#[$meta])*
-                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
                 pub struct [<$id:camel Id>] {
                     pub file: Option<FilePath>,
                     pub counter: usize,
@@ -153,7 +184,7 @@ macro_rules! node_ids {
 
             $(
                 $(#[$meta])*
-                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
                 pub struct [<$id:camel Id>] {
                     pub owner: Option<ConstantId>, // `None` if entrypoint
                     pub counter: usize,
@@ -200,7 +231,7 @@ macro_rules! ids {
 
             $(
                 $(#[$meta])*
-                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
                 pub struct [<$id:camel Id>] {
                     pub counter: usize,
                 }
@@ -235,7 +266,7 @@ macro_rules! indexes {
         paste::paste! {
             $(
                 $(#[$meta])*
-                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
                 pub struct [<$id:camel Index>](usize);
 
                 impl [<$id:camel Index>] {

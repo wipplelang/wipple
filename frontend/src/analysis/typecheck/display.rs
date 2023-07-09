@@ -208,7 +208,7 @@ impl Expression {
                 }
                 write!(f, ")")?;
             }
-            ExpressionKind::Plugin(_, _) | ExpressionKind::PluginOutput(_) => {
+            ExpressionKind::Plugin(_, _) => {
                 panic!("found unresolved plugin")
             }
             ExpressionKind::Initialize(pattern, value) => {

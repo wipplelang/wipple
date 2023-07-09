@@ -1,10 +1,11 @@
 use crate::{analysis::SpanList, TraitId, TypeId, TypeParameterId};
+use serde::Serialize;
 use std::{
     cell::{Cell, RefCell},
     collections::BTreeMap,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum UnresolvedType {
     Variable(TypeVariable),
     Parameter(TypeParameterId),
@@ -16,7 +17,7 @@ pub enum UnresolvedType {
     Error,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum Type {
     Parameter(TypeParameterId),
     Named(TypeId, Vec<Type>, TypeStructure<Type>),
@@ -26,7 +27,7 @@ pub enum Type {
     Error,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum TypeStructure<Ty> {
     Marker,
     Structure(Vec<Ty>),
@@ -87,10 +88,10 @@ impl From<TypeStructure<Type>> for TypeStructure<UnresolvedType> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct TypeVariable(pub usize);
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum BuiltinType<Ty> {
     Number,
     Integer,

@@ -97,7 +97,11 @@ impl Compiler {
             }
 
             let (entrypoint, lowering_is_complete) = compiler.lower_with(files, &options);
-            let program = compiler.typecheck_with(entrypoint, lowering_is_complete, &options);
+
+            let program = compiler
+                .typecheck_with(entrypoint, lowering_is_complete, &options)
+                .await;
+
             compiler.lint_with(&program, &options);
 
             let diagnostics = compiler.finish_analysis();
@@ -167,7 +171,7 @@ impl Compiler {
         (entrypoint, lowering_is_complete)
     }
 
-    pub fn typecheck_with(
+    pub async fn typecheck_with(
         &self,
         entrypoint: lower::File,
         lowering_is_complete: bool,
@@ -178,6 +182,7 @@ impl Compiler {
                 progress.lock()(Progress::Typechecking(p))
             }
         })
+        .await
     }
 
     pub fn lint_with(&self, program: &Program, options: &Options) {

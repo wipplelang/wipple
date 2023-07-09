@@ -210,8 +210,7 @@ impl Converter<'_> {
                         .map(|expr| self.convert_expr(expr, false))
                         .collect(),
                 ),
-                analysis::ExpressionKind::Plugin(_, _)
-                | analysis::ExpressionKind::PluginOutput(_) => {
+                analysis::ExpressionKind::Plugin(_, _) => {
                     panic!("found unresolved plugin")
                 }
                 analysis::ExpressionKind::Initialize(_, _) => {
