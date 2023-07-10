@@ -154,7 +154,7 @@ lazy_static! {
 
 
     static ref LOADER: loader::Loader = {
-        loader::Loader::new_with_fetcher(
+        loader::Loader::new(
             Some(wipple_frontend::FilePath::Url(wipple_frontend::helpers::InternedString::new(FILES_PATH))),
             Some(wipple_frontend::FilePath::Path(
                 #[cfg(feature = "debug_playground")]
@@ -165,6 +165,8 @@ lazy_static! {
                 #[cfg(not(feature = "debug_playground"))]
                 wipple_frontend::helpers::InternedString::new(loader::STD_URL),
             )),
+        )
+        .with_fetcher(
             Fetcher::new()
                 .with_path_handler(|path| {
                     Box::pin(async move {
@@ -404,7 +406,7 @@ pub fn analyze(code: String, lint: bool, callback: js_sys::Function) {
             completions,
         };
 
-        let output = JsValue::from_serde(&output).unwrap();
+        let output = serde_wasm_bindgen::to_value(&output).unwrap();
 
         callback
             .call2(&JsValue::NULL, &JsValue::TRUE, &output)
@@ -1221,7 +1223,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
         .min_by_key(|(span, _)| span.primary_end() - span.primary_start())
         .map(|(_, hover)| hover);
 
-    JsValue::from_serde(&hover).unwrap()
+    serde_wasm_bindgen::to_value(&hover).unwrap()
 }
 
 #[wasm_bindgen]
