@@ -170,18 +170,6 @@ pub struct File<D: Driver> {
     pub file: D::File,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for File<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(File {
-            span: Default::default(),
-            attributes: Default::default(),
-            statements: arbitrary::Arbitrary::arbitrary(u)?,
-            file: crate::SingleFile(String::new()),
-        })
-    }
-}
-
 impl<D: Driver> Format<D> for File<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
         Ok(format!(

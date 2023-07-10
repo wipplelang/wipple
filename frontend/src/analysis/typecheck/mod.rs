@@ -17,8 +17,8 @@ use crate::{
     analysis::{lower, SpanList},
     diagnostics::{Fix, FixRange, Note},
     helpers::{Backtrace, InternedString},
-    BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, ExpressionId, FieldIndex, ItemId,
-    PatternId, SyntaxId, TraitId, TypeId, TypeParameterId, VariableId, VariantIndex,
+    BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, ExpressionId, FieldIndex, FilePath,
+    ItemId, PatternId, SyntaxId, TraitId, TypeId, TypeParameterId, VariableId, VariantIndex,
 };
 use async_trait::async_trait;
 use itertools::Itertools;
@@ -3735,7 +3735,7 @@ impl Typechecker {
 
                 // Run the plugin
                 let expr = self
-                    .resolve_plugin_expr(&path, expr.id, expr.span, ty.clone(), inputs)
+                    .resolve_plugin_expr(path, expr.id, expr.span, ty.clone(), inputs)
                     .await;
 
                 // Convert it to a typecheckable expression
@@ -4791,7 +4791,7 @@ impl Typechecker {
 impl Typechecker {
     async fn resolve_plugin_expr(
         &mut self,
-        path: &str,
+        path: InternedString,
         id: ExpressionId,
         span: SpanList,
         ty: Type,
@@ -4803,6 +4803,26 @@ impl Typechecker {
         impl crate::PluginApi for PluginApi {
             // TODO
         }
+
+        let path = match self
+            .compiler
+            .loader
+            .resolve(FilePath::Path(path), id.owner.and_then(|id| id.file))
+        {
+            Ok(path) => path,
+            Err(error) => {
+                self.compiler.add_error(
+                    format!("cannot load file `{}`: {}", path, error),
+                    vec![Note::primary(span, "while resolving this plugin")],
+                );
+
+                return lower::Expression {
+                    id,
+                    span,
+                    kind: lower::ExpressionKind::error(&self.compiler),
+                };
+            }
+        };
 
         let output = self
             .compiler

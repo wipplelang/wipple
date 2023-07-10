@@ -35,19 +35,6 @@ pub struct VariantTypeMember<D: Driver> {
     pub tys: Vec<Result<Type<D>, SyntaxError<D>>>,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for VariantTypeMember<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(VariantTypeMember {
-            span: Default::default(),
-            name_list: None,
-            name_span: Default::default(),
-            name: arbitrary::Arbitrary::arbitrary(u)?,
-            tys: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> VariantTypeMember<D> {
     pub fn span(&self) -> D::Span {
         self.span

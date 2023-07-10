@@ -21,20 +21,6 @@ pub struct TypeFunctionStatement<D: Driver> {
     pub attributes: StatementAttributes<D>,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TypeFunctionStatement<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(TypeFunctionStatement {
-            span: Default::default(),
-            arrow_span: Default::default(),
-            pattern: arbitrary::Arbitrary::arbitrary(u)?,
-            value: arbitrary::Arbitrary::arbitrary(u)?,
-            scope: Default::default(),
-            attributes: Default::default(),
-        })
-    }
-}
-
 impl<D: Driver> TypeFunctionStatement<D> {
     pub fn span(&self) -> D::Span {
         self.span

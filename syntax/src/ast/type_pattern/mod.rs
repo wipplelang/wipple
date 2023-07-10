@@ -37,16 +37,6 @@ pub struct NameTypePattern<D: Driver> {
     pub name: D::InternedString,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NameTypePattern<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(NameTypePattern {
-            span: Default::default(),
-            name: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> NameTypePattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -75,16 +65,6 @@ impl<D: Driver> Format<D> for ListTypePattern<D> {
                 .collect::<Result<Vec<_>, _>>()?
                 .join(" ")
         ))
-    }
-}
-
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for ListTypePattern<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(ListTypePattern {
-            span: Default::default(),
-            patterns: arbitrary::Arbitrary::arbitrary(u)?,
-        })
     }
 }
 

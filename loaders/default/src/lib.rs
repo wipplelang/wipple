@@ -123,11 +123,23 @@ impl std::fmt::Debug for Fetcher {
 #[derive(Default)]
 pub struct PluginHandler {
     from_path: Option<
-        Box<dyn Fn(&str, PluginInput) -> BoxFuture<anyhow::Result<PluginOutput>> + Send + Sync>,
+        Box<
+            dyn Fn(
+                    &str,
+                    PluginInput,
+                    &dyn PluginApi,
+                ) -> BoxFuture<'static, anyhow::Result<PluginOutput>>
+                + Send
+                + Sync,
+        >,
     >,
     from_url: Option<
         Box<
-            dyn Fn(Url, PluginInput) -> BoxFuture<'static, anyhow::Result<PluginOutput>>
+            dyn Fn(
+                    Url,
+                    PluginInput,
+                    &dyn PluginApi,
+                ) -> BoxFuture<'static, anyhow::Result<PluginOutput>>
                 + Send
                 + Sync,
         >,
@@ -298,35 +310,41 @@ impl wipple_frontend::Loader for Loader {
 
     async fn plugin(
         &self,
-        name: &str,
+        path: FilePath,
         input: PluginInput,
         api: &dyn PluginApi,
     ) -> anyhow::Result<PluginOutput> {
-        let code = match path {
+        let output = match path {
             FilePath::Path(path) => {
-                let fut = self.fetcher.lock().from_path.as_ref().ok_or_else(|| {
-                    anyhow::Error::msg("this environment does not support loading from the paths")
-                })?(path.as_str());
+                let fut = self
+                    .plugin_handler
+                    .lock()
+                    .from_path
+                    .as_ref()
+                    .ok_or_else(|| {
+                        anyhow::Error::msg(
+                            "this environment does not support loading from the paths",
+                        )
+                    })?(path.as_str(), input, api);
 
-                Arc::from(fut.await?)
+                fut.await?
             }
             FilePath::Url(url) => {
-                let fut = self.fetcher.lock().from_url.as_ref().ok_or_else(|| {
-                    anyhow::Error::msg("this environment does not support loading from URLs")
-                })?(Url::from_str(&url).unwrap());
+                let fut = self
+                    .plugin_handler
+                    .lock()
+                    .from_url
+                    .as_ref()
+                    .ok_or_else(|| {
+                        anyhow::Error::msg("this environment does not support loading from URLs")
+                    })?(Url::from_str(&url).unwrap(), input, api);
 
-                Arc::from(fut.await?)
+                fut.await?
             }
-            FilePath::Virtual(path) => self
-                .virtual_paths
-                .lock()
-                .get(&path)
-                .cloned()
-                .ok_or_else(|| anyhow::Error::msg("invalid virtual path"))?,
             _ => unimplemented!(),
         };
 
-        Ok(code)
+        Ok(output)
     }
 
     fn virtual_paths(&self) -> Shared<HashMap<InternedString, Arc<str>>> {

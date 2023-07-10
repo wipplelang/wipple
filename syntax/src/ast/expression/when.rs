@@ -16,18 +16,6 @@ pub struct WhenExpression<D: Driver> {
     pub body: Result<WhenBody<D>, SyntaxError<D>>,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for WhenExpression<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(WhenExpression {
-            span: Default::default(),
-            when_span: Default::default(),
-            input: arbitrary::Arbitrary::arbitrary(u)?,
-            body: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> WhenExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span

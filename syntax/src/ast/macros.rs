@@ -56,8 +56,6 @@ macro_rules! group {
     }) => {
         $(#[$attr])*
         #[derive(Debug, Clone)]
-        #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-        #[cfg_attr(feature = "arbitrary", arbitrary(bound = "D: crate::FuzzDriver"))]
         $vis enum $name<D: $crate::Driver> {
             $($kind($data<D>),)*
         }

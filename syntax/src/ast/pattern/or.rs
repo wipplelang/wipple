@@ -15,18 +15,6 @@ pub struct OrPattern<D: Driver> {
     pub right: Result<Box<Pattern<D>>, SyntaxError<D>>,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for OrPattern<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(OrPattern {
-            span: Default::default(),
-            or_span: Default::default(),
-            left: arbitrary::Arbitrary::arbitrary(u)?,
-            right: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> OrPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span

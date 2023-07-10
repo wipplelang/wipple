@@ -15,19 +15,6 @@ pub struct UseStatement<D: Driver> {
     pub attributes: StatementAttributes<D>,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for UseStatement<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(UseStatement {
-            span: Default::default(),
-            use_span: Default::default(),
-            // This should prevent `use` statements from being generated
-            kind: Err(arbitrary::Arbitrary::arbitrary(u)?),
-            attributes: Default::default(),
-        })
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum UseStatementKind<D: Driver> {
     File(

@@ -16,17 +16,6 @@ pub struct TupleExpression<D: Driver> {
     pub exprs: Vec<Result<Expression<D>, SyntaxError<D>>>,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TupleExpression<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(TupleExpression {
-            span: Default::default(),
-            comma_span: Default::default(),
-            exprs: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> TupleExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span

@@ -54,18 +54,6 @@ pub struct SyntaxError<D: Driver> {
     pub trace: Backtrace,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: Driver> arbitrary::Arbitrary<'a> for SyntaxError<D>
-where
-    D::Span: Default,
-{
-    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        // Make the fuzzer generate more useful results by preventing syntax
-        // errors from being generated
-        Err(arbitrary::Error::IncorrectFormat)
-    }
-}
-
 impl<D: Driver> AstBuilder<D> {
     pub fn syntax_error(&self, span: D::Span) -> SyntaxError<D> {
         SyntaxError {

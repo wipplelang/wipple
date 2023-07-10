@@ -19,18 +19,6 @@ pub struct FunctionSyntaxRule<D: Driver> {
     pub body: Result<Box<SyntaxPattern<D>>, SyntaxError<D>>,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for FunctionSyntaxRule<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(FunctionSyntaxRule {
-            span: Default::default(),
-            arrow_span: Default::default(),
-            pattern: arbitrary::Arbitrary::arbitrary(u)?,
-            body: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> FunctionSyntaxRule<D> {
     pub fn span(&self) -> D::Span {
         self.span

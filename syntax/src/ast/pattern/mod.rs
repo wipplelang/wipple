@@ -43,17 +43,6 @@ pub struct NamePattern<D: Driver> {
     pub scope: D::Scope,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NamePattern<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(NamePattern {
-            span: Default::default(),
-            name: arbitrary::Arbitrary::arbitrary(u)?,
-            scope: Default::default(),
-        })
-    }
-}
-
 impl<D: Driver> NamePattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -71,17 +60,6 @@ pub struct TextPattern<D: Driver> {
     pub span: D::Span,
     pub text: D::InternedString,
     pub raw: D::InternedString,
-}
-
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TextPattern<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(TextPattern {
-            span: Default::default(),
-            text: arbitrary::Arbitrary::arbitrary(u)?,
-            raw: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
 }
 
 impl<D: Driver> TextPattern<D> {
@@ -102,16 +80,6 @@ pub struct NumberPattern<D: Driver> {
     pub number: D::InternedString,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NumberPattern<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(NumberPattern {
-            span: Default::default(),
-            number: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> NumberPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -127,15 +95,6 @@ impl<D: Driver> Format<D> for NumberPattern<D> {
 #[derive(Debug, Clone)]
 pub struct UnitPattern<D: Driver> {
     pub span: D::Span,
-}
-
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for UnitPattern<D> {
-    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(UnitPattern {
-            span: Default::default(),
-        })
-    }
 }
 
 impl<D: Driver> UnitPattern<D> {
@@ -156,18 +115,6 @@ pub struct VariantPattern<D: Driver> {
     pub name_span: D::Span,
     pub name: D::InternedString,
     pub values: Vec<Result<Pattern<D>, SyntaxError<D>>>,
-}
-
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for VariantPattern<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(VariantPattern {
-            span: Default::default(),
-            name_span: Default::default(),
-            name: arbitrary::Arbitrary::arbitrary(u)?,
-            values: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
 }
 
 impl<D: Driver> VariantPattern<D> {
@@ -195,16 +142,6 @@ pub struct DestructurePattern<D: Driver> {
     pub destructurings: Vec<Result<Destructuring<D>, SyntaxError<D>>>,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for DestructurePattern<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(DestructurePattern {
-            span: Default::default(),
-            destructurings: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> DestructurePattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -227,15 +164,6 @@ impl<D: Driver> Format<D> for DestructurePattern<D> {
 #[derive(Debug, Clone)]
 pub struct WildcardPattern<D: Driver> {
     pub span: D::Span,
-}
-
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for WildcardPattern<D> {
-    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(WildcardPattern {
-            span: Default::default(),
-        })
-    }
 }
 
 impl<D: Driver> WildcardPattern<D> {

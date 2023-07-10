@@ -13,15 +13,6 @@ pub struct SpecializeStatementAttribute<D: Driver> {
     pub span: D::Span,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for SpecializeStatementAttribute<D> {
-    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(SpecializeStatementAttribute {
-            span: Default::default(),
-        })
-    }
-}
-
 impl<D: Driver> SpecializeStatementAttribute<D> {
     pub fn span(&self) -> D::Span {
         self.span
