@@ -30,7 +30,7 @@ pub trait Loader: Debug + Send + Sync + 'static {
 
     async fn plugin(
         &self,
-        name: &str,
+        path: FilePath,
         input: PluginInput,
         api: &dyn PluginApi,
     ) -> anyhow::Result<PluginOutput>;

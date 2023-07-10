@@ -4791,7 +4791,7 @@ impl Typechecker {
 impl Typechecker {
     async fn resolve_plugin_expr(
         &mut self,
-        name: &str,
+        path: &str,
         id: ExpressionId,
         span: SpanList,
         ty: Type,
@@ -4808,7 +4808,7 @@ impl Typechecker {
             .compiler
             .loader
             .plugin(
-                name,
+                path,
                 crate::PluginInput::Expression {
                     span,
                     ty: ty.clone(),

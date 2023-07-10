@@ -9,7 +9,6 @@ async-trait = "0.1"
 futures = "0.3"
 parking_lot = "0.12"
 path-clean = "0.1"
-replace_with = "0.1"
 url = "2"
 wipple-frontend = { path = "../../frontend" }
 

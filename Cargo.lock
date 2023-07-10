@@ -2734,7 +2734,6 @@ dependencies = [
  "futures",
  "parking_lot",
  "path-clean",
- "replace_with",
  "reqwest",
  "sha2",
  "tokio",
