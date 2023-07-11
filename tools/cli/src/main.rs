@@ -576,6 +576,11 @@ async fn build_with_passes<P>(
                 },
             )
         }),
+    )
+    .with_fetcher(
+        loader::Fetcher::new()
+            .with_default_path_handler()
+            .with_default_url_handler(),
     );
 
     if path == "-" {

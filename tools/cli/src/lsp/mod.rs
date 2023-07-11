@@ -1,7 +1,7 @@
 use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
 use std::{collections::HashMap, sync::Arc};
 use tower_lsp::{jsonrpc, lsp_types::*, Client, LanguageServer, LspService, Server};
-use wipple_default_loader::Loader;
+use wipple_default_loader::{Fetcher, Loader};
 use wipple_frontend::{
     analysis::{
         lower::AnyDeclaration,
@@ -33,6 +33,11 @@ pub async fn run() {
                 wipple_frontend::helpers::InternedString::new(wipple_default_loader::STD_URL),
             )
         }),
+    )
+    .with_fetcher(
+        Fetcher::new()
+            .with_default_path_handler()
+            .with_default_url_handler(),
     );
 
     let (service, socket) = LspService::new(|client| Backend {
