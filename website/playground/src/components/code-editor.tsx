@@ -141,7 +141,13 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     setSyntaxHighlighting([]); // FIXME: Prevent flashing
                     setFatalError(false);
 
-                    const analysis = await runner.analyze(code, lint);
+                    const analysis = await runner.analyze(code, lint, async (url, input, api) => {
+                        console.log("Received plugin request:", { url, input, api });
+
+                        const plugin = await import(/* @vite-ignore */ url);
+                        return plugin.handle(input, api);
+                    });
+
                     setSyntaxHighlighting(analysis.syntaxHighlighting);
 
                     setOutput({

@@ -276,11 +276,73 @@ fn get_analysis<'a>() -> Option<MappedMutexGuard<'a, Analysis>> {
 }
 
 #[wasm_bindgen]
-pub fn analyze(code: String, lint: bool, callback: js_sys::Function) {
+pub fn analyze(
+    code: String,
+    lint: bool,
+    handle_plugin: js_sys::Function,
+    callback: js_sys::Function,
+) {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
     wasm_bindgen_futures::spawn_local(async move {
+        let handle_plugin = SendWrapper::new(handle_plugin);
+
+        let prev_plugin_hander = Mutex::new(Some(LOADER.set_plugin_handler(
+            loader::PluginHandler::new().with_url_handler(move |path, input, _api| {
+                let handle_plugin = handle_plugin.clone();
+
+                Box::pin(SendSyncFuture(Box::pin(async move {
+                    #[wasm_bindgen(getter_with_clone)]
+                    struct Api {
+                        // TODO
+                    }
+
+                    let api = Api {
+                        // TODO
+                    };
+
+                    let mut output = handle_plugin
+                        .call3(
+                            &JsValue::NULL,
+                            &path.to_string().into(),
+                            &serde_wasm_bindgen::to_value(&input).unwrap(),
+                            &api.into(),
+                        )
+                        .map_err(|e| {
+                            anyhow::Error::msg(
+                                js_sys::Error::try_from(e)
+                                    .expect("expected error")
+                                    .to_string()
+                                    .as_string()
+                                    .unwrap(),
+                            )
+                        })?;
+
+                    let output = loop {
+                        let promise = match output.dyn_into::<js_sys::Promise>() {
+                            Ok(promise) => promise,
+                            Err(value) => break value,
+                        };
+
+                        output = wasm_bindgen_futures::JsFuture::from(promise)
+                            .await
+                            .map_err(|e| {
+                                anyhow::Error::msg(
+                                    js_sys::Error::try_from(e)
+                                        .expect("expected error")
+                                        .to_string()
+                                        .as_string()
+                                        .unwrap(),
+                                )
+                            })?;
+                    };
+
+                    Ok(serde_wasm_bindgen::from_value(output).unwrap())
+                })))
+            }),
+        )));
+
         let panic_hook = std::panic::take_hook();
 
         let callback = SendWrapper::new(callback);
@@ -292,6 +354,10 @@ pub fn analyze(code: String, lint: bool, callback: js_sys::Function) {
                 callback
                     .call2(&JsValue::NULL, &JsValue::FALSE, &info.to_string().into())
                     .unwrap();
+
+                if let Some(prev_plugin_hander) = prev_plugin_hander.lock().take() {
+                    LOADER.set_plugin_handler(prev_plugin_hander);
+                }
 
                 panic_hook(info);
             })

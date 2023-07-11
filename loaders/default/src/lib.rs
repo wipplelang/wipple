@@ -3,7 +3,7 @@
 use async_trait::async_trait;
 use futures::future::BoxFuture;
 use path_clean::PathClean;
-use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
+use std::{collections::HashMap, mem, path::PathBuf, str::FromStr, sync::Arc};
 use url::Url;
 use wipple_frontend::{
     analysis::{self, Analysis},
@@ -150,6 +150,32 @@ impl PluginHandler {
     pub fn new() -> Self {
         Default::default()
     }
+
+    pub fn with_path_handler(
+        mut self,
+        from_path: impl Fn(
+                &str,
+                PluginInput,
+                &dyn PluginApi,
+            ) -> BoxFuture<'static, anyhow::Result<PluginOutput>>
+            + Send
+            + Sync
+            + 'static,
+    ) -> Self {
+        self.from_path = Some(Box::new(from_path));
+        self
+    }
+
+    pub fn with_url_handler(
+        mut self,
+        from_url: impl Fn(Url, PluginInput, &dyn PluginApi) -> BoxFuture<'static, anyhow::Result<PluginOutput>>
+            + Send
+            + Sync
+            + 'static,
+    ) -> Self {
+        self.from_url = Some(Box::new(from_url));
+        self
+    }
 }
 
 impl std::fmt::Debug for PluginHandler {
@@ -159,7 +185,6 @@ impl std::fmt::Debug for PluginHandler {
 }
 
 impl Loader {
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn new(base: Option<FilePath>, std_path: Option<FilePath>) -> Self {
         Loader {
             virtual_paths: Default::default(),
@@ -180,6 +205,10 @@ impl Loader {
     pub fn with_plugin_handler(mut self, handler: PluginHandler) -> Self {
         self.plugin_handler = Shared::new(handler);
         self
+    }
+
+    pub fn set_plugin_handler(&self, handler: PluginHandler) -> PluginHandler {
+        mem::replace(&mut *self.plugin_handler.lock(), handler)
     }
 }
 
@@ -284,7 +313,7 @@ impl wipple_frontend::Loader for Loader {
         let code = match path {
             FilePath::Path(path) => {
                 let fut = self.fetcher.lock().from_path.as_ref().ok_or_else(|| {
-                    anyhow::Error::msg("this environment does not support loading from the paths")
+                    anyhow::Error::msg("this environment does not support loading from paths")
                 })?(path.as_str());
 
                 Arc::from(fut.await?)
@@ -323,7 +352,7 @@ impl wipple_frontend::Loader for Loader {
                     .as_ref()
                     .ok_or_else(|| {
                         anyhow::Error::msg(
-                            "this environment does not support loading from the paths",
+                            "this environment does not support loading plugins from paths",
                         )
                     })?(path.as_str(), input, api);
 
@@ -336,7 +365,9 @@ impl wipple_frontend::Loader for Loader {
                     .from_url
                     .as_ref()
                     .ok_or_else(|| {
-                        anyhow::Error::msg("this environment does not support loading from URLs")
+                        anyhow::Error::msg(
+                            "this environment does not support loading plugins from URLs",
+                        )
                     })?(Url::from_str(&url).unwrap(), input, api);
 
                 fut.await?
