@@ -4,6 +4,8 @@ definitions! {
     mod external;
     mod format;
     mod function;
+    mod intrinsic;
+    mod plugin;
     mod tuple;
     mod when;
     mod with;
@@ -33,6 +35,8 @@ syntax_group! {
             Annotate,
             End,
             External,
+            Intrinsic,
+            Plugin,
             Format,
             With,
             When,

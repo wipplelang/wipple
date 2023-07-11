@@ -289,8 +289,10 @@ pub fn analyze(
         let handle_plugin = SendWrapper::new(handle_plugin);
 
         let prev_plugin_hander = Mutex::new(Some(LOADER.set_plugin_handler(
-            loader::PluginHandler::new().with_url_handler(move |path, input, _api| {
+            loader::PluginHandler::new().with_url_handler(move |path, name, input, _api| {
                 let handle_plugin = handle_plugin.clone();
+                let path = path.to_string();
+                let name = name.to_string();
 
                 Box::pin(SendSyncFuture(Box::pin(async move {
                     #[wasm_bindgen(getter_with_clone)]
@@ -303,11 +305,14 @@ pub fn analyze(
                     };
 
                     let mut output = handle_plugin
-                        .call3(
+                        .apply(
                             &JsValue::NULL,
-                            &path.to_string().into(),
-                            &serde_wasm_bindgen::to_value(&input).unwrap(),
-                            &api.into(),
+                            &js_sys::Array::from_iter([
+                                path.into(),
+                                name.into(),
+                                serde_wasm_bindgen::to_value(&input).unwrap(),
+                                api.into(),
+                            ]),
                         )
                         .map_err(|e| {
                             anyhow::Error::msg(

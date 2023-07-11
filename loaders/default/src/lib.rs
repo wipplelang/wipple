@@ -126,6 +126,7 @@ pub struct PluginHandler {
         Box<
             dyn Fn(
                     &str,
+                    &str,
                     PluginInput,
                     &dyn PluginApi,
                 ) -> BoxFuture<'static, anyhow::Result<PluginOutput>>
@@ -137,6 +138,7 @@ pub struct PluginHandler {
         Box<
             dyn Fn(
                     Url,
+                    &str,
                     PluginInput,
                     &dyn PluginApi,
                 ) -> BoxFuture<'static, anyhow::Result<PluginOutput>>
@@ -155,6 +157,7 @@ impl PluginHandler {
         mut self,
         from_path: impl Fn(
                 &str,
+                &str,
                 PluginInput,
                 &dyn PluginApi,
             ) -> BoxFuture<'static, anyhow::Result<PluginOutput>>
@@ -168,7 +171,12 @@ impl PluginHandler {
 
     pub fn with_url_handler(
         mut self,
-        from_url: impl Fn(Url, PluginInput, &dyn PluginApi) -> BoxFuture<'static, anyhow::Result<PluginOutput>>
+        from_url: impl Fn(
+                Url,
+                &str,
+                PluginInput,
+                &dyn PluginApi,
+            ) -> BoxFuture<'static, anyhow::Result<PluginOutput>>
             + Send
             + Sync
             + 'static,
@@ -340,6 +348,7 @@ impl wipple_frontend::Loader for Loader {
     async fn plugin(
         &self,
         path: FilePath,
+        name: InternedString,
         input: PluginInput,
         api: &dyn PluginApi,
     ) -> anyhow::Result<PluginOutput> {
@@ -354,7 +363,7 @@ impl wipple_frontend::Loader for Loader {
                         anyhow::Error::msg(
                             "this environment does not support loading plugins from paths",
                         )
-                    })?(path.as_str(), input, api);
+                    })?(path.as_str(), &name, input, api);
 
                 fut.await?
             }
@@ -368,7 +377,7 @@ impl wipple_frontend::Loader for Loader {
                         anyhow::Error::msg(
                             "this environment does not support loading plugins from URLs",
                         )
-                    })?(Url::from_str(&url).unwrap(), input, api);
+                    })?(Url::from_str(&url).unwrap(), &name, input, api);
 
                 fut.await?
             }

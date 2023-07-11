@@ -9,9 +9,9 @@ use crate::{
 use futures::{stream, StreamExt};
 
 #[derive(Debug, Clone)]
-pub struct ExternalExpression<D: Driver> {
+pub struct PluginExpression<D: Driver> {
     pub span: D::Span,
-    pub external_span: D::Span,
+    pub plugin_span: D::Span,
     pub path_span: D::Span,
     pub path: D::InternedString,
     pub name_span: D::Span,
@@ -19,16 +19,16 @@ pub struct ExternalExpression<D: Driver> {
     pub inputs: Vec<Result<Expression<D>, SyntaxError<D>>>,
 }
 
-impl<D: Driver> ExternalExpression<D> {
+impl<D: Driver> PluginExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
     }
 }
 
-impl<D: Driver> Format<D> for ExternalExpression<D> {
+impl<D: Driver> Format<D> for PluginExpression<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
         Ok(format!(
-            "(external \"{}\" \"{}\" {})",
+            "(syntax \"{}\" \"{}\" {})",
             self.path.as_ref(),
             self.name.as_ref(),
             self.inputs
@@ -40,20 +40,20 @@ impl<D: Driver> Format<D> for ExternalExpression<D> {
     }
 }
 
-pub struct ExternalExpressionSyntax;
+pub struct PluginExpressionSyntax;
 
-impl<D: Driver> Syntax<D> for ExternalExpressionSyntax {
+impl<D: Driver> Syntax<D> for PluginExpressionSyntax {
     type Context = ExpressionSyntaxContext<D>;
 
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
-            "external",
-            |context, span, external_span, exprs, scope| async move {
+            "syntax",
+            |context, span, plugin_span, exprs, scope| async move {
                 if exprs.len() < 2 {
                     context
                         .ast_builder
                         .driver
-                        .syntax_error(span, "`external` accepts at least 2 inputs");
+                        .syntax_error(span, "`syntax` for plugins accepts at least 2 inputs");
 
                     return Err(context.ast_builder.syntax_error(span));
                 }
@@ -99,9 +99,9 @@ impl<D: Driver> Syntax<D> for ExternalExpressionSyntax {
                     .collect()
                     .await;
 
-                Ok(ExternalExpression {
+                Ok(PluginExpression {
                     span,
-                    external_span,
+                    plugin_span,
                     path_span,
                     path,
                     name_span,
@@ -115,5 +115,5 @@ impl<D: Driver> Syntax<D> for ExternalExpressionSyntax {
 }
 
 pub(crate) fn builtin_syntax_definitions() -> Vec<crate::ast::BuiltinSyntaxDefinition> {
-    vec![crate::ast::BuiltinSyntaxDefinition::EXTERNAL]
+    Vec::new() // This use of `syntax` is undocumented
 }

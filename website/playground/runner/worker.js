@@ -29,13 +29,14 @@ onmessage = async (event) => {
                     runner.analyze(
                         code,
                         lint,
-                        (path, input, api) =>
+                        (path, name, input, api) =>
                             new Promise((resolve, reject) => {
                                 const responderId = uuid();
 
                                 postMessage({
                                     type: "plugin",
                                     path,
+                                    name,
                                     input,
                                     api: {
                                         // TODO

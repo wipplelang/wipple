@@ -431,8 +431,8 @@ pub enum ExpressionKind {
     Function(Pattern, Box<Expression>, CaptureList),
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
-    Runtime(RuntimeFunction, Vec<Expression>),
-    Plugin(InternedString, Vec<Expression>),
+    Intrinsic(Intrinsic, Vec<Expression>),
+    Plugin(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
     Initialize(Pattern, Box<Expression>),
     Instantiate(TypeId, Vec<((SpanList, InternedString), Expression)>),
@@ -465,7 +465,7 @@ impl Expression {
             | ExpressionKind::Variable(_)
             | ExpressionKind::Text(_)
             | ExpressionKind::Number(_)
-            | ExpressionKind::Plugin(_, _) => {}
+            | ExpressionKind::Plugin(_, _, _) => {}
             ExpressionKind::Block(statements, _) => {
                 for statement in statements {
                     statement.traverse_mut_inner(f);
@@ -485,7 +485,7 @@ impl Expression {
                     arm.body.traverse_mut_inner(f);
                 }
             }
-            ExpressionKind::External(_, _, exprs) | ExpressionKind::Runtime(_, exprs) => {
+            ExpressionKind::External(_, _, exprs) | ExpressionKind::Intrinsic(_, exprs) => {
                 for expr in exprs {
                     expr.traverse_mut_inner(f);
                 }
@@ -594,10 +594,21 @@ pub struct Bound {
 
 pub type CaptureList = Vec<(VariableId, SpanList)>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumString, strum::Display, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    strum::EnumString,
+    strum::Display,
+    Serialize,
+    Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
-pub enum RuntimeFunction {
+pub enum Intrinsic {
     Crash,
     Display,
     Prompt,
@@ -2884,43 +2895,69 @@ impl Lowerer {
                     })
                     .collect::<Vec<_>>();
 
-                match expr.namespace.as_str() {
-                    "runtime" => {
-                        let func = match expr.identifier.as_str().parse::<RuntimeFunction>() {
-                            Ok(func) => func,
-                            Err(_) => {
-                                self.compiler.add_error(
-                                    "unknown runtime function",
-                                    vec![Note::primary(
-                                        expr.span(),
-                                        "check the Wipple source code for the latest list of runtime functions"
-                                    )],
-                                );
+                Expression {
+                    id: self.compiler.new_expression_id(ctx.owner),
+                    span: expr.span(),
+                    kind: ExpressionKind::External(expr.path, expr.name, inputs),
+                }
+            }
+            ast::Expression::Intrinsic(expr) => {
+                let func = match expr.name.as_str().parse::<Intrinsic>() {
+                    Ok(func) => func,
+                    Err(_) => {
+                        self.compiler.add_error(
+                            "unknown runtime function",
+                            vec![Note::primary(
+                                expr.span(),
+                                "check the Wipple source code for the latest list of runtime functions"
+                            )],
+                        );
 
-                                return Expression {
-                                    id: self.compiler.new_expression_id(ctx.owner),
-                                    span: expr.span(),
-                                    kind: ExpressionKind::error(&self.compiler),
-                                };
-                            }
-                        };
-
-                        Expression {
+                        return Expression {
                             id: self.compiler.new_expression_id(ctx.owner),
                             span: expr.span(),
-                            kind: ExpressionKind::Runtime(func, inputs),
-                        }
+                            kind: ExpressionKind::error(&self.compiler),
+                        };
                     }
-                    "plugin" => Expression {
-                        id: self.compiler.new_expression_id(ctx.owner),
-                        span: expr.span(),
-                        kind: ExpressionKind::Plugin(expr.identifier, inputs),
-                    },
-                    _ => Expression {
-                        id: self.compiler.new_expression_id(ctx.owner),
-                        span: expr.span(),
-                        kind: ExpressionKind::External(expr.namespace, expr.identifier, inputs),
-                    },
+                };
+
+                let inputs = expr
+                    .inputs
+                    .iter()
+                    .map(|expr| match expr {
+                        Ok(expr) => self.lower_expr(expr, scope, ctx),
+                        Err(error) => Expression {
+                            id: self.compiler.new_expression_id(ctx.owner),
+                            span: error.span,
+                            kind: ExpressionKind::error(&self.compiler),
+                        },
+                    })
+                    .collect::<Vec<_>>();
+
+                Expression {
+                    id: self.compiler.new_expression_id(ctx.owner),
+                    span: expr.span(),
+                    kind: ExpressionKind::Intrinsic(func, inputs),
+                }
+            }
+            ast::Expression::Plugin(expr) => {
+                let inputs = expr
+                    .inputs
+                    .iter()
+                    .map(|expr| match expr {
+                        Ok(expr) => self.lower_expr(expr, scope, ctx),
+                        Err(error) => Expression {
+                            id: self.compiler.new_expression_id(ctx.owner),
+                            span: error.span,
+                            kind: ExpressionKind::error(&self.compiler),
+                        },
+                    })
+                    .collect::<Vec<_>>();
+
+                Expression {
+                    id: self.compiler.new_expression_id(ctx.owner),
+                    span: expr.span(),
+                    kind: ExpressionKind::Plugin(expr.path, expr.name, inputs),
                 }
             }
             ast::Expression::Annotate(expr) => {

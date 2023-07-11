@@ -11,7 +11,7 @@ mod queries;
 pub mod traverse;
 
 pub use engine::{BottomTypeReason, BuiltinType, GenericSubstitutions, Type, TypeStructure};
-pub use lower::{RuntimeFunction, TypeAnnotation, TypeAnnotationKind};
+pub use lower::{Intrinsic, TypeAnnotation, TypeAnnotationKind};
 
 use crate::{
     analysis::{lower, SpanList},
@@ -220,8 +220,8 @@ macro_rules! expr {
                 Function([<$prefix Pattern>], Box<[<$prefix Expression>]>, lower::CaptureList),
                 When(Box<[<$prefix Expression>]>, Vec<[<$prefix Arm>]>),
                 External(InternedString, InternedString, Vec<[<$prefix Expression>]>),
-                Runtime(RuntimeFunction, Vec<[<$prefix Expression>]>),
-                Plugin(InternedString, Vec<[<$prefix Expression>]>),
+                Intrinsic(Intrinsic, Vec<[<$prefix Expression>]>),
+                Plugin(InternedString, InternedString, Vec<[<$prefix Expression>]>),
                 Initialize([<$prefix Pattern>], Box<[<$prefix Expression>]>),
                 Structure(Vec<[<$prefix Expression>]>),
                 Variant(VariantIndex, Vec<[<$prefix Expression>]>),
@@ -339,15 +339,16 @@ impl From<UnresolvedExpression> for MonomorphizedExpression {
                         inputs.into_iter().map(From::from).collect(),
                     )
                 }
-                UnresolvedExpressionKind::Runtime(func, inputs) => {
-                    MonomorphizedExpressionKind::Runtime(
+                UnresolvedExpressionKind::Intrinsic(func, inputs) => {
+                    MonomorphizedExpressionKind::Intrinsic(
                         func,
                         inputs.into_iter().map(From::from).collect(),
                     )
                 }
-                UnresolvedExpressionKind::Plugin(path, inputs) => {
+                UnresolvedExpressionKind::Plugin(path, name, inputs) => {
                     MonomorphizedExpressionKind::Plugin(
                         path,
+                        name,
                         inputs.into_iter().map(From::from).collect(),
                     )
                 }
@@ -481,16 +482,16 @@ impl Expression {
         contains_error
     }
 
-    pub fn find_deepest_unresolved_plugin(&self) -> Option<ExpressionId> {
+    pub fn find_first_unresolved_plugin(&self) -> Option<ExpressionId> {
         let mut deepest_plugin = None;
         self.traverse(|expr| {
-            if let ExpressionKind::Plugin(_, inputs) = &expr.kind {
+            if let ExpressionKind::Plugin(_, _, inputs) = &expr.kind {
                 deepest_plugin = Some(
                     deepest_plugin
                         .or_else(|| {
                             inputs
                                 .iter()
-                                .find_map(Expression::find_deepest_unresolved_plugin)
+                                .find_map(Expression::find_first_unresolved_plugin)
                         })
                         .unwrap_or(expr.id),
                 )
@@ -1784,7 +1785,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::External(lib, identifier, inputs),
                 }
             }
-            lower::ExpressionKind::Runtime(func, inputs) => {
+            lower::ExpressionKind::Intrinsic(func, inputs) => {
                 let inputs = inputs
                     .into_iter()
                     .map(|expr| self.convert_expr(expr, info))
@@ -1794,10 +1795,10 @@ impl Typechecker {
                     id: expr.id,
                     span: expr.span,
                     ty: engine::UnresolvedType::Variable(self.ctx.new_variable(None)),
-                    kind: UnresolvedExpressionKind::Runtime(func, inputs),
+                    kind: UnresolvedExpressionKind::Intrinsic(func, inputs),
                 }
             }
-            lower::ExpressionKind::Plugin(path, inputs) => {
+            lower::ExpressionKind::Plugin(path, name, inputs) => {
                 let inputs = inputs
                     .into_iter()
                     .map(|expr| self.convert_expr(expr, info))
@@ -1807,7 +1808,7 @@ impl Typechecker {
                     id: expr.id,
                     span: expr.span,
                     ty: engine::UnresolvedType::Variable(self.ctx.new_variable(None)),
-                    kind: UnresolvedExpressionKind::Plugin(path, inputs),
+                    kind: UnresolvedExpressionKind::Plugin(path, name, inputs),
                 }
             }
             lower::ExpressionKind::Annotate(value, ty) => {
@@ -2532,8 +2533,8 @@ impl Typechecker {
                             .collect(),
                     )
                 }
-                MonomorphizedExpressionKind::Runtime(func, inputs) => {
-                    MonomorphizedExpressionKind::Runtime(
+                MonomorphizedExpressionKind::Intrinsic(func, inputs) => {
+                    MonomorphizedExpressionKind::Intrinsic(
                         func,
                         inputs
                             .into_iter()
@@ -2541,9 +2542,10 @@ impl Typechecker {
                             .collect(),
                     )
                 }
-                MonomorphizedExpressionKind::Plugin(path, inputs) => {
+                MonomorphizedExpressionKind::Plugin(path, name, inputs) => {
                     MonomorphizedExpressionKind::Plugin(
                         path,
+                        name,
                         inputs
                             .into_iter()
                             .map(|expr| self.monomorphize_expr(expr, info))
@@ -3514,15 +3516,16 @@ impl Typechecker {
                         .collect(),
                 )
             }
-            MonomorphizedExpressionKind::Runtime(func, inputs) => ExpressionKind::Runtime(
+            MonomorphizedExpressionKind::Intrinsic(func, inputs) => ExpressionKind::Intrinsic(
                 func,
                 inputs
                     .into_iter()
                     .map(|expr| self.finalize_expr(expr))
                     .collect(),
             ),
-            MonomorphizedExpressionKind::Plugin(path, inputs) => ExpressionKind::Plugin(
+            MonomorphizedExpressionKind::Plugin(path, name, inputs) => ExpressionKind::Plugin(
                 path,
+                name,
                 inputs
                     .into_iter()
                     .map(|expr| self.finalize_expr(expr))
@@ -3722,20 +3725,20 @@ impl Typechecker {
         loop {
             let mut resolved_plugin = false;
 
-            if let Some(id) = final_expr.find_deepest_unresolved_plugin() {
+            if let Some(id) = final_expr.find_first_unresolved_plugin() {
                 resolved_plugin = true;
 
                 // Find the plugin call
                 let expr = final_expr.as_root_query(id).unwrap().clone();
                 let ty = expr.ty;
-                let (path, inputs) = match expr.kind {
-                    ExpressionKind::Plugin(path, inputs) => (path, inputs),
+                let (path, name, inputs) = match expr.kind {
+                    ExpressionKind::Plugin(path, name, inputs) => (path, name, inputs),
                     _ => unreachable!(),
                 };
 
                 // Run the plugin
                 let expr = self
-                    .resolve_plugin_expr(path, expr.id, expr.span, ty.clone(), inputs)
+                    .resolve_plugin_expr(path, name, expr.id, expr.span, ty.clone(), inputs)
                     .await;
 
                 // Convert it to a typecheckable expression
@@ -4792,6 +4795,7 @@ impl Typechecker {
     async fn resolve_plugin_expr(
         &mut self,
         path: InternedString,
+        name: InternedString,
         id: ExpressionId,
         span: SpanList,
         ty: Type,
@@ -4829,6 +4833,7 @@ impl Typechecker {
             .loader
             .plugin(
                 path,
+                name,
                 crate::PluginInput::Expression {
                     span,
                     ty: ty.clone(),

@@ -101,7 +101,7 @@ export const useRunner = (context: any) => {
         analyze: (
             code: string,
             lint: boolean,
-            handlePlugin: (path: string, input: any, api: any) => Promise<any>
+            handlePlugin: (path: string, name: string, input: any, api: any) => Promise<any>
         ) =>
             new Promise<AnalysisOutput>((resolve, reject) => {
                 const prevonmessage = runner.current!.onmessage;
@@ -113,7 +113,12 @@ export const useRunner = (context: any) => {
                                     // TODO
                                 };
 
-                                handlePlugin(event.data.path, event.data.input, api)
+                                handlePlugin(
+                                    event.data.path,
+                                    event.data.name,
+                                    event.data.input,
+                                    api
+                                )
                                     .then((output) => {
                                         runner.current!.postMessage({
                                             operation: "pluginSuccessCallback",
