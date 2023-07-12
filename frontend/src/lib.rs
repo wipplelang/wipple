@@ -20,11 +20,22 @@ use std::{
 
 pub type SourceMap = HashMap<FilePath, Arc<str>>;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FileKind {
+    Source,
+    Plugin,
+}
+
 #[async_trait]
 pub trait Loader: Debug + Send + Sync + 'static {
     fn std_path(&self) -> Option<FilePath>;
 
-    fn resolve(&self, path: FilePath, current: Option<FilePath>) -> anyhow::Result<FilePath>;
+    fn resolve(
+        &self,
+        path: FilePath,
+        kind: FileKind,
+        current: Option<FilePath>,
+    ) -> anyhow::Result<FilePath>;
 
     async fn load(&self, path: FilePath) -> anyhow::Result<Arc<str>>;
 

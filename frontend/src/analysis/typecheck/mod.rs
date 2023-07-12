@@ -18,7 +18,7 @@ use crate::{
     diagnostics::{Fix, FixRange, Note},
     helpers::{Backtrace, InternedString},
     BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, ExpressionId, FieldIndex, FilePath,
-    ItemId, PatternId, SyntaxId, TraitId, TypeId, TypeParameterId, VariableId, VariantIndex,
+    ItemId, PatternId, SyntaxId, TraitId, TypeId, TypeParameterId, VariableId, VariantIndex, FileKind,
 };
 use async_trait::async_trait;
 use itertools::Itertools;
@@ -4808,11 +4808,11 @@ impl Typechecker {
             // TODO
         }
 
-        let path = match self
-            .compiler
-            .loader
-            .resolve(FilePath::Path(path), id.owner.and_then(|id| id.file))
-        {
+        let path = match self.compiler.loader.resolve(
+            FilePath::Path(path),
+            FileKind::Plugin,
+            id.owner.and_then(|id| id.file),
+        ) {
             Ok(path) => path,
             Err(error) => {
                 self.compiler.add_error(

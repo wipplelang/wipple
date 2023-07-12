@@ -8,7 +8,7 @@ use url::Url;
 use wipple_frontend::{
     analysis::{self, Analysis},
     helpers::{InternedString, Shared},
-    FilePath, PluginApi, PluginInput, PluginOutput, SourceMap,
+    FileKind, FilePath, PluginApi, PluginInput, PluginOutput, SourceMap,
 };
 
 pub const STD_URL: &str = "https://pkg.wipple.dev/std/std.wpl";
@@ -205,14 +205,14 @@ impl Loader {
         }
     }
 
-    pub fn with_fetcher(mut self, fetcher: Fetcher) -> Self {
-        self.fetcher = Shared::new(fetcher);
-        self
+    pub fn with_fetcher(&self, fetcher: Fetcher) -> Self {
+        *self.fetcher.lock() = fetcher;
+        self.clone()
     }
 
-    pub fn with_plugin_handler(mut self, handler: PluginHandler) -> Self {
-        self.plugin_handler = Shared::new(handler);
-        self
+    pub fn with_plugin_handler(&self, handler: PluginHandler) -> Self {
+        *self.plugin_handler.lock() = handler;
+        self.clone()
     }
 
     pub fn set_plugin_handler(&self, handler: PluginHandler) -> PluginHandler {
@@ -226,10 +226,20 @@ impl wipple_frontend::Loader for Loader {
         self.std_path
     }
 
-    fn resolve(&self, path: FilePath, current: Option<FilePath>) -> anyhow::Result<FilePath> {
-        fn set_extension_if_needed(path: &mut PathBuf) {
+    fn resolve(
+        &self,
+        path: FilePath,
+        kind: FileKind,
+        current: Option<FilePath>,
+    ) -> anyhow::Result<FilePath> {
+        fn set_extension_if_needed(path: &mut PathBuf, kind: FileKind) {
             if path.extension().is_none() {
-                path.set_extension("wpl");
+                match kind {
+                    FileKind::Source => {
+                        path.set_extension("wpl");
+                    }
+                    FileKind::Plugin => {}
+                };
             }
         }
 
@@ -239,13 +249,13 @@ impl wipple_frontend::Loader for Loader {
                     let mut url = Url::from_str(&path)?.join(path.as_str())?;
 
                     let mut path = PathBuf::from(url.path());
-                    set_extension_if_needed(&mut path);
+                    set_extension_if_needed(&mut path, kind);
                     url.set_path(path.to_str().unwrap());
 
                     Ok(FilePath::Url(InternedString::new(url.as_str())))
                 } else {
                     let mut parsed_path = PathBuf::from(path.as_str());
-                    set_extension_if_needed(&mut parsed_path);
+                    set_extension_if_needed(&mut parsed_path, kind);
 
                     if parsed_path.has_root() {
                         Ok(FilePath::Path(path))
@@ -263,7 +273,7 @@ impl wipple_frontend::Loader for Loader {
                                 let mut url = Url::from_str(&base).unwrap().join(path.as_str())?;
 
                                 let mut path = PathBuf::from(url.path());
-                                set_extension_if_needed(&mut path);
+                                set_extension_if_needed(&mut path, kind);
                                 url.set_path(path.to_str().unwrap());
 
                                 Ok(FilePath::Url(InternedString::from(url.to_string())))
@@ -299,7 +309,7 @@ impl wipple_frontend::Loader for Loader {
                                         let mut url = Url::from_str(&base)?.join(path.as_str())?;
 
                                         let mut path = PathBuf::from(url.path());
-                                        set_extension_if_needed(&mut path);
+                                        set_extension_if_needed(&mut path, kind);
                                         url.set_path(path.to_str().unwrap());
 
                                         Ok(FilePath::Url(InternedString::new(url.as_str())))
