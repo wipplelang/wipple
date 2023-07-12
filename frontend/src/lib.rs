@@ -82,6 +82,7 @@ impl fmt::Display for FilePath {
 #[derive(Debug, Clone, Serialize)]
 pub enum PluginInput {
     Expression {
+        id: ExpressionId,
         span: analysis::SpanList,
         ty: analysis::Type,
         inputs: Vec<analysis::Expression>,

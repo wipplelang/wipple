@@ -17,8 +17,9 @@ use crate::{
     analysis::{lower, SpanList},
     diagnostics::{Fix, FixRange, Note},
     helpers::{Backtrace, InternedString},
-    BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, ExpressionId, FieldIndex, FilePath,
-    ItemId, PatternId, SyntaxId, TraitId, TypeId, TypeParameterId, VariableId, VariantIndex, FileKind,
+    BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, ExpressionId, FieldIndex, FileKind,
+    FilePath, ItemId, PatternId, SyntaxId, TraitId, TypeId, TypeParameterId, VariableId,
+    VariantIndex,
 };
 use async_trait::async_trait;
 use itertools::Itertools;
@@ -4835,6 +4836,7 @@ impl Typechecker {
                 path,
                 name,
                 crate::PluginInput::Expression {
+                    id,
                     span,
                     ty: ty.clone(),
                     inputs,
