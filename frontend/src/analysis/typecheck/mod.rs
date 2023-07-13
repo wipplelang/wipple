@@ -4861,6 +4861,72 @@ impl Typechecker {
             }
         }
     }
+
+    async fn resolve_plugin_instance(
+        &mut self,
+        path: InternedString,
+        name: InternedString,
+        id: ConstantId,
+    ) -> lower::Expression {
+        struct PluginApi;
+
+        #[async_trait]
+        impl crate::PluginApi for PluginApi {
+            // TODO
+        }
+
+        let span = self
+            .with_instance_decl(id, |decl| decl.span)
+            .expect("instance should have been accessed at least once before");
+
+        let path =
+            match self
+                .compiler
+                .loader
+                .resolve(FilePath::Path(path), FileKind::Plugin, id.file)
+            {
+                Ok(path) => path,
+                Err(error) => {
+                    self.compiler.add_error(
+                        format!("cannot load file `{}`: {}", path, error),
+                        vec![Note::primary(span, "while resolving this plugin")],
+                    );
+
+                    return lower::Expression {
+                        id: self.compiler.new_expression_id(id),
+                        span,
+                        kind: lower::ExpressionKind::error(&self.compiler),
+                    };
+                }
+            };
+
+        let output = self
+            .compiler
+            .loader
+            .plugin(
+                path,
+                name,
+                crate::PluginInput::Instance { span, id },
+                &PluginApi,
+            )
+            .await;
+
+        match output {
+            Ok(output) => output.expr,
+            Err(error) => {
+                self.compiler.add_error(
+                    format!("error while resolving plugin: {error}"),
+                    vec![Note::primary(span, "see plugin documentation for details")],
+                );
+
+                lower::Expression {
+                    id: self.compiler.new_expression_id(id),
+                    span,
+                    kind: lower::ExpressionKind::error(&self.compiler),
+                }
+            }
+        }
+    }
 }
 
 impl Typechecker {
