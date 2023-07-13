@@ -17,7 +17,7 @@ locked: true
 
 In other programming languages, you typically use `null` or `None` to indicate the absence of a value. But what's the type of `null`? Is it `null :: A => A`?
 
-Not quite. It would be impossible for the implementation of `null` to create an `A` value because it doesn't know what `A` is! `A` could be a `Number` (`0`?), or `Text` (`""`?), or a `Person` (`alice`?), or anything at all! In fact, the only way to produce an `A` value is to **exit the program**, returning no value at all. Let's try it!
+Not quite. It would be impossible for the implementation of `null` to create an `A` value because it doesn't know what `A` is! `A` could be a `Number` (`0`?), or `Text` (`""`?), or a `Person` (`alice`?), or anything at all! In fact, because there's no way to produce an `A` value, the only way to proceed is to **exit the program**, returning no value at all. Let's try it!
 
 ---
 id: 2Ou86tR6
