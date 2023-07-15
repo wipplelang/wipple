@@ -190,7 +190,6 @@ pub mod propagate {
 
                         propagated = true;
                         *expr = body.clone();
-                        drop(body);
 
                         // Replace the variables in the inlined constant with new variables
 
