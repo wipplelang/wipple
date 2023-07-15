@@ -1350,56 +1350,55 @@ impl Lowerer {
                             };
 
                             (|| {
-                                if let [Ok(member)] = ty.members.as_slice() {
-                                    if let ast::TypeMember::Variant(member) = member {
-                                        if let Some(name_list) = &member.name_list {
-                                            let variants = name_list
-                                                .iter()
-                                                .enumerate()
-                                                .map(|(index, (span, name))| {
-                                                    let index = VariantIndex::new(index);
+                                if let [Ok(ast::TypeMember::Variant(member))] =
+                                    ty.members.as_slice()
+                                {
+                                    if let Some(name_list) = &member.name_list {
+                                        let variants = name_list
+                                            .iter()
+                                            .enumerate()
+                                            .map(|(index, (span, name))| {
+                                                let index = VariantIndex::new(index);
 
-                                                    EnumerationVariant {
-                                                        name_span: *span,
-                                                        name: *name,
-                                                        tys: Vec::new(),
-                                                        constructor: self
-                                                            .generate_variant_constructor(
-                                                                id,
-                                                                *name,
-                                                                *span,
-                                                                index,
-                                                                &parameters,
-                                                                &[],
-                                                            ),
-                                                    }
-                                                })
-                                                .collect::<Vec<_>>();
+                                                EnumerationVariant {
+                                                    name_span: *span,
+                                                    name: *name,
+                                                    tys: Vec::new(),
+                                                    constructor: self.generate_variant_constructor(
+                                                        id,
+                                                        *name,
+                                                        *span,
+                                                        index,
+                                                        &parameters,
+                                                        &[],
+                                                    ),
+                                                }
+                                            })
+                                            .collect::<Vec<_>>();
 
-                                            let variant_names = variants
-                                                .iter()
-                                                .enumerate()
-                                                .map(|(index, variant)| {
-                                                    let index = VariantIndex::new(index);
+                                        let variant_names = variants
+                                            .iter()
+                                            .enumerate()
+                                            .map(|(index, variant)| {
+                                                let index = VariantIndex::new(index);
 
-                                                    self.insert(
-                                                        variant.name,
-                                                        AnyDeclaration::Constant(
-                                                            variant.constructor,
-                                                            Some((id, index)),
-                                                        ),
-                                                        &parent_scope,
-                                                    );
+                                                self.insert(
+                                                    variant.name,
+                                                    AnyDeclaration::Constant(
+                                                        variant.constructor,
+                                                        Some((id, index)),
+                                                    ),
+                                                    &parent_scope,
+                                                );
 
-                                                    (variant.name, index)
-                                                })
-                                                .collect();
+                                                (variant.name, index)
+                                            })
+                                            .collect();
 
-                                            return TypeDeclarationKind::Enumeration(
-                                                variants,
-                                                variant_names,
-                                            );
-                                        }
+                                        return TypeDeclarationKind::Enumeration(
+                                            variants,
+                                            variant_names,
+                                        );
                                     }
                                 }
 
@@ -1919,7 +1918,7 @@ impl Lowerer {
                 let id = self.compiler.new_constant_id_in(self.file);
 
                 let (span, name) = match &statement.value {
-                    Ok((span, name)) => (*span, *name),
+                    Ok(name) => (name.span, name.name),
                     Err(expr) => {
                         let expr = expr.clone().map(Box::new);
 
@@ -3007,10 +3006,10 @@ impl Lowerer {
                 kind: ExpressionKind::Format(
                     expr.segments
                         .iter()
-                        .map(|(text, expr)| {
+                        .map(|segment| {
                             (
-                                *text,
-                                match expr {
+                                segment.string,
+                                match &segment.expr {
                                     Ok(expr) => self.lower_expr(expr, scope, ctx),
                                     Err(error) => Expression {
                                         id: self.compiler.new_expression_id(ctx.owner),
@@ -3402,8 +3401,7 @@ impl Lowerer {
                         pattern.name,
                         ctx,
                         |decl| {
-                            decl.clone()
-                                .as_constant()
+                            decl.as_constant()
                                 .map_or(false, |(_, variant)| variant.is_some())
                                 || decl.as_type().is_some()
                         },
@@ -4034,8 +4032,8 @@ impl Lowerer {
                         .segments
                         .iter()
                         .cloned()
-                        .map(|(text, param)| {
-                            let (param_span, param_name) = param.ok()?;
+                        .map(|segment| {
+                            let (param_span, param_name) = segment.param.ok()?;
 
                             let param = if let Some(id) = self.get(
                                 param_name,
@@ -4070,7 +4068,7 @@ impl Lowerer {
                                 return None;
                             };
 
-                            Some((text, param))
+                            Some((segment.string, param))
                         })
                         .collect::<Option<_>>()?,
                     attribute.trailing_segment,
@@ -4389,7 +4387,7 @@ impl Lowerer {
             )))
             .chain(
                 did_you_mean::comment(&name).map(|()| (
-                    Note::secondary(span, format!("comments in Wipple begin with `--`")),
+                    Note::secondary(span, "comments in Wipple begin with `--`"),
                     Fix::new("replace with `--`", FixRange::replace(span.first()), "--"),
                 )),
             )

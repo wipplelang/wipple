@@ -45,7 +45,7 @@ impl<D: Driver> NameTypePattern<D> {
 
 impl<D: Driver> Format<D> for NameTypePattern<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
-        Ok(format!("{}", self.name.as_ref()))
+        Ok(self.name.as_ref().to_string())
     }
 }
 

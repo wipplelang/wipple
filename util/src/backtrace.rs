@@ -78,7 +78,7 @@ impl Ord for Backtrace {
 }
 
 impl std::hash::Hash for Backtrace {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        ().hash(state) // skip backtrace in types that contain it
+    fn hash<H: std::hash::Hasher>(&self, _state: &mut H) {
+        // skip backtrace in types that contain it
     }
 }

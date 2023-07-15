@@ -33,7 +33,7 @@ pub fn format(code: &str) -> Option<String> {
         }
 
         fn make_span(&self, _path: Self::Path, _range: std::ops::Range<usize>) -> Self::Span {
-            ()
+            
         }
 
         fn std_path(&self) -> Option<Self::Path> {
@@ -210,7 +210,7 @@ impl<D: Driver> Expr<D> {
                 1 => statements.first().unwrap().line.is_multiline(true),
                 _ => true,
             },
-            ExprKind::SourceCode(code) => code.contains("\n"),
+            ExprKind::SourceCode(code) => code.contains('\n'),
         }
     }
 }

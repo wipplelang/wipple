@@ -34,18 +34,29 @@ syntax_group! {
 pub struct AssignmentValueSyntaxContext<D: Driver> {
     pub(super) ast_builder: AstBuilder<D>,
     statement_attributes: Option<Shared<StatementAttributes<D>>>,
-    assigned_name: Option<(D::InternedString, D::Span, D::Scope, Shared<bool>)>,
+    assigned_name: Option<AssignedName<D>>,
+}
+
+#[derive(Clone)]
+struct AssignedName<D: Driver> {
+    name: D::InternedString,
+    scope: D::Scope,
+    did_create_syntax: Shared<bool>,
 }
 
 impl<D: Driver> AssignmentValueSyntaxContext<D> {
     pub(super) fn with_assigned_name(
         mut self,
         name: D::InternedString,
-        span: D::Span,
         scope: D::Scope,
         did_create_syntax: Shared<bool>,
     ) -> Self {
-        self.assigned_name = Some((name, span, scope, did_create_syntax));
+        self.assigned_name = Some(AssignedName {
+            name,
+            scope,
+            did_create_syntax,
+        });
+
         self
     }
 }

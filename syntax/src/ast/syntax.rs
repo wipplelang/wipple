@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments, clippy::type_complexity)]
+
 use crate::{
     ast::{AstBuilder, StatementAttributes},
     parse, Driver, File, Fix, FixRange, Span,

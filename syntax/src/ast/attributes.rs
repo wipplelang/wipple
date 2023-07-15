@@ -30,7 +30,7 @@ impl<D: Driver> Default for FileAttributes<D> {
 
 impl<D: Driver> Format<D> for FileAttributes<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
-        Ok(self
+        self
             .raw
             .into_iter()
             .map(|attribute| {
@@ -44,7 +44,7 @@ impl<D: Driver> Format<D> for FileAttributes<D> {
                         .join(" ")
                 ))
             })
-            .collect::<Result<String, _>>()?)
+            .collect::<Result<String, _>>()
     }
 }
 
@@ -91,7 +91,7 @@ impl<D: Driver> Default for StatementAttributes<D> {
 
 impl<D: Driver> Format<D> for StatementAttributes<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
-        Ok(self
+        self
             .raw
             .into_iter()
             .map(|attribute| {
@@ -105,6 +105,6 @@ impl<D: Driver> Format<D> for StatementAttributes<D> {
                         .join(" ")
                 ))
             })
-            .collect::<Result<String, _>>()?)
+            .collect::<Result<String, _>>()
     }
 }

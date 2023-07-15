@@ -13,11 +13,14 @@ pub struct OnUnimplementedStatementAttribute<D: Driver> {
     pub span: D::Span,
     pub on_unimplemented_span: D::Span,
     pub message_span: D::Span,
-    pub segments: Vec<(
-        D::InternedString,
-        Result<(D::Span, D::InternedString), SyntaxError<D>>,
-    )>,
+    pub segments: Vec<OnUnimplementedSegment<D>>,
     pub trailing_segment: Option<D::InternedString>,
+}
+
+#[derive(Debug, Clone)]
+pub struct OnUnimplementedSegment<D: Driver> {
+    pub string: D::InternedString,
+    pub param: Result<(D::Span, D::InternedString), SyntaxError<D>>,
 }
 
 impl<D: Driver> OnUnimplementedStatementAttribute<D> {
@@ -99,7 +102,11 @@ impl<D: Driver> Syntax<D> for OnUnimplementedStatementAttributeSyntax {
                     return Err(context.ast_builder.syntax_error(span));
                 }
 
-                let segments = segments.into_iter().zip(inputs).collect();
+                let segments = segments
+                    .into_iter()
+                    .zip(inputs)
+                    .map(|(string, ty)| OnUnimplementedSegment { string, param: ty })
+                    .collect();
 
                 let attribute = OnUnimplementedStatementAttribute {
                     span,

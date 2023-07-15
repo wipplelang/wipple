@@ -14,8 +14,14 @@ pub struct FormatExpression<D: Driver> {
     pub format_span: D::Span,
     pub text_span: D::Span,
     pub raw_text: D::InternedString,
-    pub segments: Vec<(D::InternedString, Result<Expression<D>, SyntaxError<D>>)>,
+    pub segments: Vec<FormatSegment<D>>,
     pub trailing_segment: Option<D::InternedString>,
+}
+
+#[derive(Debug, Clone)]
+pub struct FormatSegment<D: Driver> {
+    pub string: D::InternedString,
+    pub expr: Result<Expression<D>, SyntaxError<D>>,
 }
 
 impl<D: Driver> FormatExpression<D> {
@@ -31,7 +37,7 @@ impl<D: Driver> Format<D> for FormatExpression<D> {
             self.raw_text.as_ref(),
             self.segments
                 .into_iter()
-                .map(|(_, expr)| expr?.format())
+                .map(|segment| segment.expr?.format())
                 .collect::<Result<Vec<_>, _>>()?
                 .join(" ")
         ))
@@ -105,7 +111,11 @@ impl<D: Driver> Syntax<D> for FormatExpressionSyntax {
                     return Err(context.ast_builder.syntax_error(span));
                 }
 
-                let segments = segments.into_iter().zip(inputs).collect();
+                let segments = segments
+                    .into_iter()
+                    .zip(inputs)
+                    .map(|(string, expr)| FormatSegment { string, expr })
+                    .collect();
 
                 Ok(FormatExpression {
                     span,

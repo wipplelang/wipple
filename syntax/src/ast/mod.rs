@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 mod attributes;
 mod format;
 mod macros;
@@ -224,7 +226,7 @@ pub(crate) async fn build<D: Driver>(
         if ast_builder
             .build_list::<FileAttributeSyntax>(
                 context.clone(),
-                attribute.span.into(),
+                attribute.span,
                 attribute.exprs.clone(),
                 scope,
             )
@@ -370,7 +372,7 @@ impl<D: Driver> AstBuilder<D> {
                 if self
                     .build_list::<StatementAttributeSyntax>(
                         context.clone(),
-                        attribute.span.into(),
+                        attribute.span,
                         attribute.exprs.clone(),
                         scope,
                     )
@@ -402,7 +404,7 @@ impl<D: Driver> AstBuilder<D> {
             let context = context.with_statement_attributes(attributes.clone());
 
             let result = match self
-                .build_list::<S>(context.clone(), span.into(), exprs.clone(), scope)
+                .build_list::<S>(context.clone(), span, exprs.clone(), scope)
                 .await
             {
                 Some(result) => result,

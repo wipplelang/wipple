@@ -46,7 +46,7 @@ impl<D: Driver> Syntax<D> for IntrinsicExpressionSyntax {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
             "intrinsic",
             |context, span, intrinsic_span, exprs, scope| async move {
-                if exprs.len() < 1 {
+                if exprs.is_empty() {
                     context
                         .ast_builder
                         .driver

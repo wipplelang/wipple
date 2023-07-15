@@ -76,15 +76,16 @@ impl<D: Driver> Syntax<D> for SyntaxAssignmentValueSyntax {
                     uses: Vec::new(),
                 };
 
-                if let Some((name, _, scope, did_create_syntax)) = context.assigned_name {
-                    value.name = Some(name.clone());
+                if let Some(assigned_name) = context.assigned_name {
+                    value.name = Some(assigned_name.name.clone());
 
-                    context
-                        .ast_builder
-                        .file
-                        .define_syntax(name, scope, value.clone());
+                    context.ast_builder.file.define_syntax(
+                        assigned_name.name,
+                        assigned_name.scope,
+                        value.clone(),
+                    );
 
-                    *did_create_syntax.lock() = true;
+                    *assigned_name.did_create_syntax.lock() = true;
                 }
 
                 Ok(value.into())

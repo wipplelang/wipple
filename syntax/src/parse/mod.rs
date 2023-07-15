@@ -25,7 +25,11 @@ pub fn parse<D: Driver>(driver: &D, path: D::Path, code: &str) -> File<D> {
         offset: shebang.map(|s| "#!".len() + s.len()).unwrap_or(0),
     };
 
-    let (comments, attributes, statements) = parser.parse_file();
+    let FileContents {
+        comments,
+        attributes,
+        statements,
+    } = parser.parse_file();
 
     File {
         span: parser.file_span(),

@@ -44,7 +44,7 @@ pub enum ExprKind<D: Driver> {
 impl<D: Driver> Expr<D> {
     pub fn list(span: D::Span, exprs: Vec<Expr<D>>) -> Self {
         Expr {
-            span: span.into(),
+            span,
             kind: ExprKind::List(vec![exprs.into()]),
         }
     }
@@ -130,10 +130,7 @@ impl<D: Driver> From<Vec<Expr<D>>> for ListLine<D> {
 
 impl<D: Driver> Expr<D> {
     pub fn new(span: D::Span, kind: ExprKind<D>) -> Self {
-        Expr {
-            span: span.into(),
-            kind,
-        }
+        Expr { span, kind }
     }
 }
 
@@ -152,8 +149,14 @@ pub enum ParseError {
     EndOfFile,
 }
 
+pub struct FileContents<D: Driver> {
+    pub comments: Vec<ListLine<D>>,
+    pub attributes: Vec<Attribute<D>>,
+    pub statements: Vec<Statement<D>>,
+}
+
 impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
-    pub fn parse_file(&mut self) -> (Vec<ListLine<D>>, Vec<Attribute<D>>, Vec<Statement<D>>) {
+    pub fn parse_file(&mut self) -> FileContents<D> {
         let mut comments = Vec::new();
         loop {
             let mut leading_lines = 0;
@@ -185,7 +188,11 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                 .syntax_error(span, format!("expected end of file, found {token}"));
         }
 
-        (comments, attributes, statements)
+        FileContents {
+            comments,
+            attributes,
+            statements,
+        }
     }
 
     pub fn parse_file_attributes(&mut self) -> Vec<Attribute<D>> {
@@ -287,7 +294,8 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                 }
             }
 
-            if leading_lines > 0 || attributes.len() > 0 || exprs.len() > 0 || comment.is_some() {
+            if leading_lines > 0 || !attributes.is_empty() || !exprs.is_empty() || comment.is_some()
+            {
                 statements.push(Statement {
                     line: ListLine {
                         leading_lines,
@@ -613,7 +621,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                 }
             })();
 
-            if leading_lines > 0 || exprs.len() > 0 || comment.is_some() {
+            if leading_lines > 0 || !exprs.is_empty() || comment.is_some() {
                 lines.push(ListLine {
                     leading_lines,
                     attributes: Vec::new(),

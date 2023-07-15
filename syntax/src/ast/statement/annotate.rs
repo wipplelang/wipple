@@ -15,9 +15,15 @@ use crate::{
 pub struct AnnotateStatement<D: Driver> {
     pub span: D::Span,
     pub colon_span: D::Span,
-    pub value: Result<(D::Span, D::InternedString), Result<Expression<D>, SyntaxError<D>>>,
+    pub value: Result<AnnotatedName<D>, Result<Expression<D>, SyntaxError<D>>>,
     pub annotation: Result<ConstantTypeAnnotation<D>, SyntaxError<D>>,
     pub attributes: StatementAttributes<D>,
+}
+
+#[derive(Debug, Clone)]
+pub struct AnnotatedName<D: Driver> {
+    pub span: D::Span,
+    pub name: D::InternedString,
 }
 
 impl<D: Driver> AnnotateStatement<D> {
@@ -32,7 +38,7 @@ impl<D: Driver> Format<D> for AnnotateStatement<D> {
             "{}{} :: {}",
             self.attributes.format()?,
             match self.value {
-                Ok((_, name)) => name.as_ref().to_string(),
+                Ok(name) => name.name.as_ref().to_string(),
                 Err(expr) => expr?.format()?,
             },
             self.annotation?.format()?,
@@ -53,7 +59,7 @@ impl<D: Driver> Syntax<D> for AnnotateStatementSyntax {
                 let value = if lhs_exprs.len() == 1 {
                     let lhs = lhs_exprs.pop().unwrap();
                     match lhs.kind {
-                        parse::ExprKind::Name(name, _) => Ok((lhs.span, name)),
+                        parse::ExprKind::Name(name, _) => Ok(AnnotatedName { span: lhs.span, name }),
                         _ => {
                             let expr = context
                                 .ast_builder

@@ -84,7 +84,6 @@ impl<D: Driver> Syntax<D> for AssignStatementSyntax {
                     if let Pattern::Name(pattern) = &pattern.pattern {
                         value_context = value_context.with_assigned_name(
                             pattern.name.clone(),
-                            pattern.span,
                             scope,
                             did_create_syntax.clone()
                         );

@@ -25,7 +25,7 @@ impl<D: Driver> Format<D> for TraitAssignmentValue<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
         Ok(match self.ty {
             Some(ty) => format!("(trait {})", ty?.format()?),
-            None => format!("trait"),
+            None => String::from("trait"),
         })
     }
 }

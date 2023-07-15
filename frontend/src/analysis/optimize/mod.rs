@@ -593,9 +593,9 @@ mod util {
             }
         }
 
-        fn constant_is_pure<'a>(
+        fn constant_is_pure(
             constant: &ItemId,
-            program: &'a Program,
+            program: &Program,
             function_call: Option<&BTreeSet<VariableId>>,
             stack: &mut Vec<ItemId>,
         ) -> Option<Expression> {

@@ -157,11 +157,11 @@ impl<D: Driver<Span = (), File = SingleFile, Scope = ()>> File<D> for SingleFile
     }
 
     fn root_scope(&self) -> D::Scope {
-        ()
+        
     }
 
     fn make_scope(&self, _parent: D::Scope) -> D::Scope {
-        ()
+        
     }
 
     fn define_syntax(
@@ -193,7 +193,7 @@ impl<D: Driver<Span = (), File = SingleFile, Scope = ()>> File<D> for SingleFile
 
 impl Span for () {
     fn join(_left: Self, _right: Self) -> Self {
-        ()
+        
     }
 
     fn merge(&mut self, _other: Self) {

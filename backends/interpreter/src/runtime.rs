@@ -284,7 +284,7 @@ impl Interpreter {
                         })
                     }));
 
-                    self.call_function(label, scope, &context, function).await?;
+                    self.call_function(label, scope, context, function).await?;
 
                     match completion_rx.await {
                         Ok(result) => Ok(result),
@@ -297,7 +297,7 @@ impl Interpreter {
                 ir::Intrinsic::WithTaskGroup => runtime_fn!((Value::Function(scope, label)) => async {
                     let group = TaskGroup::default();
 
-                    self.call_function(label, scope, &context, Value::TaskGroup(group.clone())).await?;
+                    self.call_function(label, scope, context, Value::TaskGroup(group.clone())).await?;
 
                     let tasks = match group.0.try_lock() {
                         Some(mut group) => mem::take(&mut *group).into_iter().map(|f| f()).collect::<Vec<_>>(),

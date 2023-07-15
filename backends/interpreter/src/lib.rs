@@ -290,9 +290,9 @@ impl Interpreter {
         self.lock().initialized_constants = BTreeMap::new();
 
         let mut stack = Stack::new();
-        let mut context = Arc::new(Context::new());
+        let context = Arc::new(Context::new());
 
-        self.evaluate_label(program.entrypoint, &mut stack, &mut context)
+        self.evaluate_label(program.entrypoint, &mut stack, &context)
             .await?;
 
         stack.pop();
@@ -316,9 +316,9 @@ impl Interpreter {
         label: usize,
         stack: &mut Stack,
         scope: Scope,
-        mut context: &Context,
+        context: &Context,
     ) -> Result<(), Error> {
-        self.evaluate_label_inner(label, stack, scope, &mut context)
+        self.evaluate_label_inner(label, stack, scope, context)
             .await
     }
 
@@ -367,9 +367,9 @@ impl Interpreter {
         let mut index = 0;
 
         'outer: loop {
-            let mut statements = blocks[index].statements.iter();
+            let statements = blocks[index].statements.iter();
 
-            while let Some(statement) = statements.next() {
+            for statement in statements {
                 if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
                     eprintln!(
                         "\nRUN {} {:#?} (bb{index})",
@@ -437,7 +437,7 @@ impl Interpreter {
                             match stack.pop() {
                                 Value::Function(scope, label) => {
                                     stack.push(input);
-                                    self.evaluate_label_in_scope(label, stack, scope, &context)
+                                    self.evaluate_label_in_scope(label, stack, scope, context)
                                         .await?;
                                 }
                                 Value::NativeFunction(f) => {
@@ -570,7 +570,7 @@ impl Interpreter {
                                 continue 'outer;
                             } else {
                                 stack.push(input);
-                                self.evaluate_label_in_scope(label, stack, func_scope, &context)
+                                self.evaluate_label_in_scope(label, stack, func_scope, context)
                                     .await?;
 
                                 return Ok(());

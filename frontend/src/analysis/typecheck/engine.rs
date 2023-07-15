@@ -140,6 +140,8 @@ pub enum TypeError {
     InvalidNumericLiteral(UnresolvedType),
 }
 
+pub type Result<T> = std::result::Result<T, Box<TypeError>>;
+
 impl Context {
     pub fn new() -> Self {
         Default::default()
@@ -168,11 +170,7 @@ impl Context {
         params
     }
 
-    pub fn unify(
-        &self,
-        actual: UnresolvedType,
-        expected: impl Into<UnresolvedType>,
-    ) -> Result<(), TypeError> {
+    pub fn unify(&self, actual: UnresolvedType, expected: impl Into<UnresolvedType>) -> Result<()> {
         self.unify_internal(actual, expected.into(), false, false, None)
     }
 
@@ -180,7 +178,7 @@ impl Context {
         &self,
         actual: impl Into<UnresolvedType>,
         expected: UnresolvedType,
-    ) -> Result<(), TypeError> {
+    ) -> Result<()> {
         self.unify_internal(actual.into(), expected, false, true, None)
     }
 
@@ -188,7 +186,7 @@ impl Context {
         &self,
         actual: UnresolvedType,
         expected: impl Into<UnresolvedType>,
-    ) -> Result<(), TypeError> {
+    ) -> Result<()> {
         self.unify_internal(actual, expected.into(), true, false, None)
     }
 
@@ -199,7 +197,7 @@ impl Context {
         generic: bool,
         reverse: bool,
         mut params: Option<&mut BTreeMap<TypeParameterId, UnresolvedType>>,
-    ) -> Result<(), TypeError> {
+    ) -> Result<()> {
         actual.apply(self);
         expected.apply(self);
 
@@ -212,9 +210,9 @@ impl Context {
         macro_rules! mismatch {
             ($actual:expr, $expected:expr $(,)?) => {
                 if reverse {
-                    TypeError::Mismatch($expected, $actual)
+                    Box::new(TypeError::Mismatch($expected, $actual))
                 } else {
-                    TypeError::Mismatch($actual, $expected)
+                    Box::new(TypeError::Mismatch($actual, $expected))
                 }
             };
         }
@@ -249,7 +247,7 @@ impl Context {
 
                 if ty.contains(&var) {
                     if params.is_none() {
-                        Err(TypeError::Recursive(var))
+                        Err(Box::new(TypeError::Recursive(var)))
                     } else {
                         Ok(())
                     }
@@ -286,7 +284,7 @@ impl Context {
 
                 if ty.contains(&var) {
                     if params.is_none() {
-                        Err(TypeError::Recursive(var))
+                        Err(Box::new(TypeError::Recursive(var)))
                     } else {
                         Ok(())
                     }
@@ -312,7 +310,7 @@ impl Context {
 
                 if ty.contains(&var) {
                     if params.is_none() {
-                        Err(TypeError::Recursive(var))
+                        Err(Box::new(TypeError::Recursive(var)))
                     } else {
                         Ok(())
                     }
@@ -333,9 +331,9 @@ impl Context {
                             expected.clone(),
                             generic,
                             reverse,
-                            params.as_mut().map(|params| &mut **params),
+                            params.as_deref_mut(),
                         ) {
-                            if let TypeError::Mismatch(_, _) = e {
+                            if let TypeError::Mismatch(_, _) = *e {
                                 error = true;
                             } else if params.is_none() {
                                 return Err(e);
@@ -371,9 +369,9 @@ impl Context {
                     (*expected_input).clone(),
                     generic,
                     reverse,
-                    params.as_mut().map(|params| &mut **params),
+                    params.as_deref_mut(),
                 ) {
-                    if let TypeError::Mismatch(_, _) = e {
+                    if let TypeError::Mismatch(_, _) = *e {
                         error = true;
                     } else if params.is_none() {
                         return Err(e);
@@ -385,9 +383,9 @@ impl Context {
                     (*expected_output).clone(),
                     generic,
                     reverse,
-                    params.as_mut().map(|params| &mut **params),
+                    params.as_deref_mut(),
                 ) {
-                    if let TypeError::Mismatch(_, _) = e {
+                    if let TypeError::Mismatch(_, _) = *e {
                         error = true;
                     } else if params.is_none() {
                         return Err(e);
@@ -418,9 +416,9 @@ impl Context {
                         expected.clone(),
                         generic,
                         reverse,
-                        params.as_mut().map(|params| &mut **params),
+                        params.as_deref_mut(),
                     ) {
-                        if let TypeError::Mismatch(_, _) = e {
+                        if let TypeError::Mismatch(_, _) = *e {
                             error = true;
                         } else if params.is_none() {
                             return Err(e);
@@ -458,10 +456,10 @@ impl Context {
                         (*expected_element).clone(),
                         generic,
                         reverse,
-                        params.as_mut().map(|params| &mut **params),
+                        params.as_deref_mut(),
                     ) {
                         if params.is_none() {
-                            return Err(if let TypeError::Mismatch(_, _) = error {
+                            return Err(if let TypeError::Mismatch(_, _) = *error {
                                 mismatch!(
                                     UnresolvedType::Builtin(BuiltinType::List(actual_element)),
                                     UnresolvedType::Builtin(BuiltinType::List(expected_element)),
@@ -480,10 +478,10 @@ impl Context {
                         (*expected_element).clone(),
                         generic,
                         reverse,
-                        params.as_mut().map(|params| &mut **params),
+                        params.as_deref_mut(),
                     ) {
                         if params.is_none() {
-                            return Err(if let TypeError::Mismatch(_, _) = error {
+                            return Err(if let TypeError::Mismatch(_, _) = *error {
                                 mismatch!(
                                     UnresolvedType::Builtin(BuiltinType::Mutable(actual_element)),
                                     UnresolvedType::Builtin(BuiltinType::Mutable(expected_element)),

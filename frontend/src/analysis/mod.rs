@@ -564,16 +564,14 @@ impl wipple_syntax::File<Analysis> for File {
 
         if let Some((_, _, uses)) = builtin_syntax_uses.get_mut(&name) {
             uses.push(span);
-        } else {
-            if let Some(definition) = builtin_syntax_definitions()
-                .into_iter()
-                .find(|definition| definition.name == name)
-            {
-                builtin_syntax_uses.insert(
-                    name,
-                    (compiler.new_builtin_syntax_id(), definition, vec![span]),
-                );
-            }
+        } else if let Some(definition) = builtin_syntax_definitions()
+            .into_iter()
+            .find(|definition| definition.name == name)
+        {
+            builtin_syntax_uses.insert(
+                name,
+                (compiler.new_builtin_syntax_id(), definition, vec![span]),
+            );
         }
     }
 }

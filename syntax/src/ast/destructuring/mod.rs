@@ -41,7 +41,7 @@ impl<D: Driver> NameDestructuring<D> {
 
 impl<D: Driver> Format<D> for NameDestructuring<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
-        Ok(format!("{}", self.name.as_ref()))
+        Ok(self.name.as_ref().to_string())
     }
 }
 

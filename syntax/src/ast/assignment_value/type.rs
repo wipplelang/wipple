@@ -25,7 +25,7 @@ impl<D: Driver> Format<D> for TypeAssignmentValue<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
         Ok(match self.body {
             Some(body) => format!("(type {})", body?.format()?),
-            None => format!("type"),
+            None => String::from("type"),
         })
     }
 }

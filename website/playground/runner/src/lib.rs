@@ -742,7 +742,7 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
         Some(analysis) => analysis,
         None => {
             callback
-                .call1(&JsValue::NULL, &format!("program not compiled").into())
+                .call1(&JsValue::NULL, &String::from("program not compiled").into())
                 .unwrap();
 
             return JsValue::NULL;
@@ -757,7 +757,7 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
         Some(program) => program,
         None => {
             callback
-                .call1(&JsValue::NULL, &format!("compilation failed").into())
+                .call1(&JsValue::NULL, &String::from("compilation failed").into())
                 .unwrap();
 
             return JsValue::NULL;

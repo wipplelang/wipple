@@ -84,7 +84,7 @@ impl<D: Driver> NameExpression<D> {
 
 impl<D: Driver> Format<D> for NameExpression<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
-        Ok(format!("{}", self.name.as_ref()))
+        Ok(self.name.as_ref().to_string())
     }
 }
 
@@ -121,7 +121,7 @@ impl<D: Driver> NumberExpression<D> {
 
 impl<D: Driver> Format<D> for NumberExpression<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
-        Ok(format!("{}", self.number.as_ref()))
+        Ok(self.number.as_ref().to_string())
     }
 }
 

@@ -51,7 +51,7 @@ impl<D: Driver> NamePattern<D> {
 
 impl<D: Driver> Format<D> for NamePattern<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
-        Ok(format!("{}", self.name.as_ref()))
+        Ok(self.name.as_ref().to_string())
     }
 }
 
@@ -88,7 +88,7 @@ impl<D: Driver> NumberPattern<D> {
 
 impl<D: Driver> Format<D> for NumberPattern<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
-        Ok(format!("{}", self.number.as_ref()))
+        Ok(self.number.as_ref().to_string())
     }
 }
 

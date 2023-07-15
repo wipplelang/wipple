@@ -572,7 +572,7 @@ impl Expression {
 
 #[derive(Debug, Clone)]
 pub struct Error {
-    pub error: engine::TypeError,
+    pub error: Box<engine::TypeError>,
     pub expr: Option<ExpressionId>,
     pub span: SpanList,
     pub notes: Vec<Note>,
@@ -638,12 +638,12 @@ struct QueuedItem {
 impl Typechecker {
     fn error(
         &self,
-        error: engine::TypeError,
+        error: impl Into<Box<engine::TypeError>>,
         expr: impl Into<Option<ExpressionId>>,
         span: SpanList,
     ) -> Error {
         Error {
-            error,
+            error: error.into(),
             expr: expr.into(),
             span,
             notes: Vec::new(),
@@ -1077,8 +1077,6 @@ impl Typechecker {
                 let mut bounds = generic_bounds.clone();
 
                 let mut info = MonomorphizeInfo::default();
-                info.generic_ty = Some(generic_ty.clone());
-                info.is_generic = true;
 
                 let mut generic_ty = engine::UnresolvedType::from(generic_ty);
 
@@ -1133,8 +1131,7 @@ impl Typechecker {
         }
 
         let mut monomorphize_info = MonomorphizeInfo::default();
-        monomorphize_info.generic_ty = Some(generic_ty);
-        monomorphize_info.is_generic = true;
+
         for mut bound in bounds {
             for param in &mut bound.params {
                 param.apply(&self.ctx);
@@ -1220,10 +1217,9 @@ impl Typechecker {
             });
         }
 
-        let contextual = match self.with_constant_decl(id, |decl| decl.attributes.is_contextual) {
-            Some(contextual) => contextual,
-            None => false,
-        };
+        let contextual = self
+            .with_constant_decl(id, |decl| decl.attributes.is_contextual)
+            .unwrap_or(false);
 
         for &candidate in &candidates {
             self.specialized_constants.insert(candidate, id);
@@ -1441,7 +1437,6 @@ impl Typechecker {
         );
 
         let mut monomorphize_info = MonomorphizeInfo::default();
-        monomorphize_info.generic_ty = Some(generic_constant_decl.ty.clone());
 
         let generic_bounds = generic_constant_decl.bounds.clone();
 
@@ -2400,7 +2395,6 @@ impl Typechecker {
 
 #[derive(Debug, Clone, Default)]
 struct MonomorphizeInfo {
-    generic_ty: Option<engine::Type>,
     param_substitutions: engine::GenericSubstitutions,
     cache: HashMap<(ConstantId, engine::UnresolvedType), ItemId>,
     bound_instances: BTreeMap<
@@ -2415,7 +2409,6 @@ struct MonomorphizeInfo {
     instance_stack: BTreeMap<TraitId, Vec<(ConstantId, Vec<engine::UnresolvedType>)>>,
     recursion_count: usize,
     has_resolved_trait: bool,
-    is_generic: bool,
 }
 
 impl Typechecker {
@@ -4989,8 +4982,8 @@ impl Typechecker {
                 errors.into_iter().partition_map(|mut e| {
                     use itertools::Either;
 
-                    match e.error {
-                        engine::TypeError::UnresolvedType(ref mut ty) => {
+                    match &mut *e.error {
+                        engine::TypeError::UnresolvedType(ty) => {
                             ty.apply(&self.ctx);
                             Either::Left((ty.all_vars(), e))
                         }
@@ -5038,7 +5031,7 @@ impl Typechecker {
         };
 
         // Adjust error for more accurate diagnostics
-        if let engine::TypeError::Mismatch(actual, expected) = &mut error.error {
+        if let engine::TypeError::Mismatch(actual, expected) = &mut *error.error {
             actual.apply(&self.ctx);
             expected.apply(&self.ctx);
 
@@ -5098,7 +5091,7 @@ impl Typechecker {
             }
         }
 
-        let mut diagnostic = match error.error {
+        let mut diagnostic = match *error.error {
             engine::TypeError::ErrorExpression => return,
             engine::TypeError::Recursive(_) => self.compiler.error(
                 "recursive type",
@@ -5185,24 +5178,20 @@ impl Typechecker {
                         let mut actual_output = actual_output.as_ref().clone();
                         let mut expected_output = expected_output.as_ref().clone();
 
-                        loop {
-                            if let (
-                                engine::UnresolvedType::Function(_, actual_output_inner),
-                                engine::UnresolvedType::Function(_, expected_output_inner),
-                            ) = (&actual_output, &expected_output)
-                            {
-                                actual_output = actual_output_inner.as_ref().clone();
-                                expected_output = expected_output_inner.as_ref().clone();
+                        while let (
+                            engine::UnresolvedType::Function(_, actual_output_inner),
+                            engine::UnresolvedType::Function(_, expected_output_inner),
+                        ) = (&actual_output, &expected_output)
+                        {
+                            actual_output = actual_output_inner.as_ref().clone();
+                            expected_output = expected_output_inner.as_ref().clone();
 
-                                if self
-                                    .ctx
-                                    .clone()
-                                    .unify(actual_output.clone(), expected_output.clone())
-                                    .is_err()
-                                {
-                                    break;
-                                }
-                            } else {
+                            if self
+                                .ctx
+                                .clone()
+                                .unify(actual_output.clone(), expected_output.clone())
+                                .is_err()
+                            {
                                 break;
                             }
                         }
