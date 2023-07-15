@@ -19,17 +19,17 @@ Show : A => trait (A -> Text)
 [diagnostic-alias "println"]
 [diagnostic-alias "display"]
 show :: A where (Show A) => A -> ()
-show : x -> external "runtime" "display" (Show x)
+show : x -> intrinsic "display" (Show x)
 
 instance (Show Text) : it
-instance (Show Number) : n -> external "runtime" "number-to-text" n
-instance (Show Integer) : n -> external "runtime" "integer-to-text" n
-instance (Show Natural) : n -> external "runtime" "natural-to-text" n
-instance (Show Byte) : n -> external "runtime" "byte-to-text" n
-instance (Show Signed) : n -> external "runtime" "signed-to-text" n
-instance (Show Unsigned) : n -> external "runtime" "unsigned-to-text" n
-instance (Show Float) : n -> external "runtime" "float-to-text" n
-instance (Show Double) : n -> external "runtime" "double-to-text" n
+instance (Show Number) : n -> intrinsic "number-to-text" n
+instance (Show Integer) : n -> intrinsic "integer-to-text" n
+instance (Show Natural) : n -> intrinsic "natural-to-text" n
+instance (Show Byte) : n -> intrinsic "byte-to-text" n
+instance (Show Signed) : n -> intrinsic "signed-to-text" n
+instance (Show Unsigned) : n -> intrinsic "unsigned-to-text" n
+instance (Show Float) : n -> intrinsic "float-to-text" n
+instance (Show Double) : n -> intrinsic "double-to-text" n
 instance (Show Boolean) : x? -> if x? "True" "False"
 instance (Show Index-Error) : just "invalid index"
 instance (Show None-Error) : just "found `None`"
@@ -59,25 +59,25 @@ read :: A where (Read A) => Text -> Maybe A
 read : Read
 
 instance (Read Text) : Some
-instance (Read Number) : text -> external "runtime" "text-to-number" text
-instance (Read Integer) : text -> external "runtime" "text-to-integer" text
-instance (Read Natural) : text -> external "runtime" "text-to-natural" text
-instance (Read Byte) : text -> external "runtime" "text-to-byte" text
-instance (Read Signed) : text -> external "runtime" "text-to-signed" text
-instance (Read Unsigned) : text -> external "runtime" "text-to-unsigned" text
-instance (Read Float) : text -> external "runtime" "text-to-float" text
-instance (Read Double) : text -> external "runtime" "text-to-double" text
+instance (Read Number) : text -> intrinsic "text-to-number" text
+instance (Read Integer) : text -> intrinsic "text-to-integer" text
+instance (Read Natural) : text -> intrinsic "text-to-natural" text
+instance (Read Byte) : text -> intrinsic "text-to-byte" text
+instance (Read Signed) : text -> intrinsic "text-to-signed" text
+instance (Read Unsigned) : text -> intrinsic "text-to-unsigned" text
+instance (Read Float) : text -> intrinsic "text-to-float" text
+instance (Read Double) : text -> intrinsic "text-to-double" text
 
 [help-group "Input and Output"]
 [help "Read a value from the user with the provided prompt."]
 prompt :: (A : Text) where (Read A) => Text -> A
-prompt : prompt -> external "runtime" "prompt" prompt (Read :: (Text -> Maybe A))
+prompt : prompt -> intrinsic "prompt" prompt (Read :: (Text -> Maybe A))
 
 [help "Ask the user to pick from a set of options."]
 [help-group "Input and Output"]
 choice :: Element where (Show Element) => Text -> List Element -> Element
 choice : prompt items -> {
   descriptions : items . transform Show . collect :: List Text
-  index : external "runtime" "choice" prompt descriptions
+  index : intrinsic "choice" prompt descriptions
   items . nth index . unwrap
 }

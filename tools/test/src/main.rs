@@ -45,7 +45,8 @@ async fn main() -> anyhow::Result<()> {
                     .unwrap(),
             ),
         )),
-    );
+    )
+    .with_fetcher(loader::Fetcher::new().with_default_path_handler());
 
     let compiler = wipple_frontend::Compiler::new(loader);
 

@@ -14,14 +14,14 @@ Add : Left Right (infer Sum) => trait (Left -> Right -> Sum)
 [operator Addition-Precedence]
 + : syntax { 'a + 'b -> Add 'a 'b }
 
-instance (Add Number Number Number) : a b -> external "runtime" "add-number" a b
-instance (Add Integer Integer Integer) : a b -> external "runtime" "add-integer" a b
-instance (Add Natural Natural Natural) : a b -> external "runtime" "add-natural" a b
-instance (Add Byte Byte Byte) : a b -> external "runtime" "add-byte" a b
-instance (Add Signed Signed Signed) : a b -> external "runtime" "add-signed" a b
-instance (Add Unsigned Unsigned Unsigned) : a b -> external "runtime" "add-unsigned" a b
-instance (Add Float Float Float) : a b -> external "runtime" "add-float" a b
-instance (Add Double Double Double) : a b -> external "runtime" "add-double" a b
+instance (Add Number Number Number) : a b -> intrinsic "add-number" a b
+instance (Add Integer Integer Integer) : a b -> intrinsic "add-integer" a b
+instance (Add Natural Natural Natural) : a b -> intrinsic "add-natural" a b
+instance (Add Byte Byte Byte) : a b -> intrinsic "add-byte" a b
+instance (Add Signed Signed Signed) : a b -> intrinsic "add-signed" a b
+instance (Add Unsigned Unsigned Unsigned) : a b -> intrinsic "add-unsigned" a b
+instance (Add Float Float Float) : a b -> intrinsic "add-float" a b
+instance (Add Double Double Double) : a b -> intrinsic "add-double" a b
 instance (Add Text Text Text) : a b -> format "__" a b
 
 [help "Implements the `-` operator."]
@@ -34,14 +34,14 @@ Subtract : Left Right (infer Difference) => trait (Left -> Right -> Difference)
 [operator Addition-Precedence]
 - : syntax { 'a - 'b -> Subtract 'a 'b }
 
-instance (Subtract Number Number Number) : a b -> external "runtime" "subtract-number" a b
-instance (Subtract Integer Integer Integer) : a b -> external "runtime" "subtract-integer" a b
-instance (Subtract Natural Natural Natural) : a b -> external "runtime" "subtract-natural" a b
-instance (Subtract Byte Byte Byte) : a b -> external "runtime" "subtract-byte" a b
-instance (Subtract Signed Signed Signed) : a b -> external "runtime" "subtract-signed" a b
-instance (Subtract Unsigned Unsigned Unsigned) : a b -> external "runtime" "subtract-unsigned" a b
-instance (Subtract Float Float Float) : a b -> external "runtime" "subtract-float" a b
-instance (Subtract Double Double Double) : a b -> external "runtime" "subtract-double" a b
+instance (Subtract Number Number Number) : a b -> intrinsic "subtract-number" a b
+instance (Subtract Integer Integer Integer) : a b -> intrinsic "subtract-integer" a b
+instance (Subtract Natural Natural Natural) : a b -> intrinsic "subtract-natural" a b
+instance (Subtract Byte Byte Byte) : a b -> intrinsic "subtract-byte" a b
+instance (Subtract Signed Signed Signed) : a b -> intrinsic "subtract-signed" a b
+instance (Subtract Unsigned Unsigned Unsigned) : a b -> intrinsic "subtract-unsigned" a b
+instance (Subtract Float Float Float) : a b -> intrinsic "subtract-float" a b
+instance (Subtract Double Double Double) : a b -> intrinsic "subtract-double" a b
 
 [help "Implements the `*` operator."]
 [help-group "Math"]
@@ -53,14 +53,14 @@ Multiply : Left Right (infer Product) => trait (Left -> Right -> Product)
 [operator Multiplication-Precedence]
 * : syntax { 'a * 'b -> Multiply 'a 'b }
 
-instance (Multiply Number Number Number) : a b -> external "runtime" "multiply-number" a b
-instance (Multiply Integer Integer Integer) : a b -> external "runtime" "multiply-integer" a b
-instance (Multiply Natural Natural Natural) : a b -> external "runtime" "multiply-natural" a b
-instance (Multiply Byte Byte Byte) : a b -> external "runtime" "multiply-byte" a b
-instance (Multiply Signed Signed Signed) : a b -> external "runtime" "multiply-signed" a b
-instance (Multiply Unsigned Unsigned Unsigned) : a b -> external "runtime" "multiply-unsigned" a b
-instance (Multiply Float Float Float) : a b -> external "runtime" "multiply-float" a b
-instance (Multiply Double Double Double) : a b -> external "runtime" "multiply-double" a b
+instance (Multiply Number Number Number) : a b -> intrinsic "multiply-number" a b
+instance (Multiply Integer Integer Integer) : a b -> intrinsic "multiply-integer" a b
+instance (Multiply Natural Natural Natural) : a b -> intrinsic "multiply-natural" a b
+instance (Multiply Byte Byte Byte) : a b -> intrinsic "multiply-byte" a b
+instance (Multiply Signed Signed Signed) : a b -> intrinsic "multiply-signed" a b
+instance (Multiply Unsigned Unsigned Unsigned) : a b -> intrinsic "multiply-unsigned" a b
+instance (Multiply Float Float Float) : a b -> intrinsic "multiply-float" a b
+instance (Multiply Double Double Double) : a b -> intrinsic "multiply-double" a b
 
 [help "Implements the `/` operator."]
 [help-group "Math"]
@@ -72,14 +72,14 @@ Divide : Left Right (infer Quotient) => trait (Left -> Right -> Quotient)
 [operator Multiplication-Precedence]
 / : syntax { 'a / 'b -> Divide 'a 'b }
 
-instance (Divide Number Number Number) : a b -> external "runtime" "divide-number" a b
-instance (Divide Integer Integer Integer) : a b -> external "runtime" "divide-integer" a b
-instance (Divide Natural Natural Natural) : a b -> external "runtime" "divide-natural" a b
-instance (Divide Byte Byte Byte) : a b -> external "runtime" "divide-byte" a b
-instance (Divide Signed Signed Signed) : a b -> external "runtime" "divide-signed" a b
-instance (Divide Unsigned Unsigned Unsigned) : a b -> external "runtime" "divide-unsigned" a b
-instance (Divide Float Float Float) : a b -> external "runtime" "divide-float" a b
-instance (Divide Double Double Double) : a b -> external "runtime" "divide-double" a b
+instance (Divide Number Number Number) : a b -> intrinsic "divide-number" a b
+instance (Divide Integer Integer Integer) : a b -> intrinsic "divide-integer" a b
+instance (Divide Natural Natural Natural) : a b -> intrinsic "divide-natural" a b
+instance (Divide Byte Byte Byte) : a b -> intrinsic "divide-byte" a b
+instance (Divide Signed Signed Signed) : a b -> intrinsic "divide-signed" a b
+instance (Divide Unsigned Unsigned Unsigned) : a b -> intrinsic "divide-unsigned" a b
+instance (Divide Float Float Float) : a b -> intrinsic "divide-float" a b
+instance (Divide Double Double Double) : a b -> intrinsic "divide-double" a b
 
 [help "Implements the `mod` operator."]
 [help-group "Math"]
@@ -91,14 +91,14 @@ Modulo : Left Right (infer Remainder) => trait (Left -> Right -> Remainder)
 [operator Multiplication-Precedence]
 mod : syntax { 'a mod 'b -> Modulo 'a 'b }
 
-instance (Modulo Number Number Number) : a b -> external "runtime" "modulo-number" a b
-instance (Modulo Integer Integer Integer) : a b -> external "runtime" "modulo-integer" a b
-instance (Modulo Natural Natural Natural) : a b -> external "runtime" "modulo-natural" a b
-instance (Modulo Byte Byte Byte) : a b -> external "runtime" "modulo-byte" a b
-instance (Modulo Signed Signed Signed) : a b -> external "runtime" "modulo-signed" a b
-instance (Modulo Unsigned Unsigned Unsigned) : a b -> external "runtime" "modulo-unsigned" a b
-instance (Modulo Float Float Float) : a b -> external "runtime" "modulo-float" a b
-instance (Modulo Double Double Double) : a b -> external "runtime" "modulo-double" a b
+instance (Modulo Number Number Number) : a b -> intrinsic "modulo-number" a b
+instance (Modulo Integer Integer Integer) : a b -> intrinsic "modulo-integer" a b
+instance (Modulo Natural Natural Natural) : a b -> intrinsic "modulo-natural" a b
+instance (Modulo Byte Byte Byte) : a b -> intrinsic "modulo-byte" a b
+instance (Modulo Signed Signed Signed) : a b -> intrinsic "modulo-signed" a b
+instance (Modulo Unsigned Unsigned Unsigned) : a b -> intrinsic "modulo-unsigned" a b
+instance (Modulo Float Float Float) : a b -> intrinsic "modulo-float" a b
+instance (Modulo Double Double Double) : a b -> intrinsic "modulo-double" a b
 
 [help "Implements the `^` operator."]
 [help-group "Math"]
@@ -110,38 +110,38 @@ Power : Left Right (infer Power) => trait (Left -> Right -> Power)
 [operator Exponentiation-Precedence]
 ^ : syntax { 'a ^ 'b -> Power 'a 'b }
 
-instance (Power Number Number Number) : a b -> external "runtime" "power-number" a b
-instance (Power Integer Integer Integer) : a b -> external "runtime" "power-integer" a b
-instance (Power Natural Natural Natural) : a b -> external "runtime" "power-natural" a b
-instance (Power Byte Byte Byte) : a b -> external "runtime" "power-byte" a b
-instance (Power Signed Signed Signed) : a b -> external "runtime" "power-signed" a b
-instance (Power Unsigned Unsigned Unsigned) : a b -> external "runtime" "power-unsigned" a b
-instance (Power Float Float Float) : a b -> external "runtime" "power-float" a b
-instance (Power Double Double Double) : a b -> external "runtime" "power-double" a b
+instance (Power Number Number Number) : a b -> intrinsic "power-number" a b
+instance (Power Integer Integer Integer) : a b -> intrinsic "power-integer" a b
+instance (Power Natural Natural Natural) : a b -> intrinsic "power-natural" a b
+instance (Power Byte Byte Byte) : a b -> intrinsic "power-byte" a b
+instance (Power Signed Signed Signed) : a b -> intrinsic "power-signed" a b
+instance (Power Unsigned Unsigned Unsigned) : a b -> intrinsic "power-unsigned" a b
+instance (Power Float Float Float) : a b -> intrinsic "power-float" a b
+instance (Power Double Double Double) : a b -> intrinsic "power-double" a b
 
 [help "Rounds down a number to the nearest integer."]
 [help-group "Math"]
 Floor : N => trait (N -> N)
 floor :: N where (Floor N) => N -> N
 floor : Floor
-instance (Floor Number) : n -> external "runtime" "floor-number" n
-instance (Floor Float) : n -> external "runtime" "floor-float" n
-instance (Floor Double) : n -> external "runtime" "floor-double" n
+instance (Floor Number) : n -> intrinsic "floor-number" n
+instance (Floor Float) : n -> intrinsic "floor-float" n
+instance (Floor Double) : n -> intrinsic "floor-double" n
 
 [help "Rounds up a number to the nearest integer."]
 [help-group "Math"]
 Ceil : N => trait (N -> N)
 ceil :: N where (Ceil N) => N -> N
 ceil : Ceil
-instance (Ceil Number) : n -> external "runtime" "ceil-number" n
-instance (Ceil Float) : n -> external "runtime" "ceil-float" n
-instance (Ceil Double) : n -> external "runtime" "ceil-double" n
+instance (Ceil Number) : n -> intrinsic "ceil-number" n
+instance (Ceil Float) : n -> intrinsic "ceil-float" n
+instance (Ceil Double) : n -> intrinsic "ceil-double" n
 
 [help "Calculates the square root of a number."]
 [help-group "Math"]
 Sqrt : N => trait (N -> N)
 sqrt :: N where (Sqrt N) => N -> N
 sqrt : Sqrt
-instance (Sqrt Number) : n -> external "runtime" "sqrt-number" n
-instance (Sqrt Float) : n -> external "runtime" "sqrt-float" n
-instance (Sqrt Double) : n -> external "runtime" "sqrt-double" n
+instance (Sqrt Number) : n -> intrinsic "sqrt-number" n
+instance (Sqrt Float) : n -> intrinsic "sqrt-float" n
+instance (Sqrt Double) : n -> intrinsic "sqrt-double" n

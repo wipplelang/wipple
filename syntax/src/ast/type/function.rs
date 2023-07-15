@@ -16,18 +16,6 @@ pub struct FunctionType<D: Driver> {
     pub output: Result<Box<Type<D>>, SyntaxError<D>>,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for FunctionType<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(FunctionType {
-            span: Default::default(),
-            arrow_span: Default::default(),
-            input: arbitrary::Arbitrary::arbitrary(u)?,
-            output: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> FunctionType<D> {
     pub fn span(&self) -> D::Span {
         self.span

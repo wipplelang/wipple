@@ -8,15 +8,15 @@ pub mod typecheck;
 
 pub use span::{Span, SpanList};
 pub use typecheck::{
-    Arm, Bound, Expression, ExpressionKind, LiteralKind, Pattern, PatternKind, Program,
-    RuntimeFunction, Type, TypeAnnotation, TypeAnnotationKind, TypeStructure,
+    Arm, Bound, Expression, ExpressionKind, Intrinsic, LiteralKind, Pattern, PatternKind, Program,
+    Type, TypeAnnotation, TypeAnnotationKind, TypeStructure,
 };
 pub use wipple_syntax::ast;
 
 use crate::{
     diagnostics::*,
     helpers::{InternedString, Shared},
-    BuiltinSyntaxId, Compiler, FilePath, ScopeId, SyntaxId,
+    BuiltinSyntaxId, Compiler, FileKind, FilePath, ScopeId, SyntaxId,
 };
 use async_trait::async_trait;
 use futures::future::BoxFuture;
@@ -97,7 +97,11 @@ impl Compiler {
             }
 
             let (entrypoint, lowering_is_complete) = compiler.lower_with(files, &options);
-            let program = compiler.typecheck_with(entrypoint, lowering_is_complete, &options);
+
+            let program = compiler
+                .typecheck_with(entrypoint, lowering_is_complete, &options)
+                .await;
+
             compiler.lint_with(&program, &options);
 
             let diagnostics = compiler.finish_analysis();
@@ -167,7 +171,7 @@ impl Compiler {
         (entrypoint, lowering_is_complete)
     }
 
-    pub fn typecheck_with(
+    pub async fn typecheck_with(
         &self,
         entrypoint: lower::File,
         lowering_is_complete: bool,
@@ -178,6 +182,7 @@ impl Compiler {
                 progress.lock()(Progress::Typechecking(p))
             }
         })
+        .await
     }
 
     pub fn lint_with(&self, program: &Program, options: &Options) {
@@ -286,10 +291,11 @@ impl wipple_syntax::Driver for Analysis {
             };
         }
 
-        let resolved_path = try_load!(self
-            .compiler
-            .loader
-            .resolve(path, source_file.as_ref().map(|(path, _)| *path)));
+        let resolved_path = try_load!(self.compiler.loader.resolve(
+            path,
+            FileKind::Source,
+            source_file.as_ref().map(|(path, _)| *path)
+        ));
 
         if let Some(cached) = self.compiler.loader.cache().lock().get(&resolved_path) {
             fn insert(

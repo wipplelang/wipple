@@ -17,18 +17,6 @@ pub struct AssignWithClause<D: Driver> {
     pub value: Result<Box<Expression<D>>, SyntaxError<D>>,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for AssignWithClause<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(AssignWithClause {
-            span: Default::default(),
-            colon_span: Default::default(),
-            name: arbitrary::Arbitrary::arbitrary(u)?,
-            value: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> AssignWithClause<D> {
     pub fn span(&self) -> D::Span {
         self.span

@@ -154,7 +154,7 @@ lazy_static! {
 
 
     static ref LOADER: loader::Loader = {
-        loader::Loader::new_with_fetcher(
+        loader::Loader::new(
             Some(wipple_frontend::FilePath::Url(wipple_frontend::helpers::InternedString::new(FILES_PATH))),
             Some(wipple_frontend::FilePath::Path(
                 #[cfg(feature = "debug_playground")]
@@ -165,6 +165,8 @@ lazy_static! {
                 #[cfg(not(feature = "debug_playground"))]
                 wipple_frontend::helpers::InternedString::new(loader::STD_URL),
             )),
+        )
+        .with_fetcher(
             Fetcher::new()
                 .with_path_handler(|path| {
                     Box::pin(async move {
@@ -274,11 +276,78 @@ fn get_analysis<'a>() -> Option<MappedMutexGuard<'a, Analysis>> {
 }
 
 #[wasm_bindgen]
-pub fn analyze(code: String, lint: bool, callback: js_sys::Function) {
+pub fn analyze(
+    code: String,
+    lint: bool,
+    handle_plugin: js_sys::Function,
+    callback: js_sys::Function,
+) {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
     wasm_bindgen_futures::spawn_local(async move {
+        let handle_plugin = SendWrapper::new(handle_plugin);
+
+        let prev_plugin_hander = Mutex::new(Some(LOADER.set_plugin_handler(
+            loader::PluginHandler::new().with_url_handler(move |path, name, input, _api| {
+                let handle_plugin = handle_plugin.clone();
+                let path = path.to_string();
+                let name = name.to_string();
+
+                Box::pin(SendSyncFuture(Box::pin(async move {
+                    #[wasm_bindgen(getter_with_clone)]
+                    struct Api {
+                        // TODO
+                    }
+
+                    let api = Api {
+                        // TODO
+                    };
+
+                    let mut output = handle_plugin
+                        .apply(
+                            &JsValue::NULL,
+                            &js_sys::Array::from_iter([
+                                path.into(),
+                                name.into(),
+                                serde_wasm_bindgen::to_value(&input).unwrap(),
+                                api.into(),
+                            ]),
+                        )
+                        .map_err(|e| {
+                            anyhow::Error::msg(
+                                js_sys::Error::try_from(e)
+                                    .expect("expected error")
+                                    .to_string()
+                                    .as_string()
+                                    .unwrap(),
+                            )
+                        })?;
+
+                    let output = loop {
+                        let promise = match output.dyn_into::<js_sys::Promise>() {
+                            Ok(promise) => promise,
+                            Err(value) => break value,
+                        };
+
+                        output = wasm_bindgen_futures::JsFuture::from(promise)
+                            .await
+                            .map_err(|e| {
+                                anyhow::Error::msg(
+                                    js_sys::Error::try_from(e)
+                                        .expect("expected error")
+                                        .to_string()
+                                        .as_string()
+                                        .unwrap(),
+                                )
+                            })?;
+                    };
+
+                    Ok(serde_wasm_bindgen::from_value(output).unwrap())
+                })))
+            }),
+        )));
+
         let panic_hook = std::panic::take_hook();
 
         let callback = SendWrapper::new(callback);
@@ -290,6 +359,10 @@ pub fn analyze(code: String, lint: bool, callback: js_sys::Function) {
                 callback
                     .call2(&JsValue::NULL, &JsValue::FALSE, &info.to_string().into())
                     .unwrap();
+
+                if let Some(prev_plugin_hander) = prev_plugin_hander.lock().take() {
+                    LOADER.set_plugin_handler(prev_plugin_hander);
+                }
 
                 panic_hook(info);
             })
@@ -404,7 +477,7 @@ pub fn analyze(code: String, lint: bool, callback: js_sys::Function) {
             completions,
         };
 
-        let output = JsValue::from_serde(&output).unwrap();
+        let output = serde_wasm_bindgen::to_value(&output).unwrap();
 
         callback
             .call2(&JsValue::NULL, &JsValue::TRUE, &output)
@@ -1221,7 +1294,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
         .min_by_key(|(span, _)| span.primary_end() - span.primary_start())
         .map(|(_, hover)| hover);
 
-    JsValue::from_serde(&hover).unwrap()
+    serde_wasm_bindgen::to_value(&hover).unwrap()
 }
 
 #[wasm_bindgen]

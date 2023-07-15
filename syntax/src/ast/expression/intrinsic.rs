@@ -9,27 +9,24 @@ use crate::{
 use futures::{stream, StreamExt};
 
 #[derive(Debug, Clone)]
-pub struct ExternalExpression<D: Driver> {
+pub struct IntrinsicExpression<D: Driver> {
     pub span: D::Span,
-    pub external_span: D::Span,
-    pub path_span: D::Span,
-    pub path: D::InternedString,
+    pub intrinsic_span: D::Span,
     pub name_span: D::Span,
     pub name: D::InternedString,
     pub inputs: Vec<Result<Expression<D>, SyntaxError<D>>>,
 }
 
-impl<D: Driver> ExternalExpression<D> {
+impl<D: Driver> IntrinsicExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
     }
 }
 
-impl<D: Driver> Format<D> for ExternalExpression<D> {
+impl<D: Driver> Format<D> for IntrinsicExpression<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
         Ok(format!(
-            "(external \"{}\" \"{}\" {})",
-            self.path.as_ref(),
+            "(intrinsic \"{}\" {})",
             self.name.as_ref(),
             self.inputs
                 .into_iter()
@@ -40,43 +37,29 @@ impl<D: Driver> Format<D> for ExternalExpression<D> {
     }
 }
 
-pub struct ExternalExpressionSyntax;
+pub struct IntrinsicExpressionSyntax;
 
-impl<D: Driver> Syntax<D> for ExternalExpressionSyntax {
+impl<D: Driver> Syntax<D> for IntrinsicExpressionSyntax {
     type Context = ExpressionSyntaxContext<D>;
 
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
-            "external",
-            |context, span, external_span, exprs, scope| async move {
-                if exprs.len() < 2 {
+            "intrinsic",
+            |context, span, intrinsic_span, exprs, scope| async move {
+                if exprs.len() < 1 {
                     context
                         .ast_builder
                         .driver
-                        .syntax_error(span, "`external` accepts at least 2 inputs");
+                        .syntax_error(span, "`intrinsic` accepts at least 1 input");
 
                     return Err(context.ast_builder.syntax_error(span));
                 }
 
                 let mut exprs = exprs.into_iter();
 
-                let namespace = exprs.next().unwrap();
-                let path_span = namespace.span;
-                let path = match namespace.kind {
-                    parse::ExprKind::Text(text, _) => text,
-                    _ => {
-                        context
-                            .ast_builder
-                            .driver
-                            .syntax_error(span, "expected text here");
-
-                        return Err(context.ast_builder.syntax_error(span));
-                    }
-                };
-
-                let identifier = exprs.next().unwrap();
-                let name_span = identifier.span;
-                let name = match identifier.kind {
+                let name = exprs.next().unwrap();
+                let name_span = name.span;
+                let name = match name.kind {
                     parse::ExprKind::Text(text, _) => text,
                     _ => {
                         context
@@ -99,11 +82,9 @@ impl<D: Driver> Syntax<D> for ExternalExpressionSyntax {
                     .collect()
                     .await;
 
-                Ok(ExternalExpression {
+                Ok(IntrinsicExpression {
                     span,
-                    external_span,
-                    path_span,
-                    path,
+                    intrinsic_span,
                     name_span,
                     name,
                     inputs,
@@ -115,5 +96,5 @@ impl<D: Driver> Syntax<D> for ExternalExpressionSyntax {
 }
 
 pub(crate) fn builtin_syntax_definitions() -> Vec<crate::ast::BuiltinSyntaxDefinition> {
-    vec![crate::ast::BuiltinSyntaxDefinition::EXTERNAL]
+    Vec::new() // `intrinsic` is undocumented
 }

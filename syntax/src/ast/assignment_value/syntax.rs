@@ -21,22 +21,6 @@ pub struct SyntaxAssignmentValue<D: Driver> {
     pub uses: Vec<D::Span>,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for SyntaxAssignmentValue<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(SyntaxAssignmentValue {
-            span: Default::default(),
-            syntax_span: Default::default(),
-            name: Default::default(),
-            body: arbitrary::Arbitrary::arbitrary(u)?,
-            operator_precedence: Default::default(),
-            keyword: Default::default(),
-            attributes: Default::default(),
-            uses: Default::default(),
-        })
-    }
-}
-
 impl<D: Driver> SyntaxAssignmentValue<D> {
     pub fn span(&self) -> D::Span {
         self.span

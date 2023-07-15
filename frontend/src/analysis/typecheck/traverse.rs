@@ -42,7 +42,12 @@ macro_rules! traverse_expr_impl {
                         input.$traverse($pass_parent!(expr), context.clone(), f);
                     }
                 }
-                Runtime(_, inputs) => {
+                Intrinsic(_, inputs) => {
+                    for input in inputs {
+                        input.$traverse($pass_parent!(expr), context.clone(), f);
+                    }
+                }
+                Plugin(_, _, inputs) => {
                     for input in inputs {
                         input.$traverse($pass_parent!(expr), context.clone(), f);
                     }

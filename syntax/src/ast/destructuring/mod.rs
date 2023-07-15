@@ -33,17 +33,6 @@ pub struct NameDestructuring<D: Driver> {
     pub scope: D::Scope,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NameDestructuring<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(NameDestructuring {
-            span: Default::default(),
-            name: arbitrary::Arbitrary::arbitrary(u)?,
-            scope: Default::default(),
-        })
-    }
-}
-
 impl<D: Driver> NameDestructuring<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -60,16 +49,6 @@ impl<D: Driver> Format<D> for NameDestructuring<D> {
 pub struct ListDestructuring<D: Driver> {
     pub span: D::Span,
     pub names: Vec<Result<NameDestructuring<D>, SyntaxError<D>>>,
-}
-
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for ListDestructuring<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(ListDestructuring {
-            span: Default::default(),
-            names: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
 }
 
 impl<D: Driver> ListDestructuring<D> {

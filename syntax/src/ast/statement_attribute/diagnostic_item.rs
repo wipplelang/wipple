@@ -16,18 +16,6 @@ pub struct DiagnosticItemStatementAttribute<D: Driver> {
     pub diagnostic_item_kind: DiagnosticItemStatementAttributeKind,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for DiagnosticItemStatementAttribute<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(DiagnosticItemStatementAttribute {
-            span: Default::default(),
-            diagnostic_span: Default::default(),
-            diagnostic_item_span: Default::default(),
-            diagnostic_item_kind: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> DiagnosticItemStatementAttribute<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -36,7 +24,6 @@ impl<D: Driver> DiagnosticItemStatementAttribute<D> {
 
 #[derive(Debug, Clone, Copy, strum::EnumString)]
 #[strum(serialize_all = "kebab-case")]
-#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum DiagnosticItemStatementAttributeKind {
     AcceptsText,
 }

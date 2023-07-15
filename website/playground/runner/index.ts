@@ -98,12 +98,54 @@ export const useRunner = (context: any) => {
     }, []);
 
     return {
-        analyze: (code: string, lint: boolean) =>
+        analyze: (
+            code: string,
+            lint: boolean,
+            handlePlugin: (path: string, name: string, input: any, api: any) => Promise<any>
+        ) =>
             new Promise<AnalysisOutput>((resolve, reject) => {
                 const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = (event) => {
-                    resolve(event.data);
-                    runner.current!.onmessage = prevonmessage;
+                    try {
+                        switch (event.data.type) {
+                            case "plugin":
+                                const api = {
+                                    // TODO
+                                };
+
+                                handlePlugin(
+                                    event.data.path,
+                                    event.data.name,
+                                    event.data.input,
+                                    api
+                                )
+                                    .then((output) => {
+                                        runner.current!.postMessage({
+                                            operation: "pluginSuccessCallback",
+                                            id: event.data.id,
+                                            output,
+                                        });
+                                    })
+                                    .catch((error) => {
+                                        runner.current!.postMessage({
+                                            operation: "pluginFailureCallback",
+                                            id: event.data.id,
+                                            error,
+                                        });
+                                    });
+
+                                break;
+                            case "done":
+                                resolve(event.data.analysis);
+                                runner.current!.onmessage = prevonmessage;
+                                break;
+                            default:
+                                console.error("received invalid event:", event);
+                                throw new Error("invalid operation");
+                        }
+                    } catch (error) {
+                        console.error("[bridge] error:", error);
+                    }
                 };
 
                 runner.current!.onerror = (event) => {

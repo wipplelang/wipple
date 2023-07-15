@@ -15,17 +15,6 @@ pub struct TraitAssignmentValue<D: Driver> {
     pub ty: Option<Result<Type<D>, SyntaxError<D>>>,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TraitAssignmentValue<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(TraitAssignmentValue {
-            span: Default::default(),
-            trait_span: Default::default(),
-            ty: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> TraitAssignmentValue<D> {
     pub fn span(&self) -> D::Span {
         self.span

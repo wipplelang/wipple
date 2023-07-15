@@ -7,7 +7,7 @@ use std::{
     os::raw::{c_int, c_uint},
 };
 
-pub use crate::analysis::RuntimeFunction;
+pub use crate::analysis::Intrinsic;
 
 #[derive(Debug, Clone)]
 pub struct Program {
@@ -60,7 +60,7 @@ pub enum ExpressionKind {
     Function(Pattern, Box<Expression>, analysis::lower::CaptureList),
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
-    Runtime(RuntimeFunction, Vec<Expression>),
+    Intrinsic(Intrinsic, Vec<Expression>),
     Structure(Vec<Expression>),
     Variant(VariantIndex, Vec<Expression>),
     Tuple(Vec<Expression>),
@@ -203,13 +203,16 @@ impl Converter<'_> {
                             .collect(),
                     )
                 }
-                analysis::ExpressionKind::Runtime(func, inputs) => ExpressionKind::Runtime(
-                    *func,
-                    inputs
-                        .iter()
-                        .map(|expr| self.convert_expr(expr, false))
-                        .collect(),
-                ),
+                analysis::ExpressionKind::Intrinsic(intrinsic, inputs) => {
+                    ExpressionKind::Intrinsic(
+                        *intrinsic,
+                        inputs
+                            .iter()
+                            .map(|expr| self.convert_expr(expr, false))
+                            .collect(),
+                    )
+                }
+                analysis::ExpressionKind::Plugin(_, _, _) => panic!("found unresolved plugin"),
                 analysis::ExpressionKind::Initialize(_, _) => {
                     unreachable!(
                         "variable initialization is handled specially by convert_block_to_ssa"

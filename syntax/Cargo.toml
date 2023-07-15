@@ -4,7 +4,6 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-arbitrary = { version = "1", features = ["derive"], optional = true }
 async-recursion = "1"
 async-trait = "0.1"
 futures = "0.3"

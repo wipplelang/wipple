@@ -3,12 +3,12 @@
 use async_trait::async_trait;
 use futures::future::BoxFuture;
 use path_clean::PathClean;
-use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
+use std::{collections::HashMap, mem, path::PathBuf, str::FromStr, sync::Arc};
 use url::Url;
 use wipple_frontend::{
     analysis::{self, Analysis},
     helpers::{InternedString, Shared},
-    FilePath, SourceMap,
+    FileKind, FilePath, PluginApi, PluginInput, PluginOutput, SourceMap,
 };
 
 pub const STD_URL: &str = "https://pkg.wipple.dev/std/std.wpl";
@@ -17,6 +17,7 @@ pub const STD_URL: &str = "https://pkg.wipple.dev/std/std.wpl";
 pub struct Loader {
     virtual_paths: Shared<HashMap<InternedString, Arc<str>>>,
     fetcher: Shared<Fetcher>,
+    plugin_handler: Shared<PluginHandler>,
     base: Option<FilePath>,
     std_path: Option<FilePath>,
     source_map: Shared<SourceMap>,
@@ -119,26 +120,84 @@ impl std::fmt::Debug for Fetcher {
     }
 }
 
-impl Loader {
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn new(base: Option<FilePath>, std_path: Option<FilePath>) -> Self {
-        Loader::new_with_fetcher(
-            base,
-            std_path,
-            Fetcher::new()
-                .with_default_path_handler()
-                .with_default_url_handler(),
-        )
+#[derive(Default)]
+pub struct PluginHandler {
+    from_path: Option<
+        Box<
+            dyn Fn(
+                    &str,
+                    &str,
+                    PluginInput,
+                    &dyn PluginApi,
+                ) -> BoxFuture<'static, anyhow::Result<PluginOutput>>
+                + Send
+                + Sync,
+        >,
+    >,
+    from_url: Option<
+        Box<
+            dyn Fn(
+                    Url,
+                    &str,
+                    PluginInput,
+                    &dyn PluginApi,
+                ) -> BoxFuture<'static, anyhow::Result<PluginOutput>>
+                + Send
+                + Sync,
+        >,
+    >,
+}
+
+impl PluginHandler {
+    pub fn new() -> Self {
+        Default::default()
     }
 
-    pub fn new_with_fetcher(
-        base: Option<FilePath>,
-        std_path: Option<FilePath>,
-        fetcher: Fetcher,
+    pub fn with_path_handler(
+        mut self,
+        from_path: impl Fn(
+                &str,
+                &str,
+                PluginInput,
+                &dyn PluginApi,
+            ) -> BoxFuture<'static, anyhow::Result<PluginOutput>>
+            + Send
+            + Sync
+            + 'static,
     ) -> Self {
+        self.from_path = Some(Box::new(from_path));
+        self
+    }
+
+    pub fn with_url_handler(
+        mut self,
+        from_url: impl Fn(
+                Url,
+                &str,
+                PluginInput,
+                &dyn PluginApi,
+            ) -> BoxFuture<'static, anyhow::Result<PluginOutput>>
+            + Send
+            + Sync
+            + 'static,
+    ) -> Self {
+        self.from_url = Some(Box::new(from_url));
+        self
+    }
+}
+
+impl std::fmt::Debug for PluginHandler {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("PluginHandler").finish()
+    }
+}
+
+impl Loader {
+    pub fn new(base: Option<FilePath>, std_path: Option<FilePath>) -> Self {
         Loader {
             virtual_paths: Default::default(),
-            fetcher: Shared::new(fetcher),
+            fetcher: Default::default(),
+            plugin_handler: Default::default(),
             base,
             std_path,
             source_map: Default::default(),
@@ -146,8 +205,18 @@ impl Loader {
         }
     }
 
-    pub fn with_fetcher(&self, f: impl FnOnce(Fetcher) -> Fetcher) {
-        replace_with::replace_with_or_default(&mut *self.fetcher.lock(), f);
+    pub fn with_fetcher(&self, fetcher: Fetcher) -> Self {
+        *self.fetcher.lock() = fetcher;
+        self.clone()
+    }
+
+    pub fn with_plugin_handler(&self, handler: PluginHandler) -> Self {
+        *self.plugin_handler.lock() = handler;
+        self.clone()
+    }
+
+    pub fn set_plugin_handler(&self, handler: PluginHandler) -> PluginHandler {
+        mem::replace(&mut *self.plugin_handler.lock(), handler)
     }
 }
 
@@ -157,10 +226,20 @@ impl wipple_frontend::Loader for Loader {
         self.std_path
     }
 
-    fn resolve(&self, path: FilePath, current: Option<FilePath>) -> anyhow::Result<FilePath> {
-        fn set_extension_if_needed(path: &mut PathBuf) {
+    fn resolve(
+        &self,
+        path: FilePath,
+        kind: FileKind,
+        current: Option<FilePath>,
+    ) -> anyhow::Result<FilePath> {
+        fn set_extension_if_needed(path: &mut PathBuf, kind: FileKind) {
             if path.extension().is_none() {
-                path.set_extension("wpl");
+                match kind {
+                    FileKind::Source => {
+                        path.set_extension("wpl");
+                    }
+                    FileKind::Plugin => {}
+                };
             }
         }
 
@@ -170,13 +249,13 @@ impl wipple_frontend::Loader for Loader {
                     let mut url = Url::from_str(&path)?.join(path.as_str())?;
 
                     let mut path = PathBuf::from(url.path());
-                    set_extension_if_needed(&mut path);
+                    set_extension_if_needed(&mut path, kind);
                     url.set_path(path.to_str().unwrap());
 
                     Ok(FilePath::Url(InternedString::new(url.as_str())))
                 } else {
                     let mut parsed_path = PathBuf::from(path.as_str());
-                    set_extension_if_needed(&mut parsed_path);
+                    set_extension_if_needed(&mut parsed_path, kind);
 
                     if parsed_path.has_root() {
                         Ok(FilePath::Path(path))
@@ -194,7 +273,7 @@ impl wipple_frontend::Loader for Loader {
                                 let mut url = Url::from_str(&base).unwrap().join(path.as_str())?;
 
                                 let mut path = PathBuf::from(url.path());
-                                set_extension_if_needed(&mut path);
+                                set_extension_if_needed(&mut path, kind);
                                 url.set_path(path.to_str().unwrap());
 
                                 Ok(FilePath::Url(InternedString::from(url.to_string())))
@@ -230,7 +309,7 @@ impl wipple_frontend::Loader for Loader {
                                         let mut url = Url::from_str(&base)?.join(path.as_str())?;
 
                                         let mut path = PathBuf::from(url.path());
-                                        set_extension_if_needed(&mut path);
+                                        set_extension_if_needed(&mut path, kind);
                                         url.set_path(path.to_str().unwrap());
 
                                         Ok(FilePath::Url(InternedString::new(url.as_str())))
@@ -252,7 +331,7 @@ impl wipple_frontend::Loader for Loader {
         let code = match path {
             FilePath::Path(path) => {
                 let fut = self.fetcher.lock().from_path.as_ref().ok_or_else(|| {
-                    anyhow::Error::msg("this environment does not support loading from the paths")
+                    anyhow::Error::msg("this environment does not support loading from paths")
                 })?(path.as_str());
 
                 Arc::from(fut.await?)
@@ -274,6 +353,48 @@ impl wipple_frontend::Loader for Loader {
         };
 
         Ok(code)
+    }
+
+    async fn plugin(
+        &self,
+        path: FilePath,
+        name: InternedString,
+        input: PluginInput,
+        api: &dyn PluginApi,
+    ) -> anyhow::Result<PluginOutput> {
+        let output = match path {
+            FilePath::Path(path) => {
+                let fut = self
+                    .plugin_handler
+                    .lock()
+                    .from_path
+                    .as_ref()
+                    .ok_or_else(|| {
+                        anyhow::Error::msg(
+                            "this environment does not support loading plugins from paths",
+                        )
+                    })?(path.as_str(), &name, input, api);
+
+                fut.await?
+            }
+            FilePath::Url(url) => {
+                let fut = self
+                    .plugin_handler
+                    .lock()
+                    .from_url
+                    .as_ref()
+                    .ok_or_else(|| {
+                        anyhow::Error::msg(
+                            "this environment does not support loading plugins from URLs",
+                        )
+                    })?(Url::from_str(&url).unwrap(), &name, input, api);
+
+                fut.await?
+            }
+            _ => unimplemented!(),
+        };
+
+        Ok(output)
     }
 
     fn virtual_paths(&self) -> Shared<HashMap<InternedString, Arc<str>>> {

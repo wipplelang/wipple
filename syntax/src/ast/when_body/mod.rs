@@ -27,16 +27,6 @@ pub struct BlockWhenBody<D: Driver> {
     pub arms: Vec<Result<WhenArm<D>, SyntaxError<D>>>,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for BlockWhenBody<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(BlockWhenBody {
-            span: Default::default(),
-            arms: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> BlockWhenBody<D> {
     pub fn span(&self) -> D::Span {
         self.span

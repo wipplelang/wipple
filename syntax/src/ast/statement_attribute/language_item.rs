@@ -16,18 +16,6 @@ pub struct LanguageItemStatementAttribute<D: Driver> {
     pub language_item_kind: LanguageItemStatementAttributeKind,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for LanguageItemStatementAttribute<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(LanguageItemStatementAttribute {
-            span: Default::default(),
-            language_span: Default::default(),
-            language_item_span: Default::default(),
-            language_item_kind: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> LanguageItemStatementAttribute<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -42,7 +30,6 @@ impl<D: Driver> Format<D> for LanguageItemStatementAttribute<D> {
 
 #[derive(Debug, Clone, Copy, strum::EnumString)]
 #[strum(serialize_all = "kebab-case")]
-#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum LanguageItemStatementAttributeKind {
     Boolean,
     Show,

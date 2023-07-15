@@ -15,18 +15,6 @@ pub struct TupleType<D: Driver> {
     pub comma_span: D::Span,
     pub tys: Vec<Result<Type<D>, SyntaxError<D>>>,
 }
-
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TupleType<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(TupleType {
-            span: Default::default(),
-            comma_span: Default::default(),
-            tys: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> TupleType<D> {
     pub fn span(&self) -> D::Span {
         self.span

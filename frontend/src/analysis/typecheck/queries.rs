@@ -19,6 +19,20 @@ impl Expression {
         expr
     }
 
+    /// See [`Expression::as_root_query`].
+    pub fn as_root_replace(&mut self, id: ExpressionId, new: Expression) -> bool {
+        let mut new = Some(new);
+        self.traverse_mut(|e| {
+            if e.id == id {
+                *e = new
+                    .take()
+                    .expect("found multiple expressions with the same ID");
+            }
+        });
+
+        new.is_none()
+    }
+
     /// Treating `self` as the root expression, find the parent of the
     /// expression with the provided ID.
     pub fn as_root_query_parent_of(&self, id: ExpressionId) -> Option<&Expression> {

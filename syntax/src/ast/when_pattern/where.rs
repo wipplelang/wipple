@@ -19,18 +19,6 @@ pub struct WhereWhenPattern<D: Driver> {
     pub condition: Result<Box<Expression<D>>, SyntaxError<D>>,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for WhereWhenPattern<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(WhereWhenPattern {
-            span: Default::default(),
-            where_span: Default::default(),
-            pattern: arbitrary::Arbitrary::arbitrary(u)?,
-            condition: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> WhereWhenPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span

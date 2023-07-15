@@ -6,41 +6,41 @@ use "mutable"
 
 [help "Create a `List` with the specified elements."]
 [help-group "Collections"]
-list : syntax { list ...x -> (external "runtime" "make-empty-list" :: List _) ...(. append 'x) }
+list : syntax { list ...x -> (intrinsic "make-empty-list" :: List _) ...(. append 'x) }
 
 instance (Default (List _)) : list
 
 [help "Retrieve the first item inside a `List`, if it exists."]
 [help-group "Collections"]
 first :: A => List A -> Maybe A
-first : list -> external "runtime" "list-first" list
+first : list -> intrinsic "list-first" list
 
 [help "Retrieve the last item inside a `List`, if it exists."]
 [help-group "Collections"]
 last :: A => List A -> Maybe A
-last : list -> external "runtime" "list-last" list
+last : list -> intrinsic "list-last" list
 
 [help "Retrieve all but the last item inside a `List`."]
 [help-group "Collections"]
 initial :: A => List A -> Maybe (List A)
-initial : list -> external "runtime" "list-initial" list
+initial : list -> intrinsic "list-initial" list
 
 [help "Retrieve all but the first item inside a `List`."]
 [help-group "Collections"]
 tail :: A => List A -> Maybe (List A)
-tail : list -> external "runtime" "list-tail" list
+tail : list -> intrinsic "list-tail" list
 
 Index-Error : type
 
 [help "Retrieve the value in a `List` at a particular index, if it exists."]
 [help-group "Collections"]
 nth :: A => Natural -> List A -> Result A Index-Error
-nth : index list -> external "runtime" "list-nth" list index
+nth : index list -> intrinsic "list-nth" list index
 
 [help "Add a new item to the end of a `List`."]
 [help-group "Collections"]
 append :: A => A -> List A -> List A
-append : new list -> external "runtime" "list-append" list new
+append : new list -> intrinsic "list-append" list new
 
 [help "Add a new item to the end of a `Mutable List`."]
 [help-group "Collections"]
@@ -50,7 +50,7 @@ append! : new list -> list . set! (list . get . append new)
 [help "Insert a new item at a particular index inside a `List`."]
 [help-group "Collections"]
 insert :: A => Natural -> A -> List A -> Result (List A) Index-Error
-insert : index new list -> external "runtime" "list-insert" list index new
+insert : index new list -> intrinsic "list-insert" list index new
 
 [help "Insert a new item at a particular index inside a `Mutable List`."]
 [help-group "Collections"]
@@ -66,7 +66,7 @@ insert! : index new list -> when (list . get . insert index new) {
 [help "Remove the item at a particular index inside a `List`."]
 [help-group "Collections"]
 remove :: A => Natural -> List A -> Result (List A) Index-Error
-remove : index list -> external "runtime" "list-remove" list index
+remove : index list -> intrinsic "list-remove" list index
 
 [help "Remove the item at a particular index inside a `Mutable List`."]
 [help-group "Collections"]

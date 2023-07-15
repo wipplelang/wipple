@@ -14,17 +14,6 @@ pub struct InferTypePattern<D: Driver> {
     pub name: Result<(D::Span, D::InternedString), SyntaxError<D>>,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for InferTypePattern<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(InferTypePattern {
-            span: Default::default(),
-            infer_span: Default::default(),
-            name: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> InferTypePattern<D> {
     pub fn span(&self) -> D::Span {
         self.span

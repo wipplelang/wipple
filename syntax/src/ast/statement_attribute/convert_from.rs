@@ -16,18 +16,6 @@ pub struct ConvertFromStatementAttribute<D: Driver> {
     pub replacement: parse::Expr<D>,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for ConvertFromStatementAttribute<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(ConvertFromStatementAttribute {
-            span: Default::default(),
-            convert_from_span: Default::default(),
-            ty: arbitrary::Arbitrary::arbitrary(u)?,
-            replacement: parse::Expr::new(Default::default(), parse::ExprKind::List(Vec::new())),
-        })
-    }
-}
-
 impl<D: Driver> ConvertFromStatementAttribute<D> {
     pub fn span(&self) -> D::Span {
         self.span

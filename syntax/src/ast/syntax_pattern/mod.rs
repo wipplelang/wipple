@@ -37,15 +37,6 @@ pub struct UnitSyntaxPattern<D: Driver> {
     pub span: D::Span,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for UnitSyntaxPattern<D> {
-    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(UnitSyntaxPattern {
-            span: Default::default(),
-        })
-    }
-}
-
 impl<D: Driver> UnitSyntaxPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -63,17 +54,6 @@ pub struct NameSyntaxPattern<D: Driver> {
     pub span: D::Span,
     pub name: D::InternedString,
     pub scope: D::Scope,
-}
-
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NameSyntaxPattern<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(NameSyntaxPattern {
-            span: Default::default(),
-            name: arbitrary::Arbitrary::arbitrary(u)?,
-            scope: Default::default(),
-        })
-    }
 }
 
 impl<D: Driver> NameSyntaxPattern<D> {
@@ -94,18 +74,6 @@ pub struct TextSyntaxPattern<D: Driver> {
     pub text: D::InternedString,
     pub raw: D::InternedString,
 }
-
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TextSyntaxPattern<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(TextSyntaxPattern {
-            span: Default::default(),
-            text: arbitrary::Arbitrary::arbitrary(u)?,
-            raw: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> TextSyntaxPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -123,15 +91,6 @@ pub struct NumberSyntaxPattern<D: Driver> {
     pub span: D::Span,
     pub number: D::InternedString,
 }
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NumberSyntaxPattern<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(NumberSyntaxPattern {
-            span: Default::default(),
-            number: crate::FuzzString(u.int_in_range(0..=100)?.to_string()),
-        })
-    }
-}
 
 impl<D: Driver> NumberSyntaxPattern<D> {
     pub fn span(&self) -> D::Span {
@@ -148,15 +107,6 @@ impl<D: Driver> Format<D> for NumberSyntaxPattern<D> {
 #[derive(Debug, Clone)]
 pub struct UnderscoreSyntaxPattern<D: Driver> {
     pub span: D::Span,
-}
-
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for UnderscoreSyntaxPattern<D> {
-    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(UnderscoreSyntaxPattern {
-            span: Default::default(),
-        })
-    }
 }
 
 impl<D: Driver> UnderscoreSyntaxPattern<D> {
@@ -177,16 +127,6 @@ pub struct VariableSyntaxPattern<D: Driver> {
     pub name: D::InternedString,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for VariableSyntaxPattern<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(VariableSyntaxPattern {
-            span: Default::default(),
-            name: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> VariableSyntaxPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -205,16 +145,6 @@ pub struct VariableRepetitionSyntaxPattern<D: Driver> {
     pub name: D::InternedString,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for VariableRepetitionSyntaxPattern<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(VariableRepetitionSyntaxPattern {
-            span: Default::default(),
-            name: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> VariableRepetitionSyntaxPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -231,16 +161,6 @@ impl<D: Driver> Format<D> for VariableRepetitionSyntaxPattern<D> {
 pub struct ListSyntaxPattern<D: Driver> {
     pub span: D::Span,
     pub patterns: Vec<Result<SyntaxPattern<D>, SyntaxError<D>>>,
-}
-
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for ListSyntaxPattern<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(ListSyntaxPattern {
-            span: Default::default(),
-            patterns: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
 }
 
 impl<D: Driver> ListSyntaxPattern<D> {
@@ -266,16 +186,6 @@ impl<D: Driver> Format<D> for ListSyntaxPattern<D> {
 pub struct ListRepetitionSyntaxPattern<D: Driver> {
     pub span: D::Span,
     pub patterns: Vec<Result<SyntaxPattern<D>, SyntaxError<D>>>,
-}
-
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for ListRepetitionSyntaxPattern<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(ListRepetitionSyntaxPattern {
-            span: Default::default(),
-            patterns: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
 }
 
 impl<D: Driver> ListRepetitionSyntaxPattern<D> {
@@ -313,16 +223,6 @@ impl<D: Driver> Format<D> for BlockSyntaxPattern<D> {
                 .collect::<Result<Vec<_>, _>>()?
                 .join("\n")
         ))
-    }
-}
-
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for BlockSyntaxPattern<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(BlockSyntaxPattern {
-            span: Default::default(),
-            statements: arbitrary::Arbitrary::arbitrary(u)?,
-        })
     }
 }
 

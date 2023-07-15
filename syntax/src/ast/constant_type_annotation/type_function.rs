@@ -20,19 +20,6 @@ pub struct TypeFunctionConstantTypeAnnotation<D: Driver> {
     pub scope: D::Scope,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TypeFunctionConstantTypeAnnotation<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(TypeFunctionConstantTypeAnnotation {
-            span: Default::default(),
-            arrow_span: Default::default(),
-            pattern: arbitrary::Arbitrary::arbitrary(u)?,
-            annotation: arbitrary::Arbitrary::arbitrary(u)?,
-            scope: Default::default(),
-        })
-    }
-}
-
 impl<D: Driver> TypeFunctionConstantTypeAnnotation<D> {
     pub fn span(&self) -> D::Span {
         self.span

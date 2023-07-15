@@ -20,19 +20,6 @@ pub struct OnUnimplementedStatementAttribute<D: Driver> {
     pub trailing_segment: Option<D::InternedString>,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for OnUnimplementedStatementAttribute<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(OnUnimplementedStatementAttribute {
-            span: Default::default(),
-            on_unimplemented_span: Default::default(),
-            message_span: Default::default(),
-            segments: arbitrary::Arbitrary::arbitrary(u)?,
-            trailing_segment: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> OnUnimplementedStatementAttribute<D> {
     pub fn span(&self) -> D::Span {
         self.span

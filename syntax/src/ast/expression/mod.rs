@@ -4,6 +4,8 @@ definitions! {
     mod external;
     mod format;
     mod function;
+    mod intrinsic;
+    mod plugin;
     mod tuple;
     mod when;
     mod with;
@@ -33,6 +35,8 @@ syntax_group! {
             Annotate,
             End,
             External,
+            Intrinsic,
+            Plugin,
             Format,
             With,
             When,
@@ -51,15 +55,6 @@ syntax_group! {
 #[derive(Debug, Clone)]
 pub struct UnitExpression<D: Driver> {
     pub span: D::Span,
-}
-
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for UnitExpression<D> {
-    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(UnitExpression {
-            span: Default::default(),
-        })
-    }
 }
 
 impl<D: Driver> UnitExpression<D> {
@@ -81,17 +76,6 @@ pub struct NameExpression<D: Driver> {
     pub scope: D::Scope,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NameExpression<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(NameExpression {
-            span: Default::default(),
-            name: arbitrary::Arbitrary::arbitrary(u)?,
-            scope: Default::default(),
-        })
-    }
-}
-
 impl<D: Driver> NameExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -109,17 +93,6 @@ pub struct TextExpression<D: Driver> {
     pub span: D::Span,
     pub text: D::InternedString,
     pub raw: D::InternedString,
-}
-
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for TextExpression<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(TextExpression {
-            span: Default::default(),
-            text: arbitrary::Arbitrary::arbitrary(u)?,
-            raw: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
 }
 
 impl<D: Driver> TextExpression<D> {
@@ -140,16 +113,6 @@ pub struct NumberExpression<D: Driver> {
     pub number: D::InternedString,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for NumberExpression<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(NumberExpression {
-            span: Default::default(),
-            number: crate::FuzzString(u.int_in_range(0..=100)?.to_string()),
-        })
-    }
-}
-
 impl<D: Driver> NumberExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -167,17 +130,6 @@ pub struct CallExpression<D: Driver> {
     pub span: D::Span,
     pub function: Result<Box<Expression<D>>, SyntaxError<D>>,
     pub inputs: Vec<Result<Expression<D>, SyntaxError<D>>>,
-}
-
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for CallExpression<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(CallExpression {
-            span: Default::default(),
-            function: arbitrary::Arbitrary::arbitrary(u)?,
-            inputs: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
 }
 
 impl<D: Driver> CallExpression<D> {
@@ -205,17 +157,6 @@ pub struct BlockExpression<D: Driver> {
     pub span: D::Span,
     pub statements: Vec<Result<Statement<D>, SyntaxError<D>>>,
     pub scope: D::Scope,
-}
-
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for BlockExpression<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(BlockExpression {
-            span: Default::default(),
-            statements: arbitrary::Arbitrary::arbitrary(u)?,
-            scope: Default::default(),
-        })
-    }
 }
 
 impl<D: Driver> BlockExpression<D> {

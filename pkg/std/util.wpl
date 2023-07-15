@@ -16,7 +16,7 @@ of : syntax {
 [help "Crash the program with the provided message."]
 [help-group "Utilities"]
 crash :: (A : ()) => Text -> A
-crash : message -> external "runtime" "crash" message
+crash : message -> intrinsic "crash" message
 
 [help "Indicates unfinished code. Crashes the program upon evaluation."]
 [help-group "Utilities"]
@@ -79,7 +79,7 @@ As : Input Output => trait (Input -> Output)
 as : syntax { 'x as 't -> (As 'x :: 't) }
 
 A => instance (As A A) : it
-instance (As Natural Number) : n -> external "runtime" "natural-to-number" n
+instance (As Natural Number) : n -> intrinsic "natural-to-number" n
 
 As? : Input Output => trait (Input -> Maybe Output)
 
@@ -89,7 +89,7 @@ As? : Input Output => trait (Input -> Maybe Output)
 as? : syntax { 'x as? 't -> (As? 'x :: Maybe 't) }
 
 A => instance (As? A A) : Some
-instance (As? Number Natural) : n -> external "runtime" "number-to-natural" n
+instance (As? Number Natural) : n -> intrinsic "number-to-natural" n
 
 [help "Convert a value of one type into a value of a different type, or crash if the conversion fails."]
 [help-group "Utilities"]

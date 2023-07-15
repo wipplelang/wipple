@@ -19,7 +19,7 @@ use std::{
 };
 
 pub use ssa::Type;
-pub use typecheck::RuntimeFunction;
+pub use typecheck::Intrinsic;
 
 #[derive(Debug, Clone)]
 pub struct Program {
@@ -83,7 +83,7 @@ pub enum Expression {
     Closure(CaptureList, usize),
     Call,
     External(InternedString, InternedString, usize),
-    Runtime(RuntimeFunction, usize),
+    Runtime(Intrinsic, usize),
     Tuple(usize),
     Format(Vec<InternedString>, Option<InternedString>),
     Structure(usize),
@@ -391,7 +391,7 @@ impl IrGen {
                     Expression::External(lib, identifier, count),
                 ));
             }
-            ssa::ExpressionKind::Runtime(func, exprs) => {
+            ssa::ExpressionKind::Intrinsic(func, exprs) => {
                 let count = exprs.len();
 
                 for expr in exprs {
@@ -627,28 +627,28 @@ impl IrGen {
                 *pos = self.new_basic_block(label, "following `_` pattern");
             }
             ssa::PatternKind::Number(number) => {
-                match_number!(Number(number), RuntimeFunction::NumberEquality);
+                match_number!(Number(number), Intrinsic::NumberEquality);
             }
             ssa::PatternKind::Integer(integer) => {
-                match_number!(Integer(integer), RuntimeFunction::IntegerEquality);
+                match_number!(Integer(integer), Intrinsic::IntegerEquality);
             }
             ssa::PatternKind::Natural(natural) => {
-                match_number!(Natural(natural), RuntimeFunction::NaturalEquality);
+                match_number!(Natural(natural), Intrinsic::NaturalEquality);
             }
             ssa::PatternKind::Byte(byte) => {
-                match_number!(Byte(byte), RuntimeFunction::ByteEquality);
+                match_number!(Byte(byte), Intrinsic::ByteEquality);
             }
             ssa::PatternKind::Signed(signed) => {
-                match_number!(Signed(signed), RuntimeFunction::SignedEquality);
+                match_number!(Signed(signed), Intrinsic::SignedEquality);
             }
             ssa::PatternKind::Unsigned(unsigned) => {
-                match_number!(Unsigned(unsigned), RuntimeFunction::UnsignedEquality);
+                match_number!(Unsigned(unsigned), Intrinsic::UnsignedEquality);
             }
             ssa::PatternKind::Float(float) => {
-                match_number!(Float(float), RuntimeFunction::FloatEquality);
+                match_number!(Float(float), Intrinsic::FloatEquality);
             }
             ssa::PatternKind::Double(double) => {
-                match_number!(Double(double), RuntimeFunction::DoubleEquality);
+                match_number!(Double(double), Intrinsic::DoubleEquality);
             }
             ssa::PatternKind::Text(text) => {
                 self.statements_for(label, *pos).push(Statement::Expression(
@@ -660,7 +660,7 @@ impl IrGen {
 
                 self.statements_for(label, *pos).push(Statement::Expression(
                     bool_type,
-                    Expression::Runtime(RuntimeFunction::TextEquality, 2),
+                    Expression::Runtime(Intrinsic::TextEquality, 2),
                 ));
 
                 let else_pos = self.new_basic_block(label, "following text pattern");

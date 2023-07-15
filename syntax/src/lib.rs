@@ -191,26 +191,6 @@ impl<D: Driver<Span = (), File = SingleFile, Scope = ()>> File<D> for SingleFile
     }
 }
 
-#[cfg(feature = "arbitrary")]
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FuzzString(pub String);
-
-#[cfg(feature = "arbitrary")]
-impl AsRef<str> for FuzzString {
-    fn as_ref(&self) -> &str {
-        &self.0
-    }
-}
-
-#[cfg(feature = "arbitrary")]
-impl<'a> arbitrary::Arbitrary<'a> for FuzzString {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(FuzzString(
-            ('a'..='z').nth(u.choose_index(16)?).unwrap().to_string(),
-        ))
-    }
-}
-
 impl Span for () {
     fn join(_left: Self, _right: Self) -> Self {
         ()
@@ -227,10 +207,4 @@ impl Span for () {
     fn range(&self) -> Range<usize> {
         0..0
     }
-}
-
-#[cfg(feature = "arbitrary")]
-pub trait FuzzDriver:
-    Driver<InternedString = FuzzString, Span = (), File = SingleFile, Scope = ()>
-{
 }

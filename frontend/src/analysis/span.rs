@@ -1,9 +1,10 @@
 use crate::FilePath;
 use internment::Intern;
 use parking_lot::Mutex;
+use serde::{Deserialize, Serialize};
 use std::{hash::Hash, ops::Range};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Span {
     pub path: FilePath,
     pub primary: (usize, usize),
@@ -62,13 +63,13 @@ impl Span {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SpanList {
     first: Span,
     sources: Intern<SpanSources>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 struct SpanSources(Mutex<Vec<Span>>);
 
 impl PartialEq for SpanSources {

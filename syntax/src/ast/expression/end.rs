@@ -14,17 +14,6 @@ pub struct EndExpression<D: Driver> {
     pub value: Result<Box<Expression<D>>, SyntaxError<D>>,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for EndExpression<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(EndExpression {
-            span: Default::default(),
-            end_span: Default::default(),
-            value: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> EndExpression<D> {
     pub fn span(&self) -> D::Span {
         self.span

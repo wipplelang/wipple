@@ -16,18 +16,6 @@ pub struct DiagnosticAliasStatementAttribute<D: Driver> {
     pub diagnostic_alias: D::InternedString,
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a, D: crate::FuzzDriver> arbitrary::Arbitrary<'a> for DiagnosticAliasStatementAttribute<D> {
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(DiagnosticAliasStatementAttribute {
-            span: Default::default(),
-            diagnostic_span: Default::default(),
-            diagnostic_alias_span: Default::default(),
-            diagnostic_alias: arbitrary::Arbitrary::arbitrary(u)?,
-        })
-    }
-}
-
 impl<D: Driver> DiagnosticAliasStatementAttribute<D> {
     pub fn span(&self) -> D::Span {
         self.span

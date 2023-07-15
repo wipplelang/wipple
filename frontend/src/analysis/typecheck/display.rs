@@ -200,14 +200,15 @@ impl Expression {
                 }
                 write!(f, ")")?;
             }
-            ExpressionKind::Runtime(func, inputs) => {
-                write!(f, "(external {:?} {:?}", "runtime", func.to_string())?;
+            ExpressionKind::Intrinsic(intrinsic, inputs) => {
+                write!(f, "(intrinsic {:?}", intrinsic.to_string())?;
                 for expr in inputs {
                     write!(f, " ")?;
                     expr.display_with(f, file, indent)?;
                 }
                 write!(f, ")")?;
             }
+            ExpressionKind::Plugin(_, _, _) => panic!("found unresolved plugin"),
             ExpressionKind::Initialize(pattern, value) => {
                 pattern.display_with(f, &value.ty, file, indent)?;
                 write!(f, " : ")?;

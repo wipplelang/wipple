@@ -7,7 +7,7 @@ instance (Iterate Text Text) : text -> {
   cursor : mutable text
 
   Iterator {
-    next : () -> when (external "runtime" "text-head-tail" (get cursor)) {
+    next : () -> when (intrinsic "text-head-tail" (get cursor)) {
       Some (head , tail) -> {
         cursor . set! tail
         Some head
