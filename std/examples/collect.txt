@@ -1,0 +1,42 @@
+---
+id: qlcImH80
+type: text
+locked: true
+---
+
+# How to use `collect`
+
+`collect` takes an iterator and stores each value produced into a container. Usually, `collect` is the last function called in an iterator chain:
+
+---
+id: 1IKjyRPC
+type: code
+lint: false
+---
+
+numbers : list 1 2 3 . transform (Add 1) . collect :: List _
+
+---
+id: YzKqY2UQ
+type: text
+locked: false
+---
+
+If you assign the result of `collect` to a variable, you usually need to annotate the type to indicate what kind of container to collect into. The type of the element, however, can usually be inferred using `_`, as shown above.
+
+`collect` uses the `Collect` trait, which you can implement for your own types:
+
+---
+id: b2Qbp223
+type: code
+---
+
+[help "A container for storing the sum of a collection of numbers."]
+Sum : type { sum :: Number }
+
+instance (Default Sum) : Sum { sum : 0 }
+
+instance (Collect Number Sum) : reduce Default (next { sum } -> Sum { sum : sum + next })
+
+{ sum } : list 1 2 3 . collect :: Sum
+show sum

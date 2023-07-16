@@ -1,16 +1,60 @@
 ---
-id: R0jRZf5Z
+id: 3gIEDNAz
 type: text
-locked: false
+locked: true
 ---
 
-## How to use `show`
+# How to use `show`
 
-Testing 123.
+`show` accepts a value, converts it into text, and displays it on the screen:
 
 ---
-id: Tdous1D4
+id: OxEQx7cI
 type: code
 ---
 
 show "Hello, world!"
+show (1 + 2)
+show True
+
+---
+id: V-oCN_28
+type: text
+locked: true
+---
+
+`show` only accepts a single value. If you want to `show` multiple values on one line, you can use `format`:
+
+---
+id: WKWpp7Bq
+type: code
+---
+
+show (format "_ + _ = _" 1 2 (1 + 2))
+
+---
+id: RK8KJc3S
+type: text
+locked: true
+---
+
+Under the hood, `show` uses the `Show` trait to convert the provided value into text. You can implement `Show` for your own types, too:
+
+---
+id: -tP0pM_D
+type: code
+---
+
+Person : type {
+  name :: Text
+  age :: Number
+}
+
+instance (Show Person) : { name age } -> format "_ is _ years old" name age
+
+bob : Person {
+  name : "Bob"
+  age : 30
+}
+
+show bob

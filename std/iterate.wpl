@@ -9,20 +9,24 @@ use "loop"
 
 [help "A container for an iterable value that produces the `next` value on demand."]
 [help-group "Collections"]
+[help-playground "https://wipple.dev/std/examples/iterate.txt"]
 Iterator : Element => type { next :: () -> Maybe Element }
 
 [help "Create an iterator from a function."]
 [help-group "Collections"]
+[help-playground "https://wipple.dev/std/examples/iterate.txt"]
 iterator :: Element => (() -> Maybe Element) -> Iterator Element
 iterator : next -> Iterator { next }
 
 [help "Retrieve the next item in an iterator."]
 [help-group "Collections"]
+[help-playground "https://wipple.dev/std/examples/iterate.txt"]
 next :: Element => Iterator Element -> Maybe Element
 next : { next } -> next ()
 
 [help "Implement this trait to enable traversing your collection type."]
 [help-group "Collections"]
+[help-playground "https://wipple.dev/std/examples/iterate.txt"]
 Iterate : Container (infer Element) => trait (Container -> Iterator Element)
 
 Element => instance (Iterate (Iterator Element) Element) : it
@@ -73,11 +77,13 @@ sum : reduce (zero of Numeric) Add
 
 [help "Implement this trait to enable reducing an iterator into your collection type."]
 [help-group "Collections"]
+[help-playground "https://wipple.dev/std/examples/collect.txt"]
 Collect : (infer Element) Container => trait (Iterator Element -> Container)
 
 [help "Collect an iterator into a single value, like a `List`."]
 [help-group "Collections"]
-collect :: Input (infer Element) Output where (Collect Element Output) (Iterate Input Element)  => Input -> Output -- FIXME: bound order shouldn't matter, but putting `Iterate` first breaks type inference
+[help-playground "https://wipple.dev/std/examples/collect.txt"]
+collect :: Input (infer Element) Output where (Collect Element Output) (Iterate Input Element) => Input -> Output -- FIXME: bound order shouldn't matter, but putting `Iterate` first breaks type inference
 collect : input -> Collect (Iterate input)
 
 Element => instance (Collect Element (List Element)) : iterator -> {
