@@ -74,7 +74,7 @@ cargo run --bin wipple -- run path/to/test.wpl
 cargo run --bin wipple -- run path/to/test.wpl --trace
 
 # Run automated tests
-cargo run --bin wipple-test -- tools/test/tests
+cargo run --bin wipple-test -- tests
 
 # Run the playground on a local development server
 cd website/playground && npm install && npm run dev
