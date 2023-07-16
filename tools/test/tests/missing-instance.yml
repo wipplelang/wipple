@@ -11,7 +11,7 @@ diagnostics: |
      2 │ show Foo
        │ ^^^^ could not find instance `Show Foo`
        │
-       ┌─ <dir>/std/io.wpl:21:17
+       ┌─ <dir>/std/io.wpl:22:17
        │
-    21 │ show :: A where (Show A) => A -> ()
+    22 │ show :: A where (Show A) => A -> ()
        │                 -------- required by this bound here
