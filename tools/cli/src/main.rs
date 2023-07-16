@@ -1,4 +1,4 @@
-mod document;
+mod doc;
 mod lsp;
 
 use clap::{Parser, ValueEnum};
@@ -38,14 +38,14 @@ enum Args {
         #[clap(flatten)]
         options: BuildOptions,
     },
-    Document {
+    Doc {
         path: String,
 
         #[clap(short)]
         output: Option<PathBuf>,
 
         #[clap(flatten)]
-        doc_options: document::Options,
+        doc_options: doc::Options,
 
         #[clap(flatten)]
         build_options: BuildOptions,
@@ -356,7 +356,7 @@ async fn run() -> anyhow::Result<()> {
                 println!("{}", cache_dir.to_string_lossy());
             }
         }
-        Args::Document {
+        Args::Doc {
             path,
             output,
             doc_options,
@@ -382,7 +382,7 @@ async fn run() -> anyhow::Result<()> {
                 None => Box::new(std::io::stdout()),
             };
 
-            document::document(&program, doc_options, output)?;
+            doc::document(&program, doc_options, output)?;
         }
         Args::Lsp => {
             lsp::run().await;
@@ -556,7 +556,7 @@ async fn build_with_passes<P>(
             wipple_frontend::FilePath::Path(
                 #[cfg(debug_assertions)]
                 wipple_frontend::helpers::InternedString::new(
-                    path.unwrap_or(concat!(env!("CARGO_WORKSPACE_DIR"), "pkg/std/std.wpl")),
+                    path.unwrap_or(concat!(env!("CARGO_WORKSPACE_DIR"), "std/std.wpl")),
                 ),
                 #[cfg(not(debug_assertions))]
                 {

@@ -32,7 +32,7 @@ import DataObjectIcon from "@mui/icons-material/DataObject";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import { nanoid } from "nanoid";
 import { CodeEditor, TextEditor } from "./components";
-import { useRefState } from "./helpers";
+import { convertLesson, useRefState } from "./helpers";
 import { useMemo } from "react";
 
 type Section = { id: string; value: string } & (
@@ -97,21 +97,42 @@ const App = () => {
                     return;
                 }
 
+                const fileParam = query.get("file");
+                if (fileParam) {
+                    const data = await (await fetch(fileParam)).text();
+
+                    const file: {
+                        sections: Section[];
+                        previous?: PageLink;
+                        next?: PageLink;
+                    } = convertLesson(data);
+
+                    setSections(file.sections);
+                    setPreviousPage(file.previous);
+                    setNextPage(file.next);
+
+                    setFirstRender(true);
+
+                    return;
+                }
+
                 const lessonParam = query.get("lesson");
                 if (lessonParam) {
-                    const data = await (await fetch(`./lessons/${lessonParam}.json`)).text();
+                    const data = await (await fetch(`./lessons/${lessonParam}.txt`)).text();
 
                     const lesson: {
                         sections: Section[];
                         previous?: PageLink;
                         next?: PageLink;
-                    } = JSON.parse(data);
+                    } = convertLesson(data);
 
                     setSections(lesson.sections);
                     setPreviousPage(lesson.previous);
                     setNextPage(lesson.next);
 
                     setFirstRender(true);
+
+                    return;
                 }
             } finally {
                 setLoading(false);

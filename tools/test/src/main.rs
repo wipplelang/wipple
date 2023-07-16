@@ -39,7 +39,7 @@ async fn main() -> anyhow::Result<()> {
             wipple_frontend::helpers::InternedString::new(
                 env::current_dir()
                     .unwrap()
-                    .join("pkg/std/std.wpl")
+                    .join("std/std.wpl")
                     .as_os_str()
                     .to_str()
                     .unwrap(),
@@ -320,7 +320,7 @@ async fn run(
         String::from_utf8(buf).unwrap()
     };
 
-    diagnostics = diagnostics.replace(concat!(env!("CARGO_WORKSPACE_DIR"), "pkg"), "<dir>");
+    diagnostics = diagnostics.replace(env!("CARGO_WORKSPACE_DIR"), "<dir>/");
 
     Ok(TestResult {
         output_diff: diff(test_case.output.trim(), output.trim()),

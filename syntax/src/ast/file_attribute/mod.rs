@@ -1,4 +1,5 @@
 definitions! {
+    mod help_url;
     mod no_std;
     mod recursion_limit;
 }
@@ -17,6 +18,7 @@ use wipple_util::Shared;
 syntax_group! {
     pub type FileAttribute<FileAttributeSyntaxContext> {
         non_terminal: {
+            HelpUrl,
             NoStd,
             RecursionLimit,
         },

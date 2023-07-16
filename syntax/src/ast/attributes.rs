@@ -2,8 +2,9 @@ use crate::{
     ast::{
         format::Format, AllowOverlappingInstancesStatementAttribute, ContextualStatementAttribute,
         ConvertFromStatementAttribute, DiagnosticAliasStatementAttribute,
-        DiagnosticItemStatementAttribute, HelpGroupStatementAttribute, HelpStatementAttribute,
-        HelpTemplateStatementAttribute, KeywordStatementAttribute, LanguageItemStatementAttribute,
+        DiagnosticItemStatementAttribute, HelpGroupStatementAttribute,
+        HelpPlaygroundStatementAttribute, HelpStatementAttribute, HelpTemplateStatementAttribute,
+        HelpUrlFileAttribute, KeywordStatementAttribute, LanguageItemStatementAttribute,
         NoStdFileAttribute, OnMismatchStatementAttribute, OnUnimplementedStatementAttribute,
         OperatorPrecedenceStatementAttribute, RecursionLimitFileAttribute,
         SpecializeStatementAttribute, SyntaxError,
@@ -14,6 +15,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct FileAttributes<D: Driver> {
     pub raw: Vec<parse::Attribute<D>>,
+    pub help_url: Option<HelpUrlFileAttribute<D>>,
     pub no_std: Option<NoStdFileAttribute<D>>,
     pub recursion_limit: Option<RecursionLimitFileAttribute<D>>,
 }
@@ -22,6 +24,7 @@ impl<D: Driver> Default for FileAttributes<D> {
     fn default() -> Self {
         Self {
             raw: Default::default(),
+            help_url: Default::default(),
             no_std: Default::default(),
             recursion_limit: Default::default(),
         }
@@ -30,8 +33,7 @@ impl<D: Driver> Default for FileAttributes<D> {
 
 impl<D: Driver> Format<D> for FileAttributes<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
-        self
-            .raw
+        self.raw
             .into_iter()
             .map(|attribute| {
                 Ok(format!(
@@ -56,6 +58,7 @@ pub struct StatementAttributes<D: Driver> {
     pub diagnostic_aliases: Vec<DiagnosticAliasStatementAttribute<D>>,
     pub help: Vec<HelpStatementAttribute<D>>,
     pub help_group: Option<HelpGroupStatementAttribute<D>>,
+    pub help_playground: Option<HelpPlaygroundStatementAttribute<D>>,
     pub help_template: Option<HelpTemplateStatementAttribute<D>>,
     pub on_unimplemented: Option<OnUnimplementedStatementAttribute<D>>,
     pub on_mismatch: Option<OnMismatchStatementAttribute<D>>,
@@ -76,6 +79,7 @@ impl<D: Driver> Default for StatementAttributes<D> {
             diagnostic_aliases: Default::default(),
             help: Default::default(),
             help_group: Default::default(),
+            help_playground: Default::default(),
             help_template: Default::default(),
             on_unimplemented: Default::default(),
             on_mismatch: Default::default(),
@@ -91,8 +95,7 @@ impl<D: Driver> Default for StatementAttributes<D> {
 
 impl<D: Driver> Format<D> for StatementAttributes<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
-        self
-            .raw
+        self.raw
             .into_iter()
             .map(|attribute| {
                 Ok(format!(

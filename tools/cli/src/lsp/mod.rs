@@ -27,7 +27,7 @@ pub async fn run() {
                 #[cfg(debug_assertions)]
                 wipple_frontend::helpers::InternedString::new(concat!(
                     env!("CARGO_WORKSPACE_DIR"),
-                    "pkg/std/std.wpl"
+                    "std/std.wpl"
                 )),
                 #[cfg(not(debug_assertions))]
                 wipple_frontend::helpers::InternedString::new(wipple_default_loader::STD_URL),

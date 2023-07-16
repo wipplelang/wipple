@@ -296,7 +296,7 @@ id: Nj8EF0Lo
 type: code
 ---
 
-use "https://pkg.wipple.dev/gist/ab49093029b9c72772a4165d7d8a85ff/robot"
+use "https://wipple.dev/gist/ab49093029b9c72772a4165d7d8a85ff/robot"
 
 with-robot "Bot" {
     say-hello

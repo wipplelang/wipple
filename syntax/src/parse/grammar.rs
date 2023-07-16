@@ -200,6 +200,10 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
     }
 
     pub fn try_parse_file_attribute(&mut self) -> Option<Attribute<D>> {
+        while let (_, Some(Token::LineBreak)) = self.peek() {
+            self.consume();
+        }
+
         let (span, token) = self.peek();
 
         if !matches!(token, Some(Token::LeftFileBracket)) {

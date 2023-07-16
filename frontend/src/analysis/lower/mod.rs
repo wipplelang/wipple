@@ -18,12 +18,20 @@ use std::{
 #[derive(Debug, Clone)]
 pub struct File<Decls = Declarations> {
     pub span: SpanList,
+    pub attributes: BTreeMap<FilePath, FileAttributes>,
     pub declarations: Decls,
     pub info: FileInfo,
     pub specializations: BTreeMap<ConstantId, Vec<ConstantId>>,
     pub statements: Vec<Expression>,
     pub exported: HashMap<InternedString, HashSet<AnyDeclaration>>,
     scopes: BTreeMap<LoadedScopeId, Scope>,
+}
+
+#[derive(Debug, Clone, Default)]
+#[non_exhaustive]
+pub struct FileAttributes {
+    pub imported_by: Shared<Vec<FilePath>>,
+    pub help_url: Option<InternedString>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -162,6 +170,7 @@ impl<T> Declaration<T> {
 pub struct DeclarationAttributes {
     pub help: Vec<InternedString>,
     pub help_group: Option<InternedString>,
+    pub help_playground: Option<InternedString>,
     pub help_template: Option<InternedString>,
 }
 
@@ -854,7 +863,19 @@ impl Compiler {
             }
         }
 
+        let mut file_attributes = BTreeMap::new();
+
         for dependency in dependencies {
+            dependency
+                .attributes
+                .get(&dependency.span.first().path)
+                .unwrap()
+                .imported_by
+                .lock()
+                .push(file.file.path);
+
+            file_attributes.extend(dependency.attributes.clone());
+
             macro_rules! merge_dependency {
                 ($($kind:ident$(($transform:expr))?),* $(,)?) => {
                     $(
@@ -894,6 +915,11 @@ impl Compiler {
 
             lowerer.extend(dependency.exported.clone(), &scope);
         }
+
+        file_attributes.insert(
+            file.file.path,
+            lowerer.lower_file_attributes(&file.attributes),
+        );
 
         let statements = lowerer.lower_statements(&file.statements, &scope, &ctx);
 
@@ -1009,6 +1035,7 @@ impl Compiler {
 
         File {
             span: file.span,
+            attributes: file_attributes,
             declarations: lowerer.declarations.resolve(),
             info: lowerer.file_info,
             specializations,
@@ -1305,6 +1332,21 @@ enum QueuedStatement<'a> {
 }
 
 impl Lowerer {
+    fn lower_file_attributes(
+        &self,
+        file_attributes: &ast::FileAttributes<Analysis>,
+    ) -> FileAttributes {
+        // TODO: Raise errors for misused attributes
+
+        FileAttributes {
+            imported_by: Default::default(),
+            help_url: file_attributes
+                .help_url
+                .as_ref()
+                .map(|attribute| attribute.help_url_text),
+        }
+    }
+
     fn lower_statements(
         &mut self,
         statements: &[Result<ast::Statement<Analysis>, ast::SyntaxError<Analysis>>],
@@ -3920,6 +3962,10 @@ impl Lowerer {
                 .help_group
                 .as_ref()
                 .map(|attribute| attribute.help_group_text),
+            help_playground: statement_attributes
+                .help_playground
+                .as_ref()
+                .map(|attribute| attribute.help_playground_text),
             help_template: statement_attributes
                 .help_template
                 .as_ref()

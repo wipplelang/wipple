@@ -43,6 +43,7 @@ pub struct Program {
     pub items: BTreeMap<ItemId, RwLock<(Option<(Option<TraitId>, ConstantId)>, Expression)>>,
     pub contexts: BTreeMap<ConstantId, ItemId>,
     pub entrypoint: Option<ItemId>,
+    pub file_attributes: BTreeMap<FilePath, lower::FileAttributes>,
     pub declarations: Declarations,
     pub exported: HashMap<InternedString, HashSet<lower::AnyDeclaration>>,
 }
@@ -853,6 +854,7 @@ impl Typechecker {
                 .collect(),
             contexts: self.contexts,
             entrypoint: entrypoint_item,
+            file_attributes: self.entrypoint.attributes,
             exported: self.exported,
             declarations: self.declarations.into_inner().into(),
         }

@@ -1,4 +1,5 @@
 [[no-std]]
+[[help-url "https://wipple.dev/doc/std.html"]]
 
 use "async"
 use "fp"

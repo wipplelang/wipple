@@ -6,7 +6,7 @@ on:
       - backends/**
       - frontend/**
       - loaders/**
-      - pkg/**
+      - std/**
       - tools/**
 
 name: Tests

@@ -13,6 +13,7 @@ use std::{
     pin::Pin,
     sync::{atomic::AtomicBool, Arc},
 };
+use url::Url;
 use wasm_bindgen::{prelude::*, JsCast};
 use wasm_bindgen_futures::JsFuture;
 use wipple_default_loader as loader;
@@ -79,6 +80,7 @@ struct AnalysisOutputSyntaxHighlightingItem {
 struct HoverOutput {
     code: String,
     help: String,
+    url: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -159,7 +161,7 @@ lazy_static! {
             Some(wipple_frontend::FilePath::Path(
                 #[cfg(feature = "debug_playground")]
                 wipple_frontend::helpers::InternedString::new(format!(
-                    "{}pkg/std/std.wpl",
+                    "{}std/std.wpl",
                     env!("CARGO_WORKSPACE_DIR")
                 )),
                 #[cfg(not(feature = "debug_playground"))]
@@ -175,7 +177,7 @@ lazy_static! {
                         #[cfg(feature = "debug_playground")]
                         {
                             #[derive(rust_embed::RustEmbed)]
-                            #[folder = "$CARGO_WORKSPACE_DIR/pkg/std"]
+                            #[folder = "$CARGO_WORKSPACE_DIR/std"]
                             struct EmbeddedStd;
 
                             let path = std::path::PathBuf::from(path);
@@ -1147,14 +1149,46 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                 HoverOutput {
                     code: format_type(expr.ty.clone(), Format::default()),
                     help: String::new(),
+                    url: None,
                 },
             ));
         })
     }
 
+    fn find_nearest_help_url(
+        file: wipple_frontend::FilePath,
+        analysis: &Analysis,
+    ) -> Option<String> {
+        let attributes = analysis.program.file_attributes.get(&file).unwrap();
+
+        attributes
+            .help_url
+            .as_ref()
+            .map(ToString::to_string)
+            .or_else(|| {
+                let imported_by = attributes.imported_by.lock().clone();
+
+                imported_by
+                    .into_iter()
+                    .find_map(|file| find_nearest_help_url(file, analysis))
+            })
+    }
+
+    macro_rules! help_url {
+        ($id:expr, $anchor:expr) => {{
+            $id.file
+                .and_then(|file| find_nearest_help_url(file, &analysis))
+                .and_then(|url| url.parse::<Url>().ok())
+                .and_then(|mut url| {
+                    url.set_fragment(Some($anchor));
+                    Some(url.to_string())
+                })
+        }};
+    }
+
     macro_rules! type_decls {
         ($kind:ident $(($opt:tt))?, $str:literal $(, $help:expr)?) => {
-            for decl in analysis.program.declarations.$kind.values() {
+            for (&id, decl) in &analysis.program.declarations.$kind {
                 for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
                     if !within_hover(span.first()) {
                         continue;
@@ -1165,6 +1199,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                         HoverOutput {
                             code: format!("{} : {}", decl.name, $str),
                             help: type_decls!(@help decl, $($help)?),
+                            url: help_url!(id, &format!("{}.{}", $str, decl.name)),
                         },
                     ));
                 }
@@ -1190,7 +1225,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
         decl.attributes.decl_attributes.help.clone()
     });
 
-    for decl in analysis.program.declarations.constants.values() {
+    for (&id, decl) in &analysis.program.declarations.constants {
         for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
             if !within_hover(span.first()) {
                 continue;
@@ -1200,6 +1235,8 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                 type_function: TypeFunctionFormat::Arrow(&decl.bounds),
                 ..Default::default()
             };
+
+            let is_function = matches!(decl.ty, wipple_frontend::analysis::Type::Function(_, _));
 
             hovers.push((
                 span.first(),
@@ -1220,6 +1257,14 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                         .map(|line| line.to_string())
                         .collect::<Vec<_>>()
                         .join("\n"),
+                    url: help_url!(
+                        id,
+                        &format!(
+                            "{}.{}",
+                            if is_function { "function" } else { "constant" },
+                            decl.name
+                        )
+                    ),
                 },
             ));
         }
@@ -1245,6 +1290,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                         format_type(decl.ty.clone(), Format::default())
                     ),
                     help: String::new(),
+                    url: None,
                 },
             ));
         }
@@ -1261,12 +1307,13 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                 HoverOutput {
                     code: format!("{} : syntax", decl.definition.name),
                     help: decl.definition.help.to_string(),
+                    url: None,
                 },
             ));
         }
     }
 
-    for decl in analysis.program.declarations.syntaxes.values() {
+    for (&id, decl) in &analysis.program.declarations.syntaxes {
         for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
             if !within_hover(span.first()) {
                 continue;
@@ -1284,6 +1331,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                         .map(|line| line.to_string())
                         .collect::<Vec<_>>()
                         .join("\n"),
+                    url: help_url!(id, &format!("syntax.{}", decl.name)),
                 },
             ));
         }

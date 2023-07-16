@@ -32,6 +32,7 @@ wipple-interpreter-backend = { path = "../../../backends/interpreter" }
 wipple-syntax = { path = "../../../syntax" }
 rust-embed = { version = "6", features = ["debug-embed", "interpolate-folder-path"], optional = true }
 send_wrapper = "0.6"
+url = "2"
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false  # FIXME: wasm-opt currently crashes

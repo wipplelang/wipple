@@ -11,7 +11,7 @@ use wipple_frontend::{
     FileKind, FilePath, PluginApi, PluginInput, PluginOutput, SourceMap,
 };
 
-pub const STD_URL: &str = "https://pkg.wipple.dev/std/std.wpl";
+pub const STD_URL: &str = "https://wipple.dev/std/std.wpl";
 
 #[derive(Debug, Clone)]
 pub struct Loader {
@@ -412,4 +412,43 @@ impl wipple_frontend::Loader for Loader {
 
 pub fn is_url(s: impl AsRef<str>) -> bool {
     Url::from_str(s.as_ref()).is_ok()
+}
+
+pub fn is_relative_to_entrypoint(path: FilePath, entrypoint: FilePath) -> bool {
+    match (path, entrypoint) {
+        (FilePath::Path(path), FilePath::Path(entrypoint)) => {
+            let path = PathBuf::from(path.as_str());
+            let entrypoint = PathBuf::from(entrypoint.as_str());
+
+            let entrypoint_dir = match entrypoint.parent() {
+                Some(path) => path,
+                None => return false,
+            };
+
+            path.strip_prefix(entrypoint_dir).is_ok()
+        }
+        (FilePath::Url(url), FilePath::Url(entrypoint)) => {
+            let url = match url.parse::<Url>() {
+                Ok(url) => url,
+                Err(_) => return false,
+            };
+
+            let path = PathBuf::from(url.path());
+
+            let entrypoint = match entrypoint.parse::<Url>() {
+                Ok(url) => url,
+                Err(_) => return false,
+            };
+
+            let entrypoint_path = PathBuf::from(entrypoint.path());
+
+            let entrypoint_dir = match entrypoint_path.parent() {
+                Some(path) => path,
+                None => return false,
+            };
+
+            url.origin() == entrypoint.origin() && path.strip_prefix(entrypoint_dir).is_ok()
+        }
+        _ => false,
+    }
 }

@@ -38,6 +38,7 @@ export interface AnalysisOutputSyntaxHighlightingItem {
 export interface HoverOutput {
     code: string;
     help: string;
+    url?: string;
 }
 
 export interface AnalysisOutputCompletions {

@@ -344,7 +344,7 @@ error: missing instance
 11 │ show bob
    │ ^^^^ could not find instance `Show (Maybe User)`
    │
-   ┌─ https://pkg.wipple.dev/std/output.wpl:16:17
+   ┌─ https://wipple.dev/std/output.wpl:16:17
    │
 16 │ show :: A where (Show A) => A -> ()
    │                 -------- required by this bound here

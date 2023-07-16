@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+        {{ #if title }}
+        <title>{{ title }}</title>
+        {{ /if }}
+
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/filter-highlight-all/prism-filter-highlight-all.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+
+        <style type="text/tailwindcss">
+            @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono&display=swap");
+
+            body {
+                font-family: "Inter", sans-serif;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+            }
+
+            pre,
+            code {
+                font-family: "JetBrains Mono", monospace;
+            }
+        </style>
+
+        <style>
+            .language-wipple {
+                color: #24292e;
+            }
+
+            .language-wipple .token.punctuation {
+                color: #24292e;
+            }
+
+            .language-wipple .token.comment {
+                color: #6a737d;
+            }
+
+            .language-wipple .token.number {
+                color: #032f62;
+            }
+
+            .language-wipple .token.text {
+                color: #032f62;
+            }
+
+            .language-wipple .token.keyword {
+                color: #e36209;
+            }
+
+            .language-wipple .token.type {
+                color: #6f42c1;
+            }
+
+            .language-wipple .token.trait {
+                color: #6f42c1;
+            }
+
+            .language-wipple .token.operator {
+                color: #005cc5;
+            }
+
+            .language-wipple .token.function {
+                color: #6f42c1;
+            }
+
+            .language-wipple .token.syntax {
+                color: #e36209;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="flex flex-col max-w-6xl mx-auto">
+            <div class="flex flex-col gap-8 p-10">
+                <!-- Image -->
+                {{ #if image }}
+                <img src="{{ image }}" class="w-16 h-16" />
+                {{ /if }}
+
+                <div class="flex flex-col gap-2 5">
+                    <!-- Title -->
+                    {{ #if title }}
+                    <h1 class="text-5xl leading-normal font-bold">{{ title }}</h1>
+                    {{ /if }}
+
+                    <!-- Links -->
+                    {{ #if links }}
+                    <div class="flex flex-row flex-wrap gap-5 text-lg font-medium text-blue-500">
+                        {{ #each links }}
+                        <a href="{{ this }}" class="no-underline">{{ this }}</a>
+                        {{ /each }}
+                    </div>
+                    {{ /if }}
+                </div>
+            </div>
+
+            <div class="flex flex-row px-10 py-5">
+                <div class="hidden sm:flex flex-col gap-5 w-60">
+                    {{ #each groups }}
+                    <div class="flex flex-col gap-2">
+                        <a href="#{{ @key }}" class="text-sm font-bold no-underline">
+                            {{ @key }}
+                        </a>
+
+                        {{ #each items }}
+                        <a
+                            href="#{{ kind }}.{{ @key }}"
+                            class="text-sm font-medium no-underline language-wipple"
+                        >
+                            <code class="token {{ kind }} no-highlight">{{ @key }}</code>
+                        </a>
+                        {{ /each }}
+                    </div>
+                    {{ /each }}
+                </div>
+
+                <div class="flex flex-col gap-10">
+                    {{ #each groups }}
+                    <div class="flex flex-col gap-5">
+                        <a
+                            id="{{ @key }}"
+                            href="#{{ @key }}"
+                            class="text-2xl font-bold no-underline"
+                        >
+                            {{ @key }}
+                        </a>
+
+                        {{ #each items }}
+                        <div class="flex flex-col gap-2.5">
+                            <a
+                                id="{{ kind }}.{{ @key }}"
+                                href="#{{ kind }}.{{ @key }}"
+                                class="text-lg font-medium no-underline language-wipple"
+                            >
+                                <code class="token {{ kind }} no-highlight">{{ @key }}</code>
+                            </a>
+
+                            <p class="markdown">{{ help }}</p>
+                        </div>
+                        {{ /each }}
+                    </div>
+                    {{ /each }}
+                </div>
+            </div>
+        </div>
+
+        <script>
+            window.Prism.languages.wipple = {
+                keyword: {
+                    pattern:
+                        /(?<=\s|^)(?:_|use|when|type|trait|instance|where|external|syntax|format|with)(?=\s|$)/,
+                    greedy: true,
+                },
+                operator: { pattern: /:|::|->|=>|\.|\|/, greedy: true },
+                type: { pattern: /\b[A-Z][^\r\n\t \(\)\[\]\{\}'"/]*\b/, greedy: true },
+
+                // Standard syntax highlighting rules
+                punctuation: { pattern: /\(|\)|\[\[|\]\]|\[|\]|\{|\}|_/, greedy: true },
+                whitespace: { pattern: /\s+/, greedy: true },
+                comment: { pattern: /--.*/, greedy: true },
+                number: { pattern: /-?[0-9]+(\.[0-9]+)?/, greedy: true },
+                text: { pattern: /"[^"\\]*(\\.[^"\\]*)*"/s, greedy: true },
+                name: { pattern: /[^\n\t \(\)\[\]\{\}"]+/, greedy: true },
+                error: /.*/,
+            };
+
+            const converter = new window.showdown.Converter();
+            for (const el of document.getElementsByClassName("markdown")) {
+                const html = converter.makeHtml(el.innerHTML);
+                if (html) {
+                    el.innerHTML = html;
+                }
+            }
+
+            window.Prism.plugins.filterHighlightAll.reject.addSelector("code.no-highlight");
+            window.Prism.plugins.filterHighlightAll.reject.addSelector("pre.no-highlight > code");
+
+            window.Prism.highlightAll();
+        </script>
+    </body>
+</html>
