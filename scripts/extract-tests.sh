@@ -16,10 +16,10 @@ fi
 
 rm -rf "$1"
 mkdir "$1"
-for f in tools/test/tests/*.yml; do
+for f in tests/*.yml; do
     f=$(basename $f)
     echo "Extracting $f"
-    printf "%s\n" "$(cat "tools/test/tests/$f" | yq -r .code)" > "$1/${f%.yml}.wpl"
+    printf "%s\n" "$(cat "tests/$f" | yq -r .code)" > "$1/${f%.yml}.wpl"
 done
 
 echo "Done"
