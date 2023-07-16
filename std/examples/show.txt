@@ -1,0 +1,16 @@
+---
+id: R0jRZf5Z
+type: text
+locked: false
+---
+
+## How to use `show`
+
+Testing 123.
+
+---
+id: Tdous1D4
+type: code
+---
+
+show "Hello, world!"

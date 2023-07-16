@@ -41,6 +41,7 @@ struct HelpGroup {
 struct HelpItem {
     pub kind: String,
     pub help: String,
+    pub playground: Option<String>,
 }
 
 pub fn document(
@@ -84,36 +85,45 @@ pub fn document(
                 .map(ToString::to_string)
                 .unwrap_or_default();
 
-            (help, help_group)
+            let help_playground = $decl
+                .attributes
+                .decl_attributes
+                .help_playground
+                .as_ref()
+                .map(ToString::to_string);
+
+            (help, help_group, help_playground)
         }};
     }
 
     for decl in program.declarations.types.values() {
-        let (help, group) = get_help!(decl);
+        let (help, group, playground) = get_help!(decl);
 
         groups.entry(group).or_default().items.insert(
             decl.name.to_string(),
             HelpItem {
                 kind: String::from("type"),
                 help,
+                playground,
             },
         );
     }
 
     for decl in program.declarations.traits.values() {
-        let (help, group) = get_help!(decl);
+        let (help, group, playground) = get_help!(decl);
 
         groups.entry(group).or_default().items.insert(
             decl.name.to_string(),
             HelpItem {
                 kind: String::from("trait"),
                 help,
+                playground,
             },
         );
     }
 
     for decl in program.declarations.constants.values() {
-        let (help, group) = get_help!(decl);
+        let (help, group, playground) = get_help!(decl);
 
         groups.entry(group).or_default().items.insert(
             decl.name.to_string(),
@@ -124,12 +134,13 @@ pub fn document(
                     String::from("constant")
                 },
                 help,
+                playground,
             },
         );
     }
 
     for decl in program.declarations.syntaxes.values() {
-        let (help, group) = get_help!(decl);
+        let (help, group, playground) = get_help!(decl);
 
         groups.entry(group).or_default().items.insert(
             decl.name.to_string(),
@@ -142,6 +153,7 @@ pub fn document(
                     String::from("syntax")
                 },
                 help,
+                playground,
             },
         );
     }

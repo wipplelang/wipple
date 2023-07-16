@@ -131,16 +131,25 @@
                         </a>
 
                         {{ #each items }}
-                        <div class="flex flex-col gap-2.5">
+                        <div class="flex flex-col gap-2.5 font-medium">
                             <a
                                 id="{{ kind }}.{{ @key }}"
                                 href="#{{ kind }}.{{ @key }}"
-                                class="text-lg font-medium no-underline language-wipple"
+                                class="text-lg no-underline language-wipple"
                             >
                                 <code class="token {{ kind }} no-highlight">{{ @key }}</code>
                             </a>
 
                             <p class="markdown">{{ help }}</p>
+
+                            {{ #if playground }}
+                            <a
+                                href="https://wipple.dev/playground/?file={{ playground }}"
+                                class="no-underline text-blue-500"
+                            >
+                                Open example in playground ->
+                            </a>
+                            {{ /if }}
                         </div>
                         {{ /each }}
                     </div>
