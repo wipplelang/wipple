@@ -1,3 +1,5 @@
+[[help-url "https://wipple.dev/doc/graphing.html"]]
+
 Graph : type { handle :: UI }
 
 [context]

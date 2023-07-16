@@ -1,3 +1,5 @@
+[[help-url "https://wipple.dev/doc/turtle.html"]]
+
 [convert-from Number ('value degrees)]
 Angle : type { deg :: Number }
 

@@ -1,3 +1,5 @@
+[[help-url "https://wipple.dev/doc/music.html"]]
+
 Music : type {
   tempo :: Mutable Number
   handle :: UI
