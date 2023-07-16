@@ -151,6 +151,7 @@ const App = () => {
         query.current.set("sections", JSON.stringify(sections));
         previousPage && query.current.set("previous", JSON.stringify(previousPage));
         nextPage && query.current.set("next", JSON.stringify(nextPage));
+        query.current.delete("file");
         query.current.delete("lesson");
 
         const newURL =

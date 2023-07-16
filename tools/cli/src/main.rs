@@ -542,7 +542,7 @@ async fn build_with_passes<P>(
     let base = options
         .base_path
         .clone()
-        .unwrap_or_else(|| PathBuf::from(path).parent().unwrap().to_path_buf())
+        .unwrap_or_else(|| PathBuf::from(path))
         .to_string_lossy()
         .to_string();
 

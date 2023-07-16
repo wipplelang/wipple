@@ -20,8 +20,13 @@ export const convertLesson = (text: string) => {
         text = parsed.body.slice(index);
     } while (text);
 
-    const options = sections.shift();
-    delete options.value;
+    let options;
+    if (sections[0]?.id == null) {
+        options = sections.shift();
+        delete options.value;
+    } else {
+        options = {};
+    }
 
     return { ...options, sections };
 };

@@ -4,7 +4,7 @@
         "postinstall": "(cd playground && npm i)",
         "dev": "concurrently 'eleventy --serve' 'watch \"npm run tailwind:process\" ./home'",
         "build": "eleventy && npm run tailwind:process && (cd guide && mdbook build) && (rm -rf _site/playground && cd playground && scripts/build.sh && mv dist ../_site/playground) && (rm -rf _site/std && cp -r ../std _site) && npm run build:doc",
-        "build:doc": "rm -rf _site/doc && mkdir _site/doc && wipple doc https://pkg.wipple.gramer.dev/std/std.wpl --title 'Wipple Standard Library' --image 'https://wipple.gramer.dev/images/logo.svg' --link 'https://wipple.dev' > _site/doc/std.html",
+        "build:doc": "rm -rf _site/doc && mkdir _site/doc && wipple doc ../std/std.wpl --title 'Wipple Standard Library' --image 'https://wipple.gramer.dev/images/logo.svg' --link 'https://wipple.dev' > _site/doc/std.html",
         "tailwind:process": "npx postcss ./home/styles/global.css -o ./_site/styles/global.css"
     },
     "devDependencies": {
