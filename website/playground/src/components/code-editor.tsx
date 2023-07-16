@@ -1336,12 +1336,15 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         ) : null}
 
                         {hover.output?.url ? (
-                            <a
-                                href={hover.output.url}
-                                className="mt-2 px-1.5 py-0.5 rounded-md bg-blue-500 text-white"
-                            >
-                                Documentation
-                            </a>
+                            <div className="mt-1.5">
+                                <a
+                                    href={hover.output.url}
+                                    target="_blank"
+                                    className="px-1.5 py-0.5 rounded-md bg-blue-500 text-white"
+                                >
+                                    Documentation
+                                </a>
+                            </div>
                         ) : null}
                     </div>
                 </div>
