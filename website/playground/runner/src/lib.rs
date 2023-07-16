@@ -637,7 +637,7 @@ fn get_completions(program: &wipple_frontend::analysis::Program) -> AnalysisOutp
     let mut language = Vec::new();
     for decl in wipple_syntax::ast::builtin_syntax_definitions() {
         let completion = Completion {
-            kind: Some(if decl.operator { "operator" } else { "syntax" }),
+            kind: Some(if decl.operator { "operator" } else { "keyword" }),
             name: decl.name.to_string(),
             help: decl.help.to_string(),
             template: decl.template.to_string(),
@@ -1307,7 +1307,15 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                 HoverOutput {
                     code: format!("{} : syntax", decl.definition.name),
                     help: decl.definition.help.to_string(),
-                    url: None,
+                    url: Some(format!(
+                        "https://wipple.dev/doc/std.html#{}.{}",
+                        if decl.definition.operator {
+                            "operator"
+                        } else {
+                            "keyword"
+                        },
+                        decl.name
+                    )),
                 },
             ));
         }

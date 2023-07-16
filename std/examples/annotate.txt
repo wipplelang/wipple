@@ -1,0 +1,68 @@
+---
+id: 3OZPUMYu
+type: text
+locked: true
+---
+
+# How to use `::`
+
+The `::` operator allows you to annotate the type of an expression when Wipple can't figure it out automatically. For example, using `collect` without specifying a type causes an error:
+
+---
+id: FYeb48id
+type: code
+---
+
+1 to 10 . collect
+
+---
+id: L1DSbFWl
+type: text
+locked: true
+---
+
+The fix is to annotate the type with `::` to tell Wipple that we want to collect into a list:
+
+---
+id: pksewHQb
+type: code
+---
+
+1 to 10 . collect :: List Number
+
+---
+id: OhiuQX79
+type: text
+locked: true
+---
+
+Inside a type annotation, you can use the `_` placeholder to infer a type within a more complex type; here, Wipple can figure out that the type of the elements within the list is `Number`:
+
+---
+id: hKl9TFWN
+type: code
+---
+
+1 to 10 . collect :: List _
+
+---
+id: odmmbGgw
+type: text
+locked: true
+---
+
+`::` is also used to declare a constant. Unlike variables, constants are lazily evaluated and may refer to themselves recursively. A file containing only constants may be `use`d by another file.
+
+---
+id: XJmI5u7u
+type: code
+---
+
+answer :: Number
+answer : {
+  show "answer" -- notice that 'answer' appears after 'main'
+  42
+}
+
+show "main"
+show answer

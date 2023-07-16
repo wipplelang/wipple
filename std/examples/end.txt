@@ -1,0 +1,49 @@
+---
+id: YwuJidRT
+type: text
+locked: true
+---
+
+# How to use `end`
+
+Normally, a function evaluates to the expression on the right-hand side of the arrow `->`. But if you need to interrupt the function's normal evaluation and return a value early, you can use `end`:
+
+---
+id: Yhh29oln
+type: code
+---
+
+answer : () -> {
+  end 42
+  43
+}
+
+show (answer ())
+
+---
+id: QE903D71
+type: text
+locked: true
+---
+
+`end` is handy for dealing with errors:
+
+---
+id: 0vA_IVba
+type: code
+---
+
+do-something :: () -> Result Text Text
+do-something : () -> Error "oh no"
+
+show-something :: () -> Result () Text
+show-something : () -> {
+  n : when (do-something ()) {
+    Ok n -> n
+    Error e -> end (Error e)
+  }
+
+  show n
+
+  Ok ()
+}

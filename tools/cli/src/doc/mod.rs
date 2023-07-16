@@ -16,6 +16,9 @@ pub struct Options {
 
     #[clap(long)]
     pub link: Vec<String>,
+
+    #[clap(long)]
+    pub include_builtins: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, clap::ValueEnum)]
@@ -156,6 +159,23 @@ pub fn document(
                 playground,
             },
         );
+    }
+
+    if options.include_builtins {
+        for decl in wipple_syntax::ast::builtin_syntax_definitions() {
+            groups.entry(String::new()).or_default().items.insert(
+                decl.name.to_string(),
+                HelpItem {
+                    kind: if decl.operator {
+                        String::from("operator")
+                    } else {
+                        String::from("keyword")
+                    },
+                    help: decl.help.to_string(),
+                    playground: Some(decl.playground.to_string()),
+                },
+            );
+        }
     }
 
     let content = Content {

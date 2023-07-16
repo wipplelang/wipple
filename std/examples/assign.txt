@@ -1,0 +1,36 @@
+---
+id: 0uUeqGab
+type: text
+locked: true
+---
+
+# How to use `:`
+
+The `:` operator is used to assign a value to a variable so that it may be referred to later in the program:
+
+---
+id: I_XdPdRG
+type: code
+---
+
+sum : 1 + 2
+show sum
+
+---
+id: dn20ZAjk
+type: text
+locked: true
+---
+
+You can declare two variables with the same name, and the newer variable will "shadow" the older variable, meaning the older variable cannot be accessed anymore within the current scope. The older variable _does_ remain accessible inside functions that captured it before it was shadowed:
+
+---
+id: kJlkcbHK
+type: code
+---
+
+greeting : "Hello"
+show-greeting : () -> show greeting
+greeting : "Howdy"
+show greeting
+show-greeting ()
