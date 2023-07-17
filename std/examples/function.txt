@@ -1,0 +1,74 @@
+---
+id: FHRwawnV
+type: text
+locked: true
+---
+
+# How to use `->`
+
+The `->` operator is used to create functions. The inputs go on the left, and the output goes on the right:
+
+---
+id: XdTzKe7d
+type: code
+---
+
+add : a b -> a + b
+show (add 1 2)
+
+---
+id: O2tUizLc
+type: text
+locked: true
+---
+
+In Wipple, functions are "curried", meaning a function with multiple inputs is actually shorthand for multiple functions that each take a single input. So the above example is equivalent to this:
+
+---
+id: 0b2LXYLJ
+type: code
+---
+
+add : a -> b -> a + b
+show (add 1 2)
+
+---
+id: JFfrthCL
+type: text
+locked: true
+---
+
+The same rule goes for calling functions, too, in what's called "partial application":
+
+---
+id: lUK-6rxW
+type: code
+---
+
+add : a -> b -> a + b
+increment : add 1
+show (increment 2)
+
+---
+id: ZjbCt9Ue
+type: text
+locked: true
+---
+
+The `->` operator is also commonly used inside `when` to specify a pattern to match and the code to run if the pattern matches:
+
+---
+id: AB-VDnwN
+type: code
+---
+
+Grade : type { A B C D F }
+
+report-card : grade -> when grade {
+    A -> "top of the class"
+    B -> "good job"
+    C -> "need to study"
+    D or F -> "didn't pass"
+}
+
+show (report-card A)

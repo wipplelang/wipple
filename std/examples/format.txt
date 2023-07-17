@@ -1,0 +1,17 @@
+---
+id: 9ojgeqLU
+type: text
+locked: true
+---
+
+# How to use `format`
+
+`format` takes some text containing `_` placeholders, and replaces the placeholders with the values you provide. This allows you to build complex text values from multiple pieces:
+
+---
+id: sIVP42lo
+type: code
+---
+
+greet : name -> format "Hello, _!" name
+show (greet "world")
