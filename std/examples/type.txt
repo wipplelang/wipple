@@ -1,0 +1,174 @@
+---
+id: gD_SB4yt
+type: text
+locked: true
+---
+
+# How to use `type`
+
+`type` is used to create a new structure or enumeration type. You can create a structure type by listing the names and types of the structure's fields:
+
+---
+id: JWVH6wmW
+type: code
+lint: false
+---
+
+Person : type {
+  name :: Text
+  age :: Number
+}
+
+bob : Person {
+  name : "Bob"
+  age : 30
+}
+
+---
+id: zYaArVCF
+type: text
+locked: true
+---
+
+Or you can create an enumeration type by listing the patterns:
+
+---
+id: 5pVWO8EJ
+type: code
+---
+
+Grade : type {
+  A
+  B
+  C
+  D
+  F
+}
+
+report-card :: Grade -> Text
+report-card : grade -> when grade {
+    A -> "top of the class"
+    B -> "good job"
+    C -> "need to study"
+    D or F -> "didn't pass"
+}
+
+show (report-card A)
+
+---
+id: tpzWvdL7
+type: text
+locked: true
+---
+
+Patterns may store data:
+
+---
+id: 4fTWOtMp
+type: code
+---
+
+Command : type {
+  Move Number
+  Turn
+}
+
+---
+id: JQ7ngSR8
+type: text
+locked: true
+---
+
+If none of your patterns have associated data, you can write them all on one line to save space:
+
+---
+id: u7UaEKKA
+type: code
+---
+
+Grade : type { A B C D F }
+
+---
+id: pbwkqH6Q
+type: text
+locked: true
+---
+
+You can use the type function operator `=>` to create generic types:
+
+---
+id: JOLdMVT1
+type: code
+---
+
+Either : A B => type {
+  Left A
+  Right B
+}
+
+---
+id: 0_7iW7lm
+type: text
+locked: true
+---
+
+Types may refer to themselves recursively:
+
+---
+id: 1wkL3x-g
+type: code
+---
+
+Lisp : A => type {
+  Nil
+  Cons A (Lisp A)
+}
+
+car :: A => Lisp A -> A
+car : lisp -> when lisp {
+  Nil -> crash "list is empty"
+  Cons x _ -> x
+}
+
+cdr :: A => Lisp A -> Lisp A
+cdr : lisp -> when lisp {
+  Nil -> crash "list is empty"
+  Cons _ rest -> rest
+}
+
+nth :: A => Natural -> Lisp A -> A
+nth : index lisp -> {
+  nth-recursive :: A => Natural -> Natural -> Lisp A -> A
+  nth-recursive : index current lisp -> if (index = current) (car lisp) (nth-recursive index (current + 1) (cdr lisp))
+
+  lisp . nth-recursive index 0
+}
+
+lisp : Cons "a" (Cons "b" (Cons "c" Nil))
+show (lisp . nth 2)
+
+---
+id: FjU8cgdU
+type: text
+locked: true
+---
+
+Finally, you can write `type` on its own to create a marker type. This is useful if you need to implement a trait but don't have any meaningful data to store:
+
+---
+id: MGFaVk71
+type: code
+---
+
+Unwrap-Error : type
+
+instance (Show Unwrap-Error) : just "value was `None`"
+
+unwrap :: A => Maybe A -> Result A Unwrap-Error
+unwrap : x -> when x {
+  Some x -> Ok x
+  None -> Error Unwrap-Error
+}
+
+show (Some 42 . unwrap)
+show ((None :: Maybe Number) . unwrap)

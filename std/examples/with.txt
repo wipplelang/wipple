@@ -1,0 +1,30 @@
+---
+id: MwO5_djw
+type: text
+locked: true
+---
+
+# How to use `with`
+
+`with` is used to set the value of a contextual constant while a block of code executes. It's used to pass down dependencies implicitly, rather than having to specify an extra parameter on all of your functions:
+
+---
+id: buAKqPZd
+type: code
+---
+
+[context]
+excited :: Boolean
+excited : False -- the constant's default value
+
+greet :: Text -> ()
+greet : name -> {
+  greeting : if excited (format "Hi _!!!" name) (format "Hello, _" name)
+  show greeting
+}
+
+greet "Alice"
+
+with (excited : True) {
+  greet "Bob"
+}

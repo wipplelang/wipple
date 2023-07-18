@@ -1,0 +1,93 @@
+---
+id: IQhU820x
+type: text
+locked: true
+---
+
+# How to use `when`
+
+`when` is used to match patterns on a value. It accepts a block containing functions and will execute the body of the first function that matches:
+
+---
+id: KDoyM6QO
+type: code
+---
+
+Grade : type { A B C D F }
+
+report-card :: Grade -> Text
+report-card : grade -> when grade {
+  A -> "top of the class"
+  B -> "good job"
+  C -> "need to study"
+  D or F -> "didn't pass"
+}
+
+show (report-card A)
+
+---
+id: -zIChIi6
+type: text
+locked: true
+---
+
+`when` must handle all possible patterns:
+
+---
+id: lNJ6I2-H
+type: code
+---
+
+Grade : type { A B C D F }
+
+report-card :: Grade -> Text
+report-card : grade -> when grade {
+  A -> "top of the class"
+  B -> "good job"
+  C -> "need to study"
+}
+
+---
+id: yI2kzDky
+type: text
+locked: true
+---
+
+Use `_` as a catch-all to handle any value that didn't match the other patterns:
+
+---
+id: rqHLqYNH
+type: code
+---
+
+Grade : type { A B C D F }
+
+valedictorian? :: Grade -> Boolean
+valedictorian? : grade -> when grade {
+  A -> True
+  _ -> False
+}
+
+show (valedictorian? B)
+
+---
+id: I3V524we
+type: text
+locked: true
+---
+
+Constructs like `if` are actually implemented in terms of `when`!
+
+---
+id: 4CnBTCRf
+type: code
+---
+
+if : syntax {
+  if 'bool 'then 'else -> when 'bool {
+    True -> 'then
+    False -> 'else
+  }
+}
+
+show (if True "Woohoo!" "Oh no")
