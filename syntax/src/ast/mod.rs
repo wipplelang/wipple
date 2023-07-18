@@ -84,7 +84,7 @@ impl BuiltinSyntaxDefinition {
     pub(crate) const INSTANCE: Self = Self::function(
         "instance",
         "Define a trait's value for a specific type or types.",
-        "https://wipple.dev/std/examples/instance.txt",
+        "https://wipple.dev/std/examples/trait.txt",
         "instance (*trait*)",
     );
 
@@ -196,7 +196,7 @@ impl BuiltinSyntaxDefinition {
     pub(crate) const WHERE: Self = Self::operator(
         "where",
         "Add bounds to a type function, or a condition to a pattern.",
-        "https://wipple.dev/std/examples/where.txt",
+        "https://wipple.dev/std/examples/trait.txt",
         "(*parameters*) where (*bounds*)",
     );
 
