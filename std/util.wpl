@@ -103,3 +103,13 @@ instance (Default Number) : 0
 instance (Default Text) : ""
 instance (Default Boolean) : False
 A => instance (Default (Maybe A)) : None
+
+[help "Returns `True` if the value on the left side matches the pattern on the right side."]
+[help-group "Utilities"]
+[operator Composition-Precedence]
+is : syntax {
+  'value is 'pattern -> when 'value {
+    'pattern -> True
+    _ -> False
+  }
+}
