@@ -2741,6 +2741,7 @@ name = "wipple-cli"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "atty",
  "clap",
  "codespan-reporting",
  "dialoguer",

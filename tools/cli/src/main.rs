@@ -1,6 +1,7 @@
 mod doc;
 mod lsp;
 
+use atty::Stream;
 use clap::{Parser, ValueEnum};
 use parking_lot::Mutex;
 use std::{
@@ -115,15 +116,17 @@ async fn run() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let progress_bar = || {
-        Arc::new({
-            let progress_bar = indicatif::ProgressBar::new(0).with_style(
-                indicatif::ProgressStyle::default_spinner()
-                    .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
-            );
+        atty::is(Stream::Stderr).then(|| {
+            Arc::new({
+                let progress_bar = indicatif::ProgressBar::new(0).with_style(
+                    indicatif::ProgressStyle::default_spinner()
+                        .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
+                );
 
-            progress_bar.enable_steady_tick(PROGRESS_BAR_TICK_SPEED);
+                progress_bar.enable_steady_tick(PROGRESS_BAR_TICK_SPEED);
 
-            progress_bar
+                progress_bar
+            })
         })
     };
 
@@ -154,7 +157,7 @@ async fn run() -> anyhow::Result<()> {
 
     match args {
         Args::Run { path, options } => {
-            let progress_bar = options.progress.then(progress_bar);
+            let progress_bar = options.progress.then(progress_bar).flatten();
 
             let (ir, diagnostics) = generate_ir(&path, &options, progress_bar.clone()).await;
 
@@ -291,7 +294,7 @@ async fn run() -> anyhow::Result<()> {
 
             match format {
                 CompileFormat::Analysis => {
-                    let progress_bar = options.progress.then(progress_bar);
+                    let progress_bar = options.progress.then(progress_bar).flatten();
 
                     let (program, diagnostics) =
                         analyze(&path, &options, progress_bar.clone()).await;
@@ -308,7 +311,7 @@ async fn run() -> anyhow::Result<()> {
                 }
                 CompileFormat::Ir => {
                     let (ir, progress_bar) = {
-                        let progress_bar = options.progress.then(progress_bar);
+                        let progress_bar = options.progress.then(progress_bar).flatten();
 
                         let (ir, diagnostics) =
                             generate_ir(&path, &options, progress_bar.clone()).await;
@@ -362,7 +365,7 @@ async fn run() -> anyhow::Result<()> {
             doc_options,
             build_options,
         } => {
-            let progress_bar = build_options.progress.then(progress_bar);
+            let progress_bar = build_options.progress.then(progress_bar).flatten();
 
             let (program, diagnostics) = analyze(&path, &build_options, progress_bar.clone()).await;
 
