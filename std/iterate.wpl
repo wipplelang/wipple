@@ -124,6 +124,7 @@ instance (Collect () ()) : iterator -> {
 
 [help "Perform an action for each item in an iterator."]
 [help-group "Collections"]
+[help-playground "https://wipple.dev/std/examples/each.txt"]
 each :: Container (infer Element) where (Iterate Container Element) => (Element -> ()) -> Container -> ()
 each : f container -> container . transform f . collect
 

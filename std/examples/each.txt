@@ -1,0 +1,91 @@
+---
+id: kOWHnk8J
+type: text
+locked: true
+---
+
+# How to use `each`
+
+`each` takes in a value like a list, and calls a function for each element:
+
+---
+id: IJRizJdX
+type: code
+---
+
+each show (list 1 2 3)
+
+---
+id: 9q1gR5cs
+type: text
+locked: true
+---
+
+Usually, it's easier to read if you use `.` syntax to move the list in front, and then you can pass a function directly:
+
+---
+id: 3bQNOBx8
+type: code
+---
+
+list 1 2 3 . each (n -> show (n * 2))
+
+---
+id: Zjd1MpI7
+type: text
+locked: true
+---
+
+You can use `transform` to move the multiplication out of the `show`:
+
+---
+id: ztlUZZzI
+type: code
+---
+
+list 1 2 3 . transform (n -> n * 2) . each show
+
+---
+id: f0K2iit9
+type: text
+locked: true
+---
+
+And finally, you can use partial application to eliminate the inline function:
+
+---
+id: sdEOKPaB
+type: code
+---
+
+list 1 2 3 . transform (Multiply 2) . each show
+
+---
+id: bhkmzcYo
+type: text
+locked: true
+---
+
+If you just want to execute a function a certain number of times, you can use `times` instead of `each`. `times n` counts from zero to `n - 1`, calling the function with the current number:
+
+---
+id: hVs_ycZc
+type: code
+---
+
+3 . times show
+
+---
+id: 3ZnawNGr
+type: text
+locked: true
+---
+
+Lastly, if you want to transform the counter in some way, use `range` instead because it produces an iterator:
+
+---
+id: WRlagUu9
+type: code
+---
+
+0 to 3 . transform (Add 1) . transform (Multiply 2) . each show
