@@ -106,6 +106,7 @@ A => instance (Default (Maybe A)) : None
 
 [help "Returns `True` if the value on the left side matches the pattern on the right side."]
 [help-group "Utilities"]
+[help-playground "https://wipple.dev/std/examples/is.txt"]
 [operator Composition-Precedence]
 is : syntax {
   'value is 'pattern -> when 'value {
