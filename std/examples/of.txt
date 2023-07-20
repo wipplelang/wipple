@@ -1,0 +1,74 @@
+---
+id: BPb5I8Xz
+type: text
+locked: true
+---
+
+# How to use `of`
+
+`of` allows you to access a single field of a structure value. Usually, you use a destructuring pattern to access the fields:
+
+---
+id: 7vYTYYhC
+type: code
+---
+
+Person : type {
+  name :: Text
+  age :: Number
+}
+
+instance (Show Person) : { name age } -> format "_ is _ years old" name age
+
+bob : Person {
+  name : "Bob"
+  age : 30
+}
+
+show bob
+
+---
+id: qjbbuL6u
+type: text
+locked: true
+---
+
+But this can get unwieldy if you have multiple `Person` values:
+
+---
+id: epu8yd2L
+type: code
+---
+
+Person : type {
+  name :: Text
+  age :: Number
+}
+
+instance (Equal Person) : {
+  name : name-1
+  age : age-1
+} {
+  name : name-2
+  age : age-2
+} -> name-1 = name-2 and age-1 = age-2
+
+---
+id: zAE1YI1i
+type: text
+locked: true
+---
+
+Instead, you can use `of` to access the fields on demand:
+
+---
+id: ggZ1gSeK
+type: code
+---
+
+Person : type {
+  name :: Text
+  age :: Number
+}
+
+instance (Equal Person) : a b -> (name of a) = (name of b) and (age of a) = (age of b)

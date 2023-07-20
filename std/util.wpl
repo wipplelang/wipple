@@ -5,6 +5,7 @@ use "logic"
 
 [help "Retrieve a field from a structure value without introducing a new variable into scope."]
 [help-group "Utilities"]
+[help-playground "https://wipple.dev/std/examples/of.txt"]
 [operator Accessor-Precedence]
 of : syntax {
   'field of 'value -> {
