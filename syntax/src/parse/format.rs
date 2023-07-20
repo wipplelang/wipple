@@ -32,9 +32,7 @@ pub fn format(code: &str) -> Option<String> {
             Some(())
         }
 
-        fn make_span(&self, _path: Self::Path, _range: std::ops::Range<usize>) -> Self::Span {
-            
-        }
+        fn make_span(&self, _path: Self::Path, _range: std::ops::Range<usize>) -> Self::Span {}
 
         fn std_path(&self) -> Option<Self::Path> {
             unimplemented!()
@@ -102,9 +100,21 @@ impl<D: Driver> fmt::Display for File<D> {
             writeln!(f)?;
         }
 
-        for (index, statement) in self.statements.iter().enumerate() {
-            statement.line.fmt(f, 0, false, index == 0)?;
-            writeln!(f)?;
+        for (statement_index, statement) in self.statements.iter().enumerate() {
+            for (line_index, line) in statement.lines.iter().enumerate() {
+                let mut indent = 0;
+                if line_index > 0 {
+                    indent += 1;
+                }
+
+                line.fmt(f, indent, true, statement_index == 0 && line_index == 0)?;
+
+                if line_index + 1 < statement.lines.len() {
+                    write!(f, " \\")?;
+                }
+
+                writeln!(f)?;
+            }
         }
 
         Ok(())
@@ -169,16 +179,34 @@ impl<D: Driver> Expr<D> {
                 if self.is_multiline(true) {
                     writeln!(f)?;
 
-                    for (index, statement) in statements.iter().enumerate() {
-                        statement.line.fmt(f, indent + 1, true, index == 0)?;
-                        writeln!(f)?;
+                    for (statement_index, statement) in statements.iter().enumerate() {
+                        for (line_index, line) in statement.lines.iter().enumerate() {
+                            let mut indent = indent;
+                            if line_index > 0 {
+                                indent += 1;
+                            }
+
+                            line.fmt(f, indent + 1, true, statement_index == 0 && line_index == 0)?;
+
+                            if line_index + 1 < statement.lines.len() {
+                                write!(f, " \\")?;
+                            }
+
+                            writeln!(f)?;
+                        }
                     }
 
                     write!(f, "{}", INDENT.repeat(indent))?;
                 } else if let Some(statement) = statements.first() {
                     write!(f, " ")?;
 
-                    statement.line.fmt(f, indent, false, false)?;
+                    debug_assert!(statement.lines.len() == 1);
+
+                    statement
+                        .lines
+                        .first()
+                        .unwrap()
+                        .fmt(f, indent, false, false)?;
 
                     write!(f, " ")?;
                 }
@@ -207,7 +235,15 @@ impl<D: Driver> Expr<D> {
             },
             ExprKind::Block(statements) => match statements.len() {
                 0 => false,
-                1 => statements.first().unwrap().line.is_multiline(true),
+                1 => {
+                    let lines = &statements.first().unwrap().lines;
+
+                    match lines.len() {
+                        0 => false,
+                        1 => lines.first().unwrap().is_multiline(true),
+                        _ => true,
+                    }
+                }
                 _ => true,
             },
             ExprKind::SourceCode(code) => code.contains('\n'),

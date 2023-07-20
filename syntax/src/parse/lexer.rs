@@ -45,6 +45,9 @@ pub enum Token<'src> {
     #[regex(r#"\n"#)]
     LineBreak,
 
+    #[regex(r#"\\\n"#)]
+    LineContinue,
+
     #[regex(r#"[\t ]+"#, logos::skip)]
     Space,
 
@@ -89,7 +92,7 @@ impl<'src> fmt::Display for Token<'src> {
             Token::RepeatLeftBrace => write!(f, "`...{{`"),
             Token::RightBrace => write!(f, "`}}`"),
             Token::Underscore => write!(f, "`_`"),
-            Token::LineBreak => write!(f, "line break"),
+            Token::LineBreak | Token::LineContinue => write!(f, "line break"),
             Token::Placeholder(placeholder) => write!(f, "(*{placeholder}*)"),
             Token::Space => unreachable!(),
             Token::Comment(_) => write!(f, "comment"),

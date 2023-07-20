@@ -691,7 +691,7 @@ impl<D: Driver> SyntaxPattern<D> {
                                     Self::expand(ast_builder, pattern?, vars, source_span, scope)?;
 
                                 Ok(parse::Statement {
-                                    line: parse::ListLine {
+                                    lines: vec![parse::ListLine {
                                         leading_lines: 0,
                                         attributes: Vec::new(),
                                         exprs: match statement.try_into_list_exprs() {
@@ -699,7 +699,7 @@ impl<D: Driver> SyntaxPattern<D> {
                                             Err(statement) => vec![statement],
                                         },
                                         comment: None,
-                                    },
+                                    }],
                                 })
                             })
                             .collect::<Result<_, _>>()?,

@@ -37,9 +37,9 @@ impl<D: Driver> Format<D> for parse::Expr<D> {
                 statements
                     .into_iter()
                     .map(|statement| Ok(statement
-                        .line
-                        .exprs
+                        .lines
                         .into_iter()
+                        .flat_map(|line| line.exprs)
                         .map(|expr| expr.format())
                         .collect::<Result<Vec<_>, _>>()?
                         .join(" ")))

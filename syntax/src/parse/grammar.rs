@@ -100,13 +100,7 @@ impl<D: Driver> Expr<D> {
 
 #[derive(Debug, Clone)]
 pub struct Statement<D: Driver> {
-    pub line: ListLine<D>,
-}
-
-impl<D: Driver> Statement<D> {
-    pub fn into_list_exprs(self) -> (Vec<Attribute<D>>, Vec<Expr<D>>) {
-        (self.line.attributes, self.line.exprs)
-    }
+    pub lines: Vec<ListLine<D>>,
 }
 
 #[derive(Debug, Clone)]
@@ -247,42 +241,56 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
             }
 
             // Consume expressions
-            let (attributes, exprs, parsed_end_token, end_span, comment) = (|| {
-                let mut attributes = Vec::new();
-                let mut exprs = Vec::new();
-                let mut comment = None;
+            let (lines, parsed_end_token, end_span) = (|| {
+                let mut lines = vec![ListLine {
+                    leading_lines,
+                    attributes: Vec::new(),
+                    exprs: Vec::new(),
+                    comment: None,
+                }];
+
                 loop {
                     let (span, token) = self.peek();
 
                     match (token, end_token) {
                         (Some(Token::LineBreak), _) => {
                             self.consume();
-                            return (attributes, exprs, token, None, comment);
+                            return (lines, token, None);
+                        }
+                        (Some(Token::LineContinue), _) => {
+                            self.consume();
+
+                            lines.push(ListLine {
+                                leading_lines: 0,
+                                attributes: Vec::new(),
+                                exprs: Vec::new(),
+                                comment: None,
+                            });
                         }
                         (Some(Token::Comment(c)), _) => {
                             self.consume();
-                            comment = Some(self.driver.intern(c));
+                            lines.last_mut().unwrap().comment = Some(self.driver.intern(c));
                         }
                         (None, _) => {
                             self.consume();
-                            return (attributes, exprs, token, Some(span), comment);
+                            return (lines, token, Some(span));
                         }
                         (Some(token), Some(end_token)) if token == end_token => {
                             self.consume();
-                            return (attributes, exprs, Some(token), Some(span), comment);
+                            return (lines, Some(token), Some(span));
                         }
                         _ => {
                             if let Some(attribute) = self.try_parse_attribute() {
-                                attributes.push(attribute);
+                                lines.last_mut().unwrap().attributes.push(attribute);
 
                                 while let (_, Some(Token::LineBreak)) = self.peek() {
                                     self.consume();
                                 }
                             } else if let Some(expr) = self.parse_expr() {
-                                exprs.push(expr);
+                                lines.last_mut().unwrap().exprs.push(expr);
                             } else {
                                 error = true;
-                                return (attributes, exprs, token, None, comment);
+                                return (lines, token, None);
                             }
                         }
                     }
@@ -298,16 +306,14 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                 }
             }
 
-            if leading_lines > 0 || !attributes.is_empty() || !exprs.is_empty() || comment.is_some()
+            let first_line = lines.first().unwrap();
+
+            if first_line.leading_lines > 0
+                || !first_line.attributes.is_empty()
+                || !first_line.exprs.is_empty()
+                || first_line.comment.is_some()
             {
-                statements.push(Statement {
-                    line: ListLine {
-                        leading_lines,
-                        attributes,
-                        exprs,
-                        comment,
-                    },
-                });
+                statements.push(Statement { lines });
             }
 
             if let Some(end_span) = end_span {

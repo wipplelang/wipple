@@ -401,7 +401,12 @@ impl<D: Driver> AstBuilder<D> {
         SyncFuture::new(Box::pin(async move {
             let attributes = Shared::new(StatementAttributes::default());
 
-            let (attribute_exprs, exprs) = (statement.line.attributes, statement.line.exprs);
+            let mut attribute_exprs = Vec::new();
+            let mut exprs = Vec::new();
+            for line in statement.lines {
+                attribute_exprs.extend(line.attributes);
+                exprs.extend(line.exprs);
+            }
 
             attributes.lock().raw = attribute_exprs.clone();
 

@@ -60,8 +60,10 @@ pub fn substitute<D: Driver>(
         }
         ExprKind::Block(statements) => {
             for statement in statements {
-                for expr in &mut statement.line.exprs {
-                    substitute(expr, replacement_name.clone(), replacement.clone());
+                for line in &mut statement.lines {
+                    for expr in &mut line.exprs {
+                        substitute(expr, replacement_name.clone(), replacement.clone());
+                    }
                 }
             }
         }
