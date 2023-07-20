@@ -5,7 +5,8 @@ use crate::{
         format::Format,
         macros::{definitions, syntax_group},
         syntax::{Syntax, SyntaxContext, SyntaxError},
-        AstBuilder, StatementAttributes, TypeMember, TypeMemberSyntax,
+        AstBuilder, StatementAttributes, Type, TypeMember, TypeMemberSyntax, TypeSyntax,
+        TypeSyntaxContext,
     },
     parse, Driver,
 };
@@ -17,6 +18,7 @@ syntax_group! {
         non_terminal: {},
         terminal: {
             Block,
+            Alias,
         },
     }
 }
@@ -43,6 +45,24 @@ impl<D: Driver> Format<D> for BlockTypeBody<D> {
                 .collect::<Result<Vec<_>, _>>()?
                 .join("\n")
         ))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AliasTypeBody<D: Driver> {
+    pub span: D::Span,
+    pub ty: Type<D>,
+}
+
+impl<D: Driver> AliasTypeBody<D> {
+    pub fn span(&self) -> D::Span {
+        self.span
+    }
+}
+
+impl<D: Driver> Format<D> for AliasTypeBody<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        self.ty.format()
     }
 }
 
@@ -90,12 +110,18 @@ impl<D: Driver> SyntaxContext<D> for TypeBodySyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        _scope: D::Scope,
+        scope: D::Scope,
     ) -> Result<Self::Body, SyntaxError<D>> {
-        self.ast_builder
-            .driver
-            .syntax_error(expr.span, "expected a block");
+        let span = expr.span;
 
-        Err(self.ast_builder.syntax_error(expr.span))
+        let context = TypeSyntaxContext::new(self.ast_builder.clone())
+            .with_statement_attributes(self.statement_attributes.as_ref().unwrap().clone());
+
+        let ty = self
+            .ast_builder
+            .build_expr::<TypeSyntax>(context, expr, scope)
+            .await?;
+
+        Ok(TypeBody::Alias(AliasTypeBody { span, ty }))
     }
 }

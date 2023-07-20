@@ -595,9 +595,9 @@ impl LanguageServer for Backend {
                     AnyDeclaration::Type(id) => {
                         kind = Some(
                             match document.program.declarations.types.get(id).unwrap().kind {
-                                TypeDeclKind::Marker | TypeDeclKind::Structure { .. } => {
-                                    CompletionItemKind::STRUCT
-                                }
+                                TypeDeclKind::Marker
+                                | TypeDeclKind::Structure { .. }
+                                | TypeDeclKind::Alias(_) => CompletionItemKind::STRUCT,
                                 TypeDeclKind::Enumeration { .. } => CompletionItemKind::ENUM,
                             },
                         );

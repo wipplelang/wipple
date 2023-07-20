@@ -94,8 +94,6 @@ impl<D: Driver> SyntaxContext<D> for StatementSyntaxContext<D> {
         let context = ExpressionSyntaxContext::new(self.ast_builder)
             .with_statement_attributes(self.statement_attributes.as_ref().unwrap().clone());
 
-        let expr = parse::Expr::list(expr.span, vec![expr]);
-
         context.build_terminal(expr, scope).await.map(|expr| {
             ExpressionStatement {
                 expression: expr,

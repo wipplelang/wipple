@@ -416,6 +416,7 @@ impl Converter<'_> {
                         analysis::typecheck::TypeDeclKind::Enumeration { .. } => {
                             Type::EnumerationReference(*self.enumeration_ids.get(id).unwrap())
                         }
+                        analysis::typecheck::TypeDeclKind::Alias(ty) => self.convert_type(ty),
                     }
                 }
             },

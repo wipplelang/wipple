@@ -357,6 +357,7 @@ impl Typechecker {
 
                         Type::Structure(*recursive_id, fields)
                     }
+                    analysis::typecheck::TypeDeclKind::Alias(ty) => self.convert_ty(&ty),
                 }
             }
             analysis::Type::Tuple(tys) => Type::Tuple(tys.clone()),
