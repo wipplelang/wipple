@@ -42,6 +42,8 @@ import AddRounded from "@mui/icons-material/AddRounded";
 import SubjectRounded from "@mui/icons-material/SubjectRounded";
 import PlayArrowRounded from "@mui/icons-material/PlayArrowRounded";
 import PauseRounded from "@mui/icons-material/PauseRounded";
+import FullScreenRounded from "@mui/icons-material/FullscreenRounded";
+import FullScreenExitRounded from "@mui/icons-material/FullscreenExitRounded";
 import getCaretCoordinates from "textarea-caret";
 import ErrorIcon from "@mui/icons-material/Error";
 import lineColumn from "line-column";
@@ -55,6 +57,8 @@ export interface CodeEditorProps {
     autoRun: boolean;
     onChangeAutoRun: (autoRun: boolean) => void;
     lint: boolean;
+    collapse: boolean;
+    onChangeCollapse: (collapse: boolean) => void;
     settings: Settings;
     autoFocus: boolean;
     onChange: (code: string) => void;
@@ -130,6 +134,15 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
     const [containsTemplates, setContainsTemplates] = useRefState(false);
     const [showTemplatesWarning, setShowTemplatesWarning] = useState(false);
+
+    const canCollapse = props.code.length > 0 && (output.current?.items.length ?? 0) > 0;
+
+    const [codeEditorContainerRef, { height: codeEditorContainerHeight }] = useMeasure();
+    const animatedCodeEditorStyle = useSpring(
+        canCollapse && props.collapse
+            ? { opacity: 0, height: 0 }
+            : { opacity: 1, height: codeEditorContainerHeight }
+    );
 
     const runner = useRunner({ id: props.id, code: props.code });
 
@@ -768,6 +781,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         <Tooltip title="Format">
                             <button
                                 className="code-editor-button -mx-0.5"
+                                disabled={props.code.length === 0}
                                 onMouseDown={async (e) => {
                                     const formatted = await runner.format(props.code);
 
@@ -818,35 +832,59 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                 )}
                             </button>
                         </Tooltip>
+
+                        <Tooltip title={canCollapse && props.collapse ? "Expand" : "Collapse"}>
+                            <button
+                                className="code-editor-button -mr-0.5"
+                                disabled={!canCollapse}
+                                onMouseDown={(e) => {
+                                    if (!canCollapse) {
+                                        return;
+                                    }
+
+                                    props.onChangeCollapse(!props.collapse);
+                                }}
+                            >
+                                {canCollapse && props.collapse ? (
+                                    <FullScreenRounded sx={buttonIconStyles} />
+                                ) : (
+                                    <FullScreenExitRounded sx={buttonIconStyles} />
+                                )}
+                            </button>
+                        </Tooltip>
                     </div>
                 </div>
 
                 <div className="code-editor-outlined rounded-lg">
-                    <SimpleCodeEditor
-                        ref={codeEditorRef}
-                        id={editorID}
-                        textareaId={textAreaID}
-                        className="code-editor m-4 dark:caret-white"
-                        textareaClassName="outline-0"
-                        preClassName="language-wipple"
-                        style={{
-                            fontFamily: "'JetBrains Mono', monospace",
-                            fontStyle: props.code ? "normal" : "italic",
-                            fontVariantLigatures: "none",
-                            wordWrap: "break-word",
-                            tabSize: 2,
-                        }}
-                        value={props.code}
-                        onValueChange={(code) => {
-                            setHover(undefined);
-                            props.onChange(code);
-                        }}
-                        highlight={(code) =>
-                            prism.highlight(code, prism.languages.wipple, "wipple")
-                        }
-                        placeholder="Write your code here!"
-                        autoFocus={props.autoFocus}
-                    />
+                    <animated.div style={animatedCodeEditorStyle}>
+                        <div ref={codeEditorContainerRef} className="p-4">
+                            <SimpleCodeEditor
+                                ref={codeEditorRef}
+                                id={editorID}
+                                textareaId={textAreaID}
+                                className="code-editor dark:caret-white"
+                                textareaClassName="outline-0"
+                                preClassName="language-wipple"
+                                style={{
+                                    fontFamily: "'JetBrains Mono', monospace",
+                                    fontStyle: props.code ? "normal" : "italic",
+                                    fontVariantLigatures: "none",
+                                    wordWrap: "break-word",
+                                    tabSize: 2,
+                                }}
+                                value={props.code}
+                                onValueChange={(code) => {
+                                    setHover(undefined);
+                                    props.onChange(code);
+                                }}
+                                highlight={(code) =>
+                                    prism.highlight(code, prism.languages.wipple, "wipple")
+                                }
+                                placeholder="Write your code here!"
+                                autoFocus={props.autoFocus}
+                            />
+                        </div>
+                    </animated.div>
 
                     <animated.div style={animatedOutputStyle}>
                         <div ref={outputRef}>

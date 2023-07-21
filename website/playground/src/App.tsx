@@ -36,7 +36,7 @@ import { convertLesson, useRefState } from "./helpers";
 import { useMemo } from "react";
 
 type Section = { id: string; value: string } & (
-    | { type: "code"; lint?: boolean; autoRun?: boolean }
+    | { type: "code"; lint?: boolean; autoRun?: boolean; collapse?: boolean }
     | { type: "text"; locked?: boolean }
 );
 
@@ -664,6 +664,14 @@ const SectionContainer = (props: {
                             ...props.section,
                             type: "code",
                             autoRun,
+                        });
+                    }}
+                    collapse={props.section.collapse ?? false}
+                    onChangeCollapse={(collapse) => {
+                        props.onChange({
+                            ...props.section,
+                            type: "code",
+                            collapse,
                         });
                     }}
                     autoFocus={props.autoFocus}
