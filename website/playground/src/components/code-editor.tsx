@@ -334,7 +334,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
     }, [setMousePosition]);
 
     useEffect(() => {
-        if (!container || !textEditor) return;
+        if (!container || !textEditor || (canCollapse && props.collapse)) return;
 
         let hoverTimer: NodeJS.Timeout | undefined = undefined;
         let hoverElement: HTMLElement | undefined = undefined;
@@ -434,7 +434,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
             container.removeEventListener("mouseleave", handleMouseLeave);
             textEditor.removeEventListener("mousemove", handleMouseMove);
         };
-    }, [container, textEditor]);
+    }, [container, textEditor, canCollapse, props.collapse]);
 
     useEffect(() => {
         const nodes = [
