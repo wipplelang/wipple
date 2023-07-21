@@ -94,6 +94,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
     const editorID = `code-editor-editor-${props.id}`;
     const textAreaID = `code-editor-text-${props.id}`;
 
+    const [firstLayout, setFirstLayout] = useState(true);
+
     const codeEditorRef = useRef<SimpleCodeEditor>(null);
 
     const [syntaxHighlighting, setSyntaxHighlighting] = useState<
@@ -116,10 +118,16 @@ export const CodeEditor = (props: CodeEditorProps) => {
     const [completions, setCompletions] = useState<AnalysisOutputCompletions>();
 
     const [outputRef, { height: outputHeight }] = useMeasure();
+
+    const animatedOutputStyleDefaults = {
+        immediate: firstLayout,
+        onRest: () => setFirstLayout(false),
+    };
+
     const animatedOutputStyle = useSpring(
         fatalError || output.current != null
-            ? { opacity: 1, height: outputHeight }
-            : { opacity: 0, height: 0 }
+            ? { ...animatedOutputStyleDefaults, opacity: 1, height: outputHeight }
+            : { ...animatedOutputStyleDefaults, opacity: 0, height: 0 }
     );
 
     const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion)");
@@ -856,7 +864,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 </div>
 
                 <div className="code-editor-outlined rounded-lg">
-                    <animated.div style={animatedCodeEditorStyle}>
+                    <animated.div style={firstLayout ? undefined : animatedCodeEditorStyle}>
                         <div ref={codeEditorContainerRef} className="p-4">
                             <SimpleCodeEditor
                                 ref={codeEditorRef}
