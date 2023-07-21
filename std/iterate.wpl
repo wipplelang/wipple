@@ -57,6 +57,28 @@ filter : include? container -> {
   })
 }
 
+[help "Transform each item in an iterator, keeping only the items that aren't `None`."]
+[help-group "Collections"]
+try-filter :: Container (infer Element) Result where (Iterate Container Element) => (Element -> Maybe Result) -> Container -> Iterator Result
+try-filter : transform container -> {
+  base : Iterate container
+
+  iterator (() -> loop {
+    when (next base) {
+      Some x -> when (transform x) {
+        Some x -> (Break (Some x))
+        None -> Continue
+      }
+      None -> Break None
+    }
+  })
+}
+
+[help "Keep only the items in an iterator that aren't `None`."]
+[help-group "Collections"]
+filtered :: Container (infer Element) where (Iterate Container (Maybe Element)) => Container -> Iterator Element
+filtered : try-filter it
+
 [help "Reduce an iterator down to a single item."]
 [help-group "Collections"]
 reduce :: Container Element Result where (Iterate Container Element) => Result -> (Element -> Result -> Result) -> Container -> Result
