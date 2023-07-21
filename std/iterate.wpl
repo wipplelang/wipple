@@ -74,10 +74,32 @@ try-filter : transform container -> {
   })
 }
 
-[help "Keep only the items in an iterator that aren't `None`."]
+[help "Flatten an iterator of iterators."]
 [help-group "Collections"]
-filtered :: Container (infer Element) where (Iterate Container (Maybe Element)) => Container -> Iterator Element
-filtered : try-filter it
+flatten :: Outer (infer Inner) (infer Element) where (Iterate Outer Inner) (Iterate Inner Element) => Outer -> Iterator Element
+flatten : outer-container -> {
+  outer : Iterate outer-container
+
+  when (next outer) {
+    Some inner-container -> {
+      inner : mutable (Iterate inner-container)
+
+      iterator (() -> loop {
+        when (next (get inner)) {
+          Some x -> Break (Some x)
+          None -> when (next outer) {
+            Some inner-container -> {
+              inner . set! (Iterate inner-container)
+              Continue
+            }
+            None -> Break None
+          }
+        }
+      })
+    }
+    None -> iterator (just None)
+  }
+}
 
 [help "Reduce an iterator down to a single item."]
 [help-group "Collections"]
@@ -133,6 +155,11 @@ Element => instance (Iterate (List Element) Element) : list -> {
     }
     Error _ -> None
   })
+}
+
+A => instance (Iterate (Maybe A) A) : maybe -> {
+  maybe : mutable maybe
+  iterator (() -> take! maybe)
 }
 
 instance (Collect () ()) : iterator -> {
