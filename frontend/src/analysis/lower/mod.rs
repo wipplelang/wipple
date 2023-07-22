@@ -250,6 +250,7 @@ pub struct TraitAttributes {
         Option<InternedString>,
     )>,
     pub allow_overlapping_instances: bool,
+    pub derive: Option<(SpanList, InternedString, InternedString)>,
 }
 
 #[derive(Debug, Clone)]
@@ -1691,10 +1692,25 @@ impl Lowerer {
                         })
                         .collect::<Vec<_>>();
 
-                    let value = value.map(|(colon_span, value)| InstanceValue {
-                        colon_span: Some(colon_span),
-                        value: self.lower_expr(value, scope, ctx),
-                    });
+                    let value = value
+                        .map(|(colon_span, value)| InstanceValue {
+                            colon_span: Some(colon_span),
+                            value: self.lower_expr(value, scope, ctx),
+                        })
+                        .or_else(|| {
+                            let tr_decl = self.declarations.traits.get(&tr).unwrap();
+
+                            tr_decl.value.as_ref().unwrap().attributes.derive.map(
+                                |(span, path, name)| InstanceValue {
+                                    colon_span: None,
+                                    value: Expression {
+                                        id: self.compiler.new_expression_id(id),
+                                        span: span.merge(decl.span),
+                                        kind: ExpressionKind::Plugin(path, name, Vec::new()),
+                                    },
+                                },
+                            )
+                        });
 
                     self.declarations.instances.get_mut(&id).unwrap().value =
                         Some(InstanceDeclaration {
@@ -4134,6 +4150,10 @@ impl Lowerer {
                 ))
             }),
             allow_overlapping_instances: attributes.allow_overlapping_instances.is_some(),
+            derive: attributes
+                .derive
+                .as_ref()
+                .map(|attribute| (attribute.span, attribute.path, attribute.name)),
         }
     }
 

@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         format::Format, AllowOverlappingInstancesStatementAttribute, ContextualStatementAttribute,
-        ConvertFromStatementAttribute, DiagnosticAliasStatementAttribute,
+        ConvertFromStatementAttribute, DeriveStatementAttribute, DiagnosticAliasStatementAttribute,
         DiagnosticItemStatementAttribute, HelpGroupStatementAttribute,
         HelpPlaygroundStatementAttribute, HelpStatementAttribute, HelpTemplateStatementAttribute,
         HelpUrlFileAttribute, KeywordStatementAttribute, LanguageItemStatementAttribute,
@@ -68,6 +68,7 @@ pub struct StatementAttributes<D: Driver> {
     pub keyword: Option<KeywordStatementAttribute<D>>,
     pub contextual: Option<ContextualStatementAttribute<D>>,
     pub convert_from: Vec<ConvertFromStatementAttribute<D>>,
+    pub derive: Option<DeriveStatementAttribute<D>>,
 }
 
 impl<D: Driver> Default for StatementAttributes<D> {
@@ -89,6 +90,7 @@ impl<D: Driver> Default for StatementAttributes<D> {
             keyword: Default::default(),
             contextual: Default::default(),
             convert_from: Default::default(),
+            derive: Default::default(),
         }
     }
 }
