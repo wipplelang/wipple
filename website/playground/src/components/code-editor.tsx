@@ -964,7 +964,10 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                 >
                                                     {output.current.diagnostics.map(
                                                         (diagnostic, index) => (
-                                                            <div key={index} className="flex gap-2">
+                                                            <div
+                                                                key={index}
+                                                                className="flex gap-2 overflow-x-scroll"
+                                                            >
                                                                 <div
                                                                     className={`rounded-sm border-r-4 ${
                                                                         diagnostic.level === "error"

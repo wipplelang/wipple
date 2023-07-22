@@ -703,7 +703,7 @@ const SectionContainer = (props: {
             break;
     }
 
-    return <div className="mb-4 flex-1">{content}</div>;
+    return <div className="mb-4 flex-1 w-full">{content}</div>;
 };
 
 export default App;
