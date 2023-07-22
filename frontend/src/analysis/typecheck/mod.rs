@@ -4344,7 +4344,6 @@ impl Typechecker {
                 ))
             },
             &mut Vec::new(),
-            None,
         )
     }
 
@@ -4374,7 +4373,6 @@ impl Typechecker {
                 Some(engine::UnresolvedType::Parameter(param))
             },
             &mut Vec::new(),
-            None,
         );
 
         ty.finalize(&self.ctx).unwrap_or_else(|| {
@@ -4386,8 +4384,7 @@ impl Typechecker {
     fn convert_finalized_type_annotation(&self, annotation: TypeAnnotation) -> engine::Type {
         let span = annotation.span;
 
-        let ty =
-            self.convert_type_annotation_inner(annotation, &|_, _| None, &mut Vec::new(), None);
+        let ty = self.convert_type_annotation_inner(annotation, &|_, _| None, &mut Vec::new());
 
         ty.finalize(&self.ctx).unwrap_or_else(|| {
             self.add_error(self.error(engine::TypeError::UnresolvedType(ty), None, span));
@@ -4400,7 +4397,6 @@ impl Typechecker {
         annotation: TypeAnnotation,
         convert_placeholder: &impl Fn(&Self, SpanList) -> Option<engine::UnresolvedType>,
         stack: &mut Vec<TypeId>,
-        substitutions: Option<&engine::GenericSubstitutions>,
     ) -> engine::UnresolvedType {
         match annotation.kind {
             TypeAnnotationKind::Error(_) => engine::UnresolvedType::Error,
@@ -4423,7 +4419,7 @@ impl Typechecker {
                 let mut params = params
                     .into_iter()
                     .map(|param| {
-                        self.convert_type_annotation_inner(param, convert_placeholder, stack, None)
+                        self.convert_type_annotation_inner(param, convert_placeholder, stack)
                     })
                     .collect::<Vec<_>>();
 
@@ -4462,27 +4458,24 @@ impl Typechecker {
 
                 stack.push(id);
 
-                let mut substitutions = substitutions.cloned().unwrap_or_default();
-                substitutions.extend(
-                    ty.value
-                        .parameters
-                        .iter()
-                        .copied()
-                        .zip(params.iter().cloned()),
-                );
+                let substitutions = ty
+                    .value
+                    .parameters
+                    .iter()
+                    .copied()
+                    .zip(params.iter().cloned())
+                    .collect::<engine::GenericSubstitutions>();
 
-                let mut convert_and_instantiate = |ty| {
-                    let mut ty = self.convert_type_annotation_inner(
-                        ty,
-                        convert_placeholder,
-                        stack,
-                        Some(&substitutions),
-                    );
+                macro_rules! convert_and_instantiate {
+                    ($ty:expr) => {{
+                        let mut ty =
+                            self.convert_type_annotation_inner($ty, convert_placeholder, stack);
 
-                    ty.instantiate_with(&self.ctx, &substitutions);
+                        ty.instantiate_with(&self.ctx, &substitutions);
 
-                    ty
-                };
+                        ty
+                    }};
+                }
 
                 let structure = match &ty.value.kind {
                     lower::TypeDeclarationKind::Marker => engine::TypeStructure::Marker,
@@ -4490,7 +4483,7 @@ impl Typechecker {
                         engine::TypeStructure::Structure(
                             fields
                                 .iter()
-                                .map(|field| convert_and_instantiate(field.ty.clone()))
+                                .map(|field| convert_and_instantiate!(field.ty.clone()))
                                 .collect(),
                         )
                     }
@@ -4502,7 +4495,7 @@ impl Typechecker {
                                     variant
                                         .tys
                                         .iter()
-                                        .map(|ty| convert_and_instantiate(ty.clone()))
+                                        .map(|ty| convert_and_instantiate!(ty.clone()))
                                         .collect()
                                 })
                                 .collect(),
@@ -4511,14 +4504,7 @@ impl Typechecker {
                     lower::TypeDeclarationKind::Alias(ty) => {
                         stack.pop();
 
-                        return self.convert_type_annotation_inner(
-                            ty.clone(),
-                            // HACK: Prevent infinite recursion in Rust compiler
-                            &(Box::new(|_: &_, _| None)
-                                as Box<dyn Fn(&Self, SpanList) -> Option<engine::UnresolvedType>>),
-                            stack,
-                            Some(&substitutions),
-                        );
+                        return convert_and_instantiate!(ty.clone());
                     }
                 };
 
@@ -4686,7 +4672,6 @@ impl Typechecker {
                                     parameters.pop().unwrap(),
                                     convert_placeholder,
                                     stack,
-                                    substitutions,
                                 ),
                             )))
                         }
@@ -4723,7 +4708,6 @@ impl Typechecker {
                                     parameters.pop().unwrap(),
                                     convert_placeholder,
                                     stack,
-                                    substitutions,
                                 ),
                             )))
                         }
@@ -4757,29 +4741,12 @@ impl Typechecker {
                 }
             }
             TypeAnnotationKind::Function(input, output) => engine::UnresolvedType::Function(
-                Box::new(self.convert_type_annotation_inner(
-                    *input,
-                    convert_placeholder,
-                    stack,
-                    substitutions,
-                )),
-                Box::new(self.convert_type_annotation_inner(
-                    *output,
-                    convert_placeholder,
-                    stack,
-                    substitutions,
-                )),
+                Box::new(self.convert_type_annotation_inner(*input, convert_placeholder, stack)),
+                Box::new(self.convert_type_annotation_inner(*output, convert_placeholder, stack)),
             ),
             TypeAnnotationKind::Tuple(tys) => engine::UnresolvedType::Tuple(
                 tys.into_iter()
-                    .map(|ty| {
-                        self.convert_type_annotation_inner(
-                            ty,
-                            convert_placeholder,
-                            stack,
-                            substitutions,
-                        )
-                    })
+                    .map(|ty| self.convert_type_annotation_inner(ty, convert_placeholder, stack))
                     .collect(),
             ),
         }
