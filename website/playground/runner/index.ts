@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Runner from "../runner/worker?worker";
 
 export interface AnalysisOutput {
@@ -89,9 +89,37 @@ export type AnalysisConsoleRequest =
 export const useRunner = (context: any) => {
     const runner = useRef<Worker | null>(null);
 
+    const newRunnerPromise = () =>
+        new Promise<void>((resolve, reject) => {
+            runner.current = new Runner();
+
+            runner.current.onmessage = (event) => {
+                switch (event.data.type) {
+                    case "loaded":
+                        console.log("runner loaded");
+                        runner.current!.onmessage = null;
+                        resolve();
+                        setLoaded(true);
+                        break;
+                    default:
+                        runner.current!.onmessage = null;
+                        reject(new Error("invalid operation"));
+                        break;
+                }
+            };
+
+            runner.current!.postMessage({ operation: "checkLoading" });
+        });
+
+    const runnerPromise = useRef<Promise<void>>();
+    const [loaded, setLoaded] = useState(false);
+
     const reset = () => {
         runner.current?.terminate();
-        runner.current = new Runner();
+        runner.current = null;
+
+        setLoaded(false);
+        runnerPromise.current = newRunnerPromise();
     };
 
     useEffect(() => {
@@ -99,12 +127,16 @@ export const useRunner = (context: any) => {
     }, []);
 
     return {
+        isLoaded: loaded,
+        waitForLoad: () => runnerPromise.current!,
         analyze: (
             code: string,
             lint: boolean,
             handlePlugin: (path: string, name: string, input: any, api: any) => Promise<any>
         ) =>
-            new Promise<AnalysisOutput>((resolve, reject) => {
+            new Promise<AnalysisOutput>(async (resolve, reject) => {
+                await runnerPromise.current;
+
                 const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = (event) => {
                     try {
@@ -157,7 +189,9 @@ export const useRunner = (context: any) => {
                 runner.current!.postMessage({ operation: "analyze", code, lint, context });
             }),
         run: (handleConsole: (request: AnalysisConsoleRequest) => void) =>
-            new Promise<void>((resolve, reject) => {
+            new Promise<void>(async (resolve, reject) => {
+                await runnerPromise.current;
+
                 let functions: any[] = [];
                 let resolveFunctionResult: ((value: any) => void) | undefined;
 
@@ -328,7 +362,9 @@ export const useRunner = (context: any) => {
                 runner.current!.postMessage({ operation: "run", context });
             }),
         hover: (start: number, end: number) =>
-            new Promise<HoverOutput | null>((resolve, reject) => {
+            new Promise<HoverOutput | null>(async (resolve, reject) => {
+                await runnerPromise.current;
+
                 const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = (event) => {
                     resolve(event.data);
@@ -343,7 +379,9 @@ export const useRunner = (context: any) => {
                 runner.current!.postMessage({ operation: "hover", start, end, context });
             }),
         completions: (position: number) =>
-            new Promise<AnalysisOutputCompletions>((resolve, reject) => {
+            new Promise<AnalysisOutputCompletions>(async (resolve, reject) => {
+                await runnerPromise.current;
+
                 const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = (event) => {
                     resolve(event.data);
@@ -358,7 +396,9 @@ export const useRunner = (context: any) => {
                 runner.current!.postMessage({ operation: "completions", position, context });
             }),
         format: (code: string) =>
-            new Promise<string | undefined>((resolve, reject) => {
+            new Promise<string | undefined>(async (resolve, reject) => {
+                await runnerPromise.current;
+
                 const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = (event) => {
                     resolve(event.data);

@@ -19,13 +19,11 @@ const Main = () => {
     );
 
     return (
-        <React.StrictMode>
-            <ThemeProvider theme={theme}>
-                <Sentry.ErrorBoundary fallback={ErrorHandler}>
-                    <App />
-                </Sentry.ErrorBoundary>
-            </ThemeProvider>
-        </React.StrictMode>
+        <ThemeProvider theme={theme}>
+            <Sentry.ErrorBoundary fallback={ErrorHandler}>
+                <App />
+            </Sentry.ErrorBoundary>
+        </ThemeProvider>
     );
 };
 

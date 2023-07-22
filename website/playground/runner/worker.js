@@ -17,6 +17,9 @@ onmessage = async (event) => {
         const runner = await import("./pkg");
 
         switch (event.data.operation) {
+            case "checkLoading":
+                postMessage({ type: "loaded" });
+                break;
             case "analyze": {
                 if (cancel) {
                     cancel();

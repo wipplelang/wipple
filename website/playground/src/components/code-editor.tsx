@@ -102,6 +102,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
         AnalysisOutputSyntaxHighlightingItem[]
     >([]);
 
+    const runner = useRunner({ id: props.id, code: props.code });
+
     const [isRunning, setRunning] = useState(false);
     const [output, setOutput] = useRefState<
         { code: string; items: OutputItem[]; diagnostics: AnalysisOutputDiagnostic[] } | undefined
@@ -124,8 +126,20 @@ export const CodeEditor = (props: CodeEditorProps) => {
         onRest: () => setFirstLayout(false),
     };
 
+    const [showRunnerLoading, setShowRunnerLoading] = useState(false);
+
+    useEffect(() => {
+        setTimeout(async () => {
+            if (runner.isLoaded) return;
+
+            setShowRunnerLoading(true);
+            await runner.waitForLoad();
+            setShowRunnerLoading(false);
+        }, 1500);
+    }, []);
+
     const animatedOutputStyle = useSpring(
-        fatalError || output.current != null
+        showRunnerLoading || fatalError || output.current != null
             ? { ...animatedOutputStyleDefaults, opacity: 1, height: outputHeight }
             : { ...animatedOutputStyleDefaults, opacity: 0, height: 0 }
     );
@@ -151,8 +165,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
             ? { opacity: 0, height: 0 }
             : { opacity: 1, height: codeEditorContainerHeight }
     );
-
-    const runner = useRunner({ id: props.id, code: props.code });
 
     const run = useMemo(
         () =>
@@ -925,6 +937,18 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                 Your code contains placeholders that need to be
                                                 filled before your program can be run.
                                             </p>
+                                        </div>
+                                    );
+                                }
+
+                                if (showRunnerLoading) {
+                                    return (
+                                        <div className="p-4 pt-1 bg-gray-50 dark:bg-gray-800 text-black dark:text-white">
+                                            <div className="bouncing-loader">
+                                                <div />
+                                                <div />
+                                                <div />
+                                            </div>
                                         </div>
                                     );
                                 }
