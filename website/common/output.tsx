@@ -1,6 +1,5 @@
 import ErrorIcon from "@mui/icons-material/Error";
-import { useRunner, type AnalysisOutputDiagnostic } from "../../ide";
-import { Markdown } from "./code-editor";
+import type { AnalysisOutputDiagnostic } from "./types";
 import lineColumn from "line-column";
 import {
     Button,
@@ -16,10 +15,16 @@ import KeyboardReturn from "@mui/icons-material/KeyboardReturn";
 import SubjectRounded from "@mui/icons-material/SubjectRounded";
 import Refresh from "@mui/icons-material/Refresh";
 import React, { useEffect, useImperativeHandle, useState } from "react";
-import { useRefState } from "../helpers";
+import { useRefState } from "./ref-state";
 import useMeasure from "react-use-measure";
 import { useSpring, animated } from "react-spring";
-import { ConsoleRequest } from "../../../../tools/playground-runner/clientGlue";
+import { ConsoleRequest } from "../../../tools/playground-runner/clientGlue";
+import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
+import rehypeKatex from "rehype-katex";
+import remarkSmartypants from "remark-smartypants";
+import rehypeRaw from "rehype-raw";
 
 export type OutputItem =
     | { type: "output"; text: string }
@@ -131,7 +136,7 @@ export const run = async (options: {
 };
 
 export interface OutputMethods {
-    run: () => void;
+    run: () => Promise<void>;
 }
 
 export const Output = React.forwardRef<
@@ -142,12 +147,16 @@ export const Output = React.forwardRef<
         firstLayout: boolean;
         showTemplatesWarning: boolean;
         onLayout: () => void;
-        runner: ReturnType<typeof useRunner>;
+        runner: {
+            isLoaded: boolean;
+            waitForLoad: () => Promise<void>;
+            run: (handleConsole: (request: ConsoleRequest) => void) => Promise<void>;
+        };
         output: { items: OutputItem[]; diagnostics: AnalysisOutputDiagnostic[] } | undefined;
         onAddOutputItem: (item: OutputItem) => void;
         fatalError: boolean;
         onFatalError: () => void;
-        captureException: (error: any) => void;
+        captureException?: (error: any) => void;
         beginner: boolean;
         onRefresh: () => void;
     }
@@ -183,27 +192,34 @@ export const Output = React.forwardRef<
     useImperativeHandle(
         ref,
         () => ({
-            run: () =>
-                run({
-                    runGlue: props.runner.run,
-                    appendToOutput: props.onAddOutputItem,
-                    currentUiElement: () => {
-                        const id = currentUiElementId.current.split("-");
-                        const index = parseInt(id[id.length - 1]);
-                        return uiElements.current[index];
-                    },
-                    getNextUiElementId: () => {
-                        const index = uiElements.current.length;
+            run: async () => {
+                try {
+                    await run({
+                        runGlue: props.runner.run,
+                        appendToOutput: props.onAddOutputItem,
+                        currentUiElement: () => {
+                            const id = currentUiElementId.current.split("-");
+                            const index = parseInt(id[id.length - 1]);
+                            return uiElements.current[index];
+                        },
+                        getNextUiElementId: () => {
+                            const index = uiElements.current.length;
 
-                        const id = `${props.id}-${index}`;
-                        setCurrentUiElementId(id);
+                            const id = `${props.id}-${index}`;
+                            setCurrentUiElementId(id);
 
-                        return id;
-                    },
-                    appendUiElement: (element) => setUiElements([...uiElements.current, element]),
-                }),
+                            return id;
+                        },
+                        appendUiElement: (element) =>
+                            setUiElements([...uiElements.current, element]),
+                    });
+                } catch (error) {
+                    console.error(error);
+                    props.onFatalError();
+                }
+            },
         }),
-        [props.runner.run, props.onAddOutputItem]
+        [props.runner.run, props.onAddOutputItem, props.onFatalError]
     );
 
     return (
@@ -560,3 +576,15 @@ const DropdownField = (props: {
         </div>
     );
 };
+
+export const Markdown = (props: { children: string; className?: string }) => (
+    <div className={"code-editor-markdown " + props.className ?? ""}>
+        <ReactMarkdown
+            remarkPlugins={[remarkMath, remarkGfm, remarkSmartypants]}
+            rehypePlugins={[rehypeRaw, rehypeKatex]}
+            linkTarget="_blank"
+        >
+            {props.children}
+        </ReactMarkdown>
+    </div>
+);

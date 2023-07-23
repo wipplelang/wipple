@@ -88,7 +88,7 @@ export const handle = async (runner, event) => {
                 };
 
                 if (event.data.program) {
-                    runner.runProgram(program, requestHandler, errorHandler);
+                    runner.runProgram(event.data.program, requestHandler, errorHandler);
                 } else {
                     cancel = runner.run(requestHandler, errorHandler);
                 }

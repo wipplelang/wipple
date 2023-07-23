@@ -26,6 +26,9 @@ export default defineConfig(({ command, mode }) => {
                   })
                 : null,
         ],
+        resolve: {
+            preserveSymlinks: true,
+        },
         worker: {
             format: "es",
             plugins: [wasm(), topLevelAwait()],

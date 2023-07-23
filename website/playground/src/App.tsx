@@ -32,7 +32,8 @@ import DataObjectIcon from "@mui/icons-material/DataObject";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import { nanoid } from "nanoid";
 import { CodeEditor, TextEditor } from "./components";
-import { convertLesson, useRefState } from "./helpers";
+import { convertLesson } from "./helpers";
+import { useRefState } from "../common";
 import { useMemo } from "react";
 
 type Section = { id: string; value: string } & (

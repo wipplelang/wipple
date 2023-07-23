@@ -15,20 +15,12 @@ import {
 } from "@mui/material";
 import { Globals as SpringGlobals, useSpring, animated } from "react-spring";
 import useMeasure from "react-use-measure";
-import ReactMarkdown from "react-markdown";
-import remarkMath from "remark-math";
-import remarkGfm from "remark-gfm";
-import rehypeKatex from "rehype-katex";
-import remarkSmartypants from "remark-smartypants";
-import rehypeRaw from "rehype-raw";
 import {
-    AnalysisOutputDiagnostic,
     AnalysisOutputSyntaxHighlightingItem,
     HoverOutput,
     AnalysisOutputCompletions,
     Completion,
     useRunner,
-    AnalysisConsoleDiagnosticFix,
 } from "../../ide";
 import AddRounded from "@mui/icons-material/AddRounded";
 import SubjectRounded from "@mui/icons-material/SubjectRounded";
@@ -37,10 +29,17 @@ import PauseRounded from "@mui/icons-material/PauseRounded";
 import FullScreenRounded from "@mui/icons-material/FullscreenRounded";
 import FullScreenExitRounded from "@mui/icons-material/FullscreenExitRounded";
 import getCaretCoordinates from "textarea-caret";
-import { useRefState } from "../helpers";
 import { Settings } from "../App";
 import * as Sentry from "@sentry/react";
-import { Output, OutputItem, OutputMethods, UiElement } from "./output";
+import {
+    AnalysisConsoleDiagnosticFix,
+    AnalysisOutputDiagnostic,
+    Markdown,
+    Output,
+    OutputItem,
+    OutputMethods,
+    useRefState,
+} from "../../common";
 
 export interface CodeEditorProps {
     id: string;
@@ -151,7 +150,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     setShowTemplatesWarning(containsTemplates.current);
 
                     if (!analysis.diagnostics.find(({ level }) => level === "error")) {
-                        outputRef.current!.run();
+                        await outputRef.current!.run();
                     }
                 } catch (error) {
                     setFatalError(true);
@@ -975,15 +974,3 @@ export const CodeEditor = (props: CodeEditorProps) => {
         </div>
     );
 };
-
-export const Markdown = (props: { children: string; className?: string }) => (
-    <div className={"code-editor-markdown " + props.className ?? ""}>
-        <ReactMarkdown
-            remarkPlugins={[remarkMath, remarkGfm, remarkSmartypants]}
-            rehypePlugins={[rehypeRaw, rehypeKatex]}
-            linkTarget="_blank"
-        >
-            {props.children}
-        </ReactMarkdown>
-    </div>
-);

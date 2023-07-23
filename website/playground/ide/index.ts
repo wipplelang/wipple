@@ -1,33 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import Runner from "./worker?worker";
 import * as glue from "../../../tools/playground-runner/clientGlue";
+import type { AnalysisOutputDiagnostic } from "../common";
 
 export interface AnalysisOutput {
     diagnostics: AnalysisOutputDiagnostic[];
     syntaxHighlighting: AnalysisOutputSyntaxHighlightingItem[];
     completions: AnalysisOutputCompletions;
-}
-
-export interface AnalysisOutputDiagnostic {
-    level: "warning" | "error";
-    message: string;
-    fix?: AnalysisConsoleDiagnosticFix;
-    notes: {
-        code: string;
-        span: {
-            file: string;
-            start: number;
-            end: number;
-        };
-        messages: string[];
-    }[];
-}
-
-export interface AnalysisConsoleDiagnosticFix {
-    description: string;
-    start: number;
-    end: number;
-    replacement: string;
 }
 
 export interface AnalysisOutputSyntaxHighlightingItem {
