@@ -1,0 +1,16 @@
+[[help-url "https://wipple.dev/doc/game.html"]]
+
+Game : type { handle :: UI }
+
+[context]
+game :: Game
+game : crash "use of game maker outside `with-game`"
+
+[help "Create a new game."]
+[help-group "Game Maker"]
+with-graph : syntax { with-graph 'body -> { with-ui "/playground/ui/game/index.js" (handle -> { with (graph : Game { handle }) 'body }) } }
+
+-- [help "Set the color of the graph."]
+-- [help-group "Graphing"]
+-- color :: Text -> ()
+-- color : color -> handle of graph . message "color" color
