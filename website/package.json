@@ -1,7 +1,7 @@
 {
     "private": true,
     "scripts": {
-        "postinstall": "(cd playground && npm i)",
+        "postinstall": "(cd playground && npm i) && (cd ../tools/playground-runner && npm i)",
         "dev": "concurrently 'eleventy --serve' 'watch \"npm run tailwind:process\" ./home'",
         "build": "eleventy && npm run tailwind:process && (cd guide && mdbook build) && (rm -rf _site/playground && cd playground && scripts/build.sh && mv dist ../_site/playground) && (rm -rf _site/std && cp -r ../std _site) && (cd publish && scripts/build.sh && mv dist/dist.zip ../_site/playground/files/publish.zip && rm -r dist) && npm run build:doc && cp netlify/_* _site",
         "build:doc": "rm -rf _site/doc && mkdir _site/doc && wipple doc ../std/std.wpl --title 'Wipple Standard Library' --image 'https://wipple.dev/images/logo.svg' --link 'https://wipple.dev' --include-builtins > _site/doc/std.html && mv _site/playground/doc/*.html _site/doc",
@@ -19,8 +19,8 @@
         "watch": "^1.0.2"
     },
     "dependencies": {
+        "@octokit/rest": "^19.0.7",
         "react-error-boundary": "^4.0.3",
-        "uuid": "^9.0.0",
-        "@octokit/rest": "^19.0.7"
+        "uuid": "^9.0.0"
     }
 }
