@@ -13,6 +13,7 @@ use crate::{
     ItemId, StructureId, VariableId, VariantIndex,
 };
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
     os::raw::{c_int, c_uint},
@@ -21,7 +22,7 @@ use std::{
 pub use ssa::Type;
 pub use typecheck::Intrinsic;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Program {
     pub labels: Vec<(LabelKind, usize, Vec<BasicBlock>)>,
     pub structures: BTreeMap<StructureId, Vec<Type>>,
@@ -29,7 +30,7 @@ pub struct Program {
     pub entrypoint: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LabelKind {
     Entrypoint,
     Constant(Type),
@@ -37,14 +38,14 @@ pub enum LabelKind {
     Closure(CaptureList, Type, Type),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BasicBlock {
     pub description: String,
     pub statements: Vec<Statement>,
     pub terminator: Option<Terminator>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Statement {
     Copy,
     Drop,
@@ -56,7 +57,7 @@ pub enum Statement {
     Expression(Type, Expression),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum Terminator {
     Unreachable,
     Return,
@@ -65,7 +66,7 @@ pub enum Terminator {
     TailCall,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Expression {
     Marker,
     Text(InternedString),
@@ -96,7 +97,7 @@ pub enum Expression {
     Context(usize),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CaptureList(pub BTreeMap<usize, usize>);
 
 impl Compiler {

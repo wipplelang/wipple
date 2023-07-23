@@ -12,6 +12,8 @@ use std::{
 use tokio::sync::mpsc::{Receiver, Sender};
 use wipple_frontend::{helpers::Shared, ir, VariantIndex};
 
+pub use ir::Program;
+
 pub type Error = String;
 
 #[allow(clippy::type_complexity)]
@@ -280,7 +282,7 @@ impl Stack {
 }
 
 impl Interpreter {
-    pub async fn run(&self, program: &ir::Program) -> Result<(), Error> {
+    pub async fn run(&self, program: &Program) -> Result<(), Error> {
         self.lock().labels = program
             .labels
             .iter()

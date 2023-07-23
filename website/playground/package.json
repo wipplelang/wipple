@@ -3,7 +3,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "dev": "vite & nodemon --watch ../../src --watch ./runner -e rs -x ./scripts/wasm.sh",
+        "dev": "vite & nodemon --watch ../../src --watch ./ide -e rs -x ./scripts/wasm.sh",
         "build": "tsc && vite build",
         "preview": "vite preview"
     },

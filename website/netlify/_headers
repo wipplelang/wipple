@@ -1,2 +1,5 @@
 /gist/*
   Access-Control-Allow-Origin: *
+
+/playground/files/*
+  Access-Control-Allow-Origin: *

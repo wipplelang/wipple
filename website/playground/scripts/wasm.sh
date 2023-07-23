@@ -10,4 +10,4 @@ else
     FLAGS="--features debug_playground"
 fi
 
-(cd runner && wasm-pack build -- $FLAGS)
+(cd ide && wasm-pack build -- $FLAGS)
