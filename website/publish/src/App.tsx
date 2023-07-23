@@ -25,6 +25,8 @@ export const App = (props: { program: any }) => {
     const run = async () => {
         try {
             setRunning(true);
+            setOutput(undefined);
+
             await runner.waitForLoad();
             await outputRef.current!.run();
         } catch (error) {
