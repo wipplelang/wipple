@@ -13,13 +13,19 @@
             integrity="sha384-MlJdn/WNKDGXveldHDdyRP1R4CTHr3FeuDNfhsLPYrq2t0UBkUdK2jyTnXPEK1NQ"
             crossorigin="anonymous"
         />
+
+        <style type="text/tailwindcss">
+            body {
+                @apply bg-gray-50 dark:bg-gray-800 text-black dark:text-white;
+            }
+        </style>
     </head>
 
     <body>
         <div id="root"></div>
 
         <script>
-            window.__wipple_program = "HELLO, WORLD!";
+            window.__wipple_program = {{PROGRAM}};
         </script>
 
         <script type="module" src="./src/main.tsx"></script>

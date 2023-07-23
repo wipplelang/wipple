@@ -14,6 +14,7 @@ use crate::{
 };
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::{
     collections::BTreeMap,
     os::raw::{c_int, c_uint},
@@ -22,11 +23,17 @@ use std::{
 pub use ssa::Type;
 pub use typecheck::Intrinsic;
 
+#[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Program {
     pub labels: Vec<(LabelKind, usize, Vec<BasicBlock>)>,
+
+    #[serde_as(as = "Vec<(_, _)>")]
     pub structures: BTreeMap<StructureId, Vec<Type>>,
+
+    #[serde_as(as = "Vec<(_, _)>")]
     pub enumerations: BTreeMap<EnumerationId, Vec<Vec<Type>>>,
+
     pub entrypoint: usize,
 }
 
@@ -97,8 +104,9 @@ pub enum Expression {
     Context(usize),
 }
 
+#[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CaptureList(pub BTreeMap<usize, usize>);
+pub struct CaptureList(#[serde_as(as = "Vec<(_, _)>")] pub BTreeMap<usize, usize>);
 
 impl Compiler {
     pub fn ir_from(&self, program: &typecheck::Program) -> Program {

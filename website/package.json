@@ -3,7 +3,7 @@
     "scripts": {
         "postinstall": "(cd playground && npm i)",
         "dev": "concurrently 'eleventy --serve' 'watch \"npm run tailwind:process\" ./home'",
-        "build": "eleventy && npm run tailwind:process && (cd guide && mdbook build) && (rm -rf _site/playground && cd playground && scripts/build.sh && mv dist ../_site/playground) && (rm -rf _site/std && cp -r ../std _site) && (mkdir -p dist/publish && cd publish && npm i && npm run build && mv dist/* ../dist/publish && rm -r dist) && npm run build:doc && cp netlify/_* _site",
+        "build": "eleventy && npm run tailwind:process && (cd guide && mdbook build) && (rm -rf _site/playground && cd playground && scripts/build.sh && mv dist ../_site/playground) && (rm -rf _site/std && cp -r ../std _site) && (cd publish && scripts/build.sh && mv dist/dist.zip ../_site/playground/files/publish.zip && rm -r dist) && npm run build:doc && cp netlify/_* _site",
         "build:doc": "rm -rf _site/doc && mkdir _site/doc && wipple doc ../std/std.wpl --title 'Wipple Standard Library' --image 'https://wipple.dev/images/logo.svg' --link 'https://wipple.dev' --include-builtins > _site/doc/std.html && mv _site/playground/doc/*.html _site/doc",
         "tailwind:process": "npx postcss ./home/styles/global.css -o ./_site/styles/global.css"
     },

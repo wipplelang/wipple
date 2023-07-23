@@ -77,6 +77,8 @@ pub fn run(
     handle_io: js_sys::Function,
     callback: js_sys::Function,
 ) -> JsValue {
+    web_sys::console::log_1(&program.to_string().into());
+
     let handle_io = Arc::new(Mutex::new(SendWrapper::new(handle_io)));
 
     let tasks: Arc<Mutex<Vec<oneshot::Receiver<()>>>> = Default::default();

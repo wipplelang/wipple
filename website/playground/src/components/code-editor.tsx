@@ -28,6 +28,8 @@ import PlayArrowRounded from "@mui/icons-material/PlayArrowRounded";
 import PauseRounded from "@mui/icons-material/PauseRounded";
 import FullScreenRounded from "@mui/icons-material/FullscreenRounded";
 import FullScreenExitRounded from "@mui/icons-material/FullscreenExitRounded";
+import MoreHoriz from "@mui/icons-material/MoreHoriz";
+import Download from "@mui/icons-material/Download";
 import getCaretCoordinates from "textarea-caret";
 import { Settings } from "../App";
 import * as Sentry from "@sentry/react";
@@ -40,6 +42,8 @@ import {
     OutputMethods,
     useRefState,
 } from "../../common";
+import PopupState, { bindMenu, bindTrigger } from "material-ui-popup-state";
+import JSZip from "jszip";
 
 export interface CodeEditorProps {
     id: string;
@@ -127,6 +131,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 try {
                     setRunning(true);
                     setSyntaxHighlighting([]); // FIXME: Prevent flashing
+                    setOutput(undefined);
 
                     const analysis = await runner.analyze(
                         code,
@@ -145,7 +150,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     );
 
                     setSyntaxHighlighting(analysis.syntaxHighlighting);
-
                     setCompletions(analysis.completions);
                     setShowTemplatesWarning(containsTemplates.current);
 
@@ -623,6 +627,30 @@ export const CodeEditor = (props: CodeEditorProps) => {
         props.onChange(fixed);
     };
 
+    const download = async () => {
+        const program = await runner.compile();
+        if (!program) return;
+
+        const zipData = await (await fetch("/playground/files/publish.zip")).blob();
+
+        const zip = await new JSZip().loadAsync(zipData);
+
+        let index = await zip.file("index.html")!.async("string");
+        index = index.replace("{{PROGRAM}}", JSON.stringify(program));
+        zip.file("index.html", index);
+
+        const blob = await zip.generateAsync({ type: "blob" });
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        document.body.appendChild(a);
+        a.style.display = "none";
+        a.href = url;
+        a.download = "playground-export.zip";
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
     return (
         <div id={containerID}>
             <div className="relative -mt-3.5">
@@ -668,52 +696,78 @@ export const CodeEditor = (props: CodeEditorProps) => {
                             </button>
                         </Tooltip>
 
-                        <Tooltip
-                            title={
-                                containsTemplates.current
-                                    ? "Running Paused"
-                                    : props.autoRun
-                                    ? "Pause Running"
-                                    : "Run"
-                            }
-                        >
-                            <button
-                                className="code-editor-button -mr-0.5"
-                                onMouseDown={(e) => {
-                                    if (containsTemplates.current) {
-                                        return;
-                                    }
+                        <PopupState variant="popover">
+                            {(popupState) => (
+                                <>
+                                    <Tooltip title="More">
+                                        <button
+                                            {...bindTrigger(popupState)}
+                                            className="code-editor-button -mr-0.5"
+                                        >
+                                            <MoreHoriz sx={buttonIconStyles} />
+                                        </button>
+                                    </Tooltip>
 
-                                    props.onChangeAutoRun(!props.autoRun);
-                                }}
-                            >
-                                {props.autoRun && !containsTemplates.current ? (
-                                    <PauseRounded sx={buttonIconStyles} />
-                                ) : (
-                                    <PlayArrowRounded sx={buttonIconStyles} />
-                                )}
-                            </button>
-                        </Tooltip>
+                                    <Menu {...bindMenu(popupState)}>
+                                        <MenuItem
+                                            onClick={async () => {
+                                                popupState.close();
 
-                        <Tooltip title={canCollapse && props.collapse ? "Expand" : "Collapse"}>
-                            <button
-                                className="code-editor-button -mr-0.5"
-                                disabled={!canCollapse}
-                                onMouseDown={(e) => {
-                                    if (!canCollapse) {
-                                        return;
-                                    }
+                                                if (containsTemplates.current) {
+                                                    return;
+                                                }
 
-                                    props.onChangeCollapse(!props.collapse);
-                                }}
-                            >
-                                {canCollapse && props.collapse ? (
-                                    <FullScreenRounded sx={buttonIconStyles} />
-                                ) : (
-                                    <FullScreenExitRounded sx={buttonIconStyles} />
-                                )}
-                            </button>
-                        </Tooltip>
+                                                props.onChangeAutoRun(!props.autoRun);
+                                            }}
+                                        >
+                                            {props.autoRun && !containsTemplates.current ? (
+                                                <PauseRounded />
+                                            ) : (
+                                                <PlayArrowRounded />
+                                            )}
+
+                                            {containsTemplates.current
+                                                ? "Running Paused"
+                                                : props.autoRun
+                                                ? "Pause Running"
+                                                : "Run"}
+                                        </MenuItem>
+
+                                        <MenuItem
+                                            disabled={!canCollapse}
+                                            onClick={async () => {
+                                                popupState.close();
+
+                                                if (!canCollapse) {
+                                                    return;
+                                                }
+
+                                                props.onChangeCollapse(!props.collapse);
+                                            }}
+                                        >
+                                            {canCollapse && props.collapse ? (
+                                                <FullScreenRounded />
+                                            ) : (
+                                                <FullScreenExitRounded />
+                                            )}
+
+                                            {canCollapse && props.collapse ? "Expand" : "Collapse"}
+                                        </MenuItem>
+
+                                        <MenuItem
+                                            onClick={async () => {
+                                                popupState.close();
+
+                                                download();
+                                            }}
+                                        >
+                                            <Download />
+                                            Download Website
+                                        </MenuItem>
+                                    </Menu>
+                                </>
+                            )}
+                        </PopupState>
                     </div>
                 </div>
 

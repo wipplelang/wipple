@@ -20,9 +20,12 @@ export const App = (props: { program: any }) => {
 
     const outputRef = useRef<OutputMethods>(null);
 
+    const runner = useRunner(props.program);
+
     const run = async () => {
         try {
             setRunning(true);
+            await runner.waitForLoad();
             await outputRef.current!.run();
         } catch (error) {
             setFatalError(true);
@@ -34,8 +37,6 @@ export const App = (props: { program: any }) => {
     useEffect(() => {
         run();
     }, []);
-
-    const runner = useRunner(props.program);
 
     return (
         <div>

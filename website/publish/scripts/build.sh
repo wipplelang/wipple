@@ -2,6 +2,8 @@
 
 set -e
 
-(cd "$(dirname $(realpath $0))/../../../../tools/playground-runner" && wasm-pack build)
+(cd "../../tools/playground-runner" && wasm-pack build)
 npm install
 npm run build
+
+(cd dist && zip -r dist.zip * **/*)

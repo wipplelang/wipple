@@ -137,6 +137,23 @@ export const useRunner = (context: any) => {
 
                 runner.current!.postMessage({ operation: "analyze", code, lint, context });
             }),
+        compile: () =>
+            new Promise<any>(async (resolve, reject) => {
+                await runnerPromise.current;
+
+                const prevonmessage = runner.current!.onmessage;
+                runner.current!.onmessage = (event) => {
+                    resolve(event.data);
+                    runner.current!.onmessage = prevonmessage;
+                };
+
+                runner.current!.onerror = (event) => {
+                    reject(event.error);
+                    reset();
+                };
+
+                runner.current!.postMessage({ operation: "compile", context });
+            }),
         run: (handleConsole: (request: glue.ConsoleRequest) => void) =>
             glue.run({
                 loadRunner: async () => {

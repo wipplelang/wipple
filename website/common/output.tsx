@@ -193,6 +193,8 @@ export const Output = React.forwardRef<
         ref,
         () => ({
             run: async () => {
+                setUiElements([]);
+
                 try {
                     await run({
                         runGlue: props.runner.run,

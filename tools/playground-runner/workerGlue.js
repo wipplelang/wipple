@@ -5,7 +5,15 @@ let cancel;
 const responders = {};
 let resolveFunctionResult;
 
+const _postMessage = postMessage;
+postMessage = (message) => {
+    console.warn("sending", message);
+    _postMessage(message);
+};
+
 export const handle = async (runner, event) => {
+    console.warn("received", event.data);
+
     try {
         switch (event.data.operation) {
             case "checkLoading":

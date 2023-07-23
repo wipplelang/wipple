@@ -1,5 +1,7 @@
 mod runtime;
 
+pub use ir::Program;
+
 use async_recursion::async_recursion;
 use futures::future::BoxFuture;
 use parking_lot::Mutex;
@@ -12,7 +14,13 @@ use std::{
 use tokio::sync::mpsc::{Receiver, Sender};
 use wipple_frontend::{helpers::Shared, ir, VariantIndex};
 
-pub use ir::Program;
+macro_rules! log {
+    ($($t:tt)*) => {
+        if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
+            eprintln!($($t)*);
+        }
+    };
+}
 
 pub type Error = String;
 
@@ -239,9 +247,7 @@ impl Stack {
     }
 
     fn push(&mut self, value: Value) {
-        if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
-            eprintln!("PUSH {:?}", value);
-        }
+        log!("PUSH {:?}", value);
 
         self.current_frame_mut().push(value);
     }
@@ -249,9 +255,7 @@ impl Stack {
     fn copy(&mut self) {
         let value = self.current_frame().last().expect("stack is empty").clone();
 
-        if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
-            eprintln!("COPY {:?}", value);
-        }
+        log!("COPY {:?}", value);
 
         self.current_frame_mut().push(value);
     }
@@ -259,9 +263,7 @@ impl Stack {
     fn pop(&mut self) -> Value {
         let value = self.current_frame_mut().pop().expect("stack is empty");
 
-        if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
-            eprintln!("POP {:?}", value);
-        }
+        log!("POP {:?}", value);
 
         value
     }
@@ -372,13 +374,11 @@ impl Interpreter {
             let statements = blocks[index].statements.iter();
 
             for statement in statements {
-                if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
-                    eprintln!(
-                        "\nRUN {} {:#?} (bb{index})",
-                        statement,
-                        stack.current_frame()
-                    );
-                }
+                log!(
+                    "\nRUN {} {:#?} (bb{index})",
+                    statement,
+                    stack.current_frame()
+                );
 
                 match statement {
                     ir::Statement::Copy => {
@@ -522,13 +522,11 @@ impl Interpreter {
                 }
             }
 
-            if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
-                eprintln!(
-                    "\nRUN {} {:#?} (bb{index})",
-                    blocks[index].terminator.unwrap(),
-                    stack.current_frame()
-                );
-            }
+            log!(
+                "\nRUN {} {:#?} (bb{index})",
+                blocks[index].terminator.unwrap(),
+                stack.current_frame()
+            );
 
             match &blocks[index].terminator.unwrap() {
                 ir::Terminator::Unreachable => unreachable!(),

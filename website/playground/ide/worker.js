@@ -62,6 +62,11 @@ onmessage = async (event) => {
 
                 break;
             }
+            case "compile": {
+                const program = runner.compile();
+                postMessage(program);
+                break;
+            }
             case "hover": {
                 const { start, end } = event.data;
                 const hover = runner.hover(start, end);
