@@ -631,7 +631,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
         const program = await runner.compile();
         if (!program) return;
 
-        const zipData = await (await fetch("/playground/files/publish.zip")).blob();
+        const zipData = await (
+            await fetch("/playground/files/publish.zip", { cache: "no-cache" })
+        ).blob();
 
         const zip = await new JSZip().loadAsync(zipData);
 
