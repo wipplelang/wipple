@@ -2,6 +2,7 @@ use crate::{
     analysis, analysis::SpanList, helpers::InternedString, Compiler, ConstantId, EnumerationId,
     FieldIndex, ItemId, StructureId, TypeId, VariableId, VariantIndex,
 };
+use serde::{Serialize, Deserialize};
 use std::{
     collections::BTreeMap,
     os::raw::{c_int, c_uint},
@@ -26,7 +27,7 @@ pub struct Expression {
     pub kind: ExpressionKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Type {
     Marker,
     Number,

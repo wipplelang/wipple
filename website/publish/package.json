@@ -1,0 +1,42 @@
+{
+    "name": "publish",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "@emotion/react": "^11.10.6",
+        "@emotion/styled": "^11.10.6",
+        "@mui/icons-material": "^5.11.9",
+        "@mui/material": "^5.11.10",
+        "line-column": "^1.0.2",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "react-markdown": "^8.0.5",
+        "react-spring": "^9.7.0",
+        "react-use-measure": "^2.1.1",
+        "rehype-katex": "^6.0.2",
+        "rehype-raw": "^6.1.1",
+        "remark": "^14.0.2",
+        "remark-gfm": "^3.0.1",
+        "remark-math": "^5.1.1",
+        "remark-rehype": "^10.1.0",
+        "remark-smartypants": "^2.0.0"
+    },
+    "devDependencies": {
+        "@types/react": "^18.0.28",
+        "@types/react-dom": "^18.0.11",
+        "@vitejs/plugin-react-swc": "^3.0.0",
+        "typescript": "^4.9.3",
+        "vite": "^4.2.0",
+        "vite-plugin-top-level-await": "^1.3.1",
+        "vite-plugin-wasm": "^3.2.2",
+        "autoprefixer": "^10.4.13",
+        "postcss": "^8.4.21",
+        "tailwindcss": "^3.2.7"
+    }
+}

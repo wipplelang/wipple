@@ -26,12 +26,18 @@ export default defineConfig(({ command, mode }) => {
                   })
                 : null,
         ],
+        resolve: {
+            preserveSymlinks: true,
+        },
         worker: {
             format: "es",
             plugins: [wasm(), topLevelAwait()],
         },
         server: {
             port: 3000,
+            fs: {
+                allow: [".", "../../tools/playground-runner"],
+            },
         },
         base: "/playground",
     };

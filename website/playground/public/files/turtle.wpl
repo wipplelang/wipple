@@ -35,7 +35,7 @@ turtle : crash "use of turtle graphics outside `with-turtle`"
 
 [help "Create a new turtle drawing."]
 [help-group "Turtle Graphics"]
-with-turtle : syntax { with-turtle 'body -> { with-ui "/playground/ui/turtle/index.js" (handle -> { with (turtle : Turtle { handle }) 'body }) } }
+with-turtle : syntax { with-turtle 'body -> { with-ui "https://wipple.dev/playground/ui/turtle/index.js" (handle -> { with (turtle : Turtle { handle }) 'body }) } }
 
 [help "Set the width of the canvas."]
 [help-group "Turtle Graphics"]
