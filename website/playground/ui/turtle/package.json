@@ -6,7 +6,7 @@
     "scripts": {
         "dev": "vite",
         "build": "tsc && vite build && npm run build:doc",
-        "build:doc": "wipple doc ../../public/files/turtle.wpl --title 'Turtle Graphics' --image 'https://wipple.gramer.dev/images/logo.svg' > ../../dist/doc/turtle.html",
+        "build:doc": "wipple doc ../../public/files/turtle.wpl --title 'Turtle Graphics' --image 'https://wipple.dev/images/logo.svg' > ../../dist/doc/turtle.html",
         "preview": "vite preview"
     },
     "dependencies": {
