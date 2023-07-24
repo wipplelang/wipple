@@ -150,6 +150,12 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     );
 
                     setSyntaxHighlighting(analysis.syntaxHighlighting);
+
+                    setOutput({
+                        items: [],
+                        diagnostics: containsTemplates.current ? [] : analysis.diagnostics,
+                    });
+
                     setCompletions(analysis.completions);
                     setShowTemplatesWarning(containsTemplates.current);
 
