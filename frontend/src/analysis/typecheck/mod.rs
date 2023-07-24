@@ -893,13 +893,34 @@ impl Typechecker {
             expr = self.monomorphize_expr(expr, info);
 
             let is_unresolved = || {
+                let pattern_is_unresolved = |pattern: &MonomorphizedPattern| {
+                    let mut is_unresolved = false;
+                    pattern.traverse(|pattern| {
+                        is_unresolved |= matches!(
+                            pattern.kind,
+                            MonomorphizedPatternKind::UnresolvedDestructure(_, _)
+                                | MonomorphizedPatternKind::UnresolvedVariant(_, _, _)
+                        )
+                    });
+
+                    is_unresolved
+                };
+
                 let mut is_unresolved = false;
                 expr.traverse(|expr| {
-                    is_unresolved |= matches!(
-                        expr.kind,
+                    is_unresolved |= match &expr.kind {
                         MonomorphizedExpressionKind::UnresolvedTrait(_)
-                            | MonomorphizedExpressionKind::UnresolvedConstant(_)
-                    );
+                        | MonomorphizedExpressionKind::UnresolvedConstant(_) => true,
+                        MonomorphizedExpressionKind::Function(pattern, _, _)
+                        | MonomorphizedExpressionKind::Initialize(pattern, _) => {
+                            pattern_is_unresolved(pattern)
+                        }
+                        MonomorphizedExpressionKind::When(_, arms) => {
+                            arms.iter().any(|arm| pattern_is_unresolved(&arm.pattern))
+                        }
+
+                        _ => false,
+                    };
                 });
 
                 is_unresolved
@@ -2738,7 +2759,8 @@ impl Typechecker {
             MonomorphizedPatternKind::Wildcard => MonomorphizedPatternKind::Wildcard,
             MonomorphizedPatternKind::Variable(var) => MonomorphizedPatternKind::Variable(var),
             MonomorphizedPatternKind::UnresolvedDestructure(structure_ty, fields) => {
-                if let Err(error) = self.unify(None, pattern.span, ty.clone(), structure_ty) {
+                if let Err(error) = self.unify(None, pattern.span, ty.clone(), structure_ty.clone())
+                {
                     self.add_error(error);
                 }
 
@@ -2746,6 +2768,12 @@ impl Typechecker {
 
                 let (id, params) = match ty.clone() {
                     engine::UnresolvedType::Named(id, params, _) => (id, params),
+                    engine::UnresolvedType::Variable(_) => {
+                        return MonomorphizedPatternKind::UnresolvedDestructure(
+                            structure_ty,
+                            fields,
+                        );
+                    }
                     _ => {
                         self.compiler.add_error(
                             "cannot destructure this value",
