@@ -817,7 +817,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         firstLayout={firstLayout}
                         showTemplatesWarning={showTemplatesWarning}
                         onLayout={() => setFirstLayout(false)}
-                        runner={runner}
+                        run={runner.run}
                         output={output.current}
                         onAddOutputItem={appendToOutput}
                         fatalError={fatalError}

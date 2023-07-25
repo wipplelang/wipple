@@ -147,11 +147,7 @@ export const Output = React.forwardRef<
         firstLayout: boolean;
         showTemplatesWarning: boolean;
         onLayout: () => void;
-        runner: {
-            isLoaded: boolean;
-            waitForLoad: () => Promise<void>;
-            run: (handleConsole: (request: ConsoleRequest) => void) => Promise<void>;
-        };
+        run: (handleConsole: (request: ConsoleRequest) => void) => Promise<void>;
         output: { items: OutputItem[]; diagnostics: AnalysisOutputDiagnostic[] } | undefined;
         onAddOutputItem: (item: OutputItem) => void;
         fatalError: boolean;
@@ -161,8 +157,6 @@ export const Output = React.forwardRef<
         onRefresh: () => void;
     }
 >((props, ref) => {
-    const [showRunnerLoading, setShowRunnerLoading] = useState(false);
-
     const [outputRef, { height: outputHeight }] = useMeasure();
 
     const animatedOutputStyleDefaults = {
@@ -170,18 +164,8 @@ export const Output = React.forwardRef<
         onRest: props.onLayout,
     };
 
-    useEffect(() => {
-        setTimeout(async () => {
-            if (props.runner.isLoaded) return;
-
-            setShowRunnerLoading(true);
-            await props.runner.waitForLoad();
-            setShowRunnerLoading(false);
-        }, 1500);
-    }, []);
-
     const animatedOutputStyle = useSpring(
-        showRunnerLoading || props.fatalError || props.output != null
+        props.isRunning || props.fatalError || props.output != null
             ? { ...animatedOutputStyleDefaults, opacity: 1, height: outputHeight }
             : { ...animatedOutputStyleDefaults, opacity: 0, height: 0 }
     );
@@ -197,7 +181,7 @@ export const Output = React.forwardRef<
 
                 try {
                     await run({
-                        runGlue: props.runner.run,
+                        runGlue: props.run,
                         appendToOutput: props.onAddOutputItem,
                         currentUiElement: () => {
                             const id = currentUiElementId.current.split("-");
@@ -221,7 +205,7 @@ export const Output = React.forwardRef<
                 }
             },
         }),
-        [props.runner.run, props.onAddOutputItem, props.onFatalError]
+        [props.run, props.onAddOutputItem, props.onFatalError]
     );
 
     return (
@@ -260,25 +244,13 @@ export const Output = React.forwardRef<
                         );
                     }
 
-                    if (showRunnerLoading) {
-                        return (
-                            <div className="p-4 pt-1 bg-gray-50 dark:bg-gray-800 text-black dark:text-white">
-                                <div className="bouncing-loader">
-                                    <div />
-                                    <div />
-                                    <div />
-                                </div>
-                            </div>
-                        );
-                    }
-
-                    if (props.output == null) {
+                    if (props.output == null && !props.isRunning) {
                         return null;
                     }
 
                     return (
                         <div>
-                            {props.output.diagnostics.length ? (
+                            {props.output?.diagnostics.length ? (
                                 props.beginner ? (
                                     props.output.diagnostics.find(
                                         ({ level }) => level === "error"
@@ -423,9 +395,10 @@ export const Output = React.forwardRef<
                                     </div>
                                 )
                             ) : null}
-                            {props.output.items.length ? (
+
+                            {props.isRunning || props.output?.items.length ? (
                                 <div className="p-4 bg-gray-50 dark:bg-gray-800 text-black dark:text-white">
-                                    {props.output.items.map((item, index) => {
+                                    {props.output?.items.map((item, index) => {
                                         switch (item.type) {
                                             case "output":
                                                 return (
@@ -468,8 +441,9 @@ export const Output = React.forwardRef<
                                             <div />
                                             <div />
                                         </div>
-                                    ) : props.output.items.find((item) => item.type !== "output") ||
-                                      uiElements.current.length ? (
+                                    ) : props.output?.items.find(
+                                          (item) => item.type !== "output"
+                                      ) || uiElements.current.length ? (
                                         <div className="mt-4">
                                             <Button
                                                 variant="contained"

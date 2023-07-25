@@ -49,7 +49,7 @@ export const App = (props: { program: any }) => {
                 firstLayout={false}
                 onLayout={() => {}}
                 showTemplatesWarning={false}
-                runner={runner}
+                run={runner.run}
                 output={output.current}
                 onAddOutputItem={appendToOutput}
                 fatalError={fatalError}
