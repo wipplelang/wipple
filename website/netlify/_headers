@@ -1,8 +1,2 @@
 /gist/*
   Access-Control-Allow-Origin: *
-
-/std/*
-  Access-Control-Allow-Origin: *
-
-/playground/*
-  Access-Control-Allow-Origin: *
