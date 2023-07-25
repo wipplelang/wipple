@@ -62,7 +62,7 @@ The [Wipple Playground](https://wipple.dev/playground) has over 30 lessons for p
 
 ## Build Wipple
 
-The Wipple project is split across several folders. The compiler and CLI are written in [Rust](https://rust-lang.org), and the playground is written in [React](https://react.dev). The guide is published using [mdBook](https://github.com/rust-lang/mdBook).
+The Wipple project is split across several folders. The compiler and CLI are written in [Rust](https://rust-lang.org), and the playground is written in [React](https://react.dev). The compiler documentation is published using [mdBook](https://github.com/rust-lang/mdBook).
 
 You can use these commands to build and test Wipple locally:
 
@@ -79,6 +79,6 @@ cargo run --bin wipple-test -- tests
 # Run the playground on a local development server
 cd website/playground && npm install && npm run dev
 
-# View the documentation on a local development server
-cd website/guide && mdbook serve
+# View the compiler documentation on a local development server
+cd website/compiler-docs && mdbook serve
 ```

@@ -3,15 +3,13 @@ authors = ["Wilson Gramer"]
 language = "en"
 multilingual = false
 src = "src"
-title = "The Wipple Guide"
+title = "Wipple Compiler Documentation"
 
 [build]
-build-dir = "../_site/guide"
+build-dir = "../_site/compiler-docs"
 
 [output.html]
-site-url = "/guide/"
-no-section-label = true
-copy-fonts = false
+site-url = "/compiler-docs/"
+git-repository-url = "https://github.com/wipplelang/wipple"
 curly-quotes = true
 additional-js = ["scripts/language-wipple.js"]
-additional-css = ["styles/custom.css"]
