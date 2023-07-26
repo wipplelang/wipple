@@ -12,6 +12,7 @@ with-graph : syntax { with-graph 'body -> { with-ui "https://wipple.dev/playgrou
 
 [help "Set the color of the graph."]
 [help-group "Graphing"]
+[diagnostic "accepts-text"]
 color :: Text -> ()
 color : color -> handle of graph . message "color" color
 

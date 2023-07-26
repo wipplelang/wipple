@@ -49,6 +49,7 @@ height : { px } -> handle of turtle . message "height" px
 
 [help "Set the background color of the canvas."]
 [help-group "Turtle Graphics"]
+[diagnostic "accepts-text"]
 background :: Text -> ()
 background : color -> handle of turtle . message "background" color
 
@@ -80,11 +81,13 @@ pen-down : () -> handle of turtle . message "pen-down" ()
 
 [help "Set the pen color."]
 [help-group "Turtle Graphics"]
+[diagnostic "accepts-text"]
 color :: Text -> ()
 color : color -> handle of turtle . message "color" color
 
 [help "Fill the most recent path with a color."]
 [help-group "Turtle Graphics"]
+[diagnostic "accepts-text"]
 fill :: Text -> ()
 fill : color -> handle of turtle . message "fill" color
 
