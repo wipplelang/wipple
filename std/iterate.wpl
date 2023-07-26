@@ -224,6 +224,7 @@ count : collection -> {
   get count
 }
 
-[specialize]
-count :: Element => List Element -> Natural
-count : list -> intrinsic "list-count" list
+-- FIXME: Specialization is broken; uncomment once it works again
+-- [specialize]
+-- count :: Element => List Element -> Natural
+-- count : list -> intrinsic "list-count" list
