@@ -35,7 +35,7 @@ turtle : crash "use of turtle graphics outside `with-turtle`"
 
 [help "Create a new turtle drawing."]
 [help-group "Turtle Graphics"]
-with-turtle : syntax { with-turtle 'body -> { with-ui "https://wipple.dev/playground/ui/turtle/index.js" (handle -> { with (turtle : Turtle { handle }) 'body }) } }
+with-turtle : syntax { with-turtle 'body -> { with-ui "/playground/ui/turtle/index.js" (handle -> { with (turtle : Turtle { handle }) 'body }) } }
 
 [help "Set the width of the canvas."]
 [help-group "Turtle Graphics"]
@@ -49,7 +49,6 @@ height : { px } -> handle of turtle . message "height" px
 
 [help "Set the background color of the canvas."]
 [help-group "Turtle Graphics"]
-[diagnostic "accepts-text"]
 background :: Text -> ()
 background : color -> handle of turtle . message "background" color
 
@@ -81,13 +80,11 @@ pen-down : () -> handle of turtle . message "pen-down" ()
 
 [help "Set the pen color."]
 [help-group "Turtle Graphics"]
-[diagnostic "accepts-text"]
 color :: Text -> ()
 color : color -> handle of turtle . message "color" color
 
 [help "Fill the most recent path with a color."]
 [help-group "Turtle Graphics"]
-[diagnostic "accepts-text"]
 fill :: Text -> ()
 fill : color -> handle of turtle . message "fill" color
 

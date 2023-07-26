@@ -3,18 +3,22 @@
     <head>
         <meta charset="UTF-8" />
 
-        <title>Wipple Playground</title>
+        <title>Wipple</title>
 
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#111827" media="(prefers-color-scheme: dark)" />
 
-        <link rel="icon" href="./images/favicon.ico" />
-        <link rel="apple-touch-icon" href="./images/logo-192.png" />
+        <link rel="stylesheet" href="{{ORIGIN}}/embed/style.css" />
     </head>
 
     <body>
-        <div id="root"></div>
-        <script type="module" src="/src/main.tsx"></script>
+        <wipple>
+            <script type="application/wipple">
+{{CODE}}
+            </script>
+        </wipple>
+
+        <script type="module" src="{{ORIGIN}}/embed/index.js"></script>
     </body>
 </html>

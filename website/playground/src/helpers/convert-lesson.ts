@@ -1,7 +1,7 @@
 import fm from "front-matter";
 
 export const convertLesson = (text: string) => {
-    const sections: any[] = [];
+    const sections = [];
     do {
         const parsed = fm<any>(text);
 

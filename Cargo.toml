@@ -6,8 +6,7 @@ members = [
     "loaders/default",
     "syntax",
     "tools/cli",
-    "tools/playground-runner",
     "tools/test",
     "util",
-    "website/playground/ide",
+    "website/shared/wasm",
 ]

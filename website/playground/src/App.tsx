@@ -33,7 +33,7 @@ import ListAltIcon from "@mui/icons-material/ListAlt";
 import { nanoid } from "nanoid";
 import { CodeEditor, TextEditor } from "./components";
 import { convertLesson } from "./helpers";
-import { useRefState } from "../common";
+import { useRefState } from "shared";
 import { useMemo } from "react";
 
 type Section = { id: string; value: string } & (
@@ -203,10 +203,6 @@ const App = () => {
 
                     <div className="flex gap-4 text-gray-500 dark:text-gray-400">
                         <a href="?lesson=toc">Learn</a>
-
-                        <a target="_blank" href="https://github.com/wipplelang/wipple/discussions">
-                            Discuss
-                        </a>
 
                         <a target="_blank" href="https://forms.gle/ijfLtvJ5FT6heJsD7">
                             Feedback

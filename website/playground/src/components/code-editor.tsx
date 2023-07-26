@@ -1,27 +1,30 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import SimpleCodeEditor from "./react-simple-code-editor";
 import * as prism from "prismjs";
-import {
-    debounce,
-    Divider,
-    ListItemText,
-    ListSubheader,
-    Menu,
-    MenuItem,
-    MenuList,
-    TextField,
-    Tooltip,
-    useMediaQuery,
-} from "@mui/material";
+import Divider from "@mui/material/Divider";
+import ListItemText from "@mui/material/ListItemText";
+import ListSubheader from "@mui/material/ListSubheader";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import MenuList from "@mui/material/MenuList";
+import TextField from "@mui/material/TextField";
+import Tooltip from "@mui/material/Tooltip";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import { Globals as SpringGlobals, useSpring, animated } from "react-spring";
 import useMeasure from "react-use-measure";
 import {
+    AnalysisOutputDiagnostic,
     AnalysisOutputSyntaxHighlightingItem,
     HoverOutput,
     AnalysisOutputCompletions,
     Completion,
-    useRunner,
-} from "../../ide";
+    AnalysisConsoleDiagnosticFix,
+    useRefState,
+    Markdown,
+    PlaygroundRunner,
+    AnalysisOutput,
+    Output,
+} from "shared";
 import AddRounded from "@mui/icons-material/AddRounded";
 import SubjectRounded from "@mui/icons-material/SubjectRounded";
 import PlayArrowRounded from "@mui/icons-material/PlayArrowRounded";
@@ -33,17 +36,7 @@ import Download from "@mui/icons-material/Download";
 import getCaretCoordinates from "textarea-caret";
 import { Settings } from "../App";
 import * as Sentry from "@sentry/react";
-import {
-    AnalysisConsoleDiagnosticFix,
-    AnalysisOutputDiagnostic,
-    Markdown,
-    Output,
-    OutputItem,
-    OutputMethods,
-    useRefState,
-} from "../../common";
 import PopupState, { bindMenu, bindTrigger } from "material-ui-popup-state";
-import JSZip from "jszip";
 
 export interface CodeEditorProps {
     id: string;
@@ -78,16 +71,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
     const editorID = `code-editor-editor-${props.id}`;
     const textAreaID = `code-editor-text-${props.id}`;
 
-    const [firstLayout, setFirstLayout] = useState(true);
-
-    const codeEditorRef = useRef<SimpleCodeEditor>(null);
-
-    const [syntaxHighlighting, setSyntaxHighlighting] = useState<
-        AnalysisOutputSyntaxHighlightingItem[]
-    >([]);
-
-    const [completions, setCompletions] = useState<AnalysisOutputCompletions>();
-
     const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion)");
     useEffect(() => {
         SpringGlobals.assign({
@@ -95,81 +78,36 @@ export const CodeEditor = (props: CodeEditorProps) => {
         });
     }, [prefersReducedMotion]);
 
-    const [containsTemplates, setContainsTemplates] = useRefState(false);
-    const [showTemplatesWarning, setShowTemplatesWarning] = useState(false);
+    const [firstLayout, setFirstLayout] = useState(true);
 
-    const runner = useRunner({ id: props.id, code: props.code });
+    const codeEditorRef = useRef<SimpleCodeEditor>(null);
+    const outputRef = useRef<PlaygroundRunner>(null);
 
-    const [output, setOutput] = useRefState<
-        { items: OutputItem[]; diagnostics: AnalysisOutputDiagnostic[] } | undefined
-    >(undefined);
-    const [fatalError, setFatalError] = useState(false);
+    const [analysis, setAnalysis] = useRefState<AnalysisOutput | undefined>(undefined);
+    const [output, setOutput] = useState<Output | undefined>();
 
-    const appendToOutput = (item: OutputItem) =>
-        setOutput((output) =>
-            output
-                ? { items: [...output.items, item], diagnostics: output.diagnostics }
-                : { items: [item], diagnostics: [] }
-        );
+    const [syntaxHighlighting, setSyntaxHighlighting] = useState<
+        AnalysisOutputSyntaxHighlightingItem[]
+    >([]);
 
-    const canCollapse = props.code.length > 0 && (output.current?.items.length ?? 0) > 0;
+    const [completions, setCompletions] = useState<AnalysisOutputCompletions>();
+
+    const canCollapse = props.code.length > 0 && output?.isEmpty;
 
     const [codeEditorContainerRef, { height: codeEditorContainerHeight }] = useMeasure();
+
+    const animatedCodeEditorStyleDefaults = {
+        immediate: firstLayout,
+        onRest: () => setFirstLayout(false),
+    };
+
     const animatedCodeEditorStyle = useSpring(
         canCollapse && props.collapse
-            ? { opacity: 0, height: 0 }
-            : { opacity: 1, height: codeEditorContainerHeight }
+            ? { ...animatedCodeEditorStyleDefaults, opacity: 0, height: 0 }
+            : { ...animatedCodeEditorStyleDefaults, opacity: 1, height: codeEditorContainerHeight }
     );
 
-    const [isRunning, setRunning] = useState(false);
-
-    const outputRef = useRef<OutputMethods>(null);
-
-    const run = useMemo(
-        () =>
-            debounce(async (code: string, lint: boolean) => {
-                try {
-                    setRunning(true);
-                    setSyntaxHighlighting([]); // FIXME: Prevent flashing
-                    setOutput(undefined);
-
-                    const analysis = await runner.analyze(
-                        code,
-                        lint,
-                        async (url, name, input, api) => {
-                            console.log("Received plugin request:", { url, name, input, api });
-
-                            const plugin = await import(/* @vite-ignore */ url);
-
-                            if (!(name in plugin)) {
-                                throw new Error(`no such plugin '${name}' in file`);
-                            }
-
-                            return plugin[name](input, api);
-                        }
-                    );
-
-                    setSyntaxHighlighting(analysis.syntaxHighlighting);
-
-                    setOutput({
-                        items: [],
-                        diagnostics: containsTemplates.current ? [] : analysis.diagnostics,
-                    });
-
-                    setCompletions(analysis.completions);
-                    setShowTemplatesWarning(containsTemplates.current);
-
-                    if (!analysis.diagnostics.find(({ level }) => level === "error")) {
-                        await outputRef.current!.run();
-                    }
-                } catch (error) {
-                    setFatalError(true);
-                } finally {
-                    setRunning(false);
-                }
-            }, 500),
-        [props.id]
-    );
+    const [containsTemplates, setContainsTemplates] = useRefState(false);
 
     useEffect(() => {
         const containsTemplates =
@@ -178,11 +116,27 @@ export const CodeEditor = (props: CodeEditorProps) => {
             ).length > 0;
 
         setContainsTemplates(containsTemplates);
+    }, [props.code]);
 
-        if (props.autoRun) {
-            run(props.code, props.lint);
-        }
-    }, [run, props.code, props.lint, props.autoRun]);
+    const onReset = useCallback(() => {
+        setSyntaxHighlighting([]); // FIXME: Prevent flashing
+    }, [setSyntaxHighlighting]);
+
+    const onAnalyze = useCallback(
+        (analysis: AnalysisOutput) => {
+            setAnalysis(analysis);
+            setSyntaxHighlighting(analysis.syntaxHighlighting);
+            setCompletions(analysis.completions);
+        },
+        [setSyntaxHighlighting, setCompletions]
+    );
+
+    const onError = useCallback((error: any) => {
+        Sentry.captureException(error, (ctx) => {
+            ctx.setContext("code-editor", { ...props });
+            return ctx;
+        });
+    }, []);
 
     const [hover, setHover] = useState<Hover>();
 
@@ -267,7 +221,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 const end = parseInt(hoverElement.dataset.wippleEndIndex);
 
                 let hoverDiagnostic: Hover["diagnostic"];
-                outer: for (const diagnostic of output.current?.diagnostics ?? []) {
+                outer: for (const diagnostic of analysis.current?.diagnostics ?? []) {
                     for (let noteIndex = 0; noteIndex < diagnostic.notes.length; noteIndex++) {
                         const note = diagnostic.notes[noteIndex];
 
@@ -278,7 +232,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     }
                 }
 
-                const hoverOutput = await runner.hover(start, end);
+                const hoverOutput = await outputRef.current!.hover(start, end);
 
                 if (hoverOutput || hoverDiagnostic) {
                     hoverElement.classList.add(...hoverClasses);
@@ -386,7 +340,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
     }, [syntaxHighlighting]);
 
     useEffect(() => {
-        if (!output.current?.diagnostics) return;
+        if (!analysis.current?.diagnostics) return;
 
         const forEachNode = (f: (start: number, end: number, node: HTMLSpanElement) => boolean) => {
             const nodes = [
@@ -417,7 +371,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
             return false;
         });
 
-        for (const diagnostic of output.current.diagnostics) {
+        for (const diagnostic of analysis.current?.diagnostics ?? []) {
             const notes = [...diagnostic.notes];
             const primaryNote = notes.shift();
             if (!primaryNote) {
@@ -454,7 +408,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 return false;
             });
         }
-    }, [output.current?.diagnostics]);
+    }, [analysis.current?.diagnostics]);
 
     const getCodeEditorCaretPosition = () => {
         const codeEditor = document.getElementById(textAreaID) as HTMLTextAreaElement | null;
@@ -634,27 +588,18 @@ export const CodeEditor = (props: CodeEditorProps) => {
     };
 
     const download = async () => {
-        const program = await runner.compile();
-        if (!program) return;
+        let html = await (await fetch("/playground/embed.html")).text();
+        html = html.replaceAll("{{ORIGIN}}", window.location.origin);
+        html = html.replace("{{CODE}}", props.code);
 
-        const zipData = await (
-            await fetch("/playground/files/publish.zip", { cache: "no-cache" })
-        ).blob();
-
-        const zip = await new JSZip().loadAsync(zipData);
-
-        let index = await zip.file("index.html")!.async("string");
-        index = index.replace("{{PROGRAM}}", JSON.stringify(program));
-        zip.file("index.html", index);
-
-        const blob = await zip.generateAsync({ type: "blob" });
+        const blob = new Blob([html], { type: "text/html" });
 
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         document.body.appendChild(a);
         a.style.display = "none";
         a.href = url;
-        a.download = "playground-export.zip";
+        a.download = "playground-export.html";
         a.click();
         URL.revokeObjectURL(url);
     };
@@ -681,7 +626,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                 className="code-editor-button -mx-0.5"
                                 disabled={props.code.length === 0}
                                 onMouseDown={async (e) => {
-                                    const formatted = await runner.format(props.code);
+                                    const formatted = await outputRef.current!.format();
 
                                     if (formatted != null) {
                                         const codeEditor = document.getElementById(
@@ -810,26 +755,19 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         </div>
                     </animated.div>
 
-                    <Output
+                    <PlaygroundRunner
                         ref={outputRef}
                         id={props.id}
-                        isRunning={isRunning}
-                        firstLayout={firstLayout}
-                        showTemplatesWarning={showTemplatesWarning}
-                        onLayout={() => setFirstLayout(false)}
-                        run={runner.run}
-                        output={output.current}
-                        onAddOutputItem={appendToOutput}
-                        fatalError={fatalError}
-                        onFatalError={() => setFatalError(true)}
-                        captureException={(error) => {
-                            Sentry.captureException(error, (ctx) => {
-                                ctx.setContext("code-editor", { ...props });
-                                return ctx;
-                            });
-                        }}
+                        code={props.code}
+                        outputClassName="bg-gray-50 dark:bg-gray-800"
                         beginner={props.settings.beginner ?? true}
-                        onRefresh={() => run(props.code, props.lint)}
+                        lint={props.lint}
+                        autoRun={props.autoRun}
+                        containsTemplates={() => containsTemplates.current!}
+                        onReset={onReset}
+                        onAnalyze={onAnalyze}
+                        onChangeOutput={setOutput}
+                        onError={onError}
                     />
                 </div>
 

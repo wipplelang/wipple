@@ -14,7 +14,7 @@ music : crash "use of music outside `with-music`"
 [help-group "Music"]
 with-music : syntax {
   with-music 'body -> {
-    with-ui "https://wipple.dev/playground/ui/music/index.js" (handle -> {
+    with-ui "/playground/ui/music/index.js" (handle -> {
       handle . message "wait-for-play-button" ()
 
       with-task-group (task-group -> {

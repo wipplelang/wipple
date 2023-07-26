@@ -1,11 +1,13 @@
 import { createTheme, ThemeProvider, useMediaQuery } from "@mui/material";
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import ReactDOM from "react-dom/client";
 import * as Sentry from "@sentry/react";
 import App from "./App";
 import { wipple } from "./languages";
+import "./styles/globals.css";
+import "./styles/language-wipple.css";
+import "katex/dist/katex.min.css";
 import ErrorIcon from "@mui/icons-material/Error";
-import "../common";
 
 wipple.register();
 

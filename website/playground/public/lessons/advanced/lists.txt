@@ -171,16 +171,16 @@ type: code
 ---
 
 Counter : type {
-    min :: Natural
-    max :: Natural
+    start :: Natural
+    end :: Natural
 }
 
 instance (Iterate Counter Natural) : counter -> {
-    count : mutable (min of counter)
+    count : mutable (start of counter)
 
     iterator (() -> {
         n : get count
-        if (n = (max of counter)) {
+        if (n = (end of counter)) {
             None
         } {
             increment! count
@@ -190,6 +190,6 @@ instance (Iterate Counter Natural) : counter -> {
 }
 
 count :: Natural -> Natural -> Counter
-count : min max -> Counter { min max }
+count : start end -> Counter { start end }
 
 count 0 10 . each show

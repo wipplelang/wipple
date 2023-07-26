@@ -8,11 +8,10 @@ graph : crash "use of graphing outside `with-graph`"
 
 [help "Create a new graph."]
 [help-group "Graphing"]
-with-graph : syntax { with-graph 'body -> { with-ui "https://wipple.dev/playground/ui/graphing/index.js" (handle -> { with (graph : Graph { handle }) 'body }) } }
+with-graph : syntax { with-graph 'body -> { with-ui "/playground/ui/graphing/index.js" (handle -> { with (graph : Graph { handle }) 'body }) } }
 
 [help "Set the color of the graph."]
 [help-group "Graphing"]
-[diagnostic "accepts-text"]
 color :: Text -> ()
 color : color -> handle of graph . message "color" color
 
