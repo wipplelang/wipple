@@ -13,7 +13,7 @@ id: FYeb48id
 type: code
 ---
 
-1 to 10 . collect
+1 to 10 by 1 . collect
 
 ---
 id: L1DSbFWl
@@ -28,7 +28,7 @@ id: pksewHQb
 type: code
 ---
 
-1 to 10 . collect :: List Number
+1 to 10 by 1 . collect :: List Number
 
 ---
 id: OhiuQX79
@@ -43,7 +43,7 @@ id: hKl9TFWN
 type: code
 ---
 
-1 to 10 . collect :: List _
+1 to 10 by 1 . collect :: List _
 
 ---
 id: odmmbGgw

@@ -81,11 +81,11 @@ type: text
 locked: true
 ---
 
-Lastly, if you want to transform the counter in some way, use `range` instead because it produces an iterator:
+Lastly, if you want to transform the counter in some way, use a range instead because it produces an iterator:
 
 ---
 id: WRlagUu9
 type: code
 ---
 
-0 to 3 . transform (Add 1) . transform (Multiply 2) . each show
+0 to 3 by 1 . transform (Add 1) . transform (Multiply 2) . each show

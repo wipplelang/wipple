@@ -1,0 +1,25 @@
+[[no-std]]
+
+use "range"
+use "list"
+use "util"
+
+[help "Implements the `random` function."]
+[help-group "Random"]
+[on-unimplemented "cannot produce a random `_` from a `_`" Value Range]
+Random : Range Value => trait (Range -> Value)
+
+random :: Range Value where (Random Range Value) => Range -> Value
+random : Random
+
+instance (Random (Range Number) Number) : { min max } -> intrinsic "random-number" min max
+instance (Random (Range Integer) Integer) : { min max } -> intrinsic "random-integer" min max
+instance (Random (Range Natural) Natural) : { min max } -> intrinsic "random-natural" min max
+instance (Random (Range Byte) Byte) : { min max } -> intrinsic "random-byte" min max
+instance (Random (Range Signed) Signed) : { min max } -> intrinsic "random-signed" min max
+instance (Random (Range Unsigned) Unsigned) : { min max } -> intrinsic "random-unsigned" min max
+instance (Random (Range Float) Float) : { min max } -> intrinsic "random-float" min max
+instance (Random (Range Double) Double) : { min max } -> intrinsic "random-double" min max
+
+Element => instance (Random (List Element) (Maybe Element)) : list -> \
+  (list . nth (random (0 to (count list)))) as _

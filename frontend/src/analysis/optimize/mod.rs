@@ -754,7 +754,16 @@ mod util {
                 Intrinsic::ListPrepend => true,
                 Intrinsic::ListInsert => true,
                 Intrinsic::ListRemove => true,
+                Intrinsic::ListCount => true,
                 Intrinsic::TextHeadTail => true,
+                Intrinsic::RandomNumber => false,
+                Intrinsic::RandomInteger => false,
+                Intrinsic::RandomNatural => false,
+                Intrinsic::RandomByte => false,
+                Intrinsic::RandomSigned => false,
+                Intrinsic::RandomUnsigned => false,
+                Intrinsic::RandomFloat => false,
+                Intrinsic::RandomDouble => false,
             }
         }
     }

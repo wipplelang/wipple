@@ -81,6 +81,10 @@ as : syntax { 'x as 't -> (As 'x :: 't) }
 
 A => instance (As A A) : it
 instance (As Natural Number) : n -> intrinsic "natural-to-number" n
+Success => instance (As (Result Success _) (Maybe Success)) : result -> when result {
+  Ok x -> Some x
+  Error _ -> None
+}
 
 As? : Input Output => trait (Input -> Maybe Output)
 

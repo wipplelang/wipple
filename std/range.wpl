@@ -2,13 +2,21 @@
 
 use "iterate"
 
+[help "A continuous range between two numbers."]
+[help-group "Math"]
 Range : N => type {
+  min :: N
+  max :: N
+}
+
+[help "A range between two numbers that counts up by a certain number."]
+Stride : N => type {
   min :: N
   max :: N
   step :: N
 }
 
-N where (Numeric N) (Order N) (Add N N N) => instance (Iterate (Range N) N) : range -> {
+N where (Numeric N) (Order N) (Add N N N) => instance (Iterate (Stride N) N) : range -> {
   { zero } : Numeric
   { min max step } : range
   current : mutable min
@@ -26,18 +34,21 @@ N where (Numeric N) (Order N) (Add N N N) => instance (Iterate (Range N) N) : ra
   })
 }
 
-[help "Form a range between two numbers."]
+[help "Form a range or stride between two numbers."]
 [help-group "Math"]
-[operator Composition-Precedence]
 to : syntax {
+  'min to 'max by 'step -> Stride {
+    min : 'min
+    max : 'max
+    step : 'step
+  }
   'min to 'max -> Range {
     min : 'min
     max : 'max
-    step : 1
   }
 }
 
 [help "Repeatedly call a function the specified number of times."]
 [help-group "Control Flow"]
 times :: (Natural -> ()) -> Natural -> ()
-times : f n -> 0 to n . each f
+times : f n -> 0 to n by 1 . each f

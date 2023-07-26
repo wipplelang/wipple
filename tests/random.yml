@@ -1,0 +1,13 @@
+code: |
+    show (0 to 0 . random :: Number)
+    show (1 to 2 . random :: Integer)
+    show (list 1 . random)
+    show (list . random :: Maybe Number)
+
+output: |
+    0
+    1
+    Some 1
+    None
+
+diagnostics: |

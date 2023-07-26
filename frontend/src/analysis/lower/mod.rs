@@ -738,7 +738,16 @@ pub enum Intrinsic {
     ListPrepend,
     ListInsert,
     ListRemove,
+    ListCount,
     TextHeadTail,
+    RandomNumber,
+    RandomInteger,
+    RandomNatural,
+    RandomByte,
+    RandomSigned,
+    RandomUnsigned,
+    RandomFloat,
+    RandomDouble,
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -3,6 +3,7 @@ use futures::channel::oneshot;
 use itertools::Itertools;
 use num_traits::{pow::Pow, FromPrimitive, ToPrimitive};
 use parking_lot::Mutex;
+use rand::{Rng, SeedableRng};
 use rust_decimal::{Decimal, MathematicalOps};
 use std::{mem, sync::Arc};
 use tokio::sync::mpsc::channel;
@@ -72,7 +73,7 @@ impl Interpreter {
                     .expect("wrong number of inputs to builtin function")
                 {
                     ($($input,)*) => $result.await,
-                    _ => unreachable!(),
+                    _ => panic!("wrong type of inputs to builtin function"),
                 }
             };
         }
@@ -143,6 +144,22 @@ impl Interpreter {
             (Value::$ty:ident) => {
                 runtime_fn!((Value::$ty(lhs), Value::$ty(rhs)) => async {
                     Ok(if lhs == rhs { r#true() } else { r#false() })
+                })
+            };
+        }
+
+        macro_rules! runtime_rand_fn {
+            (Value::$ty:ident) => {
+                runtime_fn!((Value::$ty(min), Value::$ty(max)) => async {
+                    if min == max {
+                        return Ok(Value::$ty(min));
+                    }
+
+                    let mut seed = [0; 32];
+                    getrandom::getrandom(&mut seed).expect("failed to seed random number generator");
+                    let mut rng = rand::rngs::StdRng::from_seed(seed);
+
+                    Ok(Value::$ty(rng.gen_range(min..max)))
                 })
             };
         }
@@ -812,6 +829,11 @@ impl Interpreter {
                         Ok(ok(list.remove(index)))
                     })
                 }
+                ir::Intrinsic::ListCount => {
+                    runtime_fn!((Value::List(list)) => async {
+                        Ok(Value::Natural(list.len() as u64))
+                    })
+                }
                 ir::Intrinsic::TextHeadTail => {
                     runtime_fn!((Value::Text(text)) => async {
                         match text.grapheme_indices(true).next() {
@@ -827,6 +849,14 @@ impl Interpreter {
                         }
                     })
                 }
+                ir::Intrinsic::RandomNumber => runtime_rand_fn!(Value::Number),
+                ir::Intrinsic::RandomInteger => runtime_rand_fn!(Value::Integer),
+                ir::Intrinsic::RandomNatural => runtime_rand_fn!(Value::Natural),
+                ir::Intrinsic::RandomByte => runtime_rand_fn!(Value::Byte),
+                ir::Intrinsic::RandomSigned => runtime_rand_fn!(Value::Signed),
+                ir::Intrinsic::RandomUnsigned => runtime_rand_fn!(Value::Unsigned),
+                ir::Intrinsic::RandomFloat => runtime_rand_fn!(Value::Float),
+                ir::Intrinsic::RandomDouble => runtime_rand_fn!(Value::Double),
             }
         })().await?;
 
