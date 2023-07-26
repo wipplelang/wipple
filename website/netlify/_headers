@@ -1,2 +1,10 @@
+/std/*
+  Access-Control-Allow-Origin: *
+  Cache-Control: max-age=3600
+
+/playground/*
+  Access-Control-Allow-Origin: *
+  Cache-Control: max-age=3600
+
 /gist/*
   Access-Control-Allow-Origin: *
