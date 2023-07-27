@@ -5,6 +5,7 @@ if (import.meta.env.PROD) {
     Sentry.init({ dsn: import.meta.env.VITE_SENTRY_DSN });
 }
 
+let loaded = false;
 let functions = [];
 let cancel;
 const responders = {};
@@ -13,6 +14,16 @@ let resolveFunctionResult;
 Error.stackTraceLimit = 10000;
 
 onmessage = async (event) => {
+    if (!loaded) {
+        // HACK: Wait for the wasm to load. For some reason, the bundler
+        // transforms the `import()` below so it's actually loaded immediately.
+        // So there's no way to check whether it's loaded or not; hopefully it
+        // finishes loading in less than 500ms.
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        loaded = true;
+    }
+
     try {
         const runner = await import("../wasm");
 
