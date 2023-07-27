@@ -49,4 +49,4 @@ locked: true
 - [Type-level programming](?lesson=expert/type-level-programming)
 - [Rendering HTML](?lesson=expert/html)
 - [Extending Wipple with JavaScript](?lesson=expert/javascript)
-- [Creating your own Playground lessons](?lesson=expert/custom-lessons)
+- [Beyond the Playground](?lesson=expert/beyond-the-playground)

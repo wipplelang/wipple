@@ -3,8 +3,8 @@ previous:
   name: Rendering HTML
   link: ?lesson=expert/html
 next:
-  name: Creating your own Playground lessons
-  link: ?lesson=expert/custom-lessons
+  name: Beyond the Playground
+  link: ?lesson=expert/beyond-the-playground
 ---
 
 ---
