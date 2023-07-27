@@ -90,25 +90,18 @@ export const useRunner = (context: any) => {
     const runner = useRef<Worker | null>(null);
 
     const newRunnerPromise = () =>
-        new Promise<void>((resolve, reject) => {
-            runner.current = new Runner();
+        new Promise<void>(async (resolve, reject) => {
+            try {
+                // @ts-ignore
+                await import("../wasm");
+                console.log("wasm loaded");
 
-            runner.current.onmessage = (event) => {
-                switch (event.data.type) {
-                    case "loaded":
-                        console.log("runner loaded");
-                        runner.current!.onmessage = null;
-                        resolve();
-                        setLoaded(true);
-                        break;
-                    default:
-                        runner.current!.onmessage = null;
-                        reject(new Error("invalid operation"));
-                        break;
-                }
-            };
+                runner.current = new Runner();
 
-            runner.current!.postMessage({ operation: "checkLoading" });
+                resolve();
+            } catch (error) {
+                reject(error);
+            }
         });
 
     const runnerPromise = useRef<Promise<void>>();

@@ -14,6 +14,7 @@ export default defineConfig(({ command, mode }) => {
                 entry: path.resolve(__dirname, "src/index.tsx"),
                 name: pkg.name,
                 fileName: "index",
+                formats: ["es"],
             },
         },
         plugins: [react(), wasm(), topLevelAwait()],
