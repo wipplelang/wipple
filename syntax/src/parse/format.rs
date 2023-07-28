@@ -137,6 +137,7 @@ impl<D: Driver> Expr<D> {
             ExprKind::RepeatName(name) => write!(f, "...{}", name.as_ref())?,
             ExprKind::Text(_, raw) => write!(f, "\"{}\"", raw.as_ref())?,
             ExprKind::Number(number) => write!(f, "{}", number.as_ref())?,
+            ExprKind::Asset(raw) => write!(f, "`{}`", raw.as_ref())?,
             ExprKind::List(lines) => {
                 write!(f, "(")?;
 
@@ -227,7 +228,7 @@ impl<D: Driver> Expr<D> {
             | ExprKind::QuoteName(_)
             | ExprKind::RepeatName(_)
             | ExprKind::Number(_) => false,
-            ExprKind::Text(_, raw) => raw.as_ref().contains('\n'),
+            ExprKind::Text(_, raw) | ExprKind::Asset(raw) => raw.as_ref().contains('\n'),
             ExprKind::List(lines) | ExprKind::RepeatList(lines) => match lines.len() {
                 0 => false,
                 1 => lines.first().unwrap().is_multiline(in_block),

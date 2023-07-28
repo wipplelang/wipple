@@ -72,6 +72,9 @@ pub enum Token<'src> {
     #[regex(r#"-?[0-9]+(\.[0-9]+)?"#, |lex| lex.slice(), priority = 2)]
     Number(&'src str),
 
+    #[regex(r#"`[^`]*`"#, |lex| &lex.slice()[1..(lex.slice().len() - 1)])]
+    Asset(&'src str),
+
     #[error]
     Error,
 }
@@ -101,6 +104,7 @@ impl<'src> fmt::Display for Token<'src> {
             Token::Name(name) => write!(f, "`{name}`"),
             Token::Text(text) => write!(f, "`\"{text}\"`"),
             Token::Number(number) => write!(f, "`{number}`"),
+            Token::Asset(_) => write!(f, "asset"),
             Token::Error => write!(f, "invalid token"),
         }
     }

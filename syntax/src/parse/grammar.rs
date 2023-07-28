@@ -35,6 +35,7 @@ pub enum ExprKind<D: Driver> {
     RepeatName(D::InternedString),
     Text(D::InternedString, D::InternedString),
     Number(D::InternedString),
+    Asset(D::InternedString),
     List(Vec<ListLine<D>>),
     RepeatList(Vec<ListLine<D>>),
     Block(Vec<Statement<D>>),
@@ -395,6 +396,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
             try_parse_repeat_name,
             try_parse_text,
             try_parse_number,
+            try_parse_asset,
             try_parse_list,
             try_parse_repeat_list,
             try_parse_block,
@@ -517,6 +519,20 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                         ExprKind::Text(self.driver.intern(unescaped), self.driver.intern(raw)),
                     ))
                 }
+            }
+            Some(_) => Err(ParseError::WrongTokenType),
+            None => Err(ParseError::EndOfFile),
+        }
+    }
+
+    pub fn try_parse_asset(&mut self) -> Result<Expr<D>, ParseError> {
+        let (span, token) = self.peek();
+
+        match token {
+            Some(Token::Asset(raw)) => {
+                self.consume();
+
+                Ok(Expr::new(span, ExprKind::Asset(self.driver.intern(raw))))
             }
             Some(_) => Err(ParseError::WrongTokenType),
             None => Err(ParseError::EndOfFile),

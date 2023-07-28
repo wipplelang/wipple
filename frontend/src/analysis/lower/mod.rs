@@ -2466,6 +2466,11 @@ impl Lowerer {
                 span: expr.span,
                 kind: ExpressionKind::Number(expr.number),
             },
+            ast::Expression::Asset(expr) => Expression {
+                id: self.compiler.new_expression_id(ctx.owner),
+                span: expr.span,
+                kind: ExpressionKind::Text(expr.raw),
+            },
             ast::Expression::Name(expr) => {
                 let name_scope = self.assert_loaded_scope(expr.scope);
                 match self.resolve_value(expr.span, expr.name, &name_scope) {

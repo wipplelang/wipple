@@ -46,6 +46,7 @@ syntax_group! {
             Name,
             Text,
             Number,
+            Asset,
             Call,
             Block,
         },
@@ -122,6 +123,24 @@ impl<D: Driver> NumberExpression<D> {
 impl<D: Driver> Format<D> for NumberExpression<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
         Ok(self.number.as_ref().to_string())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AssetExpression<D: Driver> {
+    pub span: D::Span,
+    pub raw: D::InternedString,
+}
+
+impl<D: Driver> AssetExpression<D> {
+    pub fn span(&self) -> D::Span {
+        self.span
+    }
+}
+
+impl<D: Driver> Format<D> for AssetExpression<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!("`{}`", self.raw.as_ref()))
     }
 }
 
@@ -249,6 +268,11 @@ impl<D: Driver> SyntaxContext<D> for ExpressionSyntaxContext<D> {
                 parse::ExprKind::Number(number) => Ok(NumberExpression {
                     span: expr.span,
                     number,
+                }
+                .into()),
+                parse::ExprKind::Asset(raw) => Ok(AssetExpression {
+                    span: expr.span,
+                    raw,
                 }
                 .into()),
                 parse::ExprKind::Block(_) => {

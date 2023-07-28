@@ -73,6 +73,7 @@ pub fn substitute<D: Driver>(
         | ExprKind::RepeatName(_)
         | ExprKind::Text(_, _)
         | ExprKind::Number(_)
+        | ExprKind::Asset(_)
         | ExprKind::SourceCode(_) => {}
     }
 }
