@@ -1,7 +1,7 @@
 ---
 previous:
-  name: Lists and iterators
-  link: ?lesson=advanced/lists
+  name: Randomness
+  link: ?lesson=advanced/randomness
 ---
 
 ---

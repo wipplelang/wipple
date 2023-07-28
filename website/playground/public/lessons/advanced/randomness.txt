@@ -1,0 +1,113 @@
+---
+previous:
+  name: Lists and iterators
+  link: ?lesson=advanced/lists
+next:
+  name: Fractal graphics
+  link: ?lesson=advanced/fractals
+---
+
+---
+id: m_tCmPXC
+type: text
+locked: true
+---
+
+# Randomness
+
+Adding a bit of randomness to your programs can make them much more interesting. Let's learn how to generate random numbers in Wipple!
+
+In Wipple, you can produce random numbers using the `random` function, which accepts a range:
+
+---
+id: 4jHKp6Qu
+type: code
+---
+
+show (random (1 to 10))
+
+---
+id: ZDNdYuaH
+type: text
+locked: true
+---
+
+By default, the random number will have the same "scale" as the numbers in the range. So if you provide a number with accuracy to the tenths, the random number will also have accuracy to the tenths:
+
+---
+id: Sf_HQHCR
+type: code
+---
+
+show (random (0.1 to 0.5))
+
+---
+id: 7In1q8AV
+type: text
+locked: true
+---
+
+If you provide a list instead of a range to `random`, you get back a random item in the list!
+
+---
+id: -ZgLpmz6
+type: code
+---
+
+letters : list "A" "B" "C" "D"
+show (random letters . expect "list was empty")
+
+---
+id: 8oJEBsfg
+type: text
+locked: true
+---
+
+Note that you need `expect` in the above example because the list could be empty, so `random` could return `None`. But since we know the list has items in it, the program will never actually crash.
+
+Under the hood, `random` uses the `Random` trait, which you can implement on your own types just like `Show`:
+
+---
+id: YbIVTo2X
+type: code
+---
+
+use "turtle"
+
+Command : type {
+  Move Pixels
+  Turn Angle
+  Color Text
+}
+
+instance (Random () Command) : () -> when (random (0 to 3) :: Natural) {
+  0 -> Move ((random (5 to 25)) pixels)
+  1 -> Turn ((random (0 to 360)) degrees)
+  2 -> Color (random (list "red" "green" "blue") . unwrap)
+  _ -> crash "unreachable"
+}
+
+with-turtle {
+  speed 100
+
+  100 . times (_ -> {
+    when (random ()) {
+      Move distance -> forward distance
+      Turn angle -> left angle
+      Color c -> color c
+    }
+  })
+}
+
+---
+id: HsvXIK-r
+type: text
+locked: true
+---
+
+If you want a challenge, try using `random` to make a password generator below!
+
+---
+id: BzgYsXfo
+type: code
+---

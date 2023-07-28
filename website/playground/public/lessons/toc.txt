@@ -38,6 +38,7 @@ locked: true
 - [Numeric types](?lesson=advanced/numeric-types)
 - [Mutability](?lesson=advanced/mutability)
 - [Lists and iterators](?lesson=advanced/lists)
+- [Randomness](?lesson=advanced/randomness)
 - [Fractal graphics](?lesson=advanced/fractals)
 
 ## Expert
