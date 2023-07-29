@@ -346,9 +346,15 @@ export const PlaygroundRunner = forwardRef<
                                                             note.code + "\n\n"
                                                         );
 
-                                                        let { line, col } = lookup.fromIndex(
+                                                        let result = lookup.fromIndex(
                                                             note.span.start
-                                                        )!;
+                                                        );
+
+                                                        if (!result) {
+                                                            return null;
+                                                        }
+
+                                                        const { line, col } = result;
 
                                                         const start = lookup.toIndex(line, 1);
 
