@@ -35,18 +35,25 @@ import FullScreenExitRounded from "@mui/icons-material/FullscreenExitRounded";
 import MoreHoriz from "@mui/icons-material/MoreHoriz";
 import Download from "@mui/icons-material/Download";
 import * as Sentry from "@sentry/react";
-import PopupState, { bindMenu, bindTrigger } from "material-ui-popup-state";
+import PopupState, {
+    bindMenu,
+    bindPopover,
+    bindToggle,
+    bindTrigger,
+} from "material-ui-popup-state";
 import { minimalSetup } from "codemirror";
 import { EditorView, placeholder, Decoration, ViewPlugin, DecorationSet } from "@codemirror/view";
 import { Compartment, EditorState, Range } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
-import { keymap, hoverTooltip, ViewUpdate, closeHoverTooltips } from "@codemirror/view";
+import { keymap, hoverTooltip, ViewUpdate, closeHoverTooltips, WidgetType } from "@codemirror/view";
 import { githubLightInit, githubDarkInit } from "@uiw/codemirror-theme-github";
 import { styleTags, tags as t } from "@lezer/highlight";
 import { LRLanguage, LanguageSupport } from "@codemirror/language";
 import { parser } from "../languages/wipple.grammar";
 import { Settings } from "../App";
+import { CircularProgress, Popover } from "@mui/material";
+import { CompactPicker } from "react-color";
 
 export interface CodeEditorProps {
     id: string;
@@ -66,6 +73,12 @@ interface Hover {
     diagnostic:
         | [AnalysisOutputDiagnostic, boolean, AnalysisOutputDiagnostic["notes"][number]]
         | undefined;
+}
+
+interface SpecialCompletion {
+    element: () => JSX.Element;
+    help: string;
+    template: string;
 }
 
 export const CodeEditor = (props: CodeEditorProps) => {
@@ -108,7 +121,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
             for (let noteIndex = 0; noteIndex < diagnostic.notes.length; noteIndex++) {
                 const note = diagnostic.notes[noteIndex];
 
-                if (note.span.start >= start && note.span.end <= end) {
+                if (start >= note.span.start || end <= note.span.end) {
                     hoverDiagnostic = [diagnostic, noteIndex === 0, note];
                     break outer;
                 }
@@ -160,11 +173,32 @@ export const CodeEditor = (props: CodeEditorProps) => {
         AnalysisOutputSyntaxHighlightingItem[]
     >([]);
 
-    const decoration = (kind: string) =>
+    const highlightDecoration = (kind: string) =>
         Decoration.mark({
             attributes: {
                 class: `token ${kind}`,
             },
+        });
+
+    const placeholderDecoration = (placeholder: string, from: number, to: number) =>
+        Decoration.replace({
+            atomic: true,
+            widget: new PlaceholderDecoration(placeholder, from, to, () => {
+                view.current!.dispatch({ selection: { anchor: from, head: to } });
+            }),
+        });
+
+    const assetDecoration = (
+        asset: string,
+        from: number,
+        to: number,
+        onChange: (asset: string) => void
+    ) =>
+        Decoration.replace({
+            atomic: true,
+            widget: new AssetDecoration(asset, from, to, onChange, () => {
+                view.current!.dispatch({ selection: { anchor: from, head: to } });
+            }),
         });
 
     const getDecorations = (view: EditorView) => {
@@ -176,11 +210,45 @@ export const CodeEditor = (props: CodeEditorProps) => {
         const decorations: Range<Decoration>[] = [];
         tree.iterate({
             enter: (node) => {
+                const { from, to } = node;
+
+                switch (node.type.name) {
+                    case "Placeholder":
+                        // Remove the leading and trailing delimiters
+                        const placeholder = view.state.sliceDoc(from + 2, to - 2);
+
+                        decorations.push(
+                            placeholderDecoration(placeholder, from, to).range(from, to)
+                        );
+
+                        return;
+                    case "Asset":
+                        // Remove the leading and trailing backticks
+                        const asset = view.state.sliceDoc(from + 1, to - 1);
+
+                        const onChangeAsset = (asset: string) => {
+                            view.dispatch({
+                                changes: {
+                                    from: from + 1,
+                                    to: to - 1,
+                                    insert: asset,
+                                },
+                            });
+                        };
+
+                        decorations.push(
+                            assetDecoration(asset, from, to, onChangeAsset).range(from, to)
+                        );
+                        return;
+                    default:
+                        break;
+                }
+
                 if (hoverPos.current) {
                     const [start, end] = hoverPos.current;
 
-                    if (start === node.from && end === node.to) {
-                        decorations.push(decoration("hover").range(node.from, node.to));
+                    if (start === from && end === to) {
+                        decorations.push(highlightDecoration("hover").range(from, to));
                     }
                 }
 
@@ -191,33 +259,28 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         continue;
                     }
 
-                    if (node.to > primaryNote.span.end) {
+                    if (to > primaryNote.span.end) {
                         continue;
                     }
 
-                    if (node.from >= primaryNote.span.start && node.to > node.from) {
+                    if (from >= primaryNote.span.start && to > from) {
                         decorations.push(
-                            decoration(`diagnostic diagnostic-${diagnostic.level}`).range(
-                                node.from,
-                                node.to
+                            highlightDecoration(`diagnostic diagnostic-${diagnostic.level}`).range(
+                                from,
+                                to
                             )
                         );
                     }
                 }
 
-                if (
-                    items[0] &&
-                    items[0].start === node.from &&
-                    items[0].end === node.to &&
-                    node.to > node.from
-                ) {
+                if (items[0] && items[0].start === from && items[0].end === to && to > from) {
                     const { start, end, kind } = items.shift()!;
-                    decorations.push(decoration(kind).range(start, end));
+                    decorations.push(highlightDecoration(kind).range(start, end));
                 }
             },
         });
 
-        return Decoration.set(decorations);
+        return Decoration.set(decorations, true);
     };
 
     const highlight = ViewPlugin.fromClass(
@@ -232,7 +295,20 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 this.decorations = getDecorations(update.view);
             }
         },
-        { decorations: (v) => v.decorations }
+        {
+            decorations: (v) => v.decorations,
+            provide: (plugin) =>
+                EditorView.atomicRanges.of((view) => {
+                    const decorations = view.plugin(plugin)?.decorations;
+                    if (!decorations) {
+                        return Decoration.none;
+                    }
+
+                    return decorations.update({
+                        filter: (_from, _to, decoration) => decoration.spec.atomic,
+                    });
+                }),
+        }
     );
 
     const [completions, setCompletions] = useState<AnalysisOutputCompletions>();
@@ -328,7 +404,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
         marginTop: "-0.125rem",
     };
 
-    const insertCompletion = (completion: Completion) => {
+    const insertCompletion = (completion: Completion | SpecialCompletion) => {
         const code = props.code;
 
         const selection = view.current!.state.selection.main;
@@ -584,13 +660,17 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
                         <MenuList disablePadding>
                             {(() => {
-                                const includeCompletion = (completion: Completion) =>
+                                const includeCompletion = (
+                                    completion: Completion | SpecialCompletion
+                                ) =>
                                     !contextMenuSearch ||
-                                    contextMenuSearch.includes(completion.name) ||
-                                    completion.name.includes(contextMenuSearch);
+                                    ("kind" in completion
+                                        ? contextMenuSearch.includes(completion.name) ||
+                                          completion.name.includes(contextMenuSearch)
+                                        : false);
 
                                 const renderCompletionItem = (
-                                    completion: Completion,
+                                    completion: Completion | SpecialCompletion,
                                     index: number
                                 ) =>
                                     completion.help ? (
@@ -604,9 +684,15 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                         >
                                             <ListItemText>
                                                 <pre className="language-wipple">
-                                                    <span className={`token ${completion.kind}`}>
-                                                        {completion.name}
-                                                    </span>
+                                                    {"kind" in completion ? (
+                                                        <span
+                                                            className={`token ${completion.kind}`}
+                                                        >
+                                                            {completion.name}
+                                                        </span>
+                                                    ) : (
+                                                        <completion.element />
+                                                    )}
                                                 </pre>
 
                                                 <Markdown>{completion.help}</Markdown>
@@ -614,7 +700,10 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                         </MenuItem>
                                     ) : null;
 
-                                const languageSection = completions.language
+                                const languageSection = [
+                                    ...builtinCompletions,
+                                    ...completions.language,
+                                ]
                                     .filter(includeCompletion)
                                     .map(renderCompletionItem);
 
@@ -761,6 +850,215 @@ const Hover = (props: {
     );
 };
 
+class PlaceholderDecoration extends WidgetType {
+    constructor(
+        private placeholder: string,
+        private from: number,
+        private to: number,
+        private onClick: () => void
+    ) {
+        super();
+    }
+
+    eq(widget: this): boolean {
+        return (
+            this.placeholder === widget.placeholder &&
+            this.from === widget.from &&
+            this.to === widget.to
+        );
+    }
+
+    toDOM() {
+        const container = document.createElement("span");
+        ReactDOM.createRoot(container).render(
+            <Placeholder placeholder={this.placeholder} onClick={this.onClick} />
+        );
+
+        return container;
+    }
+}
+
+const Placeholder = (props: { placeholder: string; onClick: () => void }) => {
+    return (
+        <span
+            className="inline-block bg-blue-500 px-2 border-2 border-gray-100 dark:border-gray-700 rounded-lg text-white ui-font"
+            onClick={props.onClick}
+        >
+            {props.placeholder}
+        </span>
+    );
+};
+
+class AssetDecoration extends WidgetType {
+    constructor(
+        private asset: string,
+        private from: number,
+        private to: number,
+        private onChange: (asset: string) => void,
+        private onClick: () => void
+    ) {
+        super();
+    }
+
+    eq(widget: this): boolean {
+        return this.asset === widget.asset && this.from === widget.from && this.to === widget.to;
+    }
+
+    toDOM() {
+        const container = document.createElement("span");
+        ReactDOM.createRoot(container).render(
+            <Asset asset={this.asset} onChange={this.onChange} onClick={this.onClick} />
+        );
+        return container;
+    }
+}
+
+const Asset = (props: {
+    asset: string;
+    onChange: (asset: string) => void;
+    onClick?: () => void;
+}) => {
+    const content = (() => {
+        if (CSS.supports("color", props.asset)) {
+            return <ColorAsset color={props.asset} onChangeColor={props.onChange} />;
+        }
+
+        try {
+            const url = new URL(
+                props.asset,
+                props.asset[0] === "/" ? window.location.origin : undefined
+            );
+            return <UrlAsset url={url} />;
+        } catch {
+            // fall through
+        }
+
+        return <ErrorAsset />;
+    })();
+
+    return (
+        <div className="inline-block w-4 h-4" onClick={props.onClick}>
+            {content}
+        </div>
+    );
+};
+
+const AssetContainer = (props: { error?: boolean; children: JSX.Element }) => (
+    <div
+        className={`flex w-full h-full border-2 ${
+            props.error ? "border-red-500" : "border-gray-100 dark:border-gray-700"
+        } rounded-[5px] overflow-clip`}
+    >
+        {props.children}
+    </div>
+);
+
+const ColorAsset = (props: { color: string; onChangeColor: (color: string) => void }) => (
+    <AssetContainer>
+        <PopupState variant="popover">
+            {(popupState) => (
+                <>
+                    <div className="flex w-full h-full" style={{ backgroundColor: props.color }}>
+                        <button className="w-full h-full" {...bindToggle(popupState)} />
+                    </div>
+
+                    <Popover
+                        {...bindPopover(popupState)}
+                        anchorOrigin={{ horizontal: "left", vertical: "bottom" }}
+                    >
+                        <CompactPicker
+                            color={props.color}
+                            onChange={(color) => props.onChangeColor(color.hex)}
+                        />
+                    </Popover>
+                </>
+            )}
+        </PopupState>
+    </AssetContainer>
+);
+
+const cache: Record<string, Response | null> = {};
+
+const UrlAsset = (props: { url: URL }) => {
+    const [response, setResponse] = useState<Response>();
+    const [error, setError] = useState(false);
+
+    useEffect(() => {
+        (async () => {
+            const cached = cache[props.url.toString()];
+            if (cached !== undefined) {
+                if (cached !== null) {
+                    setResponse(cached);
+                }
+
+                return;
+            } else
+                try {
+                    const response = await fetch(props.url);
+
+                    if (response.status < 200 || response.status >= 300) {
+                        setError(true);
+                        return;
+                    }
+
+                    cache[props.url.toString()] = response;
+
+                    setResponse(response);
+                } catch (error) {
+                    console.error(error);
+                    setError(true);
+
+                    cache[props.url.toString()] = null;
+                }
+        })();
+    }, [props.url]);
+
+    if (error) {
+        return <ErrorAsset />;
+    }
+
+    const contentType = response?.headers.get("Content-Type");
+
+    if (contentType === undefined) {
+        return (
+            <AssetContainer>
+                <div className="flex items-center justify-center w-full h-full">
+                    <CircularProgress size={10} thickness={6} />
+                </div>
+            </AssetContainer>
+        );
+    }
+
+    if (contentType === null) {
+        return <ErrorAsset />;
+    }
+
+    if (contentType.includes("image")) {
+        return (
+            <AssetContainer>
+                <a target="_blank" href={props.url.toString()}>
+                    <img src={props.url.toString()} className="w-full h-full object-cover" />
+                </a>
+            </AssetContainer>
+        );
+    }
+
+    // TODO: Support previews for more asset types
+
+    return <ErrorAsset />;
+};
+
+const ErrorAsset = () => (
+    <AssetContainer error>
+        <div
+            className="w-full h-full"
+            onClick={() => {
+                alert("The asset failed to load. Make sure you've provided the correct name.");
+            }}
+        ></div>
+    </AssetContainer>
+);
+
 const wippleLanguage = new LanguageSupport(
     LRLanguage.define({
         name: "Wipple",
@@ -788,41 +1086,43 @@ const wippleLanguage = new LanguageSupport(
     })
 );
 
+const styles = [
+    {
+        tag: t.comment,
+        class: "token comment",
+    },
+    {
+        tag: t.string,
+        class: "token text",
+    },
+    {
+        tag: t.number,
+        class: "token number",
+    },
+    {
+        tag: t.keyword,
+        class: "token keyword",
+    },
+    {
+        tag: t.operator,
+        class: "token operator",
+    },
+    {
+        tag: t.typeName,
+        class: "token type",
+    },
+    {
+        tag: t.name,
+        class: "token name",
+    },
+];
+
 const githubLight = githubLightInit({
     settings: {
         background: "transparent",
         foreground: "#24292e",
     },
-    styles: [
-        {
-            tag: t.comment,
-            class: "token comment",
-        },
-        {
-            tag: t.string,
-            class: "token text",
-        },
-        {
-            tag: t.number,
-            class: "token number",
-        },
-        {
-            tag: t.keyword,
-            class: "token keyword",
-        },
-        {
-            tag: t.operator,
-            class: "token operator",
-        },
-        {
-            tag: t.typeName,
-            class: "token type",
-        },
-        {
-            tag: t.name,
-            class: "token name",
-        },
-    ],
+    styles,
 });
 
 const githubDark = githubDarkInit({
@@ -830,34 +1130,18 @@ const githubDark = githubDarkInit({
         background: "transparent",
         foreground: "#e1e4e8",
     },
-    styles: [
-        {
-            tag: t.comment,
-            class: "wipple-token-comment-dark",
-        },
-        {
-            tag: t.string,
-            class: "wipple-token-text-dark",
-        },
-        {
-            tag: t.number,
-            class: "wipple-token-number-dark",
-        },
-        {
-            tag: t.keyword,
-            class: "wipple-token-keyword-dark",
-        },
-        {
-            tag: t.operator,
-            class: "wipple-token-operator-dark",
-        },
-        {
-            tag: t.typeName,
-            class: "wipple-token-type-dark",
-        },
-        {
-            tag: t.name,
-            class: "wipple-token-name-dark",
-        },
-    ],
+    styles,
 });
+
+const builtinCompletions: SpecialCompletion[] = [
+    {
+        element: () => <Asset asset="#007aff" />,
+        help: "Insert a color.",
+        template: "`#007aff`",
+    },
+    {
+        element: () => <Asset asset="/images/logo.svg" />,
+        help: "Insert an image.",
+        template: "`/images/logo.svg`",
+    },
+];

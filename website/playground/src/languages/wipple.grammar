@@ -1,6 +1,5 @@
 @top Program { expression* }
 
-@skip { space | lineContinue }
 expression { Comment | Placeholder | QuoteName | RepeatName | Text | Number | Asset | Keyword | Operator | Type | Name }
 
 @tokens {
@@ -15,8 +14,8 @@ expression { Comment | Placeholder | QuoteName | RepeatName | Text | Number | As
   "'{" "}"
   "...{" "}"
 
-  space { $[ \t\n\r]+ }
-  lineContinue { "\\" }
+  Space { $[ \t\n\r]+ }
+  LineContinue { "\\" }
 
   Comment { "--" ![\n]* }
   Placeholder { "(*" ![\(\)\*]* "*)" }
@@ -30,7 +29,7 @@ expression { Comment | Placeholder | QuoteName | RepeatName | Text | Number | As
   Type { $[A-Z] ![\r\n\t \(\)\[\]\{\}'"/]* }
   Name { $[~`!@#$%^&*\-+=\\\|:;<,>.?/]+ | ($[A-Za-z0-9\-_]+ $[!?']?) }
 
-  @precedence { space, lineContinue, Comment, Placeholder, QuoteName, RepeatName, Text, Number, Asset, Keyword, Operator, Type, Name }
+  @precedence { Space, LineContinue, Comment, Placeholder, QuoteName, RepeatName, Text, Number, Asset, Keyword, Operator, Type, Name }
 }
 
 @detectDelim
