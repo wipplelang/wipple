@@ -2,17 +2,8 @@ import prism from "prismjs";
 
 export const register = () => {
     prism.languages.wipple = {
-        "template-before": { pattern: /\(\*(?=[^\(\)\*]*\*\))/, greedy: true },
-        "template-after": { pattern: /(?=[\(\*^\(\)\*]*)\*\)/, greedy: true },
-        "template-content": {
-            pattern: /(?<=\(\*)[^\(\)\*]*(?=\*\))/,
-            greedy: true,
-            lookbehind: true,
-        },
-
         keyword: {
-            pattern:
-                /(?<=\s|^)(?:_|use|when|type|trait|instance|where|external|syntax|format|with)(?=\s|$)/,
+            pattern: /\b(?:_|use|when|type|trait|instance|where|external|syntax|format|with)\b/,
             greedy: true,
         },
         operator: { pattern: /:|::|->|=>|\.|\|/, greedy: true },
