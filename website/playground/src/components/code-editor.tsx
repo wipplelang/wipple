@@ -53,7 +53,7 @@ import { LRLanguage, LanguageSupport } from "@codemirror/language";
 import { parser } from "../languages/wipple.grammar";
 import { Settings } from "../App";
 import { CircularProgress, Popover } from "@mui/material";
-import { GithubPicker, SwatchesPicker } from "react-color";
+import { SwatchesPicker } from "react-color";
 
 export interface CodeEditorProps {
     id: string;
@@ -93,6 +93,13 @@ export const CodeEditor = (props: CodeEditorProps) => {
         });
     }, [prefersReducedMotion]);
 
+    // Store settings in a ref so that the code editor can access them even
+    // after they change
+    const [settings, setSettings] = useRefState(props.settings);
+    useEffect(() => {
+        setSettings(props.settings);
+    }, [props.settings]);
+
     const editor = useRef<HTMLDivElement>(null);
     const view = useRef<EditorView | null>(null);
 
@@ -106,40 +113,32 @@ export const CodeEditor = (props: CodeEditorProps) => {
     const [hoverPos, setHoverPos] = useRefState<[number, number] | undefined>(undefined);
 
     const hover = hoverTooltip(async (view, pos, side) => {
-        const { from, to, text } = view.state.doc.lineAt(pos);
-        let start = pos,
-            end = pos;
-        while (start > from && /[^\s]/.test(text[start - from - 1])) start--;
-        while (end < to && /[^\s]/.test(text[end - from])) end++;
-        if ((start == pos && side < 0) || (end == pos && side > 0)) {
-            setHoverPos(undefined);
-            return null;
-        }
+        const { from, to } = syntaxTree(view.state).cursorAt(pos, side);
 
         let hoverDiagnostic: Hover["diagnostic"];
         outer: for (const diagnostic of analysis.current?.diagnostics ?? []) {
             for (let noteIndex = 0; noteIndex < diagnostic.notes.length; noteIndex++) {
                 const note = diagnostic.notes[noteIndex];
 
-                if (start >= note.span.start || end <= note.span.end) {
+                if (from >= note.span.start || to <= note.span.end) {
                     hoverDiagnostic = [diagnostic, noteIndex === 0, note];
                     break outer;
                 }
             }
         }
 
-        const hoverOutput = await outputRef.current!.hover(start, end);
+        const hoverOutput = await outputRef.current!.hover(from, to);
 
         if (!hoverDiagnostic && !hoverOutput) {
             setHoverPos(undefined);
             return null;
         }
 
-        setHoverPos([start, end]);
+        setHoverPos([from, to]);
 
         return {
-            pos: start,
-            end,
+            pos: from,
+            end: to,
             create: () => {
                 const dom = document.createElement("div");
                 ReactDOM.createRoot(dom).render(
@@ -180,6 +179,13 @@ export const CodeEditor = (props: CodeEditorProps) => {
             },
         });
 
+    const groupDecoration = (color: string) =>
+        Decoration.mark({
+            attributes: {
+                class: color,
+            },
+        });
+
     const placeholderDecoration = (placeholder: string, from: number, to: number) =>
         Decoration.replace({
             atomic: true,
@@ -208,28 +214,31 @@ export const CodeEditor = (props: CodeEditorProps) => {
         const diagnostics = [...(analysis.current?.diagnostics ?? [])];
 
         const decorations: Range<Decoration>[] = [];
+        const stack: string[] = [];
         tree.iterate({
             enter: (node) => {
                 const { from, to } = node;
 
+                const nodeText = view.state.sliceDoc(from, to);
+
                 // Decorations may not span multiple lines
-                if (view.state.sliceDoc(from, to).includes("\n")) {
+                if (nodeText.includes("\n")) {
                     return;
                 }
 
                 switch (node.type.name) {
                     case "Placeholder":
                         // Remove the leading and trailing delimiters
-                        const placeholder = view.state.sliceDoc(from + 2, to - 2);
+                        const placeholder = nodeText.slice(2, nodeText.length - 2);
 
                         decorations.push(
                             placeholderDecoration(placeholder, from, to).range(from, to)
                         );
 
-                        return;
+                        break;
                     case "Asset":
                         // Remove the leading and trailing backticks
-                        const asset = view.state.sliceDoc(from + 1, to - 1);
+                        const asset = nodeText.slice(1, nodeText.length - 1);
 
                         const onChangeAsset = (asset: string) => {
                             view.dispatch({
@@ -244,9 +253,26 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         decorations.push(
                             assetDecoration(asset, from, to, onChangeAsset).range(from, to)
                         );
-                        return;
+
+                        break;
                     default:
                         break;
+                }
+
+                if (settings.current.beginner ?? true) {
+                    let color: string | undefined;
+                    if (closingBrackets[nodeText]) {
+                        color = bracketPairColors[stack.length % bracketPairColors.length];
+                        stack.push(color);
+                    } else if (Object.values(closingBrackets).includes(nodeText)) {
+                        color = stack.pop()!;
+                    } else {
+                        color = stack[stack.length - 1];
+                    }
+
+                    if (color) {
+                        decorations.push(groupDecoration(color).range(from, to));
+                    }
                 }
 
                 if (hoverPos.current) {
@@ -509,6 +535,10 @@ export const CodeEditor = (props: CodeEditorProps) => {
             effects: themeConfig.reconfigure([prefersDarkMode ? githubDark : githubLight]),
         });
     }, [prefersDarkMode]);
+
+    useEffect(() => {
+        view.current!.dispatch();
+    }, [props.settings]);
 
     return (
         <div id={containerID}>
@@ -1149,6 +1179,19 @@ const githubDark = githubDarkInit({
     },
     styles,
 });
+
+const closingBrackets: Record<string, string> = {
+    "(": ")",
+    "{": "}",
+    "[": "]",
+};
+
+const bracketPairColors: string[] = [
+    "bg-blue-100 dark:bg-blue-900",
+    "bg-red-100 dark:bg-red-900",
+    "bg-green-100 dark:bg-green-900",
+    "bg-yellow-100 dark:bg-yellow-900",
+];
 
 const builtinCompletions: SpecialCompletion[] = [
     {

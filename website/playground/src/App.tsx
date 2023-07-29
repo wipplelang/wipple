@@ -333,10 +333,16 @@ const App = () => {
                                             section={section}
                                             autoFocus={index === 0}
                                             settings={settings}
-                                            onChange={(section) => {
-                                                const newSections = [...sections];
-                                                newSections.splice(index, 1, section);
-                                                setSections(newSections);
+                                            onChange={(newSection) => {
+                                                setSections((sections) => {
+                                                    const newSections = [...sections];
+                                                    newSections.splice(
+                                                        index,
+                                                        1,
+                                                        newSection(newSections[index])
+                                                    );
+                                                    return newSections;
+                                                });
                                             }}
                                         />
                                     </SortableItem>
@@ -645,7 +651,7 @@ const SectionContainer = (props: {
     section: Section;
     autoFocus: boolean;
     settings: Settings;
-    onChange: (section: Section) => void;
+    onChange: (newSection: (section: Section) => Section) => void;
 }) => {
     let content: JSX.Element;
     switch (props.section.type) {
@@ -657,28 +663,28 @@ const SectionContainer = (props: {
                     lint={props.section.lint ?? true}
                     autoRun={props.section.autoRun ?? true}
                     onChangeAutoRun={(autoRun) => {
-                        props.onChange({
-                            ...props.section,
+                        props.onChange((section) => ({
+                            ...section,
                             type: "code",
                             autoRun,
-                        });
+                        }));
                     }}
                     collapse={props.section.collapse ?? false}
                     onChangeCollapse={(collapse) => {
-                        props.onChange({
-                            ...props.section,
+                        props.onChange((section) => ({
+                            ...section,
                             type: "code",
                             collapse,
-                        });
+                        }));
                     }}
                     autoFocus={props.autoFocus}
                     settings={props.settings}
                     onChange={(code) => {
-                        props.onChange({
-                            ...props.section,
+                        props.onChange((section) => ({
+                            ...section,
                             type: "code",
                             value: code,
-                        });
+                        }));
                     }}
                 />
             );
@@ -688,11 +694,11 @@ const SectionContainer = (props: {
                 <TextEditor
                     content={props.section.value}
                     onChange={(text) => {
-                        props.onChange({
-                            ...props.section,
+                        props.onChange((section) => ({
+                            ...section,
                             type: "text",
                             value: text,
-                        });
+                        }));
                     }}
                     isLocked={props.section.locked ?? false}
                 />

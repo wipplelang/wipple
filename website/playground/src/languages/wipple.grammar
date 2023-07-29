@@ -1,18 +1,20 @@
 @top Program { expression* }
 
-expression { Comment | Placeholder | QuoteName | RepeatName | Text | Number | Asset | Keyword | Operator | Type | Name }
+expression { Bracket | Comment | Placeholder | QuoteName | RepeatName | Text | Number | Asset | Keyword | Operator | Type | Name }
+
+Keyword { @specialize<NamePrefix, "_" | "use" | "when" | "type" | "trait" | "instance" | "where" | "external" | "syntax" | "format" | "with"> }
+
+Operator { @specialize<OperatorName, ":" | "::" | "->" | "=>" | "."> }
+
+Name { NamePrefix NameSuffix? }
 
 @tokens {
-  "[[" "]]"
-  "[" "]"
-
-  "(" ")"
-  "'(" ")"
-  "...(" ")"
-
-  "{" "}"
-  "'{" "}"
-  "...{" "}"
+  Bracket {
+    "[[" | "]]" |
+    "[" | "]" |
+    "(" | ")" |
+    "{" | "}"
+  }
 
   Space { $[ \t\n\r]+ }
   LineContinue { "\\" }
@@ -24,12 +26,12 @@ expression { Comment | Placeholder | QuoteName | RepeatName | Text | Number | As
   Text { '"' (!["\\] | "\\" _)* '"' }
   Number { "-"? $[0-9]+ ("." $[0-9]+)? }
   Asset { '`' (![`\\] | "\\" _)* '`' }
-  Keyword { "_" | "use" | "when" | "type" | "trait" | "instance" | "where" | "external" | "syntax" | "format" | "with" }
-  Operator { ":" | "::" | "->" | "=>" | "." }
   Type { $[A-Z] ![\r\n\t \(\)\[\]\{\}'"/]* }
-  Name { $[~`!@#$%^&*\-+=\\\|:;<,>.?/]+ | ($[A-Za-z0-9\-_]+ $[!?']?) }
+  OperatorName { $[~`!@#$%^&*\-+=\\\|:;<,>.?/]+ }
+  NamePrefix { $[A-Za-z0-9\-_]+ }
+  NameSuffix { $[!?'] }
 
-  @precedence { Space, LineContinue, Comment, Placeholder, QuoteName, RepeatName, Text, Number, Asset, Keyword, Operator, Type, Name }
+  @precedence { Space, LineContinue, Comment, Placeholder, Text, Number, Asset, QuoteName, RepeatName, Type, OperatorName, NamePrefix, NameSuffix }
 }
 
 @detectDelim
