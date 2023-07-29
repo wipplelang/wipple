@@ -16,7 +16,7 @@ type: code
 use "turtle"
 
 with-turtle {
-  color "blue"
+  color `blue`
   forward (50 pixels)
 }
 

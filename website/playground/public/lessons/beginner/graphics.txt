@@ -108,11 +108,11 @@ use "turtle"
 with-turtle {
     width (500 pixels)
     right (90 degrees)
-    color "red"
+    color `red`
     forward (50 pixels)
-    color "green"
+    color `green`
     forward (50 pixels)
-    color "blue"
+    color `blue`
     forward (50 pixels)
 }
 
@@ -122,7 +122,9 @@ type: text
 locked: true
 ---
 
-Notice that the colors must go between quotation marks. We'll explain why in the next section. For now, experiment with turtle graphics in the space below!
+You can change the colors by clicking on them. If you want to add a new color, click the `+` button in the top right and select the color symbol.
+
+Try experimenting with turtle graphics in the space below!
 
 ---
 id: oJoojiVl
