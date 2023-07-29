@@ -6,16 +6,13 @@ Wipple's typechecker does a lot of things, namely:
 
 1.  **Type inference:** Assigning every expression a type
 2.  **Unification:** Checking that every expression's type is valid in the surrounding context
-3.  **Trait resolution and bounds checking:** Determining which instance of a trait to use and that all bounds are satisfied
-4.  **Monomorphization and specialization:** Instantiating constants and instances so their generic type parameters are replaced with concrete types, and using specialized constants if applicable
-5.  **Exhaustiveness checking:** Checking that a pattern or set of patterns cover all possible input values
-6.  **Finalization:** Ensuring that every expression in the program has a concrete type
-
-Not all of these steps happen in order; the typechecker repeats some steps to collect more type information so the user doesn't have to provide explicit annotations.
+3.  **Monomorphization and bounds checking:** Finding implementations for constant and trait expressions
+4.  **Exhaustiveness checking:** Checking that a pattern or set of patterns cover all possible input values
+5.  **Finalization:** Ensuring that every expression in the program has a concrete type
 
 ## Type inference
 
-The basic idea behind type inference is that every expression resolves to some value at runtime, and we want to determine the shape of that value at compile time. This "shape", or **type**, can be determined automatically based on how the value is used. To make our programs deterministic, there is a rule: the type of an expression must be preserved while it is being evaluated. Essentially, we should be able to "pause" the program at any point and see that the types haven't changed:
+The basic idea behind type inference is that every expression resolves to some value at runtime, and we want to determine the shape of that value at compile time. This "shape", or **type**, can be determined automatically based on how the value is used. To make our programs deterministic, there is a rule: the type of an expression must be preserved while it is being evaluated. Essentially, we should be able to "pause" the program at any point and see that even if an expression has been reduced, its type hasn't changed:
 
 ```wipple
 f :: A -> B
@@ -75,10 +72,38 @@ One more example — function calling. For function calling, we split the work 
 2.  Determine the type of the input expression, and unify this type with `{0}`.
 3.  The type of the function call expression as a whole is `{1}`.
 
-For expressions that instantiate a type or refer to a trait or constant, we copy the type from the declaration and replace all type parameters with new type variables. So if `make-tuple :: A B => A -> B -> (A , B)`, the expression `make-tuple` will have type `{0} -> {1} -> ({0} , {1})`. This does _not_ happen inside `make-tuple`'s body, where `A` and `B` are preserved so that `make-tuple` cannot construct values of type `A` or `B` or assume anything else about them.
+For expressions that instantiate a type or refer to a trait or constant, we copy the type from the declaration and replace all type parameters with new type variables. So if `make-tuple :: A B => A -> B -> (A , B)`, the _expression_ `make-tuple` will have type `{0} -> {1} -> ({0} , {1})`. This does _not_ happen inside the body of `make-tuple` itself, where `A` and `B` are preserved so that `make-tuple` cannot construct values of type `A` or `B` or assume anything else about them.
 
 And finally, expressions that resolved to an error during lowering (eg. undefined variables) are assigned the error type, which unifies with every other type. This is so that error expressions don't produce even more errors during typechecking, confusing the user.
 
-## Trait resolution and bounds checking
+## Monomorphization and bounds checking
 
-After every expression has been assigned a type (which may or may not contain type variables),
+After every expression has been assigned a type (which may or may not contain type variables), the typechecker attempts to find concrete implementations for as many constant and trait expressions as possible. This process is called **monomorphization**, and is repeated until every expression refers to a concrete value or no progress is made (resulting in an error).
+
+Remember that before this phase, we instantiate the types of constant and trait expressions to type variables representing concrete types. So during monomorphization, all we need to do is attempt to unify the types of these expressions with every possible implementation, and the first one that unifies is chosen. This goes for both traits (the first `instance` to match is chosen) as well as constants (the first implementation to match is chosen, or the only implementation for non-specialized constants). This is done by cloning the unification context before unifying, and if unification fails, reverting the context to this snapshot. That way, if unification succeeds, the typechecker can incorporate any inferred types into future unifications.
+
+In addition to unifying the types of the implementations, any **bounds** attached to the implementation's signature are checked too. This uses the same logic as trait expressions, and the bound's implementation's body is cached so it can be used inside the original implementation's body.
+
+If there aren't any implementations that satisfy the current type of the expression, the expression is left as-is and will be checked again in the next pass, when hopefully more types have been inferred. However, if the type unifies but the bounds don't, an error is raised immediately.
+
+Bounds may refer to themselves recursively, so to accommodate this, the typechecker maintains a stack of bounds it has already checked; if the stack already contains the current bound, that bound is assumed to be satisfied. This allows things like `A where (Show A) => instance (Show (Maybe A))` where `A` is `Maybe _`.
+
+## Exhaustiveness checking
+
+During the monomorphization phase, the typechecker also performs exhaustiveness checking for variable assignments, function parameters and `when` expressions. The algorithm was adapted from [this paper](https://julesjacobs.com/notes/patternmatching/patternmatching.pdf) and [this example](https://github.com/yorickpeterse/pattern-matching-in-rust) to support tuple, destructuring and literal patterns in addition to enumeration ("constructor") patterns.
+
+## Finalization
+
+Finally, the typechecker does one last pass over all expressions to ensure they don't contain any unresolved type variables. If one does, the `could not determine the type of this expression` error is produced. Internally, the AST made of `MonomorphizedExpression` values (whose types may contain type variables) is converted into an AST made of `Expression` values (whose types may not contain type variables). The program entrypoint is also considered to be a monomorphized implementation whose ID is exposed by the `entrypoint` field.
+
+For the purpose of diagnostics and IDE support, finalized expressions may contain type parameters. That way, you can get type information while editing the body of a generic constant or instance. The IR generator only processes monomorphized expressions, though, and will crash if it encounters a type parameter (indicating a compiler bug).
+
+## Other things the typechecker does
+
+-   **Instance collision checking:** Whenever a new instance is processed, the typechecker loops over all previous instances to see if they overlap. During this check, type parameters are treated like type variables and unify with everything. No instance may unify with any other instance, even if the bounds are different. You can disable this behavior on a per-trait basis using `[allow-overlapping-instances]`; then, the first instance that matches is chosen immediately without evaluating any further instances. To keep things determinstic, if `[allow-overlapping-instances]` is enabled for a trait, all of the trait's instances must appear in the same file.
+
+-   **Numeric type variables and default types:** Numeric literals are assigned a type variable that only unifies with the builtin number types like `Number` and `Natural`. If a better type cannot be inferred, the variable defaults to `Number`. After this, the numeric literal is parsed to ensure it fits within the type (eg. `1.5 :: Natural` causes an error). Default types for type parameters (eg. `prompt :: (Output : Text) where (Read Output) => Text -> Output`) are resolved similarly.
+
+-   **Inferred parameters:** You can prefix a type parameter with `infer` to change the order of bounds checking. Usually, the type checker determines the types of type parameters from the type of the expression provided at the use site, and then checks to make sure any bounds are satisfied. `infer` reverses this process — it determines the type of the type parameter marked `infer` from any bounds, and then checks to make sure this type matches the type at the use site. `infer` doesn't change the behavior of valid code, but it can produce better error messages for invalid code.
+
+-   **Formatting types and patterns for diagnostics:** The typechecker also contains machinery for converting types and patterns back into strings so they can be displayed in diagnostics and IDEs. The formatter is very flexible and can produce output in several different formats (eg. naming type variables and parameters or replacing them with `_`).
