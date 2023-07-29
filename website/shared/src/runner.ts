@@ -94,11 +94,12 @@ export const useRunner = (context: any) => {
             try {
                 // @ts-ignore
                 await import("../wasm");
-                console.log("wasm loaded");
 
-                runner.current = new Runner();
-
-                resolve();
+                // HACK: Wait for the wasm to finish being cached
+                setTimeout(() => {
+                    runner.current = new Runner();
+                    resolve();
+                }, 500);
             } catch (error) {
                 reject(error);
             }
