@@ -999,8 +999,10 @@ const ColorAsset = (props: { color: string; onChangeColor?: (color: string) => v
             {(popupState) => (
                 <>
                     <div className="flex w-full h-full" style={{ backgroundColor: props.color }}>
-                        <button
-                            disabled={props.onChangeColor == null}
+                        <div
+                            style={{
+                                pointerEvents: props.onChangeColor == null ? "none" : undefined,
+                            }}
                             className="w-full h-full"
                             {...bindToggle(popupState)}
                         />
