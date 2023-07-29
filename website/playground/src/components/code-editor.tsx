@@ -915,7 +915,8 @@ class AssetDecoration extends WidgetType {
 
 const Asset = (props: {
     asset: string;
-    onChange: (asset: string) => void;
+    disabled?: boolean;
+    onChange?: (asset: string) => void;
     onClick?: () => void;
 }) => {
     const content = (() => {
@@ -937,7 +938,11 @@ const Asset = (props: {
     })();
 
     return (
-        <div className="inline-block w-4 h-4" onClick={props.onClick}>
+        <div
+            className="inline-block w-4 h-4"
+            style={{ pointerEvents: props.disabled ? "none" : undefined }}
+            onClick={props.onClick}
+        >
             {content}
         </div>
     );
@@ -953,13 +958,17 @@ const AssetContainer = (props: { error?: boolean; children: JSX.Element }) => (
     </div>
 );
 
-const ColorAsset = (props: { color: string; onChangeColor: (color: string) => void }) => (
+const ColorAsset = (props: { color: string; onChangeColor?: (color: string) => void }) => (
     <AssetContainer>
         <PopupState variant="popover">
             {(popupState) => (
                 <>
                     <div className="flex w-full h-full" style={{ backgroundColor: props.color }}>
-                        <button className="w-full h-full" {...bindToggle(popupState)} />
+                        <button
+                            disabled={props.onChangeColor == null}
+                            className="w-full h-full"
+                            {...bindToggle(popupState)}
+                        />
                     </div>
 
                     <Popover
@@ -968,7 +977,7 @@ const ColorAsset = (props: { color: string; onChangeColor: (color: string) => vo
                     >
                         <CompactPicker
                             color={props.color}
-                            onChange={(color) => props.onChangeColor(color.hex)}
+                            onChange={(color) => props.onChangeColor?.(color.hex)}
                         />
                     </Popover>
                 </>
@@ -1135,12 +1144,12 @@ const githubDark = githubDarkInit({
 
 const builtinCompletions: SpecialCompletion[] = [
     {
-        element: () => <Asset asset="#007aff" />,
+        element: () => <Asset asset="#007aff" disabled />,
         help: "Insert a color.",
         template: "`#007aff`",
     },
     {
-        element: () => <Asset asset="/images/logo.svg" />,
+        element: () => <Asset asset="/images/logo.svg" disabled />,
         help: "Insert an image.",
         template: "`/images/logo.svg`",
     },
