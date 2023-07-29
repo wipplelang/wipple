@@ -53,7 +53,7 @@ import { LRLanguage, LanguageSupport } from "@codemirror/language";
 import { parser } from "../languages/wipple.grammar";
 import { Settings } from "../App";
 import { CircularProgress, Popover } from "@mui/material";
-import { CompactPicker } from "react-color";
+import { GithubPicker, SwatchesPicker } from "react-color";
 
 export interface CodeEditorProps {
     id: string;
@@ -211,6 +211,11 @@ export const CodeEditor = (props: CodeEditorProps) => {
         tree.iterate({
             enter: (node) => {
                 const { from, to } = node;
+
+                // Decorations may not span multiple lines
+                if (view.state.sliceDoc(from, to).includes("\n")) {
+                    return;
+                }
 
                 switch (node.type.name) {
                     case "Placeholder":
@@ -975,9 +980,12 @@ const ColorAsset = (props: { color: string; onChangeColor?: (color: string) => v
                         {...bindPopover(popupState)}
                         anchorOrigin={{ horizontal: "left", vertical: "bottom" }}
                     >
-                        <CompactPicker
+                        <SwatchesPicker
                             color={props.color}
-                            onChange={(color) => props.onChangeColor?.(color.hex)}
+                            onChangeComplete={(color) => {
+                                props.onChangeColor?.(color.hex);
+                                popupState.setOpen(false);
+                            }}
                         />
                     </Popover>
                 </>
