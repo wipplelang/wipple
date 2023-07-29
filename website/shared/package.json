@@ -5,8 +5,7 @@
     "type": "module",
     "main": "dist/src/index.js",
     "scripts": {
-        "wasm": "./scripts/wasm.sh",
-        "build": "npm run wasm && tsc && mkdir -p dist/wasm && cp -r wasm/pkg/* dist/wasm && mkdir -p dist/src/styles && cp -r src/styles/* dist/src/styles"
+        "build": "tsc && (cd dist && rm -f ./wasm && ln -s ../wasm ./wasm) && mkdir -p dist/src/styles && cp -r src/styles/* dist/src/styles"
     },
     "peerDependencies": {
         "@mui/icons-material": "^5.11.9",

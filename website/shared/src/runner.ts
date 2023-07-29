@@ -89,31 +89,9 @@ export type AnalysisConsoleRequest =
 export const useRunner = (context: any) => {
     const runner = useRef<Worker | null>(null);
 
-    const newRunnerPromise = () =>
-        new Promise<void>(async (resolve, reject) => {
-            try {
-                // @ts-ignore
-                await import("../wasm");
-
-                // HACK: Wait for the wasm to finish being cached
-                setTimeout(() => {
-                    runner.current = new Runner();
-                    resolve();
-                }, 500);
-            } catch (error) {
-                reject(error);
-            }
-        });
-
-    const runnerPromise = useRef<Promise<void>>();
-    const [loaded, setLoaded] = useState(false);
-
     const reset = () => {
         runner.current?.terminate();
-        runner.current = null;
-
-        setLoaded(false);
-        runnerPromise.current = newRunnerPromise();
+        runner.current = new Runner();
     };
 
     useEffect(() => {
@@ -121,12 +99,8 @@ export const useRunner = (context: any) => {
     }, []);
 
     return {
-        isLoaded: loaded,
-        waitForLoad: () => runnerPromise.current!,
         analyze: (code: string, lint: boolean) =>
             new Promise<AnalysisOutput>(async (resolve, reject) => {
-                await runnerPromise.current;
-
                 const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = async (event) => {
                     try {
@@ -190,8 +164,6 @@ export const useRunner = (context: any) => {
             }),
         run: (handleConsole: (request: AnalysisConsoleRequest) => void) =>
             new Promise<void>(async (resolve, reject) => {
-                await runnerPromise.current;
-
                 let functions: any[] = [];
                 let resolveFunctionResult: ((value: any) => void) | undefined;
 
@@ -363,8 +335,6 @@ export const useRunner = (context: any) => {
             }),
         hover: (start: number, end: number) =>
             new Promise<HoverOutput | null>(async (resolve, reject) => {
-                await runnerPromise.current;
-
                 const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = (event) => {
                     resolve(event.data);
@@ -380,8 +350,6 @@ export const useRunner = (context: any) => {
             }),
         completions: (position: number) =>
             new Promise<AnalysisOutputCompletions>(async (resolve, reject) => {
-                await runnerPromise.current;
-
                 const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = (event) => {
                     resolve(event.data);
@@ -397,8 +365,6 @@ export const useRunner = (context: any) => {
             }),
         format: (code: string) =>
             new Promise<string | undefined>(async (resolve, reject) => {
-                await runnerPromise.current;
-
                 const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = (event) => {
                     resolve(event.data);

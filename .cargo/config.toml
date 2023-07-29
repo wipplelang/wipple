@@ -1,2 +1,5 @@
 [env]
 CARGO_WORKSPACE_DIR = { value = "", relative = true }
+
+[target.'cfg(target_arch = "wasm32")']
+rustflags = ["-C", "link-arg=--max-memory=4294967296"]

@@ -90,22 +90,10 @@ export const PlaygroundRunner = forwardRef<
 
     const [showTemplatesWarning, setShowTemplatesWarning] = useState(false);
 
-    const [showRunnerLoading, setShowRunnerLoading] = useState(false);
-
-    useEffect(() => {
-        setTimeout(async () => {
-            if (runner.isLoaded) return;
-
-            setShowRunnerLoading(true);
-            await runner.waitForLoad();
-            setShowRunnerLoading(false);
-        }, 1500);
-    }, []);
-
     const [outputRef, { height: outputHeight }] = useMeasure();
 
     const animatedOutputStyle = useSpring(
-        showRunnerLoading || fatalError || output.current != null
+        fatalError || output.current != null
             ? { opacity: 1, height: outputHeight }
             : { opacity: 0, height: 0 }
     );
@@ -291,18 +279,6 @@ export const PlaygroundRunner = forwardRef<
                                     Your code contains placeholders that need to be filled before
                                     your program can be run.
                                 </p>
-                            </div>
-                        );
-                    }
-
-                    if (showRunnerLoading) {
-                        return (
-                            <div className="p-4 pt-1 bg-gray-50 dark:bg-gray-800 text-black dark:text-white">
-                                <div className="bouncing-loader">
-                                    <div />
-                                    <div />
-                                    <div />
-                                </div>
                             </div>
                         );
                     }

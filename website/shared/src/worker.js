@@ -1,5 +1,8 @@
 import { v4 as uuid } from "uuid";
 import * as Sentry from "@sentry/browser";
+import initRunner from "../wasm/Cargo.toml";
+
+const runner = initRunner();
 
 if (import.meta.env.PROD) {
     Sentry.init({ dsn: import.meta.env.VITE_SENTRY_DSN });
@@ -14,8 +17,6 @@ Error.stackTraceLimit = 10000;
 
 onmessage = async (event) => {
     try {
-        const runner = await import("../wasm");
-
         switch (event.data.operation) {
             case "analyze": {
                 if (cancel) {
