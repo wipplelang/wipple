@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react-swc";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import wasm from "vite-plugin-wasm";
 import topLevelAwait from "vite-plugin-top-level-await";
+import { lezer } from "@lezer/generator/rollup";
 
 export default defineConfig(({ command, mode }) => {
     const env = loadEnv(mode, process.cwd(), "");
@@ -13,6 +14,7 @@ export default defineConfig(({ command, mode }) => {
         },
         plugins: [
             react(),
+            lezer(),
             wasm(),
             topLevelAwait(),
             env.CI != null

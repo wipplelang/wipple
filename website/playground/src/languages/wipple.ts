@@ -24,6 +24,7 @@ export const register = () => {
         comment: { pattern: /--.*/, greedy: true },
         number: { pattern: /-?[0-9]+(\.[0-9]+)?/, greedy: true },
         text: { pattern: /"[^"\\]*(\\.[^"\\]*)*"/s, greedy: true },
+        asset: { pattern: /`[^`]*`/s, greedy: true },
         name: { pattern: /[^\n\t \(\)\[\]\{\}"]+/, greedy: true },
         error: /.*/,
     };

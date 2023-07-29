@@ -1,0 +1,36 @@
+@top Program { expression* }
+
+@skip { space | lineContinue }
+expression { Comment | Placeholder | QuoteName | RepeatName | Text | Number | Asset | Keyword | Operator | Type | Name }
+
+@tokens {
+  "[[" "]]"
+  "[" "]"
+
+  "(" ")"
+  "'(" ")"
+  "...(" ")"
+
+  "{" "}"
+  "'{" "}"
+  "...{" "}"
+
+  space { $[ \t\n\r]+ }
+  lineContinue { "\\" }
+
+  Comment { "--" ![\n]* }
+  Placeholder { "(*" ![\(\)\*]* "*)" }
+  QuoteName { "'" $[A-Za-z0-9\-_]+ $[!?']? }
+  RepeatName { "..." $[A-Za-z0-9\-_]+ $[!?']? }
+  Text { '"' (!["\\] | "\\" _)* '"' }
+  Number { "-"? $[0-9]+ ("." $[0-9]+)? }
+  Asset { '`' (![`\\] | "\\" _)* '`' }
+  Keyword { "_" | "use" | "when" | "type" | "trait" | "instance" | "where" | "external" | "syntax" | "format" | "with" }
+  Operator { ":" | "::" | "->" | "=>" | "." }
+  Type { $[A-Z] ![\r\n\t \(\)\[\]\{\}'"/]* }
+  Name { $[~`!@#$%^&*\-+=\\\|:;<,>.?/]+ | ($[A-Za-z0-9\-_]+ $[!?']?) }
+
+  @precedence { space, lineContinue, Comment, Placeholder, QuoteName, RepeatName, Text, Number, Asset, Keyword, Operator, Type, Name }
+}
+
+@detectDelim

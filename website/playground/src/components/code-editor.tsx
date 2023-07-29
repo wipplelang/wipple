@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import ReactDOM from "react-dom/client";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SimpleCodeEditor from "./react-simple-code-editor";
 import * as prism from "prismjs";
 import Divider from "@mui/material/Divider";
@@ -33,10 +34,19 @@ import FullScreenRounded from "@mui/icons-material/FullscreenRounded";
 import FullScreenExitRounded from "@mui/icons-material/FullscreenExitRounded";
 import MoreHoriz from "@mui/icons-material/MoreHoriz";
 import Download from "@mui/icons-material/Download";
-import getCaretCoordinates from "textarea-caret";
-import { Settings } from "../App";
 import * as Sentry from "@sentry/react";
 import PopupState, { bindMenu, bindTrigger } from "material-ui-popup-state";
+import { minimalSetup } from "codemirror";
+import { EditorView, placeholder, Decoration, ViewPlugin, DecorationSet } from "@codemirror/view";
+import { Compartment, EditorState, Range } from "@codemirror/state";
+import { syntaxTree } from "@codemirror/language";
+import { defaultKeymap, indentWithTab } from "@codemirror/commands";
+import { keymap, hoverTooltip, ViewUpdate, closeHoverTooltips } from "@codemirror/view";
+import { githubLightInit, githubDarkInit } from "@uiw/codemirror-theme-github";
+import { styleTags, tags as t } from "@lezer/highlight";
+import { LRLanguage, LanguageSupport } from "@codemirror/language";
+import { parser } from "../languages/wipple.grammar";
+import { Settings } from "../App";
 
 export interface CodeEditorProps {
     id: string;
@@ -52,24 +62,16 @@ export interface CodeEditorProps {
 }
 
 interface Hover {
-    x: number;
-    y: number;
     output: HoverOutput | null;
     diagnostic:
         | [AnalysisOutputDiagnostic, boolean, AnalysisOutputDiagnostic["notes"][number]]
         | undefined;
 }
 
-const closingBrackets: Record<string, string> = {
-    "(": ")",
-    "{": "}",
-    "[": "]",
-};
-
 export const CodeEditor = (props: CodeEditorProps) => {
     const containerID = `code-editor-container-${props.id}`;
-    const editorID = `code-editor-editor-${props.id}`;
-    const textAreaID = `code-editor-text-${props.id}`;
+
+    const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
 
     const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion)");
     useEffect(() => {
@@ -78,17 +80,160 @@ export const CodeEditor = (props: CodeEditorProps) => {
         });
     }, [prefersReducedMotion]);
 
+    const editor = useRef<HTMLDivElement>(null);
+    const view = useRef<EditorView | null>(null);
+
     const [firstLayout, setFirstLayout] = useState(true);
 
-    const codeEditorRef = useRef<SimpleCodeEditor>(null);
     const outputRef = useRef<PlaygroundRunner>(null);
 
     const [analysis, setAnalysis] = useRefState<AnalysisOutput | undefined>(undefined);
     const [output, setOutput] = useState<Output | undefined>();
 
-    const [syntaxHighlighting, setSyntaxHighlighting] = useState<
+    const [hoverPos, setHoverPos] = useRefState<[number, number] | undefined>(undefined);
+
+    const hover = hoverTooltip(async (view, pos, side) => {
+        const { from, to, text } = view.state.doc.lineAt(pos);
+        let start = pos,
+            end = pos;
+        while (start > from && /[^\s]/.test(text[start - from - 1])) start--;
+        while (end < to && /[^\s]/.test(text[end - from])) end++;
+        if ((start == pos && side < 0) || (end == pos && side > 0)) {
+            setHoverPos(undefined);
+            return null;
+        }
+
+        let hoverDiagnostic: Hover["diagnostic"];
+        outer: for (const diagnostic of analysis.current?.diagnostics ?? []) {
+            for (let noteIndex = 0; noteIndex < diagnostic.notes.length; noteIndex++) {
+                const note = diagnostic.notes[noteIndex];
+
+                if (note.span.start >= start && note.span.end <= end) {
+                    hoverDiagnostic = [diagnostic, noteIndex === 0, note];
+                    break outer;
+                }
+            }
+        }
+
+        const hoverOutput = await outputRef.current!.hover(start, end);
+
+        if (!hoverDiagnostic && !hoverOutput) {
+            setHoverPos(undefined);
+            return null;
+        }
+
+        setHoverPos([start, end]);
+
+        return {
+            pos: start,
+            end,
+            create: () => {
+                const dom = document.createElement("div");
+                ReactDOM.createRoot(dom).render(
+                    <Hover
+                        hover={{ diagnostic: hoverDiagnostic, output: hoverOutput }}
+                        onApplyFix={(fix) => {
+                            view.dispatch({
+                                changes: {
+                                    from: fix.start,
+                                    to: fix.end,
+                                    insert: fix.replacement,
+                                },
+                            });
+
+                            setHoverPos(undefined);
+
+                            view.dispatch({ effects: closeHoverTooltips });
+                        }}
+                    />
+                );
+
+                return {
+                    dom,
+                    destroy: () => setHoverPos(undefined),
+                };
+            },
+        };
+    });
+
+    const [syntaxHighlighting, setSyntaxHighlighting] = useRefState<
         AnalysisOutputSyntaxHighlightingItem[]
     >([]);
+
+    const decoration = (kind: string) =>
+        Decoration.mark({
+            attributes: {
+                class: `token ${kind}`,
+            },
+        });
+
+    const getDecorations = (view: EditorView) => {
+        const tree = syntaxTree(view.state);
+
+        const items = [...syntaxHighlighting.current!];
+        const diagnostics = [...(analysis.current?.diagnostics ?? [])];
+
+        const decorations: Range<Decoration>[] = [];
+        tree.iterate({
+            enter: (node) => {
+                if (hoverPos.current) {
+                    const [start, end] = hoverPos.current;
+
+                    if (start === node.from && end === node.to) {
+                        decorations.push(decoration("hover").range(node.from, node.to));
+                    }
+                }
+
+                for (const diagnostic of diagnostics) {
+                    const notes = [...diagnostic.notes];
+                    const primaryNote = notes.shift();
+                    if (!primaryNote) {
+                        continue;
+                    }
+
+                    if (node.to > primaryNote.span.end) {
+                        continue;
+                    }
+
+                    if (node.from >= primaryNote.span.start && node.to > node.from) {
+                        decorations.push(
+                            decoration(`diagnostic diagnostic-${diagnostic.level}`).range(
+                                node.from,
+                                node.to
+                            )
+                        );
+                    }
+                }
+
+                if (
+                    items[0] &&
+                    items[0].start === node.from &&
+                    items[0].end === node.to &&
+                    node.to > node.from
+                ) {
+                    const { start, end, kind } = items.shift()!;
+                    decorations.push(decoration(kind).range(start, end));
+                }
+            },
+        });
+
+        return Decoration.set(decorations);
+    };
+
+    const highlight = ViewPlugin.fromClass(
+        class {
+            public decorations: DecorationSet;
+
+            constructor(view: EditorView) {
+                this.decorations = getDecorations(view);
+            }
+
+            update(update: ViewUpdate) {
+                this.decorations = getDecorations(update.view);
+            }
+        },
+        { decorations: (v) => v.decorations }
+    );
 
     const [completions, setCompletions] = useState<AnalysisOutputCompletions>();
 
@@ -109,17 +254,26 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
     const [containsTemplates, setContainsTemplates] = useRefState(false);
 
-    useEffect(() => {
-        const containsTemplates =
-            document.querySelectorAll<HTMLSpanElement>(
-                `#${editorID} .language-wipple span.token.template-content`
-            ).length > 0;
+    const onChange = (update: ViewUpdate) => {
+        props.onChange(update.state.doc.toString());
+
+        const tree = syntaxTree(update.view.state);
+
+        let containsTemplates = false;
+        tree.iterate({
+            enter: (node) => {
+                containsTemplates ||= node.type.name === "Placeholder";
+                return !containsTemplates;
+            },
+        });
 
         setContainsTemplates(containsTemplates);
-    }, [props.code]);
+    };
 
     const onReset = useCallback(() => {
-        setSyntaxHighlighting([]); // FIXME: Prevent flashing
+        // FIXME: Prevent flashing
+        setSyntaxHighlighting([]);
+        view.current!.dispatch({ effects: closeHoverTooltips });
     }, [setSyntaxHighlighting]);
 
     const onAnalyze = useCallback(
@@ -127,6 +281,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
             setAnalysis(analysis);
             setSyntaxHighlighting(analysis.syntaxHighlighting);
             setCompletions(analysis.completions);
+            view.current!.dispatch();
         },
         [setSyntaxHighlighting, setCompletions]
     );
@@ -138,338 +293,12 @@ export const CodeEditor = (props: CodeEditorProps) => {
         });
     }, []);
 
-    const [hover, setHover] = useState<Hover>();
-
-    const container = document.getElementById(containerID) as HTMLDivElement | null;
-    const textEditor = document.getElementById(textAreaID) as HTMLTextAreaElement | null;
-
-    const [mousePosition, setMousePosition] = useState<[number, number]>();
-
-    useEffect(() => {
-        const listener = (e: MouseEvent) => {
-            setMousePosition([e.x, e.y]);
-        };
-
-        window.addEventListener("mousemove", listener);
-        window.addEventListener("click", listener);
-
-        return () => {
-            window.removeEventListener("mousemove", listener);
-            window.removeEventListener("click", listener);
-        };
-    }, [setMousePosition]);
-
-    useEffect(() => {
-        if (!container || !textEditor || (canCollapse && props.collapse)) return;
-
-        let hoverTimer: NodeJS.Timeout | undefined = undefined;
-        let hoverElement: HTMLElement | undefined = undefined;
-
-        const hoverClasses = ["bg-black", "dark:bg-white", "bg-opacity-10", "dark:bg-opacity-10"];
-
-        const handleMouseMove = (e: MouseEvent) => {
-            const mouseX = e.x;
-            const mouseY = e.y;
-
-            const rectContainsMouse = (rect: DOMRect) =>
-                mouseX >= rect.left &&
-                mouseX < rect.right &&
-                mouseY >= rect.top &&
-                mouseY < rect.bottom;
-
-            if (hoverElement) {
-                if (rectContainsMouse(hoverElement.getBoundingClientRect())) {
-                    return;
-                }
-            }
-
-            const hover = document.querySelector(`${containerID} #hover`);
-
-            if (hover && rectContainsMouse(hover.getBoundingClientRect())) {
-                return;
-            }
-
-            let foundHoverElement = false;
-            for (const el of document.querySelectorAll<HTMLSpanElement>(`#${editorID} .token`)) {
-                if (rectContainsMouse(el.getBoundingClientRect())) {
-                    setHover(undefined);
-                    hoverElement?.classList.remove(...hoverClasses);
-                    hoverElement = el;
-                    foundHoverElement = true;
-                    break;
-                }
-            }
-
-            if (!foundHoverElement) {
-                setHover(undefined);
-                hoverElement?.classList.remove(...hoverClasses);
-                hoverElement = undefined;
-                return;
-            }
-
-            clearTimeout(hoverTimer);
-            hoverTimer = setTimeout(async () => {
-                if (
-                    !hoverElement ||
-                    !hoverElement.dataset.wippleStartIndex ||
-                    !hoverElement.dataset.wippleEndIndex
-                ) {
-                    return;
-                }
-
-                const start = parseInt(hoverElement.dataset.wippleStartIndex);
-                const end = parseInt(hoverElement.dataset.wippleEndIndex);
-
-                let hoverDiagnostic: Hover["diagnostic"];
-                outer: for (const diagnostic of analysis.current?.diagnostics ?? []) {
-                    for (let noteIndex = 0; noteIndex < diagnostic.notes.length; noteIndex++) {
-                        const note = diagnostic.notes[noteIndex];
-
-                        if (note.span.start >= start && note.span.end <= end) {
-                            hoverDiagnostic = [diagnostic, noteIndex === 0, note];
-                            break outer;
-                        }
-                    }
-                }
-
-                const hoverOutput = await outputRef.current!.hover(start, end);
-
-                if (hoverOutput || hoverDiagnostic) {
-                    hoverElement.classList.add(...hoverClasses);
-
-                    setHover({
-                        x: hoverElement.getBoundingClientRect().x,
-                        y: hoverElement.getBoundingClientRect().bottom + window.scrollY,
-                        output: hoverOutput,
-                        diagnostic: hoverDiagnostic,
-                    });
-                }
-            }, 250);
-        };
-
-        const handleMouseLeave = () => {
-            setHover(undefined);
-            hoverElement?.classList.remove(...hoverClasses);
-            hoverElement = undefined;
-        };
-
-        container.addEventListener("mouseleave", handleMouseLeave);
-        textEditor.addEventListener("mousemove", handleMouseMove);
-
-        return () => {
-            container.removeEventListener("mouseleave", handleMouseLeave);
-            textEditor.removeEventListener("mousemove", handleMouseMove);
-        };
-    }, [container, textEditor, canCollapse, props.collapse]);
-
-    useEffect(() => {
-        const nodes = [
-            ...document.querySelectorAll<HTMLSpanElement>(
-                `#${editorID} .language-wipple span.token`
-            ),
-        ];
-
-        const colors: string[][] = [
-            ["bg-blue-500", "dark:bg-blue-400"],
-            ["bg-red-500", "dark:bg-red-400"],
-            ["bg-green-500", "dark:bg-green-400"],
-            ["bg-yellow-500", "dark:bg-yellow-400"],
-        ];
-
-        const additionalClasses = ["bg-opacity-20", "dark:bg-opacity-20"];
-
-        if (!(props.settings.beginner ?? true)) {
-            for (const node of nodes) {
-                for (const color of colors) {
-                    node.classList.remove(...color);
-                }
-
-                node.classList.remove(...additionalClasses);
-            }
-
-            return;
-        }
-
-        const stack: string[][] = [];
-        for (const node of nodes) {
-            let color: string[] | undefined;
-            if (closingBrackets[node.innerText]) {
-                color = colors[stack.length % colors.length];
-                stack.push(color);
-            } else if (Object.values(closingBrackets).includes(node.innerText)) {
-                color = stack[stack.length - 1];
-                stack.pop();
-            } else {
-                color = stack[stack.length - 1];
-            }
-
-            if (color) {
-                node.classList.add(...color);
-                node.classList.add(...additionalClasses);
-            }
-        }
-    }, [props.code, props.settings.beginner]);
-
-    useEffect(() => {
-        if (!syntaxHighlighting) return;
-
-        const nodes = [
-            ...document.querySelectorAll<HTMLSpanElement>(
-                `#${editorID} .language-wipple span.token`
-            ),
-        ];
-
-        let currentNode = nodes.shift();
-        if (!currentNode) return;
-
-        let start = 0;
-
-        for (const item of syntaxHighlighting) {
-            while (item.start !== start && item.end !== start + currentNode.innerText.length) {
-                start += currentNode.innerText.length;
-                currentNode = nodes.shift();
-                if (!currentNode) return;
-            }
-
-            if (!currentNode.classList.contains("diagnostic")) {
-                currentNode.classList.add(item.kind);
-                currentNode.dataset.wippleStartIndex = item.start.toString();
-                currentNode.dataset.wippleEndIndex = item.end.toString();
-            }
-        }
-    }, [syntaxHighlighting]);
-
-    useEffect(() => {
-        if (!analysis.current?.diagnostics) return;
-
-        const forEachNode = (f: (start: number, end: number, node: HTMLSpanElement) => boolean) => {
-            const nodes = [
-                ...document.querySelectorAll<HTMLSpanElement>(
-                    `#${editorID} .language-wipple span.token`
-                ),
-            ];
-
-            let currentNode = nodes.shift();
-            if (!currentNode) return;
-
-            let start = 0;
-            while (!f(start, start + currentNode.innerText.length, currentNode)) {
-                start += currentNode.innerText.length;
-                currentNode = nodes.shift();
-                if (!currentNode) return;
-            }
-        };
-
-        forEachNode((_start, _end, node) => {
-            node.classList.remove(
-                "diagnostic",
-                "diagnostic-error",
-                "diagnostic-warning",
-                "diagnostic-note"
-            );
-
-            return false;
-        });
-
-        for (const diagnostic of analysis.current?.diagnostics ?? []) {
-            const notes = [...diagnostic.notes];
-            const primaryNote = notes.shift();
-            if (!primaryNote) {
-                continue;
-            }
-
-            forEachNode((start, end, node) => {
-                if (end > primaryNote.span.end) {
-                    return true;
-                }
-
-                if (start >= primaryNote.span.start) {
-                    node.classList.add("diagnostic", `diagnostic-${diagnostic.level}`);
-                    node.dataset.wippleStartIndex = primaryNote.span.start.toString();
-                    node.dataset.wippleEndIndex = primaryNote.span.end.toString();
-                }
-
-                return false;
-            });
-
-            forEachNode((start, end, node) => {
-                const note = notes[0];
-                if (!note || end > note.span.end) {
-                    notes.shift();
-                    return true;
-                }
-
-                if (start >= note.span.start && !node.classList.contains("diagnostic")) {
-                    node.classList.add("diagnostic", "diagnostic-note");
-                    node.dataset.wippleStartIndex = note.span.start.toString();
-                    node.dataset.wippleEndIndex = note.span.end.toString();
-                }
-
-                return false;
-            });
-        }
-    }, [analysis.current?.diagnostics]);
-
-    const getCodeEditorCaretPosition = () => {
-        const codeEditor = document.getElementById(textAreaID) as HTMLTextAreaElement | null;
-        if (!codeEditor) return undefined;
-
-        const coordinates = getCaretCoordinates(codeEditor, codeEditor.selectionStart);
-        if (!coordinates) return undefined;
-
-        return {
-            x: coordinates.left,
-            minY: coordinates.top,
-            midY: coordinates.top + coordinates.height / 2,
-            maxY: coordinates.top + coordinates.height,
-        };
-    };
-
-    const [caretPosition, setCaretPosition] =
-        useState<ReturnType<typeof getCodeEditorCaretPosition>>();
-
-    const updateContextMenuTrigger = useCallback(() => {
-        requestAnimationFrame(() => {
-            const container = document.getElementById(containerID);
-
-            if (!mousePosition || !container) {
-                setCaretPosition(undefined);
-                return;
-            }
-
-            const [mouseX, mouseY] = mousePosition;
-            const containerRect = container.getBoundingClientRect();
-            if (
-                mouseX < containerRect.left ||
-                mouseX >= containerRect.right ||
-                mouseY < containerRect.top ||
-                mouseY >= containerRect.bottom
-            ) {
-                setCaretPosition(undefined);
-                return;
-            }
-
-            setCaretPosition(getCodeEditorCaretPosition());
-        });
-    }, [mousePosition, textEditor]);
-
-    useEffect(() => {
-        const textArea = document.getElementById(textAreaID)!;
-
-        const keydownHandler = () => setCaretPosition(getCodeEditorCaretPosition());
-        textArea.addEventListener("keydown", keydownHandler);
-
-        return () => {
-            textArea.removeEventListener("keydown", keydownHandler);
-        };
-    }, []);
-
-    useEffect(updateContextMenuTrigger, [props.id, mousePosition]);
-
     const [contextMenuAnchor, setContextMenuAnchor] = useState<HTMLElement>();
     const [contextMenuSearch, setContextMenuSearch] = useState("");
 
     const showContextMenu = () => {
+        const caretPosition = view.current!.coordsAtPos(view.current!.state.selection.main.from);
+
         if (!caretPosition) {
             console.error("attempt to show context menu without caret position");
             return;
@@ -477,8 +306,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
         const anchor = document.createElement("div");
         anchor.style.position = "absolute";
-        anchor.style.top = `${caretPosition.maxY + 20}px`;
-        anchor.style.left = `${caretPosition.x}px`;
+        anchor.style.top = `${caretPosition.top + 20}px`;
+        anchor.style.left = `${caretPosition.left}px`;
 
         document.getElementById(containerID)!.appendChild(anchor);
 
@@ -502,89 +331,28 @@ export const CodeEditor = (props: CodeEditorProps) => {
     const insertCompletion = (completion: Completion) => {
         const code = props.code;
 
-        const before = code.slice(0, textEditor!.selectionEnd);
+        const selection = view.current!.state.selection.main;
+
+        const before = code.slice(0, selection.to);
         const padBefore = (before[before.length - 1] ?? " ").match(/\s/) ? "" : " ";
 
-        const after = code.slice(textEditor!.selectionEnd);
+        const after = code.slice(selection.from);
         const padAfter = (after[0] ?? " ").match(/\s/) ? "" : " ";
 
+        const text = padBefore + completion.template + padAfter;
+
+        view.current!.dispatch({
+            changes: {
+                from: selection.from,
+                to: selection.to,
+                insert: text,
+            },
+            selection: {
+                anchor: selection.to + text.length,
+            },
+        });
+
         props.onChange(before + padBefore + completion.template + padAfter + after);
-    };
-
-    useEffect(() => {
-        const textArea = document.getElementById(textAreaID)! as HTMLTextAreaElement;
-
-        let isSelectingGroup = false;
-        const handler = (e: MouseEvent | KeyboardEvent) => {
-            requestAnimationFrame(() => {
-                let isAttemptingSelection = false;
-                if (e instanceof MouseEvent) {
-                    isAttemptingSelection = textArea.selectionStart === textArea.selectionEnd;
-                } else if (e instanceof KeyboardEvent) {
-                    isAttemptingSelection = e.key === "ArrowLeft" || e.key === "ArrowRight";
-                }
-
-                if (!isAttemptingSelection) {
-                    return;
-                }
-
-                if (isSelectingGroup) {
-                    textArea.setSelectionRange(textArea.selectionEnd, textArea.selectionEnd);
-                    isSelectingGroup = false;
-                    return;
-                }
-
-                const nodes = [
-                    ...document.querySelectorAll<HTMLSpanElement>(
-                        `#${editorID} .language-wipple span.token`
-                    ),
-                ];
-
-                interface NodeGroup {
-                    start: number;
-                    end: number;
-                }
-
-                const nodeGroups: NodeGroup[] = [];
-                let start = 0;
-
-                while (nodes.length !== 0) {
-                    const node = nodes.shift()!;
-
-                    if (node.classList.contains("template-before")) {
-                        nodeGroups.push({ start, end: start });
-                    } else if (node.classList.contains("template-after")) {
-                        nodeGroups[nodeGroups.length - 1].end = start + node.innerText.length;
-                    }
-
-                    start += node.innerText.length;
-                }
-
-                const nodeGroup = nodeGroups.find(
-                    (group) =>
-                        textArea.selectionStart >= group.start && textArea.selectionEnd <= group.end
-                );
-
-                if (nodeGroup) {
-                    textArea.setSelectionRange(nodeGroup.start, nodeGroup.end, "forward");
-                }
-
-                isSelectingGroup = nodeGroup != null;
-            });
-        };
-
-        textArea.addEventListener("mousedown", handler);
-        textArea.addEventListener("keydown", handler);
-
-        return () => {
-            textArea.removeEventListener("mousedown", handler);
-            textArea.removeEventListener("keydown", handler);
-        };
-    }, []);
-
-    const applyFix = (fix: AnalysisConsoleDiagnosticFix) => {
-        const fixed = props.code.slice(0, fix.start) + fix.replacement + props.code.slice(fix.end);
-        props.onChange(fixed);
     };
 
     const download = async () => {
@@ -604,11 +372,68 @@ export const CodeEditor = (props: CodeEditorProps) => {
         URL.revokeObjectURL(url);
     };
 
+    const themeConfig = useMemo(() => new Compartment(), []);
+
+    useEffect(() => {
+        view.current = new EditorView({
+            state: EditorState.create({
+                doc: props.code,
+                extensions: [
+                    minimalSetup,
+                    wippleLanguage,
+                    keymap.of([...defaultKeymap, indentWithTab]),
+                    EditorView.lineWrapping,
+                    EditorView.baseTheme({
+                        "&.cm-editor": {
+                            fontSize: "16px",
+                        },
+                        "&.cm-editor.cm-focused": {
+                            outline: "none",
+                        },
+                        ".cm-scroller": {
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontVariantLigatures: "none",
+                        },
+                        ".cm-content": {
+                            padding: 0,
+                        },
+                        ".cm-line": {
+                            padding: 0,
+                        },
+                        ".cm-placeholder": {
+                            fontStyle: "italic",
+                        },
+                        ".cm-tooltip-hover": {
+                            border: "none",
+                            backgroundColor: "unset",
+                        },
+                    }),
+                    themeConfig.of(prefersDarkMode ? githubDark : githubLight),
+                    placeholder("Write your code here!"),
+                    hover,
+                    highlight,
+                    EditorView.updateListener.of(onChange),
+                ],
+            }),
+            parent: editor.current!,
+        });
+
+        return () => {
+            view.current!.destroy();
+        };
+    }, []);
+
+    useEffect(() => {
+        view.current!.dispatch({
+            effects: themeConfig.reconfigure([prefersDarkMode ? githubDark : githubLight]),
+        });
+    }, [prefersDarkMode]);
+
     return (
         <div id={containerID}>
             <div className="relative -mt-3.5">
                 <div className="flex flex-row justify-end w-full pr-4 -mb-3.5">
-                    <div className="code-editor-outlined rounded-md shadow-lg shadow-gray-100 dark:shadow-gray-900 h-7 text-gray-500 text-opacity-50">
+                    <div className="code-editor-outlined rounded-md shadow-lg shadow-gray-100 dark:shadow-gray-900 h-7 text-gray-500 text-opacity-50 z-10">
                         <Tooltip title="Insert">
                             <button
                                 className="code-editor-button -ml-0.5"
@@ -627,18 +452,13 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                 disabled={props.code.length === 0}
                                 onMouseDown={async (e) => {
                                     const formatted = await outputRef.current!.format();
-
                                     if (formatted != null) {
-                                        const codeEditor = document.getElementById(
-                                            textAreaID
-                                        ) as HTMLTextAreaElement | null;
-                                        if (!codeEditor) return;
-
-                                        codeEditorRef.current!.session.history.stack.push({
-                                            timestamp: new Date().valueOf(),
-                                            value: props.code,
-                                            selectionStart: codeEditor.selectionStart,
-                                            selectionEnd: codeEditor.selectionEnd,
+                                        view.current!.dispatch({
+                                            changes: {
+                                                from: 0,
+                                                to: view.current!.state.doc.length,
+                                                insert: formatted.trimEnd(),
+                                            },
                                         });
 
                                         props.onChange(formatted.trimEnd());
@@ -727,31 +547,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 <div className="code-editor-outlined rounded-lg">
                     <animated.div style={firstLayout ? undefined : animatedCodeEditorStyle}>
                         <div ref={codeEditorContainerRef} className="p-4">
-                            <SimpleCodeEditor
-                                ref={codeEditorRef}
-                                id={editorID}
-                                textareaId={textAreaID}
-                                className="code-editor dark:caret-white"
-                                textareaClassName="outline-0"
-                                preClassName="language-wipple"
-                                style={{
-                                    fontFamily: "'JetBrains Mono', monospace",
-                                    fontStyle: props.code ? "normal" : "italic",
-                                    fontVariantLigatures: "none",
-                                    wordWrap: "break-word",
-                                    tabSize: 2,
-                                }}
-                                value={props.code}
-                                onValueChange={(code) => {
-                                    setHover(undefined);
-                                    props.onChange(code);
-                                }}
-                                highlight={(code) =>
-                                    prism.highlight(code, prism.languages.wipple, "wipple")
-                                }
-                                placeholder="Write your code here!"
-                                autoFocus={props.autoFocus}
-                            />
+                            <div className="language-wipple" ref={editor} />
                         </div>
                     </animated.div>
 
@@ -865,112 +661,203 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     </Menu>
                 )}
             </div>
-
-            {hover && (
-                <div
-                    id="hover"
-                    className="absolute pt-2"
-                    style={{
-                        left: hover.x,
-                        top: hover.y,
-                        maxWidth: 400,
-                        zIndex: 9999,
-                    }}
-                >
-                    <div className="p-2 overflow-clip bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-lg text-black dark:text-white">
-                        {hover.diagnostic ? (
-                            <div className="flex flex-col">
-                                <div
-                                    className={`font-bold ${
-                                        hover.diagnostic[0].level === "error"
-                                            ? "text-red-600 dark:text-red-500"
-                                            : "text-yellow-600 dark:text-yellow-500"
-                                    }`}
-                                >
-                                    <Markdown>
-                                        {`${hover.diagnostic[0].level}: ${hover.diagnostic[0].message}`}
-                                    </Markdown>
-                                </div>
-
-                                <div className="flex flex-col">
-                                    {hover.diagnostic[2].messages.map((message, messageIndex) => (
-                                        <div
-                                            key={messageIndex}
-                                            className={
-                                                messageIndex === 0 && hover.diagnostic![1]
-                                                    ? hover.diagnostic![0].level === "error"
-                                                        ? "text-red-600 dark:text-red-500"
-                                                        : "text-yellow-600 dark:text-yellow-500"
-                                                    : "opacity-75"
-                                            }
-                                        >
-                                            <Markdown>{message}</Markdown>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {hover.diagnostic[0].fix && (
-                                    <div className="flex">
-                                        <button
-                                            className="mt-1.5 px-1.5 py-0.5 rounded-md bg-blue-500 text-white"
-                                            onClick={() => {
-                                                applyFix(hover.diagnostic![0].fix!);
-                                                setHover(undefined);
-                                            }}
-                                        >
-                                            <Markdown>
-                                                {hover.diagnostic[0].fix.description}
-                                            </Markdown>
-                                        </button>
-                                    </div>
-                                )}
-
-                                {hover.output && (
-                                    <div className="h-0.5 my-2 bg-gray-100 dark:bg-gray-700"></div>
-                                )}
-                            </div>
-                        ) : null}
-
-                        {hover.output?.code ? (
-                            <div className="pointer-events-none">
-                                <SimpleCodeEditor
-                                    className="code-editor dark:caret-white"
-                                    textareaClassName="outline-0"
-                                    preClassName="language-wipple"
-                                    style={{
-                                        fontFamily: "'JetBrains Mono', monospace",
-                                        fontStyle: props.code ? "normal" : "italic",
-                                        fontVariantLigatures: "none",
-                                        wordWrap: "break-word",
-                                    }}
-                                    value={hover.output.code}
-                                    highlight={(code) =>
-                                        prism.highlight(code, prism.languages.wipple, "wipple")
-                                    }
-                                    onValueChange={() => {}}
-                                    contentEditable={false}
-                                />
-
-                                {hover.output.help ? (
-                                    <Markdown>{hover.output.help}</Markdown>
-                                ) : null}
-                            </div>
-                        ) : null}
-
-                        {hover.output?.url ? (
-                            <div className="mt-1.5">
-                                <a
-                                    href={hover.output.url}
-                                    target="_blank"
-                                    className="px-1.5 py-0.5 rounded-md bg-blue-500 text-white"
-                                >
-                                    Documentation
-                                </a>
-                            </div>
-                        ) : null}
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
+
+const Hover = (props: {
+    hover: Hover;
+    onApplyFix: (fix: AnalysisConsoleDiagnosticFix) => void;
+}) => {
+    return (
+        <div className="mt-2 p-2 overflow-clip bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-lg text-black dark:text-white">
+            {props.hover.diagnostic ? (
+                <div className="flex flex-col">
+                    <div
+                        className={`font-bold ${
+                            props.hover.diagnostic[0].level === "error"
+                                ? "text-red-600 dark:text-red-500"
+                                : "text-yellow-600 dark:text-yellow-500"
+                        }`}
+                    >
+                        <Markdown>
+                            {`${props.hover.diagnostic[0].level}: ${props.hover.diagnostic[0].message}`}
+                        </Markdown>
+                    </div>
+
+                    <div className="flex flex-col">
+                        {props.hover.diagnostic[2].messages.map((message, messageIndex) => (
+                            <div
+                                key={messageIndex}
+                                className={
+                                    messageIndex === 0 && props.hover.diagnostic![1]
+                                        ? props.hover.diagnostic![0].level === "error"
+                                            ? "text-red-600 dark:text-red-500"
+                                            : "text-yellow-600 dark:text-yellow-500"
+                                        : "opacity-75"
+                                }
+                            >
+                                <Markdown>{message}</Markdown>
+                            </div>
+                        ))}
+                    </div>
+
+                    {props.hover.diagnostic[0].fix && (
+                        <div className="flex">
+                            <button
+                                className="mt-1.5 px-1.5 py-0.5 rounded-md bg-blue-500 text-white"
+                                onClick={() => {
+                                    props.onApplyFix(props.hover.diagnostic![0].fix!);
+                                }}
+                            >
+                                <Markdown>{props.hover.diagnostic[0].fix.description}</Markdown>
+                            </button>
+                        </div>
+                    )}
+
+                    {props.hover.output && (
+                        <div className="h-0.5 my-2 bg-gray-100 dark:bg-gray-700"></div>
+                    )}
+                </div>
+            ) : null}
+
+            {props.hover.output?.code ? (
+                <div className="pointer-events-none">
+                    <SimpleCodeEditor
+                        className="code-editor dark:caret-white"
+                        textareaClassName="outline-0"
+                        preClassName="language-wipple"
+                        style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontVariantLigatures: "none",
+                            wordWrap: "break-word",
+                        }}
+                        value={props.hover.output.code}
+                        highlight={(code) =>
+                            prism.highlight(code, prism.languages.wipple, "wipple")
+                        }
+                        onValueChange={() => {}}
+                        contentEditable={false}
+                    />
+
+                    {props.hover.output.help ? (
+                        <Markdown>{props.hover.output.help}</Markdown>
+                    ) : null}
+                </div>
+            ) : null}
+
+            {props.hover.output?.url ? (
+                <div className="mt-1.5">
+                    <a
+                        href={props.hover.output.url}
+                        target="_blank"
+                        className="px-1.5 py-0.5 rounded-md bg-blue-500 text-white"
+                    >
+                        Documentation
+                    </a>
+                </div>
+            ) : null}
+        </div>
+    );
+};
+
+const wippleLanguage = new LanguageSupport(
+    LRLanguage.define({
+        name: "Wipple",
+        parser: parser.configure({
+            props: [
+                styleTags({
+                    Comment: t.comment,
+                    Placeholder: t.name,
+                    QuoteName: t.name,
+                    RepeatName: t.name,
+                    Text: t.string,
+                    Number: t.number,
+                    Asset: t.string,
+                    Keyword: t.keyword,
+                    Operator: t.operator,
+                    Type: t.typeName,
+                    Name: t.name,
+                }),
+            ],
+        }),
+        languageData: {
+            commentTokens: { line: "--" },
+            wordChars: "-!?",
+        },
+    })
+);
+
+const githubLight = githubLightInit({
+    settings: {
+        background: "transparent",
+        foreground: "#24292e",
+    },
+    styles: [
+        {
+            tag: t.comment,
+            class: "token comment",
+        },
+        {
+            tag: t.string,
+            class: "token text",
+        },
+        {
+            tag: t.number,
+            class: "token number",
+        },
+        {
+            tag: t.keyword,
+            class: "token keyword",
+        },
+        {
+            tag: t.operator,
+            class: "token operator",
+        },
+        {
+            tag: t.typeName,
+            class: "token type",
+        },
+        {
+            tag: t.name,
+            class: "token name",
+        },
+    ],
+});
+
+const githubDark = githubDarkInit({
+    settings: {
+        background: "transparent",
+        foreground: "#e1e4e8",
+    },
+    styles: [
+        {
+            tag: t.comment,
+            class: "wipple-token-comment-dark",
+        },
+        {
+            tag: t.string,
+            class: "wipple-token-text-dark",
+        },
+        {
+            tag: t.number,
+            class: "wipple-token-number-dark",
+        },
+        {
+            tag: t.keyword,
+            class: "wipple-token-keyword-dark",
+        },
+        {
+            tag: t.operator,
+            class: "wipple-token-operator-dark",
+        },
+        {
+            tag: t.typeName,
+            class: "wipple-token-type-dark",
+        },
+        {
+            tag: t.name,
+            class: "wipple-token-name-dark",
+        },
+    ],
+});

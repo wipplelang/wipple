@@ -396,7 +396,7 @@ const App = () => {
                 </div>
             </div>
 
-            <div className="fixed bottom-0 flex flex-col gap-4 w-full">
+            <div className="fixed bottom-0 flex flex-col gap-4 w-full z-50">
                 <div className="w-full h-4 -mb-4 z-50 bg-gradient-to-t from-white dark:from-gray-900 to-transparent"></div>
 
                 <div className="flex items-center justify-between w-full max-w-4xl mx-auto text-sm px-6 py-4 bg-white dark:bg-gray-900">
