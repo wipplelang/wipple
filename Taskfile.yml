@@ -29,6 +29,8 @@ tasks:
 
     website-home:
         run: once
+        deps:
+            - cli
         dir: website/home
         cmds:
             - npm i
