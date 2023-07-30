@@ -27,6 +27,11 @@ swap! : a b -> {
   b . set! temp
 }
 
+[help "Toggle a `Mutable Boolean`."]
+[help-group "Utilities"]
+toggle! :: Mutable Boolean -> ()
+toggle! : b -> b . set! (b . get . not)
+
 [help "Add a value to a `Mutable` value."]
 [help-group "Math"]
 add! :: Left Right where (Add Left Right Left) => Right -> Mutable Left -> ()
