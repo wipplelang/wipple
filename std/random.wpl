@@ -22,4 +22,4 @@ instance (Random (Range Float) Float) : { min max } -> intrinsic "random-float" 
 instance (Random (Range Double) Double) : { min max } -> intrinsic "random-double" min max
 
 Element => instance (Random (List Element) (Maybe Element)) : list -> \
-  (list . nth (random (0 to (count list)))) as _
+  (list . nth (random (0 to (count list))))

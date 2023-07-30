@@ -47,14 +47,6 @@ fn some(value: Value) -> Value {
     Value::Variant(VariantIndex::new(1), vec![value])
 }
 
-fn ok(value: Value) -> Value {
-    Value::Variant(VariantIndex::new(0), vec![value])
-}
-
-fn error(value: Value) -> Value {
-    Value::Variant(VariantIndex::new(1), vec![value])
-}
-
 impl Interpreter {
     pub(crate) async fn call_runtime(
         &self,
@@ -778,16 +770,9 @@ impl Interpreter {
                 }
                 ir::Intrinsic::ListNth => {
                     runtime_fn!((Value::List(list), Value::Natural(index)) => async {
-                        let index = index as usize;
-                        let index = if (0..list.len()).contains(&index) {
-                            index
-                        } else {
-                            return Ok(error(Value::Marker));
-                        };
-
-                        Ok(match list.get(index) {
-                            Some(value) => ok(value.clone()),
-                            None => error(Value::Marker),
+                        Ok(match list.get(index as usize) {
+                            Some(value) => some(value.clone()),
+                            None => none(),
                         })
                     })
                 }
@@ -803,30 +788,30 @@ impl Interpreter {
                         Ok(Value::List(list))
                     })
                 }
-                ir::Intrinsic::ListInsert => {
+                ir::Intrinsic::ListInsertAt => {
                     runtime_fn!((Value::List(mut list), Value::Natural(index), value) => async {
                         let index = index as usize;
                         let index = if (0..list.len()).contains(&index) {
                             index
                         } else {
-                            return Ok(error(Value::Marker));
+                            return Ok(none());
                         };
 
                         list.insert(index, value);
 
-                        Ok(ok(Value::List(list)))
+                        Ok(some(Value::List(list)))
                     })
                 }
-                ir::Intrinsic::ListRemove => {
+                ir::Intrinsic::ListRemoveAt => {
                     runtime_fn!((Value::List(mut list), Value::Natural(index)) => async {
                         let index = index as usize;
                         let index = if (0..list.len()).contains(&index) {
                             index
                         } else {
-                            return Ok(error(Value::Marker));
+                            return Ok(none());
                         };
 
-                        Ok(ok(list.remove(index)))
+                        Ok(some(list.remove(index)))
                     })
                 }
                 ir::Intrinsic::ListCount => {

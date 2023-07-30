@@ -32,7 +32,6 @@ instance (Show Unsigned) : n -> intrinsic "unsigned-to-text" n
 instance (Show Float) : n -> intrinsic "float-to-text" n
 instance (Show Double) : n -> intrinsic "double-to-text" n
 instance (Show Boolean) : x? -> if x? "True" "False"
-instance (Show Index-Error) : just "invalid index"
 instance (Show None-Error) : just "found `None`"
 
 Value where (Show Value) => instance (Show (Maybe Value)) : x? -> when x? {

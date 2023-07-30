@@ -149,11 +149,11 @@ Element => instance (Iterate (List Element) Element) : list -> {
   index : mutable 0
 
   iterator (() -> when (list . nth (get index)) {
-    Ok element -> {
+    Some element -> {
       increment! index
       Some element
     }
-    Error _ -> None
+    None -> None
   })
 }
 
