@@ -38,6 +38,8 @@ tasks:
 
     website-compiler-docs:
         run: once
+        deps:
+            - website-home
         dir: website/compiler-docs
         cmds:
             - mdbook build
@@ -46,6 +48,8 @@ tasks:
 
     website-shared:
         run: once
+        deps:
+            - website-home
         dir: website/shared
         cmds:
             - (cd .. && npm i)
@@ -74,6 +78,8 @@ tasks:
 
     website-std:
         run: once
+        deps:
+            - website-home
         dir: website
         cmds:
             - mkdir -p _site/std
@@ -98,6 +104,8 @@ tasks:
 
     website-netlify:
         run: once
+        deps:
+            - website-home
         dir: website
         cmds:
           - mkdir -p _site
