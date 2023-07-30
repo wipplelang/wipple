@@ -1,0 +1,111 @@
+version: "3"
+
+output: prefixed
+
+tasks:
+    dev:
+        run: once
+        cmds:
+            - task: website
+            - npx http-server -c-1 website/_site --cors
+
+    ci:
+        run: once
+        cmds:
+            - rustup default stable && rustup target add wasm32-unknown-unknown
+            - curl -L https://github.com/rust-lang/mdBook/releases/download/v0.4.18/mdbook-v0.4.18-x86_64-unknown-linux-gnu.tar.gz | tar xvz && export PATH="${PWD}:${PATH}"
+            - task: website
+
+    cli:
+        run: once
+        cmds:
+            - cargo install --force --path tools/cli
+
+    website:
+        run: once
+        deps:
+            - cli
+            - website-home
+            - website-compiler-docs
+            - website-shared
+            - website-embed
+            - website-playground
+            - website-std
+            - website-doc
+            - website-netlify
+
+    website-home:
+        run: once
+        dir: website/home
+        cmds:
+            - npm i
+            - npm run build
+            - mkdir -p ../_site
+            - cp -r ./_site/* ../_site
+
+    website-compiler-docs:
+        run: once
+        dir: website/compiler-docs
+        cmds:
+            - mdbook build
+            - mkdir -p ../_site/compiler-docs
+            - cp -r book/* ../_site/compiler-docs
+
+    website-shared:
+        run: once
+        dir: website/shared
+        cmds:
+            - (cd .. && npm i)
+            - npm run build
+
+    website-playground:
+        run: once
+        deps:
+            - website-shared
+        dir: website/playground
+        cmds:
+            - task build
+            - mkdir -p ../_site/playground
+            - cp -r dist/* ../_site/playground
+
+    website-embed:
+        run: once
+        deps:
+            - website-shared
+            - website-playground
+        dir: website/embed
+        cmds:
+            - npm run build
+            - mkdir -p ../_site/embed
+            - cp -r dist/* ../_site/embed
+
+    website-std:
+        run: once
+        dir: website
+        cmds:
+            - mkdir -p _site/std
+            - cp -r ../std/* _site/std
+
+    website-doc:
+        run: once
+        deps:
+            - website-playground
+        dir: website
+        cmds:
+            - mkdir -p _site/doc
+            - >
+                wipple doc ../std/std.wpl
+                --title 'Wipple Standard Library'
+                --image 'https://wipple.dev/images/logo.svg'
+                --link 'https://wipple.dev'
+                --include-builtins
+                --std ../std/std.wpl
+                > _site/doc/std.html
+            - mv _site/playground/doc/*.html _site/doc
+
+    website-netlify:
+        run: once
+        dir: website
+        cmds:
+          - mkdir -p _site
+          - cp netlify/_* _site

@@ -1,0 +1,21 @@
+{
+    "name": "graphing",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build && npm run build:doc",
+        "build:doc": "wipple doc ../../public/files/game.wpl --title 'Game Engine' --image 'https://wipple.gramer.dev/images/logo.svg' --std '../../../../std/std.wpl' > ../../dist/doc/game.html",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "fastiles": "^2.1.0",
+        "immer": "^9.0.21",
+        "typescript-collections": "^1.3.3"
+    },
+    "devDependencies": {
+        "typescript": "^4.9.3",
+        "vite": "^4.2.0"
+    }
+}

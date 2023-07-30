@@ -3,7 +3,7 @@
     "scripts": {
         "dev": "concurrently 'eleventy --serve' 'watch \"npm run tailwind:process\" .'",
         "build": "eleventy && npm run tailwind:process",
-        "tailwind:process": "npx postcss ./styles/global.css -o ../_site/styles/global.css"
+        "tailwind:process": "npx postcss ./styles/global.css -o ./_site/styles/global.css"
     },
     "devDependencies": {
         "@11ty/eleventy": "^1.0.1",

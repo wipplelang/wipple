@@ -14,7 +14,7 @@ module.exports = (eleventy) => {
     return {
         dir: {
             input: ".",
-            output: "../_site",
+            output: "./_site",
             includes: "includes",
             layouts: "layouts",
         },

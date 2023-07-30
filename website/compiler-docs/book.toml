@@ -5,9 +5,6 @@ multilingual = false
 src = "src"
 title = "Wipple Compiler Documentation"
 
-[build]
-build-dir = "../_site/compiler-docs"
-
 [output.html]
 site-url = "/compiler-docs/"
 git-repository-url = "https://github.com/wipplelang/wipple"

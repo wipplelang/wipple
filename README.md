@@ -76,9 +76,6 @@ cargo run --bin wipple -- run path/to/test.wpl --trace
 # Run automated tests
 cargo run --bin wipple-test -- tests
 
-# Run the playground on a local development server
-cd website/playground && npm install && npm run dev
-
-# View the compiler documentation on a local development server
-cd website/compiler-docs && mdbook serve
+# Serve the website on a local development server (requires https://taskfile.dev)
+task dev
 ```

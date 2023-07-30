@@ -1,0 +1,33 @@
+version: "3"
+
+output: prefixed
+
+tasks:
+    build:
+        deps:
+            - playground
+            - task: ui
+              vars: { NAME: game }
+            - task: ui
+              vars: { NAME: graphing }
+            - task: ui
+              vars: { NAME: music }
+            - task: ui
+              vars: { NAME: turtle }
+
+    playground:
+        run: once
+        cmds:
+            - npm i
+            - npm run build
+
+    ui:
+        deps:
+            - playground
+        dir: ui/{{.NAME}}
+        cmds:
+            - mkdir -p ../../dist/doc
+            - mkdir -p ../../dist/ui/{{.NAME}}
+            - npm i
+            - npm run build
+            - cp dist/* ../../dist/ui/{{.NAME}}

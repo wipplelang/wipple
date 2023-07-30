@@ -1,0 +1,13 @@
+#game {
+    background-color: black;
+    color: white;
+}
+
+#game canvas {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    margin: 0 auto;
+    object-fit: contain;
+    image-rendering: pixelated;
+}

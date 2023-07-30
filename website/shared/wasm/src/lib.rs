@@ -1438,7 +1438,12 @@ fn wipple_to_js(
             if elements.is_empty() {
                 JsValue::NULL
             } else {
-                panic!("tuple values may not be sent to JavaScript");
+                JsValue::from(
+                    elements
+                        .into_iter()
+                        .map(|value| wipple_to_js(interpreter, context, value))
+                        .collect::<js_sys::Array>(),
+                )
             }
         }
         wipple_interpreter_backend::Value::UiHandle(_) => {
@@ -1493,6 +1498,12 @@ fn js_to_wipple(
                 Ok(js_to_wipple(&interpreter.lock(), &context, output))
             })))
         }))
+    } else if let Some(a) = value.dyn_ref::<js_sys::Array>() {
+        wipple_interpreter_backend::Value::Tuple(
+            a.iter()
+                .map(|value| js_to_wipple(interpreter, context, value))
+                .collect(),
+        )
     } else {
         panic!("JavaScript value cannot be sent to Wipple")
     }
