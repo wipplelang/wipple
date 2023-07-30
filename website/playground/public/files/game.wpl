@@ -27,7 +27,7 @@ with-game : syntax {
 [help "Move the cursor to a particular x-y location."]
 [help-group "Game Engine"]
 locate :: (Natural , Natural) -> ()
-locate : (x , y) -> handle of game . message "locate" (x , y)
+locate : (x , y) -> handle of game . message "locate" (x as Number , y as Number)
 
 [help "Set the foreground color."]
 [help-group "Game Engine"]
