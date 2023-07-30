@@ -17,3 +17,7 @@ export const initialize = (id: string, container: HTMLElement) =>
             </React.StrictMode>
         );
     });
+
+export const cleanup = async (id: string) => {
+    delete onMessage[id];
+};

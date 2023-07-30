@@ -1,7 +1,7 @@
 export * as inputs from "./inputs";
 export * as backends from "./backends";
 
-export type Room = (ctx: GameContext) => Promise<void>;
+export type Room = (ctx: GameContext) => Promise<{ shouldContinue: boolean }>;
 
 export interface GameInput {
     button: () => Promise<number>;
@@ -43,6 +43,7 @@ export class GameContext {
     private y: number;
     private fgColor: string;
     private bgColor: string;
+    private stopFlag: boolean;
 
     public constructor(room: Room, input: GameInput, backend: GameBackend) {
         this.input = input;
@@ -56,6 +57,7 @@ export class GameContext {
         this.y = 0;
         this.fgColor = "white";
         this.bgColor = "black";
+        this.stopFlag = false;
     }
 
     public setRoom(room: Room) {
@@ -155,18 +157,25 @@ export class GameContext {
 
     public async run() {
         const run = async () => {
+            if (this.stopFlag) return;
+
             this.x = 0;
             this.y = 0;
             this.fgColor = "white";
             this.bgColor = "black";
 
-            await this.room(this);
+            const { shouldContinue } = await this.room(this);
+            if (!shouldContinue) {
+                return;
+            }
+
             await this.backend.render(this.renderedGame);
 
             this.clear();
             this.pause();
 
-            requestAnimationFrame(run);
+            const fps = 0.5; // TODO: Revert to 30 fps
+            setTimeout(run, 1000 / fps);
         };
 
         run();

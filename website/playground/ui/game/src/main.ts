@@ -1,47 +1,68 @@
+import styleInject from "style-inject";
 import * as engine from "./engine";
+import css from "./assets/global.css?inline";
+
+styleInject(css);
 
 export const onMessage: Record<string, (message: string, value: any) => Promise<any>> = {};
 
 export const initialize = async (id: string, container: HTMLElement) => {
-    const messages: [message: string, value: any][] = [];
+    const messages: [message: string, value: any, callback: () => void][] = [];
 
     const scene = async (ctx: engine.GameContext) => {
         while (true) {
             const queuedMessage = messages.shift();
             if (!queuedMessage) {
-                return;
+                await new Promise((resolve) => setTimeout(resolve));
+                continue;
             }
 
-            const [message, value] = queuedMessage;
+            const [message, value, callback] = queuedMessage;
 
             try {
                 switch (message) {
                     case "locate": {
                         const [x, y] = value;
                         ctx.locate(x, y);
+                        callback();
+                        break;
                     }
                     case "render-glyph": {
                         const [c] = value;
                         ctx.printGlyph(c);
+                        callback();
                         break;
                     }
                     case "commit":
-                        return;
+                        callback();
+                        return { shouldContinue: true };
+                    case "stop":
+                        callback();
+                        return { shouldContinue: false };
                     default:
                         throw new Error("unknown message");
                 }
             } catch (error) {
                 console.error("[game] error:", error);
             }
-
-            await new Promise((resolve) => setTimeout(resolve, 0));
         }
     };
 
-    const input = engine.inputs.combined(engine.inputs.gamepad(), engine.inputs.keyboard());
-    engine.backends.ptc.run(scene, input, container);
+    const element = document.createElement("div");
+    element.id = "game";
+    container.appendChild(element);
 
-    onMessage[id] = async (message, value) => {
-        messages.push([message, value]);
+    const input = engine.inputs.combined(engine.inputs.gamepad(), engine.inputs.keyboard());
+    engine.backends.ptc.run(scene, input, element);
+
+    onMessage[id] = (message, value) => {
+        return new Promise<void>((resolve) => {
+            messages.push([message, value, resolve]);
+        });
     };
+};
+
+export const cleanup = async (id: string) => {
+    await onMessage[id]("stop", null);
+    delete onMessage[id];
 };

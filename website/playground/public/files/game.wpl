@@ -9,40 +9,41 @@ game : crash "use of game engine outside `with-game`"
 [help "Create a new game."]
 [help-group "Game Engine"]
 with-game : syntax {
-  with-graph 'body -> {
+  with-game 'body -> {
     with-ui "/playground/ui/game/index.js" (handle -> {
       -- TODO: Wait for play button if needed (add back "press any button to start")
 
       with (game : Game { handle }) {
         loop {
           'body :: ()
-          handle . message "commit"
-        }
+          handle . message "commit" ()
+          Continue
+        } :: ()
       }
     })
   }
 }
 
+[help "Move the cursor to a particular x-y location."]
+[help-group "Game Engine"]
+locate :: (Natural , Natural) -> ()
+locate : (x , y) -> handle of game . message "locate" (x , y)
+
 Glyph : type {
-    Character-Glyph Text
-    Numeric-Glyph Natural
+  Character-Glyph Text
+  Numeric-Glyph Natural
 }
 
 instance (As Text Glyph) : Character-Glyph
 instance (As Natural Glyph) : Numeric-Glyph
 
-[help "Move the cursor to a particular x-y location."]
-[help-group "Game Engine"]
-location :: (Natural , Natural) -> ()
-location : (x , y) -> handle of game . message "locate" (x , y)
-
 [help "Render a single glyph at the cursor's current position."]
 [help-group "Game Engine"]
 render-glyph :: A where (As A Glyph) => A -> ()
 render-glyph : glyph -> {
-    -- This works because JavaScript is dynamically typed
-    when (glyph as Glyph) {
-        Character-Glyph c -> handle of game . message "render-glyph" c
-        Numeric-Glyph n -> handle of game . message "render-glyph" n
-    }
+  -- This works because JavaScript is dynamically typed
+  when (glyph as Glyph) {
+    Character-Glyph c -> handle of game . message "render-glyph" c
+    Numeric-Glyph n -> handle of game . message "render-glyph" (n as Number)
+  }
 }

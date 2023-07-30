@@ -42,6 +42,7 @@ type OutputItem =
 
 interface UiElement {
     onMessage: Record<string, (message: string, value: any) => Promise<any>>;
+    cleanup: () => Promise<void>;
 }
 
 export interface PlaygroundRunner {
@@ -119,7 +120,12 @@ export const PlaygroundRunner = forwardRef<
                         diagnostics,
                     });
 
+                    for (const el of uiElements.current) {
+                        await el.cleanup();
+                    }
+
                     setUiElements([]);
+
                     setShowTemplatesWarning(props.containsTemplates());
 
                     if (!analysis.diagnostics.find(({ level }) => level === "error")) {
@@ -186,7 +192,10 @@ export const PlaygroundRunner = forwardRef<
 
                                                 setUiElements([
                                                     ...uiElements.current,
-                                                    { onMessage: uiElement.onMessage },
+                                                    {
+                                                        onMessage: uiElement.onMessage,
+                                                        cleanup: () => uiElement.cleanup?.(id),
+                                                    },
                                                 ]);
 
                                                 requestAnimationFrame(request.callback);
@@ -204,9 +213,20 @@ export const PlaygroundRunner = forwardRef<
                                             throw new Error(`invalid UI element ${index}`);
                                         }
 
-                                        const result = await uiElement.onMessage[
-                                            currentUiElementId.current
-                                        ](request.message, request.value);
+                                        const onMessage =
+                                            uiElement.onMessage[currentUiElementId.current];
+
+                                        if (!onMessage) {
+                                            console.warn(
+                                                `sent message to UI element ${index} after calling 'cleanup'`
+                                            );
+                                            break;
+                                        }
+
+                                        const result = await onMessage(
+                                            request.message,
+                                            request.value
+                                        );
 
                                         request.callback(result);
 

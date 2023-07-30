@@ -9,11 +9,11 @@ const palette = new Palette();
 const cache: Record<string, number> = {};
 
 const color = (color: string) => {
-    if (cache[color]) {
+    if (cache[color] != null) {
         return cache[color];
     }
 
-    const index = palette.set(palette.length, color);
+    const index = palette.add(color);
     cache[color] = index;
     return index;
 };

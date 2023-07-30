@@ -12,6 +12,7 @@
     "dependencies": {
         "fastiles": "^2.1.0",
         "immer": "^9.0.21",
+        "style-inject": "^0.3.0",
         "typescript-collections": "^1.3.3"
     },
     "devDependencies": {

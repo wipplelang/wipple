@@ -9,13 +9,6 @@ tasks:
             - task: website
             - npx http-server -c-1 website/_site --cors
 
-    ci:
-        run: once
-        cmds:
-            - rustup default stable && rustup target add wasm32-unknown-unknown
-            - curl -L https://github.com/rust-lang/mdBook/releases/download/v0.4.18/mdbook-v0.4.18-x86_64-unknown-linux-gnu.tar.gz | tar xvz && export PATH="${PWD}:${PATH}"
-            - task: website
-
     cli:
         run: once
         cmds:
