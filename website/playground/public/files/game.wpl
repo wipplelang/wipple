@@ -29,6 +29,16 @@ with-game : syntax {
 locate :: (Natural , Natural) -> ()
 locate : (x , y) -> handle of game . message "locate" (x , y)
 
+[help "Set the foreground color."]
+[help-group "Game Engine"]
+fg :: Text -> ()
+fg : c -> handle of game . message "fg" c
+
+[help "Set the background color."]
+[help-group "Game Engine"]
+bg :: Text -> ()
+bg : c -> handle of game . message "bg" c
+
 Glyph : type {
   Character-Glyph Text
   Numeric-Glyph Natural
@@ -45,5 +55,37 @@ render-glyph : glyph -> {
   when (glyph as Glyph) {
     Character-Glyph c -> handle of game . message "render-glyph" c
     Numeric-Glyph n -> handle of game . message "render-glyph" (n as Number)
+  }
+}
+
+Glyph-Sequence : type {
+  Text-Glyph-Sequence Text
+  Numeric-Glyph-Sequence (List Natural)
+}
+
+instance (As Text Glyph-Sequence) : Text-Glyph-Sequence
+instance (As (List Natural) Glyph-Sequence) : Numeric-Glyph-Sequence
+
+[help "Render a line of glpyhs and advance to the next line."]
+[help-group "Game Engine"]
+render-line :: A where (As A Glyph-Sequence) => A -> ()
+render-line : glyphs -> {
+  -- This works because JavaScript is dynamically typed
+  when (glyphs as Glyph-Sequence) {
+    Text-Glyph-Sequence c -> handle of game . message "render-line" c
+    Numeric-Glyph-Sequence n -> \
+      handle of game . message "render-line" (n . transform (c -> c as Number) . collect :: List _)
+  }
+}
+
+[help "Render a line of glpyhs without advancing to the next line."]
+[help-group "Game Engine"]
+render :: A where (As A Glyph-Sequence) => A -> ()
+render : glyphs -> {
+  -- This works because JavaScript is dynamically typed
+  when (glyphs as Glyph-Sequence) {
+    Text-Glyph-Sequence c -> handle of game . message "render" c
+    Numeric-Glyph-Sequence n -> \
+      handle of game . message "render" (n . transform (c -> c as Number) . collect :: List _)
   }
 }

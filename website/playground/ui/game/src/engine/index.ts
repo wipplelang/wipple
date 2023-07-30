@@ -174,7 +174,7 @@ export class GameContext {
             this.clear();
             this.pause();
 
-            const fps = 0.5; // TODO: Revert to 30 fps
+            const fps = 10;
             setTimeout(run, 1000 / fps);
         };
 

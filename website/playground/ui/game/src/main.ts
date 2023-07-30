@@ -27,9 +27,28 @@ export const initialize = async (id: string, container: HTMLElement) => {
                         callback();
                         break;
                     }
+                    case "fg": {
+                        ctx.fg(value);
+                        callback();
+                        break;
+                    }
+                    case "bg": {
+                        ctx.bg(value);
+                        callback();
+                        break;
+                    }
                     case "render-glyph": {
-                        const [c] = value;
-                        ctx.printGlyph(c);
+                        ctx.printGlyph(value);
+                        callback();
+                        break;
+                    }
+                    case "render-line": {
+                        ctx.print(value);
+                        callback();
+                        break;
+                    }
+                    case "render": {
+                        ctx.print(value, false);
                         callback();
                         break;
                     }
