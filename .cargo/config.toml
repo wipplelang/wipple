@@ -2,4 +2,4 @@
 CARGO_WORKSPACE_DIR = { value = "", relative = true }
 
 [target.'cfg(target_arch = "wasm32")']
-rustflags = ["-C", "link-arg=--max-memory=4294967296"]
+rustflags = ["-C", "link-arg=-zstack-size=0x200000"]

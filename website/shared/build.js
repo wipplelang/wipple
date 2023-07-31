@@ -1,5 +1,5 @@
 export const rustOptions = (env) => ({
-    debug: false, // HACK: OOM error when building in debug mode
+    debug: false,
     cargoArgs: env.CI ? [] : ["--features", "debug_playground"],
     wasmOptArgs: env.CI ? ["-O1"] : [],
     verbose: true,
