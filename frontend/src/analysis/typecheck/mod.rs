@@ -1707,11 +1707,11 @@ impl Typechecker {
                 if let Err(error) = self.unify(
                     function.id,
                     function.span,
+                    function.ty.clone(),
                     engine::UnresolvedType::Function(
                         Box::new(input.ty.clone()),
                         Box::new(output_ty.clone()),
                     ),
-                    function.ty.clone(),
                 ) {
                     self.add_error(error);
                 }
@@ -3253,11 +3253,7 @@ impl Typechecker {
                                 &mut bound_substitutions,
                             );
 
-                            let result = if ty_or_params.is_ok() {
-                                self.ctx.unify(inferred_original_ty, original_ty)
-                            } else {
-                                self.ctx.unify(original_ty, inferred_original_ty)
-                            };
+                            let result = self.ctx.unify(inferred_original_ty, original_ty);
 
                             if let Err(error) = result {
                                 if $candidates.is_empty() {
@@ -5051,8 +5047,8 @@ impl Typechecker {
                                 {
                                     if let Some(call) = root.as_root_query_parent_of(id) {
                                         if let ExpressionKind::Call(_, input, _) = &call.kind {
-                                            *actual = actual_input;
-                                            *expected = expected_input;
+                                            *actual = expected_input;
+                                            *expected = actual_input;
                                             error.expr = Some(input.id);
                                             error.span = input.span;
                                         }
