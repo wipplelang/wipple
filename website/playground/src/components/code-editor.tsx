@@ -120,7 +120,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
             for (let noteIndex = 0; noteIndex < diagnostic.notes.length; noteIndex++) {
                 const note = diagnostic.notes[noteIndex];
 
-                if (from >= note.span.start || to <= note.span.end) {
+                if (from >= note.span.start && to <= note.span.end) {
                     hoverDiagnostic = [diagnostic, noteIndex === 0, note];
                     break outer;
                 }
