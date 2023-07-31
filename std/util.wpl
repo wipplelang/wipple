@@ -81,6 +81,7 @@ as : syntax { 'x as 't -> (As 'x :: 't) }
 
 A => instance (As A A) : it
 instance (As Natural Number) : n -> intrinsic "natural-to-number" n
+instance (As Natural Integer) : n -> intrinsic "natural-to-integer" n
 Success => instance (As (Result Success _) (Maybe Success)) : result -> when result {
   Ok x -> Some x
   Error _ -> None
@@ -95,6 +96,7 @@ as? : syntax { 'x as? 't -> (As? 'x :: Maybe 't) }
 
 A => instance (As? A A) : Some
 instance (As? Number Natural) : n -> intrinsic "number-to-natural" n
+instance (As? Integer Natural) : n -> intrinsic "integer-to-natural" n
 
 [help "Convert a value of one type into a value of a different type, or crash if the conversion fails."]
 [help-group "Utilities"]

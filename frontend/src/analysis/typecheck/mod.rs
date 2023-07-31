@@ -5049,13 +5049,13 @@ impl Typechecker {
                                     .unify(actual_input.clone(), expected_input.clone())
                                     .is_err()
                                 {
-                                    if let ExpressionKind::Call(_, input, _) =
-                                        &root.as_root_query_parent_of(id).unwrap().kind
-                                    {
-                                        *actual = actual_input;
-                                        *expected = expected_input;
-                                        error.expr = Some(input.id);
-                                        error.span = input.span;
+                                    if let Some(call) = root.as_root_query_parent_of(id) {
+                                        if let ExpressionKind::Call(_, input, _) = &call.kind {
+                                            *actual = actual_input;
+                                            *expected = expected_input;
+                                            error.expr = Some(input.id);
+                                            error.span = input.span;
+                                        }
                                     }
 
                                     break;

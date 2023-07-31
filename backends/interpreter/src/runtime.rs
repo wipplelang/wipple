@@ -429,7 +429,17 @@ impl Interpreter {
                     Ok(Value::Number(Decimal::from_u64(n).expect("overflow")))
                 }),
                 ir::Intrinsic::NumberToNatural => runtime_fn!((Value::Number(n)) => async {
-                    if n == n.trunc() {
+                    if n >= Decimal::ZERO && n.is_integer() {
+                        Ok(some(Value::Natural(n.to_u64().unwrap())))
+                    } else {
+                        Ok(none())
+                    }
+                }),
+                ir::Intrinsic::NaturalToInteger => runtime_fn!((Value::Natural(n)) => async {
+                    Ok(Value::Integer(i64::from_u64(n).expect("overflow")))
+                }),
+                ir::Intrinsic::IntegerToNatural => runtime_fn!((Value::Integer(n)) => async {
+                    if n >= 0 {
                         Ok(some(Value::Natural(n.to_u64().unwrap())))
                     } else {
                         Ok(none())

@@ -24,6 +24,16 @@ with-game : syntax {
   }
 }
 
+[help "The width of the game window."]
+[help-group "Game Engine"]
+width :: Natural
+width : 32
+
+[help "The height of the game window."]
+[help-group "Game Engine"]
+height :: Natural
+height : 24
+
 [help "Move the cursor to a particular x-y location."]
 [help-group "Game Engine"]
 locate :: (Natural , Natural) -> ()
@@ -88,4 +98,71 @@ render : glyphs -> {
     Numeric-Glyph-Sequence n -> \
       handle of game . message "render" (n . transform (c -> c as Number) . collect :: List _)
   }
+}
+
+[help "Render a line of characters, replacing all non-whitespace characters with the specified glyph, and advance to the next line."]
+[help-group "Game Engine"]
+render-line-fill :: A where (As A Glyph) => Text -> A -> ()
+render-line-fill : text replacement -> {
+  -- This works because JavaScript is dynamically typed
+  when (replacement as Glyph) {
+    Character-Glyph c -> handle of game . message "render-line-fill" (text , c)
+    Numeric-Glyph n -> handle of game . message "render-line-fill" (text , (n as Number))
+  }
+}
+
+[help "Render a line of characters, replacing all non-whitespace characters with the specified glyph, without advancing to the next line."]
+[help-group "Game Engine"]
+render-fill :: A where (As A Glyph) => Text -> A -> ()
+render-fill : text replacement -> {
+  -- This works because JavaScript is dynamically typed
+  when (replacement as Glyph) {
+    Character-Glyph c -> handle of game . message "render-fill" (text , c)
+    Numeric-Glyph n -> handle of game . message "render-fill" (text , (n as Number))
+  }
+}
+
+[help "Information about the music being played by the game."]
+[help-group "Game Engine"]
+Music : type {
+  song :: Text
+  loop :: Boolean
+}
+
+[help "Play some music."]
+[help-group "Game Engine"]
+play :: Music -> ()
+play : { song loop } -> {
+  -- HACK: Can't send booleans to JavaScript
+  loop : when loop {
+    True -> 1
+    False -> 0
+  }
+
+  handle of game . message "play" (song , loop)
+}
+
+
+[help "Pause the music being played."]
+[help-group "Game Engine"]
+pause :: () -> ()
+pause : () -> handle of game . message "pause" ()
+
+Button : type { B A Y X L R Start Up Down Left Right }
+
+[help "Get the button being pressed."]
+button :: () -> Maybe Button
+button : () -> when (handle of game . message "button" ()) {
+  32 -> Some B
+  16 -> Some A
+  128 -> Some Y
+  64 -> Some X
+  256 -> Some L
+  512 -> Some R
+  1024 -> Some Start
+  1 -> Some Up
+  2 -> Some Down
+  4 -> Some Left
+  8 -> Some Right
+  _ -> None
 }

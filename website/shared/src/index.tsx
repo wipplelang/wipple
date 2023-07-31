@@ -198,7 +198,7 @@ export const PlaygroundRunner = forwardRef<
                                                     },
                                                 ]);
 
-                                                requestAnimationFrame(request.callback);
+                                                request.callback();
                                             });
                                         });
 

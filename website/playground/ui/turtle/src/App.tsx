@@ -43,12 +43,12 @@ export const App = (props: AppProps) => {
                         case "width":
                             turtle._width = value;
                             turtle.resize();
-                            await new Promise(requestAnimationFrame);
+                            await new Promise((resolve) => requestAnimationFrame(resolve));
                             break;
                         case "height":
                             turtle._height = value;
                             turtle.resize();
-                            await new Promise(requestAnimationFrame);
+                            await new Promise((resolve) => requestAnimationFrame(resolve));
                             break;
                         case "background":
                             turtle.setBackgroundColor(value);

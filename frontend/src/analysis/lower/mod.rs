@@ -650,6 +650,8 @@ pub enum Intrinsic {
     // TODO: All the conversions
     NaturalToNumber,
     NumberToNatural,
+    NaturalToInteger,
+    IntegerToNatural,
     AddNumber,
     SubtractNumber,
     MultiplyNumber,

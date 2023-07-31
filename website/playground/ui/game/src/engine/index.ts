@@ -1,7 +1,12 @@
 export * as inputs from "./inputs";
 export * as backends from "./backends";
 
-export type Room = (ctx: GameContext) => Promise<{ shouldContinue: boolean }>;
+import { Mutex } from "async-mutex";
+
+export type Scene = (
+    ctx: GameContext,
+    commit: (flags: { shouldContinue: boolean }) => Promise<void>
+) => void;
 
 export interface GameInput {
     button: () => Promise<number>;
@@ -35,24 +40,26 @@ export class Music {
 }
 
 export class GameContext {
+    private lock: Mutex;
     private input: GameInput;
     private backend: GameBackend;
     private renderedGame: RenderedGame;
-    private room: Room;
+    private scene: Scene;
     private x: number;
     private y: number;
     private fgColor: string;
     private bgColor: string;
     private stopFlag: boolean;
 
-    public constructor(room: Room, input: GameInput, backend: GameBackend) {
+    public constructor(scene: Scene, input: GameInput, backend: GameBackend) {
+        this.lock = new Mutex();
         this.input = input;
         this.backend = backend;
         this.renderedGame = {
             text: new Array<Character>(backend.width * backend.height).fill(Character.empty),
             music: null,
         };
-        this.room = room;
+        this.scene = scene;
         this.x = 0;
         this.y = 0;
         this.fgColor = "white";
@@ -60,8 +67,12 @@ export class GameContext {
         this.stopFlag = false;
     }
 
-    public setRoom(room: Room) {
-        this.room = room;
+    public async waitForNextFrame() {
+        await this.lock.acquire();
+    }
+
+    public setScene(scene: Scene) {
+        this.scene = scene;
     }
 
     public fg(color: string) {
@@ -164,23 +175,32 @@ export class GameContext {
             this.fgColor = "white";
             this.bgColor = "black";
 
-            const { shouldContinue } = await this.room(this);
-            if (!shouldContinue) {
-                return;
-            }
+            const shouldContinue = await new Promise<boolean>((resolve) => {
+                this.scene(this, async ({ shouldContinue }) => {
+                    await this.backend.render(this.renderedGame);
 
-            await this.backend.render(this.renderedGame);
+                    const fps = 60;
+                    await new Promise((resolve) => setTimeout(resolve, 1000 / fps));
+
+                    resolve(shouldContinue);
+                });
+            });
 
             this.clear();
             this.pause();
 
-            const fps = 10;
-            setTimeout(run, 1000 / fps);
+            if (!shouldContinue) {
+                // Render an empty game to stop all audio and other hooks
+                await this.backend.render(this.renderedGame);
+                return;
+            }
+
+            setTimeout(() => run());
         };
 
         run();
     }
 }
 
-export const run = (room: Room, input: GameInput, backend: GameBackend) =>
-    new GameContext(room, input, backend).run();
+export const run = (scene: Scene, input: GameInput, backend: GameBackend) =>
+    new GameContext(scene, input, backend).run();

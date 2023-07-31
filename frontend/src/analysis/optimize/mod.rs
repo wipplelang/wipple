@@ -666,6 +666,8 @@ mod util {
                 Intrinsic::TextToDouble => true,
                 Intrinsic::NaturalToNumber => true,
                 Intrinsic::NumberToNatural => true,
+                Intrinsic::NaturalToInteger => true,
+                Intrinsic::IntegerToNatural => true,
                 Intrinsic::AddNumber => true,
                 Intrinsic::SubtractNumber => true,
                 Intrinsic::MultiplyNumber => true,

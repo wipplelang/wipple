@@ -1,11 +1,11 @@
-import { Scene, Palette } from "fastiles";
-import { GameBackend, GameInput, Music, Room, run as runGame } from "../../index";
+import * as fastiles from "fastiles";
+import { GameBackend, GameInput, Music, Scene, run as runGame } from "../../index";
 import font from "./assets/font.png";
 
 export const width = 32;
 export const height = 24;
 
-const palette = new Palette();
+const palette = new fastiles.Palette();
 const cache: Record<string, number> = {};
 
 const color = (color: string) => {
@@ -18,7 +18,7 @@ const color = (color: string) => {
     return index;
 };
 
-export const run = async (room: Room, input: GameInput, element: HTMLElement) => {
+export const run = async (scene: Scene, input: GameInput, element: HTMLElement) => {
     const fontImage = await new Promise<HTMLImageElement>((resolve, reject) => {
         const image = new Image();
         image.onload = () => resolve(image);
@@ -26,16 +26,16 @@ export const run = async (room: Room, input: GameInput, element: HTMLElement) =>
         image.src = font;
     });
 
-    const scene = new Scene({
+    const canvas = new fastiles.Scene({
         tileSize: [8, 8],
         tileCount: [width, height],
         font: fontImage,
     });
 
-    scene.palette = palette;
+    canvas.palette = palette;
 
-    scene.node.style.visibility = "hidden";
-    element.appendChild(scene.node);
+    canvas.node.style.visibility = "hidden";
+    element.appendChild(canvas.node);
 
     let audio: HTMLAudioElement | null = null;
     let prevMusic: Music | null = null;
@@ -44,14 +44,14 @@ export const run = async (room: Room, input: GameInput, element: HTMLElement) =>
         width,
         height,
         render: async ({ text, music }) => {
-            scene.node.style.visibility = "visible";
+            canvas.node.style.visibility = "visible";
 
             for (let y = 0; y < height; y++) {
                 for (let x = 0; x < width; x++) {
                     const character = text[y * width + x];
                     const fg = color(character.fg);
                     const bg = color(character.bg);
-                    scene.draw([x, y], character.glyph, fg, bg);
+                    canvas.draw([x, y], character.glyph, fg, bg);
                 }
             }
 
@@ -72,5 +72,5 @@ export const run = async (room: Room, input: GameInput, element: HTMLElement) =>
         },
     };
 
-    runGame(room, input, backend);
+    runGame(scene, input, backend);
 };
