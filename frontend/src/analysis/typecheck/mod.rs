@@ -5145,10 +5145,9 @@ impl Typechecker {
                     }
                 }
 
-                if let engine::UnresolvedType::Function(actual_input, actual_output) = &actual {
-                    if let engine::UnresolvedType::Function(expected_input, expected_output) =
-                        &expected
-                    {
+                if let engine::UnresolvedType::Function(expected_input, expected_output) = &expected
+                {
+                    if let engine::UnresolvedType::Function(actual_input, actual_output) = &actual {
                         let mut actual_output = actual_output.as_ref().clone();
                         let mut expected_output = expected_output.as_ref().clone();
 
@@ -5201,6 +5200,19 @@ impl Typechecker {
                                     self.format_type(expected_input.as_ref().clone(), format)
                                 ),
                             ));
+                        }
+                    } else if let Some(id) = error.expr {
+                        if let Some(root) = self.root_for(id.owner) {
+                            if let Some(expr) = root.as_root_query(id) {
+                                if matches!(expr.kind, ExpressionKind::Call(..)) {
+                                    notes.push(Note::secondary(
+                                        error.span,
+                                        "too many inputs provided to this function",
+                                    ));
+                                } else {
+                                    notes.push(Note::secondary(error.span, "not a function"));
+                                }
+                            }
                         }
                     }
                 }

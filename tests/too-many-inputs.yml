@@ -1,0 +1,14 @@
+code: |
+    show 1 2 3
+
+output: |
+
+diagnostics: |
+    error: mismatched types
+      ┌─ test:1:1
+      │
+    1 │ show 1 2 3
+      │ ^^^^^^
+      │ │
+      │ expected `Number -> Number -> _`, but found `()`
+      │ too many inputs provided to this function
