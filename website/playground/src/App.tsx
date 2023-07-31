@@ -61,10 +61,6 @@ const App = () => {
     const [isLoading, setLoading] = useState(true);
 
     useEffect(() => {
-        console.log("sections:", sections);
-    }, [sections]);
-
-    useEffect(() => {
         const setup = async () => {
             try {
                 const query = new URLSearchParams(window.location.search);
