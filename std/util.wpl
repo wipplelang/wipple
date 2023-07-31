@@ -27,6 +27,7 @@ crash : message -> intrinsic "crash" message
 [help "Represents the presence or absence of a value."]
 [help-group "Utilities"]
 [on-mismatch Value "try handling the case where the `Maybe` is `None`, eg. using `when`, `try` or `expect`"]
+[convert-from Value (Some 'value)]
 Maybe : Value => type {
   None
   Some Value
@@ -36,6 +37,8 @@ Maybe : Value => type {
 [help-group "Utilities"]
 [on-mismatch Success "try handling the case where the `Result` is `Error`, eg. using `when`, `try` or `expect`"]
 [on-mismatch Failure "try converting the error to the correct type, eg. using `as` or `try`"]
+[convert-from Success (Ok 'value)]
+[convert-from Failure (Error 'value)]
 Result : Success Failure => type {
   Ok Success
   Error Failure
