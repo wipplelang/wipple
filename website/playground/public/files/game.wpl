@@ -142,7 +142,6 @@ play : { song loop } -> {
   handle of game . message "play" (song , loop)
 }
 
-
 [help "Pause the music being played."]
 [help-group "Game Engine"]
 pause :: () -> ()
@@ -151,6 +150,7 @@ pause : () -> handle of game . message "pause" ()
 Button : type { B A Y X L R Start Up Down Left Right }
 
 [help "Get the button being pressed."]
+[help-group "Game Engine"]
 button :: () -> Maybe Button
 button : () -> when (handle of game . message "button" ()) {
   32 -> Some B
