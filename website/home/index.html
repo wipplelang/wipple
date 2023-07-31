@@ -101,7 +101,7 @@ Person : type {
     age :: Number
 }
 
-instance (Show Person) : { name age } ->
+instance (Show Person) : { name age } -> \
     format "_ is _ years old" name age
 
 bob : Person {

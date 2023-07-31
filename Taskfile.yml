@@ -1,18 +1,31 @@
 version: "3"
 
-output: prefixed
-
 tasks:
-    dev:
+    run:
         run: once
         cmds:
-            - task: website
-            - npx http-server -c-1 website/_site --cors
+            - cargo run --bin wipple -- run {{.CLI_ARGS}}
+
+    compile:
+        run: once
+        cmds:
+            - cargo run --bin wipple -- compile {{.CLI_ARGS}}
+
+    test:
+        run: once
+        cmds:
+            - cargo run --bin wipple-test -- tests {{.CLI_ARGS}}
 
     cli:
         run: once
         cmds:
             - cargo install --force --path tools/cli
+
+    serve:
+        run: once
+        cmds:
+            - task: website
+            - npx http-server -c-1 website/_site --cors
 
     website:
         run: once

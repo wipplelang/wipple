@@ -1,7 +1,5 @@
 version: "3"
 
-output: prefixed
-
 tasks:
     build:
         deps:

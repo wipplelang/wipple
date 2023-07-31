@@ -31,7 +31,7 @@ Person : type {
     age :: Number
 }
 
-instance (Show Person) : { name age } ->
+instance (Show Person) : { name age } -> \
     format "_ is _ years old" name age
 
 bob : Person {
@@ -64,18 +64,24 @@ The [Wipple Playground](https://wipple.dev/playground) has over 30 lessons for p
 
 The Wipple project is split across several folders. The compiler and CLI are written in [Rust](https://rust-lang.org), and the playground is written in [React](https://react.dev). The compiler documentation is published using [mdBook](https://github.com/rust-lang/mdBook).
 
-You can use these commands to build and test Wipple locally:
+You can use these commands to build and test Wipple locally. Make sure you have [`task`](https://taskfile.dev) installed.
 
 ```shell
-# Test using a local file
-cargo run --bin wipple -- run path/to/test.wpl
+# Compile and run a local file
+task run -- path/to/file.wpl
 
-# Test with diagnostic tracing enabled
-cargo run --bin wipple -- run path/to/test.wpl --trace
+# Compile and run a local file with diagnostic tracing enabled
+task run -- path/to/file.wpl --trace
+
+# Compile a local file and inspect the optimized IR
+task compile -- path/to/file.wpl -O -f ir
 
 # Run automated tests
-cargo run --bin wipple-test -- tests
+task test
 
-# Serve the website on a local development server (requires https://taskfile.dev)
-task dev
+# Install 'wipple' in your PATH
+task cli
+
+# Serve the website on http://localhost:8080
+task serve
 ```
