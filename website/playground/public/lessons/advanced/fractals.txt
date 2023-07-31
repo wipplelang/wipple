@@ -1,7 +1,7 @@
 ---
 previous:
-  name: Randomness
-  link: ?lesson=advanced/randomness
+  name: Making a video game
+  link: ?lesson=advanced/video-game
 ---
 
 ---

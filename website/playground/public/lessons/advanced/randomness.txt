@@ -3,8 +3,8 @@ previous:
   name: Lists and iterators
   link: ?lesson=advanced/lists
 next:
-  name: Fractal graphics
-  link: ?lesson=advanced/fractals
+  name: Making a video game
+  link: ?lesson=advanced/video-game
 ---
 
 ---
