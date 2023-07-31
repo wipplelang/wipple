@@ -445,6 +445,10 @@ impl wipple_syntax::Span for SpanList {
         *self = SpanList::merge(*self, other);
     }
 
+    fn set_expanded_from_operator(&mut self) {
+        self.set_expanded_from_operator();
+    }
+
     fn set_caller(&mut self, caller: Self) {
         self.set_caller(caller);
     }

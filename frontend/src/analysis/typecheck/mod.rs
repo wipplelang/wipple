@@ -5065,6 +5065,16 @@ impl Typechecker {
             }
         }
 
+        let operator_note = || {
+            error.span.first().expanded_from_operator.then(|| {
+                Note::secondary(
+                    error.span,
+                    "operators consume all expressions on either side; you may be missing parentheses",
+                )
+                .use_caller_if_available()
+            })
+        };
+
         let mut diagnostic = match *error.error {
             engine::TypeError::ErrorExpression => return,
             engine::TypeError::Recursive(_) => self.compiler.error(
@@ -5302,6 +5312,10 @@ impl Typechecker {
                     }
                 }
 
+                if let Some(note) = operator_note() {
+                    notes.push(note);
+                }
+
                 self.compiler
                     .error_with_trace("mismatched types", notes, error.trace)
                     .fix(fix)
@@ -5379,6 +5393,7 @@ impl Typechecker {
                             "this instance could apply, but its bounds weren't satisfied",
                         )
                     }))
+                    .chain(operator_note())
                     .collect(),
                     error.trace,
                 )

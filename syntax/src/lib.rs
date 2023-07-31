@@ -73,6 +73,7 @@ pub trait File<D: Driver> {
 pub trait Span {
     fn join(left: Self, right: Self) -> Self;
     fn merge(&mut self, other: Self);
+    fn set_expanded_from_operator(&mut self);
     fn set_caller(&mut self, caller: Self);
     fn range(&self) -> Range<usize>;
 }
@@ -156,13 +157,9 @@ impl<D: Driver<Span = (), File = SingleFile, Scope = ()>> File<D> for SingleFile
         &self.0
     }
 
-    fn root_scope(&self) -> D::Scope {
-        
-    }
+    fn root_scope(&self) -> D::Scope {}
 
-    fn make_scope(&self, _parent: D::Scope) -> D::Scope {
-        
-    }
+    fn make_scope(&self, _parent: D::Scope) -> D::Scope {}
 
     fn define_syntax(
         &self,
@@ -192,11 +189,13 @@ impl<D: Driver<Span = (), File = SingleFile, Scope = ()>> File<D> for SingleFile
 }
 
 impl Span for () {
-    fn join(_left: Self, _right: Self) -> Self {
-        
-    }
+    fn join(_left: Self, _right: Self) -> Self {}
 
     fn merge(&mut self, _other: Self) {
+        // do nothing
+    }
+
+    fn set_expanded_from_operator(&mut self) {
         // do nothing
     }
 

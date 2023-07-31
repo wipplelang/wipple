@@ -463,6 +463,8 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                         let lhs_span =
                             Span::join(lhs.first().unwrap().span, lhs.last().unwrap().span);
 
+                        let lhs_count = lhs.len();
+
                         let lhs = parse::Expr {
                             span: lhs_span,
                             kind: parse::ExprKind::List(vec![lhs.into()]),
@@ -471,6 +473,8 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                         let rhs_span =
                             Span::join(rhs.first().unwrap().span, rhs.last().unwrap().span);
 
+                        let rhs_count = rhs.len();
+
                         let rhs = parse::Expr {
                             span: rhs_span,
                             kind: parse::ExprKind::List(vec![rhs.into()]),
@@ -478,6 +482,10 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
 
                         let mut list_span = Span::join(lhs_span, rhs_span);
                         list_span.set_caller(max_expr.span);
+
+                        if lhs_count > 1 || rhs_count > 1 {
+                            list_span.set_expanded_from_operator();
+                        }
 
                         self.expand_syntax(list_span, max_syntax, vec![lhs, operator, rhs], scope)
                             .await

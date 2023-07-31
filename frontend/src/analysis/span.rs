@@ -8,6 +8,7 @@ use std::{hash::Hash, ops::Range};
 pub struct Span {
     pub path: FilePath,
     pub primary: (usize, usize),
+    pub expanded_from_operator: bool,
     pub caller: Option<(usize, usize)>,
 }
 
@@ -16,6 +17,7 @@ impl Span {
         Span {
             path,
             primary: (range.start, range.end),
+            expanded_from_operator: false,
             caller: None,
         }
     }
@@ -28,6 +30,7 @@ impl Span {
         Span {
             path: left.path,
             primary: (left.primary_start(), right.primary_end()),
+            expanded_from_operator: false,
             caller: None,
         }
     }
@@ -102,6 +105,10 @@ impl SpanList {
             first: Span::join(left.first, right.first),
             sources: left.sources,
         }
+    }
+
+    pub fn set_expanded_from_operator(&mut self) {
+        self.first.expanded_from_operator = true;
     }
 
     pub fn set_caller(&mut self, caller: SpanList) {
