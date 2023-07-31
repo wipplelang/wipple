@@ -21,6 +21,7 @@
         "@uiw/codemirror-theme-github": "^4.21.9",
         "codemirror": "^6.0.1",
         "front-matter": "^4.0.2",
+        "immer": "^10.0.2",
         "katex": "^0.16.8",
         "line-column": "^1.0.2",
         "material-ui-popup-state": "^5.0.4",

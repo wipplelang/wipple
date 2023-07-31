@@ -35,6 +35,7 @@ import { CodeEditor, TextEditor } from "./components";
 import { convertLesson } from "./helpers";
 import { useRefState } from "shared";
 import { useMemo } from "react";
+import { Draft, produce } from "immer";
 
 type Section = { id: string; value: string } & (
     | { type: "code"; lint?: boolean; autoRun?: boolean; collapse?: boolean }
@@ -58,6 +59,10 @@ const App = () => {
     const [query, setQuery] = useRefState<URLSearchParams | null>(null);
 
     const [isLoading, setLoading] = useState(true);
+
+    useEffect(() => {
+        console.log("sections:", sections);
+    }, [sections]);
 
     useEffect(() => {
         const setup = async () => {
@@ -280,21 +285,25 @@ const App = () => {
                                         key={section.id}
                                         id={section.id}
                                         onPressAdd={(type) => {
-                                            const newSections = [...sections];
-                                            newSections.splice(index + 1, 0, {
-                                                id: nanoid(8),
-                                                type,
-                                                value: "",
-                                                locked: type === "text" ? false : undefined,
-                                            });
-                                            setSections(newSections);
+                                            setSections(
+                                                produce((sections) => {
+                                                    sections.push({
+                                                        id: nanoid(8),
+                                                        type,
+                                                        value: "",
+                                                        locked: type === "text" ? false : undefined,
+                                                    });
+                                                })
+                                            );
                                         }}
                                         onPressRemove={
                                             sections.length > 1
-                                                ? async () => {
-                                                      const newSections = [...sections];
-                                                      newSections.splice(index, 1);
-                                                      setSections(newSections);
+                                                ? () => {
+                                                      setSections(
+                                                          produce((sections) => {
+                                                              sections.splice(index, 1);
+                                                          })
+                                                      );
                                                   }
                                                 : undefined
                                         }
@@ -303,12 +312,23 @@ const App = () => {
                                                 ? {
                                                       isLocked: section.locked ?? false,
                                                       onChangeLocked: (locked) => {
-                                                          const newSections = [...sections];
-                                                          newSections.splice(index, 1, {
-                                                              ...section,
-                                                              locked,
-                                                          });
-                                                          setSections(newSections);
+                                                          setSections(
+                                                              produce((sections) => {
+                                                                  const section = sections[index];
+
+                                                                  if (section.type !== "text") {
+                                                                      throw new Error(
+                                                                          `section mismatch: ${JSON.stringify(
+                                                                              section,
+                                                                              null,
+                                                                              4
+                                                                          )}`
+                                                                      );
+                                                                  }
+
+                                                                  section.locked = locked;
+                                                              })
+                                                          );
                                                       },
                                                   }
                                                 : undefined
@@ -318,12 +338,23 @@ const App = () => {
                                                 ? {
                                                       lintEnabled: section.lint ?? true,
                                                       onChangeLintEnabled: (lint) => {
-                                                          const newSections = [...sections];
-                                                          newSections.splice(index, 1, {
-                                                              ...section,
-                                                              lint,
-                                                          });
-                                                          setSections(newSections);
+                                                          setSections(
+                                                              produce((sections) => {
+                                                                  const section = sections[index];
+
+                                                                  if (section.type !== "code") {
+                                                                      throw new Error(
+                                                                          `section mismatch: ${JSON.stringify(
+                                                                              section,
+                                                                              null,
+                                                                              4
+                                                                          )}`
+                                                                      );
+                                                                  }
+
+                                                                  section.lint = lint;
+                                                              })
+                                                          );
                                                       },
                                                   }
                                                 : undefined
@@ -334,15 +365,16 @@ const App = () => {
                                             autoFocus={index === 0}
                                             settings={settings}
                                             onChange={(newSection) => {
-                                                setSections((sections) => {
-                                                    const newSections = [...sections];
-                                                    newSections.splice(
-                                                        index,
-                                                        1,
-                                                        newSection(newSections[index])
-                                                    );
-                                                    return newSections;
-                                                });
+                                                setSections(
+                                                    produce((sections) => {
+                                                        newSection(
+                                                            // HACK: index doesn't work
+                                                            sections.find(
+                                                                (s) => s.id === section.id
+                                                            )!
+                                                        );
+                                                    })
+                                                );
                                             }}
                                         />
                                     </SortableItem>
@@ -414,10 +446,11 @@ const App = () => {
                                     : "bg-gray-200 dark:bg-gray-400 text-gray-500 dark:text-gray-800"
                             }`}
                             onClick={() => {
-                                setSettings((settings) => ({
-                                    ...settings,
-                                    beginner: !(settings.beginner ?? true),
-                                }));
+                                setSettings(
+                                    produce((settings) => {
+                                        settings.beginner = !(settings.beginner ?? true);
+                                    })
+                                );
                             }}
                         >
                             Beginner mode
@@ -486,7 +519,7 @@ const OptionsButton = (props: { sections: Section[] }) => (
                                 text += `---\n\n${section.value}\n\n`;
                             }
 
-                            await navigator.clipboard.writeText(text.trimEnd());
+                            await navigator.clipboard.writeText(text);
                             popupState.close();
                         }}
                     >
@@ -651,7 +684,7 @@ const SectionContainer = (props: {
     section: Section;
     autoFocus: boolean;
     settings: Settings;
-    onChange: (newSection: (section: Section) => Section) => void;
+    onChange: (newSection: (section: Draft<Section>) => void) => void;
 }) => {
     let content: JSX.Element;
     switch (props.section.type) {
@@ -663,28 +696,40 @@ const SectionContainer = (props: {
                     lint={props.section.lint ?? true}
                     autoRun={props.section.autoRun ?? true}
                     onChangeAutoRun={(autoRun) => {
-                        props.onChange((section) => ({
-                            ...section,
-                            type: "code",
-                            autoRun,
-                        }));
+                        props.onChange((section) => {
+                            if (section.type !== "code") {
+                                throw new Error(
+                                    `section mismatch: ${JSON.stringify(section, null, 4)}`
+                                );
+                            }
+
+                            section.autoRun = autoRun;
+                        });
                     }}
                     collapse={props.section.collapse ?? false}
                     onChangeCollapse={(collapse) => {
-                        props.onChange((section) => ({
-                            ...section,
-                            type: "code",
-                            collapse,
-                        }));
+                        props.onChange((section) => {
+                            if (section.type !== "code") {
+                                throw new Error(
+                                    `section mismatch: ${JSON.stringify(section, null, 4)}`
+                                );
+                            }
+
+                            section.collapse = collapse;
+                        });
                     }}
                     autoFocus={props.autoFocus}
                     settings={props.settings}
                     onChange={(code) => {
-                        props.onChange((section) => ({
-                            ...section,
-                            type: "code",
-                            value: code,
-                        }));
+                        props.onChange((section) => {
+                            if (section.type !== "code") {
+                                throw new Error(
+                                    `section mismatch: ${JSON.stringify(section, null, 4)}`
+                                );
+                            }
+
+                            section.value = code;
+                        });
                     }}
                 />
             );
@@ -694,11 +739,15 @@ const SectionContainer = (props: {
                 <TextEditor
                     content={props.section.value}
                     onChange={(text) => {
-                        props.onChange((section) => ({
-                            ...section,
-                            type: "text",
-                            value: text,
-                        }));
+                        props.onChange((section) => {
+                            if (section.type !== "text") {
+                                throw new Error(
+                                    `section mismatch: ${JSON.stringify(section, null, 4)}`
+                                );
+                            }
+
+                            section.value = text;
+                        });
                     }}
                     isLocked={props.section.locked ?? false}
                 />
