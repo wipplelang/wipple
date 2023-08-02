@@ -39,4 +39,6 @@ Name { NamePrefix NameSuffix? }
   @precedence { Space, LineContinue, Comment, Placeholder, Text, Number, Asset, QuoteName, RepeatName, Type, OperatorName, NamePrefix, NameSuffix }
 }
 
+@skip { Space | LineContinue }
+
 @detectDelim
