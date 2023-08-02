@@ -54,6 +54,7 @@ import { parser } from "../languages/wipple.grammar";
 import { Settings } from "../App";
 import { CircularProgress, Popover } from "@mui/material";
 import { SwatchesPicker } from "react-color";
+import { closeBrackets } from "@codemirror/autocomplete";
 
 export interface CodeEditorProps {
     id: string;
@@ -480,6 +481,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
     };
 
     const themeConfig = useMemo(() => new Compartment(), []);
+    const advancedExtensions = useMemo(() => new Compartment(), []);
 
     useEffect(() => {
         view.current = new EditorView({
@@ -519,6 +521,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     placeholder("Write your code here!"),
                     hover,
                     highlight,
+                    closeBrackets(),
                     EditorView.updateListener.of(onChange),
                 ],
             }),
@@ -1131,6 +1134,9 @@ const wippleLanguage = new LanguageSupport(
         languageData: {
             commentTokens: { line: "--" },
             wordChars: "-!?",
+            closeBrackets: {
+                brackets: ["(", "[", "{", '"'],
+            },
         },
     })
 );

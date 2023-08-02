@@ -1,6 +1,13 @@
 @top Program { expression* }
 
-expression { Bracket | Comment | Placeholder | QuoteName | RepeatName | Text | Number | Asset | Keyword | Operator | Type | Name }
+expression { Grouped | Comment | Placeholder | QuoteName | RepeatName | Text | Number | Asset | Keyword | Operator | Type | Name }
+
+Grouped { List | FileAttribute | Attribute | Block }
+
+List { "(" expression* ")" }
+FileAttribute { "[[" expression* "]]" }
+Attribute { "[" expression* "]" }
+Block { "{" expression* "}" }
 
 Keyword { @specialize<NamePrefix, "_" | "use" | "when" | "type" | "trait" | "instance" | "where" | "external" | "syntax" | "format" | "with"> }
 
@@ -9,12 +16,10 @@ Operator { @specialize<OperatorName, ":" | "::" | "->" | "=>" | "."> }
 Name { NamePrefix NameSuffix? }
 
 @tokens {
-  Bracket {
-    "[[" | "]]" |
-    "[" | "]" |
-    "(" | ")" |
-    "{" | "}"
-  }
+  "[[" "]]"
+  "[" "]"
+  "(" ")"
+  "{" "}"
 
   Space { $[ \t\n\r]+ }
   LineContinue { "\\" }
