@@ -50,6 +50,21 @@ tasks:
             - npm run build
             - mkdir -p ../_site
             - cp -r ./_site/* ../_site
+        sources:
+            - images/**/*
+            - prism/**/*
+            - styles/**/*
+            - .eleventy.js
+            - index.html
+            - package.json
+            - postcss.config.cjs
+            - tailwind.config.cjs
+            - robots.txt
+        generates:
+            - ../_site/images/**/*
+            - ../_site/styles/**/*
+            - ../_site/index.html
+            - ../_site/robots.txt
 
     website-compiler-docs:
         run: once
@@ -60,6 +75,13 @@ tasks:
             - mdbook build
             - mkdir -p ../_site/compiler-docs
             - cp -r book/* ../_site/compiler-docs
+        sources:
+            - scripts/**/*
+            - src/**/*
+            - theme/**/*
+            - book.toml
+        generates:
+            - ../_site/book/**/*
 
     website-shared:
         run: once
@@ -69,6 +91,14 @@ tasks:
         cmds:
             - (cd .. && npm i)
             - npm run build
+        sources:
+            - src/**/*
+            - wasm/**/*
+            - build.js
+            - tsconfig.json
+            - tsconfig.node.json
+        generates:
+            - dist/**/*
 
     website-playground:
         run: once
@@ -79,6 +109,7 @@ tasks:
             - task build
             - mkdir -p ../_site/playground
             - cp -r dist/* ../_site/playground
+        # 'sources' and 'generates' are located in website/playground/Taskfile.yml
 
     website-embed:
         run: once
@@ -90,6 +121,17 @@ tasks:
             - npm run build
             - mkdir -p ../_site/embed
             - cp -r dist/* ../_site/embed
+        sources:
+            - src/**/*
+            - index.html
+            - package.json
+            - postcss.config.cjs
+            - tailwind.config.cjs
+            - tsconfig.json
+            - tsconfig.node.json
+            - vite.config.ts
+        generates:
+            - ../_site/embed/**/*
 
     website-std:
         run: once
@@ -99,6 +141,10 @@ tasks:
         cmds:
             - mkdir -p _site/std
             - cp -r ../std/* _site/std
+        sources:
+            - ../_std/**/*
+        generates:
+            - _site/std/**/*
 
     website-doc:
         run: once
@@ -116,6 +162,11 @@ tasks:
                 --std ../std/std.wpl
                 > _site/doc/std.html
             - mv _site/playground/doc/*.html _site/doc
+        sources:
+            - ../std/**/*
+            - _site/playground/doc/*.html
+        generates:
+            - _site/doc/**/*
 
     website-netlify:
         run: once
@@ -125,3 +176,7 @@ tasks:
         cmds:
           - mkdir -p _site
           - cp netlify/_* _site
+        sources:
+            - netlify/_*
+        generates:
+            - _site/_*
