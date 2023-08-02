@@ -1,7 +1,7 @@
 use clap::Parser;
 use colored::Colorize;
 use parking_lot::Mutex;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{
     env, fs,
     io::{self, Write},
@@ -14,6 +14,9 @@ use wipple_frontend::helpers::Shared;
 #[derive(Parser)]
 struct Args {
     path: PathBuf,
+
+    #[clap(long)]
+    apply: bool,
 
     #[clap(long)]
     junit: bool,
@@ -182,7 +185,7 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct TestCase {
     code: String,
     output: String,
@@ -303,6 +306,7 @@ async fn run(
         let mut buf = Vec::new();
         {
             let (files, diagnostics) = diagnostics.into_console_friendly(
+                loader::make_example_url,
                 show_expansion_history,
                 #[cfg(debug_assertions)]
                 trace_diagnostics,

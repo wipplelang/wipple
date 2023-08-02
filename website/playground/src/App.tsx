@@ -99,9 +99,8 @@ const App = () => {
                     return;
                 }
 
-                const fileParam = query.get("file");
-                if (fileParam) {
-                    const data = await (await fetch(fileParam)).text();
+                const getFile = async (path: string) => {
+                    const data = await (await fetch(path)).text();
 
                     const file: {
                         sections: Section[];
@@ -114,26 +113,17 @@ const App = () => {
                     setNextPage(file.next);
 
                     setFirstRender(true);
+                };
 
+                const fileParam = query.get("file");
+                if (fileParam) {
+                    await getFile(fileParam);
                     return;
                 }
 
                 const lessonParam = query.get("lesson");
                 if (lessonParam) {
-                    const data = await (await fetch(`./lessons/${lessonParam}.txt`)).text();
-
-                    const lesson: {
-                        sections: Section[];
-                        previous?: PageLink;
-                        next?: PageLink;
-                    } = convertLesson(data);
-
-                    setSections(lesson.sections);
-                    setPreviousPage(lesson.previous);
-                    setNextPage(lesson.next);
-
-                    setFirstRender(true);
-
+                    await getFile(`./lessons/${lessonParam}.txt`);
                     return;
                 }
             } finally {

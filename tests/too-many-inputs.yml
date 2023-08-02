@@ -12,3 +12,5 @@ diagnostics: |
       │ │
       │ expected `Number -> Number -> _`, but found `()`
       │ too many inputs provided to this function
+      │
+      = for more information, see https://wipple.dev/playground/?lesson=debugging/mismatched-types

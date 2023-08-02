@@ -19,3 +19,5 @@ diagnostics: |
        │
     15 │ + : syntax { 'a + 'b -> Add 'a 'b }
        │                         --- actual error occurred here
+       │
+       = for more information, see https://wipple.dev/playground/?lesson=debugging/mismatched-types

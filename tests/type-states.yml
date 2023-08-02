@@ -29,3 +29,5 @@ diagnostics: |
        │
     20 │ _ : my-drone . land -- cannot land because drone is already idle
        │     ^^^^^^^^ expected `Drone Hovering`, but found `Drone Idle`
+       │
+       = for more information, see https://wipple.dev/playground/?lesson=debugging/mismatched-types

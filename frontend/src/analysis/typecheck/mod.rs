@@ -5319,6 +5319,7 @@ impl Typechecker {
                 self.compiler
                     .error_with_trace("mismatched types", notes, error.trace)
                     .fix(fix)
+                    .example("mismatched-types")
             }
             engine::TypeError::MissingInstance(id, mut params, bound_span, error_candidates) => {
                 for param in &mut params {

@@ -13,6 +13,10 @@ use wipple_frontend::{
 
 pub const STD_URL: &str = "https://wipple.dev/std/std.wpl";
 
+pub fn make_example_url(example: &str) -> String {
+    format!("https://wipple.dev/playground/?lesson=debugging/{example}")
+}
+
 #[derive(Debug, Clone)]
 pub struct Loader {
     virtual_paths: Shared<HashMap<InternedString, Arc<str>>>,

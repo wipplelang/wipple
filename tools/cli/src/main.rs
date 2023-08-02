@@ -137,6 +137,7 @@ async fn run() -> anyhow::Result<()> {
         let _ = options;
 
         let (files, diagnostics) = diagnostics.into_console_friendly(
+            loader::make_example_url,
             options.show_expansion_history,
             #[cfg(debug_assertions)]
             options.trace,

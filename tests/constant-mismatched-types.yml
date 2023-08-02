@@ -10,3 +10,5 @@ diagnostics: |
       │
     2 │ x : "42"
       │     ^^^^ expected `Number`, but found `Text`
+      │
+      = for more information, see https://wipple.dev/playground/?lesson=debugging/mismatched-types

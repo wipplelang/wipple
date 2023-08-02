@@ -12,3 +12,5 @@ diagnostics: |
       │                        │
       │                        expected `Number -> ()`, but found `Text -> ()`
       │                        this function accepts `Text`, but it should accept `Number`
+      │
+      = for more information, see https://wipple.dev/playground/?lesson=debugging/mismatched-types

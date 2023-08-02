@@ -17,6 +17,7 @@ pub struct Diagnostic {
     pub message: String,
     pub notes: Vec<Note>,
     pub fix: Option<Fix>,
+    pub example: Option<String>,
     pub trace: Backtrace,
 }
 
@@ -26,6 +27,7 @@ impl PartialEq for Diagnostic {
             && self.message == other.message
             && self.notes == other.notes
             && self.fix == other.fix
+            && self.example == other.example
     }
 }
 
@@ -37,6 +39,7 @@ impl std::hash::Hash for Diagnostic {
         self.message.hash(state);
         self.notes.hash(state);
         self.fix.hash(state);
+        self.example.hash(state);
     }
 }
 
@@ -130,6 +133,11 @@ impl Diagnostic {
     ) -> Self {
         self.fix(Fix::new(description, range, replacement))
     }
+
+    pub fn example(mut self, example: impl ToString) -> Self {
+        self.example = Some(example.to_string());
+        self
+    }
 }
 
 #[allow(unused)]
@@ -157,6 +165,7 @@ impl Compiler {
             message: message.to_string(),
             notes,
             fix: None,
+            example: None,
             trace,
         }
     }
@@ -310,6 +319,7 @@ impl FinalizedDiagnostics {
 
     pub fn into_console_friendly(
         self,
+        make_link: impl Fn(&str) -> String,
         show_expansion_history: bool,
         #[cfg(debug_assertions)] include_trace: bool,
     ) -> (
@@ -392,7 +402,13 @@ impl FinalizedDiagnostics {
                         false,
                     )
                 }))
-                .collect();
+                .collect::<Vec<_>>();
+
+            let notes = diagnostic
+                .example
+                .as_deref()
+                .map(|example| vec![format!("for more information, see {}", make_link(example))])
+                .unwrap_or_default();
 
             let diagnostic =
                 codespan_reporting::diagnostic::Diagnostic::new(diagnostic.level.into())
@@ -407,7 +423,8 @@ impl FinalizedDiagnostics {
 
                         diagnostic.message
                     })())
-                    .with_labels(labels);
+                    .with_labels(labels)
+                    .with_notes(notes);
 
             console_diagnostics.push(diagnostic);
         }

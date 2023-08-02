@@ -9,3 +9,5 @@ diagnostics: |
       │
     1 │ 42 :: Text
       │ ^^ expected `Text`, but found `Number`
+      │
+      = for more information, see https://wipple.dev/playground/?lesson=debugging/mismatched-types
