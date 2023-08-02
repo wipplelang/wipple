@@ -59,6 +59,10 @@ code {
     @apply bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-50 rounded-md px-1.5;
 }
 
+.code-editor-markdown a {
+    @apply text-blue-500;
+}
+
 .welcome-button {
     @apply bg-gray-200 dark:bg-gray-400 text-gray-600 dark:text-gray-800 rounded-lg px-3 py-2;
 }

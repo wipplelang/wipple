@@ -808,7 +808,13 @@ const Hover = (props: {
                         }`}
                     >
                         <Markdown>
-                            {`${props.hover.diagnostic[0].level}: ${props.hover.diagnostic[0].message}`}
+                            {`${props.hover.diagnostic[0].level}: ${
+                                props.hover.diagnostic[0].message
+                            }${
+                                props.hover.diagnostic[0].example
+                                    ? ` [(more information)](/playground/?lesson=debugging/${props.hover.diagnostic[0].example})`
+                                    : ""
+                            }`}
                         </Markdown>
                     </div>
 

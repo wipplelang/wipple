@@ -34,6 +34,7 @@ struct AnalysisOutputDiagnostic {
     message: String,
     notes: Vec<AnalysisOutputDiagnosticNote>,
     fix: Option<AnalysisOutputDiagnosticFix>,
+    example: Option<String>,
 }
 
 #[derive(PartialEq, Eq, Serialize)]
@@ -463,6 +464,7 @@ pub fn analyze(
                         end: fix.range.range().end,
                         replacement: fix.replacement,
                     }),
+                    example: diagnostic.example,
                 }
             })
             .dedup()
