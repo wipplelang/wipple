@@ -27,6 +27,8 @@ diagnostics: |
       │ │
       │ try annotating the type with `::`
       │ this has type `T _ -> ()`
+      │
+      = for more information, see https://wipple.dev/playground/?lesson=errors/unknown-type
 
     error: could not determine the type of this expression
        ┌─ test:15:1
@@ -36,6 +38,8 @@ diagnostics: |
        │ │
        │ try annotating the type with `::`
        │ this has type `U a a -> ()` for some unknown type `a`
+       │
+       = for more information, see https://wipple.dev/playground/?lesson=errors/unknown-type
 
     error: could not determine the type of this expression
        ┌─ test:16:1
@@ -45,3 +49,5 @@ diagnostics: |
        │ │
        │ try annotating the type with `::`
        │ this has type `U _ _ -> ()`
+       │
+       = for more information, see https://wipple.dev/playground/?lesson=errors/unknown-type

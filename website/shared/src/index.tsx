@@ -361,7 +361,7 @@ export const PlaygroundRunner = forwardRef<
                                                                 diagnostic.message
                                                             }${
                                                                 diagnostic.example
-                                                                    ? ` [(more information)](/playground/?lesson=debugging/${diagnostic.example})`
+                                                                    ? ` [(more information)](/playground/?lesson=errors/${diagnostic.example})`
                                                                     : ""
                                                             }`}
                                                         </Markdown>

@@ -9,3 +9,5 @@ diagnostics: |
       │
     1 │ foo
       │ ^^^ this name is not defined
+      │
+      = for more information, see https://wipple.dev/playground/?lesson=errors/undefined-name

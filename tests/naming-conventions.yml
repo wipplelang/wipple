@@ -18,33 +18,45 @@ diagnostics: |
       │
     3 │ myType : type
       │ ^^^^^^ try writing the type like this: `My-Type`
+      │
+      = for more information, see https://wipple.dev/playground/?lesson=errors/naming-conventions
 
     warning: trait should be written in title case with dashes
       ┌─ test:5:1
       │
     5 │ myTrait : trait
       │ ^^^^^^^ try writing the trait like this: `My-Trait`
+      │
+      = for more information, see https://wipple.dev/playground/?lesson=errors/naming-conventions
 
     warning: constant should be written in lowercase with dashes
       ┌─ test:7:1
       │
     7 │ myConstant :: a => ()
       │ ^^^^^^^^^^ try writing the constant like this: `my-constant`
+      │
+      = for more information, see https://wipple.dev/playground/?lesson=errors/naming-conventions
 
     warning: type parameter should be written in title case with dashes
       ┌─ test:7:15
       │
     7 │ myConstant :: a => ()
       │               ^ try writing the type parameter like this: `A`
+      │
+      = for more information, see https://wipple.dev/playground/?lesson=errors/naming-conventions
 
     warning: variable should be written in lowercase with dashes
        ┌─ test:10:1
        │
     10 │ myVariable : 42
        │ ^^^^^^^^^^ try writing the variable like this: `my-variable`
+       │
+       = for more information, see https://wipple.dev/playground/?lesson=errors/naming-conventions
 
     warning: unused variable
        ┌─ test:10:1
        │
     10 │ myVariable : 42
        │ ^^^^^^^^^^ `myVariable` is never used
+       │
+       = for more information, see https://wipple.dev/playground/?lesson=errors/unused-variable

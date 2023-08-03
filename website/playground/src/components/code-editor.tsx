@@ -812,7 +812,7 @@ const Hover = (props: {
                                 props.hover.diagnostic[0].message
                             }${
                                 props.hover.diagnostic[0].example
-                                    ? ` [(more information)](/playground/?lesson=debugging/${props.hover.diagnostic[0].example})`
+                                    ? ` [(more information)](/playground/?lesson=errors/${props.hover.diagnostic[0].example})`
                                     : ""
                             }`}
                         </Markdown>

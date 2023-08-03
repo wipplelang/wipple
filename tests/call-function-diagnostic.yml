@@ -16,4 +16,4 @@ diagnostics: |
       │               expected `Text`, but found `() -> Text`
       │               try providing an input to this function
       │
-      = for more information, see https://wipple.dev/playground/?lesson=debugging/mismatched-types
+      = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types

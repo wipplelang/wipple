@@ -15,3 +15,5 @@ diagnostics: |
        │
     22 │ show :: A where (Show A) => A -> ()
        │                 -------- required by this bound here
+       │
+       = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance

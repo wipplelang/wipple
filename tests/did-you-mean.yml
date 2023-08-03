@@ -14,6 +14,8 @@ diagnostics: |
       │ │
       │ this name is not defined
       │ did you mean `show`?
+      │
+      = for more information, see https://wipple.dev/playground/?lesson=errors/undefined-name
 
     error: cannot find `hello`
       ┌─ test:2:6
@@ -23,6 +25,8 @@ diagnostics: |
       │      │
       │      this name is not defined
       │      if you meant to provide text here, try using quotes: `"hello"`
+      │
+      = for more information, see https://wipple.dev/playground/?lesson=errors/undefined-name
 
     error: cannot find `//`
       ┌─ test:3:10
@@ -32,9 +36,13 @@ diagnostics: |
       │          │
       │          this name is not defined
       │          comments in Wipple begin with `--`
+      │
+      = for more information, see https://wipple.dev/playground/?lesson=errors/undefined-name
 
     error: cannot find `comment`
       ┌─ test:3:13
       │
     3 │ sum: 1+2 // comment
       │             ^^^^^^^ this name is not defined
+      │
+      = for more information, see https://wipple.dev/playground/?lesson=errors/undefined-name

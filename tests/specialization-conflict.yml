@@ -38,7 +38,7 @@ diagnostics: |
        │ this constant must have a more specific type than the original constant
        │ this function returns `Number`, but it should return `Text`
        │
-       = for more information, see https://wipple.dev/playground/?lesson=debugging/mismatched-types
+       = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types
 
     error: missing instance
        ┌─ test:20:1
@@ -51,3 +51,5 @@ diagnostics: |
        │ │
        │ could not find instance `Greet Baz`
        │ this constant must satisfy the bounds of the original constant
+       │
+       = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance

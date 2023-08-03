@@ -23,3 +23,5 @@ diagnostics: |
        │     │
        │     try annotating the type with `::`
        │     this has type `_ -> S (S (S (S (S Z))))`
+       │
+       = for more information, see https://wipple.dev/playground/?lesson=errors/unknown-type

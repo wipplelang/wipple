@@ -13,6 +13,8 @@ diagnostics: |
       │
     1 │ (show) :: Text -> ()
       │  ^^^^ did you mean to use the result, eg. `show` it?
+      │
+      = for more information, see https://wipple.dev/playground/?lesson=errors/useless-expression
 
     warning: this expression doesn't do anything
        ┌─ test:2:1
@@ -24,3 +26,5 @@ diagnostics: |
        │
     15 │ + : syntax { 'a + 'b -> Add 'a 'b }
        │                         --- actual warning occurred here
+       │
+       = for more information, see https://wipple.dev/playground/?lesson=errors/useless-expression

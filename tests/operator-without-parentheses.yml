@@ -19,6 +19,8 @@ diagnostics: |
        │
     15 │ + : syntax { 'a + 'b -> Add 'a 'b }
        │                         --- actual error occurred here
+       │
+       = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
 
     error: missing instance
        ┌─ test:2:11
@@ -33,6 +35,8 @@ diagnostics: |
        │
     41 │ or : syntax { 'a or 'b -> Or 'a (() -> 'b) }
        │                           -- actual error occurred here
+       │
+       = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
 
     error: cannot add `Number` to `Text`
        ┌─ test:3:9
@@ -44,3 +48,5 @@ diagnostics: |
        │
     15 │ + : syntax { 'a + 'b -> Add 'a 'b }
        │                         --- actual error occurred here
+       │
+       = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
