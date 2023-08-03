@@ -19,7 +19,7 @@ f : {
   f :: () -> Number
   f : () -> n
 
-  f
+  f -- `n` is deleted here, but `f` still references it
 }
 
 show (f ())

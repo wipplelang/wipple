@@ -1,0 +1,43 @@
+---
+id: RAtZKDo0
+type: text
+locked: true
+---
+
+# How to fix the "constant already exists" error
+
+This error is raised when you have two constants with the same name in the same file. Because constants may be referred to in a different order than they were declared, it would be ambiguous which constant you were referring to if there were duplicates.
+
+---
+id: 8DFnb9S6
+type: code
+---
+
+n :: Number
+n : 1
+
+n :: Number
+n : 2
+
+show n -- which `n`?
+
+---
+id: pFBEiHU7
+type: text
+locked: true
+---
+
+To fix this error, rename one of the constants or move it to a different file:
+
+---
+id: p9UcqssW
+type: code
+---
+
+n :: Number
+n : 1
+
+m :: Number
+m : 2
+
+show n
