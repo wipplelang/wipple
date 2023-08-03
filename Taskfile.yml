@@ -38,7 +38,6 @@ tasks:
             - website-playground
             - website-std
             - website-doc
-            - website-netlify
 
     website-home:
         run: once
@@ -167,16 +166,3 @@ tasks:
             - _site/playground/doc/*.html
         generates:
             - _site/doc/**/*
-
-    website-netlify:
-        run: once
-        deps:
-            - website-home
-        dir: website
-        cmds:
-          - mkdir -p _site
-          - cp netlify/_* _site
-        sources:
-            - netlify/_*
-        generates:
-            - _site/_*

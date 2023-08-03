@@ -26,13 +26,13 @@ type: text
 locked: true
 ---
 
-If you want to share your own code, you can upload it to [GitHub Gist](https://gist.github.com) and use `wipple.dev/gist`:
+If you want to share your own code, you can upload it to [GitHub](https://github.com):
 
 ---
 id: iimVvMBH
 type: code
 ---
 
-use "https://wipple.dev/gist/f81ed1634d9ad44758a78f340a349ccf/say-hello.wpl"
+use "https://github.com/wipplelang/playground-examples/raw/main/say-hello.wpl"
 
 say-hello ()

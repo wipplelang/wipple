@@ -11,7 +11,7 @@ export interface AnalysisOutputDiagnostic {
     level: "warning" | "error";
     message: string;
     fix?: AnalysisConsoleDiagnosticFix;
-    link?: string;
+    example?: string;
     notes: {
         code: string;
         span: {

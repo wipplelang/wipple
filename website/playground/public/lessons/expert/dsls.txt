@@ -289,14 +289,14 @@ With custom syntax and contextual constants, you can build your own programming 
 
 ## Sharing your code
 
-You can package up your code into a file and share it with others so they can `use` it. The easiest way to do this is to copy your code into a `.wpl` file and upload it to [GitHub Gist](https://gist.github.com). You can then `use` it like so:
+You can package up your code into a file and share it with others so they can `use` it. The easiest way to do this is to copy your code into a `.wpl` file and upload it to [GitHub](https://github.com). You can then `use` it like so:
 
 ---
 id: Nj8EF0Lo
 type: code
 ---
 
-use "https://wipple.dev/gist/ab49093029b9c72772a4165d7d8a85ff/robot"
+use "https://github.com/wipplelang/playground-examples/raw/main/robot.wpl"
 
 with-robot "Bot" {
     say-hello

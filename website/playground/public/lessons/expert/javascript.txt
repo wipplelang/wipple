@@ -39,7 +39,7 @@ const messageHandler = (container) => (message, value) => {
 };
 ```
 
-The above example is hosted as a GitHub Gist [here](https://gist.github.com/WilsonGramer/a9d2b553609030d94d4e8c00e8d26669), and you can use `wipple.dev/gist` to import it into Wipple:
+The above example is hosted on GitHub [here](https://github.com/wipplelang/playground-examples/raw/main/ui-test.js), and you can import it into Wipple like so:
 
 ---
 id: xsioQb6d
@@ -47,7 +47,7 @@ type: code
 lint: false
 ---
 
-url : "https://wipple.dev/gist/a9d2b553609030d94d4e8c00e8d26669/ui-test.js"
+url : "https://github.com/wipplelang/playground-examples/raw/main/ui-test.js"
 
 with-ui url (ui -> {
     -- TODO
@@ -66,7 +66,7 @@ id: _ab7F-5R
 type: code
 ---
 
-url : "https://wipple.dev/gist/a9d2b553609030d94d4e8c00e8d26669/ui-test.js"
+url : "https://github.com/wipplelang/playground-examples/raw/main/ui-test.js"
 
 with-ui url (ui -> {
     ui . message "display-text" "Hello, world!"
@@ -95,7 +95,7 @@ my-interface : crash "`my-interface` used outside `with-my-interface`"
 
 with-my-interface : syntax {
     with-my-interface 'body -> {
-        url : "https://wipple.dev/gist/a9d2b553609030d94d4e8c00e8d26669/ui-test.js"
+        url : "https://github.com/wipplelang/playground-examples/raw/main/ui-test.js"
 
         with-ui url (ui -> {
             with (my-interface : My-Interface { ui }) 'body
@@ -116,14 +116,14 @@ type: text
 locked: true
 ---
 
-And let's host that as a Gist, too:
+And let's host that on GitHub, too:
 
 ---
 id: VseJ6oq7
 type: code
 ---
 
-use "https://wipple.dev/gist/2ff0db15f051a39080ff5aa4a2e9a6bf/my-interface"
+use "https://github.com/wipplelang/playground-examples/raw/main/my-interface.wpl"
 
 with-my-interface {
     display-text "Hello, world!"
