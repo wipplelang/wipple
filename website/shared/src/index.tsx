@@ -357,7 +357,13 @@ export const PlaygroundRunner = forwardRef<
                                                         }`}
                                                     >
                                                         <Markdown>
-                                                            {`${diagnostic.level}: ${diagnostic.message}`}
+                                                            {`${diagnostic.level}: ${
+                                                                diagnostic.message
+                                                            }${
+                                                                diagnostic.example
+                                                                    ? ` [(more information)](/playground/?lesson=debugging/${diagnostic.example})`
+                                                                    : ""
+                                                            }`}
                                                         </Markdown>
                                                     </div>
 
