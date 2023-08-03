@@ -1,0 +1,53 @@
+---
+id: LMTHfDPh
+type: text
+locked: true
+---
+
+# How to fix the "instance collides with another instance" error
+
+This error is raised when you have two instances of a trait that could potentially apply to the same types. You can only declare one instance per set of types per trait. For example, `instance (Show Text)` is already declared in the standard library, so you can't override it:
+
+---
+id: oazU2lp9
+type: code
+---
+
+instance (Show Text) : ...
+
+---
+id: y8Cugq6c
+type: text
+locked: true
+---
+
+If you have a trait with an [inferred type parameter](https://wipple.dev/playground/?file=https://wipple.dev/std/examples/infer.txt), that type parameter does not factor into the collision check. For example, adding two `Number`s produces a `Number` as defined by the standard library, so you can't add a new instance that produces anything else from two `Number`s:
+
+---
+id: wUIX0E1S
+type: code
+---
+
+My-Number : type
+
+instance (Add Number Number My-Number) : ...
+
+---
+id: qJzrlXdx
+type: text
+locked: true
+---
+
+To fix this error, try declaring a new type and defining instances for that type instead:
+
+---
+id: wjw3q6D_
+type: code
+---
+
+My-Number : type {
+  n :: Number
+}
+
+instance (Add My-Number My-Number My-Number) : a b -> \
+  My-Number { n : (n of a) + (n of b) }
