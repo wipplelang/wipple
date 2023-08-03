@@ -20,6 +20,8 @@ tasks:
         run: once
         cmds:
             - cargo install --force --path tools/cli
+        env:
+            CARGO_TARGET_DIR: target
 
     serve:
         run: once
