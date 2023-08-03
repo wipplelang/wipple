@@ -1,0 +1,31 @@
+---
+id: 6_J075Gk
+type: text
+locked: true
+---
+
+# How to fix the "cannot use `end` outside a function" error
+
+This error occurs when you use `end` outside a function body. `end` is used to exit from a function early, so it doesn't make sense to use it outside a function:
+
+---
+id: i99L0eN7
+type: code
+---
+
+end "Hello, world!"
+
+---
+id: Dm5jG-i0
+type: text
+locked: true
+---
+
+If you want to exit the program early at the top level, use a function like `crash` instead:
+
+---
+id: fopGOPr6
+type: code
+---
+
+crash "Hello, world!"
