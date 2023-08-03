@@ -1958,10 +1958,15 @@ impl Lowerer {
                                     );
                                 }
 
-                                let mut value = self.lower_expr(expr, &prev_constant_scope, ctx);
+                                let scope = self.child_scope(
+                                    self.compiler.new_scope_id_in(expr.span().first().path),
+                                    &prev_constant_scope
+                                );
+
+                                let mut value = self.lower_expr(expr, &scope, ctx);
 
                                 let used_variables =
-                                    self.generate_capture_list(&mut value, &prev_constant_scope);
+                                    self.generate_capture_list(&mut value, &scope);
 
                                 if !used_variables.is_empty() {
                                     self.compiler.add_error(
