@@ -953,6 +953,7 @@ impl Compiler {
                                 constant.name.unwrap()
                             ),
                         )],
+                        "uninitialized-constant",
                     );
 
                     Expression {
@@ -978,6 +979,7 @@ impl Compiler {
                 self.add_error(
                     "instance of trait that allows overlapping instances must occur in the same file as the trait",
                     vec![Note::primary(instance.span, "instance disallowed here")],
+                    "overlapping-instances-in-different-files"
                 );
             }
 
@@ -993,6 +995,7 @@ impl Compiler {
                                 instance.span,
                                 "try adding `:` after the instance declaration to give it a value",
                             )],
+                            "instance-has-no-value",
                         )
                         .fix_with(
                             "give this instance a value",
@@ -1018,6 +1021,7 @@ impl Compiler {
                                 instance.span,
                                 "try removing this instance's value",
                             )],
+                            "instance-has-unexpected-value",
                         )
                         .fix_with(
                             "remove this value",
@@ -1394,6 +1398,7 @@ impl Lowerer {
                         self.compiler.add_error(
                             "`type` declarations may not have bounds",
                             vec![Note::primary(bound.span, "try removing this")],
+                            "unexpected-bounds",
                         );
                     }
 
@@ -1529,6 +1534,7 @@ impl Lowerer {
                                                 ty.span,
                                                 "type must contain all fields or all variants",
                                             )],
+                                            "mixed-type"
                                         );
 
                                         TypeDeclarationKind::Marker
@@ -1570,6 +1576,7 @@ impl Lowerer {
                                                 ty.span,
                                                 "to create a marker type, remove the `{}`",
                                             )],
+                                            "empty-type",
                                         );
 
                                         TypeDeclarationKind::Marker
@@ -1602,6 +1609,7 @@ impl Lowerer {
                         self.compiler.add_error(
                             "`trait` declarations may not have bounds",
                             vec![Note::primary(bound.span, "try removing this")],
+                            "unexpected-bounds",
                         );
                     }
 
@@ -1683,6 +1691,7 @@ impl Lowerer {
                                         std::iter::once(Note::primary(trait_span, "no such trait"))
                                             .chain(notes)
                                             .collect(),
+                                        "undefined-name",
                                     )
                                     .fix(fix),
                             );
@@ -1754,6 +1763,7 @@ impl Lowerer {
                                             decl.span,
                                             "expected type declaration here",
                                         )],
+                                        "",
                                     );
 
                                     break 'language_items;
@@ -1767,6 +1777,7 @@ impl Lowerer {
                                         decl.span,
                                         "`language` item already defined elsewhere",
                                     )],
+                                    "",
                                 );
 
                                 break 'language_items;
@@ -1784,6 +1795,7 @@ impl Lowerer {
                                             decl.span,
                                             "expected trait declaration here",
                                         )],
+                                        "",
                                     );
 
                                     break 'language_items;
@@ -1797,6 +1809,7 @@ impl Lowerer {
                                         decl.span,
                                         "`language` item already defined elsewhere",
                                     )],
+                                    "",
                                 );
 
                                 break 'language_items;
@@ -1821,6 +1834,7 @@ impl Lowerer {
                                             decl.span,
                                             "expected constant declaration here",
                                         )],
+                                        "",
                                     );
 
                                     break 'diagnostic_items;
@@ -1844,6 +1858,7 @@ impl Lowerer {
                                     decl.span,
                                     "expected constant declaration here",
                                 )],
+                                "",
                             );
 
                             break 'diagnostic_aliases;
@@ -1918,6 +1933,7 @@ impl Lowerer {
                                                     "other constant declared here",
                                                 ),
                                             ],
+                                            "duplicate-constant",
                                         );
 
                                         return assign_pattern!();
@@ -1956,6 +1972,7 @@ impl Lowerer {
                                                 Note::primary(span, "captured variable")
                                             })
                                             .collect(),
+                                        "constant-captured-variables",
                                     );
                                 }
 
@@ -1980,6 +1997,7 @@ impl Lowerer {
                         self.compiler.add_error(
                             "constant must be initialized immediately following its type annotation",
                             vec![Note::primary(span, "try initializing the constant below this")],
+                            "uninitialized-constant"
                         );
                     }
 
@@ -2015,6 +2033,7 @@ impl Lowerer {
                                     self.compiler.add_error(
                                         "type functions may only be used when declaring a constant",
                                         vec![Note::primary(pattern_span, "try removing this")],
+                                        "unexpected-type-function",
                                     );
 
                                     return None;
@@ -2062,6 +2081,7 @@ impl Lowerer {
                                     self.compiler.add_error(
                                         "type annotation may not contain multiple type functions",
                                         vec![Note::primary(annotation.span(), "try removing this")],
+                                        "unexpected-type-function",
                                     );
 
                                     return None;
@@ -2080,6 +2100,7 @@ impl Lowerer {
                             self.compiler.add_error(
                                 "cannot specialize a `type` variant",
                                 vec![Note::primary(span, "cannot specialize this")],
+                                "unexpected-specialize",
                             );
 
                             return None;
@@ -2089,6 +2110,7 @@ impl Lowerer {
                             self.compiler.add_error(
                                 "cannot specialize constant which is a specialization of another constant",
                                 vec![Note::primary(span, "cannot specialize this")],
+                                "unexpected-specialize",
                             );
 
                             return None;
@@ -2105,6 +2127,7 @@ impl Lowerer {
                                 Note::primary(span, "try giving this constant a different name"),
                                 Note::primary(existing_span, "original constant declared here"),
                             ],
+                            "duplicate-constant",
                         );
 
                         return None;
@@ -2240,6 +2263,7 @@ impl Lowerer {
                                         value_span,
                                         "expected a `type` or `trait` definition",
                                     )],
+                                    "syntax-error",
                                 );
 
                                 None
@@ -2324,6 +2348,7 @@ impl Lowerer {
                                                 pattern.span(),
                                                 "expected an `instance` definition",
                                             )],
+                                            "syntax-error",
                                         );
 
                                         None
@@ -2394,6 +2419,7 @@ impl Lowerer {
                                 statement.span(),
                                 "expected an `instance` declaration",
                             )],
+                            "syntax-error",
                         );
 
                         None
@@ -2500,6 +2526,7 @@ impl Lowerer {
                                     ))
                                     .chain(notes)
                                     .collect(),
+                                    "undefined-name",
                                 )
                                 .fix(fix),
                         );
@@ -2545,6 +2572,7 @@ impl Lowerer {
                                         function.span(),
                                         "try providing an input to this function",
                                     )],
+                                    "",
                                 );
 
                                 return Expression {
@@ -2586,11 +2614,13 @@ impl Lowerer {
 
                                     if expr.inputs.len() > 1 {
                                         self.compiler.add_error(
-                                                "too many inputs in structure instantiation", vec![Note::primary(
-                                                    expr.span,
-                                                    "this structure requires a single block containing its fields",
-                                                )],
-                                            );
+                                            "too many inputs in structure instantiation",
+                                            vec![Note::primary(
+                                                expr.span,
+                                                "this structure requires a single block containing its fields",
+                                            )],
+                                            "syntax-error",
+                                        );
                                     }
 
                                     let fields = 'parse: {
@@ -2655,7 +2685,8 @@ impl Lowerer {
                                                                             vec![Note::primary(
                                                                                 value.span(),
                                                                                 "expected expression",
-                                                                            )]
+                                                                            )],
+                                                                            "syntax-error",
                                                                         );
 
                                                                         return None;
@@ -2666,10 +2697,12 @@ impl Lowerer {
                                                             }
                                                             pattern => {
                                                                 self.compiler.add_error(
-                                                                    "structure instantiation may not contain complex patterns", vec![Note::primary(
+                                                                    "structure instantiation may not contain complex patterns",
+                                                                    vec![Note::primary(
                                                                         pattern.span(),
                                                                         "try splitting this pattern into multiple names",
-                                                                    )]
+                                                                    )],
+                                                                    "syntax-error",
                                                                 );
 
                                                                 return None;
@@ -2685,7 +2718,8 @@ impl Lowerer {
                                                             "structure instantiation may not contain executable statements", vec![Note::primary(
                                                                 block.span,
                                                                 "try removing this",
-                                                            )]
+                                                            )],
+                                                            "syntax-error",
                                                         );
 
                                                         return None;
@@ -2710,6 +2744,7 @@ impl Lowerer {
                                         self.compiler.add_error(
                                             "only structures may be instantiated like this",
                                             vec![Note::primary(function.span(), "not a structure")],
+                                            "syntax-error",
                                         );
 
                                         return Expression {
@@ -2740,6 +2775,7 @@ impl Lowerer {
                                                     function.span(),
                                                     "not an enumeration",
                                                 )],
+                                                "syntax-error",
                                             );
 
                                                 return Expression {
@@ -2754,13 +2790,14 @@ impl Lowerer {
                                         Some(index) => *index,
                                         None => {
                                             self.compiler.add_error(
-                                                    format!(
-                                                        "enumeration `{}` does not declare a variant named `{}`",
-                                                        ty_name.name,
-                                                        name.name
-                                                    ),
-                                                    vec![Note::primary(name.span, "no such variant")],
-                                                );
+                                                format!(
+                                                    "enumeration `{}` does not declare a variant named `{}`",
+                                                    ty_name.name,
+                                                    name.name
+                                                ),
+                                                vec![Note::primary(name.span, "no such variant")],
+                                                "undefined-name",
+                                            );
 
                                             return Expression {
                                                 id: self.compiler.new_expression_id(ctx.owner),
@@ -2807,6 +2844,7 @@ impl Lowerer {
                                     function.span(),
                                     "the actual type this represents is not known here",
                                 )],
+                                "instantiate-type-parameter",
                             );
 
                             Expression {
@@ -2833,6 +2871,7 @@ impl Lowerer {
                                     function.span(),
                                     "try using a literal or built-in function instead",
                                 )],
+                                "instantiate-builtin",
                             );
 
                             Expression {
@@ -2997,6 +3036,7 @@ impl Lowerer {
                                 expr.span(),
                                 "check the Wipple source code for the latest list of runtime functions"
                             )],
+                            "",
                         );
 
                         return Expression {
@@ -3142,6 +3182,7 @@ impl Lowerer {
                                                     ))
                                                     .chain(notes)
                                                     .collect(),
+                                                    "undefined-name",
                                                 )
                                                 .fix(fix),
                                         );
@@ -3203,6 +3244,7 @@ impl Lowerer {
                     self.compiler.add_error(
                         "cannot use `end` outside a function",
                         vec![Note::primary(expr.span(), "not allowed here")],
+                        "end-outside-function",
                     );
 
                     return Expression {
@@ -3369,6 +3411,7 @@ impl Lowerer {
                                     pattern.name_span,
                                     "only enumeration types may be used in patterns",
                                 )],
+                                "syntax-error",
                             );
 
                             return Pattern {
@@ -3395,6 +3438,7 @@ impl Lowerer {
                                     pattern.name_span,
                                     "expected a variant name after this",
                                 )],
+                                "syntax-error",
                             );
 
                             return Pattern {
@@ -3410,6 +3454,7 @@ impl Lowerer {
                             self.compiler.add_error(
                                 "invalid pattern",
                                 vec![Note::primary(second.span(), "expected a variant name here")],
+                                "syntax-error",
                             );
 
                             return Pattern {
@@ -3428,6 +3473,7 @@ impl Lowerer {
                                     pattern.name, variant_name
                                 ),
                                 vec![Note::primary(second.span(), "no such variant")],
+                                "undefined-name",
                             );
 
                             return Pattern {
@@ -3505,6 +3551,7 @@ impl Lowerer {
                                 ))
                                 .chain(notes)
                                 .collect(),
+                                "undefined-name",
                             )
                             .fix(fix),
                     );
@@ -3678,6 +3725,7 @@ impl Lowerer {
                                 ty.span,
                                 "try writing this on its own, with no parameters",
                             )],
+                            "syntax-error",
                         );
                     }
 
@@ -3715,6 +3763,7 @@ impl Lowerer {
                                 std::iter::once(Note::primary(ty.span, "no such type"))
                                     .chain(notes)
                                     .collect(),
+                                "undefined-name",
                             )
                             .fix(fix),
                     );
@@ -3811,6 +3860,7 @@ impl Lowerer {
                                                     pattern.span,
                                                     "try removing this",
                                                 )],
+                                                "syntax-error",
                                             );
 
                                             None
@@ -3822,6 +3872,7 @@ impl Lowerer {
                                                     pattern.span(),
                                                     "`where` clause is not allowed here",
                                                 )],
+                                                "syntax-error",
                                             );
 
                                             None
@@ -3834,6 +3885,7 @@ impl Lowerer {
                                 self.compiler.add_error(
                                     "type function may not have multiple `where` clauses",
                                     vec![Note::primary(lhs.span(), "try removing this")],
+                                    "syntax-error",
                                 );
 
                                 Vec::new()
@@ -3883,6 +3935,7 @@ impl Lowerer {
                                             ))
                                             .chain(notes)
                                             .collect(),
+                                            "undefined-name",
                                         )
                                         .fix(fix),
                                 );
@@ -3962,6 +4015,7 @@ impl Lowerer {
                                 self.compiler.add_error(
                                     "higher-kinded types are not yet supported",
                                     vec![Note::primary(pattern.span, "try removing this")],
+                                    "syntax-error",
                                 );
 
                                 None
@@ -3973,6 +4027,7 @@ impl Lowerer {
                                         pattern.where_span,
                                         "`where` clause is not allowed here",
                                     )],
+                                    "syntax-error",
                                 );
 
                                 None
@@ -4076,6 +4131,7 @@ impl Lowerer {
                                             ))
                                             .chain(notes)
                                             .collect(),
+                                            "undefined-name",
                                         )
                                         .fix(fix),
                                 );
@@ -4152,6 +4208,7 @@ impl Lowerer {
                                             ))
                                             .chain(notes)
                                             .collect(),
+                                            "undefined-name",
                                         )
                                         .fix(fix),
                                 );
@@ -4201,6 +4258,7 @@ impl Lowerer {
         self.compiler.add_error(
             "syntax error",
             vec![Note::primary(pattern.span(), "expected a name here")],
+            "syntax-error",
         );
 
         None
@@ -4253,6 +4311,7 @@ impl Lowerer {
                     self.compiler.add_error(
                         "cannot use type as value",
                         vec![Note::primary(span, "try instantiating the type")],
+                        "type-as-value",
                     );
 
                     Some(ExpressionKind::error(&self.compiler))
@@ -4278,6 +4337,7 @@ impl Lowerer {
             self.compiler.add_error(
                 "cannot use builtin type as value",
                 vec![Note::primary(span, "try using a literal instead")],
+                "type-as-value",
             );
 
             Some(ExpressionKind::error(&self.compiler))
@@ -4302,9 +4362,10 @@ impl Lowerer {
             self.compiler.add_error(
                 "cannot use type parameter as value",
                 vec![Note::primary(
-                span,
-                "type parameters cannot be instantiated because the actual type is not known here",
-            )],
+                    span,
+                    "type parameters cannot be instantiated because the actual type is not known here",
+                )],
+                "type-as-value",
             );
 
             Some(ExpressionKind::error(&self.compiler))

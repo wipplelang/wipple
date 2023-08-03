@@ -11,6 +11,7 @@ impl Compiler {
                             variable.span,
                             format!("`{name}` is never used"),
                         )],
+                        "unused-variable",
                     );
                 }
             }

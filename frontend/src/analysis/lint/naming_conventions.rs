@@ -17,6 +17,7 @@ impl Compiler {
                             ty.span,
                             format!("try writing the type like this: `{correct}`"),
                         )],
+                        "naming-conventions",
                     )
                     .fix(Fix::new(
                         "fix type name",
@@ -39,6 +40,7 @@ impl Compiler {
                             tr.span,
                             format!("try writing the trait like this: `{correct}`"),
                         )],
+                        "naming-conventions",
                     )
                     .fix(Fix::new(
                         "fix trait name",
@@ -63,6 +65,7 @@ impl Compiler {
                                 constant.span,
                                 format!("try writing the pattern like this: `{correct}`"),
                             )],
+                            "naming-conventions",
                         )
                         .fix(Fix::new(
                             "fix pattern name",
@@ -82,6 +85,7 @@ impl Compiler {
                                 constant.span,
                                 format!("try writing the constant like this: `{correct}`"),
                             )],
+                            "naming-conventions",
                         )
                         .fix(Fix::new(
                             "fix constant name",
@@ -106,6 +110,7 @@ impl Compiler {
                                 param.span,
                                 format!("try writing the type parameter like this: `{correct}`"),
                             )],
+                            "naming-conventions",
                         )
                         .fix(Fix::new(
                             "fix type parameter name",
@@ -130,6 +135,7 @@ impl Compiler {
                                 variable.span,
                                 format!("try writing the variable like this: `{correct}`"),
                             )],
+                            "naming-conventions",
                         )
                         .fix(Fix::new(
                             "fix variable name",

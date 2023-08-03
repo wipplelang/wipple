@@ -8,6 +8,7 @@ impl Compiler {
                     self.add_warning(
                         "this bound doesn't refer to any type parameters",
                         vec![Note::primary(bound.span, "try removing this bound")],
+                        "useless-bound",
                     );
                 }
             }

@@ -282,8 +282,11 @@ impl wipple_syntax::Driver for Analysis {
                             ));
                         }
 
-                        self.compiler
-                            .add_error(format!("cannot load file `{}`: {}", path, error), spans);
+                        self.compiler.add_error(
+                            format!("cannot load file `{}`: {}", path, error),
+                            spans,
+                            "cannot-load-file",
+                        );
 
                         return None;
                     }
@@ -349,6 +352,7 @@ impl wipple_syntax::Driver for Analysis {
                         source_span.unwrap(),
                         format!("this imports {stack}"),
                     )],
+                    "import-cycle",
                 );
 
                 return None;

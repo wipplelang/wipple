@@ -31,6 +31,7 @@ impl Compiler {
                                 expr.span,
                                 "did you mean to use the result, eg. `show` it?",
                             )],
+                            "useless-expression",
                         );
                     }
                 }

@@ -148,8 +148,9 @@ impl Compiler {
         level: DiagnosticLevel,
         message: impl ToString,
         notes: Vec<Note>,
+        link: impl ToString,
     ) -> Diagnostic {
-        self.diagnostic_with_trace(level, message, notes, self.backtrace())
+        self.diagnostic_with_trace(level, message, notes, link, self.backtrace())
     }
 
     #[must_use]
@@ -158,6 +159,7 @@ impl Compiler {
         level: DiagnosticLevel,
         message: impl ToString,
         notes: Vec<Note>,
+        link: impl ToString,
         trace: Backtrace,
     ) -> Diagnostic {
         Diagnostic {
@@ -171,13 +173,23 @@ impl Compiler {
     }
 
     #[must_use]
-    pub(crate) fn warning(&self, message: impl ToString, notes: Vec<Note>) -> Diagnostic {
-        self.diagnostic(DiagnosticLevel::Warning, message, notes)
+    pub(crate) fn warning(
+        &self,
+        message: impl ToString,
+        notes: Vec<Note>,
+        link: impl ToString,
+    ) -> Diagnostic {
+        self.diagnostic(DiagnosticLevel::Warning, message, notes, link)
     }
 
     #[must_use]
-    pub(crate) fn error(&self, message: impl ToString, notes: Vec<Note>) -> Diagnostic {
-        self.diagnostic(DiagnosticLevel::Error, message, notes)
+    pub(crate) fn error(
+        &self,
+        message: impl ToString,
+        notes: Vec<Note>,
+        link: impl ToString,
+    ) -> Diagnostic {
+        self.diagnostic(DiagnosticLevel::Error, message, notes, link)
     }
 
     #[must_use]
@@ -185,9 +197,10 @@ impl Compiler {
         &self,
         message: impl ToString,
         notes: Vec<Note>,
+        link: impl ToString,
         trace: Backtrace,
     ) -> Diagnostic {
-        self.diagnostic_with_trace(DiagnosticLevel::Warning, message, notes, trace)
+        self.diagnostic_with_trace(DiagnosticLevel::Warning, message, notes, link, trace)
     }
 
     #[must_use]
@@ -195,9 +208,10 @@ impl Compiler {
         &self,
         message: impl ToString,
         notes: Vec<Note>,
+        link: impl ToString,
         trace: Backtrace,
     ) -> Diagnostic {
-        self.diagnostic_with_trace(DiagnosticLevel::Error, message, notes, trace)
+        self.diagnostic_with_trace(DiagnosticLevel::Error, message, notes, link, trace)
     }
 
     pub(crate) fn add_diagnostic(&self, diagnostic: Diagnostic) {
@@ -209,8 +223,9 @@ impl Compiler {
         level: DiagnosticLevel,
         message: impl ToString,
         notes: Vec<Note>,
+        link: impl ToString,
     ) {
-        self.add_diagnostic_with_trace(level, message, notes, self.backtrace());
+        self.add_diagnostic_with_trace(level, message, notes, link, self.backtrace());
     }
 
     pub(crate) fn add_diagnostic_with_trace(
@@ -218,35 +233,43 @@ impl Compiler {
         level: DiagnosticLevel,
         message: impl ToString,
         notes: Vec<Note>,
+        link: impl ToString,
         trace: Backtrace,
     ) {
-        self.add_diagnostic(self.diagnostic_with_trace(level, message, notes, trace));
+        self.add_diagnostic(self.diagnostic_with_trace(level, message, notes, link, trace));
     }
 
-    pub(crate) fn add_warning(&self, message: impl ToString, notes: Vec<Note>) {
-        self.add_diagnostic_with(DiagnosticLevel::Warning, message, notes);
+    pub(crate) fn add_warning(
+        &self,
+        message: impl ToString,
+        notes: Vec<Note>,
+        link: impl ToString,
+    ) {
+        self.add_diagnostic_with(DiagnosticLevel::Warning, message, notes, link);
     }
 
-    pub(crate) fn add_error(&self, message: impl ToString, notes: Vec<Note>) {
-        self.add_diagnostic_with(DiagnosticLevel::Error, message, notes);
+    pub(crate) fn add_error(&self, message: impl ToString, notes: Vec<Note>, link: impl ToString) {
+        self.add_diagnostic_with(DiagnosticLevel::Error, message, notes, link);
     }
 
     pub(crate) fn add_warning_with_trace(
         &self,
         message: impl ToString,
         notes: Vec<Note>,
+        link: impl ToString,
         trace: Backtrace,
     ) {
-        self.add_diagnostic_with_trace(DiagnosticLevel::Warning, message, notes, trace);
+        self.add_diagnostic_with_trace(DiagnosticLevel::Warning, message, notes, link, trace);
     }
 
     pub(crate) fn add_error_with_trace(
         &self,
         message: impl ToString,
         notes: Vec<Note>,
+        link: impl ToString,
         trace: Backtrace,
     ) {
-        self.add_diagnostic_with_trace(DiagnosticLevel::Error, message, notes, trace);
+        self.add_diagnostic_with_trace(DiagnosticLevel::Error, message, notes, link, trace);
     }
 }
 
@@ -407,6 +430,7 @@ impl FinalizedDiagnostics {
             let notes = diagnostic
                 .example
                 .as_deref()
+                .filter(|example| !example.is_empty())
                 .map(|example| vec![format!("for more information, see {}", make_link(example))])
                 .unwrap_or_default();
 
