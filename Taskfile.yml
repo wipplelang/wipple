@@ -22,6 +22,17 @@ tasks:
             - cargo install --force --path tools/cli
         env:
             CARGO_TARGET_DIR: target
+        sources:
+            - backends/**/*
+            - frontend/**/*
+            - loaders/**/*
+            - syntax/**/*
+            - tools/**/*
+            - util/**/*
+            - Cargo.lock
+            - Cargo.toml
+        generates:
+            - "{{.HOME}}/.cargo/bin/wipple"
 
     serve:
         run: once
