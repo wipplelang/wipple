@@ -285,7 +285,7 @@ impl wipple_syntax::Driver for Analysis {
                         self.compiler.add_error(
                             format!("cannot load file `{}`: {}", path, error),
                             spans,
-                            "cannot-load-file",
+                            "missing-file",
                         );
 
                         return None;
@@ -423,7 +423,7 @@ impl wipple_syntax::Driver for Analysis {
             notes.push(Note::secondary(span, msg));
         }
 
-        let mut error = self.compiler.error("syntax error", notes);
+        let mut error = self.compiler.error("syntax error", notes, "syntax-error");
         if let Some(fix) = fix {
             error = error.fix_with(
                 fix.description,

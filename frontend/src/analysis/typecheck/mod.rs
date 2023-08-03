@@ -879,6 +879,7 @@ impl Typechecker {
                 self.compiler.add_error(
                     "recursion limit reached",
                     vec![Note::primary(expr.span, "while computing this")],
+                    "recursion-limit",
                 );
 
                 return MonomorphizedExpression {
@@ -1084,6 +1085,7 @@ impl Typechecker {
             self.compiler.add_error(
                 "contextual constant may not take type parameters",
                 vec![Note::primary(span, "try removing these type parameters")],
+                "syntax-error",
             );
         }
 
@@ -1642,6 +1644,7 @@ impl Typechecker {
                             ),
                             Note::secondary(span, "trait defined here"),
                         ],
+                        "trait-does-not-contain-value",
                     );
 
                     engine::UnresolvedType::Error
@@ -1888,6 +1891,7 @@ impl Typechecker {
                         self.compiler.add_error(
                             "cannot instantiate this type as a structure",
                             vec![Note::primary(expr.span, "this is not a structure type")],
+                            "syntax-error",
                         );
 
                         return UnresolvedExpression {
@@ -1962,6 +1966,7 @@ impl Typechecker {
                                     .join(", ")
                             ),
                         )],
+                        "extra-missing-fields",
                     );
                 }
 
@@ -1993,6 +1998,7 @@ impl Typechecker {
                                     .join(", ")
                             ),
                         )],
+                        "extra-missing-fields",
                     );
                 }
 
@@ -2032,6 +2038,7 @@ impl Typechecker {
                         self.compiler.add_error(
                             "cannot instantiate this type as an enumeration",
                             vec![Note::primary(expr.span, "this is not an enumeration type")],
+                            "syntax-error",
                         );
 
                         return UnresolvedExpression {
@@ -2113,6 +2120,7 @@ impl Typechecker {
                                 expr.span,
                                 "using `format` requires the `show` language item",
                             )],
+                            "",
                         );
 
                         return UnresolvedExpression {
@@ -2313,6 +2321,7 @@ impl Typechecker {
                                         "the input to this function is not a variant",
                                     )],
                                 },
+                                "syntax-error",
                             );
 
                             return UnresolvedPatternKind::error(&self.compiler);
@@ -2714,6 +2723,7 @@ impl Typechecker {
                             guard.span,
                             "typechecking this condition requires the `boolean` language item",
                         )],
+                        "",
                     )
                 }
 
@@ -2778,6 +2788,7 @@ impl Typechecker {
                         self.compiler.add_error(
                             "cannot destructure this value",
                             vec![Note::primary(pattern.span, "value is not a structure")],
+                            "syntax-error",
                         );
 
                         return MonomorphizedPatternKind::error(&self.compiler);
@@ -2797,6 +2808,7 @@ impl Typechecker {
                         self.compiler.add_error(
                             "cannot destructure this value",
                             vec![Note::primary(pattern.span, "value is not a structure")],
+                            "syntax-error",
                         );
 
                         return MonomorphizedPatternKind::error(&self.compiler);
@@ -2819,6 +2831,7 @@ impl Typechecker {
                                 self.compiler.add_error(
                                     format!("value has no member named '{name}'"),
                                     vec![Note::primary(pattern.span, "no such member")],
+                                    "undefined-name",
                                 );
 
                                 return None;
@@ -2866,6 +2879,7 @@ impl Typechecker {
                         self.compiler.add_error(
                             "cannot match a variant on this value",
                             vec![Note::primary(pattern.span, "value is not an enumeration")],
+                            "syntax-error",
                         );
 
                         return MonomorphizedPatternKind::error(&self.compiler);
@@ -3068,6 +3082,7 @@ impl Typechecker {
             self.compiler.add_error(
                 "recursion limit reached",
                 vec![Note::primary(use_span, "while computing this")],
+                "recursion-limit",
             );
 
             return Err(FindInstanceError::RecursionLimitReached);
@@ -4055,6 +4070,7 @@ impl Typechecker {
                     decl.span,
                     "try adding another type after the trait provided to `instance`",
                 )],
+                "syntax-error",
             );
 
             params.push((engine::Type::Error, None));
@@ -4130,7 +4146,8 @@ impl Typechecker {
                     format!(
                         "this instance collides with {} other instances",
                         colliding_instances.len()
-                    ), std::iter::once(Note::primary(
+                    ),
+                    std::iter::once(Note::primary(
                         decl.span,
                         if has_bounds {
                             "this instance may have different bounds than the others, but one type could satisfy the bounds on more than one of these instances simultaneously"
@@ -4145,6 +4162,7 @@ impl Typechecker {
                         Note::secondary(span, "this instance could apply to the same type(s)")
                     }))
                     .collect(),
+                    "colliding-instances",
                 );
             }
         }
@@ -4434,6 +4452,7 @@ impl Typechecker {
                             annotation.span,
                             "try providing an actual type in place of `_`",
                         )],
+                        "unexpected-type-placeholder",
                     );
 
                     engine::UnresolvedType::Error
@@ -4467,6 +4486,7 @@ impl Typechecker {
                             annotation.span,
                             "try adding another type after this",
                         )],
+                        "syntax-error",
                     );
 
                     params.push(engine::UnresolvedType::Error);
@@ -4555,6 +4575,7 @@ impl Typechecker {
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
+                                "syntax-error",
                             );
                         }
 
@@ -4568,6 +4589,7 @@ impl Typechecker {
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
+                                "syntax-error",
                             );
                         }
 
@@ -4581,6 +4603,7 @@ impl Typechecker {
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
+                                "syntax-error",
                             );
                         }
 
@@ -4594,6 +4617,7 @@ impl Typechecker {
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
+                                "syntax-error",
                             );
                         }
 
@@ -4607,6 +4631,7 @@ impl Typechecker {
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
+                                "syntax-error",
                             );
                         }
 
@@ -4620,6 +4645,7 @@ impl Typechecker {
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
+                                "syntax-error",
                             );
                         }
 
@@ -4633,6 +4659,7 @@ impl Typechecker {
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
+                                "syntax-error",
                             );
                         }
 
@@ -4646,6 +4673,7 @@ impl Typechecker {
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
+                                "syntax-error",
                             );
                         }
 
@@ -4659,6 +4687,7 @@ impl Typechecker {
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
+                                "syntax-error",
                             );
                         }
 
@@ -4672,6 +4701,7 @@ impl Typechecker {
                                     annotation.span,
                                     "try adding `_` here to infer the type of `Element`",
                                 )],
+                                "syntax-error",
                             );
 
                             engine::UnresolvedType::Builtin(engine::BuiltinType::List(Box::new(
@@ -4688,6 +4718,7 @@ impl Typechecker {
                                         annotation.span,
                                         "try removing some of these",
                                     )],
+                                    "syntax-error",
                                 );
                             }
 
@@ -4708,6 +4739,7 @@ impl Typechecker {
                                     annotation.span,
                                     "try adding `_` here to infer the type of `Value`",
                                 )],
+                                "syntax-error",
                             );
 
                             engine::UnresolvedType::Builtin(engine::BuiltinType::Mutable(Box::new(
@@ -4724,6 +4756,7 @@ impl Typechecker {
                                         annotation.span,
                                         "try removing some of these",
                                     )],
+                                    "syntax-error",
                                 );
                             }
 
@@ -4744,6 +4777,7 @@ impl Typechecker {
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
+                                "syntax-error",
                             );
                         }
 
@@ -4757,6 +4791,7 @@ impl Typechecker {
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
+                                "syntax-error",
                             );
                         }
 
@@ -4804,6 +4839,7 @@ impl Typechecker {
                     Note::primary(span, "try providing the correct number of parameters here"),
                     Note::secondary(trait_span, "trait defined here"),
                 ],
+                "syntax-error",
             );
             return engine::UnresolvedType::Error;
         }
@@ -4852,6 +4888,7 @@ impl Typechecker {
                 self.compiler.add_error(
                     format!("cannot load file `{}`: {}", path, error),
                     vec![Note::primary(span, "while resolving this plugin")],
+                    "missing-file",
                 );
 
                 return lower::Expression {
@@ -4884,6 +4921,7 @@ impl Typechecker {
                 self.compiler.add_error(
                     format!("error while resolving plugin: {error}"),
                     vec![Note::primary(span, "see plugin documentation for details")],
+                    "",
                 );
 
                 lower::Expression {
@@ -5083,6 +5121,7 @@ impl Typechecker {
                     error.span,
                     "the type of this references itself",
                 )],
+                "recursive-type",
             ),
             engine::TypeError::Mismatch(mut actual, mut expected) => {
                 actual.apply(&self.ctx);
@@ -5317,9 +5356,8 @@ impl Typechecker {
                 }
 
                 self.compiler
-                    .error_with_trace("mismatched types", notes, error.trace)
+                    .error_with_trace("mismatched types", notes, "mismatched-types", error.trace)
                     .fix(fix)
-                    .example("mismatched-types")
             }
             engine::TypeError::MissingInstance(id, mut params, bound_span, error_candidates) => {
                 for param in &mut params {
@@ -5396,6 +5434,7 @@ impl Typechecker {
                     }))
                     .chain(operator_note())
                     .collect(),
+                    "missing-instance",
                     error.trace,
                 )
             }
@@ -5424,6 +5463,7 @@ impl Typechecker {
                     ))
                     .chain(note)
                     .collect(),
+                    "unknown-type",
                     error.trace,
                 )
             }
@@ -5442,7 +5482,8 @@ impl Typechecker {
 
                 self.compiler.error_with_trace(
                     message,
-                    vec![Note::primary(error.span, "invalid numeric literal")],
+                    vec![Note::primary(error.span, "invalid number")],
+                    "invalid-number",
                     error.trace,
                 )
             }

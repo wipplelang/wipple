@@ -464,7 +464,7 @@ pub fn analyze(
                         end: fix.range.range().end,
                         replacement: fix.replacement,
                     }),
-                    example: diagnostic.example,
+                    example: (!diagnostic.example.is_empty()).then_some(diagnostic.example),
                 }
             })
             .dedup()

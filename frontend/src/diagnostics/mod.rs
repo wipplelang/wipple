@@ -17,7 +17,7 @@ pub struct Diagnostic {
     pub message: String,
     pub notes: Vec<Note>,
     pub fix: Option<Fix>,
-    pub example: Option<String>,
+    pub example: String,
     pub trace: Backtrace,
 }
 
@@ -133,11 +133,6 @@ impl Diagnostic {
     ) -> Self {
         self.fix(Fix::new(description, range, replacement))
     }
-
-    pub fn example(mut self, example: impl ToString) -> Self {
-        self.example = Some(example.to_string());
-        self
-    }
 }
 
 #[allow(unused)]
@@ -167,7 +162,7 @@ impl Compiler {
             message: message.to_string(),
             notes,
             fix: None,
-            example: None,
+            example: String::new(),
             trace,
         }
     }
@@ -427,12 +422,14 @@ impl FinalizedDiagnostics {
                 }))
                 .collect::<Vec<_>>();
 
-            let notes = diagnostic
-                .example
-                .as_deref()
-                .filter(|example| !example.is_empty())
-                .map(|example| vec![format!("for more information, see {}", make_link(example))])
-                .unwrap_or_default();
+            let notes = if diagnostic.example.is_empty() {
+                Vec::new()
+            } else {
+                vec![format!(
+                    "for more information, see {}",
+                    make_link(&diagnostic.example)
+                )]
+            };
 
             let diagnostic =
                 codespan_reporting::diagnostic::Diagnostic::new(diagnostic.level.into())

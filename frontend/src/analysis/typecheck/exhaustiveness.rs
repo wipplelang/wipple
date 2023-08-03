@@ -68,6 +68,7 @@ impl Typechecker {
                             ),
                             Note::secondary(pattern.span, "try using a `when` expression instead"),
                         ],
+                        "nonexhaustive-variable",
                     );
                 }
             }
@@ -131,6 +132,7 @@ impl Typechecker {
                                 "try using a `when` expression inside the function instead",
                             ),
                         ],
+                        "nonexhaustive-variable",
                     );
                 }
             }
@@ -191,6 +193,7 @@ impl Typechecker {
                                 }
                             },
                         )],
+                        "nonexhaustive-when",
                     );
                 }
 
