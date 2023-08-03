@@ -1,0 +1,46 @@
+---
+id: l23wU9hO
+type: text
+locked: true
+---
+
+# How to fix the "extra/missing fields" error
+
+This error occurs when you have extra or missing fields while instantiating a structure type:
+
+---
+id: 7LtHYPbB
+type: code
+lint: false
+---
+
+Person : type {
+  name :: Text
+  age :: Number
+}
+
+bob : Person { name : "Bob" }
+
+---
+id: RdIdj8vz
+type: text
+locked: true
+---
+
+To fix the error, add the missing fields and remove the extra ones:
+
+---
+id: kL6h4kNU
+type: code
+lint: false
+---
+
+Person : type {
+  name :: Text
+  age :: Number
+}
+
+bob : Person {
+  name : "Bob"
+  age : 30
+}
