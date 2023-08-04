@@ -357,13 +357,7 @@ export const PlaygroundRunner = forwardRef<
                                                         }`}
                                                     >
                                                         <Markdown>
-                                                            {`${diagnostic.level}: ${
-                                                                diagnostic.message
-                                                            }${
-                                                                diagnostic.example
-                                                                    ? ` [(more information)](/playground/?lesson=errors/${diagnostic.example})`
-                                                                    : ""
-                                                            }`}
+                                                            {`${diagnostic.level}: ${diagnostic.message}`}
                                                         </Markdown>
                                                     </div>
 
@@ -457,6 +451,22 @@ export const PlaygroundRunner = forwardRef<
                                                                         </div>
                                                                     )
                                                                 )}
+
+                                                                {diagnostic.example ? (
+                                                                    <div>
+                                                                        <span className="opacity-75">
+                                                                            for more information,
+                                                                            see{" "}
+                                                                        </span>
+                                                                        <a
+                                                                            target="_blank"
+                                                                            className="text-sky-500"
+                                                                            href={`/playground/?lesson=errors/${diagnostic.example}`}
+                                                                        >
+                                                                            this guide
+                                                                        </a>
+                                                                    </div>
+                                                                ) : null}
                                                             </div>
                                                         );
                                                     })}
@@ -631,7 +641,7 @@ const DropdownField = (props: {
 };
 
 export const Markdown = (props: { children: string; className?: string }) => (
-    <div className={"code-editor-markdown " + props.className ?? ""}>
+    <span className={"code-editor-markdown " + props.className ?? ""}>
         <ReactMarkdown
             remarkPlugins={[remarkMath, remarkGfm, remarkSmartypants]}
             rehypePlugins={[rehypeRaw, rehypeKatex]}
@@ -639,7 +649,7 @@ export const Markdown = (props: { children: string; className?: string }) => (
         >
             {props.children}
         </ReactMarkdown>
-    </div>
+    </span>
 );
 
 export * from "./runner";

@@ -55,6 +55,7 @@ import { Settings } from "../App";
 import { CircularProgress, Popover } from "@mui/material";
 import { SwatchesPicker } from "react-color";
 import { closeBrackets } from "@codemirror/autocomplete";
+import HelpOutline from "@mui/icons-material/HelpOutline";
 
 export interface CodeEditorProps {
     id: string;
@@ -808,13 +809,7 @@ const Hover = (props: {
                         }`}
                     >
                         <Markdown>
-                            {`${props.hover.diagnostic[0].level}: ${
-                                props.hover.diagnostic[0].message
-                            }${
-                                props.hover.diagnostic[0].example
-                                    ? ` [(more information)](/playground/?lesson=errors/${props.hover.diagnostic[0].example})`
-                                    : ""
-                            }`}
+                            {`${props.hover.diagnostic[0].level}: ${props.hover.diagnostic[0].message}`}
                         </Markdown>
                     </div>
 
@@ -834,6 +829,19 @@ const Hover = (props: {
                             </div>
                         ))}
                     </div>
+
+                    {props.hover.diagnostic[0].example ? (
+                        <div>
+                            <span className="opacity-75">for more information, see </span>
+                            <a
+                                target="_blank"
+                                className="text-sky-500"
+                                href={`/playground/?lesson=errors/${props.hover.diagnostic[0].example}`}
+                            >
+                                this guide
+                            </a>
+                        </div>
+                    ) : null}
 
                     {props.hover.diagnostic[0].fix && (
                         <div className="flex">
