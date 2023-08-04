@@ -40,11 +40,6 @@ tasks:
             - task: website
             - npx http-server -c-1 website/_site --cors
 
-    dev:
-        run: once
-        cmds:
-            - task --watch --interval=1s website & npx http-server -c-1 website/_site --cors ; fg
-
     website:
         run: once
         deps:
@@ -148,12 +143,10 @@ tasks:
             - npm i
             - npm run build
         sources:
-            - public/**/*
             - src/**/*
             - .env
             - index.html
             - package.json
-            - package-lock.json
             - postcss.config.cjs
             - tailwind.config.cjs
             - tsconfig.json
@@ -161,9 +154,6 @@ tasks:
             - vite.config.ts
         generates:
             - dist/assets/**/*
-            - dist/files/**/*
-            - dist/images/**/*
-            - dist/lessons/**/*
             - dist/*.html
 
     website-playground-public:
