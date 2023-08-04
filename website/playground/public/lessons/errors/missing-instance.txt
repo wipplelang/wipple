@@ -1,0 +1,38 @@
+---
+id: BVAHNnxg
+type: text
+locked: true
+---
+
+# How to fix the "could not find instance" error
+
+This error occurs when Wipple couldn't find an instance of a trait that is usable in the surrounding context. For example, when you try to `show` something that can't be shown, you get this error:
+
+---
+id: t52tNHIc
+type: code
+---
+
+Person : type { name :: Text }
+
+bob : Person { name : "Bob" }
+show bob
+
+---
+id: eWTucHWY
+type: text
+locked: true
+---
+
+To fix this error, double check that you are providing values of the correct types, or add an `instance` for the type in question:
+
+---
+id: tswQJkFl
+type: code
+---
+
+Person : type { name :: Text }
+instance (Show Person) : { name } -> name
+
+bob : Person { name : "Bob" }
+show bob

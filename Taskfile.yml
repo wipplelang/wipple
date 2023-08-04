@@ -143,6 +143,7 @@ tasks:
             - npm i
             - npm run build
         sources:
+            - ../shared/dist/**/*
             - src/**/*
             - .env
             - index.html

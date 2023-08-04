@@ -352,7 +352,7 @@ impl wipple_syntax::Driver for Analysis {
                         source_span.unwrap(),
                         format!("this imports {stack}"),
                     )],
-                    "import-cycle",
+                    "",
                 );
 
                 return None;

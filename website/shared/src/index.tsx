@@ -452,7 +452,8 @@ export const PlaygroundRunner = forwardRef<
                                                                     )
                                                                 )}
 
-                                                                {diagnostic.example ? (
+                                                                {noteIndex === 0 &&
+                                                                diagnostic.example ? (
                                                                     <div>
                                                                         <span className="opacity-75">
                                                                             for more information,
