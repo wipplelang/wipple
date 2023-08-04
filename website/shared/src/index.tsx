@@ -454,10 +454,15 @@ export const PlaygroundRunner = forwardRef<
 
                                                                 {noteIndex === 0 &&
                                                                 diagnostic.example ? (
-                                                                    <div>
+                                                                    <div className="flex">
+                                                                        <pre>
+                                                                            {new Array(col - 1)
+                                                                                .fill(" ")
+                                                                                .join("")}
+                                                                        </pre>
                                                                         <span className="opacity-75">
                                                                             for more information,
-                                                                            see{" "}
+                                                                            see{"\u00A0"}
                                                                         </span>
                                                                         <a
                                                                             target="_blank"
