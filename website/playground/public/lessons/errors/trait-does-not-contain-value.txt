@@ -1,0 +1,46 @@
+---
+id: TZXlH2iO
+type: text
+locked: true
+---
+
+# How to fix the "cannot use this trait as a value" error
+
+This error occurs when you use a type-level trait as a value. These traits may only be used in bounds:
+
+---
+id: FPgO8zMJ
+type: code
+---
+
+Implemented : A => trait
+
+instance (Implemented Number)
+instance (Implemented Text)
+
+show Implemented
+
+---
+id: WMM85_1J
+type: text
+locked: true
+---
+
+To fix the error, either remove the use of the trait in value position or give the trait a value (eg. `()`):
+
+---
+id: hDua1TCO
+type: code
+lint: false
+---
+
+Implemented : A => trait
+
+instance (Implemented Number)
+instance (Implemented Text)
+
+assert-implemented :: A where (Implemented A) => A -> A
+assert-implemented : it
+
+assert-implemented 42
+assert-implemented "hi"
