@@ -40,6 +40,11 @@ tasks:
             - task: website
             - npx http-server -c-1 website/_site --cors
 
+    dev:
+        run: once
+        cmds:
+            - task --watch --interval=1s website & npx http-server -c-1 website/_site --cors ; fg
+
     website:
         run: once
         deps:
@@ -69,8 +74,8 @@ tasks:
             - .eleventy.js
             - index.html
             - package.json
-            - postcss.config.cjs
-            - tailwind.config.cjs
+            - postcss.config.js
+            - tailwind.config.js
             - robots.txt
         generates:
             - ../_site/images/**/*
@@ -115,13 +120,85 @@ tasks:
     website-playground:
         run: once
         deps:
+            - website-playground-all
+        dir: website/playground
+        cmds:
+            - mkdir -p ../_site/playground
+            - cp -r dist/* ../_site/playground
+
+    website-playground-all:
+        deps:
+            - website-playground-app
+            - website-playground-public
+            - task: website-playground-ui
+              vars: { NAME: game }
+            - task: website-playground-ui
+              vars: { NAME: graphing }
+            - task: website-playground-ui
+              vars: { NAME: music }
+            - task: website-playground-ui
+              vars: { NAME: turtle }
+
+    website-playground-app:
+        run: once
+        deps:
             - website-shared
         dir: website/playground
         cmds:
-            - task build
-            - mkdir -p ../_site/playground
-            - cp -r dist/* ../_site/playground
-        # 'sources' and 'generates' are located in website/playground/Taskfile.yml
+            - npm i
+            - npm run build
+        sources:
+            - public/**/*
+            - src/**/*
+            - .env
+            - index.html
+            - package.json
+            - package-lock.json
+            - postcss.config.cjs
+            - tailwind.config.cjs
+            - tsconfig.json
+            - tsconfig.node.json
+            - vite.config.ts
+        generates:
+            - dist/assets/**/*
+            - dist/files/**/*
+            - dist/images/**/*
+            - dist/lessons/**/*
+            - dist/*.html
+
+    website-playground-public:
+        run: once
+        dir: website/playground
+        cmds:
+            - mkdir -p dist
+            - cp -r public/* dist
+        sources:
+            - public/**/*
+        generates:
+            - dist/files/**/*
+            - dist/images/**/*
+            - dist/lessons/**/*
+
+    website-playground-ui:
+        label: 'website-playground-ui-{{.NAME}}'
+        deps:
+            - website-playground-app
+        dir: website/playground/ui/{{.NAME}}
+        cmds:
+            - mkdir -p ../../dist/doc
+            - mkdir -p ../../dist/ui/{{.NAME}}
+            - npm i
+            - npm run build
+            - cp dist/* ../../dist/ui/{{.NAME}}
+        sources:
+          - src/**/*
+          - package.json
+          - package-lock.json
+          - tsconfig.json
+          - tsconfig.node.json
+          - vite.config.ts
+        generates:
+          - ../../dist/ui/{{.NAME}}/**/*
 
     website-embed:
         run: once
@@ -154,7 +231,7 @@ tasks:
             - mkdir -p _site/std
             - cp -r ../std/* _site/std
         sources:
-            - ../_std/**/*
+            - ../std/**/*
         generates:
             - _site/std/**/*
 
