@@ -979,7 +979,7 @@ impl Compiler {
                 self.add_error(
                     "instance of trait that allows overlapping instances must occur in the same file as the trait",
                     vec![Note::primary(instance.span, "instance disallowed here")],
-                    "overlapping-instances-in-different-files"
+                    ""
                 );
             }
 
@@ -1398,7 +1398,7 @@ impl Lowerer {
                         self.compiler.add_error(
                             "`type` declarations may not have bounds",
                             vec![Note::primary(bound.span, "try removing this")],
-                            "unexpected-bounds",
+                            "syntax-error",
                         );
                     }
 
@@ -1609,7 +1609,7 @@ impl Lowerer {
                         self.compiler.add_error(
                             "`trait` declarations may not have bounds",
                             vec![Note::primary(bound.span, "try removing this")],
-                            "unexpected-bounds",
+                            "syntax-error",
                         );
                     }
 
@@ -2038,7 +2038,7 @@ impl Lowerer {
                                     self.compiler.add_error(
                                         "type functions may only be used when declaring a constant",
                                         vec![Note::primary(pattern_span, "try removing this")],
-                                        "unexpected-type-function",
+                                        "syntax-error",
                                     );
 
                                     return None;
@@ -2086,7 +2086,7 @@ impl Lowerer {
                                     self.compiler.add_error(
                                         "type annotation may not contain multiple type functions",
                                         vec![Note::primary(annotation.span(), "try removing this")],
-                                        "unexpected-type-function",
+                                        "syntax-error",
                                     );
 
                                     return None;
@@ -2105,7 +2105,7 @@ impl Lowerer {
                             self.compiler.add_error(
                                 "cannot specialize a `type` variant",
                                 vec![Note::primary(span, "cannot specialize this")],
-                                "unexpected-specialize",
+                                "syntax-error",
                             );
 
                             return None;
@@ -2115,7 +2115,7 @@ impl Lowerer {
                             self.compiler.add_error(
                                 "cannot specialize constant which is a specialization of another constant",
                                 vec![Note::primary(span, "cannot specialize this")],
-                                "unexpected-specialize",
+                                "syntax-error",
                             );
 
                             return None;

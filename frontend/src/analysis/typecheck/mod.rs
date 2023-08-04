@@ -1632,7 +1632,7 @@ impl Typechecker {
                 }
             }
             lower::ExpressionKind::Trait(id) => {
-                let ty = if let Some((span, false)) =
+                if let Some((span, false)) =
                     self.with_trait_decl(id, |decl| (decl.span, decl.ty.is_some()))
                 {
                     self.compiler.add_error(
@@ -1647,16 +1647,19 @@ impl Typechecker {
                         "trait-does-not-contain-value",
                     );
 
-                    engine::UnresolvedType::Error
+                    UnresolvedExpression {
+                        id: expr.id,
+                        span: expr.span,
+                        ty: engine::UnresolvedType::Error,
+                        kind: UnresolvedExpressionKind::error(&self.compiler),
+                    }
                 } else {
-                    engine::UnresolvedType::Variable(self.ctx.new_variable(None))
-                };
-
-                UnresolvedExpression {
-                    id: expr.id,
-                    span: expr.span,
-                    ty,
-                    kind: UnresolvedExpressionKind::Trait(id),
+                    UnresolvedExpression {
+                        id: expr.id,
+                        span: expr.span,
+                        ty: engine::UnresolvedType::Variable(self.ctx.new_variable(None)),
+                        kind: UnresolvedExpressionKind::Trait(id),
+                    }
                 }
             }
             lower::ExpressionKind::Variable(var) => {

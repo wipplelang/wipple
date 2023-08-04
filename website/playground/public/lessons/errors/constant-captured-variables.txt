@@ -6,7 +6,7 @@ locked: true
 
 # How to fix the "constant cannot capture outside variables" error
 
-This error is raised when you have a constant that captures a variable. Constants may not capture variables because they are lazily evaluated, meaning their value is only initialized when accessed for the first time, which may be when the captured variables are no longer in scope:
+This error occurs when you have a constant that captures a variable. Constants may not capture variables because they are lazily evaluated, meaning their value is only initialized when accessed for the first time, which may be when the captured variables are no longer in scope:
 
 ---
 id: Eybz8UDi

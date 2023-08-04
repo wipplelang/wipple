@@ -1,0 +1,48 @@
+---
+id: 3xvo0FvJ
+type: text
+locked: true
+---
+
+# How to fix syntax errors
+
+Wipple code starts off as plain, unstructured text. The computer then uses a grammar to determine structure and meaning from your code. If your code doesn't follow the grammar, Wipple will issue a syntax error.
+
+The most common syntax error is forgetting to close your parentheses and braces:
+
+---
+id: lXWyD_9A
+type: code
+---
+
+show (1 + 2 -- missing ')'
+
+---
+id: 2LBLHCGj
+type: text
+locked: true
+---
+
+Another kind of syntax error is using the `:` operator multiple times in a single line:
+
+---
+id: 5MzyjcHM
+type: code
+---
+
+x : y : 2
+
+---
+id: M3uYDgol
+type: text
+locked: true
+---
+
+You will also get a syntax error if you use an operator or `syntax` rule incorrectly:
+
+---
+id: FKArHNZl
+type: code
+---
+
+if True -- missing the 'then' and 'else' clauses

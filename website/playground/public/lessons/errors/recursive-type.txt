@@ -1,0 +1,27 @@
+---
+id: YkTuQPb5
+type: text
+locked: true
+---
+
+# How to fix the "recursive type" error
+
+This error occurs when the type of a value is found to reference itself, indicating a programming error because such a value cannot be constructed:
+
+---
+id: 1l_F6kUe
+type: code
+lint: false
+---
+
+call-with-itself : x -> x x
+
+---
+id: cS6zYqr3
+type: text
+locked: true
+---
+
+If `x` has the type `a -> b`, then because it's called with itself, `a` must be the type `a -> b` as well. So the type of `x` is `((((... -> b) -> b) -> b) -> b) -> b` (going on forever).
+
+This error occurs very rarely; if you encounter it, try adding manual type annotations to your code until you find the issue.

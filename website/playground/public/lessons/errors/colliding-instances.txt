@@ -6,7 +6,7 @@ locked: true
 
 # How to fix the "instance collides with another instance" error
 
-This error is raised when you have two instances of a trait that could potentially apply to the same types. You can only declare one instance per set of types per trait. For example, `instance (Show Text)` is already declared in the standard library, so you can't override it:
+This error occurs when you have two instances of a trait that could potentially apply to the same types. You can only declare one instance per set of types per trait. For example, `instance (Show Text)` is already declared in the standard library, so you can't override it:
 
 ---
 id: oazU2lp9
