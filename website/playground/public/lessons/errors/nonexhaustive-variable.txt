@@ -1,0 +1,62 @@
+---
+id: zO8Z08HK
+type: text
+locked: true
+---
+
+# How to fix the "variable assignment not handle all possible values" error
+
+When you assign a value to a variable, the variable must be able to store all possible values of the value's type. This is because in general, the value of a variable isn't known until runtime; for example, the result of `if` isn't known until the program runs and the condition evaluates to `True` or `False`.
+
+---
+id: zPeseBr1
+type: code
+---
+
+maybe-a-number : if (random ()) (Some 42) None
+
+Some n : maybe-a-number
+show n
+
+---
+id: 71u_RcaO
+type: text
+locked: true
+---
+
+The same idea applies to function parameters.
+
+If you're specifically trying to get the `Some` value out of a `Maybe`, you can use `unwrap` to crash the program if the value is `None`:
+
+---
+id: lWgD874_
+type: code
+---
+
+maybe-a-number : if (random ()) (Some 42) None
+
+n : maybe-a-number
+show (unwrap n)
+
+---
+id: 4zO4h48a
+type: text
+locked: true
+---
+
+And in general, you can handle all possible cases by using a `when` expression:
+
+---
+id: vvUCKpBH
+type: code
+---
+
+maybe-a-number : if (random ()) (Some 42) None
+
+-- Give 'n' a value of 0 if it is 'None'
+n : when maybe-a-number {
+  Some n -> n
+  None -> 0
+}
+
+show n
