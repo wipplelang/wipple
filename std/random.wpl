@@ -23,3 +23,5 @@ instance (Random (Range Double) Double) : { min max } -> intrinsic "random-doubl
 
 Element => instance (Random (List Element) (Maybe Element)) : list -> \
   (list . nth (random (0 to (count list))))
+
+instance (Random () Boolean) : () -> (random (0 to 2) :: Natural) = 1
