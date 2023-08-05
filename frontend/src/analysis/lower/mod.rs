@@ -995,7 +995,7 @@ impl Compiler {
                                 instance.span,
                                 "try adding `:` after the instance declaration to give it a value",
                             )],
-                            "instance-has-no-value",
+                            "",
                         )
                         .fix_with(
                             "give this instance a value",
@@ -1021,7 +1021,7 @@ impl Compiler {
                                 instance.span,
                                 "try removing this instance's value",
                             )],
-                            "instance-has-unexpected-value",
+                            "",
                         )
                         .fix_with(
                             "remove this value",

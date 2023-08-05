@@ -1,0 +1,31 @@
+---
+id: lXlRcDCX
+type: text
+locked: true
+---
+
+# How to fix the "number does not fit" error
+
+This error occurs when you provide a number literal that isn't representable by the number type. For example, `times` accepts a `Natural`, which can only represent whole, positive numbers:
+
+---
+id: SysmRG6i
+type: code
+---
+
+times show 3.5 -- doesn't make sense to repeat something 3.5 times
+
+---
+id: NGhEiqwW
+type: text
+locked: true
+---
+
+To fix the error, remove the fractional part and/or negative sign from the literal:
+
+---
+id: BlHtweYk
+type: code
+---
+
+times show 3

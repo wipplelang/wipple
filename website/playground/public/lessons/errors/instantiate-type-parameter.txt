@@ -1,0 +1,35 @@
+---
+id: acNA2q2x
+type: text
+locked: true
+---
+
+# How to fix the "cannot instantiate type parameter" error
+
+This error occurs when you attempt to instantiate a type parameter as if it were a structure or enumeration type. Because a type parameter can represent one of potentially many types, a value with this type cannot be constructed directly.
+
+---
+id: BG1RPCyf
+type: code
+---
+
+construct :: A => () -> A
+construct : () -> A { field : "A" }
+
+---
+id: zLXBZ7P6
+type: text
+locked: true
+---
+
+To fix this error, you can add a bound that requires the type parameter's type to implement a certain trait, which you can delegate to in order to construct the value:
+
+---
+id: ElE7wauJ
+type: code
+---
+
+Construct : A => trait (() -> A)
+
+construct :: A where (Construct A) => () -> A
+construct : Construct
