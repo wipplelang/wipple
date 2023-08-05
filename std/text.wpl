@@ -19,7 +19,7 @@ instance (Iterate Text Text) : text -> {
 
 instance (Collect Text Text) : { next } -> {
   text : mutable ""
-  loop {
+  repeat {
     when (next ()) {
       Some x -> {
         text . set! (get text + x)

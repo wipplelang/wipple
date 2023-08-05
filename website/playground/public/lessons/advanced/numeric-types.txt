@@ -24,7 +24,7 @@ id: yK0bP5Kx
 type: code
 ---
 
-0.5 . times ...
+repeat (0.5 times) { ... }
 
 ---
 id: dszQbf2f

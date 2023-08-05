@@ -1,0 +1,12 @@
+code: |
+    repeat (4 times) {
+        show "Hello, world!"
+    }
+
+output: |
+    Hello, world!
+    Hello, world!
+    Hello, world!
+    Hello, world!
+
+diagnostics: |

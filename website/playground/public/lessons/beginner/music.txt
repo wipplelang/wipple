@@ -111,7 +111,7 @@ type: text
 locked: true
 ---
 
-You can combine `with-instrument` with other functions (like `times`) to make repeating sections of music, and you can use `notes` to play a `list` of notes at the same time:
+You can combine `with-instrument` with `repeat` to make repeating sections of music, and you can use `notes` to play a `list` of notes at the same time:
 
 ---
 id: lXkYRH9r
@@ -124,7 +124,7 @@ with-music {
     tempo 132
 
     with-instrument marimba {
-        melody : _ -> {
+        repeat (4 times) {
             notes (list "C5" "C4") ((1 / 4) beats)
             note "Bb4" ((1 / 4) beats)
             note "G4" ((1 / 2) beats)
@@ -140,8 +140,6 @@ with-music {
             notes (list "Bb4" "Eb4") ((1 / 2) beats)
             notes (list "C5" "F4") ((1 / 2) beats)
         }
-
-        times melody 4
     }
 }
 

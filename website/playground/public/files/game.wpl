@@ -14,7 +14,7 @@ with-game : syntax {
       -- TODO: Wait for play button if needed (add back "press any button to start")
 
       with (game : Game { handle }) {
-        loop {
+        repeat {
           'body :: ()
           handle . message "commit" ()
           Continue

@@ -45,7 +45,9 @@ use "game"
 
 with-game {
   -- width and height are defined in the game engine
-  (width * height) . times (_ -> render-glyph 3)
+  repeat ((width * height) times) {
+    render-glyph 3
+  }
 }
 
 ---

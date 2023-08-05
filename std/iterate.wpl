@@ -5,7 +5,7 @@ use "fp"
 use "mutable"
 use "list"
 use "logic"
-use "loop"
+use "repeat"
 
 [help "A container for an iterable value that produces the `next` value on demand."]
 [help-group "Collections"]
@@ -49,7 +49,7 @@ filter :: Container (infer Element) where (Iterate Container Element) => (Elemen
 filter : include? container -> {
   base : Iterate container
 
-  iterator (() -> loop {
+  iterator (() -> repeat {
     when (next base) {
       Some x -> if (include? x) (Break (Some x)) Continue
       None -> Break None
@@ -63,7 +63,7 @@ try-filter :: Container (infer Element) Result where (Iterate Container Element)
 try-filter : transform container -> {
   base : Iterate container
 
-  iterator (() -> loop {
+  iterator (() -> repeat {
     when (next base) {
       Some x -> when (transform x) {
         Some x -> (Break (Some x))
@@ -84,7 +84,7 @@ flatten : outer-container -> {
     Some inner-container -> {
       inner : mutable (Iterate inner-container)
 
-      iterator (() -> loop {
+      iterator (() -> repeat {
         when (next (get inner)) {
           Some x -> Break (Some x)
           None -> when (next outer) {
@@ -132,7 +132,7 @@ collect : input -> Collect (Iterate input)
 
 Element => instance (Collect Element (List Element)) : iterator -> {
   list : mutable (list)
-  loop {
+  repeat {
     when (next iterator) {
       Some x -> {
         list . append! x
@@ -163,7 +163,7 @@ A => instance (Iterate (Maybe A) A) : maybe -> {
 }
 
 instance (Collect () ()) : iterator -> {
-  loop {
+  repeat {
     when (next iterator) {
       Some () -> Continue
       None -> Break ()
@@ -184,7 +184,7 @@ split-by : separator? -> collection -> {
   base : Iterate collection
   group : mutable (Some (list))
 
-  iterator (() -> loop {
+  iterator (() -> repeat {
     when (next base) {
       Some x -> {
         if (separator? x) { Break (take! group) } {
@@ -211,7 +211,7 @@ count : collection -> {
   iterator : Iterate collection
 
   count : mutable 0
-  loop {
+  repeat {
     when (next iterator :: Maybe Element) {
       Some _ -> {
         increment! count

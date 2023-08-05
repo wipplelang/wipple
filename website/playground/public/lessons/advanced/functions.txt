@@ -155,32 +155,21 @@ Much nicer! Now `birthday` doesn't have to deal with passing a `Person` around, 
 
 ## Dot syntax
 
-Has it felt a bit weird that `times` accepts the number of times to repeat _after_ the function? Shouldn't it be read "4 times, do something" instead of "times do something 4"?
-
-Partial application also allows us to emulate the dot (`.`) syntax you see in many object-oriented languages. Let's define `.` as an operator that accepts a value `x` on the left and a function `f` on the right, and returns `f x`.
-
-Now it should make sense why `times` is written this way — we can use dot syntax!
+Dot syntax allows you to provide the input to the left of the function, so you can chain function calls:
 
 ---
-id: 2uM0SeKC
+id: KM4sSH3J
 type: code
 ---
 
--- Before
-times (x -> show (x * 2)) 4
-
--- After
-4 . times (x -> show (x * 2))
+add : a b -> a + b
+0 . add 1 . add 2 . add 3 . show
 
 ---
-id: 8WZzuDcK
+id: FN9RhVdo
 type: text
 locked: true
 ---
-
-That looks much nicer; we can see the most important piece of information, the number of times the loop will repeat, first!
-
-In general, any time you have a function that operates on more than one input, you should accept the most important input _last_ so that it can be used with dot notation.
 
 ## Higher-order functions
 
