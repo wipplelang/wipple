@@ -1,0 +1,33 @@
+---
+id: 8VmEXtt1
+type: text
+locked: true
+---
+
+# How to fix the "this bound doesn't refer to any type parameters" warning
+
+This warning occurs when a bound only refers to concrete types, so it will always succeed or always fail at finding a suitable instance:
+
+---
+id: Y77T-fhs
+type: code
+---
+
+increment :: N where (Add Number Number Number) => N -> N
+increment : ...
+
+---
+id: 2bdOG0xV
+type: text
+locked: true
+---
+
+To fix the warning, either remove the useless bound or change it to reference a type parameter:
+
+---
+id: AWlv19uc
+type: code
+---
+
+increment :: N where (Add N N N) => N -> N
+increment : ...

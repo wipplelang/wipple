@@ -1,7 +1,7 @@
 ---
 id: a9Pw7IBT
 type: text
-locked: false
+locked: true
 ---
 
 # How to use `Iterate`
@@ -40,7 +40,7 @@ repeat . each show
 ---
 id: OI2ju7pw
 type: text
-locked: false
+locked: true
 ---
 
 Inside the `Iterate` instance, you call `iterator` with a function that will be called each iteration until it returns `None`. Usually, you need to use internal mutation to keep track of the iterator's progress.

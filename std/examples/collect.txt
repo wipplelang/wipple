@@ -19,7 +19,7 @@ numbers : list 1 2 3 . transform (Add 1) . collect :: List _
 ---
 id: YzKqY2UQ
 type: text
-locked: false
+locked: true
 ---
 
 If you assign the result of `collect` to a variable, you usually need to annotate the type to indicate what kind of container to collect into. The type of the element, however, can usually be inferred using `_`, as shown above.
