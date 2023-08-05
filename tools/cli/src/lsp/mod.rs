@@ -1,5 +1,8 @@
 use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 use tower_lsp::{jsonrpc, lsp_types::*, Client, LanguageServer, LspService, Server};
 use wipple_default_loader::{Fetcher, Loader};
 use wipple_frontend::{
@@ -42,7 +45,8 @@ pub async fn run() {
 
     let (service, socket) = LspService::new(|client| Backend {
         client,
-        compiler: Compiler::new(loader),
+        compiler: Compiler::new(loader.clone()),
+        loader,
         documents: Default::default(),
     });
 
@@ -52,6 +56,7 @@ pub async fn run() {
 #[derive(Clone)]
 struct Backend {
     client: Client,
+    loader: Loader,
     compiler: Compiler,
     documents: Arc<RwLock<HashMap<FilePath, Document>>>,
 }
@@ -146,7 +151,7 @@ impl LanguageServer for Backend {
                                     token_modifiers: Vec::new(),
                                 },
                                 range: Some(false),
-                                full: Some(SemanticTokensFullOptions::Delta { delta: Some(false) }),
+                                full: Some(SemanticTokensFullOptions::Bool(true)),
                             },
                             static_registration_options: StaticRegistrationOptions::default(),
                         },
@@ -198,12 +203,12 @@ impl LanguageServer for Backend {
         macro_rules! insert_semantic_tokens {
             ($kind:ident, $token:expr) => {
                 for decl in document.program.declarations.$kind.values() {
-                    if decl.span.first().path == document.path {
+                    if decl.span.first().path.as_str() == document.path.as_str() {
                         semantic_tokens.push((decl.span, $token(decl)));
                     }
 
                     for &span in &decl.uses {
-                        if span.first().path == document.path {
+                        if span.first().path.as_str() == document.path.as_str() {
                             semantic_tokens.push((span, $token(decl)));
                         }
                     }
@@ -228,7 +233,7 @@ impl LanguageServer for Backend {
         insert_semantic_tokens!(variables, |_| SemanticTokenType::VARIABLE);
 
         let mut traverse_semantic_tokens = |expr: &Expression| {
-            if expr.span.first().path != document.path {
+            if expr.span.first().path.as_str() != document.path.as_str() {
                 return;
             }
 
@@ -338,7 +343,12 @@ impl LanguageServer for Backend {
         let position = offset_lookup.get(position.line as usize, position.character as usize);
         let hover_span = Span::new(document.path, position..position);
 
-        let within_hover = |span: Span| hover_span.is_subspan_of(span);
+        let within_hover = |mut span: Span| {
+            let mut hover_span = hover_span;
+            hover_span.path = FilePath::Virtual(InternedString::new(hover_span.path.as_str()));
+            span.path = FilePath::Virtual(InternedString::new(span.path.as_str()));
+            hover_span.is_subspan_of(span)
+        };
 
         let range_from = |span: Span| {
             let (start_line, start_col) = line_col_lookup.get(span.primary_start())?;
@@ -556,13 +566,6 @@ impl LanguageServer for Backend {
         params: CompletionParams,
     ) -> jsonrpc::Result<Option<CompletionResponse>> {
         let document = self.document_from(&params.text_document_position.text_document.uri)?;
-        let offset_lookup = document.offset_lookup();
-
-        let position = params.text_document_position.position;
-        let position = offset_lookup.get(position.line as usize, position.character as usize);
-        let cursor_span = Span::new(document.path, position..position);
-
-        let _within_cursor = |span: Span| cursor_span.is_subspan_of(span);
 
         let format_type = |ty: Type, format: Format| {
             macro_rules! getter {
@@ -583,119 +586,112 @@ impl LanguageServer for Backend {
         };
 
         let mut items = Vec::new();
+        let mut add = |scope: &HashMap<InternedString, HashSet<AnyDeclaration>>| {
+            for (name, values) in scope {
+                for value in values {
+                    let kind;
+                    let mut help = Vec::new();
+                    let mut ty = None;
+                    let mut format = Format::default();
 
-        let _add = |scope: &HashMap<InternedString, AnyDeclaration>| {
-            for (name, value) in scope {
-                let kind;
-                let mut help = Vec::new();
-                let mut ty = None;
-                let mut format = Format::default();
+                    match value {
+                        AnyDeclaration::Type(id) => {
+                            kind = Some(
+                                match document.program.declarations.types.get(id).unwrap().kind {
+                                    TypeDeclKind::Marker
+                                    | TypeDeclKind::Structure { .. }
+                                    | TypeDeclKind::Alias(_) => CompletionItemKind::STRUCT,
+                                    TypeDeclKind::Enumeration { .. } => CompletionItemKind::ENUM,
+                                },
+                            );
 
-                match value {
-                    AnyDeclaration::Type(id) => {
-                        kind = Some(
-                            match document.program.declarations.types.get(id).unwrap().kind {
-                                TypeDeclKind::Marker
-                                | TypeDeclKind::Structure { .. }
-                                | TypeDeclKind::Alias(_) => CompletionItemKind::STRUCT,
-                                TypeDeclKind::Enumeration { .. } => CompletionItemKind::ENUM,
-                            },
-                        );
+                            help = document
+                                .program
+                                .declarations
+                                .types
+                                .get(id)
+                                .unwrap()
+                                .attributes
+                                .decl_attributes
+                                .help
+                                .clone();
+                        }
+                        AnyDeclaration::BuiltinType(id) => {
+                            kind = Some(CompletionItemKind::STRUCT);
 
-                        help = document
-                            .program
-                            .declarations
-                            .types
-                            .get(id)
-                            .unwrap()
-                            .attributes
-                            .decl_attributes
-                            .help
-                            .clone();
+                            help = document
+                                .program
+                                .declarations
+                                .builtin_types
+                                .get(id)
+                                .unwrap()
+                                .attributes
+                                .help
+                                .clone();
+                        }
+                        AnyDeclaration::Trait(id) => {
+                            kind = Some(CompletionItemKind::INTERFACE);
+
+                            help = document
+                                .program
+                                .declarations
+                                .traits
+                                .get(id)
+                                .unwrap()
+                                .attributes
+                                .decl_attributes
+                                .help
+                                .clone();
+                        }
+                        AnyDeclaration::TypeParameter(_) => {
+                            kind = Some(CompletionItemKind::TYPE_PARAMETER);
+                        }
+                        AnyDeclaration::Constant(id, _) => {
+                            kind = Some(CompletionItemKind::CONSTANT);
+
+                            let decl = document.program.declarations.constants.get(id).unwrap();
+
+                            help = decl.attributes.decl_attributes.help.clone();
+
+                            ty = Some(decl.ty.clone());
+
+                            format.type_function = TypeFunctionFormat::Arrow(&decl.bounds);
+                        }
+                        AnyDeclaration::Variable(id) => {
+                            kind = Some(CompletionItemKind::VARIABLE);
+
+                            ty = document
+                                .program
+                                .declarations
+                                .variables
+                                .get(id)
+                                .map(|decl| decl.ty.clone());
+                        }
                     }
-                    AnyDeclaration::BuiltinType(id) => {
-                        kind = Some(CompletionItemKind::STRUCT);
 
-                        help = document
-                            .program
-                            .declarations
-                            .builtin_types
-                            .get(id)
-                            .unwrap()
-                            .attributes
-                            .help
-                            .clone();
+                    if let Some(kind) = kind {
+                        let item = CompletionItem {
+                            label: name.to_string(),
+                            kind: Some(kind),
+                            detail: ty.map(|ty| format_type(ty, format)),
+                            documentation: Some(Documentation::MarkupContent(MarkupContent {
+                                kind: MarkupKind::Markdown,
+                                value: help
+                                    .into_iter()
+                                    .map(|line| line.to_string())
+                                    .collect::<Vec<_>>()
+                                    .join("\n"),
+                            })),
+                            ..Default::default()
+                        };
+
+                        items.push(item);
                     }
-                    AnyDeclaration::Trait(id) => {
-                        kind = Some(CompletionItemKind::INTERFACE);
-
-                        help = document
-                            .program
-                            .declarations
-                            .traits
-                            .get(id)
-                            .unwrap()
-                            .attributes
-                            .decl_attributes
-                            .help
-                            .clone();
-                    }
-                    AnyDeclaration::TypeParameter(_) => {
-                        kind = Some(CompletionItemKind::TYPE_PARAMETER);
-                    }
-                    AnyDeclaration::Constant(id, _) => {
-                        kind = Some(CompletionItemKind::CONSTANT);
-
-                        let decl = document.program.declarations.constants.get(id).unwrap();
-
-                        help = decl.attributes.decl_attributes.help.clone();
-
-                        ty = Some(decl.ty.clone());
-
-                        format.type_function = TypeFunctionFormat::Arrow(&decl.bounds);
-                    }
-                    AnyDeclaration::Variable(id) => {
-                        kind = Some(CompletionItemKind::VARIABLE);
-
-                        ty = document
-                            .program
-                            .declarations
-                            .variables
-                            .get(id)
-                            .map(|decl| decl.ty.clone());
-                    }
-                }
-
-                if let Some(kind) = kind {
-                    let item = CompletionItem {
-                        label: name.to_string(),
-                        kind: Some(kind),
-                        detail: ty.map(|ty| format_type(ty, format)),
-                        documentation: Some(Documentation::MarkupContent(MarkupContent {
-                            kind: MarkupKind::Markdown,
-                            value: help
-                                .into_iter()
-                                .map(|line| line.to_string())
-                                .collect::<Vec<_>>()
-                                .join("\n"),
-                        })),
-                        ..Default::default()
-                    };
-
-                    items.push(item);
                 }
             }
         };
 
-        // for (span, scope) in &document.program.scopes {
-        //     if !within_cursor(*span) {
-        //         continue;
-        //     }
-
-        //     add(scope);
-        // }
-
-        // add(&document.program.exported);
+        add(&document.program.exported);
 
         Ok(Some(CompletionResponse::Array(items)))
     }
@@ -756,13 +752,11 @@ impl Backend {
     }
 
     async fn on_change(&self, text_document: TextDocumentItem) {
-        let backend = self.clone();
-
-        let analysis = backend.clone().analyze(&text_document);
+        let analysis = self.analyze(&text_document);
 
         let (program, diagnostics) = analysis.await;
 
-        let path = backend.file_path_from(&text_document.uri);
+        let path = self.file_path_from(&text_document.uri);
 
         let document = Document {
             path,
@@ -770,18 +764,24 @@ impl Backend {
             program,
         };
 
-        backend
-            .update_diagnostics(text_document.uri, &document, diagnostics)
+        self.update_diagnostics(text_document.uri, &document, diagnostics)
             .await;
 
-        backend.documents.write().insert(path, document);
+        self.documents.write().insert(path, document);
     }
 
     async fn analyze(
-        self,
+        &self,
         document: &TextDocumentItem,
     ) -> (Program, Vec<wipple_frontend::diagnostics::Diagnostic>) {
         let path = self.file_path_from(&document.uri);
+
+        let mut base_url = document.uri.clone();
+        if let Ok(mut segments) = base_url.path_segments_mut() {
+            segments.pop();
+        }
+
+        self.loader.set_base(Some(self.file_path_from(&base_url)));
 
         self.compiler.loader.virtual_paths().lock().insert(
             self.raw_file_path_from(&document.uri),
@@ -822,7 +822,7 @@ impl Backend {
                 let mut notes = diagnostic.notes.into_iter();
 
                 let primary_note = notes.next().unwrap();
-                if primary_note.span.first().path != document.path {
+                if primary_note.span.first().path.as_str() != document.path.as_str() {
                     continue;
                 }
 
@@ -848,7 +848,7 @@ impl Backend {
                 });
 
                 for note in notes {
-                    if note.span.first().path != document.path {
+                    if note.span.first().path.as_str() != document.path.as_str() {
                         continue;
                     }
 

@@ -22,7 +22,7 @@ pub struct Loader {
     virtual_paths: Shared<HashMap<InternedString, Arc<str>>>,
     fetcher: Shared<Fetcher>,
     plugin_handler: Shared<PluginHandler>,
-    base: Option<FilePath>,
+    base: Shared<Option<FilePath>>,
     std_path: Option<FilePath>,
     source_map: Shared<SourceMap>,
     cache: Shared<HashMap<FilePath, Arc<analysis::ast::File<Analysis>>>>,
@@ -202,11 +202,15 @@ impl Loader {
             virtual_paths: Default::default(),
             fetcher: Default::default(),
             plugin_handler: Default::default(),
-            base,
+            base: Shared::new(base),
             std_path,
             source_map: Default::default(),
             cache: Default::default(),
         }
+    }
+
+    pub fn set_base(&self, base: Option<FilePath>) {
+        *self.base.lock() = base;
     }
 
     pub fn with_fetcher(&self, fetcher: Fetcher) -> Self {
@@ -249,6 +253,10 @@ impl wipple_frontend::Loader for Loader {
 
         match path {
             FilePath::Path(path) => {
+                if self.virtual_paths.lock().contains_key(&path) {
+                    return Ok(FilePath::Virtual(path));
+                }
+
                 if is_url(path) {
                     let mut url = Url::from_str(&path)?.join(path.as_str())?;
 
@@ -266,7 +274,7 @@ impl wipple_frontend::Loader for Loader {
                     } else {
                         let base = match current {
                             Some(path) => path,
-                            None => match self.base {
+                            None => match *self.base.lock() {
                                 Some(base) => base,
                                 None => return Ok(FilePath::Path(path)),
                             },
@@ -293,7 +301,7 @@ impl wipple_frontend::Loader for Loader {
                             FilePath::Virtual(_) => {
                                 let base = match base {
                                     FilePath::Url(_) | FilePath::Path(_) => base,
-                                    _ => self.base.ok_or_else(|| {
+                                    _ => self.base.lock().ok_or_else(|| {
                                         anyhow::Error::msg(
                                             "attempt to load nested virtual path without base set",
                                         )
