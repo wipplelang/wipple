@@ -1,0 +1,31 @@
+---
+id: dNSxZShQ
+type: text
+locked: true
+---
+
+# How to fix the "type placeholder is not allowed here" error
+
+Type placeholders are denoted with `_` and indicate that the type should be inferred. Wipple doesn't allow you to infer the types of fields or variants in a `type` definition:
+
+---
+id: ceH5TAP1
+type: code
+---
+
+Wrapper : type { value :: _ }
+
+---
+id: 6TIYQSuR
+type: text
+locked: true
+---
+
+Instead, provide a type parameter using a type function:
+
+---
+id: SL450Kz3
+type: code
+---
+
+Wrapper : Value => type { value :: Value }

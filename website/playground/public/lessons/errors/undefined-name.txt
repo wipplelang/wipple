@@ -1,0 +1,47 @@
+---
+id: BTYeTCAD
+type: text
+locked: true
+---
+
+# How to fix the "cannot find name" error
+
+This error occurs when you refer to a name that hasn't been defined:
+
+---
+id: lP_J5bDB
+type: code
+---
+
+show x
+
+---
+id: 1TOZiq_W
+type: text
+locked: true
+---
+
+To fix this error, define the variable using the `:` operator:
+
+---
+id: ZVCIgZ0Y
+type: code
+---
+
+x : "Hello, world!"
+show x
+
+---
+id: ndoe2Yxu
+type: text
+locked: true
+---
+
+If you're trying to display something on the screen, wrap the name in quotation marks:
+
+---
+id: SGNPlHRk
+type: code
+---
+
+show "x"
