@@ -221,6 +221,11 @@ export const CodeEditor = (props: CodeEditorProps) => {
             enter: (node) => {
                 const { from, to } = node;
 
+                // Decorations may not be empty
+                if (from === to) {
+                    return;
+                }
+
                 const nodeText = view.state.sliceDoc(from, to);
 
                 // Decorations may not span multiple lines
