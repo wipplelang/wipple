@@ -51,7 +51,7 @@ pre code {
 }
 
 .example {
-    @apply px-10 md:px-20 pt-12 flex flex-col md:flex-row md:items-start;
+    @apply px-10 md:px-20 pt-12 md:pb-6 flex flex-col md:flex-row md:items-start;
 }
 
 .example .example-text {

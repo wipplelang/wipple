@@ -12,18 +12,18 @@
 
 ## Overview
 
-### Natural syntax
+### Natural
 
-Wipple’s syntax was designed with just a few rules and balances punctuation with English words, making it a great first programming language. Instead of sticking with conventional names like `print`, Wipple uses more intuitive names like `show`.
+Wipple was designed with just a few rules and minimal punctuation, making it a great language for students.
 
 ```wipple
 greet : name -> format "Hello, _!" name
 show (greet "world") -- Hello, world!
 ```
 
-### Pattern matching
+### Expressive
 
-Instead of using `if`, Wipple’s `when` expression enables you to check complex conditions with ease. Before your code even runs, Wipple ensures that it handles all possible conditions — no surprises in production.
+Wipple’s functional style and extensible constructs enable you to describe and manage complex data with ease.
 
 ```wipple
 report-card :: Grade -> Text
@@ -35,9 +35,9 @@ report-card : grade -> when grade {
 }
 ```
 
-### Type system
+### Powerful
 
-Wipple has a powerful type system that checks your mistakes to prevent crashes at runtime. You can document a function’s behavior using a type annotation, or let Wipple figure out the types for you. And you can use traits to extend existing code with new behavior.
+Wipple’s type system automatically checks your mistakes to prevent bugs. And with traits, you can add new functionality to others’ code.
 
 ```wipple
 Person : type {
