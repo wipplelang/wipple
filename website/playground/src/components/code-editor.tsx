@@ -261,7 +261,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         break;
                 }
 
-                if (settings.current.beginner ?? true) {
+                if ((settings.current.beginner ?? true) && node.node.firstChild == null) {
                     let color: string | undefined;
                     if (closingBrackets[nodeText]) {
                         color = bracketPairColors[stack.length % bracketPairColors.length];
