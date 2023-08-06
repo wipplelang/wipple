@@ -21,6 +21,20 @@ greet : name -> format "Hello, _!" name
 show (greet "world") -- Hello, world!
 ```
 
+### Pattern matching
+
+Instead of using `if`, Wipple’s `when` expression enables you to check complex conditions with ease. Before your code even runs, Wipple ensures that it handles all possible conditions — no surprises in production.
+
+```wipple
+report-card :: Grade -> Text
+report-card : grade -> when grade {
+    A -> "top of the class"
+    B -> "good job"
+    C -> "need to study"
+    D or F -> "didn't pass"
+}
+```
+
 ### Type system
 
 Wipple has a powerful type system that checks your mistakes to prevent crashes at runtime. You can document a function’s behavior using a type annotation, or let Wipple figure out the types for you. And you can use traits to extend existing code with new behavior.
@@ -40,20 +54,6 @@ bob : Person {
 }
 
 show bob -- Bob is 30 years old
-```
-
-### Pattern matching
-
-Instead of using `if`, Wipple’s `when` expression enables you to check complex conditions with ease. Before your code even runs, Wipple ensures that it handles all possible conditions — no surprises in production.
-
-```wipple
-report-card :: Grade -> Text
-report-card : grade -> when grade {
-    A -> "top of the class"
-    B -> "good job"
-    C -> "need to study"
-    D or F -> "didn't pass"
-}
 ```
 
 ## Learn Wipple

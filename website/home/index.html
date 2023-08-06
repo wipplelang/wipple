@@ -84,6 +84,31 @@ show (greet "world") -- Hello, world!
 
             <div class="example">
                 <div class="example-text">
+                    <h2>Pattern matching</h2>
+
+                    <p>
+                        Instead of using <code>if</code>, Wipple’s <code>when</code> expression
+                        enables you to check complex conditions with ease. Before your code even
+                        runs, Wipple ensures that it handles all possible conditions — no surprises
+                        in production.
+                    </p>
+                </div>
+
+                <div class="example-code">
+                    {% highlight "wipple" %}
+report-card :: Grade -> Text
+report-card : grade -> when grade {
+    A -> "top of the class"
+    B -> "good job"
+    C -> "need to study"
+    D or F -> "didn't pass"
+}
+                    {% endhighlight %}
+                </div>
+            </div>
+
+            <div class="example">
+                <div class="example-text">
                     <h2>Type system</h2>
 
                     <p>
@@ -110,31 +135,6 @@ bob : Person {
 }
 
 show bob -- Bob is 30 years old
-                    {% endhighlight %}
-                </div>
-            </div>
-
-            <div class="example">
-                <div class="example-text">
-                    <h2>Pattern matching</h2>
-
-                    <p>
-                        Instead of using <code>if</code>, Wipple’s <code>when</code> expression
-                        enables you to check complex conditions with ease. Before your code even
-                        runs, Wipple ensures that it handles all possible conditions — no surprises
-                        in production.
-                    </p>
-                </div>
-
-                <div class="example-code">
-                    {% highlight "wipple" %}
-report-card :: Grade -> Text
-report-card : grade -> when grade {
-    A -> "top of the class"
-    B -> "good job"
-    C -> "need to study"
-    D or F -> "didn't pass"
-}
                     {% endhighlight %}
                 </div>
             </div>
