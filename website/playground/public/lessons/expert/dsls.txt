@@ -296,7 +296,7 @@ id: Nj8EF0Lo
 type: code
 ---
 
-use "https://github.com/wipplelang/playground-examples/raw/main/robot.wpl"
+use "https://raw.githubusercontent.com/wipplelang/playground-examples/main/robot.wpl"
 
 with-robot "Bot" {
     say-hello

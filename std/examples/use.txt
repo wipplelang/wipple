@@ -33,6 +33,6 @@ id: iimVvMBH
 type: code
 ---
 
-use "https://github.com/wipplelang/playground-examples/raw/main/say-hello.wpl"
+use "https://raw.githubusercontent.com/wipplelang/playground-examples/main/say-hello.wpl"
 
 say-hello ()
