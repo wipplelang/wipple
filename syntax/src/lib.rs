@@ -81,6 +81,14 @@ pub trait Span {
     fn set_expanded_from_operator(&mut self);
     fn set_caller(&mut self, caller: Self);
     fn range(&self) -> Range<usize>;
+
+    fn merged_with(mut self, other: Self) -> Self
+    where
+        Self: Sized,
+    {
+        self.merge(other);
+        self
+    }
 }
 
 pub trait DriverExt: Driver {

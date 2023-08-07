@@ -535,25 +535,25 @@ impl<D: Driver> SyntaxPattern<D> {
         source_span: D::Span,
         scope: D::Scope,
     ) -> Result<Vec<parse::Expr<D>>, SyntaxError<D>> {
-        let mut result = match body {
+        Ok(match body {
             SyntaxPattern::Unit(pattern) => vec![parse::Expr {
-                span: pattern.span,
+                span: pattern.span.merged_with(source_span),
                 kind: parse::ExprKind::List(Vec::new()),
             }],
             SyntaxPattern::Name(pattern) => vec![parse::Expr {
-                span: pattern.span,
+                span: pattern.span.merged_with(source_span),
                 kind: parse::ExprKind::Name(pattern.name, Some(scope)),
             }],
             SyntaxPattern::Text(pattern) => vec![parse::Expr {
-                span: pattern.span,
+                span: pattern.span.merged_with(source_span),
                 kind: parse::ExprKind::Text(pattern.text.clone(), pattern.text),
             }],
             SyntaxPattern::Number(pattern) => vec![parse::Expr {
-                span: pattern.span,
+                span: pattern.span.merged_with(source_span),
                 kind: parse::ExprKind::Number(pattern.number),
             }],
             SyntaxPattern::Underscore(pattern) => vec![parse::Expr {
-                span: pattern.span,
+                span: pattern.span.merged_with(source_span),
                 kind: parse::ExprKind::Underscore,
             }],
             SyntaxPattern::Variable(pattern) => match vars.get(&pattern.name) {
@@ -593,7 +593,7 @@ impl<D: Driver> SyntaxPattern<D> {
             },
             SyntaxPattern::List(pattern) => {
                 vec![parse::Expr::list_or_expr(
-                    pattern.span,
+                    pattern.span.merged_with(source_span),
                     pattern
                         .patterns
                         .into_iter()
@@ -691,7 +691,7 @@ impl<D: Driver> SyntaxPattern<D> {
             }
             SyntaxPattern::Block(pattern) => {
                 vec![parse::Expr {
-                    span: pattern.span,
+                    span: pattern.span.merged_with(source_span),
                     kind: parse::ExprKind::Block(
                         pattern
                             .statements
@@ -716,13 +716,7 @@ impl<D: Driver> SyntaxPattern<D> {
                     ),
                 }]
             }
-        };
-
-        for expr in &mut result {
-            expr.span.merge(source_span);
-        }
-
-        Ok(result)
+        })
     }
 
     fn collect_used_variables(&self, vars: &mut HashSet<D::InternedString>) {

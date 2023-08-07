@@ -129,6 +129,48 @@ impl<D: Driver> Expr<D> {
     }
 }
 
+impl<D: Driver> Expr<D> {
+    pub fn traverse_mut(&mut self, mut f: impl FnMut(&mut Self)) {
+        self.traverse_mut_inner(&mut f);
+    }
+
+    fn traverse_mut_inner(&mut self, f: &mut impl FnMut(&mut Self)) {
+        f(self);
+
+        match &mut self.kind {
+            ExprKind::List(lines) | ExprKind::RepeatList(lines) => {
+                for line in lines {
+                    for attribute in &mut line.attributes {
+                        for expr in &mut attribute.exprs {
+                            expr.traverse_mut_inner(f);
+                        }
+                    }
+
+                    for expr in &mut line.exprs {
+                        expr.traverse_mut_inner(f);
+                    }
+                }
+            }
+            ExprKind::Block(statements) => {
+                for statement in statements {
+                    for line in &mut statement.lines {
+                        for attribute in &mut line.attributes {
+                            for expr in &mut attribute.exprs {
+                                expr.traverse_mut_inner(f);
+                            }
+                        }
+
+                        for expr in &mut line.exprs {
+                            expr.traverse_mut_inner(f);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
 pub(crate) struct Parser<'src, 'a, D: Driver> {
     pub driver: &'a D,
     pub path: D::Path,
