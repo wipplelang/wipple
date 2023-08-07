@@ -18,6 +18,7 @@ definitions! {
     mod syntax_body;
     mod syntax_pattern;
     mod syntax_rule;
+    mod top_level_statement;
     mod r#type;
     mod type_body;
     mod type_member;
@@ -34,7 +35,6 @@ pub use syntax::SyntaxError;
 
 use crate::{ast::macros::definitions, parse, Driver, DriverExt, File as _, Span};
 use futures::{future::BoxFuture, stream, StreamExt};
-
 use sync_wrapper::SyncFuture;
 use syntax::{Syntax, SyntaxContext};
 use wipple_util::Shared;
@@ -288,6 +288,41 @@ pub(crate) async fn build<D: Driver>(
         }
     }
 
+    let mut queue = Vec::new();
+
+    if ast_builder.attributes.lock().no_std.is_none() {
+        if let Some(std_path) = ast_builder.driver.std_path() {
+            queue.push(std_path);
+        }
+    }
+
+    let statements = stream::iter(parse_file.statements)
+        .then(|statement| {
+            ast_builder.build_statement::<TopLevelStatementSyntax>(
+                TopLevelStatementSyntaxContext::new(ast_builder.clone()),
+                statement,
+                scope,
+            )
+        })
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .flatten()
+        .map(|result| result.unwrap_or_else(|_| unreachable!()))
+        .map(|statement| match statement {
+            TopLevelStatement::Use(statement) => {
+                if let Some(path) = statement.path {
+                    queue.push(path);
+                }
+
+                statement.statement
+            }
+            TopLevelStatement::Queued(statement) => statement,
+        })
+        .collect::<Vec<_>>();
+
+    ast_builder.driver.queue_files(Some(path), queue).await;
+
     if ast_builder.attributes.lock().no_std.is_none() {
         if let Some(std_path) = ast_builder.driver.std_path() {
             ast_builder
@@ -298,12 +333,15 @@ pub(crate) async fn build<D: Driver>(
         }
     }
 
-    let statements = stream::iter(parse_file.statements)
+    let statements = stream::iter(statements)
         .then(|statement| {
+            let mut line = parse::ListLine::from(vec![statement.expr]);
+            line.attributes = statement.attributes;
+
             ast_builder.build_statement::<StatementSyntax>(
                 StatementSyntaxContext::new(ast_builder.clone()),
-                statement,
-                scope,
+                parse::Statement { lines: vec![line] },
+                statement.scope,
             )
         })
         .collect::<Vec<_>>()
