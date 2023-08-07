@@ -376,7 +376,10 @@ impl wipple_frontend::Loader for Loader {
             _ => unimplemented!(),
         };
 
-        self.queue.lock().insert(path, code.clone());
+        // Never cache virtual or builtin paths
+        if !matches!(path, FilePath::Virtual(_) | FilePath::Builtin) {
+            self.queue.lock().insert(path, code.clone());
+        }
 
         Ok(code)
     }
