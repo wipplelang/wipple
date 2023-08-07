@@ -15,6 +15,8 @@ on:
             - Cargo.toml
             - Cargo.lock
             - Cross.toml
+        branches:
+            - main
 
 name: Trigger Deploy Website
 
