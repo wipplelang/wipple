@@ -1092,8 +1092,8 @@ pub fn hover(start: usize, end: usize) -> JsValue {
 
     let within_hover = |span: Span| {
         span.path == FilePath::Virtual(*PLAYGROUND_PATH)
-            && start >= span.primary_start()
-            && end <= span.primary_end()
+            && start == span.primary_start()
+            && end == span.primary_end()
     };
 
     macro_rules! getter {
