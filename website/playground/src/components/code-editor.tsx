@@ -938,7 +938,7 @@ class PlaceholderDecoration extends WidgetType {
 const Placeholder = (props: { placeholder: string; onClick: () => void }) => {
     return (
         <span
-            className="inline-block bg-blue-500 px-2 border-2 border-gray-100 dark:border-gray-700 rounded-lg text-white ui-font"
+            className="inline-block bg-blue-500 bg-opacity-80 px-2 border-2 border-gray-100 dark:border-gray-700 rounded-lg text-white ui-font"
             onClick={props.onClick}
         >
             {props.placeholder}
@@ -1214,10 +1214,10 @@ const closingBrackets: Record<string, string> = {
 };
 
 const bracketPairColors: string[] = [
-    "bg-blue-100 dark:bg-blue-900",
-    "bg-red-100 dark:bg-red-900",
-    "bg-green-100 dark:bg-green-900",
-    "bg-yellow-100 dark:bg-yellow-900",
+    "bg-blue-500 bg-opacity-20",
+    "bg-red-500 bg-opacity-20",
+    "bg-green-500 bg-opacity-20",
+    "bg-yellow-500 bg-opacity-20",
 ];
 
 const builtinCompletions: SpecialCompletion[] = [
