@@ -100,6 +100,14 @@ impl Interpreter {
             };
         }
 
+        macro_rules! runtime_negate_fn {
+            (Value::$ty:ident) => {
+                runtime_fn!((Value::$ty(x)) => async {
+                    Ok(Value::$ty(-x))
+                })
+            };
+        }
+
         macro_rules! runtime_text_fn {
             (($($input:pat),*) => $result:expr) => {
                 runtime_fn!(($($input),*) => async { Ok(Value::Text(Arc::from($result.await))) })
@@ -486,6 +494,7 @@ impl Interpreter {
                         Ok(n.sqrt().unwrap())
                     })
                 }
+                ir::Intrinsic::NegateNumber => runtime_negate_fn!(Value::Number),
                 ir::Intrinsic::AddInteger => {
                     runtime_math_fn!(Value::Integer, (lhs, rhs) => async {
                         Ok(lhs + rhs)
@@ -512,6 +521,7 @@ impl Interpreter {
                         }
                     })
                 }
+                ir::Intrinsic::NegateInteger => runtime_negate_fn!(Value::Integer),
                 ir::Intrinsic::AddNatural => {
                     runtime_math_fn!(Value::Natural, (lhs, rhs) => async {
                         Ok(lhs + rhs)
@@ -588,6 +598,7 @@ impl Interpreter {
                         Ok(lhs.pow(rhs as u32))
                     }
                 }),
+                ir::Intrinsic::NegateSigned => runtime_negate_fn!(Value::Signed),
                 ir::Intrinsic::AddUnsigned => {
                     runtime_math_fn!(Value::Unsigned, (lhs, rhs) => async {
                         Ok(lhs + rhs)
@@ -659,6 +670,7 @@ impl Interpreter {
                         Ok(n.sqrt())
                     })
                 }
+                ir::Intrinsic::NegateFloat => runtime_negate_fn!(Value::Float),
                 ir::Intrinsic::AddDouble => {
                     runtime_math_fn!(Value::Double, (lhs, rhs) => async {
                         Ok(lhs + rhs)
@@ -704,6 +716,7 @@ impl Interpreter {
                         Ok(n.sqrt())
                     })
                 }
+                ir::Intrinsic::NegateDouble => runtime_negate_fn!(Value::Double),
                 ir::Intrinsic::TextEquality => runtime_eq_fn!(Value::Text),
                 ir::Intrinsic::NumberEquality => runtime_eq_fn!(Value::Number),
                 ir::Intrinsic::IntegerEquality => runtime_eq_fn!(Value::Integer),

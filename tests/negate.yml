@@ -1,0 +1,7 @@
+code: |
+  show ((negate 3) = -3)
+
+output: |
+  True
+
+diagnostics: |

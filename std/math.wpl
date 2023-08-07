@@ -145,3 +145,14 @@ sqrt : Sqrt
 instance (Sqrt Number) : n -> intrinsic "sqrt-number" n
 instance (Sqrt Float) : n -> intrinsic "sqrt-float" n
 instance (Sqrt Double) : n -> intrinsic "sqrt-double" n
+
+[help "Negates the sign of a number."]
+[help-group "Math"]
+Negate : N => trait (N -> N)
+negate :: N where (Negate N) => N -> N
+negate : Negate
+instance (Negate Number) : n -> intrinsic "negate-number" n
+instance (Negate Integer) : n -> intrinsic "negate-integer" n
+instance (Negate Signed) : n -> intrinsic "negate-signed" n
+instance (Negate Float) : n -> intrinsic "negate-float" n
+instance (Negate Double) : n -> intrinsic "negate-double" n
