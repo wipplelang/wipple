@@ -10,6 +10,16 @@
   Wipple is a programming language that’s natural to read, write and learn.
 </p>
 
+<p align="center">
+  <a href="https://github.com/wipplelang/wipple/actions/workflows/tests.yml">
+    <img src="https://github.com/wipplelang/wipple/actions/workflows/tests.yml/badge.svg" alt="tests">
+  </a>
+
+  <a href="https://github.com/wipplelang/wipplelang.github.io/actions/workflows/deploy.yml">
+    <img src="https://github.com/wipplelang/wipplelang.github.io/actions/workflows/deploy.yml/badge.svg" alt="website">
+  </a>
+</p>
+
 ## Overview
 
 ### Natural
