@@ -368,14 +368,20 @@ impl<D: Driver> SyntaxPattern<D> {
         D: 'a,
     {
         let mut vars = HashMap::new();
-        Self::match_inner(ast_builder, rule.into_iter(), input.into_iter(), &mut vars)?;
+        let mut input = input.into_iter();
+        Self::match_inner(ast_builder, rule.into_iter(), &mut input, &mut vars)?;
+
+        if input.next().is_some() {
+            return None; // extra trailing expressions
+        }
+
         Some(vars)
     }
 
     fn match_inner<'a>(
         ast_builder: &AstBuilder<D>,
         rule: impl Iterator<Item = SyntaxPattern<D>>,
-        mut input: impl Iterator<Item = &'a parse::Expr<D>>,
+        input: &mut impl Iterator<Item = &'a parse::Expr<D>>,
         vars: &mut HashMap<D::InternedString, SyntaxExpression<D>>,
     ) -> Option<()>
     where
@@ -455,7 +461,7 @@ impl<D: Driver> SyntaxPattern<D> {
                 SyntaxPattern::List(pattern) => {
                     let expr = input.next()?;
 
-                    let (_, list) = match expr.try_as_list_exprs() {
+                    let (_, mut list) = match expr.try_as_list_exprs() {
                         Ok(list) => list,
                         _ => return None,
                     };
@@ -463,9 +469,13 @@ impl<D: Driver> SyntaxPattern<D> {
                     Self::match_inner(
                         ast_builder,
                         pattern.patterns.into_iter().flatten(),
-                        list,
+                        &mut list,
                         vars,
                     )?;
+
+                    if list.next().is_some() {
+                        return None; // extra trailing expressions
+                    }
                 }
                 SyntaxPattern::ListRepetition(pattern) => {
                     ast_builder.driver.syntax_error(
