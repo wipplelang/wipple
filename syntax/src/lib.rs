@@ -21,7 +21,12 @@ pub trait Driver: Debug + Clone + Send + Sync + 'static {
 
     fn std_path(&self) -> Option<Self::Path>;
 
-    async fn load_file(
+    /// Allows the driver to download files in parallel so loading is faster.
+    async fn queue_files(&self, source_path: Option<Self::Path>, paths: Vec<Self::Path>) {
+        let _ = (source_path, paths); // do nothing
+    }
+
+    async fn expand_file(
         &self,
         source_file: Option<(Self::Path, Self::File)>,
         source_span: Option<Self::Span>,
@@ -95,7 +100,7 @@ impl<D: Driver> DriverExt for D {
         path: Self::Path,
     ) -> SyncFuture<BoxFuture<'static, Option<Arc<ast::File<Self>>>>> {
         SyncFuture::new(Box::pin(async move {
-            self.load_file(source_file, source_span, path, {
+            self.expand_file(source_file, source_span, path, {
                 let driver = self.clone();
 
                 move |resolved_path, driver_file| {

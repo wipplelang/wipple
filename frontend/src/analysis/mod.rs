@@ -226,7 +226,27 @@ impl wipple_syntax::Driver for Analysis {
         self.compiler.loader.std_path()
     }
 
-    async fn load_file(
+    async fn queue_files(&self, source_path: Option<Self::Path>, paths: Vec<Self::Path>) {
+        let queue = self.compiler.loader.queue();
+
+        futures::future::join_all(
+            paths
+                .into_iter()
+                .filter_map(|path| {
+                    self.compiler
+                        .loader
+                        .resolve(path, FileKind::Source, source_path)
+                        .ok()
+                })
+                .filter(|resolved_path| !queue.contains(resolved_path))
+                .map(|resolved_path| async move {
+                    let _ = self.compiler.loader.load(resolved_path).await;
+                }),
+        )
+        .await;
+    }
+
+    async fn expand_file(
         &self,
         source_file: Option<(Self::Path, Self::File)>,
         source_span: Option<Self::Span>,

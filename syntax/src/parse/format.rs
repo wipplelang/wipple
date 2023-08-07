@@ -38,7 +38,11 @@ pub fn format(code: &str) -> Option<String> {
             unimplemented!()
         }
 
-        async fn load_file(
+        async fn queue_files(&self, _source_path: Option<Self::Path>, _paths: Vec<Self::Path>) {
+            unimplemented!()
+        }
+
+        async fn expand_file(
             &self,
             _source_file: Option<(Self::Path, Self::File)>,
             _source_span: Option<Self::Span>,

@@ -11,7 +11,7 @@ use diagnostics::*;
 use helpers::{InternedString, Shared};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fmt::{self, Debug},
     hash::Hash,
     mem,
@@ -48,6 +48,8 @@ pub trait Loader: Debug + Send + Sync + 'static {
     ) -> anyhow::Result<PluginOutput>;
 
     fn virtual_paths(&self) -> Shared<HashMap<InternedString, Arc<str>>>;
+
+    fn queue(&self) -> HashSet<FilePath>;
 
     fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::ast::File<analysis::Analysis>>>>;
 

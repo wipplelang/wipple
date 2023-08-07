@@ -3,7 +3,13 @@
 use async_trait::async_trait;
 use futures::future::BoxFuture;
 use path_clean::PathClean;
-use std::{collections::HashMap, mem, path::PathBuf, str::FromStr, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    mem,
+    path::PathBuf,
+    str::FromStr,
+    sync::Arc,
+};
 use url::Url;
 use wipple_frontend::{
     analysis::{self, Analysis},
@@ -25,6 +31,7 @@ pub struct Loader {
     base: Shared<Option<FilePath>>,
     std_path: Option<FilePath>,
     source_map: Shared<SourceMap>,
+    queue: Shared<HashMap<FilePath, Arc<str>>>,
     cache: Shared<HashMap<FilePath, Arc<analysis::ast::File<Analysis>>>>,
 }
 
@@ -205,6 +212,7 @@ impl Loader {
             base: Shared::new(base),
             std_path,
             source_map: Default::default(),
+            queue: Default::default(),
             cache: Default::default(),
         }
     }
@@ -364,6 +372,8 @@ impl wipple_frontend::Loader for Loader {
             _ => unimplemented!(),
         };
 
+        self.queue.lock().insert(path, code.clone());
+
         Ok(code)
     }
 
@@ -411,6 +421,10 @@ impl wipple_frontend::Loader for Loader {
 
     fn virtual_paths(&self) -> Shared<HashMap<InternedString, Arc<str>>> {
         self.virtual_paths.clone()
+    }
+
+    fn queue(&self) -> HashSet<FilePath> {
+        self.queue.lock().keys().cloned().collect()
     }
 
     fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::ast::File<Analysis>>>> {
