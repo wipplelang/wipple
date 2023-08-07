@@ -15,7 +15,7 @@ on:
             - Cargo.lock
             - Cross.toml
 
-name: Tests
+name: tests
 
 jobs:
     test:
