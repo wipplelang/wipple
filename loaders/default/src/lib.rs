@@ -348,6 +348,10 @@ impl wipple_frontend::Loader for Loader {
     }
 
     async fn load(&self, path: FilePath) -> anyhow::Result<Arc<str>> {
+        if let Some(code) = self.queue.lock().get(&path) {
+            return Ok(code.clone());
+        }
+
         let code = match path {
             FilePath::Path(path) => {
                 let fut = self.fetcher.lock().from_path.as_ref().ok_or_else(|| {

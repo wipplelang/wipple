@@ -65,6 +65,65 @@ impl<D: Driver> AstBuilder<D> {
     }
 }
 
+impl<D: Driver> Syntax<D> for parse::Expr<D> {
+    type Context = RawSyntaxContext;
+
+    fn rules() -> SyntaxRules<D, Self> {
+        SyntaxRules(Vec::new())
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct RawSyntaxContext;
+
+#[async_trait]
+impl<D: Driver> SyntaxContext<D> for RawSyntaxContext {
+    type Body = parse::Expr<D>;
+    type Statement = parse::Expr<D>;
+
+    fn new(_ast_builder: AstBuilder<D>) -> Self {
+        RawSyntaxContext
+    }
+
+    fn with_statement_attributes(self, _attributes: Shared<StatementAttributes<D>>) -> Self {
+        unimplemented!()
+    }
+
+    async fn build_block(
+        self,
+        span: D::Span,
+        statements: impl Iterator<
+                Item = Result<
+                    <<Self::Statement as Syntax<D>>::Context as SyntaxContext<D>>::Body,
+                    SyntaxError<D>,
+                >,
+            > + Send,
+        _scope: D::Scope,
+    ) -> Result<Self::Body, SyntaxError<D>> {
+        Ok(parse::Expr::new(
+            span,
+            parse::ExprKind::Block(
+                statements
+                    .map(|statement| parse::Statement {
+                        lines: vec![parse::ListLine::from(vec![
+                            statement.unwrap_or_else(|_| unreachable!())
+                        ])],
+                    })
+                    .collect(),
+            ),
+        ))
+    }
+
+    /// Build an expression that contains no syntaxes or operators.
+    async fn build_terminal(
+        self,
+        expr: parse::Expr<D>,
+        _scope: D::Scope,
+    ) -> Result<Self::Body, SyntaxError<D>> {
+        Ok(expr)
+    }
+}
+
 impl<D: Driver> Syntax<D> for std::convert::Infallible {
     type Context = std::convert::Infallible;
 
