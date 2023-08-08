@@ -6,7 +6,7 @@ import rust from "@wasm-tool/rollup-plugin-rust";
 import { rustOptions } from "../shared/build";
 
 export default defineConfig(({ command, mode }) => {
-    const env = loadEnv(mode, process.cwd(), "");
+    const env = { ...process.env, ...loadEnv(mode, process.cwd(), "") };
 
     return {
         build: {
