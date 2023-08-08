@@ -55,7 +55,9 @@ import { Settings } from "../App";
 import { CircularProgress, Popover } from "@mui/material";
 import { SwatchesPicker } from "react-color";
 import { closeBrackets } from "@codemirror/autocomplete";
-import HelpOutline from "@mui/icons-material/HelpOutline";
+import { useCollaboration } from "../helpers";
+import PeopleAltRounded from "@mui/icons-material/PeopleAltRounded";
+import GroupAddRounded from "@mui/icons-material/GroupAddRounded";
 
 export interface CodeEditorProps {
     id: string;
@@ -487,7 +489,76 @@ export const CodeEditor = (props: CodeEditorProps) => {
     };
 
     const themeConfig = useMemo(() => new Compartment(), []);
-    const advancedExtensions = useMemo(() => new Compartment(), []);
+
+    const [collaborationMode, setCollaborationMode] = useState<"host" | "join">();
+    const [userId, setUserId] = useRefState<string | undefined>(undefined);
+    const collaborationOnReceive = useRef<((data: any) => void) | null>(null);
+    const collaboration = useCollaboration({
+        onJoined: () => sendCodeToPeer(),
+        onReceive: (data) => collaborationOnReceive.current?.(data),
+    });
+
+    const startCollaborating = async (mode: "host" | "join") => {
+        const { userId } = await collaboration.initialize();
+        setCollaborationMode(mode);
+        setUserId(userId);
+    };
+
+    const joinHost = async (hostUserId: string) => {
+        await collaboration.connect(hostUserId);
+    };
+
+    const stopCollaborating = async () => {
+        await collaboration.disconnect();
+        setCollaborationMode(undefined);
+        setUserId(undefined);
+    };
+
+    const sendCodeToPeer = async () => {
+        try {
+            await collaboration.send({ code: view.current!.state.doc.toString() });
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const peerExtension = useMemo(
+        () =>
+            ViewPlugin.fromClass(
+                class {
+                    private isUpdating = false;
+
+                    constructor(private view: EditorView) {
+                        collaborationOnReceive.current = (data) => {
+                            // Prevent infinite update cycle
+                            this.isUpdating = true;
+
+                            this.view.dispatch({
+                                changes: {
+                                    from: 0,
+                                    to: this.view.state.doc.length,
+                                    insert: data.code,
+                                },
+                            });
+                        };
+                    }
+
+                    async update(update: ViewUpdate) {
+                        const isUpdating = this.isUpdating;
+                        this.isUpdating = false;
+
+                        if (isUpdating || !update.docChanged || !userId.current) return;
+
+                        sendCodeToPeer();
+                    }
+
+                    async destroy() {
+                        await collaboration.disconnect();
+                    }
+                }
+            ),
+        []
+    );
 
     useEffect(() => {
         view.current = new EditorView({
@@ -528,6 +599,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     hover,
                     highlight,
                     closeBrackets(),
+                    peerExtension,
                     EditorView.updateListener.of(onChange),
                 ],
             }),
@@ -554,6 +626,17 @@ export const CodeEditor = (props: CodeEditorProps) => {
             <div className="relative -mt-3.5">
                 <div className="flex flex-row justify-end w-full pr-4 -mb-3.5">
                     <div className="code-editor-outlined rounded-md shadow-lg shadow-gray-100 dark:shadow-gray-900 h-7 text-gray-500 text-opacity-50 z-10">
+                        {collaborationMode && (
+                            <div className="inline-block code-editor-outlined -my-0.5 -ml-0.5 px-2">
+                                <PeopleAltRounded
+                                    fontSize="small"
+                                    sx={{ marginRight: "6px", marginTop: "-2px" }}
+                                />
+
+                                {collaborationMode === "host" ? userId.current! : "Connected"}
+                            </div>
+                        )}
+
                         <Tooltip title="Insert">
                             <button
                                 className="code-editor-button -ml-0.5"
@@ -580,8 +663,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                 insert: formatted.trimEnd(),
                                             },
                                         });
-
-                                        props.onChange(formatted.trimEnd());
                                     }
                                 }}
                             >
@@ -602,6 +683,51 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                     </Tooltip>
 
                                     <Menu {...bindMenu(popupState)}>
+                                        {collaborationMode ? (
+                                            <MenuItem
+                                                onClick={async () => {
+                                                    popupState.close();
+                                                    await stopCollaborating();
+                                                }}
+                                            >
+                                                <PeopleAltRounded />
+                                                Stop Collaborating
+                                            </MenuItem>
+                                        ) : (
+                                            [
+                                                <MenuItem
+                                                    key="host"
+                                                    onClick={async () => {
+                                                        popupState.close();
+                                                        await startCollaborating("host");
+                                                    }}
+                                                >
+                                                    <PeopleAltRounded />
+                                                    Collaborate
+                                                </MenuItem>,
+
+                                                <MenuItem
+                                                    key="join"
+                                                    disabled={props.code.length > 0}
+                                                    onClick={async () => {
+                                                        popupState.close();
+
+                                                        const hostUserId = prompt(
+                                                            "Please enter the ID of the session you want to join:"
+                                                        );
+
+                                                        if (!hostUserId) return;
+
+                                                        await startCollaborating("join");
+                                                        await joinHost(hostUserId);
+                                                    }}
+                                                >
+                                                    <GroupAddRounded />
+                                                    Join
+                                                </MenuItem>,
+                                            ]
+                                        )}
+
                                         <MenuItem
                                             onClick={async () => {
                                                 popupState.close();

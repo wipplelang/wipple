@@ -41,6 +41,10 @@ code {
     @apply bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 overflow-clip;
 }
 
+.collaborating .code-editor-outlined {
+    @apply border-blue-500 dark:border-blue-400;
+}
+
 .code-editor-button {
     @apply code-editor-outlined -my-0.5 hover:bg-gray-200 dark:hover:bg-gray-800 dark:bg-gray-900 disabled:opacity-50;
 }
