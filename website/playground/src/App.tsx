@@ -23,7 +23,7 @@ import LockOpenIcon from "@mui/icons-material/LockOpen";
 import CodeIcon from "@mui/icons-material/Code";
 import CodeOffIcon from "@mui/icons-material/CodeOff";
 import PopupState, { bindMenu, bindTrigger } from "material-ui-popup-state";
-import { CircularProgress, Menu, MenuItem } from "@mui/material";
+import { CircularProgress, Menu, MenuItem, debounce } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
@@ -153,6 +153,11 @@ const App = () => {
         return newURL;
     }, [query.current, sections]);
 
+    const updateHistory = useMemo(
+        () => debounce((queryURL: string) => window.history.replaceState(null, "", queryURL), 500),
+        []
+    );
+
     useEffect(() => {
         if (!query.current || !queryURL) return;
 
@@ -161,7 +166,7 @@ const App = () => {
             return;
         }
 
-        window.history.replaceState(null, "", queryURL);
+        updateHistory(queryURL);
     }, [queryURL]);
 
     const [settings, setSettings] = useState<Settings>(() => {
