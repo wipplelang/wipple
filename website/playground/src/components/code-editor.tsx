@@ -490,7 +490,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
     const themeConfig = useMemo(() => new Compartment(), []);
 
-    const [collaborationMode, setCollaborationMode] = useState<"host" | "join">();
+    const [collaborationMode, setCollaborationMode] = useRefState<"host" | "join" | undefined>(
+        undefined
+    );
     const [userId, setUserId] = useRefState<string | undefined>(undefined);
     const connectedUsers = useRef<string[]>([]);
     const collaborationOnHostReceive = useRef<((data: any) => void) | null>(null);
@@ -521,6 +523,14 @@ export const CodeEditor = (props: CodeEditorProps) => {
         setUserId(undefined);
     };
 
+    const sendCodeToHost = async () => {
+        try {
+            await collaboration.sendToHost({ code: view.current!.state.doc.toString() });
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
     const sendCodeToPeer = async (user: string) => {
         try {
             await collaboration.sendToPeer(user, { code: view.current!.state.doc.toString() });
@@ -529,7 +539,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
         }
     };
 
-    const sendCodeToAllPeers = async (options: { except: string }) => {
+    const sendCodeToAllPeers = async (options?: { except: string }) => {
         try {
             await collaboration.sendToAllPeers(
                 { code: view.current!.state.doc.toString() },
@@ -544,11 +554,11 @@ export const CodeEditor = (props: CodeEditorProps) => {
         () =>
             ViewPlugin.fromClass(
                 class {
-                    private sender: string | undefined;
+                    private sender: string | null | undefined;
 
                     constructor(private view: EditorView) {
                         collaborationOnHostReceive.current = (data) => {
-                            this.sender = undefined;
+                            this.sender = null;
 
                             this.view.dispatch({
                                 changes: {
@@ -576,9 +586,24 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         const sender = this.sender;
                         this.sender = undefined;
 
-                        if (!update.docChanged || !userId.current || !sender) return;
+                        if (!update.docChanged || !userId.current) return;
 
-                        await sendCodeToAllPeers({ except: sender });
+                        if (sender === null) {
+                            // The code was sent from the host; do nothing
+                        } else if (sender === undefined) {
+                            // The code was updated locally
+                            switch (collaborationMode.current) {
+                                case "host":
+                                    await sendCodeToAllPeers();
+                                    break;
+                                case "join":
+                                    await sendCodeToHost();
+                                    break;
+                            }
+                        } else {
+                            // The code was sent from a peer
+                            await sendCodeToAllPeers({ except: sender });
+                        }
                     }
 
                     async destroy() {
@@ -655,14 +680,16 @@ export const CodeEditor = (props: CodeEditorProps) => {
             <div className="relative -mt-3.5">
                 <div className="flex flex-row justify-end w-full pr-4 -mb-3.5">
                     <div className="code-editor-outlined rounded-md shadow-lg shadow-gray-100 dark:shadow-gray-900 h-7 text-gray-500 text-opacity-50 z-10">
-                        {collaborationMode && (
+                        {collaborationMode.current && (
                             <div className="inline-block code-editor-outlined -my-0.5 -ml-0.5 px-2">
                                 <PeopleAltRounded
                                     fontSize="small"
                                     sx={{ marginRight: "6px", marginTop: "-2px" }}
                                 />
 
-                                {collaborationMode === "host" ? userId.current! : "Connected"}
+                                {collaborationMode.current === "host"
+                                    ? userId.current!
+                                    : "Connected"}
                             </div>
                         )}
 
@@ -712,7 +739,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                     </Tooltip>
 
                                     <Menu {...bindMenu(popupState)}>
-                                        {collaborationMode ? (
+                                        {collaborationMode.current ? (
                                             <MenuItem
                                                 onClick={async () => {
                                                     popupState.close();

@@ -66,9 +66,9 @@ export const useCollaboration = (options: {
         sendToPeer: async (user: string, data: any) => {
             joinedPeers.current?.[user]?.send(data);
         },
-        sendToAllPeers: async (data: any, options: { except: string }) => {
+        sendToAllPeers: async (data: any, options?: { except: string }) => {
             for (const [peer, connection] of Object.entries(joinedPeers.current)) {
-                if (peer !== options.except) {
+                if (peer !== options?.except) {
                     connection.send(data);
                 }
             }
