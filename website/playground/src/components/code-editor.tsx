@@ -492,10 +492,16 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
     const [collaborationMode, setCollaborationMode] = useState<"host" | "join">();
     const [userId, setUserId] = useRefState<string | undefined>(undefined);
-    const collaborationOnReceive = useRef<((data: any) => void) | null>(null);
+    const connectedUsers = useRef<string[]>([]);
+    const collaborationOnReceive = useRef<
+        ((user: string, fromHost: boolean, data: any) => void) | null
+    >(null);
     const collaboration = useCollaboration({
-        onJoined: () => sendCodeToPeer(),
-        onReceive: (data) => collaborationOnReceive.current?.(data),
+        onJoined: (user) => {
+            connectedUsers.current.push(user);
+            sendCodeToPeers((peer) => peer === user);
+        },
+        onReceive: (user, fromHost, data) => collaborationOnReceive.current?.(user, fromHost, data),
     });
 
     const startCollaborating = async (mode: "host" | "join") => {
@@ -514,9 +520,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
         setUserId(undefined);
     };
 
-    const sendCodeToPeer = async () => {
+    const sendCodeToPeers = async (include: (peer: string | null) => boolean) => {
         try {
-            await collaboration.send({ code: view.current!.state.doc.toString() });
+            await collaboration.send({ code: view.current!.state.doc.toString() }, include);
         } catch (error) {
             console.error(error);
         }
@@ -526,12 +532,13 @@ export const CodeEditor = (props: CodeEditorProps) => {
         () =>
             ViewPlugin.fromClass(
                 class {
-                    private isUpdating = false;
+                    private sender: string | undefined;
+                    private fromHost: boolean | undefined;
 
                     constructor(private view: EditorView) {
-                        collaborationOnReceive.current = (data) => {
-                            // Prevent infinite update cycle
-                            this.isUpdating = true;
+                        collaborationOnReceive.current = (user, fromHost, data) => {
+                            this.sender = user;
+                            this.fromHost = fromHost;
 
                             this.view.dispatch({
                                 changes: {
@@ -544,12 +551,15 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     }
 
                     async update(update: ViewUpdate) {
-                        const isUpdating = this.isUpdating;
-                        this.isUpdating = false;
+                        const sender = this.sender;
+                        this.sender = undefined;
 
-                        if (isUpdating || !update.docChanged || !userId.current) return;
+                        const fromHost = this.fromHost;
+                        this.fromHost = undefined;
 
-                        sendCodeToPeer();
+                        if (!update.docChanged || !userId.current || fromHost) return;
+
+                        await sendCodeToPeers((peer) => peer !== sender);
                     }
 
                     async destroy() {

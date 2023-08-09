@@ -2,11 +2,12 @@ import Peer, { DataConnection } from "peerjs";
 import { useRef } from "react";
 
 export const useCollaboration = (options: {
-    onJoined: () => void;
-    onReceive: (data: any) => void;
+    onJoined: (userId: string) => void;
+    onReceive: (userId: string, fromHost: boolean, data: any) => void;
 }) => {
     const connection = useRef<Peer | null>(null);
-    const peerConnection = useRef<DataConnection | null>(null);
+    const hostPeer = useRef<DataConnection | null>(null);
+    const joinedPeers = useRef<Record<string, DataConnection>>({});
 
     return {
         initialize: async () => {
@@ -23,10 +24,18 @@ export const useCollaboration = (options: {
             });
 
             peer.on("connection", (connection) => {
-                peerConnection.current = connection;
-                peerConnection.current.on("open", options.onJoined);
-                peerConnection.current.on("data", options.onReceive);
-                peerConnection.current.on("error", console.error);
+                const userId = connection.peer;
+                joinedPeers.current[userId] = connection;
+
+                connection.on("open", () => {
+                    options.onJoined(userId);
+                });
+
+                connection.on("data", (data) => {
+                    options.onReceive(userId, false, data);
+                });
+
+                connection.on("error", console.error);
             });
 
             return { userId };
@@ -34,26 +43,38 @@ export const useCollaboration = (options: {
         connect: async (peer: string) => {
             if (!connection.current) return;
 
-            peerConnection.current = connection.current.connect(peer, {
+            hostPeer.current = connection.current.connect(peer, {
                 serialization: "json",
+                metadata: { userId: connection.current.id },
             });
 
-            peerConnection.current.on("data", options.onReceive);
-            peerConnection.current.on("error", console.error);
-        },
-        send: async (data: any) => {
-            if (!peerConnection.current) return;
+            hostPeer.current.on("data", (data) => {
+                options.onReceive(peer, true, data);
+            });
 
-            peerConnection.current.send(data);
+            hostPeer.current.on("error", console.error);
+        },
+        send: async (data: any, include: (peer: string | null) => boolean) => {
+            if (include(null)) {
+                hostPeer.current?.send(data);
+            }
+
+            for (const [peer, connection] of Object.entries(joinedPeers.current)) {
+                if (include(peer)) {
+                    connection.send(data);
+                }
+            }
         },
         disconnect: async () => {
-            if (!connection.current || !peerConnection.current) return;
+            if (!connection.current) return;
 
             connection.current.disconnect();
             connection.current = null;
 
-            peerConnection.current.close();
-            peerConnection.current = null;
+            for (const [peer, connection] of Object.entries(joinedPeers.current)) {
+                connection.close();
+                delete joinedPeers.current[peer];
+            }
         },
     };
 };
