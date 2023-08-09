@@ -77,6 +77,10 @@ locked: true
 
 When you're ready to move on, click the right arrow at the bottom of the screen. You can also go back by clicking the left arrow. To see all the lessons available in the Wipple Playground, click Learn in the top right of the screen.
 
+### Collaborate
+
+To collaborate with others on your code, click the three dots in the top right of the code editor and select Collaborate. Wipple will generate a session code, which you can share with your friends. To join a session, click Join in that same menu and type in the session code. Now everyone can code together!
+
 ### Sharing your code with others
 
 To share your creation with others, click the three dots next to the beginner mode button at the bottom of the screen, and select Copy Link. Then you can paste the link wherever you want! Visiting the link will restore your code.
