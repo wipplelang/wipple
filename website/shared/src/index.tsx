@@ -13,7 +13,10 @@ import {
     Select,
     TextField,
 } from "@mui/material";
-import { Error as ErrorIcon, Refresh, KeyboardReturn, SubjectRounded } from "@mui/icons-material";
+import ErrorIcon from "@mui/icons-material/Error";
+import Refresh from "@mui/icons-material/Refresh";
+import KeyboardReturn from "@mui/icons-material/KeyboardReturn";
+import SubjectRounded from "@mui/icons-material/SubjectRounded";
 import lineColumn from "line-column";
 import useMeasure from "react-use-measure";
 import ReactMarkdown from "react-markdown";
