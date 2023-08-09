@@ -493,15 +493,16 @@ export const CodeEditor = (props: CodeEditorProps) => {
     const [collaborationMode, setCollaborationMode] = useState<"host" | "join">();
     const [userId, setUserId] = useRefState<string | undefined>(undefined);
     const connectedUsers = useRef<string[]>([]);
-    const collaborationOnReceive = useRef<
-        ((user: string, fromHost: boolean, data: any) => void) | null
-    >(null);
+    const collaborationOnHostReceive = useRef<((data: any) => void) | null>(null);
+    const collaborationOnPeerReceive = useRef<((user: string, data: any) => void) | null>(null);
     const collaboration = useCollaboration({
-        onJoined: (user) => {
+        onHostReceive: (data) => collaborationOnHostReceive.current?.(data),
+        onHostLeft: () => stopCollaborating(),
+        onPeerJoined: (user) => {
             connectedUsers.current.push(user);
-            sendCodeToPeers((peer) => peer === user);
+            sendCodeToPeer(user);
         },
-        onReceive: (user, fromHost, data) => collaborationOnReceive.current?.(user, fromHost, data),
+        onPeerReceive: (user, data) => collaborationOnPeerReceive.current?.(user, data),
     });
 
     const startCollaborating = async (mode: "host" | "join") => {
@@ -511,7 +512,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
     };
 
     const joinHost = async (hostUserId: string) => {
-        await collaboration.connect(hostUserId);
+        await collaboration.connectToHost(hostUserId);
     };
 
     const stopCollaborating = async () => {
@@ -520,9 +521,20 @@ export const CodeEditor = (props: CodeEditorProps) => {
         setUserId(undefined);
     };
 
-    const sendCodeToPeers = async (include: (peer: string | null) => boolean) => {
+    const sendCodeToPeer = async (user: string) => {
         try {
-            await collaboration.send({ code: view.current!.state.doc.toString() }, include);
+            await collaboration.sendToPeer(user, { code: view.current!.state.doc.toString() });
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const sendCodeToAllPeers = async (options: { except: string }) => {
+        try {
+            await collaboration.sendToAllPeers(
+                { code: view.current!.state.doc.toString() },
+                options
+            );
         } catch (error) {
             console.error(error);
         }
@@ -533,12 +545,22 @@ export const CodeEditor = (props: CodeEditorProps) => {
             ViewPlugin.fromClass(
                 class {
                     private sender: string | undefined;
-                    private fromHost: boolean | undefined;
 
                     constructor(private view: EditorView) {
-                        collaborationOnReceive.current = (user, fromHost, data) => {
+                        collaborationOnHostReceive.current = (data) => {
+                            this.sender = undefined;
+
+                            this.view.dispatch({
+                                changes: {
+                                    from: 0,
+                                    to: this.view.state.doc.length,
+                                    insert: data.code,
+                                },
+                            });
+                        };
+
+                        collaborationOnPeerReceive.current = (user, data) => {
                             this.sender = user;
-                            this.fromHost = fromHost;
 
                             this.view.dispatch({
                                 changes: {
@@ -554,12 +576,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         const sender = this.sender;
                         this.sender = undefined;
 
-                        const fromHost = this.fromHost;
-                        this.fromHost = undefined;
+                        if (!update.docChanged || !userId.current || !sender) return;
 
-                        if (!update.docChanged || !userId.current || fromHost) return;
-
-                        await sendCodeToPeers((peer) => peer !== sender);
+                        await sendCodeToAllPeers({ except: sender });
                     }
 
                     async destroy() {

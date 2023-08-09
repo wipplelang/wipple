@@ -2,8 +2,10 @@ import Peer, { DataConnection } from "peerjs";
 import { useRef } from "react";
 
 export const useCollaboration = (options: {
-    onJoined: (userId: string) => void;
-    onReceive: (userId: string, fromHost: boolean, data: any) => void;
+    onHostReceive: (data: any) => void;
+    onHostLeft: () => void;
+    onPeerJoined: (userId: string) => void;
+    onPeerReceive: (userId: string, data: any) => void;
 }) => {
     const connection = useRef<Peer | null>(null);
     const hostPeer = useRef<DataConnection | null>(null);
@@ -28,11 +30,11 @@ export const useCollaboration = (options: {
                 joinedPeers.current[userId] = connection;
 
                 connection.on("open", () => {
-                    options.onJoined(userId);
+                    options.onPeerJoined(userId);
                 });
 
                 connection.on("data", (data) => {
-                    options.onReceive(userId, false, data);
+                    options.onPeerReceive(userId, data);
                 });
 
                 connection.on("error", console.error);
@@ -40,7 +42,7 @@ export const useCollaboration = (options: {
 
             return { userId };
         },
-        connect: async (peer: string) => {
+        connectToHost: async (peer: string) => {
             if (!connection.current) return;
 
             hostPeer.current = connection.current.connect(peer, {
@@ -49,18 +51,24 @@ export const useCollaboration = (options: {
             });
 
             hostPeer.current.on("data", (data) => {
-                options.onReceive(peer, true, data);
+                options.onHostReceive(data);
+            });
+
+            hostPeer.current.on("close", () => {
+                options.onHostLeft();
             });
 
             hostPeer.current.on("error", console.error);
         },
-        send: async (data: any, include: (peer: string | null) => boolean) => {
-            if (include(null)) {
-                hostPeer.current?.send(data);
-            }
-
+        sendToHost: async (data: any) => {
+            hostPeer.current?.send(data);
+        },
+        sendToPeer: async (user: string, data: any) => {
+            joinedPeers.current?.[user]?.send(data);
+        },
+        sendToAllPeers: async (data: any, options: { except: string }) => {
             for (const [peer, connection] of Object.entries(joinedPeers.current)) {
-                if (include(peer)) {
+                if (peer !== options.except) {
                     connection.send(data);
                 }
             }
