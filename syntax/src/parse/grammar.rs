@@ -2,7 +2,7 @@ use crate::{parse::Token, Driver, Span};
 use lazy_static::lazy_static;
 use logos::SpannedIter;
 use regex::Regex;
-use std::{iter::Peekable, ops::Range};
+use std::{cell::RefCell, iter::Peekable, ops::Range};
 
 #[derive(Debug, Clone)]
 pub struct File<D: Driver> {
@@ -130,24 +130,58 @@ impl<D: Driver> Expr<D> {
 }
 
 impl<D: Driver> Expr<D> {
-    pub fn traverse_mut(&mut self, mut f: impl FnMut(&mut Self)) {
-        self.traverse_mut_inner(&mut f);
+    pub fn fix_to(&mut self, scope: D::Scope, make_child: impl Fn(D::Scope) -> D::Scope) {
+        let scopes = RefCell::new(vec![scope]);
+
+        self.traverse_mut(
+            |expr| match &mut expr.kind {
+                ExprKind::Name(_, name_scope) => {
+                    name_scope.get_or_insert_with(|| *scopes.borrow().last().unwrap());
+                }
+                ExprKind::Block(_, block_scope) => {
+                    let scope =
+                        block_scope.unwrap_or_else(|| make_child(*scopes.borrow().last().unwrap()));
+
+                    scopes.borrow_mut().push(scope);
+
+                    *block_scope = Some(scope);
+                }
+                _ => {}
+            },
+            |expr| {
+                if let ExprKind::Block(_, _) = &mut expr.kind {
+                    scopes.borrow_mut().pop().unwrap();
+                }
+            },
+        )
     }
 
-    fn traverse_mut_inner(&mut self, f: &mut impl FnMut(&mut Self)) {
-        f(self);
+    pub fn traverse_mut(
+        &mut self,
+        mut enter: impl FnMut(&mut Self),
+        mut leave: impl FnMut(&mut Self),
+    ) {
+        self.traverse_mut_inner(&mut enter, &mut leave);
+    }
+
+    fn traverse_mut_inner(
+        &mut self,
+        enter: &mut impl FnMut(&mut Self),
+        leave: &mut impl FnMut(&mut Self),
+    ) {
+        enter(self);
 
         match &mut self.kind {
             ExprKind::List(lines) | ExprKind::RepeatList(lines) => {
                 for line in lines {
                     for attribute in &mut line.attributes {
                         for expr in &mut attribute.exprs {
-                            expr.traverse_mut_inner(f);
+                            expr.traverse_mut_inner(enter, leave);
                         }
                     }
 
                     for expr in &mut line.exprs {
-                        expr.traverse_mut_inner(f);
+                        expr.traverse_mut_inner(enter, leave);
                     }
                 }
             }
@@ -156,18 +190,20 @@ impl<D: Driver> Expr<D> {
                     for line in &mut statement.lines {
                         for attribute in &mut line.attributes {
                             for expr in &mut attribute.exprs {
-                                expr.traverse_mut_inner(f);
+                                expr.traverse_mut_inner(enter, leave);
                             }
                         }
 
                         for expr in &mut line.exprs {
-                            expr.traverse_mut_inner(f);
+                            expr.traverse_mut_inner(enter, leave);
                         }
                     }
                 }
             }
             _ => {}
         }
+
+        leave(self);
     }
 }
 

@@ -540,17 +540,8 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
         mut exprs: Vec<parse::Expr<D>>,
         scope: D::Scope,
     ) -> Result<Expression<D>, SyntaxError<D>> {
-        // Enforce syntax hygiene by fixing the scopes of the inputs
         for expr in &mut exprs {
-            expr.traverse_mut(|expr| match &mut expr.kind {
-                parse::ExprKind::Name(_, name_scope) => {
-                    name_scope.get_or_insert(scope);
-                }
-                parse::ExprKind::Block(_, block_scope) => {
-                    block_scope.get_or_insert(scope);
-                }
-                _ => {}
-            })
+            expr.fix_to(scope, |parent| self.ast_builder.file.make_scope(parent));
         }
 
         let SyntaxBody::Block(body) = syntax.body?;
@@ -571,7 +562,8 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                 None => continue,
             };
 
-            let body = SyntaxPattern::expand(&self.ast_builder, body, &vars, span)?;
+            let mut body = SyntaxPattern::expand(&self.ast_builder, body, &vars, span)?;
+            body.fix_to(scope, |parent| self.ast_builder.file.make_scope(parent));
 
             return self
                 .ast_builder

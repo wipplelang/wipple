@@ -65,6 +65,7 @@ instance (Repeat-Predicate Times ()) : { count } -> {
     current : get counter
     increment! counter
     if (current < count) Continue (Break ())
+    Continue
   }
 }
 

@@ -2511,6 +2511,7 @@ impl Lowerer {
             },
             ast::Expression::Name(expr) => {
                 let name_scope = self.assert_loaded_scope(expr.scope);
+
                 match self.resolve_value(expr.span, expr.name, &name_scope) {
                     Some(value) => Expression {
                         id: self.compiler.new_expression_id(ctx.owner),

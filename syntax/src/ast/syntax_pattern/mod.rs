@@ -318,10 +318,10 @@ impl<D: Driver> SyntaxContext<D> for SyntaxPatternSyntaxContext<D> {
                     parse::ExprKind::Underscore => {
                         Ok(UnderscoreSyntaxPattern { span: expr.span }.into())
                     }
-                    parse::ExprKind::Name(name, _) => Ok(NameSyntaxPattern {
+                    parse::ExprKind::Name(name, name_scope) => Ok(NameSyntaxPattern {
                         span: expr.span,
                         name,
-                        scope,
+                        scope: name_scope.unwrap_or(scope),
                     }
                     .into()),
                     parse::ExprKind::QuoteName(name) => Ok(VariableSyntaxPattern {
