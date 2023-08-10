@@ -7,7 +7,7 @@ use crate::{
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },
-    parse, Driver, Span,
+    parse, Driver, File, Span,
 };
 use async_trait::async_trait;
 use futures::{stream, StreamExt};
@@ -211,6 +211,7 @@ impl<D: Driver> Format<D> for ListRepetitionSyntaxPattern<D> {
 pub struct BlockSyntaxPattern<D: Driver> {
     pub span: D::Span,
     pub statements: Vec<Result<SyntaxPattern<D>, SyntaxError<D>>>,
+    pub scope: D::Scope,
 }
 
 impl<D: Driver> Format<D> for BlockSyntaxPattern<D> {
@@ -255,6 +256,10 @@ impl<D: Driver> SyntaxContext<D> for SyntaxPatternSyntaxContext<D> {
         self
     }
 
+    fn block_scope(&self, scope: D::Scope) -> D::Scope {
+        self.ast_builder.file.make_scope(scope)
+    }
+
     async fn build_block(
         self,
         span: D::Span,
@@ -264,11 +269,12 @@ impl<D: Driver> SyntaxContext<D> for SyntaxPatternSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope: D::Scope,
+        scope: D::Scope,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Ok(BlockSyntaxPattern {
             span,
             statements: statements.collect(),
+            scope,
         }
         .into())
     }
@@ -312,10 +318,10 @@ impl<D: Driver> SyntaxContext<D> for SyntaxPatternSyntaxContext<D> {
                     parse::ExprKind::Underscore => {
                         Ok(UnderscoreSyntaxPattern { span: expr.span }.into())
                     }
-                    parse::ExprKind::Name(name, name_scope) => Ok(NameSyntaxPattern {
+                    parse::ExprKind::Name(name, _) => Ok(NameSyntaxPattern {
                         span: expr.span,
                         name,
-                        scope: name_scope.unwrap_or(scope),
+                        scope,
                     }
                     .into()),
                     parse::ExprKind::QuoteName(name) => Ok(VariableSyntaxPattern {
@@ -504,11 +510,10 @@ impl<D: Driver> SyntaxPattern<D> {
         body: SyntaxPattern<D>,
         vars: &HashMap<D::InternedString, SyntaxExpression<D>>,
         source_span: D::Span,
-        scope: D::Scope,
     ) -> Result<parse::Expr<D>, SyntaxError<D>> {
         let body_span = body.span();
 
-        let mut exprs = Self::expand_inner(ast_builder, body, vars, source_span, scope)?;
+        let mut exprs = Self::expand_inner(ast_builder, body, vars, source_span)?;
 
         (exprs.len() == 1)
             .then(|| exprs.pop().unwrap())
@@ -533,7 +538,6 @@ impl<D: Driver> SyntaxPattern<D> {
         body: SyntaxPattern<D>,
         vars: &HashMap<D::InternedString, SyntaxExpression<D>>,
         source_span: D::Span,
-        scope: D::Scope,
     ) -> Result<Vec<parse::Expr<D>>, SyntaxError<D>> {
         Ok(match body {
             SyntaxPattern::Unit(pattern) => vec![parse::Expr {
@@ -542,7 +546,7 @@ impl<D: Driver> SyntaxPattern<D> {
             }],
             SyntaxPattern::Name(pattern) => vec![parse::Expr {
                 span: pattern.span.merged_with(source_span),
-                kind: parse::ExprKind::Name(pattern.name, Some(scope)),
+                kind: parse::ExprKind::Name(pattern.name, Some(pattern.scope)),
             }],
             SyntaxPattern::Text(pattern) => vec![parse::Expr {
                 span: pattern.span.merged_with(source_span),
@@ -597,9 +601,7 @@ impl<D: Driver> SyntaxPattern<D> {
                     pattern
                         .patterns
                         .into_iter()
-                        .map(|pattern| {
-                            Self::expand_inner(ast_builder, pattern?, vars, source_span, scope)
-                        })
+                        .map(|pattern| Self::expand_inner(ast_builder, pattern?, vars, source_span))
                         .collect::<Result<Vec<_>, _>>()?
                         .into_iter()
                         .flatten()
@@ -667,7 +669,6 @@ impl<D: Driver> SyntaxPattern<D> {
                                             pattern?,
                                             &vars,
                                             source_span,
-                                            scope,
                                         )
                                     })
                                     .collect::<Result<Vec<_>, _>>()?
@@ -698,7 +699,7 @@ impl<D: Driver> SyntaxPattern<D> {
                             .into_iter()
                             .map(|pattern| {
                                 let statement =
-                                    Self::expand(ast_builder, pattern?, vars, source_span, scope)?;
+                                    Self::expand(ast_builder, pattern?, vars, source_span)?;
 
                                 Ok(parse::Statement {
                                     lines: vec![parse::ListLine {
@@ -713,6 +714,7 @@ impl<D: Driver> SyntaxPattern<D> {
                                 })
                             })
                             .collect::<Result<_, _>>()?,
+                        Some(pattern.scope),
                     ),
                 }]
             }

@@ -38,7 +38,7 @@ pub enum ExprKind<D: Driver> {
     Asset(D::InternedString),
     List(Vec<ListLine<D>>),
     RepeatList(Vec<ListLine<D>>),
-    Block(Vec<Statement<D>>),
+    Block(Vec<Statement<D>>, Option<D::Scope>),
     SourceCode(String),
 }
 
@@ -151,7 +151,7 @@ impl<D: Driver> Expr<D> {
                     }
                 }
             }
-            ExprKind::Block(statements) => {
+            ExprKind::Block(statements, _) => {
                 for statement in statements {
                     for line in &mut statement.lines {
                         for attribute in &mut line.attributes {
@@ -728,7 +728,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
 
                 Ok(Expr::new(
                     Span::join(span, end_span),
-                    ExprKind::Block(statements),
+                    ExprKind::Block(statements, None),
                 ))
             }
             Some(_) => Err(ParseError::WrongTokenType),

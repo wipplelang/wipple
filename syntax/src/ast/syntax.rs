@@ -26,9 +26,7 @@ pub(crate) trait SyntaxContext<D: Driver>: Clone + Send + Sync {
 
     fn with_statement_attributes(self, attributes: Shared<StatementAttributes<D>>) -> Self;
 
-    fn block_scope(&self, scope: D::Scope) -> D::Scope {
-        scope
-    }
+    fn block_scope(&self, scope: D::Scope) -> D::Scope;
 
     async fn build_block(
         self,
@@ -89,6 +87,10 @@ impl<D: Driver> SyntaxContext<D> for RawSyntaxContext {
         unimplemented!()
     }
 
+    fn block_scope(&self, scope: D::Scope) -> D::Scope {
+        scope
+    }
+
     async fn build_block(
         self,
         span: D::Span,
@@ -98,7 +100,7 @@ impl<D: Driver> SyntaxContext<D> for RawSyntaxContext {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope: D::Scope,
+        scope: D::Scope,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Ok(parse::Expr::new(
             span,
@@ -110,6 +112,7 @@ impl<D: Driver> SyntaxContext<D> for RawSyntaxContext {
                         ])],
                     })
                     .collect(),
+                Some(scope),
             ),
         ))
     }
@@ -142,6 +145,10 @@ impl<D: Driver> SyntaxContext<D> for std::convert::Infallible {
     }
 
     fn with_statement_attributes(self, _attributes: Shared<StatementAttributes<D>>) -> Self {
+        unreachable!()
+    }
+
+    fn block_scope(&self, _scope: D::Scope) -> D::Scope {
         unreachable!()
     }
 
@@ -687,6 +694,10 @@ impl<D: Driver> SyntaxContext<D> for ErrorSyntaxContext<D> {
 
     fn with_statement_attributes(self, _attributes: Shared<StatementAttributes<D>>) -> Self {
         self
+    }
+
+    fn block_scope(&self, scope: D::Scope) -> D::Scope {
+        scope
     }
 
     async fn build_block(

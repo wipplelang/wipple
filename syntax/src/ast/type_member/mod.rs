@@ -72,6 +72,10 @@ impl<D: Driver> SyntaxContext<D> for TypeMemberSyntaxContext<D> {
         }
     }
 
+    fn block_scope(&self, scope: D::Scope) -> D::Scope {
+        scope
+    }
+
     fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes<D>>) -> Self {
         self.statement_attributes = Some(attributes);
         self

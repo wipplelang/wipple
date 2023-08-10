@@ -178,7 +178,7 @@ impl<D: Driver> Expr<D> {
 
                 write!(f, ")")?;
             }
-            ExprKind::Block(statements) => {
+            ExprKind::Block(statements, _) => {
                 write!(f, "{{")?;
 
                 if self.is_multiline(true) {
@@ -238,7 +238,7 @@ impl<D: Driver> Expr<D> {
                 1 => lines.first().unwrap().is_multiline(in_block),
                 _ => true,
             },
-            ExprKind::Block(statements) => match statements.len() {
+            ExprKind::Block(statements, _) => match statements.len() {
                 0 => false,
                 1 => {
                     let lines = &statements.first().unwrap().lines;

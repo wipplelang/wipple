@@ -18,6 +18,7 @@ pub struct AssignStatement<D: Driver> {
     pub colon_span: D::Span,
     pub pattern: Result<AssignmentPattern<D>, SyntaxError<D>>,
     pub value: Result<AssignmentValue<D>, SyntaxError<D>>,
+    pub scope: D::Scope,
     pub attributes: StatementAttributes<D>,
 }
 
@@ -112,6 +113,7 @@ impl<D: Driver> Syntax<D> for AssignStatementSyntax {
                     colon_span,
                     pattern,
                     value,
+                    scope,
                     attributes: context.statement_attributes.unwrap().lock().clone(),
                 }
                 .into())

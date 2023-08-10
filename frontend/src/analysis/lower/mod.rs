@@ -2163,7 +2163,7 @@ impl Lowerer {
                 })
             }
             ast::Statement::Assign(statement) => {
-                let assign_scope = scope; // FIXME: Remove
+                let assign_scope = self.assert_loaded_scope(statement.scope);
 
                 match statement.value.as_ref().ok()? {
                     ast::AssignmentValue::Trait(value) => {
@@ -2207,7 +2207,7 @@ impl Lowerer {
                                 let (span, name) = self
                                     .get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
 
-                                let child_scope = self.child_scope(value.scope, assign_scope);
+                                let child_scope = self.child_scope(value.scope, &assign_scope);
 
                                 let (parameters, bounds) = self.lower_type_pattern(
                                     value.pattern.as_ref().ok()?,
@@ -2236,7 +2236,7 @@ impl Lowerer {
                                 let (span, name) = self
                                     .get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
 
-                                let child_scope = self.child_scope(value.scope, assign_scope);
+                                let child_scope = self.child_scope(value.scope, &assign_scope);
 
                                 let (parameters, bounds) = self.lower_type_pattern(
                                     value.pattern.as_ref().ok()?,
@@ -2318,7 +2318,7 @@ impl Lowerer {
                                 })
                             }
                             ast::AssignmentPattern::TypeFunction(pattern) => {
-                                let child_scope = self.child_scope(pattern.scope, assign_scope);
+                                let child_scope = self.child_scope(pattern.scope, &assign_scope);
 
                                 let (parameters, bounds) = self.lower_type_pattern(
                                     pattern.type_pattern.as_ref().ok()?,

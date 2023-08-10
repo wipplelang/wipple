@@ -25,6 +25,7 @@ syntax_group! {
 pub struct BlockSyntaxBody<D: Driver> {
     pub span: D::Span,
     pub rules: Vec<Result<SyntaxRule<D>, SyntaxError<D>>>,
+    pub scope: D::Scope,
 }
 
 impl<D: Driver> BlockSyntaxBody<D> {
@@ -69,6 +70,10 @@ impl<D: Driver> SyntaxContext<D> for SyntaxBodySyntaxContext<D> {
         self
     }
 
+    fn block_scope(&self, scope: D::Scope) -> D::Scope {
+        scope
+    }
+
     async fn build_block(
         self,
         span: D::Span,
@@ -78,11 +83,12 @@ impl<D: Driver> SyntaxContext<D> for SyntaxBodySyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope: D::Scope,
+        scope: D::Scope,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Ok(BlockSyntaxBody {
             span,
             rules: statements.collect(),
+            scope,
         }
         .into())
     }

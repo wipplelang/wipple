@@ -253,10 +253,10 @@ impl<D: Driver> SyntaxContext<D> for ExpressionSyntaxContext<D> {
         match expr.try_into_list_exprs() {
             Ok((span, exprs)) => self.expand_list(span, exprs.collect(), scope).await,
             Err(expr) => match expr.kind {
-                parse::ExprKind::Name(name, _name_scope) => Ok(NameExpression {
+                parse::ExprKind::Name(name, name_scope) => Ok(NameExpression {
                     span: expr.span,
                     name,
-                    scope, // TODO: Hygiene (use `name_scope`)
+                    scope: name_scope.unwrap_or(scope),
                 }
                 .into()),
                 parse::ExprKind::Text(text, raw) => Ok(TextExpression {
@@ -275,9 +275,13 @@ impl<D: Driver> SyntaxContext<D> for ExpressionSyntaxContext<D> {
                     raw,
                 }
                 .into()),
-                parse::ExprKind::Block(_) => {
+                parse::ExprKind::Block(_, block_scope) => {
                     self.ast_builder
-                        .build_expr::<ExpressionSyntax>(self.clone(), expr, self.block_scope(scope))
+                        .build_expr::<ExpressionSyntax>(
+                            self.clone(),
+                            expr,
+                            block_scope.unwrap_or_else(|| self.block_scope(scope)),
+                        )
                         .await
                 }
                 _ => {
@@ -533,10 +537,24 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
         &self,
         span: D::Span,
         syntax: SyntaxAssignmentValue<D>,
-        exprs: Vec<parse::Expr<D>>,
+        mut exprs: Vec<parse::Expr<D>>,
         scope: D::Scope,
     ) -> Result<Expression<D>, SyntaxError<D>> {
+        // Enforce syntax hygiene by fixing the scopes of the inputs
+        for expr in &mut exprs {
+            expr.traverse_mut(|expr| match &mut expr.kind {
+                parse::ExprKind::Name(_, name_scope) => {
+                    name_scope.get_or_insert(scope);
+                }
+                parse::ExprKind::Block(_, block_scope) => {
+                    block_scope.get_or_insert(scope);
+                }
+                _ => {}
+            })
+        }
+
         let SyntaxBody::Block(body) = syntax.body?;
+        let scope = body.scope;
 
         for rule in body.rules.into_iter().flatten() {
             let SyntaxRule::<D>::Function(rule) = rule;
@@ -553,7 +571,7 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                 None => continue,
             };
 
-            let body = SyntaxPattern::expand(&self.ast_builder, body, &vars, span, scope)?;
+            let body = SyntaxPattern::expand(&self.ast_builder, body, &vars, span)?;
 
             return self
                 .ast_builder

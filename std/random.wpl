@@ -21,7 +21,7 @@ instance (Random (Range Unsigned) Unsigned) : { min max } -> intrinsic "random-u
 instance (Random (Range Float) Float) : { min max } -> intrinsic "random-float" min max
 instance (Random (Range Double) Double) : { min max } -> intrinsic "random-double" min max
 
-Element => instance (Random (List Element) (Maybe Element)) : list -> \
-  (list . nth (random (0 to (count list))))
+Element => instance (Random (List Element) (Maybe Element)) : l -> \
+  (l . nth (random (0 to (count l))))
 
 instance (Random () Boolean) : () -> (random (0 to 2) :: Natural) = 1

@@ -375,8 +375,8 @@ impl<D: Driver> AstBuilder<D> {
     ) -> SyncFuture<BoxFuture<Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>>> {
         SyncFuture::new(Box::pin(async move {
             match expr.kind {
-                parse::ExprKind::Block(statements) => {
-                    let scope = context.block_scope(scope);
+                parse::ExprKind::Block(statements, block_scope) => {
+                    let scope = block_scope.unwrap_or_else(|| context.block_scope(scope));
 
                     let statements = stream::iter(statements)
                         .then(|statement| {

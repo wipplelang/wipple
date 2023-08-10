@@ -45,6 +45,10 @@ impl<D: Driver> SyntaxContext<D> for WithClauseSyntaxContext<D> {
         self
     }
 
+    fn block_scope(&self, scope: D::Scope) -> D::Scope {
+        scope
+    }
+
     async fn build_block(
         self,
         span: D::Span,
