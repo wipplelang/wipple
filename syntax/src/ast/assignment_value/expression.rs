@@ -38,7 +38,7 @@ impl<D: Driver> Syntax<D> for ExpressionAssignmentValueSyntax {
     type Context = AssignmentValueSyntaxContext<D>;
 
     fn rules() -> SyntaxRules<D, Self> {
-        SyntaxRules::new().combine(ExpressionSyntax::rules())
+        SyntaxRules::new().combine(ExpressionSyntax::rules().shallow())
     }
 }
 

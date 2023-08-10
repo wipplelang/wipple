@@ -58,7 +58,7 @@ pub fn substitute<D: Driver>(
                 }
             }
         }
-        ExprKind::Block(statements, _) => {
+        ExprKind::Block(statements) => {
             for statement in statements {
                 for line in &mut statement.lines {
                     for expr in &mut line.exprs {

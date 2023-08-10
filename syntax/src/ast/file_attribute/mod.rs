@@ -13,6 +13,7 @@ use crate::{
     parse, Driver,
 };
 use async_trait::async_trait;
+use std::collections::HashSet;
 use wipple_util::Shared;
 
 syntax_group! {
@@ -44,10 +45,6 @@ impl<D: Driver> SyntaxContext<D> for FileAttributeSyntaxContext<D> {
         self
     }
 
-    fn block_scope(&self, scope: D::Scope) -> D::Scope {
-        scope
-    }
-
     async fn build_block(
         self,
         span: D::Span,
@@ -57,7 +54,7 @@ impl<D: Driver> SyntaxContext<D> for FileAttributeSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope: D::Scope,
+        _scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         self.ast_builder
             .driver
@@ -69,7 +66,7 @@ impl<D: Driver> SyntaxContext<D> for FileAttributeSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        _scope: D::Scope,
+        _scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         self.ast_builder
             .driver

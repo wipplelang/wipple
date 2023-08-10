@@ -8,12 +8,13 @@ use crate::{
     },
     Driver, File,
 };
+use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct SyntaxAssignmentValue<D: Driver> {
     pub span: D::Span,
     pub syntax_span: D::Span,
-    pub name: Option<D::InternedString>,
+    pub name: Option<(D::InternedString, HashSet<D::Scope>)>,
     pub body: Result<SyntaxBody<D>, SyntaxError<D>>,
     pub operator_precedence: Option<OperatorPrecedenceStatementAttribute<D>>,
     pub keyword: Option<KeywordStatementAttribute<D>>,
@@ -41,7 +42,7 @@ impl<D: Driver> Syntax<D> for SyntaxAssignmentValueSyntax {
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
             "syntax",
-            |context, span, syntax_span, mut exprs, scope| async move {
+            |context, span, syntax_span, mut exprs, scope_set| async move {
                 if exprs.len() != 1 {
                     context
                         .ast_builder
@@ -59,7 +60,7 @@ impl<D: Driver> Syntax<D> for SyntaxAssignmentValueSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         exprs.pop().unwrap(),
-                        scope,
+                        scope_set,
                     )
                     .await;
 
@@ -77,11 +78,12 @@ impl<D: Driver> Syntax<D> for SyntaxAssignmentValueSyntax {
                 };
 
                 if let Some(assigned_name) = context.assigned_name {
-                    value.name = Some(assigned_name.name.clone());
+                    value.name =
+                        Some((assigned_name.name.clone(), assigned_name.scope_set.clone()));
 
                     context.ast_builder.file.define_syntax(
                         assigned_name.name,
-                        assigned_name.scope,
+                        assigned_name.scope_set,
                         value.clone(),
                     );
 

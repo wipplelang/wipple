@@ -10,6 +10,7 @@ use crate::{
     },
     parse, Driver, File,
 };
+use std::collections::HashSet;
 use wipple_util::Shared;
 
 #[derive(Debug, Clone)]
@@ -18,7 +19,7 @@ pub struct AssignStatement<D: Driver> {
     pub colon_span: D::Span,
     pub pattern: Result<AssignmentPattern<D>, SyntaxError<D>>,
     pub value: Result<AssignmentValue<D>, SyntaxError<D>>,
-    pub scope: D::Scope,
+    pub scope_set: HashSet<D::Scope>,
     pub attributes: StatementAttributes<D>,
 }
 
@@ -47,18 +48,52 @@ impl<D: Driver> Syntax<D> for AssignStatementSyntax {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::operator(
             ":",
             OperatorAssociativity::None,
-            |context, span, (lhs_span, lhs_exprs), colon_span, (rhs_span, rhs_exprs), scope| async move {
-                let mut declared_name = None;
+            |context, span, (lhs_span, lhs_exprs), colon_span, (rhs_span, rhs_exprs), scope_set| async move {
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
-                let pattern = match &lhs.kind {
-                    parse::ExprKind::Name(name, _) => {
-                        declared_name = Some(name.clone());
 
+                let mut value_context = AssignmentValueSyntaxContext::new(context.ast_builder.clone())
+                    .with_statement_attributes(context.statement_attributes.as_ref().unwrap().clone());
+
+                let did_create_syntax = Shared::new(false);
+                if let parse::ExprKind::Name(name, _) = &lhs.kind {
+                    value_context = value_context.with_assigned_name(
+                        name.clone(),
+                        scope_set.clone(),
+                        did_create_syntax.clone()
+                    );
+                }
+
+                // HACK: Allow plain variables to shadow previous names. This
+                // works because all `AssignmentValue`s (except for plain
+                // expressions) may only be declared once per scope
+                //
+                // FIXME: This may cause confusion if you define eg. a type
+                // after defining a variable -- that type won't be visible to
+                // previous code because of this scoping rule. Currently you
+                // will have to declare all types/constants/etc. before any
+                // top-level variable assignments
+                if !context.ast_builder.list_matches_syntax::<AssignmentValueSyntax>(rhs_exprs.clone()) {
+                    scope_set.lock().insert(context.ast_builder.file.make_scope());
+                }
+
+                let rhs = parse::Expr::list_or_expr(rhs_span, rhs_exprs);
+
+                let value = context
+                    .ast_builder
+                    .build_expr::<AssignmentValueSyntax>(
+                        value_context,
+                        rhs,
+                        scope_set.clone(),
+                    )
+                    .await;
+
+                let pattern = match &lhs.kind {
+                    parse::ExprKind::Name(name, scope) => {
                         Ok(AssignmentPattern::Pattern(PatternAssignmentPattern {
                             pattern: Pattern::Name(NamePattern {
                                 span: lhs.span,
                                 name: name.clone(),
-                                scope,
+                                scope: scope.clone().unwrap_or_else(|| scope_set.lock().clone())
                             }),
                         }))
                     }
@@ -71,49 +106,18 @@ impl<D: Driver> Syntax<D> for AssignStatementSyntax {
                                         context.statement_attributes.as_ref().unwrap().clone(),
                                     ),
                                 lhs,
-                                scope,
+                                scope_set.clone(),
                             )
                             .await
                     }
                 };
-
-                let mut value_context = AssignmentValueSyntaxContext::new(context.ast_builder.clone())
-                    .with_statement_attributes(context.statement_attributes.as_ref().unwrap().clone());
-
-                let did_create_syntax = Shared::new(false);
-                if let Ok(AssignmentPattern::Pattern(pattern)) = &pattern {
-                    if let Pattern::Name(pattern) = &pattern.pattern {
-                        value_context = value_context.with_assigned_name(
-                            pattern.name.clone(),
-                            scope,
-                            did_create_syntax.clone()
-                        );
-                    }
-                }
-
-                let rhs = parse::Expr::list_or_expr(rhs_span, rhs_exprs);
-                let value = context
-                    .ast_builder
-                    .build_expr::<AssignmentValueSyntax>(
-                        value_context,
-                        rhs,
-                        scope,
-                    )
-                    .await;
-
-                if let Some(name) = declared_name {
-                    let did_create_syntax = did_create_syntax.into_unique();
-                    if !did_create_syntax {
-                        context.ast_builder.file.add_barrier(name, scope);
-                    }
-                }
 
                 Ok(AssignStatement {
                     span,
                     colon_span,
                     pattern,
                     value,
-                    scope,
+                    scope_set: scope_set.lock().clone(),
                     attributes: context.statement_attributes.unwrap().lock().clone(),
                 }
                 .into())

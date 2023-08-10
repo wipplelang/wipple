@@ -55,11 +55,19 @@ impl<D: Driver> Syntax<D> for AnnotateStatementSyntax {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::operator(
             "::",
             OperatorAssociativity::None,
-            |context, span, (lhs_span, mut lhs_exprs), colon_span, (rhs_span, rhs_exprs), scope| async move {
+            |context,
+             span,
+             (lhs_span, mut lhs_exprs),
+             colon_span,
+             (rhs_span, rhs_exprs),
+             scope_set| async move {
                 let value = if lhs_exprs.len() == 1 {
                     let lhs = lhs_exprs.pop().unwrap();
                     match lhs.kind {
-                        parse::ExprKind::Name(name, _) => Ok(AnnotatedName { span: lhs.span, name }),
+                        parse::ExprKind::Name(name, _) => Ok(AnnotatedName {
+                            span: lhs.span,
+                            name,
+                        }),
                         _ => {
                             let expr = context
                                 .ast_builder
@@ -69,7 +77,7 @@ impl<D: Driver> Syntax<D> for AnnotateStatementSyntax {
                                             context.statement_attributes.as_ref().unwrap().clone(),
                                         ),
                                     lhs,
-                                    scope,
+                                    scope_set.clone(),
                                 )
                                 .await;
 
@@ -87,7 +95,7 @@ impl<D: Driver> Syntax<D> for AnnotateStatementSyntax {
                                     context.statement_attributes.as_ref().unwrap().clone(),
                                 ),
                             lhs,
-                            scope,
+                            scope_set.clone(),
                         )
                         .await;
 
@@ -103,7 +111,7 @@ impl<D: Driver> Syntax<D> for AnnotateStatementSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         rhs,
-                        scope,
+                        scope_set,
                     )
                     .await;
 

@@ -42,7 +42,12 @@ impl<D: Driver> Syntax<D> for DefaultTypePatternSyntax {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::operator(
             ":",
             OperatorAssociativity::None,
-            |context, span, (lhs_span, mut lhs_exprs), colon_span, (rhs_span, rhs_exprs), scope| async move {
+            |context,
+             span,
+             (lhs_span, mut lhs_exprs),
+             colon_span,
+             (rhs_span, rhs_exprs),
+             scope_set| async move {
                 let name = if lhs_exprs.len() == 1 {
                     let expr = lhs_exprs.pop().unwrap();
 
@@ -74,7 +79,7 @@ impl<D: Driver> Syntax<D> for DefaultTypePatternSyntax {
                     .build_expr::<TypeSyntax>(
                         type_context,
                         parse::Expr::list_or_expr(rhs_span, rhs_exprs),
-                        scope
+                        scope_set,
                     )
                     .await;
 

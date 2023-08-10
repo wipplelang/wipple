@@ -13,6 +13,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use futures::{stream, StreamExt};
+use std::collections::HashSet;
 use wipple_util::Shared;
 
 syntax_group! {
@@ -72,10 +73,6 @@ impl<D: Driver> SyntaxContext<D> for TypeMemberSyntaxContext<D> {
         }
     }
 
-    fn block_scope(&self, scope: D::Scope) -> D::Scope {
-        scope
-    }
-
     fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes<D>>) -> Self {
         self.statement_attributes = Some(attributes);
         self
@@ -90,7 +87,7 @@ impl<D: Driver> SyntaxContext<D> for TypeMemberSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope: D::Scope,
+        _scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         self.ast_builder
             .driver
@@ -102,7 +99,7 @@ impl<D: Driver> SyntaxContext<D> for TypeMemberSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         let name_list = expr
             .clone()
@@ -149,7 +146,7 @@ impl<D: Driver> SyntaxContext<D> for TypeMemberSyntaxContext<D> {
                                     self.statement_attributes.as_ref().unwrap().clone(),
                                 ),
                             expr,
-                            scope,
+                            scope_set.clone(),
                         )
                     })
                     .collect()

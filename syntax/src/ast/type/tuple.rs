@@ -43,7 +43,7 @@ impl<D: Driver> Syntax<D> for TupleTypeSyntax {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::operator(
             ",",
             OperatorAssociativity::Variadic,
-            |context, span, (_span, exprs), comma_span, (_unused_span, unused_exprs), scope| async move {
+            |context, span, (_span, exprs), comma_span, (_unused_span, unused_exprs), scope_set| async move {
                 // HACK: All of the expressions are contained in `lhs`. In the
                 // future, handle variadic operators specially.
                 assert!(unused_exprs.is_empty());
@@ -52,7 +52,7 @@ impl<D: Driver> Syntax<D> for TupleTypeSyntax {
                     .then(|expr| {
                         context
                             .ast_builder
-                            .build_expr::<TypeSyntax>(context.clone(), expr, scope)
+                            .build_expr::<TypeSyntax>(context.clone(), expr, scope_set.clone())
                     })
                     .collect()
                     .await;

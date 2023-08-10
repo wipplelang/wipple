@@ -48,7 +48,7 @@ impl<D: Driver> Syntax<D> for PluginExpressionSyntax {
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
             "syntax",
-            |context, span, plugin_span, exprs, scope| async move {
+            |context, span, plugin_span, exprs, scope_set| async move {
                 if exprs.len() < 2 {
                     context
                         .ast_builder
@@ -93,7 +93,7 @@ impl<D: Driver> Syntax<D> for PluginExpressionSyntax {
                         context.ast_builder.build_expr::<ExpressionSyntax>(
                             context.clone(),
                             expr,
-                            scope,
+                            scope_set.clone(),
                         )
                     })
                     .collect()

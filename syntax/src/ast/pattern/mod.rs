@@ -11,10 +11,11 @@ use crate::{
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, Destructuring, DestructuringSyntax, StatementAttributes,
     },
-    parse, Driver, File,
+    parse, Driver,
 };
 use async_trait::async_trait;
 use futures::{stream, StreamExt};
+use std::collections::HashSet;
 use wipple_util::Shared;
 
 syntax_group! {
@@ -40,7 +41,7 @@ syntax_group! {
 pub struct NamePattern<D: Driver> {
     pub span: D::Span,
     pub name: D::InternedString,
-    pub scope: D::Scope,
+    pub scope: HashSet<D::Scope>,
 }
 
 impl<D: Driver> NamePattern<D> {
@@ -201,10 +202,6 @@ impl<D: Driver> SyntaxContext<D> for PatternSyntaxContext<D> {
         self
     }
 
-    fn block_scope(&self, scope: D::Scope) -> D::Scope {
-        scope
-    }
-
     async fn build_block(
         self,
         span: D::Span,
@@ -214,7 +211,7 @@ impl<D: Driver> SyntaxContext<D> for PatternSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope: D::Scope,
+        _scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Ok(DestructurePattern {
             span,
@@ -226,19 +223,15 @@ impl<D: Driver> SyntaxContext<D> for PatternSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         match expr.kind {
-            parse::ExprKind::Name(name, _sc) => {
-                self.ast_builder.file.add_barrier(name.clone(), scope);
-
-                Ok(NamePattern {
-                    span: expr.span,
-                    name,
-                    scope,
-                }
-                .into())
+            parse::ExprKind::Name(name, scope) => Ok(NamePattern {
+                span: expr.span,
+                name,
+                scope: scope.unwrap_or_else(|| scope_set.lock().clone()),
             }
+            .into()),
             parse::ExprKind::Text(text, raw) => Ok(TextPattern {
                 span: expr.span,
                 text,
@@ -271,8 +264,11 @@ impl<D: Driver> SyntaxContext<D> for PatternSyntaxContext<D> {
 
                 let values = stream::iter(exprs)
                     .then(|expr| {
-                        self.ast_builder
-                            .build_expr::<PatternSyntax>(self.clone(), expr, scope)
+                        self.ast_builder.build_expr::<PatternSyntax>(
+                            self.clone(),
+                            expr,
+                            scope_set.clone(),
+                        )
                     })
                     .collect::<Vec<_>>()
                     .await;

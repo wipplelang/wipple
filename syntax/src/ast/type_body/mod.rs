@@ -11,6 +11,7 @@ use crate::{
     parse, Driver,
 };
 use async_trait::async_trait;
+use std::collections::HashSet;
 use wipple_util::Shared;
 
 syntax_group! {
@@ -89,10 +90,6 @@ impl<D: Driver> SyntaxContext<D> for TypeBodySyntaxContext<D> {
         self
     }
 
-    fn block_scope(&self, scope: D::Scope) -> D::Scope {
-        scope
-    }
-
     async fn build_block(
         self,
         span: D::Span,
@@ -102,7 +99,7 @@ impl<D: Driver> SyntaxContext<D> for TypeBodySyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope: D::Scope,
+        _scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Ok(BlockTypeBody {
             span,
@@ -114,7 +111,7 @@ impl<D: Driver> SyntaxContext<D> for TypeBodySyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         let span = expr.span;
 
@@ -123,7 +120,7 @@ impl<D: Driver> SyntaxContext<D> for TypeBodySyntaxContext<D> {
 
         let ty = self
             .ast_builder
-            .build_expr::<TypeSyntax>(context, expr, scope)
+            .build_expr::<TypeSyntax>(context, expr, scope_set)
             .await?;
 
         Ok(TypeBody::Alias(AliasTypeBody { span, ty }))

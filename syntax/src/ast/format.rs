@@ -33,7 +33,7 @@ impl<D: Driver> Format<D> for parse::Expr<D> {
                     .collect::<Result<Vec<_>, _>>()?
                     .join(" ")
             ),
-            parse::ExprKind::Block(statements, _) => format!(
+            parse::ExprKind::Block(statements) => format!(
                 "{{\n{}\n}}",
                 statements
                     .into_iter()

@@ -2,7 +2,7 @@ use crate::{parse::Token, Driver, Span};
 use lazy_static::lazy_static;
 use logos::SpannedIter;
 use regex::Regex;
-use std::{cell::RefCell, iter::Peekable, ops::Range};
+use std::{collections::HashSet, iter::Peekable, ops::Range};
 
 #[derive(Debug, Clone)]
 pub struct File<D: Driver> {
@@ -30,7 +30,7 @@ pub struct Expr<D: Driver> {
 pub enum ExprKind<D: Driver> {
     Placeholder(D::InternedString),
     Underscore,
-    Name(D::InternedString, Option<D::Scope>),
+    Name(D::InternedString, Option<HashSet<D::Scope>>),
     QuoteName(D::InternedString),
     RepeatName(D::InternedString),
     Text(D::InternedString, D::InternedString),
@@ -38,7 +38,7 @@ pub enum ExprKind<D: Driver> {
     Asset(D::InternedString),
     List(Vec<ListLine<D>>),
     RepeatList(Vec<ListLine<D>>),
-    Block(Vec<Statement<D>>, Option<D::Scope>),
+    Block(Vec<Statement<D>>),
     SourceCode(String),
 }
 
@@ -130,80 +130,52 @@ impl<D: Driver> Expr<D> {
 }
 
 impl<D: Driver> Expr<D> {
-    pub fn fix_to(&mut self, scope: D::Scope, make_child: impl Fn(D::Scope) -> D::Scope) {
-        let scopes = RefCell::new(vec![scope]);
-
-        self.traverse_mut(
-            |expr| match &mut expr.kind {
-                ExprKind::Name(_, name_scope) => {
-                    name_scope.get_or_insert_with(|| *scopes.borrow().last().unwrap());
-                }
-                ExprKind::Block(_, block_scope) => {
-                    let scope =
-                        block_scope.unwrap_or_else(|| make_child(*scopes.borrow().last().unwrap()));
-
-                    scopes.borrow_mut().push(scope);
-
-                    *block_scope = Some(scope);
-                }
-                _ => {}
-            },
-            |expr| {
-                if let ExprKind::Block(_, _) = &mut expr.kind {
-                    scopes.borrow_mut().pop().unwrap();
-                }
-            },
-        )
+    pub fn fix_to(&mut self, scope_set: &HashSet<D::Scope>) {
+        self.traverse_mut(|expr| {
+            if let ExprKind::Name(_, name_scope) = &mut expr.kind {
+                name_scope.get_or_insert_with(|| scope_set.clone());
+            }
+        })
     }
 
-    pub fn traverse_mut(
-        &mut self,
-        mut enter: impl FnMut(&mut Self),
-        mut leave: impl FnMut(&mut Self),
-    ) {
-        self.traverse_mut_inner(&mut enter, &mut leave);
+    pub fn traverse_mut(&mut self, mut f: impl FnMut(&mut Self)) {
+        self.traverse_mut_inner(&mut f);
     }
 
-    fn traverse_mut_inner(
-        &mut self,
-        enter: &mut impl FnMut(&mut Self),
-        leave: &mut impl FnMut(&mut Self),
-    ) {
-        enter(self);
+    fn traverse_mut_inner(&mut self, f: &mut impl FnMut(&mut Self)) {
+        f(self);
 
         match &mut self.kind {
             ExprKind::List(lines) | ExprKind::RepeatList(lines) => {
                 for line in lines {
                     for attribute in &mut line.attributes {
                         for expr in &mut attribute.exprs {
-                            expr.traverse_mut_inner(enter, leave);
+                            expr.traverse_mut_inner(f);
                         }
                     }
 
                     for expr in &mut line.exprs {
-                        expr.traverse_mut_inner(enter, leave);
+                        expr.traverse_mut_inner(f);
                     }
                 }
             }
-            ExprKind::Block(statements, _) => {
+            ExprKind::Block(statements) => {
                 for statement in statements {
                     for line in &mut statement.lines {
                         for attribute in &mut line.attributes {
                             for expr in &mut attribute.exprs {
-                                expr.traverse_mut_inner(enter, leave);
+                                expr.traverse_mut_inner(f);
                             }
                         }
 
                         for expr in &mut line.exprs {
-                            expr.traverse_mut_inner(enter, leave);
+                            expr.traverse_mut_inner(f);
                         }
                     }
                 }
             }
             _ => {}
         }
-
-        leave(self);
     }
 }
 
@@ -764,7 +736,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
 
                 Ok(Expr::new(
                     Span::join(span, end_span),
-                    ExprKind::Block(statements, None),
+                    ExprKind::Block(statements),
                 ))
             }
             Some(_) => Err(ParseError::WrongTokenType),

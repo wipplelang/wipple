@@ -41,17 +41,17 @@ impl<D: Driver> Syntax<D> for FunctionTypeSyntax {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::operator(
             "->",
             OperatorAssociativity::Right,
-            |context, span, (lhs_span, lhs_exprs), arrow_span, (rhs_span, rhs_exprs), scope| async move {
+            |context, span, (lhs_span, lhs_exprs), arrow_span, (rhs_span, rhs_exprs), scope_set| async move {
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
                 let input = context
                     .ast_builder
-                    .build_expr::<TypeSyntax>(context.clone(), lhs, scope)
+                    .build_expr::<TypeSyntax>(context.clone(), lhs, scope_set.clone())
                     .await;
 
                 let rhs = parse::Expr::list_or_expr(rhs_span, rhs_exprs);
                 let output = context
                     .ast_builder
-                    .build_expr::<TypeSyntax>(context.clone(), rhs, scope)
+                    .build_expr::<TypeSyntax>(context.clone(), rhs, scope_set)
                     .await;
 
                 Ok(FunctionType {

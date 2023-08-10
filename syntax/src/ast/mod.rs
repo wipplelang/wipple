@@ -35,6 +35,7 @@ pub use syntax::SyntaxError;
 
 use crate::{ast::macros::definitions, parse, Driver, DriverExt, File as _, Span};
 use futures::{future::BoxFuture, stream, StreamExt};
+use std::collections::HashSet;
 use sync_wrapper::SyncFuture;
 use syntax::{Syntax, SyntaxContext};
 use wipple_util::Shared;
@@ -255,7 +256,7 @@ pub(crate) async fn build<D: Driver>(
     driver_file: D::File,
     parse_file: parse::File<D>,
 ) -> File<D> {
-    let scope = driver_file.root_scope();
+    let scope_set = Shared::new(HashSet::from([driver_file.make_scope()]));
 
     let ast_builder = AstBuilder {
         driver,
@@ -272,7 +273,7 @@ pub(crate) async fn build<D: Driver>(
                 context.clone(),
                 attribute.span,
                 attribute.exprs.clone(),
-                scope,
+                scope_set.clone(),
             )
             .await
             .is_none()
@@ -282,7 +283,7 @@ pub(crate) async fn build<D: Driver>(
             let _ = context
                 .build_terminal(
                     parse::Expr::list_or_expr(attribute.span, attribute.exprs),
-                    scope,
+                    scope_set.clone(),
                 )
                 .await;
         }
@@ -301,7 +302,7 @@ pub(crate) async fn build<D: Driver>(
             ast_builder.build_statement::<TopLevelStatementSyntax>(
                 TopLevelStatementSyntaxContext::new(ast_builder.clone()),
                 statement,
-                scope,
+                scope_set.clone(),
             )
         })
         .collect::<Vec<_>>()
@@ -341,7 +342,7 @@ pub(crate) async fn build<D: Driver>(
             ast_builder.build_statement::<StatementSyntax>(
                 StatementSyntaxContext::new(ast_builder.clone()),
                 parse::Statement { lines: vec![line] },
-                statement.scope,
+                scope_set.clone(),
             )
         })
         .collect::<Vec<_>>()
@@ -371,19 +372,25 @@ impl<D: Driver> AstBuilder<D> {
         &self,
         context: S::Context,
         expr: parse::Expr<D>,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> SyncFuture<BoxFuture<Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>>> {
         SyncFuture::new(Box::pin(async move {
             match expr.kind {
-                parse::ExprKind::Block(statements, block_scope) => {
-                    let scope = block_scope.unwrap_or_else(|| context.block_scope(scope));
+                parse::ExprKind::Block(statements) => {
+                    let mut scope_set = scope_set.clone();
+
+                    if S::Context::BLOCK_CREATES_SCOPE {
+                        let mut new_scope_set = scope_set.lock().clone();
+                        new_scope_set.insert(self.file.make_scope());
+                        scope_set = Shared::new(new_scope_set);
+                    }
 
                     let statements = stream::iter(statements)
                         .then(|statement| {
                             self.build_statement::<<S::Context as SyntaxContext<D>>::Statement>(
                                 <<S::Context as SyntaxContext<D>>::Statement as Syntax<D>>::Context::new(self.clone()),
                                 statement,
-                                scope,
+                                scope_set.clone(),
                             )
                         })
                         .collect::<Vec<_>>()
@@ -391,7 +398,7 @@ impl<D: Driver> AstBuilder<D> {
                         .into_iter()
                         .flatten();
 
-                    context.build_block(expr.span, statements, scope).await
+                    context.build_block(expr.span, statements, scope_set).await
                 }
                 parse::ExprKind::List(lines) => {
                     let exprs = lines
@@ -400,7 +407,12 @@ impl<D: Driver> AstBuilder<D> {
                         .collect::<Vec<_>>();
 
                     match self
-                        .build_list::<S>(context.clone(), expr.span, exprs.clone(), scope)
+                        .build_list::<S>(
+                            context.clone(),
+                            expr.span,
+                            exprs.clone(),
+                            scope_set.clone(),
+                        )
                         .await
                     {
                         Some(result) => result,
@@ -411,20 +423,25 @@ impl<D: Driver> AstBuilder<D> {
                                 parse::Expr::list_or_expr(expr.span, exprs)
                             };
 
-                            context.build_terminal(expr, scope).await
+                            context.build_terminal(expr, scope_set).await
                         }
                     }
                 }
                 parse::ExprKind::Name(_, _) => {
                     match self
-                        .build_list::<S>(context.clone(), expr.span, vec![expr.clone()], scope)
+                        .build_list::<S>(
+                            context.clone(),
+                            expr.span,
+                            vec![expr.clone()],
+                            scope_set.clone(),
+                        )
                         .await
                     {
                         Some(result) => result,
-                        None => context.build_terminal(expr, scope).await,
+                        None => context.build_terminal(expr, scope_set).await,
                     }
                 }
-                _ => context.build_terminal(expr, scope).await,
+                _ => context.build_terminal(expr, scope_set).await,
             }
         }))
     }
@@ -433,7 +450,7 @@ impl<D: Driver> AstBuilder<D> {
         &self,
         context: S::Context,
         statement: parse::Statement<D>,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> SyncFuture<BoxFuture<Option<Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>>>>
     {
         SyncFuture::new(Box::pin(async move {
@@ -461,7 +478,7 @@ impl<D: Driver> AstBuilder<D> {
                         context.clone(),
                         attribute.span,
                         attribute.exprs.clone(),
-                        scope,
+                        scope_set.clone(),
                     )
                     .await
                     .is_none()
@@ -471,7 +488,7 @@ impl<D: Driver> AstBuilder<D> {
                     let _ = context
                         .build_terminal(
                             parse::Expr::list_or_expr(attribute.span, attribute.exprs),
-                            scope,
+                            scope_set.clone(),
                         )
                         .await;
                 }
@@ -491,13 +508,13 @@ impl<D: Driver> AstBuilder<D> {
             let context = context.with_statement_attributes(attributes.clone());
 
             let result = match self
-                .build_list::<S>(context.clone(), span, exprs.clone(), scope)
+                .build_list::<S>(context.clone(), span, exprs.clone(), scope_set.clone())
                 .await
             {
                 Some(result) => result,
                 None => {
                     context
-                        .build_terminal(parse::Expr::list_or_expr(span, exprs), scope)
+                        .build_terminal(parse::Expr::list_or_expr(span, exprs), scope_set)
                         .await
                 }
             };

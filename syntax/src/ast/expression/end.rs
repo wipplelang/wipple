@@ -34,7 +34,7 @@ impl<D: Driver> Syntax<D> for EndExpressionSyntax {
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
             "end",
-            |context, span, end_span, exprs, scope| async move {
+            |context, span, end_span, exprs, scope_set| async move {
                 if exprs.len() != 1 {
                     context
                         .ast_builder
@@ -48,7 +48,11 @@ impl<D: Driver> Syntax<D> for EndExpressionSyntax {
 
                 let value = context
                     .ast_builder
-                    .build_expr::<ExpressionSyntax>(context.clone(), exprs.next().unwrap(), scope)
+                    .build_expr::<ExpressionSyntax>(
+                        context.clone(),
+                        exprs.next().unwrap(),
+                        scope_set,
+                    )
                     .await;
 
                 Ok(EndExpression {

@@ -10,6 +10,7 @@ use crate::{
     parse, Driver,
 };
 use futures::{stream, StreamExt};
+use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct WhereTypePattern<D: Driver> {
@@ -44,7 +45,7 @@ pub struct WhereTypePatternBound<D: Driver> {
     pub span: D::Span,
     pub trait_span: D::Span,
     pub trait_name: D::InternedString,
-    pub trait_scope: D::Scope,
+    pub trait_scope_set: HashSet<D::Scope>,
     pub parameters: Vec<Result<Type<D>, SyntaxError<D>>>,
 }
 
@@ -76,12 +77,12 @@ impl<D: Driver> Syntax<D> for WhereTypePatternSyntax {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::operator(
             "where",
             OperatorAssociativity::None,
-            |context, span, (lhs_span, lhs_exprs), where_span, (rhs_span, rhs_exprs), scope| async move {
+            |context, span, (lhs_span, lhs_exprs), where_span, (rhs_span, rhs_exprs), scope_set| async move {
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
 
                 let pattern = context
                     .ast_builder
-                    .build_expr::<TypePatternSyntax>(context.clone(), lhs, scope)
+                    .build_expr::<TypePatternSyntax>(context.clone(), lhs, scope_set.clone())
                     .await;
 
                 let bounds = stream::iter(rhs_exprs)
@@ -102,8 +103,8 @@ impl<D: Driver> Syntax<D> for WhereTypePatternSyntax {
 
                                 let trait_span = trait_name.span;
 
-                                let (trait_name, trait_scope) = match trait_name.kind {
-                                    parse::ExprKind::Name(name, name_scope) => (name, name_scope.unwrap_or(scope)),
+                                let (trait_name, trait_scope_set) = match trait_name.kind {
+                                    parse::ExprKind::Name(name, name_scope) => (name, name_scope.unwrap_or_else(|| scope_set.lock().clone())),
                                     _ => {
                                         context
                                             .ast_builder
@@ -126,7 +127,7 @@ impl<D: Driver> Syntax<D> for WhereTypePatternSyntax {
                                                         .clone(),
                                                 ),
                                             expr,
-                                            scope,
+                                            scope_set.clone(),
                                         )
                                     })
                                     .collect()
@@ -136,13 +137,13 @@ impl<D: Driver> Syntax<D> for WhereTypePatternSyntax {
                                     span,
                                     trait_span,
                                     trait_name,
-                                    trait_scope,
+                                    trait_scope_set,
                                     parameters,
                                 })
                             }
                             Err(expr) => {
-                                let (trait_name, trait_scope) = match expr.kind {
-                                    parse::ExprKind::Name(name, name_scope) => (name, name_scope.unwrap_or(scope)),
+                                let (trait_name, trait_scope_set) = match expr.kind {
+                                    parse::ExprKind::Name(name, name_scope) => (name, name_scope.unwrap_or_else(|| scope_set.lock().clone())),
                                     _ => {
                                         context
                                             .ast_builder
@@ -157,7 +158,7 @@ impl<D: Driver> Syntax<D> for WhereTypePatternSyntax {
                                     span: expr.span,
                                     trait_span: expr.span,
                                     trait_name,
-                                    trait_scope,
+                                    trait_scope_set,
                                     parameters: Vec::new(),
                                 })
                             }

@@ -44,7 +44,7 @@ impl<D: Driver> Syntax<D> for WhereWhenPatternSyntax {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::operator(
             "where",
             OperatorAssociativity::None,
-            |context, span, (lhs_span, lhs_exprs), where_span, (rhs_span, rhs_exprs), scope| async move {
+            |context, span, (lhs_span, lhs_exprs), where_span, (rhs_span, rhs_exprs), scope_set| async move {
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
                 let pattern = context
                     .ast_builder
@@ -54,7 +54,7 @@ impl<D: Driver> Syntax<D> for WhereWhenPatternSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         lhs,
-                        scope,
+                        scope_set.clone(),
                     )
                     .await;
 
@@ -67,7 +67,7 @@ impl<D: Driver> Syntax<D> for WhereWhenPatternSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         rhs,
-                        scope,
+                        scope_set,
                     )
                     .await;
 

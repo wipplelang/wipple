@@ -40,7 +40,7 @@ impl<D: Driver> Syntax<D> for WhenExpressionSyntax {
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
             "when",
-            |context, span, when_span, exprs, scope| async move {
+            |context, span, when_span, exprs, scope_set| async move {
                 if exprs.len() != 2 {
                     context
                         .ast_builder
@@ -54,7 +54,11 @@ impl<D: Driver> Syntax<D> for WhenExpressionSyntax {
 
                 let input = context
                     .ast_builder
-                    .build_expr::<ExpressionSyntax>(context.clone(), exprs.next().unwrap(), scope)
+                    .build_expr::<ExpressionSyntax>(
+                        context.clone(),
+                        exprs.next().unwrap(),
+                        scope_set.clone(),
+                    )
                     .await;
 
                 let body = context
@@ -65,7 +69,7 @@ impl<D: Driver> Syntax<D> for WhenExpressionSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         exprs.next().unwrap(),
-                        scope,
+                        scope_set,
                     )
                     .await;
 

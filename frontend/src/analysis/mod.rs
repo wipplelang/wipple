@@ -20,11 +20,12 @@ use crate::{
 };
 use async_trait::async_trait;
 use futures::future::BoxFuture;
+use itertools::Itertools;
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     sync::{atomic::AtomicUsize, Arc},
 };
-use wipple_syntax::{ast::builtin_syntax_definitions, DriverExt};
+use wipple_syntax::{ast::builtin_syntax_definitions, DriverExt, ResolveSyntaxError};
 use wipple_util::Backtrace;
 
 #[derive(Clone)]
@@ -261,26 +262,15 @@ impl wipple_syntax::Driver for Analysis {
                 .lock()
                 .extend(file.file.syntax_declarations.lock().clone());
 
-            source_file
-                .scopes
-                .lock()
-                .extend(file.file.scopes.lock().clone());
-
-            source_file
-                .scopes
-                .lock()
-                .get_mut(&source_file.root_scope)
-                .unwrap()
-                .syntaxes
-                .extend(
-                    file.file
-                        .scopes
-                        .lock()
-                        .get(&file.file.root_scope)
-                        .unwrap()
-                        .syntaxes
-                        .clone(),
-                );
+            let dependency_syntaxes = file.file.syntaxes.lock().clone();
+            for (name, dependency_syntaxes) in dependency_syntaxes {
+                source_file
+                    .syntaxes
+                    .lock()
+                    .entry(name)
+                    .or_default()
+                    .extend(dependency_syntaxes);
+            }
 
             source_file.dependencies.lock().push(file.clone());
         }
@@ -389,18 +379,13 @@ impl wipple_syntax::Driver for Analysis {
 
         self.stack.lock().push(resolved_path);
 
-        let mut scopes = BTreeMap::new();
-        let root_scope = self.compiler.new_scope_id_in(resolved_path);
-        scopes.insert(root_scope, Scope::default());
-
         let file = File {
             code,
             compiler: self.compiler.clone(),
             path: resolved_path,
             dependencies: Default::default(),
             syntax_declarations: Default::default(),
-            root_scope,
-            scopes: Shared::new(scopes),
+            syntaxes: Default::default(),
             builtin_syntax_uses: Default::default(),
         };
 
@@ -490,8 +475,7 @@ pub struct File {
     dependencies: Shared<Vec<Arc<wipple_syntax::ast::File<Analysis>>>>,
     syntax_declarations:
         Shared<BTreeMap<SyntaxId, wipple_syntax::ast::SyntaxAssignmentValue<Analysis>>>,
-    root_scope: ScopeId,
-    scopes: Shared<BTreeMap<ScopeId, Scope>>,
+    syntaxes: Shared<HashMap<InternedString, Vec<(HashSet<ScopeId>, SyntaxId)>>>,
     builtin_syntax_uses: Shared<
         HashMap<
             &'static str,
@@ -504,86 +488,60 @@ pub struct File {
     >,
 }
 
-#[derive(Debug, Clone, Default)]
-struct Scope {
-    parent: Option<ScopeId>,
-    syntaxes: HashMap<InternedString, Option<SyntaxId>>,
-}
-
 impl wipple_syntax::File<Analysis> for File {
     fn code(&self) -> &str {
         &self.code
     }
 
-    fn root_scope(&self) -> ScopeId {
-        self.root_scope
-    }
-
-    fn make_scope(&self, parent: ScopeId) -> ScopeId {
-        let id = self.compiler.new_scope_id_in(self.path);
-
-        self.scopes.lock().insert(
-            id,
-            Scope {
-                parent: Some(parent),
-                ..Default::default()
-            },
-        );
-
-        id
+    fn make_scope(&self) -> ScopeId {
+        self.compiler.new_scope_id_in(self.path)
     }
 
     fn define_syntax(
         &self,
         name: InternedString,
-        scope: ScopeId,
+        scope_set: HashSet<ScopeId>,
         value: wipple_syntax::ast::SyntaxAssignmentValue<Analysis>,
     ) {
         let id = self.compiler.new_syntax_id_in(self.path);
 
         self.syntax_declarations.lock().insert(id, value);
 
-        self.scopes
+        self.syntaxes
             .lock()
-            .get_mut(&scope)
-            .unwrap()
-            .syntaxes
-            .insert(name, Some(id));
-    }
-
-    fn add_barrier(&self, name: InternedString, scope: ScopeId) {
-        self.scopes
-            .lock()
-            .get_mut(&scope)
-            .unwrap()
-            .syntaxes
-            .insert(name, None);
+            .entry(name)
+            .or_default()
+            .push((scope_set, id));
     }
 
     fn resolve_syntax(
         &self,
         span: SpanList,
         name: InternedString,
-        scope: ScopeId,
-    ) -> Option<wipple_syntax::ast::SyntaxAssignmentValue<Analysis>> {
-        let scopes = self.scopes.lock();
+        scope_set: HashSet<ScopeId>,
+    ) -> Result<wipple_syntax::ast::SyntaxAssignmentValue<Analysis>, ResolveSyntaxError> {
+        let syntaxes = self.syntaxes.lock();
 
-        let mut parent = Some(scope);
-        while let Some(scope) = parent {
-            let scope = scopes.get(&scope).unwrap();
+        let mut candidates = syntaxes
+            .get(&name)
+            .ok_or(ResolveSyntaxError::NotFound)?
+            .iter()
+            .filter(|(candidate, _)| scope_set.is_superset(candidate))
+            .max_set_by_key(|(candidate, _)| candidate.intersection(&scope_set).count());
 
-            if let Some(syntax) = scope.syntaxes.get(&name) {
+        match candidates.len() {
+            0 => Err(ResolveSyntaxError::NotFound),
+            1 => {
+                let (_, syntax) = candidates.pop().unwrap();
+
                 let mut syntax_declarations = self.syntax_declarations.lock();
-                let syntax = syntax_declarations.get_mut(syntax.as_ref()?).unwrap();
+                let syntax = syntax_declarations.get_mut(syntax).unwrap();
                 syntax.uses.push(span);
 
-                return Some(syntax.clone());
+                Ok(syntax.clone())
             }
-
-            parent = scope.parent;
+            _ => Err(ResolveSyntaxError::Ambiguous),
         }
-
-        None
     }
 
     fn use_builtin_syntax(&self, span: SpanList, name: &'static str) {

@@ -10,6 +10,8 @@ use crate::{
     },
     parse, Driver, File,
 };
+use std::collections::HashSet;
+use wipple_util::Shared;
 
 #[derive(Debug, Clone)]
 pub struct TypeFunctionConstantTypeAnnotation<D: Driver> {
@@ -17,7 +19,7 @@ pub struct TypeFunctionConstantTypeAnnotation<D: Driver> {
     pub arrow_span: D::Span,
     pub pattern: Result<TypePattern<D>, SyntaxError<D>>,
     pub annotation: Result<Box<ConstantTypeAnnotation<D>>, SyntaxError<D>>,
-    pub scope: D::Scope,
+    pub scope_set: HashSet<D::Scope>,
 }
 
 impl<D: Driver> TypeFunctionConstantTypeAnnotation<D> {
@@ -45,8 +47,10 @@ impl<D: Driver> Syntax<D> for TypeFunctionConstantTypeAnnotationSyntax {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::operator(
             "=>",
             OperatorAssociativity::None,
-            |context, span, (lhs_span, lhs), arrow_span, (rhs_span, rhs), scope| async move {
-                let scope = context.ast_builder.file.make_scope(scope);
+            |context, span, (lhs_span, lhs), arrow_span, (rhs_span, rhs), scope_set| async move {
+                let mut scope_set = scope_set.lock().clone();
+                scope_set.insert(context.ast_builder.file.make_scope());
+                let scope_set = Shared::new(scope_set);
 
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs);
 
@@ -58,7 +62,7 @@ impl<D: Driver> Syntax<D> for TypeFunctionConstantTypeAnnotationSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         lhs,
-                        scope,
+                        scope_set.clone(),
                     )
                     .await;
 
@@ -66,7 +70,11 @@ impl<D: Driver> Syntax<D> for TypeFunctionConstantTypeAnnotationSyntax {
 
                 let annotation = context
                     .ast_builder
-                    .build_expr::<ConstantTypeAnnotationSyntax>(context.clone(), rhs, scope)
+                    .build_expr::<ConstantTypeAnnotationSyntax>(
+                        context.clone(),
+                        rhs,
+                        scope_set.clone(),
+                    )
                     .await;
 
                 Ok(TypeFunctionConstantTypeAnnotation {
@@ -74,7 +82,7 @@ impl<D: Driver> Syntax<D> for TypeFunctionConstantTypeAnnotationSyntax {
                     arrow_span,
                     pattern,
                     annotation: annotation.map(Box::new),
-                    scope,
+                    scope_set: scope_set.into_unique(),
                 }
                 .into())
             },

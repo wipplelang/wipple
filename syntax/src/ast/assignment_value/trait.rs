@@ -38,7 +38,7 @@ impl<D: Driver> Syntax<D> for TraitAssignmentValueSyntax {
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
             "trait",
-            |context, span, trait_span, mut exprs, scope| async move {
+            |context, span, trait_span, mut exprs, scope_set| async move {
                 match exprs.len() {
                     0 => Ok(TraitAssignmentValue {
                         span,
@@ -55,7 +55,7 @@ impl<D: Driver> Syntax<D> for TraitAssignmentValueSyntax {
                                         context.statement_attributes.as_ref().unwrap().clone(),
                                     ),
                                 exprs.pop().unwrap(),
-                                scope,
+                                scope_set,
                             )
                             .await;
 

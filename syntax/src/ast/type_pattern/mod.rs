@@ -11,10 +11,11 @@ use crate::{
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },
-    parse, Driver, File,
+    parse, Driver,
 };
 use async_trait::async_trait;
 use futures::{stream, StreamExt};
+use std::collections::HashSet;
 use wipple_util::Shared;
 
 syntax_group! {
@@ -35,6 +36,7 @@ syntax_group! {
 pub struct NameTypePattern<D: Driver> {
     pub span: D::Span,
     pub name: D::InternedString,
+    pub scope: HashSet<D::Scope>,
 }
 
 impl<D: Driver> NameTypePattern<D> {
@@ -97,10 +99,6 @@ impl<D: Driver> SyntaxContext<D> for TypePatternSyntaxContext<D> {
         self
     }
 
-    fn block_scope(&self, scope: D::Scope) -> D::Scope {
-        scope
-    }
-
     async fn build_block(
         self,
         span: D::Span,
@@ -110,7 +108,7 @@ impl<D: Driver> SyntaxContext<D> for TypePatternSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope: D::Scope,
+        _scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         self.ast_builder
             .driver
@@ -122,14 +120,17 @@ impl<D: Driver> SyntaxContext<D> for TypePatternSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         match expr.try_into_list_exprs() {
             Ok((span, exprs)) => {
                 let patterns = stream::iter(exprs)
                     .then(|expr| {
-                        self.ast_builder
-                            .build_expr::<TypePatternSyntax>(self.clone(), expr, scope)
+                        self.ast_builder.build_expr::<TypePatternSyntax>(
+                            self.clone(),
+                            expr,
+                            scope_set.clone(),
+                        )
                     })
                     .collect::<Vec<_>>()
                     .await;
@@ -137,15 +138,12 @@ impl<D: Driver> SyntaxContext<D> for TypePatternSyntaxContext<D> {
                 Ok(ListTypePattern { span, patterns }.into())
             }
             Err(expr) => match expr.kind {
-                parse::ExprKind::Name(name, _) => {
-                    self.ast_builder.file.add_barrier(name.clone(), scope);
-
-                    Ok(NameTypePattern {
-                        span: expr.span,
-                        name,
-                    }
-                    .into())
+                parse::ExprKind::Name(name, _) => Ok(NameTypePattern {
+                    span: expr.span,
+                    name,
+                    scope: scope_set.lock().clone(),
                 }
+                .into()),
                 _ => {
                     self.ast_builder
                         .driver

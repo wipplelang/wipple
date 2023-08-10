@@ -7,7 +7,7 @@ use crate::{
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },
-    parse, Driver, File, Span,
+    parse, Driver, Span,
 };
 use async_trait::async_trait;
 use futures::{stream, StreamExt};
@@ -53,7 +53,7 @@ impl<D: Driver> Format<D> for UnitSyntaxPattern<D> {
 pub struct NameSyntaxPattern<D: Driver> {
     pub span: D::Span,
     pub name: D::InternedString,
-    pub scope: D::Scope,
+    pub scope_set: HashSet<D::Scope>,
 }
 
 impl<D: Driver> NameSyntaxPattern<D> {
@@ -211,7 +211,6 @@ impl<D: Driver> Format<D> for ListRepetitionSyntaxPattern<D> {
 pub struct BlockSyntaxPattern<D: Driver> {
     pub span: D::Span,
     pub statements: Vec<Result<SyntaxPattern<D>, SyntaxError<D>>>,
-    pub scope: D::Scope,
 }
 
 impl<D: Driver> Format<D> for BlockSyntaxPattern<D> {
@@ -256,10 +255,6 @@ impl<D: Driver> SyntaxContext<D> for SyntaxPatternSyntaxContext<D> {
         self
     }
 
-    fn block_scope(&self, scope: D::Scope) -> D::Scope {
-        self.ast_builder.file.make_scope(scope)
-    }
-
     async fn build_block(
         self,
         span: D::Span,
@@ -269,12 +264,11 @@ impl<D: Driver> SyntaxContext<D> for SyntaxPatternSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        scope: D::Scope,
+        _scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Ok(BlockSyntaxPattern {
             span,
             statements: statements.collect(),
-            scope,
         }
         .into())
     }
@@ -282,7 +276,7 @@ impl<D: Driver> SyntaxContext<D> for SyntaxPatternSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         match expr.try_into_list_exprs() {
             Ok((span, exprs)) => {
@@ -291,7 +285,7 @@ impl<D: Driver> SyntaxContext<D> for SyntaxPatternSyntaxContext<D> {
                         self.ast_builder.build_expr::<SyntaxPatternSyntax>(
                             self.clone(),
                             expr,
-                            scope,
+                            scope_set.clone(),
                         )
                     })
                     .collect::<Vec<_>>()
@@ -306,7 +300,7 @@ impl<D: Driver> SyntaxContext<D> for SyntaxPatternSyntaxContext<D> {
                             self.ast_builder.build_expr::<SyntaxPatternSyntax>(
                                 self.clone(),
                                 expr,
-                                scope,
+                                scope_set.clone(),
                             )
                         })
                         .collect::<Vec<_>>()
@@ -321,7 +315,7 @@ impl<D: Driver> SyntaxContext<D> for SyntaxPatternSyntaxContext<D> {
                     parse::ExprKind::Name(name, name_scope) => Ok(NameSyntaxPattern {
                         span: expr.span,
                         name,
-                        scope: name_scope.unwrap_or(scope),
+                        scope_set: name_scope.unwrap_or_else(|| scope_set.lock().clone()),
                     }
                     .into()),
                     parse::ExprKind::QuoteName(name) => Ok(VariableSyntaxPattern {
@@ -546,7 +540,7 @@ impl<D: Driver> SyntaxPattern<D> {
             }],
             SyntaxPattern::Name(pattern) => vec![parse::Expr {
                 span: pattern.span.merged_with(source_span),
-                kind: parse::ExprKind::Name(pattern.name, Some(pattern.scope)),
+                kind: parse::ExprKind::Name(pattern.name, Some(pattern.scope_set)),
             }],
             SyntaxPattern::Text(pattern) => vec![parse::Expr {
                 span: pattern.span.merged_with(source_span),
@@ -714,7 +708,6 @@ impl<D: Driver> SyntaxPattern<D> {
                                 })
                             })
                             .collect::<Result<_, _>>()?,
-                        Some(pattern.scope),
                     ),
                 }]
             }
