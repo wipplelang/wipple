@@ -94,6 +94,10 @@ impl SpanList {
         self.first
     }
 
+    pub fn original(self) -> Span {
+        self.sources.0.lock().last().copied().unwrap_or(self.first)
+    }
+
     pub fn split_iter(self) -> (Span, impl Iterator<Item = Span>) {
         // Can't return a reference to `self.sources.0.lock()`
         #[allow(clippy::unnecessary_to_owned)]

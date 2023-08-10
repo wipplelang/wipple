@@ -503,33 +503,33 @@ fn get_syntax_highlighting(
     macro_rules! insert_semantic_tokens {
         ($kind:ident, $token:expr) => {
             for (id, decl) in &program.declarations.$kind {
-                if decl.span.first().path == playground_path {
+                if decl.span.original().path == playground_path {
                     items.push(AnalysisOutputSyntaxHighlightingItem {
                         start: decl
                             .span
-                            .first()
+                            .original()
                             .caller_start()
-                            .unwrap_or_else(|| decl.span.first().primary_start()),
+                            .unwrap_or_else(|| decl.span.original().primary_start()),
                         end: decl
                             .span
-                            .first()
+                            .original()
                             .caller_end()
-                            .unwrap_or_else(|| decl.span.first().primary_end()),
+                            .unwrap_or_else(|| decl.span.original().primary_end()),
                         kind: $token(id, decl),
                     });
                 }
 
                 for &span in &decl.uses {
-                    if span.first().path == playground_path {
+                    if span.original().path == playground_path {
                         items.push(AnalysisOutputSyntaxHighlightingItem {
                             start: span
-                                .first()
+                                .original()
                                 .caller_start()
-                                .unwrap_or_else(|| span.first().primary_start()),
+                                .unwrap_or_else(|| span.original().primary_start()),
                             end: span
-                                .first()
+                                .original()
                                 .caller_end()
-                                .unwrap_or_else(|| span.first().primary_end()),
+                                .unwrap_or_else(|| span.original().primary_end()),
                             kind: $token(id, decl),
                         });
                     }
@@ -568,7 +568,7 @@ fn get_syntax_highlighting(
     insert_semantic_tokens!(variables, |_, _| "variable");
 
     let mut traverse_semantic_tokens = |expr: &wipple_frontend::analysis::Expression| {
-        if expr.span.first().path != playground_path {
+        if expr.span.original().path != playground_path {
             return;
         }
 
@@ -579,14 +579,14 @@ fn get_syntax_highlighting(
         ) && matches!(expr.ty, wipple_frontend::analysis::Type::Function(_, _))
         {
             items.push(AnalysisOutputSyntaxHighlightingItem {
-                start: expr.span.first().primary_start(),
-                end: expr.span.first().primary_end(),
+                start: expr.span.original().primary_start(),
+                end: expr.span.original().primary_end(),
                 kind: "function",
             });
         } else if let Some(literal_kind) = expr.literal_kind() {
             items.push(AnalysisOutputSyntaxHighlightingItem {
-                start: expr.span.first().primary_start(),
-                end: expr.span.first().primary_end(),
+                start: expr.span.original().primary_start(),
+                end: expr.span.original().primary_end(),
                 kind: match literal_kind {
                     wipple_frontend::analysis::LiteralKind::Number => "number",
                     wipple_frontend::analysis::LiteralKind::Text => "text",
@@ -1142,12 +1142,12 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                 return;
             }
 
-            if !within_hover(expr.span.first()) {
+            if !within_hover(expr.span.original()) {
                 return;
             }
 
             hovers.push((
-                expr.span.first(),
+                expr.span.original(),
                 HoverOutput {
                     code: format_type(expr.ty.clone(), Format::default()),
                     help: String::new(),
@@ -1192,12 +1192,12 @@ pub fn hover(start: usize, end: usize) -> JsValue {
         ($kind:ident $(($opt:tt))?, $str:literal $(, $help:expr)?) => {
             for (&id, decl) in &analysis.program.declarations.$kind {
                 for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
-                    if !within_hover(span.first()) {
+                    if !within_hover(span.original()) {
                         continue;
                     }
 
                     hovers.push((
-                        span.first(),
+                        span.original(),
                         HoverOutput {
                             code: format!("{} : {}", decl.name, $str),
                             help: type_decls!(@help decl, $($help)?),
@@ -1229,7 +1229,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
 
     for (&id, decl) in &analysis.program.declarations.constants {
         for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
-            if !within_hover(span.first()) {
+            if !within_hover(span.original()) {
                 continue;
             }
 
@@ -1241,7 +1241,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
             let is_function = matches!(decl.ty, wipple_frontend::analysis::Type::Function(_, _));
 
             hovers.push((
-                span.first(),
+                span.original(),
                 HoverOutput {
                     code: format!(
                         "{} :: {}",
@@ -1274,7 +1274,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
 
     for decl in analysis.program.declarations.variables.values() {
         for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
-            if !within_hover(span.first()) {
+            if !within_hover(span.original()) {
                 continue;
             }
 
@@ -1284,7 +1284,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
             };
 
             hovers.push((
-                span.first(),
+                span.original(),
                 HoverOutput {
                     code: format!(
                         "{} :: {}",
@@ -1300,12 +1300,12 @@ pub fn hover(start: usize, end: usize) -> JsValue {
 
     for decl in analysis.program.declarations.builtin_syntaxes.values() {
         for span in decl.uses.iter().copied() {
-            if !within_hover(span.first()) {
+            if !within_hover(span.original()) {
                 continue;
             }
 
             hovers.push((
-                span.first(),
+                span.original(),
                 HoverOutput {
                     code: format!("{} : syntax", decl.definition.name),
                     help: decl.definition.help.to_string(),
@@ -1325,12 +1325,12 @@ pub fn hover(start: usize, end: usize) -> JsValue {
 
     for (&id, decl) in &analysis.program.declarations.syntaxes {
         for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
-            if !within_hover(span.first()) {
+            if !within_hover(span.original()) {
                 continue;
             }
 
             hovers.push((
-                span.first(),
+                span.original(),
                 HoverOutput {
                     code: format!("{} : syntax", decl.name),
                     help: decl
