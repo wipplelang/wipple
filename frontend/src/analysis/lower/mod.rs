@@ -1209,11 +1209,13 @@ enum StatementDeclarationKind<'a> {
     Type(
         TypeId,
         HashSet<ScopeId>,
+        Option<HashSet<ScopeId>>,
         Option<(Vec<TypeParameterId>, Vec<Bound>)>,
         &'a ast::TypeAssignmentValue<Analysis>,
     ),
     Trait(
         TraitId,
+        HashSet<ScopeId>,
         Option<(Vec<TypeParameterId>, Vec<Bound>)>,
         &'a ast::TraitAssignmentValue<Analysis>,
     ),
@@ -1283,7 +1285,7 @@ impl Lowerer {
             }
 
             let scope_value = match decl.kind {
-                StatementDeclarationKind::Type(id, scope, ty_pattern, value) => {
+                StatementDeclarationKind::Type(id, scope, pattern_scope, ty_pattern, value) => {
                     let (parameters, bounds) = ty_pattern.unwrap_or_default();
 
                     if let Some(bound) = bounds.first() {
@@ -1368,7 +1370,7 @@ impl Lowerer {
                                         match member {
                                             ast::TypeMember::Field(field) => {
                                                 let ty = match &field.ty {
-                                                    Ok(ty) => self.lower_type(ty, ctx),
+                                                    Ok(ty) => self.lower_type(ty, ctx, None),
                                                     Err(error) => TypeAnnotation {
                                                         span: error.span,
                                                         kind: TypeAnnotationKind::error(
@@ -1390,7 +1392,7 @@ impl Lowerer {
                                                     .tys
                                                     .iter()
                                                     .map(|ty| match ty {
-                                                        Ok(ty) => self.lower_type(ty, ctx),
+                                                        Ok(ty) => self.lower_type(ty, ctx, None),
                                                         Err(error) => TypeAnnotation {
                                                             span: error.span,
                                                             kind: TypeAnnotationKind::error(
@@ -1477,7 +1479,7 @@ impl Lowerer {
                                     }
                                 })(),
                                 ast::TypeBody::Alias(body) => {
-                                    let ty = self.lower_type(&body.ty, ctx);
+                                    let ty = self.lower_type(&body.ty, ctx, None);
                                     TypeDeclarationKind::Alias(ty)
                                 }
                             }
@@ -1485,7 +1487,11 @@ impl Lowerer {
                         None => TypeDeclarationKind::Marker,
                     };
 
-                    let attributes = self.lower_type_attributes(decl.attributes, ctx);
+                    let attributes = self.lower_type_attributes(
+                        decl.attributes,
+                        ctx,
+                        pattern_scope.as_ref().unwrap_or(&scope),
+                    );
 
                     self.declarations.types.get_mut(&id).unwrap().value = Some(TypeDeclaration {
                         parameters,
@@ -1495,7 +1501,7 @@ impl Lowerer {
 
                     Some(AnyDeclaration::Type(id))
                 }
-                StatementDeclarationKind::Trait(id, ty_pattern, value) => {
+                StatementDeclarationKind::Trait(id, pattern_scope, ty_pattern, value) => {
                     let (parameters, bounds) = ty_pattern.unwrap_or_default();
 
                     if let Some(bound) = bounds.first() {
@@ -1507,14 +1513,15 @@ impl Lowerer {
                     }
 
                     let ty = value.ty.as_ref().map(|ty| match ty {
-                        Ok(ty) => self.lower_type(ty, ctx),
+                        Ok(ty) => self.lower_type(ty, ctx, None),
                         Err(error) => TypeAnnotation {
                             span: error.span,
                             kind: TypeAnnotationKind::error(&self.compiler),
                         },
                     });
 
-                    let attributes = self.lower_trait_attributes(decl.attributes, ctx);
+                    let attributes =
+                        self.lower_trait_attributes(decl.attributes, ctx, &pattern_scope);
 
                     self.declarations.traits.get_mut(&id).unwrap().value = Some(TraitDeclaration {
                         parameters,
@@ -1525,7 +1532,7 @@ impl Lowerer {
                     Some(AnyDeclaration::Trait(id))
                 }
                 StatementDeclarationKind::Constant(id, (scope, (parameters, bounds)), ty) => {
-                    let ty = self.lower_type(ty, ctx);
+                    let ty = self.lower_type(ty, ctx, None);
 
                     let attributes = self.lower_constant_attributes(decl.attributes, ctx);
 
@@ -1620,7 +1627,7 @@ impl Lowerer {
                     let trait_params = trait_params
                         .iter()
                         .map(|ty| match ty {
-                            Ok(ty) => self.lower_type(ty, ctx),
+                            Ok(ty) => self.lower_type(ty, ctx, None),
                             Err(error) => TypeAnnotation {
                                 span: error.span,
                                 kind: TypeAnnotationKind::error(&self.compiler),
@@ -1984,10 +1991,10 @@ impl Lowerer {
                         (Default::default(), annotation)
                     }
                     ast::ConstantTypeAnnotation::TypeFunction(annotation) => {
-                        let (params, bounds) = annotation
+                        let (params, bounds, _) = annotation
                             .pattern
                             .as_ref()
-                            .map(|annotation| self.lower_type_pattern(annotation, ctx))
+                            .map(|annotation| self.lower_type_pattern(annotation, ctx, None))
                             .unwrap_or_default();
 
                         let ty = match annotation.annotation.as_deref().ok()? {
@@ -2081,7 +2088,7 @@ impl Lowerer {
 
                     Some(StatementDeclaration {
                         span: statement.span(),
-                        kind: StatementDeclarationKind::Trait(id, None, value),
+                        kind: StatementDeclarationKind::Trait(id, scope.clone(), None, value),
                         attributes: &statement.attributes,
                     })
                 }
@@ -2098,7 +2105,7 @@ impl Lowerer {
 
                     Some(StatementDeclaration {
                         span: statement.span(),
-                        kind: StatementDeclarationKind::Type(id, scope.clone(), None, value),
+                        kind: StatementDeclarationKind::Type(id, scope.clone(), None, None, value),
                         attributes: &statement.attributes,
                     })
                 }
@@ -2108,8 +2115,8 @@ impl Lowerer {
                         let (span, name, scope) =
                             self.get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
 
-                        let (parameters, bounds) =
-                            self.lower_type_pattern(value.pattern.as_ref().ok()?, ctx);
+                        let (parameters, bounds, pattern_scope) =
+                            self.lower_type_pattern(value.pattern.as_ref().ok()?, ctx, None);
 
                         let id = self.compiler.new_trait_id_in(self.file);
                         self.insert(name, AnyDeclaration::Trait(id), scope);
@@ -2122,6 +2129,7 @@ impl Lowerer {
                             span: statement.span(),
                             kind: StatementDeclarationKind::Trait(
                                 id,
+                                pattern_scope.unwrap_or_else(|| scope.clone()),
                                 Some((parameters, bounds)),
                                 trait_value,
                             ),
@@ -2132,8 +2140,8 @@ impl Lowerer {
                         let (span, name, scope) =
                             self.get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
 
-                        let (parameters, bounds) =
-                            self.lower_type_pattern(value.pattern.as_ref().ok()?, ctx);
+                        let (parameters, bounds, pattern_scope) =
+                            self.lower_type_pattern(value.pattern.as_ref().ok()?, ctx, None);
 
                         let id = self.compiler.new_type_id_in(self.file);
                         self.insert(name, AnyDeclaration::Type(id), scope);
@@ -2147,6 +2155,7 @@ impl Lowerer {
                             kind: StatementDeclarationKind::Type(
                                 id,
                                 scope.clone(),
+                                pattern_scope,
                                 Some((parameters, bounds)),
                                 ty_value,
                             ),
@@ -2205,8 +2214,11 @@ impl Lowerer {
                             })
                         }
                         ast::AssignmentPattern::TypeFunction(pattern) => {
-                            let (parameters, bounds) =
-                                self.lower_type_pattern(pattern.type_pattern.as_ref().ok()?, ctx);
+                            let (parameters, bounds, _) = self.lower_type_pattern(
+                                pattern.type_pattern.as_ref().ok()?,
+                                ctx,
+                                None,
+                            );
 
                             match pattern.assignment_pattern.as_deref().ok()? {
                                 ast::AssignmentPattern::Instance(pattern) => {
@@ -2273,8 +2285,8 @@ impl Lowerer {
                 })
             }
             ast::Statement::TypeFunction(statement) => {
-                let (parameters, bounds) =
-                    self.lower_type_pattern(statement.pattern.as_ref().ok()?, ctx);
+                let (parameters, bounds, _) =
+                    self.lower_type_pattern(statement.pattern.as_ref().ok()?, ctx, None);
 
                 match statement.value.as_deref().ok()? {
                     ast::Statement::Instance(statement) => {
@@ -3025,7 +3037,7 @@ impl Lowerer {
                 };
 
                 let ty = match &expr.ty {
-                    Ok(ty) => self.lower_type(ty, ctx),
+                    Ok(ty) => self.lower_type(ty, ctx, None),
                     Err(error) => TypeAnnotation {
                         span: error.span,
                         kind: TypeAnnotationKind::error(&self.compiler),
@@ -3548,7 +3560,7 @@ impl Lowerer {
                 };
 
                 let ty = match &pattern.ty {
-                    Ok(ty) => self.lower_type(ty, ctx),
+                    Ok(ty) => self.lower_type(ty, ctx, None),
                     Err(error) => TypeAnnotation {
                         span: error.span,
                         kind: TypeAnnotationKind::error(&self.compiler),
@@ -3605,11 +3617,16 @@ impl Lowerer {
         }
     }
 
-    fn lower_type(&mut self, ty: &ast::Type<Analysis>, ctx: &Context) -> TypeAnnotation {
+    fn lower_type(
+        &mut self,
+        ty: &ast::Type<Analysis>,
+        ctx: &Context,
+        fallback_scope: Option<&HashSet<ScopeId>>,
+    ) -> TypeAnnotation {
         match ty {
             ast::Type::Function(ty) => {
                 let input = match &ty.input {
-                    Ok(ty) => self.lower_type(ty, ctx),
+                    Ok(ty) => self.lower_type(ty, ctx, fallback_scope),
                     Err(error) => TypeAnnotation {
                         span: error.span,
                         kind: TypeAnnotationKind::Error(error.trace.clone()),
@@ -3617,7 +3634,7 @@ impl Lowerer {
                 };
 
                 let output = match &ty.output {
-                    Ok(ty) => self.lower_type(ty, ctx),
+                    Ok(ty) => self.lower_type(ty, ctx, fallback_scope),
                     Err(error) => TypeAnnotation {
                         span: error.span,
                         kind: TypeAnnotationKind::Error(error.trace.clone()),
@@ -3635,7 +3652,7 @@ impl Lowerer {
                     ty.tys
                         .iter()
                         .map(|ty| match ty {
-                            Ok(ty) => self.lower_type(ty, ctx),
+                            Ok(ty) => self.lower_type(ty, ctx, fallback_scope),
                             Err(error) => TypeAnnotation {
                                 span: error.span,
                                 kind: TypeAnnotationKind::Error(error.trace.clone()),
@@ -3657,7 +3674,7 @@ impl Lowerer {
                     .parameters
                     .iter()
                     .map(|ty| match ty {
-                        Ok(ty) => self.lower_type(ty, ctx),
+                        Ok(ty) => self.lower_type(ty, ctx, fallback_scope),
                         Err(error) => TypeAnnotation {
                             span: error.span,
                             kind: TypeAnnotationKind::Error(error.trace.clone()),
@@ -3682,12 +3699,28 @@ impl Lowerer {
                         span: ty.span,
                         kind: TypeAnnotationKind::Named(id, parameters),
                     }
-                } else if let Ok(Some(param)) = self.get(
-                    ty.name,
-                    ty.span,
-                    AnyDeclaration::as_type_parameter,
-                    &ty.name_scope_set,
-                ) {
+                } else if let Some(param) = self
+                    .get(
+                        ty.name,
+                        ty.span,
+                        AnyDeclaration::as_type_parameter,
+                        &ty.name_scope_set,
+                    )
+                    .ok()
+                    .flatten()
+                    .or_else(|| {
+                        fallback_scope.and_then(|fallback_scope| {
+                            self.get(
+                                ty.name,
+                                ty.span,
+                                AnyDeclaration::as_type_parameter,
+                                fallback_scope,
+                            )
+                            .ok()
+                            .flatten()
+                        })
+                    })
+                {
                     self.declarations
                         .type_parameters
                         .get_mut(&param)
@@ -3795,7 +3828,8 @@ impl Lowerer {
         &mut self,
         type_pattern: &ast::TypePattern<Analysis>,
         ctx: &Context,
-    ) -> (Vec<TypeParameterId>, Vec<Bound>) {
+        fallback_scope: Option<&HashSet<ScopeId>>,
+    ) -> (Vec<TypeParameterId>, Vec<Bound>, Option<HashSet<ScopeId>>) {
         macro_rules! generate_type_parameters {
             ($params:expr) => {
                 $params
@@ -3822,10 +3856,14 @@ impl Lowerer {
 
         match type_pattern {
             ast::TypePattern::Where(type_pattern) => {
+                let mut scope = None;
+
                 let params = match &type_pattern.pattern {
                     Ok(lhs) => {
                         let params = match lhs.as_ref() {
                             ast::TypePattern::Name(pattern) => {
+                                scope.get_or_insert_with(|| pattern.scope.clone());
+
                                 vec![(
                                     (pattern.span, pattern.name, pattern.scope.clone()),
                                     None,
@@ -3835,7 +3873,7 @@ impl Lowerer {
                             ast::TypePattern::Default(pattern) => {
                                 match (&pattern.name, &pattern.ty) {
                                     (Ok((name_span, name, scope)), Ok(ty)) => {
-                                        let ty = self.lower_type(ty, ctx);
+                                        let ty = self.lower_type(ty, ctx, fallback_scope);
                                         vec![((*name_span, *name, scope.clone()), Some(ty), false)]
                                     }
                                     _ => Vec::new(),
@@ -3860,7 +3898,8 @@ impl Lowerer {
                                         ast::TypePattern::Default(pattern) => {
                                             match (&pattern.name, &pattern.ty) {
                                                 (Ok((name_span, name, scope)), Ok(ty)) => {
-                                                    let ty = self.lower_type(ty, ctx);
+                                                    let ty =
+                                                        self.lower_type(ty, ctx, fallback_scope);
                                                     Some((
                                                         (*name_span, *name, scope.clone()),
                                                         Some(ty),
@@ -4005,7 +4044,7 @@ impl Lowerer {
                                 .parameters
                                 .iter()
                                 .map(|ty| match ty {
-                                    Ok(ty) => self.lower_type(ty, ctx),
+                                    Ok(ty) => self.lower_type(ty, ctx, fallback_scope),
                                     Err(error) => TypeAnnotation {
                                         span: error.span,
                                         kind: TypeAnnotationKind::error(&self.compiler),
@@ -4024,7 +4063,7 @@ impl Lowerer {
                     })
                     .collect();
 
-                (params, bounds)
+                (params, bounds, scope)
             }
             ast::TypePattern::Name(pattern) => {
                 let params = generate_type_parameters!(vec![(
@@ -4032,19 +4071,19 @@ impl Lowerer {
                     None,
                     false
                 )]);
-                (params, Vec::new())
+                (params, Vec::new(), Some(pattern.scope.clone()))
             }
             ast::TypePattern::Default(pattern) => match (&pattern.name, &pattern.ty) {
                 (Ok((name_span, name, scope)), Ok(ty)) => {
-                    let ty = self.lower_type(ty, ctx);
+                    let ty = self.lower_type(ty, ctx, fallback_scope);
                     let params = generate_type_parameters!(vec![(
                         (*name_span, *name, scope.clone()),
                         Some(ty),
                         false
                     )]);
-                    (params, Vec::new())
+                    (params, Vec::new(), Some(scope.clone()))
                 }
-                _ => (Vec::new(), Vec::new()),
+                _ => (Vec::new(), Vec::new(), None),
             },
             ast::TypePattern::Infer(pattern) => match &pattern.name {
                 Ok((name_span, name, scope)) => {
@@ -4053,25 +4092,31 @@ impl Lowerer {
                         None,
                         true
                     )]);
-                    (params, Vec::new())
+                    (params, Vec::new(), Some(scope.clone()))
                 }
-                _ => (Vec::new(), Vec::new()),
+                _ => (Vec::new(), Vec::new(), None),
             },
             ast::TypePattern::List(pattern) => {
+                let mut scope = None;
+
                 let params = pattern
                     .patterns
                     .iter()
                     .filter_map(|pattern| match pattern {
                         Ok(pattern) => match pattern {
-                            ast::TypePattern::Name(pattern) => Some((
-                                (pattern.span, pattern.name, pattern.scope.clone()),
-                                None,
-                                false,
-                            )),
+                            ast::TypePattern::Name(pattern) => {
+                                scope.get_or_insert_with(|| pattern.scope.clone());
+
+                                Some((
+                                    (pattern.span, pattern.name, pattern.scope.clone()),
+                                    None,
+                                    false,
+                                ))
+                            }
                             ast::TypePattern::Default(pattern) => {
                                 match (&pattern.name, &pattern.ty) {
                                     (Ok((name_span, name, scope)), Ok(ty)) => {
-                                        let ty = self.lower_type(ty, ctx);
+                                        let ty = self.lower_type(ty, ctx, fallback_scope);
                                         Some(((*name_span, *name, scope.clone()), Some(ty), false))
                                     }
                                     _ => None,
@@ -4111,7 +4156,7 @@ impl Lowerer {
 
                 let params = generate_type_parameters!(params);
 
-                (params, Vec::new())
+                (params, Vec::new(), scope)
             }
         }
     }
@@ -4158,6 +4203,7 @@ impl Lowerer {
         &mut self,
         attributes: &ast::StatementAttributes<Analysis>,
         ctx: &Context,
+        scope: &HashSet<ScopeId>,
     ) -> TypeAttributes {
         // TODO: Raise errors for misused attributes
 
@@ -4169,8 +4215,8 @@ impl Lowerer {
                 .into_iter()
                 .filter_map(|attribute| {
                     let param = match attribute.type_parameter {
-                        Some((span, name, scope)) => {
-                            match self.get(name, span, AnyDeclaration::as_type_parameter, &scope) {
+                        Some((span, name)) => {
+                            match self.get(name, span, AnyDeclaration::as_type_parameter, scope) {
                                 Ok(Some(param)) => {
                                     self.declarations
                                         .type_parameters
@@ -4187,7 +4233,7 @@ impl Lowerer {
                                         name,
                                         ctx,
                                         AnyDeclaration::as_type_parameter,
-                                        &scope,
+                                        scope,
                                     );
 
                                     self.compiler.add_diagnostic(
@@ -4247,7 +4293,7 @@ impl Lowerer {
                 .iter()
                 .map(|attribute| {
                     let ty = match &attribute.ty {
-                        Ok(ty) => self.lower_type(ty, ctx),
+                        Ok(ty) => self.lower_type(ty, ctx, Some(scope)),
                         Err(error) => TypeAnnotation {
                             span: error.span,
                             kind: TypeAnnotationKind::error(&self.compiler),
@@ -4264,6 +4310,7 @@ impl Lowerer {
         &mut self,
         attributes: &ast::StatementAttributes<Analysis>,
         ctx: &Context,
+        scope: &HashSet<ScopeId>,
     ) -> TraitAttributes {
         // TODO: Raise errors for misused attributes
 
@@ -4276,13 +4323,13 @@ impl Lowerer {
                         .iter()
                         .cloned()
                         .map(|segment| {
-                            let (param_span, param_name, scope) = segment.param.ok()?;
+                            let (param_span, param_name) = segment.param.ok()?;
 
                             let param = match self.get(
                                 param_name,
                                 param_span,
                                 AnyDeclaration::as_type_parameter,
-                                &scope,
+                                scope,
                             ) {
                                 Ok(Some(id)) => id,
                                 Ok(None) => {
@@ -4291,7 +4338,7 @@ impl Lowerer {
                                         param_name,
                                         ctx,
                                         AnyDeclaration::as_type_parameter,
-                                        &scope,
+                                        scope,
                                     );
 
                                     self.compiler.add_diagnostic(

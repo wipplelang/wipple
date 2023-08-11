@@ -7,13 +7,12 @@ use crate::{
     },
     parse, Driver,
 };
-use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct OnMismatchStatementAttribute<D: Driver> {
     pub span: D::Span,
     pub on_mismatch_span: D::Span,
-    pub type_parameter: Option<(D::Span, D::InternedString, HashSet<D::Scope>)>,
+    pub type_parameter: Option<(D::Span, D::InternedString)>,
     pub message_span: D::Span,
     pub message: D::InternedString,
 }
@@ -38,7 +37,7 @@ impl<D: Driver> Syntax<D> for OnMismatchStatementAttributeSyntax {
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
             "on-mismatch",
-            |context, span, on_mismatch_span, mut exprs, scope_set| async move {
+            |context, span, on_mismatch_span, mut exprs, _scope_set| async move {
                 let attribute = match exprs.len() {
                     1 => {
                         let expr = exprs.pop().unwrap();
@@ -66,11 +65,8 @@ impl<D: Driver> Syntax<D> for OnMismatchStatementAttributeSyntax {
                         let mut exprs = exprs.into_iter();
 
                         let type_parameter_expr = exprs.next().unwrap();
-                        let (type_parameter, type_parameter_scope) = match type_parameter_expr.kind
-                        {
-                            parse::ExprKind::Name(name, scope) => {
-                                (name, scope.unwrap_or_else(|| scope_set.lock().clone()))
-                            }
+                        let type_parameter = match type_parameter_expr.kind {
+                            parse::ExprKind::Name(name, _) => name,
                             _ => {
                                 context
                                     .ast_builder
@@ -97,11 +93,7 @@ impl<D: Driver> Syntax<D> for OnMismatchStatementAttributeSyntax {
                         OnMismatchStatementAttribute {
                             span,
                             on_mismatch_span,
-                            type_parameter: Some((
-                                type_parameter_expr.span,
-                                type_parameter,
-                                type_parameter_scope,
-                            )),
+                            type_parameter: Some((type_parameter_expr.span, type_parameter)),
                             message_span: message_expr.span,
                             message,
                         }
