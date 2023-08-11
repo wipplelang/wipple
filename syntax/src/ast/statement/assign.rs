@@ -63,6 +63,21 @@ impl<D: Driver> Syntax<D> for AssignStatementSyntax {
                     );
                 }
 
+                macro_rules! refers_to_constant {
+                    () => {
+                        match &lhs.kind {
+                            parse::ExprKind::Name(name, scope) => {
+                                context
+                                    .ast_builder
+                                    .file
+                                    .resolve_constant(name.clone(), scope.clone().unwrap_or_else(|| scope_set.lock().clone()))
+                                    .is_ok()
+                            }
+                            _ => false,
+                        }
+                    };
+                }
+
                 // HACK: Allow plain variables to shadow previous names. This
                 // works because all `AssignmentValue`s (except for plain
                 // expressions) may only be declared once per scope
@@ -72,7 +87,7 @@ impl<D: Driver> Syntax<D> for AssignStatementSyntax {
                 // previous code because of this scoping rule. Currently you
                 // will have to declare all types/constants/etc. before any
                 // top-level variable assignments
-                if !context.ast_builder.list_matches_syntax::<AssignmentValueSyntax>(rhs_exprs.clone()) {
+                if !refers_to_constant!() && !context.ast_builder.list_matches_syntax::<AssignmentValueSyntax>(rhs_exprs.clone()) {
                     scope_set.lock().insert(context.ast_builder.file.make_scope());
                 }
 

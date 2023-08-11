@@ -74,6 +74,14 @@ pub trait File<D: Driver> {
         scope_set: HashSet<D::Scope>,
     ) -> Result<ast::SyntaxAssignmentValue<D>, ResolveSyntaxError>;
 
+    fn define_constant(&self, name: D::InternedString, scope_set: HashSet<D::Scope>);
+
+    fn resolve_constant(
+        &self,
+        name: D::InternedString,
+        scope_set: HashSet<D::Scope>,
+    ) -> Result<(), ResolveSyntaxError>;
+
     fn use_builtin_syntax(&self, span: D::Span, name: &'static str);
 }
 
@@ -189,6 +197,18 @@ impl<D: Driver<Span = (), File = SingleFile, Scope = ()>> File<D> for SingleFile
         _name: D::InternedString,
         _scope_set: HashSet<D::Scope>,
     ) -> Result<ast::SyntaxAssignmentValue<D>, ResolveSyntaxError> {
+        Err(ResolveSyntaxError::NotFound)
+    }
+
+    fn define_constant(&self, _name: D::InternedString, _scope_set: HashSet<D::Scope>) {
+        // do nothing
+    }
+
+    fn resolve_constant(
+        &self,
+        _name: D::InternedString,
+        _scope_set: HashSet<D::Scope>,
+    ) -> Result<(), ResolveSyntaxError> {
         Err(ResolveSyntaxError::NotFound)
     }
 

@@ -386,6 +386,7 @@ impl wipple_syntax::Driver for Analysis {
             syntax_declarations: Default::default(),
             syntaxes: Default::default(),
             builtin_syntax_uses: Default::default(),
+            constants: Default::default(),
         };
 
         self.stack.lock().pop();
@@ -485,6 +486,7 @@ pub struct File {
             ),
         >,
     >,
+    constants: Shared<HashMap<InternedString, Vec<HashSet<ScopeId>>>>,
 }
 
 impl wipple_syntax::File<Analysis> for File {
@@ -561,6 +563,46 @@ impl wipple_syntax::File<Analysis> for File {
                 name,
                 (compiler.new_builtin_syntax_id(), definition, vec![span]),
             );
+        }
+    }
+
+    fn define_constant(&self, name: InternedString, scope_set: HashSet<ScopeId>) {
+        self.constants
+            .lock()
+            .entry(name)
+            .or_default()
+            .push(scope_set);
+    }
+
+    fn resolve_constant(
+        &self,
+        name: InternedString,
+        scope_set: HashSet<ScopeId>,
+    ) -> Result<(), ResolveSyntaxError> {
+        let mut constants = self.constants.lock();
+
+        let mut candidates = constants
+            .get(&name)
+            .ok_or(ResolveSyntaxError::NotFound)?
+            .iter()
+            .enumerate()
+            .filter(|(_, candidate)| scope_set.is_superset(candidate))
+            .max_set_by_key(|(_, candidate)| candidate.intersection(&scope_set).count())
+            .into_iter()
+            .map(|(index, _)| index)
+            .collect::<Vec<_>>();
+
+        match candidates.len() {
+            0 => Err(ResolveSyntaxError::NotFound),
+            1 => {
+                let constant = candidates.pop().unwrap();
+
+                // Constants may only be initialized once
+                constants.get_mut(&name).unwrap().remove(constant);
+
+                Ok(())
+            }
+            _ => Err(ResolveSyntaxError::Ambiguous),
         }
     }
 }

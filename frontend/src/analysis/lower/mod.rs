@@ -845,8 +845,6 @@ impl Compiler {
         let ctx = Context::default();
         lowerer.load_builtins();
 
-        let root_scope = HashSet::from([self.new_scope_id_in(lowerer.file)]);
-
         for (&name, (id, definition, uses)) in &*file.file.builtin_syntax_uses.lock() {
             lowerer
                 .declarations
@@ -938,7 +936,7 @@ impl Compiler {
                 lowerer.scopes.entry(name).or_default().extend(
                     dependency_definitions
                         .into_iter()
-                        .map(|(_, definitions)| (root_scope.clone(), definitions)),
+                        .map(|(_, definitions)| (file.root_scope.clone(), definitions)),
                 );
             }
         }
@@ -948,7 +946,7 @@ impl Compiler {
             lowerer.lower_file_attributes(&file.attributes),
         );
 
-        let statements = lowerer.lower_statements(&file.statements, &root_scope, &ctx);
+        let statements = lowerer.lower_statements(&file.statements, &file.root_scope, &ctx);
 
         for (&constant_id, constant) in &lowerer.declarations.constants {
             constant
@@ -1999,7 +1997,7 @@ impl Lowerer {
                 let (child_scope, (parameters, bounds), ty) =
                     match statement.annotation.as_ref().ok()? {
                         ast::ConstantTypeAnnotation::Type(annotation) => {
-                            (scope.clone(), Default::default(), annotation)
+                            (statement.scope_set.clone(), Default::default(), annotation)
                         }
                         ast::ConstantTypeAnnotation::TypeFunction(annotation) => {
                             let scope = annotation.scope_set.clone();

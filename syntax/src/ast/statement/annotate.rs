@@ -8,8 +8,9 @@ use crate::{
         Expression, ExpressionSyntax, ExpressionSyntaxContext, StatementAttributes,
         StatementSyntaxContext,
     },
-    parse, Driver,
+    parse, Driver, File,
 };
+use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct AnnotateStatement<D: Driver> {
@@ -17,6 +18,7 @@ pub struct AnnotateStatement<D: Driver> {
     pub colon_span: D::Span,
     pub value: Result<AnnotatedName<D>, Result<Expression<D>, SyntaxError<D>>>,
     pub annotation: Result<ConstantTypeAnnotation<D>, SyntaxError<D>>,
+    pub scope_set: HashSet<D::Scope>,
     pub attributes: StatementAttributes<D>,
 }
 
@@ -64,10 +66,17 @@ impl<D: Driver> Syntax<D> for AnnotateStatementSyntax {
                 let value = if lhs_exprs.len() == 1 {
                     let lhs = lhs_exprs.pop().unwrap();
                     match lhs.kind {
-                        parse::ExprKind::Name(name, _) => Ok(AnnotatedName {
-                            span: lhs.span,
-                            name,
-                        }),
+                        parse::ExprKind::Name(name, scope) => {
+                            context.ast_builder.file.define_constant(
+                                name.clone(),
+                                scope.unwrap_or_else(|| scope_set.lock().clone()),
+                            );
+
+                            Ok(AnnotatedName {
+                                span: lhs.span,
+                                name,
+                            })
+                        }
                         _ => {
                             let expr = context
                                 .ast_builder
@@ -111,7 +120,7 @@ impl<D: Driver> Syntax<D> for AnnotateStatementSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         rhs,
-                        scope_set,
+                        scope_set.clone(),
                     )
                     .await;
 
@@ -120,6 +129,7 @@ impl<D: Driver> Syntax<D> for AnnotateStatementSyntax {
                     colon_span,
                     value,
                     annotation: ty,
+                    scope_set: scope_set.lock().clone(),
                     attributes: context.statement_attributes.unwrap().lock().clone(),
                 }
                 .into())

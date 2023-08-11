@@ -213,6 +213,7 @@ impl BuiltinSyntaxDefinition {
 pub struct File<D: Driver> {
     pub span: D::Span,
     pub attributes: FileAttributes<D>,
+    pub root_scope: HashSet<D::Scope>,
     pub statements: Vec<Result<Statement<D>, SyntaxError<D>>>,
     pub file: D::File,
 }
@@ -354,6 +355,7 @@ pub(crate) async fn build<D: Driver>(
     File {
         span: parse_file.span,
         attributes: ast_builder.attributes.into_unique(),
+        root_scope: scope_set.into_unique(),
         statements,
         file: ast_builder.file,
     }
