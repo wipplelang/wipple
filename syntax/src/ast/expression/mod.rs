@@ -577,7 +577,9 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
         scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Expression<D>, SyntaxError<D>> {
         for expr in &mut exprs {
-            expr.fix_to(&scope_set.lock());
+            // The empty set is a marker that we can detect below to restore
+            // the scopes after expansion
+            expr.fix_to(&HashSet::new());
         }
 
         let SyntaxBody::Block(body) = syntax.body?;
@@ -600,6 +602,9 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
 
             let mut body = SyntaxPattern::expand(&self.ast_builder, body, &vars, span)?;
             body.fix_to(&body_scope_set);
+
+            // Restore the scopes after expansion
+            body.remove_empty();
 
             return self
                 .ast_builder

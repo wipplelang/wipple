@@ -138,6 +138,20 @@ impl<D: Driver> Expr<D> {
         })
     }
 
+    pub fn remove_empty(&mut self) {
+        self.traverse_mut(|expr| {
+            if let ExprKind::Name(_, name_scope) = &mut expr.kind {
+                if name_scope
+                    .as_ref()
+                    .expect("must call `fix_to` with an empty set first")
+                    .is_empty()
+                {
+                    *name_scope = None;
+                }
+            }
+        })
+    }
+
     pub fn traverse_mut(&mut self, mut f: impl FnMut(&mut Self)) {
         self.traverse_mut_inner(&mut f);
     }
