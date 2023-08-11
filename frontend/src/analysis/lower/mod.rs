@@ -1187,12 +1187,6 @@ impl Lowerer {
                 .then_some(name)
         })
     }
-
-    fn declares_in(&mut self, var: VariableId, scope: &HashSet<ScopeId>) -> bool {
-        self.variables
-            .get(&var)
-            .is_some_and(|declaration_scope| !declaration_scope.is_subset(scope))
-    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -4636,12 +4630,14 @@ impl Lowerer {
     fn generate_capture_list(
         &mut self,
         expr: &mut Expression,
-        child_scope: &HashSet<ScopeId>,
+        scope: &HashSet<ScopeId>,
     ) -> CaptureList {
         let mut captures = CaptureList::new();
         expr.traverse_mut(|expr| {
             if let ExpressionKind::Variable(var) = expr.kind {
-                if !self.declares_in(var, child_scope) {
+                let declaration_scope = self.variables.get(&var).unwrap();
+
+                if declaration_scope != scope && declaration_scope.is_superset(scope) {
                     captures.push((var, expr.span));
                 }
             }
