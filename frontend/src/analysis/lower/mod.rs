@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque},
+    hash::Hash,
     mem,
     sync::Arc,
 };
@@ -932,11 +933,11 @@ impl Compiler {
 
             let exported = dependency.exported.clone();
             for (name, dependency_definitions) in exported {
-                lowerer
-                    .scopes
-                    .entry(name)
-                    .or_default()
-                    .extend(dependency_definitions);
+                lowerer.scopes.entry(name).or_default().extend(
+                    dependency_definitions
+                        .into_iter()
+                        .map(|(_, definitions)| (HashSet::new(), definitions)),
+                );
             }
         }
 
@@ -1109,7 +1110,7 @@ impl Lowerer {
             .push((scope_set.clone(), value));
     }
 
-    fn get<T>(
+    fn get<T: Copy + Eq + Hash>(
         &mut self,
         name: InternedString,
         span: SpanList,
@@ -1119,7 +1120,7 @@ impl Lowerer {
         self.get_inner(name, Some(span), kind, scope)
     }
 
-    fn peek<T>(
+    fn peek<T: Copy + Eq + Hash>(
         &mut self,
         name: InternedString,
         kind: fn(AnyDeclaration) -> Option<T>,
@@ -1128,7 +1129,7 @@ impl Lowerer {
         self.get_inner(name, None, kind, scope)
     }
 
-    fn get_inner<T>(
+    fn get_inner<T: Copy + Eq + Hash>(
         &mut self,
         name: InternedString,
         use_span: Option<SpanList>,
@@ -1165,6 +1166,7 @@ impl Lowerer {
 
                 Some(resolved)
             })
+            .unique()
             .collect::<Vec<_>>();
 
         match candidates.len() {
@@ -1191,9 +1193,7 @@ impl Lowerer {
         scope_id.iter().all(|scope_id| {
             self.scope_info
                 .get(scope_id)
-                .unwrap()
-                .declared_variables
-                .contains(&var)
+                .is_some_and(|scope| scope.declared_variables.contains(&var))
         })
     }
 }

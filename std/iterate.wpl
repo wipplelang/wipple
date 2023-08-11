@@ -131,18 +131,18 @@ collect :: Input (infer Element) Output where (Collect Element Output) (Iterate 
 collect : input -> Collect (Iterate input)
 
 Element => instance (Collect Element (List Element)) : iterator -> {
-  list : mutable (list)
+  l : mutable (list)
   repeat {
     when (next iterator) {
       Some x -> {
-        list . append! x
+        l . append! x
         Continue
       }
       None -> Break ()
     }
   }
 
-  get list
+  get l
 }
 
 Element => instance (Iterate (List Element) Element) : list -> {

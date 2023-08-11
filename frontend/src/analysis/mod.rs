@@ -264,12 +264,11 @@ impl wipple_syntax::Driver for Analysis {
 
             let dependency_syntaxes = file.file.syntaxes.lock().clone();
             for (name, dependency_syntaxes) in dependency_syntaxes {
-                source_file
-                    .syntaxes
-                    .lock()
-                    .entry(name)
-                    .or_default()
-                    .extend(dependency_syntaxes);
+                source_file.syntaxes.lock().entry(name).or_default().extend(
+                    dependency_syntaxes
+                        .into_iter()
+                        .map(|(_, syntaxes)| (HashSet::new(), syntaxes)),
+                );
             }
 
             source_file.dependencies.lock().push(file.clone());
@@ -527,15 +526,19 @@ impl wipple_syntax::File<Analysis> for File {
             .ok_or(ResolveSyntaxError::NotFound)?
             .iter()
             .filter(|(candidate, _)| scope_set.is_superset(candidate))
-            .max_set_by_key(|(candidate, _)| candidate.intersection(&scope_set).count());
+            .max_set_by_key(|(candidate, _)| candidate.intersection(&scope_set).count())
+            .into_iter()
+            .map(|(_, syntax)| *syntax)
+            .unique()
+            .collect::<Vec<_>>();
 
         match candidates.len() {
             0 => Err(ResolveSyntaxError::NotFound),
             1 => {
-                let (_, syntax) = candidates.pop().unwrap();
+                let syntax = candidates.pop().unwrap();
 
                 let mut syntax_declarations = self.syntax_declarations.lock();
-                let syntax = syntax_declarations.get_mut(syntax).unwrap();
+                let syntax = syntax_declarations.get_mut(&syntax).unwrap();
                 syntax.uses.push(span);
 
                 Ok(syntax.clone())
