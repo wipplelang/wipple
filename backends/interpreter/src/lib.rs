@@ -183,7 +183,9 @@ impl Scope {
     }
 
     fn get(&self, var: usize) -> Value {
-        self.0[var].clone().expect("uninitialized variable")
+        self.0[var]
+            .clone()
+            .unwrap_or_else(|| panic!("uninitialized variable ${var}"))
     }
 
     fn set(&mut self, var: usize, value: Value) {

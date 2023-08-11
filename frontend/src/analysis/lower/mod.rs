@@ -4637,7 +4637,7 @@ impl Lowerer {
             if let ExpressionKind::Variable(var) = expr.kind {
                 let declaration_scope = self.variables.get(&var).unwrap();
 
-                if declaration_scope != scope && declaration_scope.is_superset(scope) {
+                if scope != declaration_scope && scope.is_superset(declaration_scope) {
                     captures.push((var, expr.span));
                 }
             }
