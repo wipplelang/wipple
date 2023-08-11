@@ -11,7 +11,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque},
+    collections::{BTreeMap, HashMap, HashSet, VecDeque},
     hash::Hash,
     mem,
     sync::Arc,
@@ -839,7 +839,8 @@ impl Compiler {
             declarations: Default::default(),
             specializations: Default::default(),
             scopes: Default::default(),
-            scope_info: Default::default(),
+            captures: Default::default(),
+            variables: Default::default(),
         };
 
         let ctx = Context::default();
@@ -1080,13 +1081,8 @@ struct Lowerer {
     file_info: FileInfo,
     specializations: BTreeMap<ConstantId, ConstantId>,
     scopes: HashMap<InternedString, Vec<(HashSet<ScopeId>, AnyDeclaration)>>,
-    scope_info: BTreeMap<ScopeId, ScopeInfo>,
-}
-
-#[derive(Debug, Clone, Default)]
-struct ScopeInfo {
-    declared_variables: BTreeSet<VariableId>,
-    used_variables: Shared<CaptureList>,
+    captures: BTreeMap<ScopeId, Shared<CaptureList>>,
+    variables: BTreeMap<VariableId, HashSet<ScopeId>>,
 }
 
 impl Lowerer {
@@ -1096,12 +1092,8 @@ impl Lowerer {
         value: AnyDeclaration,
         scope_set: &HashSet<ScopeId>,
     ) {
-        for &id in scope_set {
-            let scope_info = self.scope_info.entry(id).or_default();
-
-            if let AnyDeclaration::Variable(var) = value {
-                scope_info.declared_variables.insert(var);
-            }
+        if let AnyDeclaration::Variable(var) = value {
+            self.variables.insert(var, scope_set.clone());
         }
 
         self.scopes
@@ -1154,10 +1146,9 @@ impl Lowerer {
                 if let Some(use_span) = use_span {
                     for &scope in scopes {
                         if let Some(id) = decl.as_variable() {
-                            self.scope_info
+                            self.captures
                                 .entry(scope)
                                 .or_default()
-                                .used_variables
                                 .lock()
                                 .push((id, use_span));
                         }
@@ -1189,12 +1180,10 @@ impl Lowerer {
         })
     }
 
-    fn declares_in(&mut self, var: VariableId, scope_id: &HashSet<ScopeId>) -> bool {
-        scope_id.iter().all(|scope_id| {
-            self.scope_info
-                .get(scope_id)
-                .is_some_and(|scope| scope.declared_variables.contains(&var))
-        })
+    fn declares_in(&mut self, var: VariableId, scope: &HashSet<ScopeId>) -> bool {
+        self.variables
+            .get(&var)
+            .is_some_and(|declaration_scope| !declaration_scope.is_subset(scope))
     }
 }
 
@@ -1623,7 +1612,7 @@ impl Lowerer {
                                     ),
                                 )
                                 .collect(),
-                                "ambiguous-name",
+                                "",
                             );
 
                             self.declarations.instances.remove(&id);
@@ -2468,7 +2457,7 @@ impl Lowerer {
                             ))
                             .chain(self.diagnostic_notes_for_ambiguous_name(candidates))
                             .collect(),
-                            "ambiguous-name",
+                            "",
                         );
 
                         Expression {
@@ -2556,7 +2545,7 @@ impl Lowerer {
                                     ),
                                 )
                                 .collect(),
-                                "ambiguous-name",
+                                "",
                             );
 
                             return Expression {
@@ -3177,7 +3166,7 @@ impl Lowerer {
                                                 ),
                                             )
                                             .collect(),
-                                            "ambiguous-name",
+                                            "",
                                         );
 
                                         None
@@ -3331,7 +3320,7 @@ impl Lowerer {
                                 ),
                             )
                             .collect(),
-                            "ambiguous-name",
+                            "",
                         );
 
                         Pattern {
@@ -3732,7 +3721,7 @@ impl Lowerer {
                             ),
                         )
                         .collect(),
-                        "ambiguous-name",
+                        "",
                     );
 
                     return TypeAnnotation {
@@ -4015,7 +4004,7 @@ impl Lowerer {
                                             ),
                                         )
                                         .collect(),
-                                        "ambiguous-name",
+                                        "",
                                     );
 
                                     return None;
@@ -4239,7 +4228,7 @@ impl Lowerer {
                                             ),
                                         )
                                         .collect(),
-                                        "ambiguous-name",
+                                        "",
                                     );
 
                                     return None;
@@ -4348,7 +4337,7 @@ impl Lowerer {
                                             ),
                                         )
                                         .collect(),
-                                        "ambiguous-name",
+                                        "",
                                     );
 
                                     return None;
