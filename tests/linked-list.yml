@@ -5,14 +5,14 @@ code: |
     }
 
     reduce :: A R => (A -> R -> R) -> R -> Linked-List A -> R
-    reduce : f result list -> when list {
+    reduce : f result l -> when l {
         Nil -> result
         Cons x rest -> reduce f (f x result) rest
     }
 
-    list : Cons 1 (Cons 2 (Cons 3 Nil))
+    l : Cons 1 (Cons 2 (Cons 3 Nil))
 
-    sum : reduce (Add :: (Number -> _)) 0 list
+    sum : reduce (Add :: (Number -> _)) 0 l
     show sum
 
 output: |

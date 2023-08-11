@@ -1163,15 +1163,33 @@ impl Lowerer {
                     }
                 }
 
-                Some(resolved)
+                Some((decl, resolved))
             })
-            .unique()
+            .unique_by(|(_, resolved)| *resolved)
             .collect::<Vec<_>>();
 
         match candidates.len() {
             0 => Ok(None),
-            1 => Ok(Some(candidates.pop().unwrap())),
-            _ => Err(candidates),
+            1 => Ok(Some(candidates.pop().unwrap().1)),
+            _ => {
+                // Allow declarations made in this file to shadow declarations
+                // made in other files
+
+                let mut local_candidates = candidates
+                    .iter()
+                    .filter(|(decl, _)| self.span_of(*decl).first().path == self.file)
+                    .map(|(_, candidate)| *candidate)
+                    .collect::<Vec<_>>();
+
+                if local_candidates.len() == 1 {
+                    Ok(Some(local_candidates.pop().unwrap()))
+                } else {
+                    Err(candidates
+                        .into_iter()
+                        .map(|(_, candidate)| candidate)
+                        .collect())
+                }
+            }
         }
     }
 
