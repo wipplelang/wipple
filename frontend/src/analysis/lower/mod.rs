@@ -845,6 +845,8 @@ impl Compiler {
         let ctx = Context::default();
         lowerer.load_builtins();
 
+        let root_scope = HashSet::from([self.new_scope_id_in(lowerer.file)]);
+
         for (&name, (id, definition, uses)) in &*file.file.builtin_syntax_uses.lock() {
             lowerer
                 .declarations
@@ -936,7 +938,7 @@ impl Compiler {
                 lowerer.scopes.entry(name).or_default().extend(
                     dependency_definitions
                         .into_iter()
-                        .map(|(_, definitions)| (HashSet::new(), definitions)),
+                        .map(|(_, definitions)| (root_scope.clone(), definitions)),
                 );
             }
         }
@@ -946,7 +948,7 @@ impl Compiler {
             lowerer.lower_file_attributes(&file.attributes),
         );
 
-        let statements = lowerer.lower_statements(&file.statements, &HashSet::new(), &ctx);
+        let statements = lowerer.lower_statements(&file.statements, &root_scope, &ctx);
 
         for (&constant_id, constant) in &lowerer.declarations.constants {
             constant
