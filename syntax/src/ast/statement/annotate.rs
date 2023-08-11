@@ -72,10 +72,11 @@ impl<D: Driver> Syntax<D> for AnnotateStatementSyntax {
                             let parent_scope = scope.clone();
                             scope.insert(context.ast_builder.file.make_scope());
 
-                            context
-                                .ast_builder
-                                .file
-                                .define_constant(name.clone(), parent_scope.clone());
+                            context.ast_builder.file.define_constant(
+                                name.clone(),
+                                parent_scope.clone(),
+                                scope.clone(),
+                            );
 
                             scope_set = Shared::new(scope);
 

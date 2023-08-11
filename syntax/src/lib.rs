@@ -74,9 +74,14 @@ pub trait File<D: Driver> {
         scope_set: HashSet<D::Scope>,
     ) -> Result<ast::SyntaxAssignmentValue<D>, ResolveSyntaxError>;
 
-    fn define_constant(&self, name: D::InternedString, scope_set: HashSet<D::Scope>);
+    fn define_constant(
+        &self,
+        name: D::InternedString,
+        visible_scope_set: HashSet<D::Scope>,
+        body_scope_set: HashSet<D::Scope>,
+    );
 
-    fn resolve_constant(
+    fn resolve_constant_body(
         &self,
         name: D::InternedString,
         scope_set: HashSet<D::Scope>,
@@ -200,11 +205,16 @@ impl<D: Driver<Span = (), File = SingleFile, Scope = ()>> File<D> for SingleFile
         Err(ResolveSyntaxError::NotFound)
     }
 
-    fn define_constant(&self, _name: D::InternedString, _scope_set: HashSet<D::Scope>) {
+    fn define_constant(
+        &self,
+        _name: D::InternedString,
+        _visible_scope_set: HashSet<D::Scope>,
+        _body_scope_set: HashSet<D::Scope>,
+    ) {
         // do nothing
     }
 
-    fn resolve_constant(
+    fn resolve_constant_body(
         &self,
         _name: D::InternedString,
         _scope_set: HashSet<D::Scope>,

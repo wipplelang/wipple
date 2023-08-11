@@ -73,7 +73,7 @@ impl<D: Driver> Syntax<D> for AssignStatementSyntax {
                     parse::ExprKind::Name(name, scope) => context
                         .ast_builder
                         .file
-                        .resolve_constant(
+                        .resolve_constant_body(
                             name.clone(),
                             scope.clone().unwrap_or_else(|| scope_set.lock().clone()),
                         )

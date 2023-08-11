@@ -486,7 +486,7 @@ pub struct File {
             ),
         >,
     >,
-    constants: Shared<HashMap<InternedString, Vec<HashSet<ScopeId>>>>,
+    constants: Shared<HashMap<InternedString, Vec<(HashSet<ScopeId>, HashSet<ScopeId>)>>>,
 }
 
 impl wipple_syntax::File<Analysis> for File {
@@ -566,15 +566,20 @@ impl wipple_syntax::File<Analysis> for File {
         }
     }
 
-    fn define_constant(&self, name: InternedString, scope_set: HashSet<ScopeId>) {
+    fn define_constant(
+        &self,
+        name: InternedString,
+        visible_scope_set: HashSet<ScopeId>,
+        body_scope_set: HashSet<ScopeId>,
+    ) {
         self.constants
             .lock()
             .entry(name)
             .or_default()
-            .push(scope_set);
+            .push((visible_scope_set, body_scope_set));
     }
 
-    fn resolve_constant(
+    fn resolve_constant_body(
         &self,
         name: InternedString,
         scope_set: HashSet<ScopeId>,
@@ -586,8 +591,8 @@ impl wipple_syntax::File<Analysis> for File {
             .ok_or(ResolveSyntaxError::NotFound)?
             .iter()
             .enumerate()
-            .filter(|(_, candidate)| scope_set.is_superset(candidate))
-            .max_set_by_key(|(_, candidate)| candidate.intersection(&scope_set).count())
+            .filter(|(_, (candidate, _))| scope_set.is_superset(candidate))
+            .max_set_by_key(|(_, (candidate, _))| candidate.intersection(&scope_set).count())
             .into_iter()
             .map(|(index, _)| index)
             .collect::<Vec<_>>();
@@ -598,7 +603,7 @@ impl wipple_syntax::File<Analysis> for File {
                 let constant = candidates.pop().unwrap();
 
                 // Constants may only be initialized once
-                let scope = constants.get_mut(&name).unwrap().remove(constant);
+                let (_, scope) = constants.get_mut(&name).unwrap().remove(constant);
 
                 Ok(scope)
             }
