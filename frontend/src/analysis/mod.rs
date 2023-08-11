@@ -578,7 +578,7 @@ impl wipple_syntax::File<Analysis> for File {
         &self,
         name: InternedString,
         scope_set: HashSet<ScopeId>,
-    ) -> Result<(), ResolveSyntaxError> {
+    ) -> Result<HashSet<ScopeId>, ResolveSyntaxError> {
         let mut constants = self.constants.lock();
 
         let mut candidates = constants
@@ -598,9 +598,9 @@ impl wipple_syntax::File<Analysis> for File {
                 let constant = candidates.pop().unwrap();
 
                 // Constants may only be initialized once
-                constants.get_mut(&name).unwrap().remove(constant);
+                let scope = constants.get_mut(&name).unwrap().remove(constant);
 
-                Ok(())
+                Ok(scope)
             }
             _ => Err(ResolveSyntaxError::Ambiguous),
         }

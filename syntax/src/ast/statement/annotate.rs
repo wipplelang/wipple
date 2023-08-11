@@ -11,6 +11,7 @@ use crate::{
     parse, Driver, File,
 };
 use std::collections::HashSet;
+use wipple_util::Shared;
 
 #[derive(Debug, Clone)]
 pub struct AnnotateStatement<D: Driver> {
@@ -18,7 +19,6 @@ pub struct AnnotateStatement<D: Driver> {
     pub colon_span: D::Span,
     pub value: Result<AnnotatedName<D>, Result<Expression<D>, SyntaxError<D>>>,
     pub annotation: Result<ConstantTypeAnnotation<D>, SyntaxError<D>>,
-    pub scope_set: HashSet<D::Scope>,
     pub attributes: StatementAttributes<D>,
 }
 
@@ -26,6 +26,7 @@ pub struct AnnotateStatement<D: Driver> {
 pub struct AnnotatedName<D: Driver> {
     pub span: D::Span,
     pub name: D::InternedString,
+    pub scope_set: HashSet<D::Scope>,
 }
 
 impl<D: Driver> AnnotateStatement<D> {
@@ -62,19 +63,26 @@ impl<D: Driver> Syntax<D> for AnnotateStatementSyntax {
              (lhs_span, mut lhs_exprs),
              colon_span,
              (rhs_span, rhs_exprs),
-             scope_set| async move {
+             mut scope_set| async move {
                 let value = if lhs_exprs.len() == 1 {
                     let lhs = lhs_exprs.pop().unwrap();
                     match lhs.kind {
                         parse::ExprKind::Name(name, scope) => {
-                            context.ast_builder.file.define_constant(
-                                name.clone(),
-                                scope.unwrap_or_else(|| scope_set.lock().clone()),
-                            );
+                            let mut scope = scope.unwrap_or_else(|| scope_set.lock().clone());
+                            let parent_scope = scope.clone();
+                            scope.insert(context.ast_builder.file.make_scope());
+
+                            context
+                                .ast_builder
+                                .file
+                                .define_constant(name.clone(), parent_scope.clone());
+
+                            scope_set = Shared::new(scope);
 
                             Ok(AnnotatedName {
                                 span: lhs.span,
                                 name,
+                                scope_set: parent_scope,
                             })
                         }
                         _ => {
@@ -129,7 +137,6 @@ impl<D: Driver> Syntax<D> for AnnotateStatementSyntax {
                     colon_span,
                     value,
                     annotation: ty,
-                    scope_set: scope_set.lock().clone(),
                     attributes: context.statement_attributes.unwrap().lock().clone(),
                 }
                 .into())

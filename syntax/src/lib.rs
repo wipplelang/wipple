@@ -80,7 +80,7 @@ pub trait File<D: Driver> {
         &self,
         name: D::InternedString,
         scope_set: HashSet<D::Scope>,
-    ) -> Result<(), ResolveSyntaxError>;
+    ) -> Result<HashSet<D::Scope>, ResolveSyntaxError>;
 
     fn use_builtin_syntax(&self, span: D::Span, name: &'static str);
 }
@@ -208,7 +208,7 @@ impl<D: Driver<Span = (), File = SingleFile, Scope = ()>> File<D> for SingleFile
         &self,
         _name: D::InternedString,
         _scope_set: HashSet<D::Scope>,
-    ) -> Result<(), ResolveSyntaxError> {
+    ) -> Result<HashSet<D::Scope>, ResolveSyntaxError> {
         Err(ResolveSyntaxError::NotFound)
     }
 

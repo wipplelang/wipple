@@ -8,10 +8,8 @@ use crate::{
         ConstantTypeAnnotation, ConstantTypeAnnotationSyntax, TypePattern, TypePatternSyntax,
         TypePatternSyntaxContext,
     },
-    parse, Driver, File,
+    parse, Driver,
 };
-use std::collections::HashSet;
-use wipple_util::Shared;
 
 #[derive(Debug, Clone)]
 pub struct TypeFunctionConstantTypeAnnotation<D: Driver> {
@@ -19,7 +17,6 @@ pub struct TypeFunctionConstantTypeAnnotation<D: Driver> {
     pub arrow_span: D::Span,
     pub pattern: Result<TypePattern<D>, SyntaxError<D>>,
     pub annotation: Result<Box<ConstantTypeAnnotation<D>>, SyntaxError<D>>,
-    pub scope_set: HashSet<D::Scope>,
 }
 
 impl<D: Driver> TypeFunctionConstantTypeAnnotation<D> {
@@ -48,10 +45,6 @@ impl<D: Driver> Syntax<D> for TypeFunctionConstantTypeAnnotationSyntax {
             "=>",
             OperatorAssociativity::None,
             |context, span, (lhs_span, lhs), arrow_span, (rhs_span, rhs), scope_set| async move {
-                let mut scope_set = scope_set.lock().clone();
-                scope_set.insert(context.ast_builder.file.make_scope());
-                let scope_set = Shared::new(scope_set);
-
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs);
 
                 let pattern = context
@@ -82,7 +75,6 @@ impl<D: Driver> Syntax<D> for TypeFunctionConstantTypeAnnotationSyntax {
                     arrow_span,
                     pattern,
                     annotation: annotation.map(Box::new),
-                    scope_set: scope_set.into_unique(),
                 }
                 .into())
             },

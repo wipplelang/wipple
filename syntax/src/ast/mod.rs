@@ -257,7 +257,9 @@ pub(crate) async fn build<D: Driver>(
     driver_file: D::File,
     parse_file: parse::File<D>,
 ) -> File<D> {
-    let scope_set = Shared::new(HashSet::from([driver_file.make_scope()]));
+    let root_scope = HashSet::from([driver_file.make_scope()]);
+
+    let scope_set = Shared::new(root_scope.clone());
 
     let ast_builder = AstBuilder {
         driver,
@@ -355,7 +357,7 @@ pub(crate) async fn build<D: Driver>(
     File {
         span: parse_file.span,
         attributes: ast_builder.attributes.into_unique(),
-        root_scope: scope_set.into_unique(),
+        root_scope,
         statements,
         file: ast_builder.file,
     }

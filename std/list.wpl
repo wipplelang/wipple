@@ -13,49 +13,49 @@ instance (Default (List _)) : list
 [help "Retrieve the first item inside a `List`, if it exists."]
 [help-group "Collections"]
 first :: A => List A -> Maybe A
-first : list -> intrinsic "list-first" list
+first : l -> intrinsic "list-first" l
 
 [help "Retrieve the last item inside a `List`, if it exists."]
 [help-group "Collections"]
 last :: A => List A -> Maybe A
-last : list -> intrinsic "list-last" list
+last : l -> intrinsic "list-last" l
 
 [help "Retrieve all but the last item inside a `List`."]
 [help-group "Collections"]
 initial :: A => List A -> Maybe (List A)
-initial : list -> intrinsic "list-initial" list
+initial : l -> intrinsic "list-initial" l
 
 [help "Retrieve all but the first item inside a `List`."]
 [help-group "Collections"]
 tail :: A => List A -> Maybe (List A)
-tail : list -> intrinsic "list-tail" list
+tail : l -> intrinsic "list-tail" l
 
 [help "Retrieve the value in a `List` at a particular index, if it exists."]
 [help-group "Collections"]
 nth :: A => Natural -> List A -> Maybe A
-nth : index list -> intrinsic "list-nth" list index
+nth : index l -> intrinsic "list-nth" l index
 
 [help "Add a new item to the end of a `List`."]
 [help-group "Collections"]
 append :: A => A -> List A -> List A
-append : new list -> intrinsic "list-append" list new
+append : new l -> intrinsic "list-append" l new
 
 [help "Add a new item to the end of a `Mutable List`."]
 [help-group "Collections"]
 append! :: A => A -> Mutable (List A) -> ()
-append! : new list -> list . set! (list . get . append new)
+append! : new l -> l . set! (l . get . append new)
 
 [help "Insert a new item at a particular index inside a `List`."]
 [help-group "Collections"]
 insert-at :: A => Natural -> A -> List A -> Maybe (List A)
-insert-at : index new list -> intrinsic "list-insert-at" list index new
+insert-at : index new l -> intrinsic "list-insert-at" l index new
 
 [help "Insert a new item at a particular index inside a `Mutable List`."]
 [help-group "Collections"]
 insert-at! :: A => Natural -> A -> Mutable (List A) -> Boolean
-insert-at! : index new list -> when (list . get . insert-at index new) {
+insert-at! : index new l -> when (l . get . insert-at index new) {
   Some new-list -> {
-    list . set! new-list
+    l . set! new-list
     True
   }
   None -> False
@@ -64,14 +64,14 @@ insert-at! : index new list -> when (list . get . insert-at index new) {
 [help "Remove the item at a particular index inside a `List`."]
 [help-group "Collections"]
 remove-at :: A => Natural -> List A -> Maybe (List A)
-remove-at : index list -> intrinsic "list-remove-at" list index
+remove-at : index l -> intrinsic "list-remove-at" l index
 
 [help "Remove the item at a particular index inside a `Mutable List`."]
 [help-group "Collections"]
 remove-at! :: Natural -> Mutable (List _) -> Boolean
-remove-at! : index list -> when (list . get . remove-at index) {
+remove-at! : index l -> when (l . get . remove-at index) {
   Some new-list -> {
-    list . set! new-list
+    l . set! new-list
     True
   }
   None -> False

@@ -25,7 +25,8 @@ pub struct File<Decls = Declarations> {
     pub info: FileInfo,
     pub specializations: BTreeMap<ConstantId, Vec<ConstantId>>,
     pub statements: Vec<Expression>,
-    pub exported: HashMap<InternedString, HashSet<AnyDeclaration>>,
+    pub root_scope: HashSet<ScopeId>,
+    pub exported: HashMap<InternedString, Vec<(HashSet<ScopeId>, AnyDeclaration)>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -845,7 +846,7 @@ impl Compiler {
         };
 
         let ctx = Context::default();
-        lowerer.load_builtins(&file.root_scope);
+        lowerer.load_builtins(&HashSet::new());
 
         for (&name, (id, definition, uses)) in &*file.file.builtin_syntax_uses.lock() {
             lowerer
@@ -930,12 +931,19 @@ impl Compiler {
             }
 
             let exported = dependency.exported.clone();
+
             for (name, decls) in exported {
                 let scopes = lowerer.scopes.entry(name).or_default();
-
-                for decl in decls {
-                    if !scopes.iter().any(|(scope, _)| scope == &file.root_scope) {
+                for (scope, decl) in decls {
+                    // So that this file can access top-level declarations
+                    if scope == dependency.root_scope {
                         scopes.push((file.root_scope.clone(), decl));
+                    }
+
+                    // So that hygienic syntaxes can continue to access the
+                    // file's declarations
+                    if !scope.is_empty() {
+                        scopes.push((scope, decl));
                     }
                 }
             }
@@ -1060,21 +1068,6 @@ impl Compiler {
                 .push(constant);
         }
 
-        let exported = lowerer
-            .scopes
-            .into_iter()
-            .map(|(name, decls)| {
-                (
-                    name,
-                    decls
-                        .into_iter()
-                        .filter(|(scope, _)| scope.is_subset(&file.root_scope))
-                        .map(|(_, decl)| decl)
-                        .collect(),
-                )
-            })
-            .collect();
-
         File {
             span: file.span,
             attributes: file_attributes,
@@ -1082,7 +1075,8 @@ impl Compiler {
             info: lowerer.file_info,
             specializations,
             statements,
-            exported,
+            root_scope: file.root_scope.clone(),
+            exported: lowerer.scopes,
         }
     }
 }
@@ -1110,11 +1104,10 @@ impl Lowerer {
             self.variables.insert(var, scope_set.clone());
         }
 
-        let scope = self.scopes.entry(name).or_default();
-
-        if !scope.iter().any(|(scope, _)| scope == scope_set) {
-            scope.push((scope_set.clone(), value));
-        }
+        self.scopes
+            .entry(name)
+            .or_default()
+            .push((scope_set.clone(), value));
     }
 
     fn get<T: Copy + Eq + Hash>(
@@ -1221,6 +1214,7 @@ struct StatementDeclaration<'a> {
 enum StatementDeclarationKind<'a> {
     Type(
         TypeId,
+        HashSet<ScopeId>,
         Option<(Vec<TypeParameterId>, Vec<Bound>)>,
         &'a ast::TypeAssignmentValue<Analysis>,
     ),
@@ -1295,7 +1289,7 @@ impl Lowerer {
             }
 
             let scope_value = match decl.kind {
-                StatementDeclarationKind::Type(id, ty_pattern, value) => {
+                StatementDeclarationKind::Type(id, scope, ty_pattern, value) => {
                     let (parameters, bounds) = ty_pattern.unwrap_or_default();
 
                     if let Some(bound) = bounds.first() {
@@ -1355,7 +1349,7 @@ impl Lowerer {
                                                             variant.constructor,
                                                             Some((id, index)),
                                                         ),
-                                                        &variant.name_scope,
+                                                        &scope,
                                                     );
 
                                                     (variant.name, index)
@@ -1467,7 +1461,7 @@ impl Lowerer {
                                                         variant.constructor,
                                                         Some((id, index)),
                                                     ),
-                                                    &variant.name_scope,
+                                                    &scope,
                                                 );
 
                                                 (variant.name, index)
@@ -1875,6 +1869,9 @@ impl Lowerer {
                                     .uses
                                     .insert(pattern.span);
 
+                                let mut scope = prev_constant_scope.clone();
+                                scope.insert(self.compiler.new_scope_id_in(expr.span().first().path));
+
                                 for id in associated_parameters {
                                     let parameter =
                                         self.declarations.type_parameters.get(&id).unwrap();
@@ -1882,12 +1879,9 @@ impl Lowerer {
                                     self.insert(
                                         parameter.name.unwrap(),
                                         AnyDeclaration::TypeParameter(id),
-                                        &prev_constant_scope,
+                                        &scope,
                                     );
                                 }
-
-                                let mut scope = prev_constant_scope.clone();
-                                scope.insert(self.compiler.new_scope_id_in(expr.span().first().path));
 
                                 let mut value = self.lower_expr(expr, ctx);
 
@@ -1947,8 +1941,8 @@ impl Lowerer {
             ast::Statement::Annotate(statement) => {
                 let id = self.compiler.new_constant_id_in(self.file);
 
-                let (span, name) = match &statement.value {
-                    Ok(name) => (name.span, name.name),
+                let (span, name, scope) = match &statement.value {
+                    Ok(name) => (name.span, name.name, name.scope_set.clone()),
                     Err(expr) => {
                         let expr = expr.clone().map(Box::new);
 
@@ -1991,17 +1985,15 @@ impl Lowerer {
                     }
                 };
 
-                let (scope, (parameters, bounds), ty) = match statement.annotation.as_ref().ok()? {
+                let ((parameters, bounds), ty) = match statement.annotation.as_ref().ok()? {
                     ast::ConstantTypeAnnotation::Type(annotation) => {
-                        (statement.scope_set.clone(), Default::default(), annotation)
+                        (Default::default(), annotation)
                     }
                     ast::ConstantTypeAnnotation::TypeFunction(annotation) => {
-                        let scope = annotation.scope_set.clone();
-
                         let (params, bounds) = annotation
                             .pattern
                             .as_ref()
-                            .map(|annotation| self.lower_type_pattern(annotation, &scope, ctx))
+                            .map(|annotation| self.lower_type_pattern(annotation, ctx))
                             .unwrap_or_default();
 
                         let ty = match annotation.annotation.as_deref().ok()? {
@@ -2017,7 +2009,7 @@ impl Lowerer {
                             }
                         };
 
-                        (scope, (params, bounds), ty)
+                        ((params, bounds), ty)
                     }
                 };
 
@@ -2112,7 +2104,7 @@ impl Lowerer {
 
                     Some(StatementDeclaration {
                         span: statement.span(),
-                        kind: StatementDeclarationKind::Type(id, None, value),
+                        kind: StatementDeclarationKind::Type(id, scope.clone(), None, value),
                         attributes: &statement.attributes,
                     })
                 }
@@ -2122,13 +2114,8 @@ impl Lowerer {
                         let (span, name, scope) =
                             self.get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
 
-                        let child_scope = value.scope_set.clone();
-
-                        let (parameters, bounds) = self.lower_type_pattern(
-                            value.pattern.as_ref().ok()?,
-                            &child_scope,
-                            ctx,
-                        );
+                        let (parameters, bounds) =
+                            self.lower_type_pattern(value.pattern.as_ref().ok()?, ctx);
 
                         let id = self.compiler.new_trait_id_in(self.file);
                         self.insert(name, AnyDeclaration::Trait(id), scope);
@@ -2151,13 +2138,8 @@ impl Lowerer {
                         let (span, name, scope) =
                             self.get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
 
-                        let child_scope = value.scope_set.clone();
-
-                        let (parameters, bounds) = self.lower_type_pattern(
-                            value.pattern.as_ref().ok()?,
-                            &child_scope,
-                            ctx,
-                        );
+                        let (parameters, bounds) =
+                            self.lower_type_pattern(value.pattern.as_ref().ok()?, ctx);
 
                         let id = self.compiler.new_type_id_in(self.file);
                         self.insert(name, AnyDeclaration::Type(id), scope);
@@ -2170,6 +2152,7 @@ impl Lowerer {
                             span: statement.span(),
                             kind: StatementDeclarationKind::Type(
                                 id,
+                                scope.clone(),
                                 Some((parameters, bounds)),
                                 ty_value,
                             ),
@@ -2228,13 +2211,8 @@ impl Lowerer {
                             })
                         }
                         ast::AssignmentPattern::TypeFunction(pattern) => {
-                            let child_scope = pattern.scope_set.clone();
-
-                            let (parameters, bounds) = self.lower_type_pattern(
-                                pattern.type_pattern.as_ref().ok()?,
-                                &child_scope,
-                                ctx,
-                            );
+                            let (parameters, bounds) =
+                                self.lower_type_pattern(pattern.type_pattern.as_ref().ok()?, ctx);
 
                             match pattern.assignment_pattern.as_deref().ok()? {
                                 ast::AssignmentPattern::Instance(pattern) => {
@@ -2301,10 +2279,8 @@ impl Lowerer {
                 })
             }
             ast::Statement::TypeFunction(statement) => {
-                let child_scope = statement.scope_set.clone();
-
                 let (parameters, bounds) =
-                    self.lower_type_pattern(statement.pattern.as_ref().ok()?, &child_scope, ctx);
+                    self.lower_type_pattern(statement.pattern.as_ref().ok()?, ctx);
 
                 match statement.value.as_deref().ok()? {
                     ast::Statement::Instance(statement) => {
@@ -2429,6 +2405,11 @@ impl Lowerer {
                             &name_scope,
                         );
 
+                        if expr.name.as_str() == "Add" {
+                            dbg!(expr.name, &name_scope, self.scopes.get(&expr.name).unwrap());
+                            panic!();
+                        }
+
                         self.compiler.add_diagnostic(
                             self.compiler
                                 .error(
@@ -2525,37 +2506,6 @@ impl Lowerer {
                         };
 
                         let ty_name_scope = ty_name.scope_set.clone();
-
-                        if let Err(candidates) = self.get(
-                            ty_name.name,
-                            function.span(),
-                            AnyDeclaration::as_any,
-                            &ty_name_scope,
-                        ) {
-                            self.compiler.add_error(
-                                format!("multiple definitions of `{}`", ty_name.name),
-                                std::iter::once(Note::primary(
-                                    function.span(),
-                                    format!("`{}` could refer to...", ty_name.name),
-                                ))
-                                .chain(
-                                    self.diagnostic_notes_for_ambiguous_name(
-                                        candidates
-                                            .into_iter()
-                                            .map(|candidate| self.span_of(candidate))
-                                            .collect(),
-                                    ),
-                                )
-                                .collect(),
-                                "",
-                            );
-
-                            return Expression {
-                                id: self.compiler.new_expression_id(ctx.owner),
-                                span: expr.span,
-                                kind: ExpressionKind::error(&self.compiler),
-                            };
-                        }
 
                         if let Ok(Some(id)) = self.get(
                             ty_name.name,
@@ -2832,6 +2782,40 @@ impl Lowerer {
                                 span: expr.span,
                                 kind: ExpressionKind::error(&self.compiler),
                             }
+                        } else if let Err(candidates) = self.get(
+                            ty_name.name,
+                            function.span(),
+                            |decl| {
+                                (decl.as_type().is_some()
+                                    || decl.as_type_parameter().is_some()
+                                    || decl.as_builtin_type().is_some())
+                                .then_some(decl)
+                            },
+                            &ty_name_scope,
+                        ) {
+                            self.compiler.add_error(
+                                format!("multiple definitions of `{}`", ty_name.name),
+                                std::iter::once(Note::primary(
+                                    function.span(),
+                                    format!("`{}` could refer to...", ty_name.name),
+                                ))
+                                .chain(
+                                    self.diagnostic_notes_for_ambiguous_name(
+                                        candidates
+                                            .into_iter()
+                                            .map(|candidate| self.span_of(candidate))
+                                            .collect(),
+                                    ),
+                                )
+                                .collect(),
+                                "",
+                            );
+
+                            return Expression {
+                                id: self.compiler.new_expression_id(ctx.owner),
+                                span: expr.span,
+                                kind: ExpressionKind::error(&self.compiler),
+                            };
                         } else {
                             function_call!(self.lower_expr(function, ctx), &expr.inputs)
                         }
@@ -3687,33 +3671,6 @@ impl Lowerer {
                     })
                     .collect();
 
-                if let Err(candidates) =
-                    self.get(ty.name, ty.span, AnyDeclaration::as_any, &ty.name_scope_set)
-                {
-                    self.compiler.add_error(
-                        format!("multiple definitions of `{}`", ty.name),
-                        std::iter::once(Note::primary(
-                            ty.span,
-                            format!("`{}` could refer to...", ty.name),
-                        ))
-                        .chain(
-                            self.diagnostic_notes_for_ambiguous_name(
-                                candidates
-                                    .into_iter()
-                                    .map(|candidate| self.span_of(candidate))
-                                    .collect(),
-                            ),
-                        )
-                        .collect(),
-                        "",
-                    );
-
-                    return TypeAnnotation {
-                        span: ty.span,
-                        kind: TypeAnnotationKind::error(&self.compiler),
-                    };
-                }
-
                 if let Ok(Some(id)) = self.get(
                     ty.name,
                     ty.span,
@@ -3777,6 +3734,39 @@ impl Lowerer {
                         span: ty.span,
                         kind: TypeAnnotationKind::Builtin(builtin, parameters),
                     }
+                } else if let Err(candidates) = self.get(
+                    ty.name,
+                    ty.span,
+                    |decl| {
+                        (decl.as_type().is_some()
+                            || decl.as_type_parameter().is_some()
+                            || decl.as_builtin_type().is_some())
+                        .then_some(decl)
+                    },
+                    &ty.name_scope_set,
+                ) {
+                    self.compiler.add_error(
+                        format!("multiple definitions of `{}`", ty.name),
+                        std::iter::once(Note::primary(
+                            ty.span,
+                            format!("`{}` could refer to...", ty.name),
+                        ))
+                        .chain(
+                            self.diagnostic_notes_for_ambiguous_name(
+                                candidates
+                                    .into_iter()
+                                    .map(|candidate| self.span_of(candidate))
+                                    .collect(),
+                            ),
+                        )
+                        .collect(),
+                        "",
+                    );
+
+                    return TypeAnnotation {
+                        span: ty.span,
+                        kind: TypeAnnotationKind::error(&self.compiler),
+                    };
                 } else {
                     let (notes, fix) = self.diagnostic_notes_for_unresolved_name(
                         ty.span,
@@ -3810,14 +3800,13 @@ impl Lowerer {
     fn lower_type_pattern(
         &mut self,
         type_pattern: &ast::TypePattern<Analysis>,
-        scope: &HashSet<ScopeId>,
         ctx: &Context,
     ) -> (Vec<TypeParameterId>, Vec<Bound>) {
         macro_rules! generate_type_parameters {
             ($params:expr) => {
                 $params
                     .into_iter()
-                    .map(|((name_span, name), default, infer)| {
+                    .map(|((name_span, name, scope), default, infer)| {
                         let id = self.compiler.new_type_parameter_id_in(self.file);
 
                         self.declarations.type_parameters.insert(
@@ -3829,7 +3818,7 @@ impl Lowerer {
                             ),
                         );
 
-                        self.insert(name, AnyDeclaration::TypeParameter(id), scope);
+                        self.insert(name, AnyDeclaration::TypeParameter(id), &scope);
 
                         id
                     })
@@ -3843,20 +3832,24 @@ impl Lowerer {
                     Ok(lhs) => {
                         let params = match lhs.as_ref() {
                             ast::TypePattern::Name(pattern) => {
-                                vec![((pattern.span, pattern.name), None, false)]
+                                vec![(
+                                    (pattern.span, pattern.name, pattern.scope.clone()),
+                                    None,
+                                    false,
+                                )]
                             }
                             ast::TypePattern::Default(pattern) => {
                                 match (&pattern.name, &pattern.ty) {
-                                    (Ok((name_span, name)), Ok(ty)) => {
+                                    (Ok((name_span, name, scope)), Ok(ty)) => {
                                         let ty = self.lower_type(ty, ctx);
-                                        vec![((*name_span, *name), Some(ty), false)]
+                                        vec![((*name_span, *name, scope.clone()), Some(ty), false)]
                                     }
                                     _ => Vec::new(),
                                 }
                             }
                             ast::TypePattern::Infer(pattern) => match &pattern.name {
-                                Ok((name_span, name)) => {
-                                    vec![((*name_span, *name), None, true)]
+                                Ok((name_span, name, scope)) => {
+                                    vec![((*name_span, *name, scope.clone()), None, true)]
                                 }
                                 _ => Vec::new(),
                             },
@@ -3865,22 +3858,30 @@ impl Lowerer {
                                 .iter()
                                 .filter_map(|pattern| match pattern {
                                     Ok(pattern) => match pattern {
-                                        ast::TypePattern::Name(pattern) => {
-                                            Some(((pattern.span, pattern.name), None, false))
-                                        }
+                                        ast::TypePattern::Name(pattern) => Some((
+                                            (pattern.span, pattern.name, pattern.scope.clone()),
+                                            None,
+                                            false,
+                                        )),
                                         ast::TypePattern::Default(pattern) => {
                                             match (&pattern.name, &pattern.ty) {
-                                                (Ok((name_span, name)), Ok(ty)) => {
+                                                (Ok((name_span, name, scope)), Ok(ty)) => {
                                                     let ty = self.lower_type(ty, ctx);
-                                                    Some(((*name_span, *name), Some(ty), false))
+                                                    Some((
+                                                        (*name_span, *name, scope.clone()),
+                                                        Some(ty),
+                                                        false,
+                                                    ))
                                                 }
                                                 _ => None,
                                             }
                                         }
                                         ast::TypePattern::Infer(pattern) => match &pattern.name {
-                                            Ok((name_span, name)) => {
-                                                Some(((*name_span, *name), None, true))
-                                            }
+                                            Ok((name_span, name, scope)) => Some((
+                                                (*name_span, *name, scope.clone()),
+                                                None,
+                                                true,
+                                            )),
                                             _ => None,
                                         },
                                         ast::TypePattern::List(pattern) => {
@@ -3936,7 +3937,7 @@ impl Lowerer {
                                 bound.trait_name,
                                 bound.trait_span,
                                 AnyDeclaration::as_trait,
-                                scope,
+                                &bound.trait_scope_set,
                             ) {
                                 Ok(Some(tr)) => {
                                     self.declarations
@@ -3954,7 +3955,7 @@ impl Lowerer {
                                         bound.trait_name,
                                         ctx,
                                         AnyDeclaration::as_trait,
-                                        scope,
+                                        &bound.trait_scope_set,
                                     );
 
                                     self.compiler.add_diagnostic(
@@ -4032,22 +4033,32 @@ impl Lowerer {
                 (params, bounds)
             }
             ast::TypePattern::Name(pattern) => {
-                let params =
-                    generate_type_parameters!(vec![((pattern.span, pattern.name), None, false)]);
+                let params = generate_type_parameters!(vec![(
+                    (pattern.span, pattern.name, pattern.scope.clone()),
+                    None,
+                    false
+                )]);
                 (params, Vec::new())
             }
             ast::TypePattern::Default(pattern) => match (&pattern.name, &pattern.ty) {
-                (Ok((name_span, name)), Ok(ty)) => {
+                (Ok((name_span, name, scope)), Ok(ty)) => {
                     let ty = self.lower_type(ty, ctx);
-                    let params =
-                        generate_type_parameters!(vec![((*name_span, *name), Some(ty), false)]);
+                    let params = generate_type_parameters!(vec![(
+                        (*name_span, *name, scope.clone()),
+                        Some(ty),
+                        false
+                    )]);
                     (params, Vec::new())
                 }
                 _ => (Vec::new(), Vec::new()),
             },
             ast::TypePattern::Infer(pattern) => match &pattern.name {
-                Ok((name_span, name)) => {
-                    let params = generate_type_parameters!(vec![((*name_span, *name), None, true)]);
+                Ok((name_span, name, scope)) => {
+                    let params = generate_type_parameters!(vec![(
+                        (*name_span, *name, scope.clone()),
+                        None,
+                        true
+                    )]);
                     (params, Vec::new())
                 }
                 _ => (Vec::new(), Vec::new()),
@@ -4058,20 +4069,24 @@ impl Lowerer {
                     .iter()
                     .filter_map(|pattern| match pattern {
                         Ok(pattern) => match pattern {
-                            ast::TypePattern::Name(pattern) => {
-                                Some(((pattern.span, pattern.name), None, false))
-                            }
+                            ast::TypePattern::Name(pattern) => Some((
+                                (pattern.span, pattern.name, pattern.scope.clone()),
+                                None,
+                                false,
+                            )),
                             ast::TypePattern::Default(pattern) => {
                                 match (&pattern.name, &pattern.ty) {
-                                    (Ok((name_span, name)), Ok(ty)) => {
+                                    (Ok((name_span, name, scope)), Ok(ty)) => {
                                         let ty = self.lower_type(ty, ctx);
-                                        Some(((*name_span, *name), Some(ty), false))
+                                        Some(((*name_span, *name, scope.clone()), Some(ty), false))
                                     }
                                     _ => None,
                                 }
                             }
                             ast::TypePattern::Infer(pattern) => match &pattern.name {
-                                Ok((name_span, name)) => Some(((*name_span, *name), None, true)),
+                                Ok((name_span, name, scope)) => {
+                                    Some(((*name_span, *name, scope.clone()), None, true))
+                                }
                                 _ => None,
                             },
                             ast::TypePattern::List(pattern) => {

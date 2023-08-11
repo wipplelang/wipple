@@ -145,10 +145,10 @@ Element => instance (Collect Element (List Element)) : iterator -> {
   get l
 }
 
-Element => instance (Iterate (List Element) Element) : list -> {
+Element => instance (Iterate (List Element) Element) : l -> {
   index : mutable 0
 
-  iterator (() -> when (list . nth (get index)) {
+  iterator (() -> when (l . nth (get index)) {
     Some element -> {
       increment! index
       Some element

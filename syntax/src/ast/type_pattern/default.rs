@@ -8,12 +8,13 @@ use crate::{
     },
     parse, Driver,
 };
+use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct DefaultTypePattern<D: Driver> {
     pub span: D::Span,
     pub colon_span: D::Span,
-    pub name: Result<(D::Span, D::InternedString), SyntaxError<D>>,
+    pub name: Result<(D::Span, D::InternedString, HashSet<D::Scope>), SyntaxError<D>>,
     pub ty: Result<Type<D>, SyntaxError<D>>,
 }
 
@@ -52,7 +53,11 @@ impl<D: Driver> Syntax<D> for DefaultTypePatternSyntax {
                     let expr = lhs_exprs.pop().unwrap();
 
                     match expr.kind {
-                        parse::ExprKind::Name(name, _) => Ok((expr.span, name)),
+                        parse::ExprKind::Name(name, scope) => Ok((
+                            expr.span,
+                            name,
+                            scope.unwrap_or_else(|| scope_set.lock().clone()),
+                        )),
                         _ => {
                             context
                                 .ast_builder
