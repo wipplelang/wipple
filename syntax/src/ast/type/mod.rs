@@ -14,6 +14,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use futures::{stream, StreamExt};
+use std::collections::HashSet;
 use wipple_util::Shared;
 
 syntax_group! {
@@ -69,7 +70,7 @@ pub struct NamedType<D: Driver> {
     pub span: D::Span,
     pub name_span: D::Span,
     pub name: D::InternedString,
-    pub name_scope: D::Scope,
+    pub name_scope_set: HashSet<D::Scope>,
     pub parameters: Vec<Result<Type<D>, SyntaxError<D>>>,
 }
 
@@ -124,7 +125,7 @@ impl<D: Driver> SyntaxContext<D> for TypeSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope: D::Scope,
+        _scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         self.ast_builder
             .driver
@@ -136,15 +137,17 @@ impl<D: Driver> SyntaxContext<D> for TypeSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         match expr.try_into_list_exprs() {
             Ok((span, mut exprs)) => {
-                let (name_span, name, name_scope) = match exprs.next() {
+                let (name_span, name, name_scope_set) = match exprs.next() {
                     Some(expr) => match expr.kind {
-                        parse::ExprKind::Name(name, name_scope) => {
-                            (expr.span, name, name_scope.unwrap_or(scope))
-                        }
+                        parse::ExprKind::Name(name, name_scope) => (
+                            expr.span,
+                            name,
+                            name_scope.unwrap_or_else(|| scope_set.lock().clone()),
+                        ),
                         _ => {
                             self.ast_builder
                                 .driver
@@ -158,8 +161,11 @@ impl<D: Driver> SyntaxContext<D> for TypeSyntaxContext<D> {
 
                 let parameters = stream::iter(exprs)
                     .then(|expr| {
-                        self.ast_builder
-                            .build_expr::<TypeSyntax>(self.clone(), expr, scope)
+                        self.ast_builder.build_expr::<TypeSyntax>(
+                            self.clone(),
+                            expr,
+                            scope_set.clone(),
+                        )
                     })
                     .collect()
                     .await;
@@ -167,7 +173,7 @@ impl<D: Driver> SyntaxContext<D> for TypeSyntaxContext<D> {
                 Ok(NamedType {
                     name_span,
                     name,
-                    name_scope,
+                    name_scope_set,
                     span,
                     parameters,
                 }
@@ -178,7 +184,7 @@ impl<D: Driver> SyntaxContext<D> for TypeSyntaxContext<D> {
                     span: expr.span,
                     name_span: expr.span,
                     name,
-                    name_scope: name_scope.unwrap_or(scope),
+                    name_scope_set: name_scope.unwrap_or_else(|| scope_set.lock().clone()),
                     parameters: Vec::new(),
                 }
                 .into()),

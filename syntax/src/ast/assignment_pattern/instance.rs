@@ -8,6 +8,7 @@ use crate::{
     parse, Driver,
 };
 use futures::{stream, StreamExt};
+use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct InstanceAssignmentPattern<D: Driver> {
@@ -16,7 +17,7 @@ pub struct InstanceAssignmentPattern<D: Driver> {
     pub pattern_span: D::Span,
     pub trait_span: D::Span,
     pub trait_name: D::InternedString,
-    pub trait_scope: D::Scope,
+    pub trait_scope: HashSet<D::Scope>,
     pub trait_parameters: Vec<Result<Type<D>, SyntaxError<D>>>,
 }
 
@@ -48,7 +49,7 @@ impl<D: Driver> Syntax<D> for InstanceAssignmentPatternSyntax {
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
             "instance",
-            |context, span, instance_span, mut exprs, scope| async move {
+            |context, span, instance_span, mut exprs, scope_set| async move {
                 if exprs.len() != 1 {
                     context
                         .ast_builder
@@ -61,7 +62,7 @@ impl<D: Driver> Syntax<D> for InstanceAssignmentPatternSyntax {
                 let input = exprs.pop().unwrap();
                 let pattern_span = input.span;
 
-                let (trait_name, trait_span, trait_scope, trait_parameters) =
+                let (trait_name, trait_scope, trait_span, trait_parameters) =
                     match input.try_into_list_exprs() {
                         Ok((span, mut exprs)) => {
                             let trait_name = match exprs.next() {
@@ -80,7 +81,7 @@ impl<D: Driver> Syntax<D> for InstanceAssignmentPatternSyntax {
 
                             let (trait_name, trait_scope) = match trait_name.kind {
                                 parse::ExprKind::Name(name, name_scope) => {
-                                    (name, name_scope.unwrap_or(scope))
+                                    (name, name_scope.unwrap_or_else(|| scope_set.lock().clone()))
                                 }
                                 _ => {
                                     context
@@ -100,18 +101,21 @@ impl<D: Driver> Syntax<D> for InstanceAssignmentPatternSyntax {
                                     context.ast_builder.build_expr::<TypeSyntax>(
                                         context.clone(),
                                         expr,
-                                        scope,
+                                        scope_set.clone(),
                                     )
                                 })
                                 .collect()
                                 .await;
 
-                            (trait_name, trait_span, trait_scope, params)
+                            (trait_name, trait_scope, trait_span, params)
                         }
                         Err(expr) => match expr.kind {
-                            parse::ExprKind::Name(name, name_scope) => {
-                                (name, expr.span, name_scope.unwrap_or(scope), Vec::new())
-                            }
+                            parse::ExprKind::Name(name, name_scope) => (
+                                name,
+                                name_scope.unwrap_or_else(|| scope_set.lock().clone()),
+                                expr.span,
+                                Vec::new(),
+                            ),
                             _ => {
                                 context
                                     .ast_builder

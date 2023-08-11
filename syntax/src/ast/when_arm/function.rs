@@ -10,6 +10,7 @@ use crate::{
     },
     parse, Driver, File,
 };
+use wipple_util::Shared;
 
 #[derive(Debug, Clone)]
 pub struct FunctionWhenArm<D: Driver> {
@@ -17,7 +18,6 @@ pub struct FunctionWhenArm<D: Driver> {
     pub arrow_span: D::Span,
     pub pattern: Result<WhenPattern<D>, SyntaxError<D>>,
     pub body: Result<Expression<D>, SyntaxError<D>>,
-    pub scope: D::Scope,
 }
 
 impl<D: Driver> FunctionWhenArm<D> {
@@ -45,8 +45,10 @@ impl<D: Driver> Syntax<D> for FunctionWhenArmSyntax {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::operator(
             "->",
             OperatorAssociativity::Right,
-            |context, span, (lhs_span, lhs), arrow_span, (rhs_span, rhs), scope| async move {
-                let scope = context.ast_builder.file.make_scope(scope);
+            |context, span, (lhs_span, lhs), arrow_span, (rhs_span, rhs), scope_set| async move {
+                let mut scope_set = scope_set.lock().clone();
+                scope_set.insert(context.ast_builder.file.make_scope());
+                let scope_set = Shared::new(scope_set);
 
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs);
                 let pattern = context
@@ -57,7 +59,7 @@ impl<D: Driver> Syntax<D> for FunctionWhenArmSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         lhs,
-                        scope,
+                        scope_set.clone(),
                     )
                     .await;
 
@@ -70,7 +72,7 @@ impl<D: Driver> Syntax<D> for FunctionWhenArmSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         rhs,
-                        scope,
+                        scope_set,
                     )
                     .await;
 
@@ -79,7 +81,6 @@ impl<D: Driver> Syntax<D> for FunctionWhenArmSyntax {
                     arrow_span,
                     pattern,
                     body,
-                    scope,
                 }
                 .into())
             },

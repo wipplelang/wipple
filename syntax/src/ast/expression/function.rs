@@ -10,6 +10,8 @@ use crate::{
     parse, Driver, File,
 };
 use futures::{stream, StreamExt};
+use std::collections::HashSet;
+use wipple_util::Shared;
 
 #[derive(Debug, Clone)]
 pub struct FunctionExpression<D: Driver> {
@@ -17,7 +19,7 @@ pub struct FunctionExpression<D: Driver> {
     pub arrow_span: D::Span,
     pub pattern: Result<Pattern<D>, SyntaxError<D>>,
     pub body: Result<Box<Expression<D>>, SyntaxError<D>>,
-    pub scope: D::Scope,
+    pub scope_set: HashSet<D::Scope>,
 }
 
 impl<D: Driver> FunctionExpression<D> {
@@ -45,24 +47,29 @@ impl<D: Driver> Syntax<D> for FunctionExpressionSyntax {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::operator(
             "->",
             OperatorAssociativity::Right,
-            |context, span, (_lhs_span, lhs), arrow_span, (rhs_span, rhs), scope| async move {
-                let scope = context.ast_builder.file.make_scope(scope);
+            |context, span, (_lhs_span, lhs), arrow_span, (rhs_span, rhs), scope_set| async move {
+                let mut scope_set = scope_set.lock().clone();
+                scope_set.insert(context.ast_builder.file.make_scope());
+                let scope_set = Shared::new(scope_set);
 
-                let mut scopes = vec![scope];
+                let mut scopes = vec![scope_set];
                 for _ in &lhs {
-                    scopes.push(context.ast_builder.file.make_scope(*scopes.last().unwrap()));
+                    let mut new = scopes.last().unwrap().lock().clone();
+                    new.insert(context.ast_builder.file.make_scope());
+                    let new = Shared::new(new);
+                    scopes.push(new);
                 }
 
                 let mut patterns = stream::iter(lhs)
                     .zip(stream::iter(scopes.iter().skip(1)))
-                    .then(|(expr, &scope)| {
+                    .then(|(expr, scope)| {
                         context.ast_builder.build_expr::<PatternSyntax>(
                             PatternSyntaxContext::new(context.ast_builder.clone())
                                 .with_statement_attributes(
                                     context.statement_attributes.as_ref().unwrap().clone(),
                                 ),
                             expr,
-                            scope,
+                            scope.clone(),
                         )
                     })
                     .collect::<Vec<_>>()
@@ -74,7 +81,7 @@ impl<D: Driver> Syntax<D> for FunctionExpressionSyntax {
                 let rhs = parse::Expr::list(rhs_span, rhs);
                 let body = context
                     .ast_builder
-                    .build_expr::<ExpressionSyntax>(context.clone(), rhs, last_scope)
+                    .build_expr::<ExpressionSyntax>(context.clone(), rhs, last_scope.clone())
                     .await;
 
                 let function = patterns.into_iter().zip(scopes.into_iter().skip(1)).rfold(
@@ -83,14 +90,14 @@ impl<D: Driver> Syntax<D> for FunctionExpressionSyntax {
                         arrow_span,
                         pattern: last_pattern,
                         body: body.map(Box::new),
-                        scope: last_scope,
+                        scope_set: last_scope.into_unique(),
                     },
-                    |function, (pattern, scope)| FunctionExpression {
+                    |function, (pattern, scope_set)| FunctionExpression {
                         span,
                         arrow_span,
                         pattern,
                         body: Ok(Box::new(function.into())),
-                        scope,
+                        scope_set: scope_set.into_unique(),
                     },
                 );
 

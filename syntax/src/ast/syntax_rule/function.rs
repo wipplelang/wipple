@@ -48,19 +48,22 @@ impl<D: Driver> Syntax<D> for FunctionSyntaxRuleSyntax {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::operator(
             "->",
             OperatorAssociativity::Right,
-            |context, span, (_lhs_span, lhs_exprs), arrow_span, (rhs_span, rhs_exprs), scope| async move {
+            |context,
+             span,
+             (_lhs_span, lhs_exprs),
+             arrow_span,
+             (rhs_span, rhs_exprs),
+             scope_set| async move {
                 let input = stream::iter(lhs_exprs)
                     .then(|expr| {
-                        context
-                            .ast_builder
-                            .build_expr::<SyntaxPatternSyntax>(
-                                SyntaxPatternSyntaxContext::new(context.ast_builder.clone())
-                                    .with_statement_attributes(
-                                        context.statement_attributes.as_ref().unwrap().clone(),
-                                    ),
-                                expr,
-                                scope
-                            )
+                        context.ast_builder.build_expr::<SyntaxPatternSyntax>(
+                            SyntaxPatternSyntaxContext::new(context.ast_builder.clone())
+                                .with_statement_attributes(
+                                    context.statement_attributes.as_ref().unwrap().clone(),
+                                ),
+                            expr,
+                            scope_set.clone(),
+                        )
                     })
                     .collect::<Vec<_>>()
                     .await
@@ -76,7 +79,7 @@ impl<D: Driver> Syntax<D> for FunctionSyntaxRuleSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         rhs,
-                        scope
+                        scope_set,
                     )
                     .await;
 

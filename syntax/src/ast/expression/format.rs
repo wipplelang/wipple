@@ -52,7 +52,7 @@ impl<D: Driver> Syntax<D> for FormatExpressionSyntax {
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
             "format",
-            |context, span, format_span, exprs, scope| async move {
+            |context, span, format_span, exprs, scope_set| async move {
                 if exprs.is_empty() {
                     context
                         .ast_builder
@@ -89,7 +89,7 @@ impl<D: Driver> Syntax<D> for FormatExpressionSyntax {
                         context.ast_builder.build_expr::<ExpressionSyntax>(
                             context.clone(),
                             expr,
-                            scope,
+                            scope_set.clone(),
                         )
                     })
                     .collect::<Vec<_>>()

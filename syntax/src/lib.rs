@@ -3,7 +3,7 @@ pub mod parse;
 
 use async_trait::async_trait;
 use futures::future::BoxFuture;
-use std::{fmt::Debug, hash::Hash, ops::Range, sync::Arc};
+use std::{collections::HashSet, fmt::Debug, hash::Hash, ops::Range, sync::Arc};
 use sync_wrapper::SyncFuture;
 use wipple_util::Backtrace;
 
@@ -13,7 +13,7 @@ pub trait Driver: Debug + Clone + Send + Sync + 'static {
     type Path: Debug + Copy + Send + Sync + 'static;
     type Span: Debug + Copy + Span + Send + Sync + 'static;
     type File: Debug + Clone + Send + Sync + File<Self> + 'static;
-    type Scope: Debug + Copy + Send + Sync;
+    type Scope: Debug + Copy + Eq + Hash + Send + Sync;
 
     fn intern(&self, s: impl AsRef<str>) -> Self::InternedString;
     fn make_path(&self, path: Self::InternedString) -> Option<Self::Path>;
@@ -49,28 +49,43 @@ pub trait Driver: Debug + Clone + Send + Sync + 'static {
     fn backtrace(&self) -> Backtrace;
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ResolveSyntaxError {
+    NotFound,
+    Ambiguous,
+}
+
 pub trait File<D: Driver> {
     fn code(&self) -> &str;
 
-    fn root_scope(&self) -> D::Scope;
-
-    fn make_scope(&self, parent: D::Scope) -> D::Scope;
+    fn make_scope(&self) -> D::Scope;
 
     fn define_syntax(
         &self,
         name: D::InternedString,
-        scope: D::Scope,
+        scope_set: HashSet<D::Scope>,
         value: ast::SyntaxAssignmentValue<D>,
     );
-
-    fn add_barrier(&self, name: D::InternedString, scope: D::Scope);
 
     fn resolve_syntax(
         &self,
         span: D::Span,
         name: D::InternedString,
-        scope: D::Scope,
-    ) -> Option<ast::SyntaxAssignmentValue<D>>;
+        scope_set: HashSet<D::Scope>,
+    ) -> Result<ast::SyntaxAssignmentValue<D>, ResolveSyntaxError>;
+
+    fn define_constant(
+        &self,
+        name: D::InternedString,
+        visible_scope_set: HashSet<D::Scope>,
+        body_scope_set: HashSet<D::Scope>,
+    );
+
+    fn resolve_constant_body(
+        &self,
+        name: D::InternedString,
+        scope_set: HashSet<D::Scope>,
+    ) -> Result<HashSet<D::Scope>, ResolveSyntaxError>;
 
     fn use_builtin_syntax(&self, span: D::Span, name: &'static str);
 }
@@ -170,20 +185,14 @@ impl<D: Driver<Span = (), File = SingleFile, Scope = ()>> File<D> for SingleFile
         &self.0
     }
 
-    fn root_scope(&self) -> D::Scope {}
-
-    fn make_scope(&self, _parent: D::Scope) -> D::Scope {}
+    fn make_scope(&self) -> D::Scope {}
 
     fn define_syntax(
         &self,
         _name: D::InternedString,
-        _scope: D::Scope,
+        _scope_set: HashSet<D::Scope>,
         _value: ast::SyntaxAssignmentValue<D>,
     ) {
-        // do nothing
-    }
-
-    fn add_barrier(&self, _name: D::InternedString, _scope: D::Scope) {
         // do nothing
     }
 
@@ -191,9 +200,26 @@ impl<D: Driver<Span = (), File = SingleFile, Scope = ()>> File<D> for SingleFile
         &self,
         _span: D::Span,
         _name: D::InternedString,
-        _scope: D::Scope,
-    ) -> Option<ast::SyntaxAssignmentValue<D>> {
-        None
+        _scope_set: HashSet<D::Scope>,
+    ) -> Result<ast::SyntaxAssignmentValue<D>, ResolveSyntaxError> {
+        Err(ResolveSyntaxError::NotFound)
+    }
+
+    fn define_constant(
+        &self,
+        _name: D::InternedString,
+        _visible_scope_set: HashSet<D::Scope>,
+        _body_scope_set: HashSet<D::Scope>,
+    ) {
+        // do nothing
+    }
+
+    fn resolve_constant_body(
+        &self,
+        _name: D::InternedString,
+        _scope_set: HashSet<D::Scope>,
+    ) -> Result<HashSet<D::Scope>, ResolveSyntaxError> {
+        Err(ResolveSyntaxError::NotFound)
     }
 
     fn use_builtin_syntax(&self, _span: D::Span, _name: &'static str) {

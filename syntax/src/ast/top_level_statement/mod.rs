@@ -11,7 +11,7 @@ use crate::{
     parse, Driver,
 };
 use async_trait::async_trait;
-use std::mem;
+use std::{collections::HashSet, mem};
 use wipple_util::Shared;
 
 syntax_group! {
@@ -31,7 +31,6 @@ pub struct QueuedTopLevelStatement<D: Driver> {
     pub span: D::Span,
     pub attributes: Vec<parse::Attribute<D>>,
     pub expr: parse::Expr<D>,
-    pub scope: D::Scope,
 }
 
 impl<D: Driver> QueuedTopLevelStatement<D> {
@@ -69,10 +68,6 @@ impl<D: Driver> SyntaxContext<D> for TopLevelStatementSyntaxContext<D> {
         self
     }
 
-    fn block_scope(&self, _scope: D::Scope) -> D::Scope {
-        unimplemented!()
-    }
-
     async fn build_block(
         self,
         _span: D::Span,
@@ -82,7 +77,7 @@ impl<D: Driver> SyntaxContext<D> for TopLevelStatementSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope: D::Scope,
+        _scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         unimplemented!()
     }
@@ -90,13 +85,12 @@ impl<D: Driver> SyntaxContext<D> for TopLevelStatementSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope: D::Scope,
+        _scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Ok(QueuedTopLevelStatement {
             span: expr.span,
             attributes: mem::take(&mut self.statement_attributes.unwrap().lock().raw),
             expr,
-            scope,
         }
         .into())
     }

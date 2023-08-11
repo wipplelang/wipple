@@ -20,11 +20,14 @@ use crate::{
         StatementAttributes, StatementSyntax, SyntaxAssignmentValue, SyntaxBody, SyntaxPattern,
         SyntaxRule,
     },
-    parse, Driver, File, Fix, FixRange, Span,
+    parse, Driver, File, Fix, FixRange, ResolveSyntaxError, Span,
 };
 use async_trait::async_trait;
 use futures::{stream, StreamExt};
-use std::{cmp::Ordering, collections::VecDeque};
+use std::{
+    cmp::Ordering,
+    collections::{HashSet, VecDeque},
+};
 use wipple_util::Shared;
 
 syntax_group! {
@@ -74,7 +77,7 @@ impl<D: Driver> Format<D> for UnitExpression<D> {
 pub struct NameExpression<D: Driver> {
     pub span: D::Span,
     pub name: D::InternedString,
-    pub scope: D::Scope,
+    pub scope_set: HashSet<D::Scope>,
 }
 
 impl<D: Driver> NameExpression<D> {
@@ -175,7 +178,6 @@ impl<D: Driver> Format<D> for CallExpression<D> {
 pub struct BlockExpression<D: Driver> {
     pub span: D::Span,
     pub statements: Vec<Result<Statement<D>, SyntaxError<D>>>,
-    pub scope: D::Scope,
 }
 
 impl<D: Driver> BlockExpression<D> {
@@ -209,6 +211,7 @@ impl<D: Driver> SyntaxContext<D> for ExpressionSyntaxContext<D> {
     type Statement = StatementSyntax;
 
     const PREFERS_LISTS: bool = true;
+    const BLOCK_CREATES_SCOPE: bool = true;
 
     fn new(ast_builder: AstBuilder<D>) -> Self {
         ExpressionSyntaxContext {
@@ -222,10 +225,6 @@ impl<D: Driver> SyntaxContext<D> for ExpressionSyntaxContext<D> {
         self
     }
 
-    fn block_scope(&self, scope: D::Scope) -> D::Scope {
-        self.ast_builder.file.make_scope(scope)
-    }
-
     async fn build_block(
         self,
         span: D::Span,
@@ -235,12 +234,11 @@ impl<D: Driver> SyntaxContext<D> for ExpressionSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        scope: D::Scope,
+        _scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Ok(BlockExpression {
             span,
             statements: statements.collect(),
-            scope,
         }
         .into())
     }
@@ -248,15 +246,15 @@ impl<D: Driver> SyntaxContext<D> for ExpressionSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         match expr.try_into_list_exprs() {
-            Ok((span, exprs)) => self.expand_list(span, exprs.collect(), scope).await,
+            Ok((span, exprs)) => self.expand_list(span, exprs.collect(), scope_set).await,
             Err(expr) => match expr.kind {
-                parse::ExprKind::Name(name, _name_scope) => Ok(NameExpression {
+                parse::ExprKind::Name(name, name_scope) => Ok(NameExpression {
                     span: expr.span,
                     name,
-                    scope, // TODO: Hygiene (use `name_scope`)
+                    scope_set: name_scope.unwrap_or_else(|| scope_set.lock().clone()),
                 }
                 .into()),
                 parse::ExprKind::Text(text, raw) => Ok(TextExpression {
@@ -277,7 +275,7 @@ impl<D: Driver> SyntaxContext<D> for ExpressionSyntaxContext<D> {
                 .into()),
                 parse::ExprKind::Block(_) => {
                     self.ast_builder
-                        .build_expr::<ExpressionSyntax>(self.clone(), expr, self.block_scope(scope))
+                        .build_expr::<ExpressionSyntax>(self.clone(), expr, scope_set)
                         .await
                 }
                 _ => {
@@ -297,7 +295,7 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
         &self,
         list_span: D::Span,
         mut exprs: Vec<parse::Expr<D>>,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Expression<D>, SyntaxError<D>> {
         match exprs.len() {
             0 => Ok(UnitExpression { span: list_span }.into()),
@@ -308,11 +306,13 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                     let syntax = self.ast_builder.file.resolve_syntax(
                         expr.span,
                         name.clone(),
-                        name_scope.unwrap_or(scope),
+                        name_scope
+                            .clone()
+                            .unwrap_or_else(|| scope_set.lock().clone()),
                     );
 
-                    if let Some(syntax) = syntax {
-                        match syntax.operator_precedence {
+                    match syntax {
+                        Ok(syntax) => match syntax.operator_precedence {
                             Some(_) => {
                                 self.ast_builder.driver.syntax_error(
                                     expr.span,
@@ -323,17 +323,26 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                             }
                             None => {
                                 return self
-                                    .expand_syntax(expr.span, syntax, vec![expr], scope)
+                                    .expand_syntax(expr.span, syntax, vec![expr], scope_set)
                                     .await;
                             }
+                        },
+                        Err(ResolveSyntaxError::NotFound) => {}
+                        Err(ResolveSyntaxError::Ambiguous) => {
+                            self.ast_builder.driver.syntax_error(
+                                expr.span,
+                                format!("`{}` is ambiguous in this context", name.as_ref()),
+                            );
+
+                            return Err(self.ast_builder.syntax_error(list_span));
                         }
                     }
                 }
 
-                self.clone().build_terminal(expr, scope).await
+                self.clone().build_terminal(expr, scope_set).await
             }
             _ => {
-                let operators = self.operators_in_list(exprs.iter().enumerate(), scope);
+                let operators = self.operators_in_list(exprs.iter().enumerate(), scope_set.clone());
 
                 if operators.is_empty() {
                     // TODO: Remove `[operator]` in favor of this logic
@@ -342,11 +351,26 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                             let syntax = self.ast_builder.file.resolve_syntax(
                                 expr.span,
                                 name.clone(),
-                                name_scope.unwrap_or(scope),
+                                name_scope
+                                    .clone()
+                                    .unwrap_or_else(|| scope_set.lock().clone()),
                             );
 
-                            if let Some(syntax) = syntax {
-                                return self.expand_syntax(expr.span, syntax, exprs, scope).await;
+                            match syntax {
+                                Ok(syntax) => {
+                                    return self
+                                        .expand_syntax(expr.span, syntax, exprs, scope_set)
+                                        .await
+                                }
+                                Err(ResolveSyntaxError::NotFound) => {}
+                                Err(ResolveSyntaxError::Ambiguous) => {
+                                    self.ast_builder.driver.syntax_error(
+                                        expr.span,
+                                        format!("`{}` is ambiguous in this context", name.as_ref()),
+                                    );
+
+                                    return Err(self.ast_builder.syntax_error(list_span));
+                                }
                             }
                         }
                     }
@@ -356,7 +380,7 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
 
                     let function = self
                         .ast_builder
-                        .build_expr::<ExpressionSyntax>(self.clone(), first, scope)
+                        .build_expr::<ExpressionSyntax>(self.clone(), first, scope_set.clone())
                         .await;
 
                     let inputs = stream::iter(exprs)
@@ -364,7 +388,7 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                             self.ast_builder.build_expr::<ExpressionSyntax>(
                                 self.clone(),
                                 expr,
-                                scope,
+                                scope_set.clone(),
                             )
                         })
                         .collect::<Vec<_>>()
@@ -487,8 +511,13 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                             list_span.set_expanded_from_operator();
                         }
 
-                        self.expand_syntax(list_span, max_syntax, vec![lhs, operator, rhs], scope)
-                            .await
+                        self.expand_syntax(
+                            list_span,
+                            max_syntax,
+                            vec![lhs, operator, rhs],
+                            scope_set,
+                        )
+                        .await
                     }
                 }
             }
@@ -498,7 +527,7 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
     fn operators_in_list<'a>(
         &'a self,
         exprs: impl IntoIterator<Item = (usize, &'a parse::Expr<D>)>,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Vec<(
         usize,
         parse::Expr<D>,
@@ -512,14 +541,25 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                     let syntax = self.ast_builder.file.resolve_syntax(
                         expr.span,
                         name.clone(),
-                        name_scope.unwrap_or(scope),
+                        name_scope
+                            .clone()
+                            .unwrap_or_else(|| scope_set.lock().clone()),
                     );
 
-                    if let Some(syntax) = syntax {
-                        if let Some(attribute) = &syntax.operator_precedence {
-                            let precedence = attribute.precedence;
+                    match syntax {
+                        Ok(syntax) => {
+                            if let Some(attribute) = &syntax.operator_precedence {
+                                let precedence = attribute.precedence;
 
-                            return Some((index, expr.clone(), syntax, precedence));
+                                return Some((index, expr.clone(), syntax, precedence));
+                            }
+                        }
+                        Err(ResolveSyntaxError::NotFound) => {}
+                        Err(ResolveSyntaxError::Ambiguous) => {
+                            self.ast_builder.driver.syntax_error(
+                                expr.span,
+                                format!("`{}` is ambiguous in this context", name.as_ref()),
+                            );
                         }
                     }
                 }
@@ -533,10 +573,17 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
         &self,
         span: D::Span,
         syntax: SyntaxAssignmentValue<D>,
-        exprs: Vec<parse::Expr<D>>,
-        scope: D::Scope,
+        mut exprs: Vec<parse::Expr<D>>,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Expression<D>, SyntaxError<D>> {
+        for expr in &mut exprs {
+            // The empty set is a marker that we can detect below to restore
+            // the scopes after expansion
+            expr.fix_to(&HashSet::new());
+        }
+
         let SyntaxBody::Block(body) = syntax.body?;
+        let body_scope_set = body.scope_set;
 
         for rule in body.rules.into_iter().flatten() {
             let SyntaxRule::<D>::Function(rule) = rule;
@@ -553,11 +600,15 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                 None => continue,
             };
 
-            let body = SyntaxPattern::expand(&self.ast_builder, body, &vars, span, scope)?;
+            let mut body = SyntaxPattern::expand(&self.ast_builder, body, &vars, span)?;
+            body.fix_to(&body_scope_set);
+
+            // Restore the scopes after expansion
+            body.remove_empty();
 
             return self
                 .ast_builder
-                .build_expr::<ExpressionSyntax>(self.clone(), body, scope)
+                .build_expr::<ExpressionSyntax>(self.clone(), body, scope_set)
                 .await;
         }
 

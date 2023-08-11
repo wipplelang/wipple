@@ -662,7 +662,10 @@ impl Typechecker {
             kind: lower::ExpressionKind::Block(mem::take(&mut entrypoint_file.statements), true),
         };
 
-        let exported = mem::take(&mut entrypoint_file.exported);
+        let exported = mem::take(&mut entrypoint_file.exported)
+            .into_iter()
+            .map(|(name, values)| (name, values.into_iter().map(|(_, value)| value).collect()))
+            .collect::<HashMap<_, _>>();
 
         Typechecker {
             compiler,

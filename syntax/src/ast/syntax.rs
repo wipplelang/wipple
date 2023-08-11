@@ -6,7 +6,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use futures::{future::BoxFuture, Future};
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 use wipple_util::{Backtrace, Shared};
 
 pub(crate) trait Syntax<D: Driver>: Send + Sync + 'static {
@@ -21,14 +21,11 @@ pub(crate) trait SyntaxContext<D: Driver>: Clone + Send + Sync {
     type Statement: Syntax<D>;
 
     const PREFERS_LISTS: bool = false;
+    const BLOCK_CREATES_SCOPE: bool = false;
 
     fn new(ast_builder: AstBuilder<D>) -> Self;
 
     fn with_statement_attributes(self, attributes: Shared<StatementAttributes<D>>) -> Self;
-
-    fn block_scope(&self, scope: D::Scope) -> D::Scope {
-        scope
-    }
 
     async fn build_block(
         self,
@@ -39,14 +36,14 @@ pub(crate) trait SyntaxContext<D: Driver>: Clone + Send + Sync {
                     SyntaxError<D>,
                 >,
             > + Send,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>>;
 
     /// Build an expression that contains no syntaxes or operators.
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>>;
 }
 
@@ -98,7 +95,7 @@ impl<D: Driver> SyntaxContext<D> for RawSyntaxContext {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope: D::Scope,
+        _scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Ok(parse::Expr::new(
             span,
@@ -118,7 +115,7 @@ impl<D: Driver> SyntaxContext<D> for RawSyntaxContext {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        _scope: D::Scope,
+        _scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Ok(expr)
     }
@@ -154,7 +151,7 @@ impl<D: Driver> SyntaxContext<D> for std::convert::Infallible {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope: D::Scope,
+        _scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         unreachable!()
     }
@@ -162,7 +159,7 @@ impl<D: Driver> SyntaxContext<D> for std::convert::Infallible {
     async fn build_terminal(
         self,
         _expr: parse::Expr<D>,
-        _scope: D::Scope,
+        _scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         unreachable!()
     }
@@ -170,6 +167,7 @@ impl<D: Driver> SyntaxContext<D> for std::convert::Infallible {
 
 pub(crate) struct SyntaxRule<D: Driver, S: Syntax<D> + ?Sized> {
     pub name: &'static str,
+    pub shallow: bool,
     pub kind: SyntaxRuleKind<D, S>,
 }
 
@@ -181,7 +179,7 @@ pub(crate) enum SyntaxRuleKind<D: Driver, S: Syntax<D> + ?Sized> {
                     D::Span,
                     D::Span,
                     Vec<parse::Expr<D>>,
-                    D::Scope,
+                    Shared<HashSet<D::Scope>>,
                 ) -> Option<
                     BoxFuture<
                         'static,
@@ -200,7 +198,7 @@ pub(crate) enum SyntaxRuleKind<D: Driver, S: Syntax<D> + ?Sized> {
                     (D::Span, Vec<parse::Expr<D>>),
                     D::Span,
                     (D::Span, Vec<parse::Expr<D>>),
-                    D::Scope,
+                    Shared<HashSet<D::Scope>>,
                 ) -> Option<
                     BoxFuture<
                         'static,
@@ -220,13 +218,14 @@ impl<D: Driver, S: Syntax<D>> SyntaxRule<D, S> {
             + 'static,
     >(
         name: &'static str,
-        rule: impl Fn(S::Context, D::Span, D::Span, Vec<parse::Expr<D>>, D::Scope) -> Fut
+        rule: impl Fn(S::Context, D::Span, D::Span, Vec<parse::Expr<D>>, Shared<HashSet<D::Scope>>) -> Fut
             + Send
             + Sync
             + 'static,
     ) -> Self {
         SyntaxRule {
             name,
+            shallow: false,
             kind: SyntaxRuleKind::Function(Box::new(
                 move |context, span, syntax_span, expr, scope| {
                     Some(Box::pin(rule(context, span, syntax_span, expr, scope)))
@@ -249,7 +248,7 @@ impl<D: Driver, S: Syntax<D>> SyntaxRule<D, S> {
                 (D::Span, Vec<parse::Expr<D>>),
                 D::Span,
                 (D::Span, Vec<parse::Expr<D>>),
-                D::Scope,
+                Shared<HashSet<D::Scope>>,
             ) -> Fut
             + Send
             + Sync
@@ -257,6 +256,7 @@ impl<D: Driver, S: Syntax<D>> SyntaxRule<D, S> {
     ) -> Self {
         SyntaxRule {
             name,
+            shallow: false,
             kind: SyntaxRuleKind::Operator(
                 associativity,
                 Box::new(move |context, span, lhs, syntax_span, rhs, scope| {
@@ -285,6 +285,14 @@ impl<D: Driver, S: Syntax<D> + ?Sized> SyntaxRules<D, S> {
         self
     }
 
+    pub fn shallow(mut self) -> Self {
+        for rule in &mut self.0 {
+            rule.shallow = true;
+        }
+
+        self
+    }
+
     pub fn combine<S2: Syntax<D> + ?Sized>(mut self, rules: SyntaxRules<D, S2>) -> Self
     where
         S2::Context: TryFrom<S::Context>,
@@ -292,6 +300,7 @@ impl<D: Driver, S: Syntax<D> + ?Sized> SyntaxRules<D, S> {
     {
         self.0.extend(rules.0.into_iter().map(|rule| SyntaxRule {
             name: rule.name,
+            shallow: rule.shallow,
             kind: match rule.kind {
                 SyntaxRuleKind::Function(apply) => SyntaxRuleKind::<D, S>::Function(Box::new(
                     move |context, span, syntax_span, expr, scope| {
@@ -324,13 +333,7 @@ pub enum OperatorAssociativity {
 }
 
 impl<D: Driver> AstBuilder<D> {
-    pub(crate) async fn build_list<S: Syntax<D>>(
-        &self,
-        context: S::Context,
-        span: D::Span,
-        mut exprs: Vec<parse::Expr<D>>,
-        scope: D::Scope,
-    ) -> Option<Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>> {
+    fn make_into_list(&self, mut exprs: Vec<parse::Expr<D>>) -> Vec<parse::Expr<D>> {
         while exprs.len() == 1 {
             let expr = exprs.pop().unwrap();
 
@@ -345,17 +348,63 @@ impl<D: Driver> AstBuilder<D> {
             }
         }
 
+        exprs
+    }
+
+    pub(crate) fn list_matches_syntax<S: Syntax<D>>(&self, exprs: Vec<parse::Expr<D>>) -> bool {
+        let exprs = self.make_into_list(exprs);
+
+        for rule in S::rules().0 {
+            if rule.shallow {
+                continue;
+            }
+
+            match rule.kind {
+                SyntaxRuleKind::Function(_) => {
+                    if self.match_function_syntax::<S>(rule.name, &exprs).is_some() {
+                        return true;
+                    }
+                }
+                SyntaxRuleKind::Operator(_, _) => {
+                    if self.match_operator_syntax::<S>(rule.name, &exprs).is_some() {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        false
+    }
+
+    pub(crate) async fn build_list<S: Syntax<D>>(
+        &self,
+        context: S::Context,
+        span: D::Span,
+        exprs: Vec<parse::Expr<D>>,
+        scope_set: Shared<HashSet<D::Scope>>,
+    ) -> Option<Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>> {
+        let exprs = self.make_into_list(exprs);
+
+        let prev_scope_set = scope_set.lock().clone();
+
         for rule in S::rules().0 {
             let context = context.clone();
 
             match rule.kind {
                 SyntaxRuleKind::Function(apply) => {
-                    if let Some(fut) = self
-                        .apply_function_syntax::<S>(rule.name, apply, context, span, &exprs, scope)
-                    {
+                    if let Some(fut) = self.apply_function_syntax::<S>(
+                        rule.name,
+                        apply,
+                        context,
+                        span,
+                        &exprs,
+                        scope_set.clone(),
+                    ) {
                         if let Some(result) = fut.await {
                             return Some(result);
                         }
+
+                        *scope_set.lock() = prev_scope_set.clone();
                     }
                 }
                 SyntaxRuleKind::Operator(associativity, apply) => {
@@ -366,13 +415,32 @@ impl<D: Driver> AstBuilder<D> {
                         context,
                         span,
                         &exprs,
-                        scope,
+                        scope_set.clone(),
                     ) {
                         if let Some(result) = fut.await {
                             return Some(result);
                         }
+
+                        *scope_set.lock() = prev_scope_set.clone();
                     }
                 }
+            }
+        }
+
+        None
+    }
+
+    fn match_function_syntax<S: Syntax<D> + ?Sized>(
+        &self,
+        name: &'static str,
+        exprs: &[parse::Expr<D>],
+    ) -> Option<(D::Span, Vec<parse::Expr<D>>)> {
+        let mut exprs = exprs.iter();
+        let first = exprs.next()?;
+
+        if let parse::ExprKind::Name(first_name, _) = &first.kind {
+            if first_name.as_ref() == name {
+                return Some((first.span, exprs.cloned().collect()));
             }
         }
 
@@ -387,7 +455,7 @@ impl<D: Driver> AstBuilder<D> {
                 D::Span,
                 D::Span,
                 Vec<parse::Expr<D>>,
-                D::Scope,
+                Shared<HashSet<D::Scope>>,
             ) -> Option<
                 BoxFuture<'static, Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>>,
             > + Send
@@ -396,55 +464,29 @@ impl<D: Driver> AstBuilder<D> {
         context: S::Context,
         span: D::Span,
         exprs: &[parse::Expr<D>],
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Option<BoxFuture<'a, Option<Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>>>>
     {
-        let mut exprs = exprs.iter();
-
-        let first = exprs.next()?;
-
-        if let parse::ExprKind::Name(first_name, _) = &first.kind {
-            if first_name.as_ref() == name {
-                let syntax_span = first.span;
-                let exprs = exprs.cloned().collect();
-
-                return Some(Box::pin(async move {
-                    Some(match apply(context, span, syntax_span, exprs, scope) {
-                        Some(result) => {
-                            self.file.use_builtin_syntax(syntax_span, name);
-                            result.await
-                        }
-                        None => return None,
-                    })
-                }));
-            }
+        if let Some((syntax_span, exprs)) = self.match_function_syntax::<S>(name, exprs) {
+            return Some(Box::pin(async move {
+                Some(match apply(context, span, syntax_span, exprs, scope_set) {
+                    Some(result) => {
+                        self.file.use_builtin_syntax(syntax_span, name);
+                        result.await
+                    }
+                    None => return None,
+                })
+            }));
         }
 
         None
     }
 
-    fn apply_operator_syntax<'a, S: Syntax<D> + ?Sized>(
-        &'a self,
+    fn match_operator_syntax<S: Syntax<D> + ?Sized>(
+        &self,
         name: &'static str,
-        associativity: OperatorAssociativity,
-        apply: impl Fn(
-                S::Context,
-                D::Span,
-                (D::Span, Vec<parse::Expr<D>>),
-                D::Span,
-                (D::Span, Vec<parse::Expr<D>>),
-                D::Scope,
-            ) -> Option<
-                BoxFuture<'static, Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>>,
-            > + Send
-            + Sync
-            + 'static,
-        context: S::Context,
-        span: D::Span,
         exprs: &[parse::Expr<D>],
-        scope: D::Scope,
-    ) -> Option<BoxFuture<'a, Option<Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>>>>
-    {
+    ) -> Option<VecDeque<usize>> {
         if exprs.is_empty() {
             return None;
         }
@@ -458,6 +500,33 @@ impl<D: Driver> AstBuilder<D> {
                 }
             }
         }
+
+        (!occurrences.is_empty()).then_some(occurrences)
+    }
+
+    fn apply_operator_syntax<'a, S: Syntax<D> + ?Sized>(
+        &'a self,
+        name: &'static str,
+        associativity: OperatorAssociativity,
+        apply: impl Fn(
+                S::Context,
+                D::Span,
+                (D::Span, Vec<parse::Expr<D>>),
+                D::Span,
+                (D::Span, Vec<parse::Expr<D>>),
+                Shared<HashSet<D::Scope>>,
+            ) -> Option<
+                BoxFuture<'static, Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>>,
+            > + Send
+            + Sync
+            + 'static,
+        context: S::Context,
+        span: D::Span,
+        exprs: &[parse::Expr<D>],
+        scope_set: Shared<HashSet<D::Scope>>,
+    ) -> Option<BoxFuture<'a, Option<Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>>>>
+    {
+        let occurrences = self.match_operator_syntax::<S>(name, exprs)?;
 
         if let OperatorAssociativity::Variadic = associativity {
             let operator_span = exprs[*occurrences.front()?].span;
@@ -546,7 +615,7 @@ impl<D: Driver> AstBuilder<D> {
                         (span, exprs),
                         operator_span,
                         (operator_span, Vec::new()),
-                        scope,
+                        scope_set,
                     ) {
                         Some(result) => {
                             self.file.use_builtin_syntax(operator_span, name);
@@ -648,7 +717,7 @@ impl<D: Driver> AstBuilder<D> {
                     (lhs_span, lhs),
                     operator_span,
                     (rhs_span, rhs),
-                    scope,
+                    scope_set,
                 ) {
                     Some(result) => {
                         self.file.use_builtin_syntax(operator_span, name);
@@ -698,7 +767,7 @@ impl<D: Driver> SyntaxContext<D> for ErrorSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope: D::Scope,
+        _scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Err(self.ast_builder.syntax_error(span))
     }
@@ -706,7 +775,7 @@ impl<D: Driver> SyntaxContext<D> for ErrorSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        _scope: D::Scope,
+        _scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Err(self.ast_builder.syntax_error(expr.span))
     }

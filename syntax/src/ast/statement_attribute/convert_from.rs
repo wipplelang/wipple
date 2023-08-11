@@ -36,7 +36,7 @@ impl<D: Driver> Syntax<D> for ConvertFromStatementAttributeSyntax {
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
             "convert-from",
-            |context, span, convert_from_span, exprs, scope| async move {
+            |context, span, convert_from_span, exprs, scope_set| async move {
                 if exprs.len() != 2 {
                     context
                         .ast_builder
@@ -57,7 +57,7 @@ impl<D: Driver> Syntax<D> for ConvertFromStatementAttributeSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         ty,
-                        scope,
+                        scope_set,
                     )
                     .await;
 

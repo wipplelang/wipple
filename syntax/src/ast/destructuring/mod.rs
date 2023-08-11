@@ -12,6 +12,7 @@ use crate::{
     parse, Driver,
 };
 use async_trait::async_trait;
+use std::collections::HashSet;
 use wipple_util::Shared;
 
 syntax_group! {
@@ -30,7 +31,7 @@ syntax_group! {
 pub struct NameDestructuring<D: Driver> {
     pub span: D::Span,
     pub name: D::InternedString,
-    pub scope: D::Scope,
+    pub scope: HashSet<D::Scope>,
 }
 
 impl<D: Driver> NameDestructuring<D> {
@@ -100,7 +101,7 @@ impl<D: Driver> SyntaxContext<D> for DestructuringSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope: D::Scope,
+        _scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         self.ast_builder.driver.syntax_error(
             span,
@@ -113,17 +114,17 @@ impl<D: Driver> SyntaxContext<D> for DestructuringSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         match expr.try_into_list_exprs() {
             Ok((span, exprs)) => {
                 let names = exprs
                     .into_iter()
                     .map(|expr| match expr.kind {
-                        parse::ExprKind::Name(name, name_scope) => Ok(NameDestructuring {
+                        parse::ExprKind::Name(name, scope) => Ok(NameDestructuring {
                             span: expr.span,
                             name,
-                            scope: name_scope.unwrap_or(scope),
+                            scope: scope.unwrap_or_else(|| scope_set.lock().clone()),
                         }),
                         _ => {
                             self.ast_builder
@@ -138,10 +139,10 @@ impl<D: Driver> SyntaxContext<D> for DestructuringSyntaxContext<D> {
                 Ok(ListDestructuring { span, names }.into())
             }
             Err(expr) => match expr.kind {
-                parse::ExprKind::Name(name, name_scope) => Ok(NameDestructuring {
+                parse::ExprKind::Name(name, scope) => Ok(NameDestructuring {
                     span: expr.span,
                     name,
-                    scope: name_scope.unwrap_or(scope),
+                    scope: scope.unwrap_or_else(|| scope_set.lock().clone()),
                 }
                 .into()),
                 _ => {

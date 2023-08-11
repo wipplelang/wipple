@@ -40,17 +40,17 @@ impl<D: Driver> Syntax<D> for OrPatternSyntax {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::operator(
             "or",
             OperatorAssociativity::Left,
-            |context, span, (lhs_span, lhs_exprs), or_span, (rhs_span, rhs_exprs), scope| async move {
+            |context, span, (lhs_span, lhs_exprs), or_span, (rhs_span, rhs_exprs), scope_set| async move {
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
                 let left = context
                     .ast_builder
-                    .build_expr::<PatternSyntax>(context.clone(), lhs, scope)
+                    .build_expr::<PatternSyntax>(context.clone(), lhs, scope_set.clone())
                     .await;
 
                 let rhs = parse::Expr::list_or_expr(rhs_span, rhs_exprs);
                 let right = context
                     .ast_builder
-                    .build_expr::<PatternSyntax>(context.clone(), rhs, scope)
+                    .build_expr::<PatternSyntax>(context.clone(), rhs, scope_set)
                     .await;
 
                 Ok(OrPattern {

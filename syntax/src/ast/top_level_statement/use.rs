@@ -34,7 +34,7 @@ impl<D: Driver> Syntax<D> for UseTopLevelStatementSyntax {
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
             "use",
-            |context, span, use_span, mut exprs, scope| async move {
+            |context, span, use_span, mut exprs, _scope_set| async move {
                 if exprs.len() != 1 {
                     context
                         .ast_builder
@@ -69,7 +69,6 @@ impl<D: Driver> Syntax<D> for UseTopLevelStatementSyntax {
                                         input,
                                     ])]),
                                 ),
-                                scope,
                             },
                         }
                         .into())

@@ -39,7 +39,12 @@ impl<D: Driver> Syntax<D> for FieldTypeMemberSyntax {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::operator(
             "::",
             OperatorAssociativity::Left,
-            |context, span, (lhs_span, mut lhs_exprs), colon_span, (rhs_span, rhs_exprs), scope| async move {
+            |context,
+             span,
+             (lhs_span, mut lhs_exprs),
+             colon_span,
+             (rhs_span, rhs_exprs),
+             scope_set| async move {
                 if lhs_exprs.len() != 1 {
                     context
                         .ast_builder
@@ -71,7 +76,7 @@ impl<D: Driver> Syntax<D> for FieldTypeMemberSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         rhs,
-                        scope,
+                        scope_set,
                     )
                     .await;
 

@@ -40,7 +40,7 @@ impl<D: Driver> Syntax<D> for WithExpressionSyntax {
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
             "with",
-            |context, span, when_span, exprs, scope| async move {
+            |context, span, when_span, exprs, scope_set| async move {
                 if exprs.len() != 2 {
                     context
                         .ast_builder
@@ -60,13 +60,17 @@ impl<D: Driver> Syntax<D> for WithExpressionSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         exprs.next().unwrap(),
-                        scope,
+                        scope_set.clone(),
                     )
                     .await;
 
                 let body = context
                     .ast_builder
-                    .build_expr::<ExpressionSyntax>(context.clone(), exprs.next().unwrap(), scope)
+                    .build_expr::<ExpressionSyntax>(
+                        context.clone(),
+                        exprs.next().unwrap(),
+                        scope_set,
+                    )
                     .await;
 
                 Ok(WithExpression {

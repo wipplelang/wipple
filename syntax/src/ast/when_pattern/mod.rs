@@ -12,6 +12,7 @@ use crate::{
     parse, Driver,
 };
 use async_trait::async_trait;
+use std::collections::HashSet;
 use wipple_util::Shared;
 
 syntax_group! {
@@ -56,13 +57,13 @@ impl<D: Driver> SyntaxContext<D> for WhenPatternSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         let context = PatternSyntaxContext::new(self.ast_builder)
             .with_statement_attributes(self.statement_attributes.as_ref().unwrap().clone());
 
         context
-            .build_block(span, statements, scope)
+            .build_block(span, statements, scope_set)
             .await
             .map(|pattern| PatternWhenPattern { pattern }.into())
     }
@@ -70,13 +71,13 @@ impl<D: Driver> SyntaxContext<D> for WhenPatternSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         let context = PatternSyntaxContext::new(self.ast_builder)
             .with_statement_attributes(self.statement_attributes.as_ref().unwrap().clone());
 
         context
-            .build_terminal(expr, scope)
+            .build_terminal(expr, scope_set)
             .await
             .map(|pattern| PatternWhenPattern { pattern }.into())
     }

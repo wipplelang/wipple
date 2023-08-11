@@ -6,12 +6,13 @@ use crate::{
     },
     parse, Driver,
 };
+use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct InferTypePattern<D: Driver> {
     pub span: D::Span,
     pub infer_span: D::Span,
-    pub name: Result<(D::Span, D::InternedString), SyntaxError<D>>,
+    pub name: Result<(D::Span, D::InternedString, HashSet<D::Scope>), SyntaxError<D>>,
 }
 
 impl<D: Driver> InferTypePattern<D> {
@@ -34,12 +35,16 @@ impl<D: Driver> Syntax<D> for InferTypePatternSyntax {
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
             "infer",
-            |context, span, infer_span, mut exprs, _scope| async move {
+            |context, span, infer_span, mut exprs, scope_set| async move {
                 let name = if exprs.len() == 1 {
                     let expr = exprs.pop().unwrap();
 
                     match expr.kind {
-                        parse::ExprKind::Name(name, _) => Ok((expr.span, name)),
+                        parse::ExprKind::Name(name, scope) => Ok((
+                            expr.span,
+                            name,
+                            scope.unwrap_or_else(|| scope_set.lock().clone()),
+                        )),
                         _ => {
                             context
                                 .ast_builder

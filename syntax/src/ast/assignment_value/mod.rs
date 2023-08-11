@@ -12,9 +12,10 @@ use crate::{
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, ExpressionSyntaxContext, StatementAttributes, StatementSyntax,
     },
-    parse, Driver, File,
+    parse, Driver,
 };
 use async_trait::async_trait;
+use std::collections::HashSet;
 use wipple_util::Shared;
 
 syntax_group! {
@@ -40,7 +41,7 @@ pub struct AssignmentValueSyntaxContext<D: Driver> {
 #[derive(Clone)]
 struct AssignedName<D: Driver> {
     name: D::InternedString,
-    scope: D::Scope,
+    scope_set: HashSet<D::Scope>,
     did_create_syntax: Shared<bool>,
 }
 
@@ -48,12 +49,12 @@ impl<D: Driver> AssignmentValueSyntaxContext<D> {
     pub(super) fn with_assigned_name(
         mut self,
         name: D::InternedString,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
         did_create_syntax: Shared<bool>,
     ) -> Self {
         self.assigned_name = Some(AssignedName {
             name,
-            scope,
+            scope_set: scope_set.lock().clone(),
             did_create_syntax,
         });
 
@@ -79,10 +80,6 @@ impl<D: Driver> SyntaxContext<D> for AssignmentValueSyntaxContext<D> {
         self
     }
 
-    fn block_scope(&self, scope: D::Scope) -> D::Scope {
-        self.ast_builder.file.make_scope(scope)
-    }
-
     async fn build_block(
         self,
         span: D::Span,
@@ -92,13 +89,13 @@ impl<D: Driver> SyntaxContext<D> for AssignmentValueSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         let context = ExpressionSyntaxContext::new(self.ast_builder)
             .with_statement_attributes(self.statement_attributes.unwrap());
 
         context
-            .build_block(span, statements, scope)
+            .build_block(span, statements, scope_set)
             .await
             .map(|expression| ExpressionAssignmentValue { expression }.into())
     }
@@ -106,7 +103,7 @@ impl<D: Driver> SyntaxContext<D> for AssignmentValueSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         let context = ExpressionSyntaxContext::new(self.ast_builder)
             .with_statement_attributes(self.statement_attributes.unwrap());
@@ -114,7 +111,7 @@ impl<D: Driver> SyntaxContext<D> for AssignmentValueSyntaxContext<D> {
         let expr = parse::Expr::list(expr.span, vec![expr]);
 
         context
-            .build_terminal(expr, scope)
+            .build_terminal(expr, scope_set)
             .await
             .map(|expression| ExpressionAssignmentValue { expression }.into())
     }

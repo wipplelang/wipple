@@ -2,7 +2,7 @@ use crate::{parse::Token, Driver, Span};
 use lazy_static::lazy_static;
 use logos::SpannedIter;
 use regex::Regex;
-use std::{iter::Peekable, ops::Range};
+use std::{collections::HashSet, iter::Peekable, ops::Range};
 
 #[derive(Debug, Clone)]
 pub struct File<D: Driver> {
@@ -30,7 +30,7 @@ pub struct Expr<D: Driver> {
 pub enum ExprKind<D: Driver> {
     Placeholder(D::InternedString),
     Underscore,
-    Name(D::InternedString, Option<D::Scope>),
+    Name(D::InternedString, Option<HashSet<D::Scope>>),
     QuoteName(D::InternedString),
     RepeatName(D::InternedString),
     Text(D::InternedString, D::InternedString),
@@ -130,6 +130,28 @@ impl<D: Driver> Expr<D> {
 }
 
 impl<D: Driver> Expr<D> {
+    pub fn fix_to(&mut self, scope_set: &HashSet<D::Scope>) {
+        self.traverse_mut(|expr| {
+            if let ExprKind::Name(_, name_scope) = &mut expr.kind {
+                name_scope.get_or_insert_with(|| scope_set.clone());
+            }
+        })
+    }
+
+    pub fn remove_empty(&mut self) {
+        self.traverse_mut(|expr| {
+            if let ExprKind::Name(_, name_scope) = &mut expr.kind {
+                if name_scope
+                    .as_ref()
+                    .expect("must call `fix_to` with an empty set first")
+                    .is_empty()
+                {
+                    *name_scope = None;
+                }
+            }
+        })
+    }
+
     pub fn traverse_mut(&mut self, mut f: impl FnMut(&mut Self)) {
         self.traverse_mut_inner(&mut f);
     }

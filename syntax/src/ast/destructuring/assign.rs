@@ -7,7 +7,7 @@ use crate::{
         },
         Pattern, PatternSyntax, PatternSyntaxContext,
     },
-    parse, Driver, File,
+    parse, Driver,
 };
 
 #[derive(Debug, Clone)]
@@ -44,7 +44,12 @@ impl<D: Driver> Syntax<D> for AssignDestructuringSyntax {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::operator(
             ":",
             OperatorAssociativity::None,
-            |context, span, (lhs_span, mut lhs_exprs), colon_span, (rhs_span, rhs_exprs), scope| async move {
+            |context,
+             span,
+             (lhs_span, mut lhs_exprs),
+             colon_span,
+             (rhs_span, rhs_exprs),
+             scope_set| async move {
                 let rhs = parse::Expr::list_or_expr(rhs_span, rhs_exprs);
 
                 let pattern = context
@@ -55,7 +60,7 @@ impl<D: Driver> Syntax<D> for AssignDestructuringSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         rhs,
-                        scope,
+                        scope_set,
                     )
                     .await;
 
@@ -81,8 +86,6 @@ impl<D: Driver> Syntax<D> for AssignDestructuringSyntax {
                         return Err(context.ast_builder.syntax_error(span));
                     }
                 };
-
-                context.ast_builder.file.add_barrier(name.clone(), scope);
 
                 Ok(AssignDestructuring {
                     span,

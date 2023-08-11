@@ -37,7 +37,7 @@ impl<D: Driver> Syntax<D> for OnMismatchStatementAttributeSyntax {
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
             "on-mismatch",
-            |context, span, on_mismatch_span, mut exprs, _scope| async move {
+            |context, span, on_mismatch_span, mut exprs, _scope_set| async move {
                 let attribute = match exprs.len() {
                     1 => {
                         let expr = exprs.pop().unwrap();

@@ -43,7 +43,7 @@ impl<D: Driver> Syntax<D> for OnUnimplementedStatementAttributeSyntax {
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
             "on-unimplemented",
-            |context, span, on_unimplemented_span, exprs, _scope| async move {
+            |context, span, on_unimplemented_span, exprs, _scope_set| async move {
                 if exprs.is_empty() {
                     context
                         .ast_builder

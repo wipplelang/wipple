@@ -13,9 +13,10 @@ use crate::{
         syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, ExpressionSyntaxContext, StatementAttributes,
     },
-    parse, Driver, File,
+    parse, Driver,
 };
 use async_trait::async_trait;
+use std::collections::HashSet;
 use wipple_util::Shared;
 
 syntax_group! {
@@ -56,10 +57,6 @@ impl<D: Driver> SyntaxContext<D> for StatementSyntaxContext<D> {
         self
     }
 
-    fn block_scope(&self, scope: D::Scope) -> D::Scope {
-        self.ast_builder.file.make_scope(scope)
-    }
-
     async fn build_block(
         self,
         span: D::Span,
@@ -69,13 +66,13 @@ impl<D: Driver> SyntaxContext<D> for StatementSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         let context = ExpressionSyntaxContext::new(self.ast_builder)
             .with_statement_attributes(self.statement_attributes.as_ref().unwrap().clone());
 
         context
-            .build_block(span, statements, scope)
+            .build_block(span, statements, scope_set)
             .await
             .map(|expr| {
                 ExpressionStatement {
@@ -89,12 +86,12 @@ impl<D: Driver> SyntaxContext<D> for StatementSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope: D::Scope,
+        scope_set: Shared<HashSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         let context = ExpressionSyntaxContext::new(self.ast_builder)
             .with_statement_attributes(self.statement_attributes.as_ref().unwrap().clone());
 
-        context.build_terminal(expr, scope).await.map(|expr| {
+        context.build_terminal(expr, scope_set).await.map(|expr| {
             ExpressionStatement {
                 expression: expr,
                 attributes: self.statement_attributes.unwrap().lock().clone(),

@@ -10,6 +10,8 @@ use crate::{
     },
     parse, Driver, File,
 };
+use std::collections::HashSet;
+use wipple_util::Shared;
 
 #[derive(Debug, Clone)]
 pub struct TypeFunctionStatement<D: Driver> {
@@ -17,7 +19,7 @@ pub struct TypeFunctionStatement<D: Driver> {
     pub arrow_span: D::Span,
     pub pattern: Result<TypePattern<D>, SyntaxError<D>>,
     pub value: Result<Box<Statement<D>>, SyntaxError<D>>,
-    pub scope: D::Scope,
+    pub scope_set: HashSet<D::Scope>,
     pub attributes: StatementAttributes<D>,
 }
 
@@ -47,8 +49,15 @@ impl<D: Driver> Syntax<D> for TypeFunctionStatementSyntax {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::operator(
             "=>",
             OperatorAssociativity::None,
-            |context, span, (lhs_span, lhs_exprs), arrow_span, (rhs_span, rhs_exprs), scope| async move {
-                let scope = context.ast_builder.file.make_scope(scope);
+            |context,
+             span,
+             (lhs_span, lhs_exprs),
+             arrow_span,
+             (rhs_span, rhs_exprs),
+             scope_set| async move {
+                let mut scope_set = scope_set.lock().clone();
+                scope_set.insert(context.ast_builder.file.make_scope());
+                let scope_set = Shared::new(scope_set);
 
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
 
@@ -60,7 +69,7 @@ impl<D: Driver> Syntax<D> for TypeFunctionStatementSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         lhs,
-                        scope
+                        scope_set.clone(),
                     )
                     .await;
 
@@ -68,7 +77,7 @@ impl<D: Driver> Syntax<D> for TypeFunctionStatementSyntax {
 
                 let value = context
                     .ast_builder
-                    .build_expr::<StatementSyntax>(context.clone(), rhs, scope)
+                    .build_expr::<StatementSyntax>(context.clone(), rhs, scope_set.clone())
                     .await;
 
                 Ok(TypeFunctionStatement {
@@ -76,7 +85,7 @@ impl<D: Driver> Syntax<D> for TypeFunctionStatementSyntax {
                     arrow_span,
                     pattern,
                     value: value.map(Box::new),
-                    scope,
+                    scope_set: scope_set.into_unique(),
                     attributes: context.statement_attributes.unwrap().lock().clone(),
                 }
                 .into())

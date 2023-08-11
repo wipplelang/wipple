@@ -8,12 +8,13 @@ use crate::{
     },
     parse, Driver,
 };
+use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct DefaultTypePattern<D: Driver> {
     pub span: D::Span,
     pub colon_span: D::Span,
-    pub name: Result<(D::Span, D::InternedString), SyntaxError<D>>,
+    pub name: Result<(D::Span, D::InternedString, HashSet<D::Scope>), SyntaxError<D>>,
     pub ty: Result<Type<D>, SyntaxError<D>>,
 }
 
@@ -42,12 +43,21 @@ impl<D: Driver> Syntax<D> for DefaultTypePatternSyntax {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::operator(
             ":",
             OperatorAssociativity::None,
-            |context, span, (lhs_span, mut lhs_exprs), colon_span, (rhs_span, rhs_exprs), scope| async move {
+            |context,
+             span,
+             (lhs_span, mut lhs_exprs),
+             colon_span,
+             (rhs_span, rhs_exprs),
+             scope_set| async move {
                 let name = if lhs_exprs.len() == 1 {
                     let expr = lhs_exprs.pop().unwrap();
 
                     match expr.kind {
-                        parse::ExprKind::Name(name, _) => Ok((expr.span, name)),
+                        parse::ExprKind::Name(name, scope) => Ok((
+                            expr.span,
+                            name,
+                            scope.unwrap_or_else(|| scope_set.lock().clone()),
+                        )),
                         _ => {
                             context
                                 .ast_builder
@@ -74,7 +84,7 @@ impl<D: Driver> Syntax<D> for DefaultTypePatternSyntax {
                     .build_expr::<TypeSyntax>(
                         type_context,
                         parse::Expr::list_or_expr(rhs_span, rhs_exprs),
-                        scope
+                        scope_set,
                     )
                     .await;
 

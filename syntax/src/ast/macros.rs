@@ -18,6 +18,7 @@ macro_rules! definitions {
 
 macro_rules! syntax_group {
     ($(#[$attr:meta])* $vis:vis type $name:ident<$context:ty> {
+        $(shallow: $shallow:expr,)?
         non_terminal: {
             $($wrapping_kind:ident),* $(,)?
         },
@@ -38,6 +39,7 @@ macro_rules! syntax_group {
 
             impl<D: $crate::Driver> $crate::ast::syntax::Syntax<D> for [<$name Syntax>] {
                 type Context = $context<D>;
+                $(const SHALLOW: bool = $shallow;)?
 
                 fn rules() -> $crate::ast::syntax::SyntaxRules<D, Self> {
                     $crate::ast::syntax::SyntaxRules::new()
