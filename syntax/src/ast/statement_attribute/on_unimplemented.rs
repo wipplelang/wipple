@@ -7,6 +7,7 @@ use crate::{
     },
     parse, Driver,
 };
+use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct OnUnimplementedStatementAttribute<D: Driver> {
@@ -20,7 +21,7 @@ pub struct OnUnimplementedStatementAttribute<D: Driver> {
 #[derive(Debug, Clone)]
 pub struct OnUnimplementedSegment<D: Driver> {
     pub string: D::InternedString,
-    pub param: Result<(D::Span, D::InternedString), SyntaxError<D>>,
+    pub param: Result<(D::Span, D::InternedString, HashSet<D::Scope>), SyntaxError<D>>,
 }
 
 impl<D: Driver> OnUnimplementedStatementAttribute<D> {
@@ -43,7 +44,7 @@ impl<D: Driver> Syntax<D> for OnUnimplementedStatementAttributeSyntax {
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
             "on-unimplemented",
-            |context, span, on_unimplemented_span, exprs, _scope| async move {
+            |context, span, on_unimplemented_span, exprs, scope_set| async move {
                 if exprs.is_empty() {
                     context
                         .ast_builder
@@ -74,7 +75,11 @@ impl<D: Driver> Syntax<D> for OnUnimplementedStatementAttributeSyntax {
 
                 let inputs = exprs
                     .map(|expr| match expr.kind {
-                        parse::ExprKind::Name(name, _) => Ok((expr.span, name)),
+                        parse::ExprKind::Name(name, scope) => Ok((
+                            expr.span,
+                            name,
+                            scope.unwrap_or_else(|| scope_set.lock().clone()),
+                        )),
                         _ => {
                             context
                                 .ast_builder

@@ -49,7 +49,7 @@ impl<D: Driver> Syntax<D> for AssignStatementSyntax {
             ":",
             OperatorAssociativity::None,
             |context, span, (lhs_span, lhs_exprs), colon_span, (rhs_span, rhs_exprs), scope_set| async move {
-                let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
+                let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs.clone());
 
                 let mut value_context = AssignmentValueSyntaxContext::new(context.ast_builder.clone())
                     .with_statement_attributes(context.statement_attributes.as_ref().unwrap().clone());
@@ -87,7 +87,10 @@ impl<D: Driver> Syntax<D> for AssignStatementSyntax {
                 // previous code because of this scoping rule. Currently you
                 // will have to declare all types/constants/etc. before any
                 // top-level variable assignments
-                if !refers_to_constant!() && !context.ast_builder.list_matches_syntax::<AssignmentValueSyntax>(rhs_exprs.clone()) {
+                if !refers_to_constant!()
+                    && !context.ast_builder.list_matches_syntax::<AssignmentPatternSyntax>(lhs_exprs)
+                    && !context.ast_builder.list_matches_syntax::<AssignmentValueSyntax>(rhs_exprs.clone())
+                {
                     scope_set.lock().insert(context.ast_builder.file.make_scope());
                 }
 

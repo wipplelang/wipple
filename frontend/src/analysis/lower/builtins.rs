@@ -1,7 +1,7 @@
 use super::*;
 
 impl Lowerer {
-    pub fn load_builtins(&mut self) {
+    pub fn load_builtins(&mut self, scope: &HashSet<ScopeId>) {
         macro_rules! add {
             ($kind:ident, $span:expr, $name:expr, $value:expr $(,)?) => {{
                 paste::paste! {
@@ -13,7 +13,7 @@ impl Lowerer {
                         Declaration::resolved(Some(name), $span, $value),
                     );
 
-                    self.insert(name, AnyDeclaration::[<$kind:camel>](id), &HashSet::new());
+                    self.insert(name, AnyDeclaration::[<$kind:camel>](id), scope);
                 }
             }};
         }

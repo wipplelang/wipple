@@ -114,6 +114,7 @@ impl<D: Driver> Format<D> for UnitPattern<D> {
 pub struct VariantPattern<D: Driver> {
     pub span: D::Span,
     pub name_span: D::Span,
+    pub name_scope_set: HashSet<D::Scope>,
     pub name: D::InternedString,
     pub values: Vec<Result<Pattern<D>, SyntaxError<D>>>,
 }
@@ -251,8 +252,10 @@ impl<D: Driver> SyntaxContext<D> for PatternSyntaxContext<D> {
                     None => return Ok(UnitPattern { span }.into()),
                 };
 
-                let name = match name_expr.kind {
-                    parse::ExprKind::Name(name, _) => name,
+                let (name, name_scope_set) = match name_expr.kind {
+                    parse::ExprKind::Name(name, scope) => {
+                        (name, scope.unwrap_or_else(|| scope_set.lock().clone()))
+                    }
                     _ => {
                         self.ast_builder
                             .driver
@@ -277,6 +280,7 @@ impl<D: Driver> SyntaxContext<D> for PatternSyntaxContext<D> {
                     span,
                     name_span: name_expr.span,
                     name,
+                    name_scope_set,
                     values,
                 }
                 .into())

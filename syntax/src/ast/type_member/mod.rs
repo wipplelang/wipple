@@ -30,9 +30,10 @@ syntax_group! {
 #[derive(Debug, Clone)]
 pub struct VariantTypeMember<D: Driver> {
     pub span: D::Span,
-    pub name_list: Option<Vec<(D::Span, D::InternedString)>>,
+    pub name_list: Option<Vec<(D::Span, D::InternedString, HashSet<D::Scope>)>>,
     pub name_span: D::Span,
     pub name: D::InternedString,
+    pub name_scope: HashSet<D::Scope>,
     pub tys: Vec<Result<Type<D>, SyntaxError<D>>>,
 }
 
@@ -108,7 +109,11 @@ impl<D: Driver> SyntaxContext<D> for TypeMemberSyntaxContext<D> {
             .and_then(|(_, exprs)| {
                 exprs
                     .map(|expr| match &expr.kind {
-                        parse::ExprKind::Name(name, _) => Some((expr.span, name.clone())),
+                        parse::ExprKind::Name(name, scope) => Some((
+                            expr.span,
+                            name.clone(),
+                            scope.clone().unwrap_or_else(|| scope_set.lock().clone()),
+                        )),
                         _ => None,
                     })
                     .collect()
@@ -127,8 +132,10 @@ impl<D: Driver> SyntaxContext<D> for TypeMemberSyntaxContext<D> {
                     }
                 };
 
-                let name = match name_expr.kind {
-                    parse::ExprKind::Name(name, _) => name,
+                let (name, scope) = match name_expr.kind {
+                    parse::ExprKind::Name(name, scope) => {
+                        (name, scope.unwrap_or_else(|| scope_set.lock().clone()))
+                    }
                     _ => {
                         self.ast_builder
                             .driver
@@ -156,17 +163,19 @@ impl<D: Driver> SyntaxContext<D> for TypeMemberSyntaxContext<D> {
                     span,
                     name_list,
                     name_span: name_expr.span,
+                    name_scope: scope,
                     name,
                     tys,
                 }
                 .into())
             }
             Err(expr) => match expr.kind {
-                parse::ExprKind::Name(name, _) => Ok(VariantTypeMember {
+                parse::ExprKind::Name(name, scope) => Ok(VariantTypeMember {
                     span: expr.span,
                     name_list,
                     name_span: expr.span,
                     name,
+                    name_scope: scope.unwrap_or_else(|| scope_set.lock().clone()),
                     tys: Vec::new(),
                 }
                 .into()),
