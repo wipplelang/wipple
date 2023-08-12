@@ -245,7 +245,10 @@ impl<D: Driver> Expr<D> {
 
                     match lines.len() {
                         0 => false,
-                        1 => lines.first().unwrap().is_multiline(true),
+                        1 => {
+                            let line = lines.first().unwrap();
+                            line.leading_lines > 0 || line.is_multiline(true)
+                        }
                         _ => true,
                     }
                 }

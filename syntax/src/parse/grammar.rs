@@ -742,10 +742,6 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
             Some(Token::LeftBrace) => {
                 self.consume();
 
-                if let (_, Some(Token::LineBreak)) = self.peek() {
-                    self.consume();
-                }
-
                 let (statements, end_span) = self.parse_statements(Some(Token::RightBrace));
 
                 Ok(Expr::new(
