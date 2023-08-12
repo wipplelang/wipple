@@ -14,4 +14,6 @@ just : x _ -> x
 [help "Call a function on an input."]
 [help-group "Utilities"]
 [help-template "(*input*) . (*function*)"]
-. : syntax { 'x . 'f -> 'f 'x }
+. : syntax {
+  'x . 'f -> ('f) ('x)
+}

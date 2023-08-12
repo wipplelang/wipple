@@ -11,7 +11,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
-    collections::{BTreeMap, HashMap, HashSet, VecDeque},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque},
     hash::Hash,
     mem,
     sync::Arc,
@@ -572,6 +572,53 @@ pub enum PatternKind {
 impl PatternKind {
     pub(crate) fn error(compiler: &Compiler) -> Self {
         PatternKind::Error(compiler.backtrace())
+    }
+}
+
+impl Pattern {
+    pub fn variables(&self) -> BTreeSet<VariableId> {
+        let mut variables = BTreeSet::new();
+        self.traverse(|pattern| {
+            if let PatternKind::Variable(var) = &pattern.kind {
+                variables.insert(*var);
+            }
+        });
+
+        variables
+    }
+
+    pub fn traverse(&self, mut f: impl FnMut(&Self)) {
+        self.traverse_inner(&mut f);
+    }
+
+    fn traverse_inner(&self, f: &mut impl FnMut(&Self)) {
+        f(self);
+
+        match &self.kind {
+            PatternKind::Destructure(fields) => {
+                for pattern in fields.values() {
+                    pattern.traverse_inner(f);
+                }
+            }
+            PatternKind::Variant(_, _, patterns) => {
+                for pattern in patterns {
+                    pattern.traverse_inner(f);
+                }
+            }
+            PatternKind::Annotate(pattern, _) => {
+                pattern.traverse_inner(f);
+            }
+            PatternKind::Or(left, right) => {
+                left.traverse_inner(f);
+                right.traverse_inner(f);
+            }
+            PatternKind::Tuple(patterns) => {
+                for pattern in patterns {
+                    pattern.traverse_inner(f);
+                }
+            }
+            _ => {}
+        }
     }
 }
 
@@ -1905,7 +1952,7 @@ impl Lowerer {
                                 let mut value = self.lower_expr(expr, ctx);
 
                                 let used_variables =
-                                    self.generate_capture_list(&mut value, &scope);
+                                    self.generate_capture_list(None, &mut value);
 
                                 if !used_variables.is_empty() {
                                     self.compiler.add_error(
@@ -2429,11 +2476,6 @@ impl Lowerer {
                             &name_scope,
                         );
 
-                        if expr.name.as_str() == "Add" {
-                            dbg!(expr.name, &name_scope, self.scopes.get(&expr.name).unwrap());
-                            panic!();
-                        }
-
                         self.compiler.add_diagnostic(
                             self.compiler
                                 .error(
@@ -2848,8 +2890,6 @@ impl Lowerer {
                 }
             }
             ast::Expression::Function(expr) => {
-                let scope = expr.scope_set.clone();
-
                 let pattern = match &expr.pattern {
                     Ok(pattern) => self.lower_pattern(pattern, ctx),
                     Err(error) => Pattern {
@@ -2870,7 +2910,7 @@ impl Lowerer {
                     },
                 };
 
-                let captures = self.generate_capture_list(&mut body, &scope);
+                let captures = self.generate_capture_list(Some(&pattern), &mut body);
 
                 Expression {
                     id: self.compiler.new_expression_id(ctx.owner),
@@ -4694,21 +4734,35 @@ impl Lowerer {
 
     fn generate_capture_list(
         &mut self,
+        pattern: Option<&Pattern>,
         expr: &mut Expression,
-        scope: &HashSet<ScopeId>,
     ) -> CaptureList {
-        let mut captures = CaptureList::new();
-        expr.traverse_mut(|expr| {
-            if let ExpressionKind::Variable(var) = expr.kind {
-                let declaration_scope = self.variables.get(&var).unwrap();
-
-                if scope != declaration_scope && scope.is_superset(declaration_scope) {
-                    captures.push((var, expr.span));
+        let mut declared = pattern.map(Pattern::variables).unwrap_or_default();
+        let mut captured = CaptureList::new();
+        expr.traverse_mut(|expr| match &expr.kind {
+            ExpressionKind::Initialize(pattern, _) => {
+                declared.extend(pattern.variables());
+            }
+            ExpressionKind::When(_, arms) => {
+                for arm in arms {
+                    declared.extend(arm.pattern.variables());
                 }
             }
+            ExpressionKind::Function(pattern, _, captures) => {
+                declared.extend(pattern.variables());
+                captured.extend(captures);
+            }
+            ExpressionKind::Variable(var) => {
+                captured.push((*var, expr.span));
+            }
+            _ => {}
         });
 
-        captures
+        captured
+            .into_iter()
+            .filter(|(var, _)| !declared.contains(var))
+            .unique_by(|(var, _)| *var)
+            .collect()
     }
 
     fn span_of(&self, decl: AnyDeclaration) -> SpanList {

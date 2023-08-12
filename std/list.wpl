@@ -6,7 +6,9 @@ use "mutable"
 
 [help "Create a `List` with the specified elements."]
 [help-group "Collections"]
-list : syntax { list ...x -> (intrinsic "make-empty-list" :: List _) ...(. append 'x) }
+list : syntax {
+  list ...x -> (intrinsic "make-empty-list" :: List _) ...(. append 'x)
+}
 
 instance (Default (List _)) : list
 

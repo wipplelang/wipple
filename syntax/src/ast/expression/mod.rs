@@ -577,7 +577,8 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
         }
 
         let SyntaxBody::Block(body) = syntax.body?;
-        let body_scope_set = body.scope_set;
+        let mut body_scope_set = body.scope_set;
+        body_scope_set.insert(self.ast_builder.file.make_scope());
 
         for rule in body.rules.into_iter().flatten() {
             let SyntaxRule::<D>::Function(rule) = rule;
@@ -594,8 +595,8 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                 None => continue,
             };
 
-            let mut body = SyntaxPattern::expand(&self.ast_builder, body, &vars, span)?;
-            body.fix_to(&body_scope_set);
+            let mut body =
+                SyntaxPattern::expand(&self.ast_builder, body, &vars, span, &body_scope_set)?;
 
             // Restore the scopes after expansion
             body.remove_empty();
