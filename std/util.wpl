@@ -9,8 +9,8 @@ use "logic"
 [operator Accessor-Precedence]
 of : syntax {
   'field of 'value -> {
-    { 'field } : 'value
-    'field
+    { 'field : value } : 'value
+    value
   }
 }
 

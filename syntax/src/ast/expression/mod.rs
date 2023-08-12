@@ -489,20 +489,14 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
 
                         let lhs_count = lhs.len();
 
-                        let lhs = parse::Expr {
-                            span: lhs_span,
-                            kind: parse::ExprKind::List(vec![lhs.into()]),
-                        };
+                        let lhs = parse::Expr::list_or_expr(lhs_span, lhs);
 
                         let rhs_span =
                             Span::join(rhs.first().unwrap().span, rhs.last().unwrap().span);
 
                         let rhs_count = rhs.len();
 
-                        let rhs = parse::Expr {
-                            span: rhs_span,
-                            kind: parse::ExprKind::List(vec![rhs.into()]),
-                        };
+                        let rhs = parse::Expr::list_or_expr(rhs_span, rhs);
 
                         let mut list_span = Span::join(lhs_span, rhs_span);
                         list_span.set_caller(max_expr.span);
