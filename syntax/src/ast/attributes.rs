@@ -6,8 +6,8 @@ use crate::{
         HelpPlaygroundStatementAttribute, HelpStatementAttribute, HelpTemplateStatementAttribute,
         HelpUrlFileAttribute, KeywordStatementAttribute, LanguageItemStatementAttribute,
         NoStdFileAttribute, OnMismatchStatementAttribute, OnUnimplementedStatementAttribute,
-        OperatorPrecedenceStatementAttribute, RecursionLimitFileAttribute,
-        SpecializeStatementAttribute, SyntaxError,
+        OperatorPrecedenceStatementAttribute, PrivateStatementAttribute,
+        RecursionLimitFileAttribute, SpecializeStatementAttribute, SyntaxError,
     },
     parse, Driver,
 };
@@ -69,6 +69,7 @@ pub struct StatementAttributes<D: Driver> {
     pub contextual: Option<ContextualStatementAttribute<D>>,
     pub convert_from: Vec<ConvertFromStatementAttribute<D>>,
     pub derive: Option<DeriveStatementAttribute<D>>,
+    pub private: Option<PrivateStatementAttribute<D>>,
 }
 
 impl<D: Driver> Default for StatementAttributes<D> {
@@ -91,6 +92,7 @@ impl<D: Driver> Default for StatementAttributes<D> {
             contextual: Default::default(),
             convert_from: Default::default(),
             derive: Default::default(),
+            private: Default::default(),
         }
     }
 }

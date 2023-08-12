@@ -174,6 +174,7 @@ pub struct DeclarationAttributes {
     pub help_group: Option<InternedString>,
     pub help_playground: Option<InternedString>,
     pub help_template: Option<InternedString>,
+    pub private: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -980,19 +981,23 @@ impl Compiler {
             let exported = dependency.exported.clone();
 
             for (name, decls) in exported {
-                let scopes = lowerer.scopes.entry(name).or_default();
+                let mut scopes = lowerer.scopes.get(&name).cloned().unwrap_or_default();
                 for (scope, decl) in decls {
+                    let private = lowerer.attributes_of(decl).private;
+
                     // So that this file can access top-level declarations
                     if scope == dependency.root_scope {
-                        scopes.push((file.root_scope.clone(), decl));
+                        scopes.push((file.root_scope.clone(), decl, private));
                     }
 
                     // So that hygienic syntaxes can continue to access the
                     // file's declarations
                     if !scope.is_empty() {
-                        scopes.push((scope, decl));
+                        scopes.push((scope, decl, false));
                     }
                 }
+
+                lowerer.scopes.insert(name, scopes);
             }
         }
 
@@ -1123,7 +1128,19 @@ impl Compiler {
             specializations,
             statements,
             root_scope: file.root_scope.clone(),
-            exported: lowerer.scopes,
+            exported: lowerer
+                .scopes
+                .into_iter()
+                .map(|(name, scopes)| {
+                    (
+                        name,
+                        scopes
+                            .into_iter()
+                            .map(|(scope, decl, _)| (scope, decl))
+                            .collect(),
+                    )
+                })
+                .collect(),
         }
     }
 }
@@ -1135,7 +1152,7 @@ struct Lowerer {
     declarations: UnresolvedDeclarations,
     file_info: FileInfo,
     specializations: BTreeMap<ConstantId, ConstantId>,
-    scopes: HashMap<InternedString, Vec<(HashSet<ScopeId>, AnyDeclaration)>>,
+    scopes: HashMap<InternedString, Vec<(HashSet<ScopeId>, AnyDeclaration, bool)>>,
     captures: BTreeMap<ScopeId, Shared<CaptureList>>,
     variables: BTreeMap<VariableId, HashSet<ScopeId>>,
 }
@@ -1154,7 +1171,7 @@ impl Lowerer {
         self.scopes
             .entry(name)
             .or_default()
-            .push((scope_set.clone(), value));
+            .push((scope_set.clone(), value, false));
     }
 
     fn get<T: Copy + Eq + Hash>(
@@ -1190,10 +1207,10 @@ impl Lowerer {
 
         let mut candidates = scopes
             .iter()
-            .filter(|(candidate, _)| scope.is_superset(candidate))
-            .max_set_by_key(|(candidate, _)| candidate.intersection(scope).count())
+            .filter(|(candidate, _, private)| !private && scope.is_superset(candidate))
+            .max_set_by_key(|(candidate, _, _)| candidate.intersection(scope).count())
             .into_iter()
-            .filter_map(|(scopes, decl)| {
+            .filter_map(|(scopes, decl, _)| {
                 let decl = *decl;
 
                 let resolved = kind(decl)?;
@@ -1248,7 +1265,9 @@ impl Lowerer {
         self.scopes.iter().filter_map(move |(&name, candidates)| {
             candidates
                 .iter()
-                .any(|(candidate, decl)| scope_set.is_superset(candidate) && kind(*decl))
+                .any(|(candidate, decl, private)| {
+                    !private && scope_set.is_superset(candidate) && kind(*decl)
+                })
                 .then_some(name)
         })
     }
@@ -4244,6 +4263,7 @@ impl Lowerer {
                 .help_template
                 .as_ref()
                 .map(|attribute| attribute.help_template_text),
+            private: statement_attributes.private.is_some(),
         }
     }
 
@@ -4777,6 +4797,47 @@ impl Lowerer {
             }
             AnyDeclaration::Constant(id, _) => self.declarations.constants.get(&id).unwrap().span,
             AnyDeclaration::Variable(id) => self.declarations.variables.get(&id).unwrap().span,
+        }
+    }
+
+    fn attributes_of(&self, decl: AnyDeclaration) -> DeclarationAttributes {
+        match decl {
+            AnyDeclaration::Type(id) => self
+                .declarations
+                .types
+                .get(&id)
+                .unwrap()
+                .value
+                .as_ref()
+                .unwrap()
+                .attributes
+                .decl_attributes
+                .clone(),
+            AnyDeclaration::BuiltinType(_) => Default::default(),
+            AnyDeclaration::Trait(id) => self
+                .declarations
+                .traits
+                .get(&id)
+                .unwrap()
+                .value
+                .as_ref()
+                .unwrap()
+                .attributes
+                .decl_attributes
+                .clone(),
+            AnyDeclaration::TypeParameter(_) => Default::default(),
+            AnyDeclaration::Constant(id, _) => self
+                .declarations
+                .constants
+                .get(&id)
+                .unwrap()
+                .value
+                .as_ref()
+                .unwrap()
+                .attributes
+                .decl_attributes
+                .clone(),
+            AnyDeclaration::Variable(_) => Default::default(),
         }
     }
 

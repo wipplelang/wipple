@@ -14,6 +14,7 @@ definitions! {
     mod on_mismatch;
     mod on_unimplemented;
     mod operator_precedence;
+    mod private;
     mod specialize;
 }
 
@@ -48,6 +49,7 @@ syntax_group! {
             OnMismatch,
             OnUnimplemented,
             OperatorPrecedence,
+            Private,
             Specialize,
         },
         terminal: {
