@@ -12,6 +12,7 @@ with-continuation : f -> intrinsic "with-continuation" f
 with-task-group :: (Task-Group -> ()) -> ()
 with-task-group : f -> intrinsic "with-task-group" f
 
+[private]
 task' :: (() -> ()) -> Task-Group -> ()
 task' : f group -> intrinsic "task" group f
 
@@ -19,6 +20,7 @@ task' : f group -> intrinsic "task" group f
 [help-group "Control Flow"]
 task : syntax { task 'body -> task' (() -> 'body) }
 
+[private]
 in-background' :: (() -> ()) -> ()
 in-background' : f -> intrinsic "in-background" f
 
