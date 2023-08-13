@@ -3823,7 +3823,7 @@ impl Typechecker {
             span: decl.span,
             operator: decl.value.operator,
             keyword: decl.value.keyword,
-            uses: decl.uses,
+            uses: decl.uses.into_iter().collect(),
             attributes: decl.value.attributes,
         };
 
@@ -3899,7 +3899,7 @@ impl Typechecker {
                 })
                 .collect(),
             attributes: decl.value.attributes,
-            uses: decl.uses,
+            uses: decl.uses.into_iter().collect(),
         };
 
         Some(f(self
@@ -3929,7 +3929,7 @@ impl Typechecker {
                 .ty
                 .map(|ty| self.convert_finalized_type_annotation(ty)),
             attributes: decl.value.attributes,
-            uses: decl.uses,
+            uses: decl.uses.into_iter().collect(),
         };
 
         Some(f(self
@@ -3996,7 +3996,7 @@ impl Typechecker {
             is_variant: decl.value.is_variant,
             attributes: decl.value.attributes,
             body: None,
-            uses: decl.uses,
+            uses: decl.uses.into_iter().collect(),
         };
 
         Some(f(self
@@ -4217,7 +4217,7 @@ impl Typechecker {
                 .unwrap_or_else(|| InternedString::new("<unknown>")),
             span: decl.span,
             attributes: decl.value.attributes,
-            uses: decl.uses,
+            uses: decl.uses.into_iter().collect(),
         };
 
         Some(f(self
@@ -4252,7 +4252,7 @@ impl Typechecker {
                 .default
                 .map(|ty| self.convert_generic_type_annotation(ty)),
             infer: decl.value.infer,
-            uses: decl.uses,
+            uses: decl.uses.into_iter().collect(),
         };
 
         Some(f(self
@@ -4279,7 +4279,7 @@ impl Typechecker {
             name: decl.name,
             span: decl.span,
             ty,
-            uses: decl.uses,
+            uses: decl.uses.into_iter().collect(),
         };
 
         Some(f(self
@@ -4312,7 +4312,7 @@ impl Typechecker {
                 .unwrap_or_else(|| InternedString::new("<unknown>")),
             span: decl.span,
             definition: decl.value.definition,
-            uses: decl.uses,
+            uses: decl.uses.into_iter().collect(),
         };
 
         Some(f(self

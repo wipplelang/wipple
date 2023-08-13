@@ -14,6 +14,15 @@ impl<T> Shared<T> {
             .expect("called `into_unique` on a `Shared` value with more than one reference")
             .into_inner()
     }
+
+    pub fn try_into_unique(self) -> T
+    where
+        T: Clone,
+    {
+        Arc::try_unwrap(self.0)
+            .map(|value| value.into_inner())
+            .unwrap_or_else(|value| value.lock().clone())
+    }
 }
 
 impl<T: ?Sized> Shared<T> {

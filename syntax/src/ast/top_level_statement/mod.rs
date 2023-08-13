@@ -16,7 +16,6 @@ use std::mem;
 use wipple_util::Shared;
 
 syntax_group! {
-    #[allow(clippy::large_enum_variant)]
     pub type TopLevelStatement<TopLevelStatementSyntaxContext> {
         non_terminal: {
             Use,

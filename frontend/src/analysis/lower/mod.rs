@@ -11,7 +11,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque},
+    collections::{BTreeMap, BTreeSet, HashMap, VecDeque},
     hash::Hash,
     mem,
     sync::Arc,
@@ -26,7 +26,7 @@ pub struct File<Decls = Declarations> {
     pub specializations: BTreeMap<ConstantId, Vec<ConstantId>>,
     pub statements: Vec<Expression>,
     pub root_scope: ScopeSet,
-    pub exported: HashMap<InternedString, Vec<(ScopeSet, AnyDeclaration)>>,
+    pub exported: im::HashMap<InternedString, Vec<(ScopeSet, AnyDeclaration)>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -38,28 +38,28 @@ pub struct FileAttributes {
 
 #[derive(Debug, Clone, Default)]
 pub struct Declarations {
-    pub syntaxes: BTreeMap<SyntaxId, Declaration<SyntaxDeclaration>>,
-    pub types: BTreeMap<TypeId, Declaration<TypeDeclaration>>,
-    pub type_parameters: BTreeMap<TypeParameterId, Declaration<TypeParameterDeclaration>>,
-    pub traits: BTreeMap<TraitId, Declaration<TraitDeclaration>>,
-    pub builtin_types: BTreeMap<BuiltinTypeId, Declaration<BuiltinTypeDeclaration>>,
-    pub constants: BTreeMap<ConstantId, Declaration<ConstantDeclaration>>,
-    pub instances: BTreeMap<ConstantId, Declaration<InstanceDeclaration>>,
-    pub variables: BTreeMap<VariableId, Declaration<VariableDeclaration>>,
-    pub builtin_syntaxes: BTreeMap<BuiltinSyntaxId, Declaration<BuiltinSyntaxDeclaration>>,
+    pub syntaxes: im::OrdMap<SyntaxId, Declaration<SyntaxDeclaration>>,
+    pub types: im::OrdMap<TypeId, Declaration<TypeDeclaration>>,
+    pub type_parameters: im::OrdMap<TypeParameterId, Declaration<TypeParameterDeclaration>>,
+    pub traits: im::OrdMap<TraitId, Declaration<TraitDeclaration>>,
+    pub builtin_types: im::OrdMap<BuiltinTypeId, Declaration<BuiltinTypeDeclaration>>,
+    pub constants: im::OrdMap<ConstantId, Declaration<ConstantDeclaration>>,
+    pub instances: im::OrdMap<ConstantId, Declaration<InstanceDeclaration>>,
+    pub variables: im::OrdMap<VariableId, Declaration<VariableDeclaration>>,
+    pub builtin_syntaxes: im::OrdMap<BuiltinSyntaxId, Declaration<BuiltinSyntaxDeclaration>>,
 }
 
 #[derive(Debug, Clone, Default)]
 struct UnresolvedDeclarations {
-    syntaxes: BTreeMap<SyntaxId, Declaration<SyntaxDeclaration>>,
-    types: BTreeMap<TypeId, Declaration<Option<TypeDeclaration>>>,
-    type_parameters: BTreeMap<TypeParameterId, Declaration<TypeParameterDeclaration>>,
-    traits: BTreeMap<TraitId, Declaration<Option<TraitDeclaration>>>,
-    builtin_types: BTreeMap<BuiltinTypeId, Declaration<BuiltinTypeDeclaration>>,
-    constants: BTreeMap<ConstantId, Declaration<Option<UnresolvedConstantDeclaration>>>,
-    instances: BTreeMap<ConstantId, Declaration<Option<InstanceDeclaration>>>,
-    variables: BTreeMap<VariableId, Declaration<VariableDeclaration>>,
-    builtin_syntaxes: BTreeMap<BuiltinSyntaxId, Declaration<BuiltinSyntaxDeclaration>>,
+    syntaxes: im::OrdMap<SyntaxId, Declaration<SyntaxDeclaration>>,
+    types: im::OrdMap<TypeId, Declaration<Option<TypeDeclaration>>>,
+    type_parameters: im::OrdMap<TypeParameterId, Declaration<TypeParameterDeclaration>>,
+    traits: im::OrdMap<TraitId, Declaration<Option<TraitDeclaration>>>,
+    builtin_types: im::OrdMap<BuiltinTypeId, Declaration<BuiltinTypeDeclaration>>,
+    constants: im::OrdMap<ConstantId, Declaration<Option<UnresolvedConstantDeclaration>>>,
+    instances: im::OrdMap<ConstantId, Declaration<Option<UnresolvedInstanceDeclaration>>>,
+    variables: im::OrdMap<VariableId, Declaration<VariableDeclaration>>,
+    builtin_syntaxes: im::OrdMap<BuiltinSyntaxId, Declaration<BuiltinSyntaxDeclaration>>,
 }
 
 impl UnresolvedDeclarations {
@@ -102,8 +102,9 @@ impl UnresolvedDeclarations {
 pub struct Declaration<T> {
     pub name: Option<InternedString>,
     pub span: SpanList,
-    pub uses: HashSet<SpanList>,
+    pub uses: im::HashSet<SpanList>,
     pub value: T,
+    imported: bool,
 }
 
 trait Resolve<T> {
@@ -121,8 +122,9 @@ impl<T> Declaration<Option<T>> {
         Declaration {
             name,
             span: span.into(),
-            uses: HashSet::new(),
+            uses: im::HashSet::new(),
             value: None,
+            imported: false,
         }
     }
 
@@ -140,6 +142,7 @@ impl<T> Declaration<Option<T>> {
                     panic!("unresolved declaration: {:?} @ {:?}", self.name, self.span)
                 })
                 .resolve(),
+            imported: false,
         }
     }
 }
@@ -149,8 +152,9 @@ impl<T> Declaration<T> {
         Declaration {
             name,
             span: span.into(),
-            uses: HashSet::new(),
+            uses: im::HashSet::new(),
             value,
+            imported: false,
         }
     }
 
@@ -163,6 +167,7 @@ impl<T> Declaration<T> {
             span: self.span,
             uses: self.uses,
             value: Some(self.value.into()),
+            imported: self.imported,
         }
     }
 }
@@ -319,7 +324,10 @@ impl Resolve<ConstantDeclaration> for UnresolvedConstantDeclaration {
             parameters: self.parameters,
             bounds: self.bounds,
             ty: self.ty,
-            value: self.value.into_unique().expect("uninitialized constant"),
+            value: self
+                .value
+                .try_into_unique()
+                .expect("uninitialized constant"),
             is_variant: self.is_variant,
             attributes: self.attributes,
         }
@@ -335,6 +343,16 @@ pub struct ConstantAttributes {
 }
 
 #[derive(Debug, Clone)]
+pub struct UnresolvedInstanceDeclaration {
+    pub parameters: Vec<TypeParameterId>,
+    pub bounds: Vec<Bound>,
+    pub tr_span: SpanList,
+    pub tr: TraitId,
+    pub tr_parameters: Vec<TypeAnnotation>,
+    pub value: Shared<Option<InstanceValue>>,
+}
+
+#[derive(Debug, Clone)]
 pub struct InstanceDeclaration {
     pub parameters: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
@@ -342,6 +360,32 @@ pub struct InstanceDeclaration {
     pub tr: TraitId,
     pub tr_parameters: Vec<TypeAnnotation>,
     pub value: Option<InstanceValue>,
+}
+
+impl From<InstanceDeclaration> for UnresolvedInstanceDeclaration {
+    fn from(decl: InstanceDeclaration) -> Self {
+        UnresolvedInstanceDeclaration {
+            parameters: decl.parameters,
+            bounds: decl.bounds,
+            tr_span: decl.tr_span,
+            tr: decl.tr,
+            tr_parameters: decl.tr_parameters,
+            value: Shared::new(decl.value),
+        }
+    }
+}
+
+impl Resolve<InstanceDeclaration> for UnresolvedInstanceDeclaration {
+    fn resolve(self) -> InstanceDeclaration {
+        InstanceDeclaration {
+            parameters: self.parameters,
+            bounds: self.bounds,
+            tr_span: self.tr_span,
+            tr: self.tr,
+            tr_parameters: self.tr_parameters,
+            value: self.value.try_into_unique(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -908,9 +952,10 @@ impl Compiler {
                     value: BuiltinSyntaxDeclaration {
                         definition: definition.clone(),
                     },
+                    imported: false,
                 })
                 .uses
-                .extend(uses);
+                .extend(uses.clone());
         }
 
         for (id, value) in &*file.file.syntax_declarations.lock() {
@@ -924,6 +969,7 @@ impl Compiler {
                         keyword: value.keyword.is_some(),
                         attributes: lowerer.lower_syntax_attributes(&value.attributes, &ctx),
                     },
+                    imported: false,
                 };
 
                 lowerer.declarations.syntaxes.insert(*id, decl);
@@ -946,11 +992,15 @@ impl Compiler {
             macro_rules! merge_dependency {
                 ($($kind:ident$(($transform:expr))?),* $(,)?) => {
                     $(
-                        for (id, mut decl) in dependency.declarations.$kind.clone() {
-                            let mut uses = HashSet::new();
+                        for (&id, decl) in &dependency.declarations.$kind {
+                            let mut uses = im::HashSet::new();
                             let merged_decl = lowerer.declarations.$kind.entry(id).or_insert_with(|| {
-                                uses = mem::take(&mut decl.uses);
-                                $($transform)?(decl)
+                                uses = decl.uses.clone();
+
+                                let mut decl = $($transform)?(decl.clone());
+                                decl.imported = true;
+
+                                decl
                             });
 
                             merged_decl.uses.extend(uses);
@@ -978,22 +1028,20 @@ impl Compiler {
                 }
             }
 
-            let exported = dependency.exported.clone();
-
-            for (name, decls) in exported {
+            for (&name, decls) in &dependency.exported {
                 let mut scopes = lowerer.scopes.get(&name).cloned().unwrap_or_default();
                 for (scope, decl) in decls {
-                    let private = lowerer.attributes_of(decl).private;
+                    let private = lowerer.attributes_of(*decl).private;
 
                     // So that this file can access top-level declarations
-                    if scope == dependency.root_scope {
-                        scopes.push((file.root_scope.clone(), decl, private));
+                    if scope == &dependency.root_scope {
+                        scopes.push((file.root_scope.clone(), *decl, private));
                     }
 
                     // So that hygienic syntaxes can continue to access the
                     // file's declarations
                     if !scope.is_empty() {
-                        scopes.push((scope, decl, false));
+                        scopes.push((scope.clone(), *decl, false));
                     }
                 }
 
@@ -1009,6 +1057,10 @@ impl Compiler {
         let statements = lowerer.lower_statements(&file.statements, &ctx);
 
         for (&constant_id, constant) in &lowerer.declarations.constants {
+            if constant.imported {
+                continue;
+            }
+
             constant
                 .value
                 .as_ref()
@@ -1036,7 +1088,11 @@ impl Compiler {
                 });
         }
 
-        for (&instance_id, instance) in &mut lowerer.declarations.instances {
+        for (&instance_id, instance) in &lowerer.declarations.instances {
+            if instance.imported {
+                continue;
+            }
+
             let tr = instance.value.as_ref().unwrap().tr;
             let tr_decl = lowerer.declarations.traits.get(&tr).unwrap();
 
@@ -1056,10 +1112,10 @@ impl Compiler {
             }
 
             let trait_has_value = tr_decl.value.as_ref().unwrap().ty.is_some();
-            let instance_value = &instance.value.as_ref().unwrap().value;
+            let instance_value = &mut *instance.value.as_ref().unwrap().value.lock();
 
             match (trait_has_value, instance_value) {
-                (true, None) => {
+                (true, instance_value @ None) => {
                     self.add_diagnostic(
                         self.error(
                             "expected instance to have value",
@@ -1076,7 +1132,7 @@ impl Compiler {
                         ),
                     );
 
-                    instance.value.as_mut().unwrap().value = Some(InstanceValue {
+                    *instance_value = Some(InstanceValue {
                         colon_span: None,
                         value: Expression {
                             id: lowerer.compiler.new_expression_id(instance_id),
@@ -1152,7 +1208,7 @@ struct Lowerer {
     declarations: UnresolvedDeclarations,
     file_info: FileInfo,
     specializations: BTreeMap<ConstantId, ConstantId>,
-    scopes: HashMap<InternedString, Vec<(ScopeSet, AnyDeclaration, bool)>>,
+    scopes: im::HashMap<InternedString, Vec<(ScopeSet, AnyDeclaration, bool)>>,
     captures: BTreeMap<ScopeId, Shared<CaptureList>>,
     variables: BTreeMap<VariableId, ScopeSet>,
 }
@@ -1735,13 +1791,13 @@ impl Lowerer {
                         });
 
                     self.declarations.instances.get_mut(&id).unwrap().value =
-                        Some(InstanceDeclaration {
+                        Some(UnresolvedInstanceDeclaration {
                             parameters,
                             bounds,
                             tr_span: trait_span,
                             tr,
                             tr_parameters: trait_params,
-                            value,
+                            value: Shared::new(value),
                         });
 
                     Some(AnyDeclaration::Constant(id, None))

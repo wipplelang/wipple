@@ -484,7 +484,7 @@ pub struct File {
             (
                 BuiltinSyntaxId,
                 wipple_syntax::ast::BuiltinSyntaxDefinition,
-                Vec<SpanList>,
+                im::HashSet<SpanList>,
             ),
         >,
     >,
@@ -558,14 +558,14 @@ impl wipple_syntax::File<Analysis> for File {
         let mut builtin_syntax_uses = self.builtin_syntax_uses.lock();
 
         if let Some((_, _, uses)) = builtin_syntax_uses.get_mut(&name) {
-            uses.push(span);
+            uses.insert(span);
         } else if let Some(definition) = builtin_syntax_definitions()
             .into_iter()
             .find(|definition| definition.name == name)
         {
             builtin_syntax_uses.insert(
                 name,
-                (compiler.new_builtin_syntax_id(), definition, vec![span]),
+                (compiler.new_builtin_syntax_id(), definition, im::HashSet::from_iter([span])),
             );
         }
     }
