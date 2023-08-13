@@ -14,7 +14,7 @@ tasks:
     test:
         run: once
         cmds:
-            - cargo run --bin wipple-test -- tests {{.CLI_ARGS}}
+            - cargo run --bin wipple-test --release -- tests {{.CLI_ARGS}}
 
     test-file:
         run: once
