@@ -1,3 +1,4 @@
+use crate::ScopeSet;
 use crate::{
     ast::{
         format::Format,
@@ -10,7 +11,6 @@ use crate::{
     },
     parse, Driver, File,
 };
-use std::collections::HashSet;
 use wipple_util::Shared;
 
 #[derive(Debug, Clone)]
@@ -26,7 +26,7 @@ pub struct AnnotateStatement<D: Driver> {
 pub struct AnnotatedName<D: Driver> {
     pub span: D::Span,
     pub name: D::InternedString,
-    pub scope_set: HashSet<D::Scope>,
+    pub scope_set: ScopeSet<D::Scope>,
 }
 
 impl<D: Driver> AnnotateStatement<D> {

@@ -1,7 +1,7 @@
 mod builtins;
 
 use crate::{
-    analysis::{ast, Analysis, Span, SpanList},
+    analysis::{ast, Analysis, ScopeSet, Span, SpanList},
     diagnostics::{Fix, FixRange, Note},
     helpers::{did_you_mean, Backtrace, InternedString, Shared},
     BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, ExpressionId, FieldIndex, FilePath,
@@ -25,8 +25,8 @@ pub struct File<Decls = Declarations> {
     pub info: FileInfo,
     pub specializations: BTreeMap<ConstantId, Vec<ConstantId>>,
     pub statements: Vec<Expression>,
-    pub root_scope: HashSet<ScopeId>,
-    pub exported: HashMap<InternedString, Vec<(HashSet<ScopeId>, AnyDeclaration)>>,
+    pub root_scope: ScopeSet,
+    pub exported: HashMap<InternedString, Vec<(ScopeSet, AnyDeclaration)>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -227,7 +227,7 @@ pub struct StructureField {
 pub struct EnumerationVariant {
     pub name_span: SpanList,
     pub name: InternedString,
-    pub name_scope: HashSet<ScopeId>,
+    pub name_scope: ScopeSet,
     pub tys: Vec<TypeAnnotation>,
     pub constructor: ConstantId,
 }
@@ -894,7 +894,7 @@ impl Compiler {
         };
 
         let ctx = Context::default();
-        lowerer.load_builtins(&HashSet::new());
+        lowerer.load_builtins(&ScopeSet::new());
 
         for (&name, (id, definition, uses)) in &*file.file.builtin_syntax_uses.lock() {
             lowerer
@@ -1152,18 +1152,13 @@ struct Lowerer {
     declarations: UnresolvedDeclarations,
     file_info: FileInfo,
     specializations: BTreeMap<ConstantId, ConstantId>,
-    scopes: HashMap<InternedString, Vec<(HashSet<ScopeId>, AnyDeclaration, bool)>>,
+    scopes: HashMap<InternedString, Vec<(ScopeSet, AnyDeclaration, bool)>>,
     captures: BTreeMap<ScopeId, Shared<CaptureList>>,
-    variables: BTreeMap<VariableId, HashSet<ScopeId>>,
+    variables: BTreeMap<VariableId, ScopeSet>,
 }
 
 impl Lowerer {
-    fn insert(
-        &mut self,
-        name: InternedString,
-        value: AnyDeclaration,
-        scope_set: &HashSet<ScopeId>,
-    ) {
+    fn insert(&mut self, name: InternedString, value: AnyDeclaration, scope_set: &ScopeSet) {
         if let AnyDeclaration::Variable(var) = value {
             self.variables.insert(var, scope_set.clone());
         }
@@ -1179,7 +1174,7 @@ impl Lowerer {
         name: InternedString,
         span: SpanList,
         kind: fn(AnyDeclaration) -> Option<T>,
-        scope: &HashSet<ScopeId>,
+        scope: &ScopeSet,
     ) -> Result<Option<T>, Vec<T>> {
         self.get_inner(name, Some(span), kind, scope)
     }
@@ -1188,7 +1183,7 @@ impl Lowerer {
         &mut self,
         name: InternedString,
         kind: fn(AnyDeclaration) -> Option<T>,
-        scope: &HashSet<ScopeId>,
+        scope: &ScopeSet,
     ) -> Result<Option<T>, Vec<T>> {
         self.get_inner(name, None, kind, scope)
     }
@@ -1198,7 +1193,7 @@ impl Lowerer {
         name: InternedString,
         use_span: Option<SpanList>,
         kind: fn(AnyDeclaration) -> Option<T>,
-        scope: &HashSet<ScopeId>,
+        scope: &ScopeSet,
     ) -> Result<Option<T>, Vec<T>> {
         let scopes = match self.scopes.get(&name) {
             Some(scopes) => scopes,
@@ -1207,8 +1202,8 @@ impl Lowerer {
 
         let mut candidates = scopes
             .iter()
-            .filter(|(candidate, _, private)| !private && scope.is_superset(candidate))
-            .max_set_by_key(|(candidate, _, _)| candidate.intersection(scope).count())
+            .filter(|(candidate, _, private)| !private && candidate.is_subset(scope))
+            .max_set_by_key(|(candidate, _, _)| candidate.clone().intersection(scope.clone()).len())
             .into_iter()
             .filter_map(|(scopes, decl, _)| {
                 let decl = *decl;
@@ -1260,13 +1255,13 @@ impl Lowerer {
     fn collect<'a>(
         &'a self,
         kind: impl Fn(AnyDeclaration) -> bool + 'a,
-        scope_set: &'a HashSet<ScopeId>,
+        scope_set: &'a ScopeSet,
     ) -> impl Iterator<Item = InternedString> + 'a {
         self.scopes.iter().filter_map(move |(&name, candidates)| {
             candidates
                 .iter()
                 .any(|(candidate, decl, private)| {
-                    !private && scope_set.is_superset(candidate) && kind(*decl)
+                    !private && candidate.is_subset(scope_set) && kind(*decl)
                 })
                 .then_some(name)
         })
@@ -1292,20 +1287,20 @@ struct StatementDeclaration<'a> {
 enum StatementDeclarationKind<'a> {
     Type(
         TypeId,
-        HashSet<ScopeId>,
-        Option<HashSet<ScopeId>>,
+        ScopeSet,
+        Option<ScopeSet>,
         Option<(Vec<TypeParameterId>, Vec<Bound>)>,
         &'a ast::TypeAssignmentValue<Analysis>,
     ),
     Trait(
         TraitId,
-        HashSet<ScopeId>,
+        ScopeSet,
         Option<(Vec<TypeParameterId>, Vec<Bound>)>,
         &'a ast::TraitAssignmentValue<Analysis>,
     ),
     Constant(
         ConstantId,
-        (HashSet<ScopeId>, (Vec<TypeParameterId>, Vec<Bound>)),
+        (ScopeSet, (Vec<TypeParameterId>, Vec<Bound>)),
         &'a ast::Type<Analysis>,
     ),
     Instance(
@@ -1314,7 +1309,7 @@ enum StatementDeclarationKind<'a> {
         (
             SpanList,
             InternedString,
-            HashSet<ScopeId>,
+            ScopeSet,
             &'a Vec<Result<ast::Type<Analysis>, ast::SyntaxError<Analysis>>>,
         ),
         Option<(SpanList, &'a ast::Expression<Analysis>)>,
@@ -3698,7 +3693,7 @@ impl Lowerer {
         &mut self,
         ty: &ast::Type<Analysis>,
         ctx: &Context,
-        fallback_scope: Option<&HashSet<ScopeId>>,
+        fallback_scope: Option<&ScopeSet>,
     ) -> TypeAnnotation {
         match ty {
             ast::Type::Function(ty) => {
@@ -3905,8 +3900,8 @@ impl Lowerer {
         &mut self,
         type_pattern: &ast::TypePattern<Analysis>,
         ctx: &Context,
-        fallback_scope: Option<&HashSet<ScopeId>>,
-    ) -> (Vec<TypeParameterId>, Vec<Bound>, Option<HashSet<ScopeId>>) {
+        fallback_scope: Option<&ScopeSet>,
+    ) -> (Vec<TypeParameterId>, Vec<Bound>, Option<ScopeSet>) {
         macro_rules! generate_type_parameters {
             ($params:expr) => {
                 $params
@@ -4281,7 +4276,7 @@ impl Lowerer {
         &mut self,
         attributes: &ast::StatementAttributes<Analysis>,
         ctx: &Context,
-        scope: &HashSet<ScopeId>,
+        scope: &ScopeSet,
     ) -> TypeAttributes {
         // TODO: Raise errors for misused attributes
 
@@ -4388,7 +4383,7 @@ impl Lowerer {
         &mut self,
         attributes: &ast::StatementAttributes<Analysis>,
         ctx: &Context,
-        scope: &HashSet<ScopeId>,
+        scope: &ScopeSet,
     ) -> TraitAttributes {
         // TODO: Raise errors for misused attributes
 
@@ -4500,7 +4495,7 @@ impl Lowerer {
     fn get_name_from_assignment<'a>(
         &mut self,
         pattern: &'a ast::AssignmentPattern<Analysis>,
-    ) -> Option<(SpanList, InternedString, &'a HashSet<ScopeId>)> {
+    ) -> Option<(SpanList, InternedString, &'a ScopeSet)> {
         if let ast::AssignmentPattern::Pattern(pattern) = pattern {
             if let ast::Pattern::Name(pattern) = &pattern.pattern {
                 return Some((pattern.span, pattern.name, &pattern.scope));
@@ -4520,7 +4515,7 @@ impl Lowerer {
         &mut self,
         span: SpanList,
         name: InternedString,
-        scope: &HashSet<ScopeId>,
+        scope: &ScopeSet,
     ) -> Result<Option<ExpressionKind>, Vec<SpanList>> {
         macro_rules! get {
             ($decls:ident, $transform:expr, $pat:pat, $id:ident) => {
@@ -4854,7 +4849,7 @@ impl Lowerer {
         name: InternedString,
         ctx: &Context,
         kind: fn(AnyDeclaration) -> Option<T>,
-        scope: &HashSet<ScopeId>,
+        scope: &ScopeSet,
     ) -> (Vec<Note>, Option<Fix>) {
         self.diagnostic_notes_for_unresolved_name_with(
             span,
@@ -4871,7 +4866,7 @@ impl Lowerer {
         name: InternedString,
         ctx: &Context,
         kind: impl Fn(AnyDeclaration) -> bool,
-        scope: &HashSet<ScopeId>,
+        scope: &ScopeSet,
     ) -> (Vec<Note>, Option<Fix>) {
         let mut notes = std::iter::empty()
             .chain(

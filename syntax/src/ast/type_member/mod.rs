@@ -2,6 +2,7 @@ definitions! {
     mod field;
 }
 
+use crate::ScopeSet;
 use crate::{
     ast::{
         format::Format,
@@ -13,7 +14,6 @@ use crate::{
 };
 use async_trait::async_trait;
 use futures::{stream, StreamExt};
-use std::collections::HashSet;
 use wipple_util::Shared;
 
 syntax_group! {
@@ -30,10 +30,10 @@ syntax_group! {
 #[derive(Debug, Clone)]
 pub struct VariantTypeMember<D: Driver> {
     pub span: D::Span,
-    pub name_list: Option<Vec<(D::Span, D::InternedString, HashSet<D::Scope>)>>,
+    pub name_list: Option<Vec<(D::Span, D::InternedString, ScopeSet<D::Scope>)>>,
     pub name_span: D::Span,
     pub name: D::InternedString,
-    pub name_scope: HashSet<D::Scope>,
+    pub name_scope: ScopeSet<D::Scope>,
     pub tys: Vec<Result<Type<D>, SyntaxError<D>>>,
 }
 
@@ -88,7 +88,7 @@ impl<D: Driver> SyntaxContext<D> for TypeMemberSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope_set: Shared<HashSet<D::Scope>>,
+        _scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         self.ast_builder
             .driver
@@ -100,7 +100,7 @@ impl<D: Driver> SyntaxContext<D> for TypeMemberSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope_set: Shared<HashSet<D::Scope>>,
+        scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         let name_list = expr
             .clone()

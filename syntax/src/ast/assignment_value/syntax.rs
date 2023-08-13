@@ -1,3 +1,4 @@
+use crate::ScopeSet;
 use crate::{
     ast::{
         assignment_value::AssignmentValueSyntaxContext,
@@ -8,13 +9,12 @@ use crate::{
     },
     Driver, File,
 };
-use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct SyntaxAssignmentValue<D: Driver> {
     pub span: D::Span,
     pub syntax_span: D::Span,
-    pub name: Option<(D::InternedString, HashSet<D::Scope>)>,
+    pub name: Option<(D::InternedString, ScopeSet<D::Scope>)>,
     pub body: Result<SyntaxBody<D>, SyntaxError<D>>,
     pub operator_precedence: Option<OperatorPrecedenceStatementAttribute<D>>,
     pub keyword: Option<KeywordStatementAttribute<D>>,

@@ -1,5 +1,6 @@
 definitions! {}
 
+use crate::ScopeSet;
 use crate::{
     ast::{
         format::Format,
@@ -265,7 +266,7 @@ impl<D: Driver> SyntaxContext<D> for SyntaxPatternSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope_set: Shared<HashSet<D::Scope>>,
+        _scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Ok(BlockSyntaxPattern {
             span,
@@ -277,7 +278,7 @@ impl<D: Driver> SyntaxContext<D> for SyntaxPatternSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope_set: Shared<HashSet<D::Scope>>,
+        scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         match expr.try_into_list_exprs() {
             Ok((span, exprs)) => {
@@ -504,7 +505,7 @@ impl<D: Driver> SyntaxPattern<D> {
         body: SyntaxPattern<D>,
         vars: &HashMap<D::InternedString, SyntaxExpression<D>>,
         source_span: D::Span,
-        scope: &HashSet<D::Scope>,
+        scope: &ScopeSet<D::Scope>,
     ) -> Result<parse::Expr<D>, SyntaxError<D>> {
         let body_span = body.span();
 
@@ -533,7 +534,7 @@ impl<D: Driver> SyntaxPattern<D> {
         body: SyntaxPattern<D>,
         vars: &HashMap<D::InternedString, SyntaxExpression<D>>,
         source_span: D::Span,
-        scope: &HashSet<D::Scope>,
+        scope: &ScopeSet<D::Scope>,
     ) -> Result<Vec<parse::Expr<D>>, SyntaxError<D>> {
         Ok(match body {
             SyntaxPattern::Unit(pattern) => vec![parse::Expr {

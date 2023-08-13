@@ -5,10 +5,9 @@ use crate::{
         syntax::{Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules},
         Type, TypeSyntax, TypeSyntaxContext,
     },
-    parse, Driver,
+    parse, Driver, ScopeSet,
 };
 use futures::{stream, StreamExt};
-use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct InstanceAssignmentPattern<D: Driver> {
@@ -17,7 +16,7 @@ pub struct InstanceAssignmentPattern<D: Driver> {
     pub pattern_span: D::Span,
     pub trait_span: D::Span,
     pub trait_name: D::InternedString,
-    pub trait_scope: HashSet<D::Scope>,
+    pub trait_scope: ScopeSet<D::Scope>,
     pub trait_parameters: Vec<Result<Type<D>, SyntaxError<D>>>,
 }
 

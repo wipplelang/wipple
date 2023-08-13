@@ -1,3 +1,4 @@
+use crate::ScopeSet;
 use crate::{
     ast::{
         assignment_value::AssignmentValueSyntaxContext,
@@ -10,7 +11,6 @@ use crate::{
     },
     parse, Driver, File,
 };
-use std::collections::HashSet;
 use wipple_util::Shared;
 
 #[derive(Debug, Clone)]
@@ -19,7 +19,7 @@ pub struct TypeFunctionAssignmentValue<D: Driver> {
     pub arrow_span: D::Span,
     pub pattern: Result<TypePattern<D>, SyntaxError<D>>,
     pub value: Result<Box<AssignmentValue<D>>, SyntaxError<D>>,
-    pub scope_set: HashSet<D::Scope>,
+    pub scope_set: ScopeSet<D::Scope>,
 }
 
 impl<D: Driver> TypeFunctionAssignmentValue<D> {

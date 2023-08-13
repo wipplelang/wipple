@@ -1,7 +1,7 @@
 use super::*;
 
 impl Lowerer {
-    pub fn load_builtins(&mut self, scope: &HashSet<ScopeId>) {
+    pub fn load_builtins(&mut self, scope: &ScopeSet) {
         macro_rules! add {
             ($kind:ident, $span:expr, $name:expr, $value:expr $(,)?) => {{
                 paste::paste! {

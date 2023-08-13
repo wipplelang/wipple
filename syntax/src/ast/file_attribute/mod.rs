@@ -4,6 +4,7 @@ definitions! {
     mod recursion_limit;
 }
 
+use crate::ScopeSet;
 use crate::{
     ast::{
         macros::{definitions, syntax_group},
@@ -13,7 +14,6 @@ use crate::{
     parse, Driver,
 };
 use async_trait::async_trait;
-use std::collections::HashSet;
 use wipple_util::Shared;
 
 syntax_group! {
@@ -54,7 +54,7 @@ impl<D: Driver> SyntaxContext<D> for FileAttributeSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope_set: Shared<HashSet<D::Scope>>,
+        _scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         self.ast_builder
             .driver
@@ -66,7 +66,7 @@ impl<D: Driver> SyntaxContext<D> for FileAttributeSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        _scope_set: Shared<HashSet<D::Scope>>,
+        _scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         self.ast_builder
             .driver

@@ -33,9 +33,9 @@ pub use attributes::*;
 pub use format::Format;
 pub use syntax::SyntaxError;
 
+use crate::ScopeSet;
 use crate::{ast::macros::definitions, parse, Driver, DriverExt, File as _, Span};
 use futures::{future::BoxFuture, stream, StreamExt};
-use std::collections::HashSet;
 use sync_wrapper::SyncFuture;
 use syntax::{Syntax, SyntaxContext};
 use wipple_util::Shared;
@@ -213,7 +213,7 @@ impl BuiltinSyntaxDefinition {
 pub struct File<D: Driver> {
     pub span: D::Span,
     pub attributes: FileAttributes<D>,
-    pub root_scope: HashSet<D::Scope>,
+    pub root_scope: ScopeSet<D::Scope>,
     pub statements: Vec<Result<Statement<D>, SyntaxError<D>>>,
     pub file: D::File,
 }
@@ -257,7 +257,8 @@ pub(crate) async fn build<D: Driver>(
     driver_file: D::File,
     parse_file: parse::File<D>,
 ) -> File<D> {
-    let root_scope = HashSet::from([driver_file.make_scope()]);
+    let mut root_scope = ScopeSet::new();
+    root_scope.insert(driver_file.make_scope());
 
     let scope_set = Shared::new(root_scope.clone());
 
@@ -376,7 +377,7 @@ impl<D: Driver> AstBuilder<D> {
         &self,
         context: S::Context,
         expr: parse::Expr<D>,
-        scope_set: Shared<HashSet<D::Scope>>,
+        scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> SyncFuture<BoxFuture<Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>>> {
         SyncFuture::new(Box::pin(async move {
             match expr.kind {
@@ -454,7 +455,7 @@ impl<D: Driver> AstBuilder<D> {
         &self,
         context: S::Context,
         statement: parse::Statement<D>,
-        scope_set: Shared<HashSet<D::Scope>>,
+        scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> SyncFuture<BoxFuture<Option<Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>>>>
     {
         SyncFuture::new(Box::pin(async move {

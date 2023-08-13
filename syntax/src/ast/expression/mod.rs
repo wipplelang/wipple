@@ -11,6 +11,7 @@ definitions! {
     mod with;
 }
 
+use crate::ScopeSet;
 use crate::{
     ast::{
         format::Format,
@@ -24,10 +25,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use futures::{stream, StreamExt};
-use std::{
-    cmp::Ordering,
-    collections::{HashSet, VecDeque},
-};
+use std::{cmp::Ordering, collections::VecDeque};
 use wipple_util::Shared;
 
 syntax_group! {
@@ -77,7 +75,7 @@ impl<D: Driver> Format<D> for UnitExpression<D> {
 pub struct NameExpression<D: Driver> {
     pub span: D::Span,
     pub name: D::InternedString,
-    pub scope_set: HashSet<D::Scope>,
+    pub scope_set: ScopeSet<D::Scope>,
 }
 
 impl<D: Driver> NameExpression<D> {
@@ -234,7 +232,7 @@ impl<D: Driver> SyntaxContext<D> for ExpressionSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope_set: Shared<HashSet<D::Scope>>,
+        _scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Ok(BlockExpression {
             span,
@@ -246,7 +244,7 @@ impl<D: Driver> SyntaxContext<D> for ExpressionSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope_set: Shared<HashSet<D::Scope>>,
+        scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         match expr.try_into_list_exprs() {
             Ok((span, exprs)) => self.expand_list(span, exprs.collect(), scope_set).await,
@@ -295,7 +293,7 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
         &self,
         list_span: D::Span,
         mut exprs: Vec<parse::Expr<D>>,
-        scope_set: Shared<HashSet<D::Scope>>,
+        scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Expression<D>, SyntaxError<D>> {
         match exprs.len() {
             0 => Ok(UnitExpression { span: list_span }.into()),
@@ -521,7 +519,7 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
     fn operators_in_list<'a>(
         &'a self,
         exprs: impl IntoIterator<Item = (usize, &'a parse::Expr<D>)>,
-        scope_set: Shared<HashSet<D::Scope>>,
+        scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Vec<(
         usize,
         parse::Expr<D>,
@@ -568,12 +566,12 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
         span: D::Span,
         syntax: SyntaxAssignmentValue<D>,
         mut exprs: Vec<parse::Expr<D>>,
-        scope_set: Shared<HashSet<D::Scope>>,
+        scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Expression<D>, SyntaxError<D>> {
         for expr in &mut exprs {
             // The empty set is a marker that we can detect below to restore
             // the scopes after expansion
-            expr.fix_to(&HashSet::new());
+            expr.fix_to(&ScopeSet::new());
         }
 
         let SyntaxBody::Block(body) = syntax.body?;

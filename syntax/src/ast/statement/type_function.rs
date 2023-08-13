@@ -1,3 +1,4 @@
+use crate::ScopeSet;
 use crate::{
     ast::{
         format::Format,
@@ -10,7 +11,6 @@ use crate::{
     },
     parse, Driver, File,
 };
-use std::collections::HashSet;
 use wipple_util::Shared;
 
 #[derive(Debug, Clone)]
@@ -19,7 +19,7 @@ pub struct TypeFunctionStatement<D: Driver> {
     pub arrow_span: D::Span,
     pub pattern: Result<TypePattern<D>, SyntaxError<D>>,
     pub value: Result<Box<Statement<D>>, SyntaxError<D>>,
-    pub scope_set: HashSet<D::Scope>,
+    pub scope_set: ScopeSet<D::Scope>,
     pub attributes: StatementAttributes<D>,
 }
 

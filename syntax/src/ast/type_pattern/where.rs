@@ -1,3 +1,4 @@
+use crate::ScopeSet;
 use crate::{
     ast::{
         format::Format,
@@ -10,7 +11,6 @@ use crate::{
     parse, Driver,
 };
 use futures::{stream, StreamExt};
-use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct WhereTypePattern<D: Driver> {
@@ -45,7 +45,7 @@ pub struct WhereTypePatternBound<D: Driver> {
     pub span: D::Span,
     pub trait_span: D::Span,
     pub trait_name: D::InternedString,
-    pub trait_scope_set: HashSet<D::Scope>,
+    pub trait_scope_set: ScopeSet<D::Scope>,
     pub parameters: Vec<Result<Type<D>, SyntaxError<D>>>,
 }
 

@@ -1,5 +1,6 @@
 .task
 .vscode
+flamegraph.svg
 
 # Created by https://www.toptal.com/developers/gitignore/api/macos,linux,rust
 # Edit at https://www.toptal.com/developers/gitignore?templates=macos,linux,rust

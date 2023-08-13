@@ -1,3 +1,4 @@
+use crate::ScopeSet;
 use crate::{
     ast::{
         expression::ExpressionSyntaxContext,
@@ -10,7 +11,6 @@ use crate::{
     parse, Driver, File,
 };
 use futures::{stream, StreamExt};
-use std::collections::HashSet;
 use wipple_util::Shared;
 
 #[derive(Debug, Clone)]
@@ -19,7 +19,7 @@ pub struct FunctionExpression<D: Driver> {
     pub arrow_span: D::Span,
     pub pattern: Result<Pattern<D>, SyntaxError<D>>,
     pub body: Result<Box<Expression<D>>, SyntaxError<D>>,
-    pub scope_set: HashSet<D::Scope>,
+    pub scope_set: ScopeSet<D::Scope>,
 }
 
 impl<D: Driver> FunctionExpression<D> {

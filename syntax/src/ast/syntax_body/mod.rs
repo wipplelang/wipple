@@ -1,5 +1,6 @@
 definitions! {}
 
+use crate::ScopeSet;
 use crate::{
     ast::{
         format::Format,
@@ -10,7 +11,6 @@ use crate::{
     parse, Driver,
 };
 use async_trait::async_trait;
-use std::collections::HashSet;
 use wipple_util::Shared;
 
 syntax_group! {
@@ -26,7 +26,7 @@ syntax_group! {
 pub struct BlockSyntaxBody<D: Driver> {
     pub span: D::Span,
     pub rules: Vec<Result<SyntaxRule<D>, SyntaxError<D>>>,
-    pub scope_set: HashSet<D::Scope>,
+    pub scope_set: ScopeSet<D::Scope>,
 }
 
 impl<D: Driver> BlockSyntaxBody<D> {
@@ -80,7 +80,7 @@ impl<D: Driver> SyntaxContext<D> for SyntaxBodySyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        scope_set: Shared<HashSet<D::Scope>>,
+        scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Ok(BlockSyntaxBody {
             span,
@@ -93,7 +93,7 @@ impl<D: Driver> SyntaxContext<D> for SyntaxBodySyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        _scope_set: Shared<HashSet<D::Scope>>,
+        _scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         self.ast_builder
             .driver

@@ -2,6 +2,7 @@ definitions! {
     mod assign;
 }
 
+use crate::ScopeSet;
 use crate::{
     ast::{
         format::Format,
@@ -12,7 +13,6 @@ use crate::{
     parse, Driver,
 };
 use async_trait::async_trait;
-use std::collections::HashSet;
 use wipple_util::Shared;
 
 syntax_group! {
@@ -31,7 +31,7 @@ syntax_group! {
 pub struct NameDestructuring<D: Driver> {
     pub span: D::Span,
     pub name: D::InternedString,
-    pub scope: HashSet<D::Scope>,
+    pub scope: ScopeSet<D::Scope>,
 }
 
 impl<D: Driver> NameDestructuring<D> {
@@ -101,7 +101,7 @@ impl<D: Driver> SyntaxContext<D> for DestructuringSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope_set: Shared<HashSet<D::Scope>>,
+        _scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         self.ast_builder.driver.syntax_error(
             span,
@@ -114,7 +114,7 @@ impl<D: Driver> SyntaxContext<D> for DestructuringSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope_set: Shared<HashSet<D::Scope>>,
+        scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         match expr.try_into_list_exprs() {
             Ok((span, exprs)) => {

@@ -13,6 +13,8 @@ pub use typecheck::{
 };
 pub use wipple_syntax::ast;
 
+pub type ScopeSet = wipple_syntax::ScopeSet<ScopeId>;
+
 use crate::{
     diagnostics::*,
     helpers::{InternedString, Shared},
@@ -22,7 +24,7 @@ use async_trait::async_trait;
 use futures::future::BoxFuture;
 use itertools::Itertools;
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, HashMap},
     sync::{atomic::AtomicUsize, Arc},
 };
 use wipple_syntax::{ast::builtin_syntax_definitions, DriverExt, ResolveSyntaxError};
@@ -267,7 +269,7 @@ impl wipple_syntax::Driver for Analysis {
                 source_file.syntaxes.lock().entry(name).or_default().extend(
                     dependency_syntaxes
                         .into_iter()
-                        .map(|(_, syntaxes)| (HashSet::new(), syntaxes)),
+                        .map(|(_, syntaxes)| (ScopeSet::new(), syntaxes)),
                 );
             }
 
@@ -475,7 +477,7 @@ pub struct File {
     dependencies: Shared<Vec<Arc<wipple_syntax::ast::File<Analysis>>>>,
     syntax_declarations:
         Shared<BTreeMap<SyntaxId, wipple_syntax::ast::SyntaxAssignmentValue<Analysis>>>,
-    syntaxes: Shared<HashMap<InternedString, Vec<(HashSet<ScopeId>, SyntaxId)>>>,
+    syntaxes: Shared<HashMap<InternedString, Vec<(ScopeSet, SyntaxId)>>>,
     builtin_syntax_uses: Shared<
         HashMap<
             &'static str,
@@ -486,7 +488,7 @@ pub struct File {
             ),
         >,
     >,
-    constants: Shared<HashMap<InternedString, Vec<(HashSet<ScopeId>, HashSet<ScopeId>)>>>,
+    constants: Shared<HashMap<InternedString, Vec<(ScopeSet, ScopeSet)>>>,
 }
 
 impl wipple_syntax::File<Analysis> for File {
@@ -501,7 +503,7 @@ impl wipple_syntax::File<Analysis> for File {
     fn define_syntax(
         &self,
         name: InternedString,
-        scope_set: HashSet<ScopeId>,
+        scope_set: ScopeSet,
         value: wipple_syntax::ast::SyntaxAssignmentValue<Analysis>,
     ) {
         let id = self.compiler.new_syntax_id_in(self.path);
@@ -519,7 +521,7 @@ impl wipple_syntax::File<Analysis> for File {
         &self,
         span: SpanList,
         name: InternedString,
-        scope_set: HashSet<ScopeId>,
+        scope_set: ScopeSet,
     ) -> Result<wipple_syntax::ast::SyntaxAssignmentValue<Analysis>, ResolveSyntaxError> {
         let syntaxes = self.syntaxes.lock();
 
@@ -527,8 +529,10 @@ impl wipple_syntax::File<Analysis> for File {
             .get(&name)
             .ok_or(ResolveSyntaxError::NotFound)?
             .iter()
-            .filter(|(candidate, _)| scope_set.is_superset(candidate))
-            .max_set_by_key(|(candidate, _)| candidate.intersection(&scope_set).count())
+            .filter(|(candidate, _)| candidate.is_subset(&scope_set))
+            .max_set_by_key(|(candidate, _)| {
+                candidate.clone().intersection(scope_set.clone()).len()
+            })
             .into_iter()
             .map(|(_, syntax)| *syntax)
             .unique()
@@ -569,8 +573,8 @@ impl wipple_syntax::File<Analysis> for File {
     fn define_constant(
         &self,
         name: InternedString,
-        visible_scope_set: HashSet<ScopeId>,
-        body_scope_set: HashSet<ScopeId>,
+        visible_scope_set: ScopeSet,
+        body_scope_set: ScopeSet,
     ) {
         self.constants
             .lock()
@@ -582,8 +586,8 @@ impl wipple_syntax::File<Analysis> for File {
     fn resolve_constant_body(
         &self,
         name: InternedString,
-        scope_set: HashSet<ScopeId>,
-    ) -> Result<HashSet<ScopeId>, ResolveSyntaxError> {
+        scope_set: ScopeSet,
+    ) -> Result<ScopeSet, ResolveSyntaxError> {
         let mut constants = self.constants.lock();
 
         let mut candidates = constants
@@ -591,8 +595,10 @@ impl wipple_syntax::File<Analysis> for File {
             .ok_or(ResolveSyntaxError::NotFound)?
             .iter()
             .enumerate()
-            .filter(|(_, (candidate, _))| scope_set.is_superset(candidate))
-            .max_set_by_key(|(_, (candidate, _))| candidate.intersection(&scope_set).count())
+            .filter(|(_, (candidate, _))| candidate.is_subset(&scope_set))
+            .max_set_by_key(|(_, (candidate, _))| {
+                candidate.clone().intersection(scope_set.clone()).len()
+            })
             .into_iter()
             .map(|(index, _)| index)
             .collect::<Vec<_>>();

@@ -4,6 +4,7 @@ definitions! {
     mod tuple;
 }
 
+use crate::ScopeSet;
 use crate::{
     ast::{
         format::Format,
@@ -15,7 +16,6 @@ use crate::{
 };
 use async_trait::async_trait;
 use futures::{stream, StreamExt};
-use std::collections::HashSet;
 use wipple_util::Shared;
 
 syntax_group! {
@@ -41,7 +41,7 @@ syntax_group! {
 pub struct NamePattern<D: Driver> {
     pub span: D::Span,
     pub name: D::InternedString,
-    pub scope: HashSet<D::Scope>,
+    pub scope: ScopeSet<D::Scope>,
 }
 
 impl<D: Driver> NamePattern<D> {
@@ -114,7 +114,7 @@ impl<D: Driver> Format<D> for UnitPattern<D> {
 pub struct VariantPattern<D: Driver> {
     pub span: D::Span,
     pub name_span: D::Span,
-    pub name_scope_set: HashSet<D::Scope>,
+    pub name_scope_set: ScopeSet<D::Scope>,
     pub name: D::InternedString,
     pub values: Vec<Result<Pattern<D>, SyntaxError<D>>>,
 }
@@ -212,7 +212,7 @@ impl<D: Driver> SyntaxContext<D> for PatternSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope_set: Shared<HashSet<D::Scope>>,
+        _scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Ok(DestructurePattern {
             span,
@@ -224,7 +224,7 @@ impl<D: Driver> SyntaxContext<D> for PatternSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope_set: Shared<HashSet<D::Scope>>,
+        scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         match expr.kind {
             parse::ExprKind::Name(name, scope) => Ok(NamePattern {

@@ -1,3 +1,4 @@
+use crate::ScopeSet;
 use crate::{
     ast::{
         format::Format,
@@ -8,13 +9,12 @@ use crate::{
     },
     parse, Driver,
 };
-use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct AssignWithClause<D: Driver> {
     pub span: D::Span,
     pub colon_span: D::Span,
-    pub name: Result<(D::Span, D::InternedString, HashSet<D::Scope>), SyntaxError<D>>,
+    pub name: Result<(D::Span, D::InternedString, ScopeSet<D::Scope>), SyntaxError<D>>,
     pub value: Result<Box<Expression<D>>, SyntaxError<D>>,
 }
 

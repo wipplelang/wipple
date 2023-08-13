@@ -3,6 +3,7 @@ definitions! {
     mod type_function;
 }
 
+use crate::ScopeSet;
 use crate::{
     ast::{
         macros::{definitions, syntax_group},
@@ -12,7 +13,6 @@ use crate::{
     parse, Driver,
 };
 use async_trait::async_trait;
-use std::collections::HashSet;
 use wipple_util::Shared;
 
 syntax_group! {
@@ -57,7 +57,7 @@ impl<D: Driver> SyntaxContext<D> for ConstantTypeAnnotationSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope_set: Shared<HashSet<D::Scope>>,
+        _scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         self.ast_builder
             .driver
@@ -69,7 +69,7 @@ impl<D: Driver> SyntaxContext<D> for ConstantTypeAnnotationSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope_set: Shared<HashSet<D::Scope>>,
+        scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         let context = TypeSyntaxContext::new(self.ast_builder)
             .with_statement_attributes(self.statement_attributes.unwrap());

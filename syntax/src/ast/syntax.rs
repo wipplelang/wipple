@@ -2,11 +2,11 @@
 
 use crate::{
     ast::{AstBuilder, StatementAttributes},
-    parse, Driver, File, Fix, FixRange, Span,
+    parse, Driver, File, Fix, FixRange, ScopeSet, Span,
 };
 use async_trait::async_trait;
 use futures::{future::BoxFuture, Future};
-use std::collections::{HashSet, VecDeque};
+use std::collections::VecDeque;
 use wipple_util::{Backtrace, Shared};
 
 pub(crate) trait Syntax<D: Driver>: Send + Sync + 'static {
@@ -36,14 +36,14 @@ pub(crate) trait SyntaxContext<D: Driver>: Clone + Send + Sync {
                     SyntaxError<D>,
                 >,
             > + Send,
-        scope_set: Shared<HashSet<D::Scope>>,
+        scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>>;
 
     /// Build an expression that contains no syntaxes or operators.
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        scope_set: Shared<HashSet<D::Scope>>,
+        scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>>;
 }
 
@@ -95,7 +95,7 @@ impl<D: Driver> SyntaxContext<D> for RawSyntaxContext {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope_set: Shared<HashSet<D::Scope>>,
+        _scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Ok(parse::Expr::new(
             span,
@@ -115,7 +115,7 @@ impl<D: Driver> SyntaxContext<D> for RawSyntaxContext {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        _scope_set: Shared<HashSet<D::Scope>>,
+        _scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Ok(expr)
     }
@@ -151,7 +151,7 @@ impl<D: Driver> SyntaxContext<D> for std::convert::Infallible {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope_set: Shared<HashSet<D::Scope>>,
+        _scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         unreachable!()
     }
@@ -159,7 +159,7 @@ impl<D: Driver> SyntaxContext<D> for std::convert::Infallible {
     async fn build_terminal(
         self,
         _expr: parse::Expr<D>,
-        _scope_set: Shared<HashSet<D::Scope>>,
+        _scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         unreachable!()
     }
@@ -179,7 +179,7 @@ pub(crate) enum SyntaxRuleKind<D: Driver, S: Syntax<D> + ?Sized> {
                     D::Span,
                     D::Span,
                     Vec<parse::Expr<D>>,
-                    Shared<HashSet<D::Scope>>,
+                    Shared<ScopeSet<D::Scope>>,
                 ) -> Option<
                     BoxFuture<
                         'static,
@@ -198,7 +198,7 @@ pub(crate) enum SyntaxRuleKind<D: Driver, S: Syntax<D> + ?Sized> {
                     (D::Span, Vec<parse::Expr<D>>),
                     D::Span,
                     (D::Span, Vec<parse::Expr<D>>),
-                    Shared<HashSet<D::Scope>>,
+                    Shared<ScopeSet<D::Scope>>,
                 ) -> Option<
                     BoxFuture<
                         'static,
@@ -218,7 +218,7 @@ impl<D: Driver, S: Syntax<D>> SyntaxRule<D, S> {
             + 'static,
     >(
         name: &'static str,
-        rule: impl Fn(S::Context, D::Span, D::Span, Vec<parse::Expr<D>>, Shared<HashSet<D::Scope>>) -> Fut
+        rule: impl Fn(S::Context, D::Span, D::Span, Vec<parse::Expr<D>>, Shared<ScopeSet<D::Scope>>) -> Fut
             + Send
             + Sync
             + 'static,
@@ -248,7 +248,7 @@ impl<D: Driver, S: Syntax<D>> SyntaxRule<D, S> {
                 (D::Span, Vec<parse::Expr<D>>),
                 D::Span,
                 (D::Span, Vec<parse::Expr<D>>),
-                Shared<HashSet<D::Scope>>,
+                Shared<ScopeSet<D::Scope>>,
             ) -> Fut
             + Send
             + Sync
@@ -381,7 +381,7 @@ impl<D: Driver> AstBuilder<D> {
         context: S::Context,
         span: D::Span,
         exprs: Vec<parse::Expr<D>>,
-        scope_set: Shared<HashSet<D::Scope>>,
+        scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Option<Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>> {
         let exprs = self.make_into_list(exprs);
 
@@ -455,7 +455,7 @@ impl<D: Driver> AstBuilder<D> {
                 D::Span,
                 D::Span,
                 Vec<parse::Expr<D>>,
-                Shared<HashSet<D::Scope>>,
+                Shared<ScopeSet<D::Scope>>,
             ) -> Option<
                 BoxFuture<'static, Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>>,
             > + Send
@@ -464,7 +464,7 @@ impl<D: Driver> AstBuilder<D> {
         context: S::Context,
         span: D::Span,
         exprs: &[parse::Expr<D>],
-        scope_set: Shared<HashSet<D::Scope>>,
+        scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Option<BoxFuture<'a, Option<Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>>>>
     {
         if let Some((syntax_span, exprs)) = self.match_function_syntax::<S>(name, exprs) {
@@ -514,7 +514,7 @@ impl<D: Driver> AstBuilder<D> {
                 (D::Span, Vec<parse::Expr<D>>),
                 D::Span,
                 (D::Span, Vec<parse::Expr<D>>),
-                Shared<HashSet<D::Scope>>,
+                Shared<ScopeSet<D::Scope>>,
             ) -> Option<
                 BoxFuture<'static, Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>>,
             > + Send
@@ -523,7 +523,7 @@ impl<D: Driver> AstBuilder<D> {
         context: S::Context,
         span: D::Span,
         exprs: &[parse::Expr<D>],
-        scope_set: Shared<HashSet<D::Scope>>,
+        scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Option<BoxFuture<'a, Option<Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>>>>
     {
         let occurrences = self.match_operator_syntax::<S>(name, exprs)?;
@@ -767,7 +767,7 @@ impl<D: Driver> SyntaxContext<D> for ErrorSyntaxContext<D> {
                     SyntaxError<D>,
                 >,
             > + Send,
-        _scope_set: Shared<HashSet<D::Scope>>,
+        _scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Err(self.ast_builder.syntax_error(span))
     }
@@ -775,7 +775,7 @@ impl<D: Driver> SyntaxContext<D> for ErrorSyntaxContext<D> {
     async fn build_terminal(
         self,
         expr: parse::Expr<D>,
-        _scope_set: Shared<HashSet<D::Scope>>,
+        _scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Err(self.ast_builder.syntax_error(expr.span))
     }
