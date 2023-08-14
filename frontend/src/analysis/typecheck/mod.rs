@@ -3155,19 +3155,35 @@ impl Typechecker {
                 match find_instance!(@find params.clone(), $resolve) {
                     // ...if there is a single candidate, return it.
                     Some(Ok(candidate)) => return Ok(candidate),
-                    // ...if there are multiple candiates, try again finalizing numeric variables.
+                    // ...if there are multiple candiates, try again with numeric variables.
                     Some(Err(FindInstanceError::MultipleCandidates)) => {
                         let params = params
                             .clone()
                             .into_iter()
                             .map(|(mut ty, infer)| {
-                                ty.finalize_numeric_variables(&self.ctx);
+                                self.add_numeric_substitutions(&mut ty);
                                 (ty, infer)
                             })
                             .collect::<Vec<_>>();
 
-                        match find_instance!(@find params, $resolve) {
-                            Some(result) => return result,
+                        // ...if there are multiple candidates, try again finalizing numeric variables.
+                        match find_instance!(@find params.clone(), $resolve) {
+                            Some(Ok(candidate)) => return Ok(candidate),
+                            Some(Err(FindInstanceError::MultipleCandidates)) => {
+                                let params = params
+                                    .into_iter()
+                                    .map(|(mut ty, infer)| {
+                                        ty.finalize_numeric_variables(&self.ctx);
+                                        (ty, infer)
+                                    })
+                                    .collect::<Vec<_>>();
+
+                                match find_instance!(@find params, $resolve) {
+                                    Some(result) => return result,
+                                    None => {}
+                                }
+                            }
+                            Some(Err(error)) => return Err(error),
                             None => {}
                         }
                     }
@@ -4352,6 +4368,17 @@ impl Typechecker {
         }
 
         ty.instantiate_with(&self.ctx, substitutions);
+    }
+
+    fn add_numeric_substitutions(&self, ty: &mut engine::UnresolvedType) {
+        ty.apply(&self.ctx);
+
+        for var in ty.vars() {
+            let _ = self.ctx.unify(
+                engine::UnresolvedType::Variable(var),
+                engine::UnresolvedType::NumericVariable(self.ctx.new_variable(None)),
+            );
+        }
     }
 
     fn add_substitutions_skipping_inferred(
