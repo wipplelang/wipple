@@ -16,7 +16,7 @@ code: |
 output: |
 
 diagnostics: |
-    error: `when` expression not handle all possible values of `Grade`
+    error: `when` expression does not handle all possible values of `Grade`
       ┌─ test:4:24
       │
     4 │   report-card : grade -> when grade {
@@ -29,7 +29,7 @@ diagnostics: |
       │
       = for more information, see https://wipple.dev/playground/?lesson=errors/nonexhaustive-when
 
-    error: `when` expression not handle all possible values of `Maybe A` for any type `A`
+    error: `when` expression does not handle all possible values of `Maybe A` for any type `A`
        ┌─ test:11:15
        │
     11 │   unwrap : x -> when x {

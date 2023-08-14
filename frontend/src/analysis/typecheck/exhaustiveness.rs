@@ -171,7 +171,7 @@ impl Typechecker {
 
                     self.compiler.add_error(
                         format!(
-                            "`when` expression not handle all possible values of {}",
+                            "`when` expression does not handle all possible values of {}",
                             self.format_ty(input.ty.clone())
                         ),
                         vec![Note::primary(
