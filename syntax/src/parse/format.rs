@@ -203,17 +203,21 @@ impl<D: Driver> Expr<D> {
 
                     write!(f, "{}", INDENT.repeat(indent))?;
                 } else if let Some(statement) = statements.first() {
-                    write!(f, " ")?;
-
                     debug_assert!(statement.lines.len() == 1);
 
-                    statement
-                        .lines
-                        .first()
-                        .unwrap()
-                        .fmt(f, indent, false, false)?;
+                    let line = statement.lines.first().unwrap();
 
-                    write!(f, " ")?;
+                    if !line.exprs.is_empty() || line.comment.is_some() {
+                        write!(f, " ")?;
+
+                        statement
+                            .lines
+                            .first()
+                            .unwrap()
+                            .fmt(f, indent, false, false)?;
+
+                        write!(f, " ")?;
+                    }
                 }
 
                 write!(f, "}}")?;
@@ -247,7 +251,8 @@ impl<D: Driver> Expr<D> {
                         0 => false,
                         1 => {
                             let line = lines.first().unwrap();
-                            line.leading_lines > 0 || line.is_multiline(true)
+                            (!line.exprs.is_empty() || line.comment.is_some())
+                                && (line.leading_lines > 0 || line.is_multiline(true))
                         }
                         _ => true,
                     }
