@@ -206,6 +206,8 @@ split-by : separator? -> collection -> {
 split :: Collection (infer Element) where (Iterate Collection Element) (Equal Element) => Element -> Collection -> Iterator (List Element)
 split : separator -> split-by (x -> x = separator)
 
+[help "Count the number of items in an iterator."]
+[help-group "Collections"]
 count :: Collection (infer Element) where (Iterate Collection Element) => Collection -> Natural
 count : collection -> {
   iterator : Iterate collection
@@ -223,6 +225,11 @@ count : collection -> {
 
   get count
 }
+
+[help "Join two iterators together, producing the first iterator's elements followed by the second iterator's elements."]
+[help-group "Collections"]
+join :: A B (infer Element) where (Iterate A Element) (Iterate B Element) => A -> B -> Iterator Element
+join : a b -> flatten (list (Iterate a) (Iterate b))
 
 -- FIXME: Specialization is broken; uncomment once it works again
 -- [specialize]

@@ -22,7 +22,6 @@ instance (Add Signed Signed Signed) : a b -> intrinsic "add-signed" a b
 instance (Add Unsigned Unsigned Unsigned) : a b -> intrinsic "add-unsigned" a b
 instance (Add Float Float Float) : a b -> intrinsic "add-float" a b
 instance (Add Double Double Double) : a b -> intrinsic "add-double" a b
-instance (Add Text Text Text) : a b -> format "__" a b
 
 [help "Implements the `-` operator."]
 [help-group "Math"]

@@ -842,19 +842,13 @@ impl Interpreter {
                         Ok(Value::Natural(list.len() as u64))
                     })
                 }
-                ir::Intrinsic::TextHeadTail => {
+                ir::Intrinsic::TextCharacters => {
                     runtime_fn!((Value::Text(text)) => async {
-                        match text.grapheme_indices(true).next() {
-                            Some((_, head)) => {
-                                let tail = &text[head.len()..];
-
-                                Ok(some(Value::Tuple(vec![
-                                    Value::Text(Arc::from(head)),
-                                    Value::Text(Arc::from(tail)),
-                                ])))
-                            }
-                            None => Ok(none()),
-                        }
+                        Ok(Value::List(
+                            text.graphemes(true)
+                                .map(|s| Value::Text(Arc::from(s)))
+                                .collect(),
+                        ))
                     })
                 }
                 ir::Intrinsic::RandomNumber => runtime_rand_fn!(Value::Number),

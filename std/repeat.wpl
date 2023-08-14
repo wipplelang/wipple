@@ -8,7 +8,7 @@ Control-Flow : A => type {
 }
 
 [private]
-repeat' :: Result => (() -> Control-Flow Result) -> Result
+repeat' :: (Result : ()) => (() -> Control-Flow Result) -> Result
 repeat' : body -> when (body ()) {
   Continue -> repeat' body
   Break value -> value
