@@ -9,6 +9,7 @@ definitions! {
     mod assignment_pattern;
     mod assignment_value;
     mod constant_type_annotation;
+    mod default_type_parameter;
     mod destructuring;
     mod expression;
     mod file_attribute;

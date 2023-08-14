@@ -1,4 +1,6 @@
-use crate::ScopeSet;
+use crate::ast::{
+    DefaultTypeParameter, DefaultTypeParameterSyntax, DefaultTypeParameterSyntaxContext,
+};
 use crate::{
     ast::{
         format::Format,
@@ -14,7 +16,7 @@ use crate::{
 pub struct DefaultTypePattern<D: Driver> {
     pub span: D::Span,
     pub colon_span: D::Span,
-    pub name: Result<(D::Span, D::InternedString, ScopeSet<D::Scope>), SyntaxError<D>>,
+    pub type_parameter: Result<DefaultTypeParameter<D>, SyntaxError<D>>,
     pub ty: Result<Type<D>, SyntaxError<D>>,
 }
 
@@ -28,7 +30,7 @@ impl<D: Driver> Format<D> for DefaultTypePattern<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
         Ok(format!(
             "({} : {})",
-            self.name?.1.as_ref(),
+            self.type_parameter?.format()?,
             self.ty?.format()?
         ))
     }
@@ -45,36 +47,22 @@ impl<D: Driver> Syntax<D> for DefaultTypePatternSyntax {
             OperatorAssociativity::None,
             |context,
              span,
-             (lhs_span, mut lhs_exprs),
+             (lhs_span, lhs_exprs),
              colon_span,
              (rhs_span, rhs_exprs),
              scope_set| async move {
-                let name = if lhs_exprs.len() == 1 {
-                    let expr = lhs_exprs.pop().unwrap();
+                let default_type_parameter_context =
+                    DefaultTypeParameterSyntaxContext::new(context.ast_builder.clone())
+                        .with_statement_attributes(context.statement_attributes.clone().unwrap());
 
-                    match expr.kind {
-                        parse::ExprKind::Name(name, scope) => Ok((
-                            expr.span,
-                            name,
-                            scope.unwrap_or_else(|| scope_set.lock().clone()),
-                        )),
-                        _ => {
-                            context
-                                .ast_builder
-                                .driver
-                                .syntax_error(lhs_span, "expected a name");
-
-                            Err(context.ast_builder.syntax_error(lhs_span))
-                        }
-                    }
-                } else {
-                    context
-                        .ast_builder
-                        .driver
-                        .syntax_error(lhs_span, "expected a name");
-
-                    Err(context.ast_builder.syntax_error(lhs_span))
-                };
+                let type_parameter = context
+                    .ast_builder
+                    .build_expr::<DefaultTypeParameterSyntax>(
+                        default_type_parameter_context,
+                        parse::Expr::list_or_expr(lhs_span, lhs_exprs),
+                        scope_set.clone(),
+                    )
+                    .await;
 
                 let type_context = TypeSyntaxContext::new(context.ast_builder.clone())
                     .with_statement_attributes(context.statement_attributes.unwrap());
@@ -91,7 +79,7 @@ impl<D: Driver> Syntax<D> for DefaultTypePatternSyntax {
                 Ok(DefaultTypePattern {
                     span,
                     colon_span,
-                    name,
+                    type_parameter,
                     ty,
                 }
                 .into())

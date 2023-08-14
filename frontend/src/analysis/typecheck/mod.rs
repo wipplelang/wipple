@@ -3160,9 +3160,12 @@ impl Typechecker {
                         let params = params
                             .clone()
                             .into_iter()
-                            .map(|(mut ty, infer)| {
-                                self.add_numeric_substitutions(&mut ty);
-                                (ty, infer)
+                            .map(|(mut ty, (param, infer))| {
+                                if infer {
+                                    self.add_numeric_substitutions(&mut ty);
+                                }
+
+                                (ty, (param, infer))
                             })
                             .collect::<Vec<_>>();
 

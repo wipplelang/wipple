@@ -3999,10 +3999,35 @@ impl Lowerer {
                                 )]
                             }
                             ast::TypePattern::Default(pattern) => {
-                                match (&pattern.name, &pattern.ty) {
-                                    (Ok((name_span, name, scope)), Ok(ty)) => {
+                                match (&pattern.type_parameter, &pattern.ty) {
+                                    (Ok(type_parameter), Ok(ty)) => {
                                         let ty = self.lower_type(ty, ctx, fallback_scope);
-                                        vec![((*name_span, *name, scope.clone()), Some(ty), false)]
+
+                                        match type_parameter {
+                                            ast::DefaultTypeParameter::Infer(type_parameter) => {
+                                                match &type_parameter.name {
+                                                    Ok((name_span, name, scope)) => {
+                                                        vec![(
+                                                            (*name_span, *name, scope.clone()),
+                                                            Some(ty),
+                                                            true,
+                                                        )]
+                                                    }
+                                                    Err(_) => Vec::new(),
+                                                }
+                                            }
+                                            ast::DefaultTypeParameter::Name(type_parameter) => {
+                                                vec![(
+                                                    (
+                                                        type_parameter.span,
+                                                        type_parameter.name,
+                                                        type_parameter.scope.clone(),
+                                                    ),
+                                                    Some(ty),
+                                                    false,
+                                                )]
+                                            }
+                                        }
                                     }
                                     _ => Vec::new(),
                                 }
@@ -4024,15 +4049,34 @@ impl Lowerer {
                                             false,
                                         )),
                                         ast::TypePattern::Default(pattern) => {
-                                            match (&pattern.name, &pattern.ty) {
-                                                (Ok((name_span, name, scope)), Ok(ty)) => {
+                                            match (&pattern.type_parameter, &pattern.ty) {
+                                                (Ok(type_parameter), Ok(ty)) => {
                                                     let ty =
                                                         self.lower_type(ty, ctx, fallback_scope);
-                                                    Some((
-                                                        (*name_span, *name, scope.clone()),
-                                                        Some(ty),
-                                                        false,
-                                                    ))
+
+                                                    match type_parameter {
+                                                        ast::DefaultTypeParameter::Infer(
+                                                            type_parameter,
+                                                        ) => match &type_parameter.name {
+                                                            Ok((name_span, name, scope)) => Some((
+                                                                (*name_span, *name, scope.clone()),
+                                                                Some(ty),
+                                                                true,
+                                                            )),
+                                                            Err(_) => None,
+                                                        },
+                                                        ast::DefaultTypeParameter::Name(
+                                                            type_parameter,
+                                                        ) => Some((
+                                                            (
+                                                                type_parameter.span,
+                                                                type_parameter.name,
+                                                                type_parameter.scope.clone(),
+                                                            ),
+                                                            Some(ty),
+                                                            false,
+                                                        )),
+                                                    }
                                                 }
                                                 _ => None,
                                             }
@@ -4201,15 +4245,39 @@ impl Lowerer {
                 )]);
                 (params, Vec::new(), Some(pattern.scope.clone()))
             }
-            ast::TypePattern::Default(pattern) => match (&pattern.name, &pattern.ty) {
-                (Ok((name_span, name, scope)), Ok(ty)) => {
+            ast::TypePattern::Default(pattern) => match (&pattern.type_parameter, &pattern.ty) {
+                (Ok(type_parameter), Ok(ty)) => {
                     let ty = self.lower_type(ty, ctx, fallback_scope);
-                    let params = generate_type_parameters!(vec![(
-                        (*name_span, *name, scope.clone()),
-                        Some(ty),
-                        false
-                    )]);
-                    (params, Vec::new(), Some(scope.clone()))
+
+                    match type_parameter {
+                        ast::DefaultTypeParameter::Infer(type_parameter) => {
+                            match &type_parameter.name {
+                                Ok((name_span, name, scope)) => {
+                                    let params = generate_type_parameters!(vec![(
+                                        (*name_span, *name, scope.clone()),
+                                        Some(ty),
+                                        true
+                                    )]);
+
+                                    (params, Vec::new(), Some(scope.clone()))
+                                }
+                                Err(_) => (Vec::new(), Vec::new(), None),
+                            }
+                        }
+                        ast::DefaultTypeParameter::Name(type_parameter) => {
+                            let params = generate_type_parameters!(vec![(
+                                (
+                                    type_parameter.span,
+                                    type_parameter.name,
+                                    type_parameter.scope.clone(),
+                                ),
+                                Some(ty),
+                                false,
+                            )]);
+
+                            (params, Vec::new(), Some(type_parameter.scope.clone()))
+                        }
+                    }
                 }
                 _ => (Vec::new(), Vec::new(), None),
             },
@@ -4242,10 +4310,33 @@ impl Lowerer {
                                 ))
                             }
                             ast::TypePattern::Default(pattern) => {
-                                match (&pattern.name, &pattern.ty) {
-                                    (Ok((name_span, name, scope)), Ok(ty)) => {
+                                match (&pattern.type_parameter, &pattern.ty) {
+                                    (Ok(type_parameter), Ok(ty)) => {
                                         let ty = self.lower_type(ty, ctx, fallback_scope);
-                                        Some(((*name_span, *name, scope.clone()), Some(ty), false))
+
+                                        match type_parameter {
+                                            ast::DefaultTypeParameter::Infer(type_parameter) => {
+                                                match &type_parameter.name {
+                                                    Ok((name_span, name, scope)) => Some((
+                                                        (*name_span, *name, scope.clone()),
+                                                        Some(ty),
+                                                        true,
+                                                    )),
+                                                    Err(_) => None,
+                                                }
+                                            }
+                                            ast::DefaultTypeParameter::Name(type_parameter) => {
+                                                Some((
+                                                    (
+                                                        type_parameter.span,
+                                                        type_parameter.name,
+                                                        type_parameter.scope.clone(),
+                                                    ),
+                                                    Some(ty),
+                                                    false,
+                                                ))
+                                            }
+                                        }
                                     }
                                     _ => None,
                                 }
