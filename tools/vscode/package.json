@@ -27,7 +27,11 @@
                 "extensions": [
                     ".wpl"
                 ],
-                "configuration": "./language-configuration.json"
+                "configuration": "./language-configuration.json",
+                "icon": {
+                    "dark": "./icons/wipple-small.svg",
+                    "light": "./icons/wipple-small.svg"
+                }
             }
         ],
         "grammars": [

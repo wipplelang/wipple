@@ -8,7 +8,8 @@
         },
         {
             "name": "comment.line",
-            "match": "--.*"
+            "begin": "\\-\\-",
+            "end": "$"
         },
         {
             "name": "constant.numeric",
@@ -20,19 +21,15 @@
         },
         {
             "name": "keyword",
-            "match": "_|use|when|type|trait|instance|where|external|syntax|format"
+            "match": "_|use|when|type|trait|instance|where|external|syntax|format|with"
         },
         {
             "name": "keyword.operator",
-            "match": "(?:^|\\s)[~`!@#$%^&*\\-_=+;:,<.>/?]+(?:\\s|$)"
-        },
-        {
-            "name": "entity.name.type",
-            "match": "\\b[A-Z][^\\r\\n\\t \\(\\)\\[\\]\\{\\}'\"/]*\\b"
+            "match": ":|::|->|=>|\\.|\\|"
         },
         {
             "name": "entity.name",
-            "match": "\\b[^\\r\\n\\t \\(\\)\\[\\]\\{\\}'\"/]+\\b"
+            "match": "\\b[^\\s]+\\b"
         }
     ],
     "scopeName": "source.wipple"
