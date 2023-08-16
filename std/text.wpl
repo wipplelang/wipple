@@ -2,6 +2,9 @@
 
 use "iterate"
 use "fp"
+use "math"
+
+instance (Add Text Text Text) : a b -> format "__" a b
 
 instance (Iterate Text Text) : text -> \
   Iterate (intrinsic "text-characters" text :: List Text)
