@@ -226,12 +226,11 @@ count : collection -> {
   get count
 }
 
-[help "Join two iterators together, producing the first iterator's elements followed by the second iterator's elements."]
+[help "Collect two iterators into a single value."]
 [help-group "Collections"]
-join :: A B (infer Element) where (Iterate A Element) (Iterate B Element) => A -> B -> Iterator Element
-join : a b -> flatten (list (Iterate a) (Iterate b))
+join :: A B (infer Element) (C : A) where (Iterate A Element) (Iterate B Element) (Collect Element C) => A -> B -> C
+join : a b -> collect (flatten (list (Iterate a) (Iterate b)))
 
--- FIXME: Specialization is broken; uncomment once it works again
--- [specialize]
--- count :: Element => List Element -> Natural
--- count : list -> intrinsic "list-count" list
+[specialize]
+count :: Element => List Element -> Natural
+count : list -> intrinsic "list-count" list

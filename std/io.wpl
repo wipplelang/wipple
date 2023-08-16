@@ -9,7 +9,7 @@ use "iterate"
 [language "show"]
 [help "Implement this trait to enable `show`ing values of your type."]
 [help-group "Input and Output"]
-Show : A => trait (A -> Text)
+Show : (A : Text) => trait (A -> Text)
 
 [help "Display a value on the screen."]
 [help-group "Input and Output"]
@@ -70,7 +70,7 @@ instance (Read Double) : text -> intrinsic "text-to-double" text
 
 [help-group "Input and Output"]
 [help "Read a value from the user with the provided prompt."]
-prompt :: (A : Text) where (Read A) => Text -> A
+prompt :: A where (Read A) => Text -> A
 prompt : prompt -> intrinsic "prompt" prompt (Read :: (Text -> Maybe A))
 
 [help "Ask the user to pick from a set of options."]

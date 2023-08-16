@@ -7,7 +7,7 @@ use "logic"
 [help "Implements the `+` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot add `_` to `_`" Left Right]
-Add : Left Right (infer Sum) => trait (Left -> Right -> Sum)
+Add : (Left : Number) (Right : Number) (infer Sum) => trait (Left -> Right -> Sum)
 
 [help "Add two values together, returning the sum."]
 [help-group "Math"]
@@ -26,7 +26,7 @@ instance (Add Double Double Double) : a b -> intrinsic "add-double" a b
 [help "Implements the `-` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot subtract `_` from `_`" Right Left]
-Subtract : Left Right (infer Difference) => trait (Left -> Right -> Difference)
+Subtract : (Left : Number) (Right : Number) (infer Difference) => trait (Left -> Right -> Difference)
 
 [help "Subtract the right side from the left side, returning the difference."]
 [help-group "Math"]
@@ -45,7 +45,7 @@ instance (Subtract Double Double Double) : a b -> intrinsic "subtract-double" a 
 [help "Implements the `*` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot multiply `_` by `_`" Left Right]
-Multiply : Left Right (infer Product) => trait (Left -> Right -> Product)
+Multiply : (Left : Number) (Right : Number) (infer Product) => trait (Left -> Right -> Product)
 
 [help "Multiply two values together, returning the product."]
 [help-group "Math"]
@@ -64,7 +64,7 @@ instance (Multiply Double Double Double) : a b -> intrinsic "multiply-double" a 
 [help "Implements the `/` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot divide `_` by `_`" Left Right]
-Divide : Left Right (infer Quotient) => trait (Left -> Right -> Quotient)
+Divide : (Left : Number) (Right : Number) (infer Quotient) => trait (Left -> Right -> Quotient)
 
 [help "Divide the left side by the right side, returning the quotient."]
 [help-group "Math"]
@@ -83,7 +83,7 @@ instance (Divide Double Double Double) : a b -> intrinsic "divide-double" a b
 [help "Implements the `mod` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot divide `_` by `_`" Left Right]
-Modulo : Left Right (infer Remainder) => trait (Left -> Right -> Remainder)
+Modulo : (Left : Number) (Right : Number) (infer Remainder) => trait (Left -> Right -> Remainder)
 
 [help "Divide the left side by the right side, returning the remainder."]
 [help-group "Math"]
@@ -102,7 +102,7 @@ instance (Modulo Double Double Double) : a b -> intrinsic "modulo-double" a b
 [help "Implements the `^` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot raise `_` to the power of `_`" Left Right]
-Power : Left Right (infer Power) => trait (Left -> Right -> Power)
+Power : (Left : Number) (Right : Number) (infer Power) => trait (Left -> Right -> Power)
 
 [help "Raise the left side to the power of the right side."]
 [help-group "Math"]
@@ -120,7 +120,7 @@ instance (Power Double Double Double) : a b -> intrinsic "power-double" a b
 
 [help "Rounds down a number to the nearest integer."]
 [help-group "Math"]
-Floor : N => trait (N -> N)
+Floor : (N : Number) => trait (N -> N)
 floor :: N where (Floor N) => N -> N
 floor : Floor
 instance (Floor Number) : n -> intrinsic "floor-number" n
@@ -129,7 +129,7 @@ instance (Floor Double) : n -> intrinsic "floor-double" n
 
 [help "Rounds up a number to the nearest integer."]
 [help-group "Math"]
-Ceil : N => trait (N -> N)
+Ceil : (N : Number) => trait (N -> N)
 ceil :: N where (Ceil N) => N -> N
 ceil : Ceil
 instance (Ceil Number) : n -> intrinsic "ceil-number" n
@@ -138,7 +138,7 @@ instance (Ceil Double) : n -> intrinsic "ceil-double" n
 
 [help "Calculates the square root of a number."]
 [help-group "Math"]
-Sqrt : N => trait (N -> N)
+Sqrt : (N : Number) => trait (N -> N)
 sqrt :: N where (Sqrt N) => N -> N
 sqrt : Sqrt
 instance (Sqrt Number) : n -> intrinsic "sqrt-number" n
@@ -147,7 +147,7 @@ instance (Sqrt Double) : n -> intrinsic "sqrt-double" n
 
 [help "Negates the sign of a number."]
 [help-group "Math"]
-Negate : N => trait (N -> N)
+Negate : (N : Number) => trait (N -> N)
 negate :: N where (Negate N) => N -> N
 negate : Negate
 instance (Negate Number) : n -> intrinsic "negate-number" n
