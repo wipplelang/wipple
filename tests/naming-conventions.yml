@@ -9,6 +9,9 @@ code: |
     myConstant : ()
 
     myVariable : 42
+    a1 : 1
+    a-2 : 2
+    24-hours : 24
 
 output: |
 
@@ -58,5 +61,29 @@ diagnostics: |
        │
     10 │ myVariable : 42
        │ ^^^^^^^^^^ `myVariable` is never used
+       │
+       = for more information, see https://wipple.dev/playground/?lesson=errors/unused-variable
+
+    warning: unused variable
+       ┌─ test:11:1
+       │
+    11 │ a1 : 1
+       │ ^^ `a1` is never used
+       │
+       = for more information, see https://wipple.dev/playground/?lesson=errors/unused-variable
+
+    warning: unused variable
+       ┌─ test:12:1
+       │
+    12 │ a-2 : 2
+       │ ^^^ `a-2` is never used
+       │
+       = for more information, see https://wipple.dev/playground/?lesson=errors/unused-variable
+
+    warning: unused variable
+       ┌─ test:13:1
+       │
+    13 │ 24-hours : 24
+       │ ^^^^^^^^ `24-hours` is never used
        │
        = for more information, see https://wipple.dev/playground/?lesson=errors/unused-variable

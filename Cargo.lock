@@ -409,8 +409,7 @@ dependencies = [
 [[package]]
 name = "convert_case"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec182b0ca2f35d8fc196cf3404988fd8b8c739a4d270ff118a398feb0cbec1ca"
+source = "git+https://github.com/WilsonGramer/convert-case?branch=master#45b23bbac9d9ee0fced053480ef5fef3bf76a125"
 dependencies = [
  "unicode-segmentation",
 ]
