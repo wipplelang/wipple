@@ -31,9 +31,9 @@ diagnostics: |
        │           could not find instance `Or () Boolean _`
        │           operators consume all expressions on either side; you may be missing parentheses
        │
-       ┌─ <dir>/std/logic.wpl:41:27
+       ┌─ <dir>/std/logic.wpl:48:27
        │
-    41 │ or : syntax { 'a or 'b -> Or 'a (() -> 'b) }
+    48 │ or : syntax { 'a or 'b -> Or 'a (() -> 'b) }
        │                           -- actual error occurred here
        │
        = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance

@@ -19,10 +19,17 @@ if : syntax {
   if 'bool 'then -> if 'bool 'then ()
 }
 
-[help "Returns `False` if provided `True`, and vice versa."]
+[help "Represents the logical inverse of a value."]
 [help-group "Logic"]
-not :: Boolean -> Boolean
-not : bool -> if bool False True
+Not : (A : Boolean) => trait (A -> A)
+
+instance (Not Boolean) : bool -> if bool False True
+A B where (Not B) => instance (Not (A -> B)) : f x -> not (f x)
+
+[help "Returns `False` if provided `True`, and vice versa. Can also be used on boolean functions and any other value that implements `Not`."]
+[help-group "Logic"]
+not :: A where (Not A) => A -> A
+not : Not
 
 And : Left Right (infer Output) => trait (Left -> (() -> Right) -> Output)
 

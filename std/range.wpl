@@ -10,6 +10,7 @@ Range : N => type {
 }
 
 [help "A range between two numbers that counts up by a certain number."]
+[help-group "Math"]
 Stride : N => type {
   min :: N
   max :: N
