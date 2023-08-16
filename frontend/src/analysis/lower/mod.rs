@@ -1351,6 +1351,7 @@ enum StatementDeclarationKind<'a> {
     Trait(
         TraitId,
         ScopeSet,
+        Option<ScopeSet>,
         Option<(Vec<TypeParameterId>, Vec<Bound>)>,
         &'a ast::TraitAssignmentValue<Analysis>,
     ),
@@ -1636,7 +1637,7 @@ impl Lowerer {
 
                     Some(AnyDeclaration::Type(id))
                 }
-                StatementDeclarationKind::Trait(id, pattern_scope, ty_pattern, value) => {
+                StatementDeclarationKind::Trait(id, scope, pattern_scope, ty_pattern, value) => {
                     let (parameters, bounds) = ty_pattern.unwrap_or_default();
 
                     if let Some(bound) = bounds.first() {
@@ -1655,8 +1656,11 @@ impl Lowerer {
                         },
                     });
 
-                    let attributes =
-                        self.lower_trait_attributes(decl.attributes, ctx, &pattern_scope);
+                    let attributes = self.lower_trait_attributes(
+                        decl.attributes,
+                        ctx,
+                        pattern_scope.as_ref().unwrap_or(&scope),
+                    );
 
                     self.declarations.traits.get_mut(&id).unwrap().value = Some(TraitDeclaration {
                         parameters,
@@ -2223,7 +2227,7 @@ impl Lowerer {
 
                     Some(StatementDeclaration {
                         span: statement.span(),
-                        kind: StatementDeclarationKind::Trait(id, scope.clone(), None, value),
+                        kind: StatementDeclarationKind::Trait(id, scope.clone(), None, None, value),
                         attributes: &statement.attributes,
                     })
                 }
@@ -2264,7 +2268,8 @@ impl Lowerer {
                             span: statement.span(),
                             kind: StatementDeclarationKind::Trait(
                                 id,
-                                pattern_scope.unwrap_or_else(|| scope.clone()),
+                                scope.clone(),
+                                pattern_scope,
                                 Some((parameters, bounds)),
                                 trait_value,
                             ),
@@ -3958,178 +3963,179 @@ impl Lowerer {
         ctx: &Context,
         fallback_scope: Option<&ScopeSet>,
     ) -> (Vec<TypeParameterId>, Vec<Bound>, Option<ScopeSet>) {
-        macro_rules! generate_type_parameters {
-            ($params:expr) => {
-                $params
-                    .into_iter()
-                    .map(|((name_span, name, scope), default, infer)| {
-                        let id = self.compiler.new_type_parameter_id_in(self.file);
+        let mut pattern_scope = None;
 
-                        self.declarations.type_parameters.insert(
-                            id,
-                            Declaration::resolved(
-                                Some(name),
-                                name_span,
-                                TypeParameterDeclaration { infer, default },
-                            ),
-                        );
+        macro_rules! generate_type_parameter {
+            ($param:expr) => {{
+                let ((name_span, name, scope), default, infer) = $param;
 
-                        self.insert(name, AnyDeclaration::TypeParameter(id), &scope);
+                let id = self.compiler.new_type_parameter_id_in(self.file);
 
-                        id
-                    })
-                    .collect()
-            };
+                self.declarations.type_parameters.insert(
+                    id,
+                    Declaration::resolved(
+                        Some(name),
+                        name_span,
+                        TypeParameterDeclaration { infer, default },
+                    ),
+                );
+
+                self.insert(name, AnyDeclaration::TypeParameter(id), &scope);
+
+                pattern_scope.get_or_insert(scope);
+
+                id
+            }};
         }
 
-        match type_pattern {
+        let (params, bounds) = match type_pattern {
             ast::TypePattern::Where(type_pattern) => {
-                let mut scope = None;
-
                 let params = match &type_pattern.pattern {
-                    Ok(lhs) => {
-                        let params = match lhs.as_ref() {
-                            ast::TypePattern::Name(pattern) => {
-                                scope.get_or_insert_with(|| pattern.scope.clone());
+                    Ok(lhs) => match lhs.as_ref() {
+                        ast::TypePattern::Name(pattern) => {
+                            pattern_scope.get_or_insert_with(|| pattern.scope.clone());
 
-                                vec![(
-                                    (pattern.span, pattern.name, pattern.scope.clone()),
-                                    None,
-                                    false,
-                                )]
-                            }
-                            ast::TypePattern::Default(pattern) => {
-                                match (&pattern.type_parameter, &pattern.ty) {
-                                    (Ok(type_parameter), Ok(ty)) => {
-                                        let ty = self.lower_type(ty, ctx, fallback_scope);
+                            vec![generate_type_parameter!((
+                                (pattern.span, pattern.name, pattern.scope.clone()),
+                                None,
+                                false,
+                            ))]
+                        }
+                        ast::TypePattern::Default(pattern) => {
+                            match (&pattern.type_parameter, &pattern.ty) {
+                                (Ok(type_parameter), Ok(ty)) => {
+                                    let ty = self.lower_type(ty, ctx, fallback_scope);
 
-                                        match type_parameter {
-                                            ast::DefaultTypeParameter::Infer(type_parameter) => {
-                                                match &type_parameter.name {
-                                                    Ok((name_span, name, scope)) => {
-                                                        vec![(
-                                                            (*name_span, *name, scope.clone()),
-                                                            Some(ty),
-                                                            true,
-                                                        )]
-                                                    }
-                                                    Err(_) => Vec::new(),
+                                    match type_parameter {
+                                        ast::DefaultTypeParameter::Infer(type_parameter) => {
+                                            match &type_parameter.name {
+                                                Ok((name_span, name, scope)) => {
+                                                    vec![generate_type_parameter!((
+                                                        (*name_span, *name, scope.clone()),
+                                                        Some(ty),
+                                                        true,
+                                                    ))]
                                                 }
-                                            }
-                                            ast::DefaultTypeParameter::Name(type_parameter) => {
-                                                vec![(
-                                                    (
-                                                        type_parameter.span,
-                                                        type_parameter.name,
-                                                        type_parameter.scope.clone(),
-                                                    ),
-                                                    Some(ty),
-                                                    false,
-                                                )]
+                                                Err(_) => Vec::new(),
                                             }
                                         }
+                                        ast::DefaultTypeParameter::Name(type_parameter) => {
+                                            vec![generate_type_parameter!((
+                                                (
+                                                    type_parameter.span,
+                                                    type_parameter.name,
+                                                    type_parameter.scope.clone(),
+                                                ),
+                                                Some(ty),
+                                                false,
+                                            ))]
+                                        }
                                     }
-                                    _ => Vec::new(),
-                                }
-                            }
-                            ast::TypePattern::Infer(pattern) => match &pattern.name {
-                                Ok((name_span, name, scope)) => {
-                                    vec![((*name_span, *name, scope.clone()), None, true)]
                                 }
                                 _ => Vec::new(),
-                            },
-                            ast::TypePattern::List(pattern) => pattern
-                                .patterns
-                                .iter()
-                                .filter_map(|pattern| match pattern {
-                                    Ok(pattern) => match pattern {
-                                        ast::TypePattern::Name(pattern) => Some((
+                            }
+                        }
+                        ast::TypePattern::Infer(pattern) => match &pattern.name {
+                            Ok((name_span, name, scope)) => {
+                                vec![generate_type_parameter!((
+                                    (*name_span, *name, scope.clone()),
+                                    None,
+                                    true
+                                ))]
+                            }
+                            _ => Vec::new(),
+                        },
+                        ast::TypePattern::List(pattern) => pattern
+                            .patterns
+                            .iter()
+                            .filter_map(|pattern| match pattern {
+                                Ok(pattern) => match pattern {
+                                    ast::TypePattern::Name(pattern) => {
+                                        Some(generate_type_parameter!((
                                             (pattern.span, pattern.name, pattern.scope.clone()),
                                             None,
                                             false,
-                                        )),
-                                        ast::TypePattern::Default(pattern) => {
-                                            match (&pattern.type_parameter, &pattern.ty) {
-                                                (Ok(type_parameter), Ok(ty)) => {
-                                                    let ty =
-                                                        self.lower_type(ty, ctx, fallback_scope);
+                                        )))
+                                    }
+                                    ast::TypePattern::Default(pattern) => {
+                                        match (&pattern.type_parameter, &pattern.ty) {
+                                            (Ok(type_parameter), Ok(ty)) => {
+                                                let ty = self.lower_type(ty, ctx, fallback_scope);
 
-                                                    match type_parameter {
-                                                        ast::DefaultTypeParameter::Infer(
-                                                            type_parameter,
-                                                        ) => match &type_parameter.name {
-                                                            Ok((name_span, name, scope)) => Some((
+                                                match type_parameter {
+                                                    ast::DefaultTypeParameter::Infer(
+                                                        type_parameter,
+                                                    ) => match &type_parameter.name {
+                                                        Ok((name_span, name, scope)) => {
+                                                            Some(generate_type_parameter!((
                                                                 (*name_span, *name, scope.clone()),
                                                                 Some(ty),
                                                                 true,
-                                                            )),
-                                                            Err(_) => None,
-                                                        },
-                                                        ast::DefaultTypeParameter::Name(
-                                                            type_parameter,
-                                                        ) => Some((
-                                                            (
-                                                                type_parameter.span,
-                                                                type_parameter.name,
-                                                                type_parameter.scope.clone(),
-                                                            ),
-                                                            Some(ty),
-                                                            false,
-                                                        )),
-                                                    }
+                                                            )))
+                                                        }
+                                                        Err(_) => None,
+                                                    },
+                                                    ast::DefaultTypeParameter::Name(
+                                                        type_parameter,
+                                                    ) => Some(generate_type_parameter!((
+                                                        (
+                                                            type_parameter.span,
+                                                            type_parameter.name,
+                                                            type_parameter.scope.clone(),
+                                                        ),
+                                                        Some(ty),
+                                                        false,
+                                                    ))),
                                                 }
-                                                _ => None,
                                             }
+                                            _ => None,
                                         }
-                                        ast::TypePattern::Infer(pattern) => match &pattern.name {
-                                            Ok((name_span, name, scope)) => Some((
+                                    }
+                                    ast::TypePattern::Infer(pattern) => match &pattern.name {
+                                        Ok((name_span, name, scope)) => {
+                                            Some(generate_type_parameter!((
                                                 (*name_span, *name, scope.clone()),
                                                 None,
                                                 true,
-                                            )),
-                                            _ => None,
-                                        },
-                                        ast::TypePattern::List(pattern) => {
-                                            self.compiler.add_error(
-                                                "higher-kinded types are not yet supported",
-                                                vec![Note::primary(
-                                                    pattern.span,
-                                                    "try removing this",
-                                                )],
-                                                "syntax-error",
-                                            );
-
-                                            None
+                                            )))
                                         }
-                                        ast::TypePattern::Where(pattern) => {
-                                            self.compiler.add_error(
-                                                "syntax error",
-                                                vec![Note::primary(
-                                                    pattern.span(),
-                                                    "`where` clause is not allowed here",
-                                                )],
-                                                "syntax-error",
-                                            );
-
-                                            None
-                                        }
+                                        _ => None,
                                     },
-                                    Err(_) => None,
-                                })
-                                .collect(),
-                            ast::TypePattern::Where(lhs) => {
-                                self.compiler.add_error(
-                                    "type function may not have multiple `where` clauses",
-                                    vec![Note::primary(lhs.span(), "try removing this")],
-                                    "syntax-error",
-                                );
+                                    ast::TypePattern::List(pattern) => {
+                                        self.compiler.add_error(
+                                            "higher-kinded types are not yet supported",
+                                            vec![Note::primary(pattern.span, "try removing this")],
+                                            "syntax-error",
+                                        );
 
-                                Vec::new()
-                            }
-                        };
+                                        None
+                                    }
+                                    ast::TypePattern::Where(pattern) => {
+                                        self.compiler.add_error(
+                                            "syntax error",
+                                            vec![Note::primary(
+                                                pattern.span(),
+                                                "`where` clause is not allowed here",
+                                            )],
+                                            "syntax-error",
+                                        );
 
-                        generate_type_parameters!(params)
-                    }
+                                        None
+                                    }
+                                },
+                                Err(_) => None,
+                            })
+                            .collect(),
+                        ast::TypePattern::Where(lhs) => {
+                            self.compiler.add_error(
+                                "type function may not have multiple `where` clauses",
+                                vec![Note::primary(lhs.span(), "try removing this")],
+                                "syntax-error",
+                            );
+
+                            Vec::new()
+                        }
+                    },
                     Err(_) => Vec::new(),
                 };
 
@@ -4235,15 +4241,15 @@ impl Lowerer {
                     })
                     .collect();
 
-                (params, bounds, scope)
+                (params, bounds)
             }
             ast::TypePattern::Name(pattern) => {
-                let params = generate_type_parameters!(vec![(
+                let params = vec![generate_type_parameter!((
                     (pattern.span, pattern.name, pattern.scope.clone()),
                     None,
                     false
-                )]);
-                (params, Vec::new(), Some(pattern.scope.clone()))
+                ))];
+                (params, Vec::new())
             }
             ast::TypePattern::Default(pattern) => match (&pattern.type_parameter, &pattern.ty) {
                 (Ok(type_parameter), Ok(ty)) => {
@@ -4253,19 +4259,19 @@ impl Lowerer {
                         ast::DefaultTypeParameter::Infer(type_parameter) => {
                             match &type_parameter.name {
                                 Ok((name_span, name, scope)) => {
-                                    let params = generate_type_parameters!(vec![(
+                                    let params = vec![generate_type_parameter!((
                                         (*name_span, *name, scope.clone()),
                                         Some(ty),
                                         true
-                                    )]);
+                                    ))];
 
-                                    (params, Vec::new(), Some(scope.clone()))
+                                    (params, Vec::new())
                                 }
-                                Err(_) => (Vec::new(), Vec::new(), None),
+                                Err(_) => (Vec::new(), Vec::new()),
                             }
                         }
                         ast::DefaultTypeParameter::Name(type_parameter) => {
-                            let params = generate_type_parameters!(vec![(
+                            let params = vec![generate_type_parameter!((
                                 (
                                     type_parameter.span,
                                     type_parameter.name,
@@ -4273,111 +4279,114 @@ impl Lowerer {
                                 ),
                                 Some(ty),
                                 false,
-                            )]);
+                            ))];
 
-                            (params, Vec::new(), Some(type_parameter.scope.clone()))
+                            (params, Vec::new())
                         }
                     }
                 }
-                _ => (Vec::new(), Vec::new(), None),
+                _ => (Vec::new(), Vec::new()),
             },
             ast::TypePattern::Infer(pattern) => match &pattern.name {
                 Ok((name_span, name, scope)) => {
-                    let params = generate_type_parameters!(vec![(
+                    let params = vec![generate_type_parameter!((
                         (*name_span, *name, scope.clone()),
                         None,
                         true
-                    )]);
-                    (params, Vec::new(), Some(scope.clone()))
+                    ))];
+                    (params, Vec::new())
                 }
-                _ => (Vec::new(), Vec::new(), None),
+                _ => (Vec::new(), Vec::new()),
             },
             ast::TypePattern::List(pattern) => {
                 let mut scope = None;
 
-                let params = pattern
-                    .patterns
-                    .iter()
-                    .filter_map(|pattern| match pattern {
-                        Ok(pattern) => match pattern {
-                            ast::TypePattern::Name(pattern) => {
-                                scope.get_or_insert_with(|| pattern.scope.clone());
+                let params =
+                    pattern
+                        .patterns
+                        .iter()
+                        .filter_map(|pattern| match pattern {
+                            Ok(pattern) => match pattern {
+                                ast::TypePattern::Name(pattern) => {
+                                    scope.get_or_insert_with(|| pattern.scope.clone());
 
-                                Some((
-                                    (pattern.span, pattern.name, pattern.scope.clone()),
-                                    None,
-                                    false,
-                                ))
-                            }
-                            ast::TypePattern::Default(pattern) => {
-                                match (&pattern.type_parameter, &pattern.ty) {
-                                    (Ok(type_parameter), Ok(ty)) => {
-                                        let ty = self.lower_type(ty, ctx, fallback_scope);
+                                    Some(generate_type_parameter!((
+                                        (pattern.span, pattern.name, pattern.scope.clone()),
+                                        None,
+                                        false,
+                                    )))
+                                }
+                                ast::TypePattern::Default(pattern) => {
+                                    match (&pattern.type_parameter, &pattern.ty) {
+                                        (Ok(type_parameter), Ok(ty)) => {
+                                            let ty = self.lower_type(ty, ctx, fallback_scope);
 
-                                        match type_parameter {
-                                            ast::DefaultTypeParameter::Infer(type_parameter) => {
-                                                match &type_parameter.name {
-                                                    Ok((name_span, name, scope)) => Some((
-                                                        (*name_span, *name, scope.clone()),
-                                                        Some(ty),
-                                                        true,
-                                                    )),
+                                            match type_parameter {
+                                                ast::DefaultTypeParameter::Infer(
+                                                    type_parameter,
+                                                ) => match &type_parameter.name {
+                                                    Ok((name_span, name, scope)) => {
+                                                        Some(generate_type_parameter!((
+                                                            (*name_span, *name, scope.clone()),
+                                                            Some(ty),
+                                                            true,
+                                                        )))
+                                                    }
                                                     Err(_) => None,
+                                                },
+                                                ast::DefaultTypeParameter::Name(type_parameter) => {
+                                                    Some(generate_type_parameter!((
+                                                        (
+                                                            type_parameter.span,
+                                                            type_parameter.name,
+                                                            type_parameter.scope.clone(),
+                                                        ),
+                                                        Some(ty),
+                                                        false,
+                                                    )))
                                                 }
                                             }
-                                            ast::DefaultTypeParameter::Name(type_parameter) => {
-                                                Some((
-                                                    (
-                                                        type_parameter.span,
-                                                        type_parameter.name,
-                                                        type_parameter.scope.clone(),
-                                                    ),
-                                                    Some(ty),
-                                                    false,
-                                                ))
-                                            }
                                         }
+                                        _ => None,
                                     }
+                                }
+                                ast::TypePattern::Infer(pattern) => match &pattern.name {
+                                    Ok((name_span, name, scope)) => Some(generate_type_parameter!(
+                                        ((*name_span, *name, scope.clone()), None, true)
+                                    )),
                                     _ => None,
+                                },
+                                ast::TypePattern::List(pattern) => {
+                                    self.compiler.add_error(
+                                        "higher-kinded types are not yet supported",
+                                        vec![Note::primary(pattern.span, "try removing this")],
+                                        "syntax-error",
+                                    );
+
+                                    None
                                 }
-                            }
-                            ast::TypePattern::Infer(pattern) => match &pattern.name {
-                                Ok((name_span, name, scope)) => {
-                                    Some(((*name_span, *name, scope.clone()), None, true))
+                                ast::TypePattern::Where(pattern) => {
+                                    self.compiler.add_error(
+                                        "syntax error",
+                                        vec![Note::primary(
+                                            pattern.where_span,
+                                            "`where` clause is not allowed here",
+                                        )],
+                                        "syntax-error",
+                                    );
+
+                                    None
                                 }
-                                _ => None,
                             },
-                            ast::TypePattern::List(pattern) => {
-                                self.compiler.add_error(
-                                    "higher-kinded types are not yet supported",
-                                    vec![Note::primary(pattern.span, "try removing this")],
-                                    "syntax-error",
-                                );
+                            Err(_) => None,
+                        })
+                        .collect::<Vec<_>>();
 
-                                None
-                            }
-                            ast::TypePattern::Where(pattern) => {
-                                self.compiler.add_error(
-                                    "syntax error",
-                                    vec![Note::primary(
-                                        pattern.where_span,
-                                        "`where` clause is not allowed here",
-                                    )],
-                                    "syntax-error",
-                                );
-
-                                None
-                            }
-                        },
-                        Err(_) => None,
-                    })
-                    .collect::<Vec<_>>();
-
-                let params = generate_type_parameters!(params);
-
-                (params, Vec::new(), scope)
+                (params, Vec::new())
             }
-        }
+        };
+
+        (params, bounds, pattern_scope)
     }
 
     fn lower_decl_attributes(
