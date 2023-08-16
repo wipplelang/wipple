@@ -234,3 +234,7 @@ join : a b -> collect (flatten (list (Iterate a) (Iterate b)))
 [specialize]
 count :: Element => List Element -> Natural
 count : list -> intrinsic "list-count" list
+
+[specialize]
+join :: Element => List Element -> List Element -> List Element
+join : l -> reduce l append
