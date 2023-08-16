@@ -37,10 +37,10 @@ Maybe : Value => type {
 [help-group "Utilities"]
 [on-mismatch Success "try handling the case where the `Result` is `Error`, eg. using `when`, `try` or `expect`"]
 [on-mismatch Failure "try converting the error to the correct type, eg. using `as` or `try`"]
-[convert-from Success (Ok 'value)]
+[convert-from Success (OK 'value)]
 [convert-from Failure (Error 'value)]
 Result : Success Failure => type {
-  Ok Success
+  OK Success
   Error Failure
 }
 
@@ -86,7 +86,7 @@ A => instance (As A A) : it
 instance (As Natural Number) : n -> intrinsic "natural-to-number" n
 instance (As Natural Integer) : n -> intrinsic "natural-to-integer" n
 Success => instance (As (Result Success _) (Maybe Success)) : result -> when result {
-  Ok x -> Some x
+  OK x -> Some x
   Error _ -> None
 }
 

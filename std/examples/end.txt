@@ -39,11 +39,11 @@ do-something : () -> Error "oh no"
 show-something :: () -> Result () Text
 show-something : () -> {
   n : when (do-something ()) {
-    Ok n -> n
+    OK n -> n
     Error e -> end (Error e)
   }
 
   show n
 
-  Ok ()
+  OK ()
 }

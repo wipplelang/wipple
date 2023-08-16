@@ -40,12 +40,12 @@ Value where (Show Value) => instance (Show (Maybe Value)) : x? -> when x? {
 }
 
 Success Failure where (Show Success) (Show Failure) => instance (Show (Result Success Failure)) : x? -> when x? {
-  Ok x -> format "Ok _" x
+  OK x -> format "OK _" x
   Error e -> format "Error _" e
 }
 
 Success Failure where (Show Failure) => instance (Expect (Result Success Failure) Success) : message -> x? -> when x? {
-  Ok x -> x
+  OK x -> x
   Error e -> crash (format "_: _" message e)
 }
 

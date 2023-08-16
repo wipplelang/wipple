@@ -166,7 +166,7 @@ instance (Show Unwrap-Error) : just "value was `None`"
 
 unwrap :: A => Maybe A -> Result A Unwrap-Error
 unwrap : x -> when x {
-  Some x -> Ok x
+  Some x -> OK x
   None -> Error Unwrap-Error
 }
 
