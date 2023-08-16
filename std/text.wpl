@@ -23,3 +23,7 @@ instance (Collect Text Text) : iterator -> {
 
   get text
 }
+
+[specialize]
+join :: Text -> Text -> Text
+join : Add
