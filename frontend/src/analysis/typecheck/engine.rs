@@ -3,6 +3,7 @@ use serde::Serialize;
 use std::{
     cell::{Cell, RefCell},
     collections::BTreeMap,
+    rc::Rc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
@@ -121,7 +122,7 @@ pub type FinalizedGenericSubstitutions = BTreeMap<TypeParameterId, Type>;
 pub struct Context {
     pub next_var: Cell<usize>,
     pub substitutions: RefCell<im::HashMap<TypeVariable, UnresolvedType>>,
-    pub defaults: RefCell<im::HashMap<TypeVariable, Type>>,
+    pub defaults: RefCell<im::HashMap<TypeVariable, UnresolvedType>>,
     pub numeric_substitutions: RefCell<im::HashMap<TypeVariable, UnresolvedType>>,
 }
 
@@ -147,7 +148,7 @@ impl Context {
         Default::default()
     }
 
-    pub fn new_variable(&self, default: Option<Type>) -> TypeVariable {
+    pub fn new_variable(&self, default: Option<UnresolvedType>) -> TypeVariable {
         let next_var = self.next_var.get();
         let var = TypeVariable(next_var);
 
@@ -164,10 +165,18 @@ impl Context {
         &self,
         actual: UnresolvedType,
         expected: impl Into<UnresolvedType>,
+        get_default: impl Fn(TypeParameterId) -> Option<UnresolvedType>,
     ) -> GenericSubstitutions {
-        let mut params = GenericSubstitutions::new();
-        let _ = self.unify_internal(actual, expected.into(), false, false, Some(&mut params));
-        params
+        let params: Rc<RefCell<GenericSubstitutions>> = Default::default();
+        let _ = self.unify_internal(
+            actual,
+            expected.into(),
+            false,
+            false,
+            Some((params.clone(), Rc::new(get_default))),
+        );
+
+        Rc::into_inner(params).unwrap().into_inner()
     }
 
     pub fn unify(&self, actual: UnresolvedType, expected: impl Into<UnresolvedType>) -> Result<()> {
@@ -196,14 +205,17 @@ impl Context {
         mut expected: UnresolvedType,
         generic: bool,
         reverse: bool,
-        mut params: Option<&mut BTreeMap<TypeParameterId, UnresolvedType>>,
+        params: Option<(
+            Rc<RefCell<BTreeMap<TypeParameterId, UnresolvedType>>>,
+            Rc<dyn Fn(TypeParameterId) -> Option<UnresolvedType> + '_>,
+        )>,
     ) -> Result<()> {
         actual.apply(self);
         expected.apply(self);
 
-        if let Some(params) = params.as_mut() {
+        if let Some((params, _)) = &params {
             if let UnresolvedType::Parameter(param) = expected {
-                params.insert(param, actual.clone());
+                params.borrow_mut().insert(param, actual.clone());
             }
         }
 
@@ -233,7 +245,17 @@ impl Context {
                     Ok(())
                 }
             }
-            (_, UnresolvedType::Parameter(_)) if !generic => Ok(()),
+            (ty, UnresolvedType::Parameter(param)) if !generic => {
+                if let UnresolvedType::Variable(var) = ty {
+                    if let Some((_, default)) = params {
+                        if let Some(ty) = default(param) {
+                            self.defaults.borrow_mut().insert(var, ty);
+                        }
+                    }
+                }
+
+                Ok(())
+            }
             // FIXME: Determine if removing this is sound
             // (UnresolvedType::Parameter(actual), expected) if !generic => {
             //     Err(mismatch!(UnresolvedType::Parameter(actual), expected))
@@ -331,7 +353,7 @@ impl Context {
                             expected.clone(),
                             generic,
                             reverse,
-                            params.as_deref_mut(),
+                            params.clone(),
                         ) {
                             if let TypeError::Mismatch(_, _) = *e {
                                 error = true;
@@ -369,7 +391,7 @@ impl Context {
                     (*expected_input).clone(),
                     generic,
                     reverse,
-                    params.as_deref_mut(),
+                    params.clone(),
                 ) {
                     if let TypeError::Mismatch(_, _) = *e {
                         error = true;
@@ -383,7 +405,7 @@ impl Context {
                     (*expected_output).clone(),
                     generic,
                     reverse,
-                    params.as_deref_mut(),
+                    params.clone(),
                 ) {
                     if let TypeError::Mismatch(_, _) = *e {
                         error = true;
@@ -416,7 +438,7 @@ impl Context {
                         expected.clone(),
                         generic,
                         reverse,
-                        params.as_deref_mut(),
+                        params.clone(),
                     ) {
                         if let TypeError::Mismatch(_, _) = *e {
                             error = true;
@@ -456,7 +478,7 @@ impl Context {
                         (*expected_element).clone(),
                         generic,
                         reverse,
-                        params.as_deref_mut(),
+                        params.clone(),
                     ) {
                         if params.is_none() {
                             return Err(if let TypeError::Mismatch(_, _) = *error {
@@ -478,7 +500,7 @@ impl Context {
                         (*expected_element).clone(),
                         generic,
                         reverse,
-                        params.as_deref_mut(),
+                        params.clone(),
                     ) {
                         if params.is_none() {
                             return Err(if let TypeError::Mismatch(_, _) = *error {
@@ -724,10 +746,7 @@ impl UnresolvedType {
         match self {
             UnresolvedType::Variable(var) => {
                 if let Some(default) = ctx.defaults.borrow().get(var).cloned() {
-                    ctx.substitutions
-                        .borrow_mut()
-                        .insert(*var, default.clone().into());
-
+                    ctx.substitutions.borrow_mut().insert(*var, default.clone());
                     self.substitute_defaults(ctx);
                 }
             }

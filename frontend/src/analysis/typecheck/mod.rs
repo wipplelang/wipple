@@ -1352,20 +1352,24 @@ impl Typechecker {
             // If the constant contains type parameters in bounds that are not referenced in the
             // constant's type, instantiate them here
             let generic_ty_params = generic_expr.ty.params();
+
             generic_expr.traverse_mut(|expr| {
+                expr.ty.apply(&self.ctx);
+
                 for param in expr.ty.params() {
-                    substitutions.entry(param).or_insert_with(|| {
-                        if !generic_ty_params.contains(&param)
+                    if !substitutions.contains_key(&param) {
+                        let ty = if !generic_ty_params.contains(&param)
                             && bounds.iter().any(|bound| {
                                 bound.params.iter().any(|ty| ty.params().contains(&param))
-                            })
-                        {
-                            let default = self.get_default_for_param(param);
+                            }) {
+                            let default = self.get_default_for_param(param, Some(&substitutions));
                             engine::UnresolvedType::Variable(self.ctx.new_variable(default))
                         } else {
                             engine::UnresolvedType::Parameter(param)
-                        }
-                    });
+                        };
+
+                        substitutions.insert(param, ty);
+                    }
                 }
 
                 expr.ty.instantiate_with(&self.ctx, &substitutions);
@@ -1463,6 +1467,7 @@ impl Typechecker {
         let mut substitutions = self.ctx.unify_params(
             specialized_constant_decl.ty.clone().into(),
             generic_constant_decl.ty.clone(),
+            |param| self.get_default_for_param(param, None),
         );
 
         let mut monomorphize_info = MonomorphizeInfo::default();
@@ -1476,10 +1481,11 @@ impl Typechecker {
                 ty.apply(&self.ctx);
 
                 for param in ty.params() {
-                    substitutions.entry(param).or_insert_with(|| {
-                        let default = self.get_default_for_param(param);
-                        engine::UnresolvedType::Variable(self.ctx.new_variable(default))
-                    });
+                    if !substitutions.contains_key(&param) {
+                        let default = self.get_default_for_param(param, Some(&substitutions));
+                        let ty = engine::UnresolvedType::Variable(self.ctx.new_variable(default));
+                        substitutions.insert(param, ty);
+                    }
                 }
 
                 ty.instantiate_with(&self.ctx, &substitutions);
@@ -2218,7 +2224,8 @@ impl Typechecker {
                     id: expr.id,
                     span: expr.span,
                     ty: engine::UnresolvedType::Variable(
-                        self.ctx.new_variable(Some(Type::Tuple(Vec::new()))),
+                        self.ctx
+                            .new_variable(Some(engine::UnresolvedType::Tuple(Vec::new()))),
                     ),
                     kind: UnresolvedExpressionKind::End(Box::new(value)),
                 }
@@ -3155,38 +3162,19 @@ impl Typechecker {
                 match find_instance!(@find params.clone(), $resolve) {
                     // ...if there is a single candidate, return it.
                     Some(Ok(candidate)) => return Ok(candidate),
-                    // ...if there are multiple candiates, try again with numeric variables.
+                    // ...if there are multiple candidates, try again finalizing numeric variables.
                     Some(Err(FindInstanceError::MultipleCandidates)) => {
                         let params = params
                             .clone()
                             .into_iter()
-                            .map(|(mut ty, (param, infer))| {
-                                if infer {
-                                    self.add_numeric_substitutions(&mut ty);
-                                }
-
-                                (ty, (param, infer))
+                            .map(|(mut ty, infer)| {
+                                ty.finalize_numeric_variables(&self.ctx);
+                                (ty, infer)
                             })
                             .collect::<Vec<_>>();
 
-                        // ...if there are multiple candidates, try again finalizing numeric variables.
-                        match find_instance!(@find params.clone(), $resolve) {
-                            Some(Ok(candidate)) => return Ok(candidate),
-                            Some(Err(FindInstanceError::MultipleCandidates)) => {
-                                let params = params
-                                    .into_iter()
-                                    .map(|(mut ty, infer)| {
-                                        ty.finalize_numeric_variables(&self.ctx);
-                                        (ty, infer)
-                                    })
-                                    .collect::<Vec<_>>();
-
-                                match find_instance!(@find params, $resolve) {
-                                    Some(result) => return result,
-                                    None => {}
-                                }
-                            }
-                            Some(Err(error)) => return Err(error),
+                        match find_instance!(@find params, $resolve) {
+                            Some(result) => return result,
                             None => {}
                         }
                     }
@@ -3216,7 +3204,7 @@ impl Typechecker {
         }
 
         macro_rules! unify_instance_params {
-            ($candidates:expr, $params:expr, $instance_params:expr, $substitutions:expr, $prev_ctx:expr) => {{
+            ($candidates:expr, $params:expr, $instance_params:expr, $substitutions:expr, $prev_ctx:expr $(,)?) => {{
                 let mut error = None;
                 for ((param_ty, (_, inferred)), instance_param_ty) in
                     $params.clone().into_iter().zip($instance_params.clone())
@@ -3317,7 +3305,7 @@ impl Typechecker {
         find_instance!(|params: Params| {
             let mut candidates = Vec::new();
             for (mut instance_params, instance_id, span, _) in bound_instances.clone() {
-                let mut substitutions = engine::GenericSubstitutions::new();
+                let mut substitutions = engine::GenericSubstitutions::new(); // info.param_substitutions.clone();
                 let prev_ctx = self.ctx.clone();
 
                 for ty in &mut instance_params {
@@ -3329,7 +3317,7 @@ impl Typechecker {
                     params,
                     instance_params,
                     substitutions,
-                    prev_ctx
+                    prev_ctx,
                 );
 
                 let ctx = mem::replace(&mut self.ctx, prev_ctx);
@@ -3343,7 +3331,7 @@ impl Typechecker {
         find_instance!(|params: Params| {
             let mut candidates = Vec::new();
             'check: for id in declared_instances.clone() {
-                let mut substitutions = engine::GenericSubstitutions::new();
+                let mut substitutions = engine::GenericSubstitutions::new(); // info.param_substitutions.clone();
                 let prev_ctx = self.ctx.clone();
 
                 let (mut instance_params, instance_span, generic_bounds) = match self
@@ -3377,7 +3365,7 @@ impl Typechecker {
                     params,
                     instance_params,
                     substitutions,
-                    prev_ctx
+                    prev_ctx,
                 );
 
                 for generic_bound in generic_bounds {
@@ -3460,7 +3448,9 @@ impl Typechecker {
             })
             .expect("trait should have already been accessed at least once");
 
-        let params = self.ctx.unify_params(ty, tr_ty);
+        let params = self
+            .ctx
+            .unify_params(ty, tr_ty, |param| self.get_default_for_param(param, None));
 
         tr_params
             .into_iter()
@@ -4364,24 +4354,14 @@ impl Typechecker {
         ty.apply(&self.ctx);
 
         for param in ty.params() {
-            substitutions.entry(param).or_insert_with(|| {
-                let default = self.get_default_for_param(param);
-                engine::UnresolvedType::Variable(self.ctx.new_variable(default))
-            });
+            if !substitutions.contains_key(&param) {
+                let default = self.get_default_for_param(param, Some(substitutions));
+                let ty = engine::UnresolvedType::Variable(self.ctx.new_variable(default));
+                substitutions.insert(param, ty);
+            }
         }
 
         ty.instantiate_with(&self.ctx, substitutions);
-    }
-
-    fn add_numeric_substitutions(&self, ty: &mut engine::UnresolvedType) {
-        ty.apply(&self.ctx);
-
-        for var in ty.vars() {
-            let _ = self.ctx.unify(
-                engine::UnresolvedType::Variable(var),
-                engine::UnresolvedType::NumericVariable(self.ctx.new_variable(None)),
-            );
-        }
     }
 
     fn add_substitutions_skipping_inferred(
@@ -4392,18 +4372,20 @@ impl Typechecker {
         ty.apply(&self.ctx);
 
         for param in ty.params() {
-            substitutions.entry(param).or_insert_with(|| {
+            if !substitutions.contains_key(&param) {
                 let inferred = self
                     .with_type_parameter_decl(param, |decl| decl.infer)
                     .unwrap_or(false);
 
-                if inferred {
+                let ty = if inferred {
                     engine::UnresolvedType::Parameter(param)
                 } else {
-                    let default = self.get_default_for_param(param);
+                    let default = self.get_default_for_param(param, Some(substitutions));
                     engine::UnresolvedType::Variable(self.ctx.new_variable(default))
-                }
-            });
+                };
+
+                substitutions.insert(param, ty);
+            }
         }
 
         ty.instantiate_with(&self.ctx, substitutions);
@@ -4891,9 +4873,23 @@ impl Typechecker {
         instance_ty
     }
 
-    fn get_default_for_param(&self, param: TypeParameterId) -> Option<Type> {
-        self.with_type_parameter_decl(param, |decl| decl.default.clone())
-            .flatten()
+    fn get_default_for_param(
+        &self,
+        param: TypeParameterId,
+        substitutions: Option<&engine::GenericSubstitutions>,
+    ) -> Option<engine::UnresolvedType> {
+        self.with_type_parameter_decl(param, |decl| {
+            let mut default = decl.default.clone().map(engine::UnresolvedType::from);
+            if let Some(default) = &mut default {
+                if let Some(substitutions) = substitutions {
+                    default.instantiate_with(&self.ctx, substitutions);
+                    default.apply(&self.ctx);
+                }
+            }
+
+            default
+        })
+        .flatten()
     }
 }
 
