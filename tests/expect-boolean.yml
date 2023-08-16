@@ -1,0 +1,8 @@
+code: |
+    True . expect "this should never happen"
+    False . expect "hello, world"
+
+output: |
+    fatal error: hello, world
+
+diagnostics: |

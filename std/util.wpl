@@ -70,6 +70,8 @@ Success Failure => instance (Unwrap-Message (Result Success Failure)) : just "ca
 expect :: Container Value where (Expect Container Value) => Text -> Container -> Value
 expect : Expect
 
+instance (Expect Boolean ()) : msg bool -> if bool () (crash msg)
+
 [help "Produces the `Some` value contained within a `Maybe`, or crashes the program."]
 [help-group "Utilities"]
 unwrap :: Container Value where (Expect Container Value) (Unwrap-Message Container) => Container -> Value
