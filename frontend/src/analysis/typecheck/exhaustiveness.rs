@@ -17,6 +17,10 @@ impl Typechecker {
     pub fn check_exhaustiveness(&self, expr: &analysis::Expression) {
         expr.traverse(|expr| match &expr.kind {
             analysis::ExpressionKind::Initialize(pattern, value) => {
+                if pattern.contains_error() {
+                    return;
+                }
+
                 let match_compiler = MatchCompiler {
                     typechecker: self,
                     info: Info::default(),
@@ -73,6 +77,10 @@ impl Typechecker {
                 }
             }
             analysis::ExpressionKind::Function(pattern, _, _) => {
+                if pattern.contains_error() {
+                    return;
+                }
+
                 let input_ty = match &expr.ty {
                     analysis::Type::Function(input, _) => input.as_ref(),
                     _ => unreachable!(),
@@ -144,12 +152,16 @@ impl Typechecker {
 
                 let rows = arms
                     .iter()
-                    .map(|arm| {
-                        (
+                    .filter_map(|arm| {
+                        if arm.pattern.contains_error() {
+                            return None;
+                        }
+
+                        Some((
                             self.convert_match_pattern(&arm.pattern),
                             arm.guard.is_some(),
                             self.compiler.new_reachable_marker_id(),
-                        )
+                        ))
                     })
                     .collect::<Vec<_>>();
 
