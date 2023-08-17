@@ -233,6 +233,7 @@ macro_rules! expr {
                 With((Option<ConstantId>, Box<[<$prefix Expression>]>), Box<[<$prefix Expression>]>),
                 ContextualConstant(ConstantId),
                 End(Box<[<$prefix Expression>]>),
+                Extend(Box<[<$prefix Expression>]>, BTreeMap<FieldIndex, [<$prefix Expression>]>),
                 $($kinds)*
             }
 
@@ -404,6 +405,15 @@ impl From<UnresolvedExpression> for MonomorphizedExpression {
                 }
                 UnresolvedExpressionKind::End(value) => {
                     MonomorphizedExpressionKind::End(Box::new((*value).into()))
+                }
+                UnresolvedExpressionKind::Extend(value, fields) => {
+                    MonomorphizedExpressionKind::Extend(
+                        Box::new((*value).into()),
+                        fields
+                            .into_iter()
+                            .map(|(index, expr)| (index, expr.into()))
+                            .collect(),
+                    )
                 }
             },
         }
@@ -2230,6 +2240,86 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::End(Box::new(value)),
                 }
             }
+            lower::ExpressionKind::Extend(value, fields) => {
+                let value = self.convert_expr(*value, info);
+
+                let (id, structure_field_tys) = match &value.ty {
+                    engine::UnresolvedType::Named(
+                        id,
+                        _,
+                        engine::TypeStructure::Structure(fields),
+                    ) => (*id, fields.clone()),
+                    _ => {
+                        self.compiler.add_error(
+                            "cannot extend this value with structure fields",
+                            vec![Note::primary(expr.span, "this is not a structure type")],
+                            "syntax-error",
+                        );
+
+                        return UnresolvedExpression {
+                            id: expr.id,
+                            span: expr.span,
+                            ty: engine::UnresolvedType::Error,
+                            kind: UnresolvedExpressionKind::error(&self.compiler),
+                        };
+                    }
+                };
+
+                let structure_field_names = match self
+                    .with_type_decl(id, |decl| decl.kind.clone())
+                    .expect("type should have already been accessed at least once")
+                {
+                    TypeDeclKind::Structure { field_names, .. } => field_names,
+                    _ => {
+                        self.compiler.add_error(
+                            "cannot extend this value with structure fields",
+                            vec![Note::primary(expr.span, "this is not a structure type")],
+                            "syntax-error",
+                        );
+
+                        return UnresolvedExpression {
+                            id: expr.id,
+                            span: expr.span,
+                            ty: engine::UnresolvedType::Error,
+                            kind: UnresolvedExpressionKind::error(&self.compiler),
+                        };
+                    }
+                };
+
+                let mut extra_fields = Vec::new();
+
+                let fields = fields
+                    .into_iter()
+                    .filter_map(|((span, name), expr)| {
+                        let index = match structure_field_names.get(&name) {
+                            Some(index) => *index,
+                            None => {
+                                extra_fields.push((span, name));
+                                return None;
+                            }
+                        };
+
+                        let mut expr = self.convert_expr(expr, info);
+
+                        let ty = structure_field_tys[index.into_inner()].clone();
+
+                        if let Err(error) = self.unify(value.id, value.span, expr.ty, ty.clone()) {
+                            self.add_error(error);
+                        }
+
+                        expr.ty = ty;
+
+                        Some((index, expr))
+                    })
+                    .collect();
+
+                UnresolvedExpression {
+                    id: expr.id,
+                    span: expr.span,
+                    ty: value.ty.clone(),
+                    kind: UnresolvedExpressionKind::Extend(Box::new(value), fields),
+                }
+            }
         }
     }
 
@@ -2695,6 +2785,15 @@ impl Typechecker {
                 }
                 MonomorphizedExpressionKind::End(value) => {
                     MonomorphizedExpressionKind::End(Box::new(self.monomorphize_expr(*value, info)))
+                }
+                MonomorphizedExpressionKind::Extend(value, fields) => {
+                    MonomorphizedExpressionKind::Extend(
+                        Box::new(self.monomorphize_expr(*value, info)),
+                        fields
+                            .into_iter()
+                            .map(|(index, field)| (index, self.monomorphize_expr(field, info)))
+                            .collect(),
+                    )
                 }
             })(),
         }
@@ -3628,6 +3727,13 @@ impl Typechecker {
             MonomorphizedExpressionKind::End(value) => {
                 ExpressionKind::End(Box::new(self.finalize_expr(*value)))
             }
+            MonomorphizedExpressionKind::Extend(value, fields) => ExpressionKind::Extend(
+                Box::new(self.finalize_expr(*value)),
+                fields
+                    .into_iter()
+                    .map(|(index, field)| (index, self.finalize_expr(field)))
+                    .collect(),
+            ),
         })();
 
         Expression {

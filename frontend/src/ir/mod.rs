@@ -102,6 +102,7 @@ pub enum Expression {
     Reference,
     Dereference,
     Context(usize),
+    Extend(Vec<FieldIndex>),
 }
 
 #[serde_as]
@@ -510,6 +511,20 @@ impl IrGen {
                 self.gen_end(label, pos);
                 *self.terminator_for(label, *pos) = Some(Terminator::Return);
                 *pos = self.new_basic_block(label, "following function end");
+            }
+            ssa::ExpressionKind::Extend(value, fields) => {
+                self.gen_expr(*value, label, pos);
+
+                let fields = fields
+                    .into_iter()
+                    .map(|(index, expr)| {
+                        self.gen_expr(expr, label, pos);
+                        index
+                    })
+                    .collect::<Vec<_>>();
+
+                self.statements_for(label, *pos)
+                    .push(Statement::Expression(expr.ty, Expression::Extend(fields)));
             }
         }
     }

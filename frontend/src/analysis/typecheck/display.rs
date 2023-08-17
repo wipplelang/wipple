@@ -353,6 +353,37 @@ impl Expression {
                 value.display_with(f, file, indent)?;
                 write!(f, ")")?;
             }
+            ExpressionKind::Extend(value, fields) => {
+                let id = match self.ty {
+                    Type::Named(id, _, _) => Some(id),
+                    _ => None,
+                };
+
+                let field_names =
+                    id.and_then(|id| file.declarations.types.get(&id))
+                        .and_then(|ty| match &ty.kind {
+                            TypeDeclKind::Structure { field_names, .. } => Some(field_names),
+                            _ => None,
+                        });
+
+                write!(f, "(")?;
+                value.display_with(f, file, indent)?;
+                writeln!(f, " where {{")?;
+                for (&index, expr) in fields {
+                    let name = field_names
+                        .and_then(|field_names| {
+                            field_names
+                                .iter()
+                                .find_map(|(name, i)| (*i == index).then_some(name.to_string()))
+                        })
+                        .unwrap_or_else(|| format!("<unknown field #{}>", index.into_inner()));
+
+                    write!(f, "{}{} : ", "\t".repeat(indent + 1), name)?;
+                    expr.display_with(f, file, indent + 1)?;
+                    writeln!(f)?;
+                }
+                write!(f, "{}}}", "\t".repeat(indent))?;
+            }
         }
 
         Ok(())

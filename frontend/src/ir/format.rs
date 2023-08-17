@@ -120,6 +120,14 @@ impl std::fmt::Display for Expression {
             Expression::Reference => write!(f, "reference"),
             Expression::Dereference => write!(f, "dereference"),
             Expression::Context(id) => write!(f, "ctx{id}"),
+            Expression::Extend(fields) => write!(
+                f,
+                "extend {}",
+                fields
+                    .iter()
+                    .map(|index| format!("{}", index.into_inner()))
+                    .join(" ")
+            ),
         }
     }
 }

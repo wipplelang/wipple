@@ -590,6 +590,12 @@ mod util {
                 ExpressionKind::Constant(constant) | ExpressionKind::ExpandedConstant(constant) => {
                     Self::constant_is_pure(constant, program, function_call, stack).is_some()
                 }
+                ExpressionKind::Extend(value, fields) => {
+                    value.is_pure_inner(program, function_call, stack)
+                        && fields
+                            .values()
+                            .all(|field| field.is_pure_inner(program, function_call, stack))
+                }
             }
         }
 

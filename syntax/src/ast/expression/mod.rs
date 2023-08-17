@@ -8,6 +8,7 @@ definitions! {
     mod plugin;
     mod tuple;
     mod when;
+    mod r#where;
     mod with;
 }
 
@@ -40,6 +41,7 @@ syntax_group! {
             Plugin,
             Format,
             With,
+            Where,
             When,
         },
         terminal: {

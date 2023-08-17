@@ -520,6 +520,24 @@ impl Interpreter {
 
                             stack.push(value);
                         }
+                        ir::Expression::Extend(fields) => {
+                            let fields = fields
+                                .iter()
+                                .copied()
+                                .zip(stack.popn(fields.len()))
+                                .collect::<Vec<_>>();
+
+                            let mut structure = match stack.pop() {
+                                Value::Structure(structure) => structure,
+                                _ => unreachable!(),
+                            };
+
+                            for (field_index, value) in fields {
+                                structure[field_index.into_inner()] = value;
+                            }
+
+                            stack.push(Value::Structure(structure));
+                        }
                     },
                 }
             }

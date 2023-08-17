@@ -500,6 +500,10 @@ pub enum ExpressionKind {
     Format(Vec<(InternedString, Expression)>, Option<InternedString>),
     With((Option<ConstantId>, Box<Expression>), Box<Expression>),
     End(Box<Expression>),
+    Extend(
+        Box<Expression>,
+        Vec<((SpanList, InternedString), Expression)>,
+    ),
 }
 
 impl ExpressionKind {
@@ -581,6 +585,13 @@ impl Expression {
             }
             ExpressionKind::End(expr) => {
                 expr.traverse_mut_inner(f);
+            }
+            ExpressionKind::Extend(expr, fields) => {
+                expr.traverse_mut_inner(f);
+
+                for (_, expr) in fields {
+                    expr.traverse_mut_inner(f);
+                }
             }
         }
     }
@@ -2674,109 +2685,8 @@ impl Lowerer {
                                         );
                                     }
 
-                                    let fields = 'parse: {
-                                        if block.statements.len() == 1 {
-                                            let statement = match block.statements.last().unwrap() {
-                                                Ok(statement) => statement,
-                                                Err(_) => {
-                                                    break 'parse Vec::new();
-                                                }
-                                            };
-
-                                            if let ast::Statement::Expression(
-                                                ast::ExpressionStatement {
-                                                    expression: ast::Expression::Call(expr),
-                                                    ..
-                                                },
-                                            ) = statement
-                                            {
-                                                if let Some(fields) = std::iter::once(
-                                                    expr.function.clone().map(|expr| *expr),
-                                                )
-                                                .chain(expr.inputs.clone())
-                                                .map(|expr| match expr {
-                                                    Ok(ast::Expression::Name(ref name_expr)) => {
-                                                        Some((
-                                                            (name_expr.span, name_expr.name),
-                                                            expr.clone(),
-                                                        ))
-                                                    }
-                                                    _ => None,
-                                                })
-                                                .collect::<Option<Vec<_>>>()
-                                                {
-                                                    break 'parse fields
-                                                        .into_iter()
-                                                        .filter_map(|(name, expr)| {
-                                                            Some((
-                                                                name,
-                                                                self.lower_expr(&expr.ok()?, ctx),
-                                                            ))
-                                                        })
-                                                        .collect();
-                                                }
-                                            };
-                                        }
-
-                                        block.statements
-                                                .iter()
-                                                .filter_map(|s| Some(match s.as_ref().ok()? {
-                                                    ast::Statement::Assign(statement) => {
-                                                        match statement.pattern.as_ref().ok()? {
-                                                            ast::AssignmentPattern::Pattern(ast::PatternAssignmentPattern { pattern: ast::Pattern::Name(name) }) => {
-                                                                let value = match statement.value.as_ref().ok()? {
-                                                                    ast::AssignmentValue::Expression(value) => &value.expression,
-                                                                    value => {
-                                                                        self.compiler.add_error(
-                                                                            "syntax error",
-                                                                            vec![Note::primary(
-                                                                                value.span(),
-                                                                                "expected expression",
-                                                                            )],
-                                                                            "syntax-error",
-                                                                        );
-
-                                                                        return None;
-                                                                    }
-                                                                };
-
-                                                                ((name.span, name.name), value.clone())
-                                                            }
-                                                            pattern => {
-                                                                self.compiler.add_error(
-                                                                    "structure instantiation may not contain complex patterns",
-                                                                    vec![Note::primary(
-                                                                        pattern.span(),
-                                                                        "try splitting this pattern into multiple names",
-                                                                    )],
-                                                                    "syntax-error",
-                                                                );
-
-                                                                return None;
-                                                            },
-                                                        }
-                                                    },
-                                                    ast::Statement::Expression(ast::ExpressionStatement { expression: expr @ ast::Expression::Name(name), .. }) => {
-                                                        ((name.span, name.name), expr.clone())
-                                                    },
-                                                    // TODO: 'use' inside instantiation
-                                                    _ => {
-                                                        self.compiler.add_error(
-                                                            "structure instantiation may not contain executable statements", vec![Note::primary(
-                                                                block.span,
-                                                                "try removing this",
-                                                            )],
-                                                            "syntax-error",
-                                                        );
-
-                                                        return None;
-                                                    }
-                                                }))
-                                                .collect::<Vec<_>>()
-                                                .into_iter()
-                                                .map(|(name, value)| (name, self.lower_expr(&value, ctx)))
-                                                .collect()
-                                    };
+                                    let fields =
+                                        self.extract_fields(block, ctx).unwrap_or_default();
 
                                     let ty = self
                                         .declarations
@@ -3360,7 +3270,148 @@ impl Lowerer {
                     kind: ExpressionKind::End(Box::new(value)),
                 }
             }
+            ast::Expression::Where(expr) => {
+                let value = match &expr.value {
+                    Ok(expr) => self.lower_expr(expr, ctx),
+                    Err(error) => Expression {
+                        id: self.compiler.new_expression_id(ctx.owner),
+                        span: error.span,
+                        kind: ExpressionKind::error(&self.compiler),
+                    },
+                };
+
+                let fields = match expr.fields.as_deref() {
+                    Ok(ast::Expression::Block(block)) => {
+                        self.extract_fields(block, ctx).unwrap_or_default()
+                    }
+                    Ok(fields) => {
+                        self.compiler.add_error(
+                            "`where` expects a block",
+                            vec![Note::primary(fields.span(), "expected a block here")],
+                            "syntax-error",
+                        );
+
+                        return Expression {
+                            id: self.compiler.new_expression_id(ctx.owner),
+                            span: expr.span(),
+                            kind: ExpressionKind::error(&self.compiler),
+                        };
+                    }
+                    Err(_) => {
+                        return Expression {
+                            id: self.compiler.new_expression_id(ctx.owner),
+                            span: expr.span(),
+                            kind: ExpressionKind::error(&self.compiler),
+                        };
+                    }
+                };
+
+                Expression {
+                    id: self.compiler.new_expression_id(ctx.owner),
+                    span: expr.span(),
+                    kind: ExpressionKind::Extend(Box::new(value), fields),
+                }
+            }
         }
+    }
+
+    fn extract_fields(
+        &mut self,
+        block: &ast::BlockExpression<Analysis>,
+        ctx: &Context,
+    ) -> Option<Vec<((SpanList, InternedString), Expression)>> {
+        if block.statements.len() == 1 {
+            let statement = match block.statements.last().unwrap() {
+                Ok(statement) => statement,
+                Err(_) => return None,
+            };
+
+            if let ast::Statement::Expression(ast::ExpressionStatement {
+                expression: ast::Expression::Call(expr),
+                ..
+            }) = statement
+            {
+                if let Some(fields) = std::iter::once(expr.function.clone().map(|expr| *expr))
+                    .chain(expr.inputs.clone())
+                    .map(|expr| match expr {
+                        Ok(ast::Expression::Name(ref name_expr)) => {
+                            Some(((name_expr.span, name_expr.name), expr.clone()))
+                        }
+                        _ => None,
+                    })
+                    .collect::<Option<Vec<_>>>()
+                {
+                    return Some(
+                        fields
+                            .into_iter()
+                            .filter_map(|(name, expr)| {
+                                Some((name, self.lower_expr(&expr.ok()?, ctx)))
+                            })
+                            .collect(),
+                    );
+                }
+            };
+        }
+
+        let fields = block
+            .statements
+            .iter()
+            .filter_map(|s| {
+                Some(match s.as_ref().ok()? {
+                    ast::Statement::Assign(statement) => match statement.pattern.as_ref().ok()? {
+                        ast::AssignmentPattern::Pattern(ast::PatternAssignmentPattern {
+                            pattern: ast::Pattern::Name(name),
+                        }) => {
+                            let value = match statement.value.as_ref().ok()? {
+                                ast::AssignmentValue::Expression(value) => &value.expression,
+                                value => {
+                                    self.compiler.add_error(
+                                        "syntax error",
+                                        vec![Note::primary(value.span(), "expected expression")],
+                                        "syntax-error",
+                                    );
+
+                                    return None;
+                                }
+                            };
+
+                            ((name.span, name.name), value.clone())
+                        }
+                        pattern => {
+                            self.compiler.add_error(
+                                "structure instantiation may not contain complex patterns",
+                                vec![Note::primary(
+                                    pattern.span(),
+                                    "try splitting this pattern into multiple names",
+                                )],
+                                "syntax-error",
+                            );
+
+                            return None;
+                        }
+                    },
+                    ast::Statement::Expression(ast::ExpressionStatement {
+                        expression: expr @ ast::Expression::Name(name),
+                        ..
+                    }) => ((name.span, name.name), expr.clone()),
+                    // TODO: 'use' inside instantiation
+                    _ => {
+                        self.compiler.add_error(
+                            "structure instantiation may not contain executable statements",
+                            vec![Note::primary(block.span, "try removing this")],
+                            "syntax-error",
+                        );
+
+                        return None;
+                    }
+                })
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(|(name, value)| (name, self.lower_expr(&value, ctx)))
+            .collect();
+
+        Some(fields)
     }
 
     fn lower_pattern(&mut self, pattern: &ast::Pattern<Analysis>, ctx: &Context) -> Pattern {

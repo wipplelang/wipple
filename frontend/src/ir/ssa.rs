@@ -2,7 +2,7 @@ use crate::{
     analysis, analysis::SpanList, helpers::InternedString, Compiler, ConstantId, EnumerationId,
     FieldIndex, ItemId, StructureId, TypeId, VariableId, VariantIndex,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
     os::raw::{c_int, c_uint},
@@ -78,6 +78,7 @@ pub enum ExpressionKind {
     With((ConstantId, Box<Expression>), Box<Expression>),
     ContextualConstant(ConstantId),
     End(Box<Expression>),
+    Extend(Box<Expression>, BTreeMap<FieldIndex, Expression>),
 }
 
 #[derive(Debug, Clone)]
@@ -273,6 +274,13 @@ impl Converter<'_> {
                 analysis::ExpressionKind::End(value) => {
                     ExpressionKind::End(Box::new(self.convert_expr(value, true)))
                 }
+                analysis::ExpressionKind::Extend(value, fields) => ExpressionKind::Extend(
+                    Box::new(self.convert_expr(value, false)),
+                    fields
+                        .iter()
+                        .map(|(&index, field)| (index, self.convert_expr(field, false)))
+                        .collect(),
+                ),
             },
         }
     }

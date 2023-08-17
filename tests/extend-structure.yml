@@ -1,0 +1,24 @@
+code: |
+  Person : type {
+    name :: Text
+    age :: Natural
+  }
+
+  instance (Show Person) : { name age } -> format "_ is _ years old" name age
+
+  alice : Person {
+    name : "Alice"
+    age : 30
+  }
+
+  show alice
+
+  bob : alice where { name : "Bob" }
+
+  show bob
+
+output: |
+  Alice is 30 years old
+  Bob is 30 years old
+
+diagnostics: |
