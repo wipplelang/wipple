@@ -1,0 +1,73 @@
+---
+id: VqKaoArh
+type: text
+locked: true
+---
+
+# How to use `where`
+
+The `where` operator is used to add additional constraints to a pattern or type function. For example, you can use it inside a `when` expression to add a condition to the pattern being matched:
+
+---
+id: 3lfkMMws
+type: code
+---
+
+describe : n -> when n {
+  Some x where x > 10 -> "a number over 10"
+  _ -> "something else"
+}
+
+show (describe (Some 42))
+show (describe (Some 5))
+show (describe None)
+
+---
+id: yTN7okuW
+type: text
+locked: true
+---
+
+You can also use it to add trait bounds to a type function:
+
+---
+id: l6Wyt4Af
+type: code
+---
+
+greet :: A where (Show A) => A -> Text
+greet : name -> format "Hello, _!" name
+
+show (greet "Alice")
+show (greet 5)
+
+---
+id: qhSRiYTN
+type: text
+locked: true
+---
+
+And finally, you can use `where` to update a subset of the fields of a structure value:
+
+---
+id: 8gkrhOn5
+type: code
+---
+
+Person : type {
+  name :: Text
+  age :: Natural
+}
+
+instance (Show Person) : { name age } -> format "_ is _ years old" name age
+
+alice : Person {
+  name : "Alice"
+  age : 30
+}
+
+show alice
+
+bob : alice where { name : "Bob" }
+
+show bob

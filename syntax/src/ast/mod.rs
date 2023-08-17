@@ -197,8 +197,8 @@ impl BuiltinSyntaxDefinition {
 
     pub(crate) const WHERE: Self = Self::operator(
         "where",
-        "Add bounds to a type function, or a condition to a pattern.",
-        "https://wipple.dev/std/examples/trait.txt",
+        "Add bounds to a pattern, or update the fields of a structure.",
+        "https://wipple.dev/std/examples/where.txt",
         "(*parameters*) where (*bounds*)",
     );
 
