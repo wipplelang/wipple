@@ -1047,38 +1047,30 @@ impl Typechecker {
                 span,
             );
 
-            let ty = match ty.finalize(&self.ctx) {
-                Some(ty) => ty,
-                None => {
-                    let expr_id = self.compiler.new_expression_id(id);
+            let expr_id = self.compiler.new_expression_id(id);
 
-                    self.add_error(self.error(
-                        engine::TypeError::UnresolvedType(ty),
-                        expr_id,
-                        span,
-                    ));
+            let (finalized_ty, resolved) = ty.finalize(&self.ctx);
+            if !resolved {
+                self.add_error(self.error(engine::TypeError::UnresolvedType(ty), expr_id, span));
+            }
 
-                    let expr = Expression {
-                        id: expr_id,
-                        span: expr.span,
-                        ty: engine::Type::Error,
-                        kind: ExpressionKind::error(&self.compiler),
-                    };
-
-                    self.declarations
-                        .borrow_mut()
-                        .instances
-                        .get_mut(&tr)
-                        .unwrap()
-                        .get_mut(&id)
-                        .unwrap()
-                        .body = Some(expr);
-
-                    return;
-                }
+            let expr = Expression {
+                id: expr_id,
+                span: expr.span,
+                ty: finalized_ty.clone(),
+                kind: ExpressionKind::error(&self.compiler),
             };
 
-            (Some(tr), ty, bounds, span, false)
+            self.declarations
+                .borrow_mut()
+                .instances
+                .get_mut(&tr)
+                .unwrap()
+                .get_mut(&id)
+                .unwrap()
+                .body = Some(expr);
+
+            (Some(tr), finalized_ty, bounds, span, false)
         } else {
             self.with_constant_decl(id, |decl| {
                 (
@@ -1160,7 +1152,8 @@ impl Typechecker {
                     }
                 }
 
-                generic_ty.finalize(&self.ctx)
+                let (ty, found_variables) = generic_ty.finalize(&self.ctx);
+                found_variables.then_some(ty)
             })
             .flatten();
 
@@ -1294,19 +1287,13 @@ impl Typechecker {
                     span,
                 );
 
-                let ty = match ty.finalize(&self.ctx) {
-                    Some(ty) => ty,
-                    None => {
-                        self.add_error(self.error(
-                            engine::TypeError::UnresolvedType(ty),
-                            None,
-                            span,
-                        ));
-                        continue;
-                    }
-                };
+                let (finalized_ty, resolved) = ty.finalize(&self.ctx);
+                if !resolved {
+                    self.add_error(self.error(engine::TypeError::UnresolvedType(ty), None, span));
+                    continue;
+                }
 
-                (ty, bounds)
+                (finalized_ty, bounds)
             } else {
                 match self
                     .with_constant_decl(candidate, |decl| (decl.ty.clone(), decl.bounds.clone()))
@@ -3121,7 +3108,8 @@ impl Typechecker {
 
         let mut generic_trait_ty = trait_ty.clone().into();
         self.add_substitutions(&mut generic_trait_ty, &mut fresh_parameters);
-        let generic_trait_ty = generic_trait_ty.finalize(&self.ctx).unwrap();
+        let (generic_trait_ty, resolved) = generic_trait_ty.finalize(&self.ctx);
+        assert!(resolved);
 
         let mut trait_ty = generic_trait_ty.clone().into();
         self.instantiate_generics(&mut trait_ty);
@@ -3570,15 +3558,14 @@ impl Typechecker {
 
 impl Typechecker {
     fn finalize_expr(&mut self, expr: MonomorphizedExpression) -> Expression {
-        let ty = expr.ty.finalize(&self.ctx).unwrap_or_else(|| {
+        let (ty, resolved) = expr.ty.finalize(&self.ctx);
+        if !resolved {
             self.add_error(self.error(
                 engine::TypeError::UnresolvedType(expr.ty.clone()),
                 expr.id,
                 expr.span,
             ));
-
-            engine::Type::Error
-        });
+        }
 
         let kind = (|| match expr.kind {
             MonomorphizedExpressionKind::Error(trace) => ExpressionKind::Error(trace),
@@ -3632,7 +3619,10 @@ impl Typechecker {
             MonomorphizedExpressionKind::Function(pattern, body, captures) => {
                 let input_ty = match &ty {
                     engine::Type::Function(input, _) => input.clone(),
-                    _ => return ExpressionKind::error(&self.compiler),
+                    _ => {
+                        dbg!(&ty);
+                        return ExpressionKind::error(&self.compiler);
+                    }
                 };
 
                 ExpressionKind::Function(
@@ -4541,10 +4531,12 @@ impl Typechecker {
             &mut Vec::new(),
         );
 
-        ty.finalize(&self.ctx).unwrap_or_else(|| {
+        let (finalized_ty, resolved) = ty.finalize(&self.ctx);
+        if !resolved {
             self.add_error(self.error(engine::TypeError::UnresolvedType(ty), None, span));
-            engine::Type::Error
-        })
+        }
+
+        finalized_ty
     }
 
     fn convert_finalized_type_annotation(&self, annotation: TypeAnnotation) -> engine::Type {
@@ -4552,10 +4544,12 @@ impl Typechecker {
 
         let ty = self.convert_type_annotation_inner(annotation, &|_, _| None, &mut Vec::new());
 
-        ty.finalize(&self.ctx).unwrap_or_else(|| {
+        let (finalized_ty, resolved) = ty.finalize(&self.ctx);
+        if !resolved {
             self.add_error(self.error(engine::TypeError::UnresolvedType(ty), None, span));
-            engine::Type::Error
-        })
+        }
+
+        finalized_ty
     }
 
     fn convert_type_annotation_inner(
@@ -5181,64 +5175,101 @@ impl Typechecker {
         };
 
         // Adjust error for more accurate diagnostics
-        if let engine::TypeError::Mismatch(actual, expected) = &mut *error.error {
-            actual.apply(&self.ctx);
-            expected.apply(&self.ctx);
+        match &mut *error.error {
+            engine::TypeError::Mismatch(actual, expected) => {
+                actual.apply(&self.ctx);
+                expected.apply(&self.ctx);
 
-            // If a function's type doesn't match but its inputs do, then
-            // display the error at the start of the call chain instead of the
-            // function itself
-            loop {
-                if let engine::UnresolvedType::Function(actual_input, actual_output) = &actual {
-                    if let engine::UnresolvedType::Function(expected_input, expected_output) =
-                        &expected
-                    {
-                        let actual_input = actual_input.as_ref().clone();
-                        let actual_output = actual_output.as_ref().clone();
-                        let expected_input = expected_input.as_ref().clone();
-                        let expected_output = expected_output.as_ref().clone();
+                // If a function's type doesn't match but its inputs do, then
+                // display the error at the start of the call chain instead of the
+                // function itself
+                loop {
+                    if let engine::UnresolvedType::Function(actual_input, actual_output) = &actual {
+                        if let engine::UnresolvedType::Function(expected_input, expected_output) =
+                            &expected
+                        {
+                            let actual_input = actual_input.as_ref().clone();
+                            let actual_output = actual_output.as_ref().clone();
+                            let expected_input = expected_input.as_ref().clone();
+                            let expected_output = expected_output.as_ref().clone();
 
-                        if let Some(id) = error.expr {
-                            if let Some(root) = self.root_for(id.owner) {
-                                if self
-                                    .ctx
-                                    .clone()
-                                    .unify(actual_output.clone(), expected_output.clone())
-                                    .is_err()
-                                {
-                                    if let Some(call) = root.as_root_query_parent_of(id) {
-                                        *actual = actual_output;
-                                        *expected = expected_output;
-                                        error.expr = Some(call.id);
-                                        error.span = call.span;
-                                        continue;
-                                    } else {
+                            if let Some(id) = error.expr {
+                                if let Some(root) = self.root_for(id.owner) {
+                                    if self
+                                        .ctx
+                                        .clone()
+                                        .unify(actual_output.clone(), expected_output.clone())
+                                        .is_err()
+                                    {
+                                        if let Some(call) = root.as_root_query_parent_of(id) {
+                                            *actual = actual_output;
+                                            *expected = expected_output;
+                                            error.expr = Some(call.id);
+                                            error.span = call.span;
+                                            continue;
+                                        } else {
+                                            break;
+                                        }
+                                    } else if self
+                                        .ctx
+                                        .clone()
+                                        .unify(actual_input.clone(), expected_input.clone())
+                                        .is_err()
+                                    {
+                                        if let Some(call) = root.as_root_query_parent_of(id) {
+                                            if let ExpressionKind::Call(_, input, _) = &call.kind {
+                                                *actual = expected_input;
+                                                *expected = actual_input;
+                                                error.expr = Some(input.id);
+                                                error.span = input.span;
+                                            }
+                                        }
+
                                         break;
                                     }
-                                } else if self
-                                    .ctx
-                                    .clone()
-                                    .unify(actual_input.clone(), expected_input.clone())
-                                    .is_err()
-                                {
-                                    if let Some(call) = root.as_root_query_parent_of(id) {
-                                        if let ExpressionKind::Call(_, input, _) = &call.kind {
-                                            *actual = expected_input;
-                                            *expected = actual_input;
-                                            error.expr = Some(input.id);
-                                            error.span = input.span;
-                                        }
-                                    }
-
-                                    break;
                                 }
                             }
                         }
                     }
-                }
 
-                break;
+                    break;
+                }
             }
+            engine::TypeError::UnresolvedType(ty) => {
+                ty.apply(&self.ctx);
+
+                loop {
+                    let mut modified = false;
+
+                    if let Some(expr) = error.expr.and_then(|id| self.expr_for(id)) {
+                        match expr.kind {
+                            ExpressionKind::Block(mut statements, _) => {
+                                if let Some(expr) = statements.pop() {
+                                    modified = true;
+                                    error.expr = Some(expr.id);
+                                    error.span = expr.span;
+                                }
+                            }
+                            ExpressionKind::Function(_, expr, _) => {
+                                if let engine::UnresolvedType::Function(input, output) = ty {
+                                    if !input.contains_vars() && output.contains_vars() {
+                                        modified = true;
+                                        error.expr = Some(expr.id);
+                                        error.span = expr.span;
+                                        *ty = output.as_ref().clone();
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    if !modified {
+                        break;
+                    }
+                }
+            }
+            _ => {}
         }
 
         let operator_note = || {
@@ -5644,5 +5675,10 @@ impl Typechecker {
                 .get(&self.entrypoint_item?)
                 .and_then(|(_, expr)| expr.clone()),
         }
+    }
+
+    fn expr_for(&mut self, id: ExpressionId) -> Option<Expression> {
+        self.root_for(id.owner)
+            .and_then(|expr| expr.as_root_query(id).cloned())
     }
 }

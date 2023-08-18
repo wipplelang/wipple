@@ -5,7 +5,7 @@ code: |
     f :: A => T A -> ()
     f : _ -> ()
 
-    f T
+    _ : f T
 
     same-types :: A => U A A -> ()
     same-types : _ -> ()
@@ -13,41 +13,41 @@ code: |
     different-types :: A B => U A B -> ()
     different-types : _ -> ()
 
-    same-types U
-    different-types U
+    _ : same-types U
+    _ : different-types U
 
 output: |
 
 diagnostics: |
     error: could not determine the type of this expression
-      ┌─ test:7:1
+      ┌─ test:7:5
       │
-    7 │ f T
-      │ ^
-      │ │
-      │ try annotating the type with `::`
-      │ this has type `T _ -> ()`
+    7 │ _ : f T
+      │     ^
+      │     │
+      │     try annotating the type with `::`
+      │     this has type `T _ -> ()`
       │
       = for more information, see https://wipple.dev/playground/?lesson=errors/unknown-type
 
     error: could not determine the type of this expression
-       ┌─ test:15:1
+       ┌─ test:15:5
        │
-    15 │ same-types U
-       │ ^^^^^^^^^^
-       │ │
-       │ try annotating the type with `::`
-       │ this has type `U a a -> ()` for some unknown type `a`
+    15 │ _ : same-types U
+       │     ^^^^^^^^^^
+       │     │
+       │     try annotating the type with `::`
+       │     this has type `U a a -> ()` for some unknown type `a`
        │
        = for more information, see https://wipple.dev/playground/?lesson=errors/unknown-type
 
     error: could not determine the type of this expression
-       ┌─ test:16:1
+       ┌─ test:16:5
        │
-    16 │ different-types U
-       │ ^^^^^^^^^^^^^^^
-       │ │
-       │ try annotating the type with `::`
-       │ this has type `U _ _ -> ()`
+    16 │ _ : different-types U
+       │     ^^^^^^^^^^^^^^^
+       │     │
+       │     try annotating the type with `::`
+       │     this has type `U _ _ -> ()`
        │
        = for more information, see https://wipple.dev/playground/?lesson=errors/unknown-type

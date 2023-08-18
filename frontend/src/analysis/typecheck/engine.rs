@@ -579,6 +579,22 @@ impl UnresolvedType {
         }
     }
 
+    pub fn contains_vars(&self) -> bool {
+        match self {
+            UnresolvedType::Variable(_) => true,
+            UnresolvedType::Function(input, output) => {
+                input.contains_vars() || output.contains_vars()
+            }
+            UnresolvedType::Named(_, params, _) => params.iter().any(|param| param.contains_vars()),
+            UnresolvedType::Tuple(tys) => tys.iter().any(|ty| ty.contains_vars()),
+            UnresolvedType::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.contains_vars(),
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
     pub fn apply(&mut self, ctx: &Context) {
         match self {
             UnresolvedType::Variable(var) => {
@@ -814,32 +830,41 @@ impl UnresolvedType {
         }
     }
 
-    pub fn finalize(&self, ctx: &Context) -> Option<Type> {
+    pub fn finalize(&self, ctx: &Context) -> (Type, bool) {
+        let mut resolved = true;
+        let ty = self.finalize_inner(ctx, &mut resolved);
+        (ty, resolved)
+    }
+
+    fn finalize_inner(&self, ctx: &Context, resolved: &mut bool) -> Type {
         let mut ty = self.clone();
         ty.apply(ctx);
         ty.substitute_defaults(ctx);
         ty.finalize_numeric_variables(ctx);
 
-        Some(match ty.clone() {
-            UnresolvedType::Variable(_) => return None,
+        match ty.clone() {
+            UnresolvedType::Variable(_) => {
+                *resolved = false;
+                Type::Error
+            }
             UnresolvedType::Parameter(param) => Type::Parameter(param),
             UnresolvedType::NumericVariable(_) => unreachable!(),
             UnresolvedType::Named(id, params, structure) => Type::Named(
                 id,
                 params
                     .into_iter()
-                    .map(|param| param.finalize(ctx))
-                    .collect::<Option<_>>()?,
-                structure.finalize(ctx)?,
+                    .map(|param| param.finalize_inner(ctx, resolved))
+                    .collect(),
+                structure.finalize_inner(ctx, resolved),
             ),
             UnresolvedType::Function(input, output) => Type::Function(
-                Box::new(input.finalize(ctx)?),
-                Box::new(output.finalize(ctx)?),
+                Box::new(input.finalize_inner(ctx, resolved)),
+                Box::new(output.finalize_inner(ctx, resolved)),
             ),
             UnresolvedType::Tuple(tys) => Type::Tuple(
                 tys.into_iter()
-                    .map(|ty| ty.finalize(ctx))
-                    .collect::<Option<_>>()?,
+                    .map(|ty| ty.finalize_inner(ctx, resolved))
+                    .collect(),
             ),
             UnresolvedType::Builtin(builtin) => Type::Builtin(match builtin {
                 BuiltinType::Number => BuiltinType::Number,
@@ -851,13 +876,17 @@ impl UnresolvedType {
                 BuiltinType::Float => BuiltinType::Float,
                 BuiltinType::Double => BuiltinType::Double,
                 BuiltinType::Text => BuiltinType::Text,
-                BuiltinType::List(ty) => BuiltinType::List(Box::new(ty.finalize(ctx)?)),
-                BuiltinType::Mutable(ty) => BuiltinType::Mutable(Box::new(ty.finalize(ctx)?)),
+                BuiltinType::List(ty) => {
+                    BuiltinType::List(Box::new(ty.finalize_inner(ctx, resolved)))
+                }
+                BuiltinType::Mutable(ty) => {
+                    BuiltinType::Mutable(Box::new(ty.finalize_inner(ctx, resolved)))
+                }
                 BuiltinType::Ui => BuiltinType::Ui,
                 BuiltinType::TaskGroup => BuiltinType::TaskGroup,
             }),
             UnresolvedType::Error => Type::Error,
-        })
+        }
     }
 }
 
@@ -967,26 +996,26 @@ impl TypeStructure<UnresolvedType> {
         }
     }
 
-    pub fn finalize(self, ctx: &Context) -> Option<TypeStructure<Type>> {
-        Some(match self {
+    fn finalize_inner(self, ctx: &Context, resolved: &mut bool) -> TypeStructure<Type> {
+        match self {
             TypeStructure::Marker => TypeStructure::Marker,
             TypeStructure::Structure(tys) => TypeStructure::Structure(
                 tys.into_iter()
-                    .map(|ty| ty.finalize(ctx))
-                    .collect::<Option<_>>()?,
+                    .map(|ty| ty.finalize_inner(ctx, resolved))
+                    .collect(),
             ),
             TypeStructure::Enumeration(variants) => TypeStructure::Enumeration(
                 variants
                     .into_iter()
                     .map(|tys| {
                         tys.into_iter()
-                            .map(|ty| ty.finalize(ctx))
-                            .collect::<Option<_>>()
+                            .map(|ty| ty.finalize_inner(ctx, resolved))
+                            .collect()
                     })
-                    .collect::<Option<_>>()?,
+                    .collect(),
             ),
             TypeStructure::Recursive(id) => TypeStructure::Recursive(id),
-        })
+        }
     }
 }
 
