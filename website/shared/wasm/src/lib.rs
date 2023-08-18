@@ -1341,7 +1341,20 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                         .map(|line| line.to_string())
                         .collect::<Vec<_>>()
                         .join("\n"),
-                    url: help_url!(id, &format!("syntax.{}", decl.name)),
+                    url: help_url!(
+                        id,
+                        &format!(
+                            "{}.{}",
+                            if decl.operator {
+                                "operator"
+                            } else if decl.keyword {
+                                "keyword"
+                            } else {
+                                "syntax"
+                            },
+                            decl.name
+                        )
+                    ),
                 },
             ));
         }
