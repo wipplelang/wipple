@@ -4,7 +4,7 @@ Graph : type { handle :: UI }
 
 [context]
 graph :: Graph
-graph : crash "use of graphing outside `with-graph`"
+graph : error "use of graphing outside `with-graph`"
 
 [help "Create a new graph."]
 [help-group "Graphing"]

@@ -26,7 +26,7 @@ type: code
 
 always-one : when 1 {
     1 -> 1
-    _ -> crash "not 1!"
+    _ -> error "not 1!"
 }
 
 show always-one
@@ -37,7 +37,7 @@ type: text
 locked: true
 ---
 
-Hover over `crash` and you'll see that, indeed, it returns an `A` value. Change `1` to `2` in the `when` expression, and you'll see that the `show` is never even executed.
+Hover over `error` and you'll see that, indeed, it returns an `A` value. Change `1` to `2` in the `when` expression, and you'll see that the `show` is never even executed.
 
 The key problem here is that Wipple doesn't allow us to express the absence of a value because there's no meaningful way to give every type its own `null` value. Indeed, in languages like Java you have to put checks everywhere to ensure that a value is _not_ `null` before attempting to use it.
 

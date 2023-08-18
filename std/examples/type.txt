@@ -126,13 +126,13 @@ Lisp : A => type {
 
 car :: A => Lisp A -> A
 car : lisp -> when lisp {
-  Nil -> crash "list is empty"
+  Nil -> error "list is empty"
   Cons x _ -> x
 }
 
 cdr :: A => Lisp A -> Lisp A
 cdr : lisp -> when lisp {
-  Nil -> crash "list is empty"
+  Nil -> error "list is empty"
   Cons _ rest -> rest
 }
 

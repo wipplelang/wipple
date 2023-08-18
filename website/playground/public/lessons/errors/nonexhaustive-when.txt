@@ -72,7 +72,7 @@ report-card : when grade {
     A -> "top of the class"
     B -> "good job"
     C -> "need to study"
-    D or F -> crash "failure is not an option!"
+    D or F -> error "failure is not an option!"
 }
 
 show report-card

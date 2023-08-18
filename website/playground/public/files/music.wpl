@@ -8,7 +8,7 @@ Music : type {
 
 [context]
 music :: Music
-music : crash "use of music outside `with-music`"
+music : error "use of music outside `with-music`"
 
 [help "Begin playing music."]
 [help-group "Music"]
@@ -46,7 +46,7 @@ Instrument : type {
 
 [context]
 instrument :: Instrument
-instrument : crash "use of instrument outside `with-instrument`"
+instrument : error "use of instrument outside `with-instrument`"
 
 [help "Play an instrument."]
 [help-group "Music"]
@@ -88,7 +88,7 @@ notes : notes -> { ms-from-tempo } -> {
   notes : notes . transform (note -> format "_," note) . collect :: Text
 
   delta : handle of music . message "notes" (format "_ _ _" instrument-name ms notes)
-  if (delta < 0) (crash "music stopped")
+  (delta >= 0) . expect "music stopped"
 
   delta of instrument . set! delta
 }

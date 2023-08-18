@@ -4,7 +4,7 @@ Game : type { handle :: UI }
 
 [context]
 game :: Game
-game : crash "use of game engine outside `with-game`"
+game : error "use of game engine outside `with-game`"
 
 [help "Create a new game."]
 [help-group "Game Engine"]

@@ -21,11 +21,11 @@ type: text
 locked: true
 ---
 
-If you want to exit the program early at the top level, use a function like `crash` instead:
+If you want to exit the program early at the top level, use a function like `error` instead:
 
 ---
 id: fopGOPr6
 type: code
 ---
 
-crash "Hello, world!"
+error "Hello, world!"

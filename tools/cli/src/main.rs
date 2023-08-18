@@ -266,7 +266,7 @@ async fn run() -> anyhow::Result<()> {
             });
 
             if let Err(error) = interpreter.run(&ir).await {
-                eprintln!("fatal error: {error}");
+                eprintln!("error: {error}");
             }
 
             loop {
@@ -276,7 +276,7 @@ async fn run() -> anyhow::Result<()> {
                 };
 
                 if let Err(error) = handle.await {
-                    eprintln!("fatal error: {error}");
+                    eprintln!("error: {error}");
                 }
             }
         }

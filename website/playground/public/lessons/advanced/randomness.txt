@@ -84,7 +84,7 @@ instance (Random () Command) : () -> when (random (0 to 3) :: Natural) {
   0 -> Move ((random (5 to 25)) pixels)
   1 -> Turn ((random (0 to 360)) degrees)
   2 -> Color (random (list `red` `green` `blue`) . unwrap)
-  _ -> crash "unreachable"
+  _ -> error "unreachable"
 }
 
 with-turtle {

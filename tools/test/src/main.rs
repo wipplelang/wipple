@@ -295,7 +295,7 @@ async fn run(
             });
 
             if let Err(error) = interpreter.run(&ir).await {
-                write!(buf.lock(), "fatal error: {error}")?;
+                write!(buf.lock(), "error: {error}")?;
             }
         }
 

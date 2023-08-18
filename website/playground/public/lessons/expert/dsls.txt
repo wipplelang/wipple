@@ -32,7 +32,7 @@ Robot : type {
 
 [context]
 robot :: Robot
-robot : crash "`robot` not initialized"
+robot : error "`robot` not initialized"
 
 ---
 id: c9Pc3JTE
@@ -55,7 +55,7 @@ Robot : type {
 
 [context]
 robot :: Robot
-robot : crash "`robot` not initialized"
+robot : error "`robot` not initialized"
 
 with (robot : Robot { name : "Bot" }) {
     show (format "Hello, I'm _!" (name of robot))
@@ -80,7 +80,7 @@ Robot : type {
 
 [context]
 robot :: Robot
-robot : crash "`robot` not initialized"
+robot : error "`robot` not initialized"
 
 say-hello :: () -> ()
 say-hello : () -> show (format "Hello, I'm _!" (name of robot))
@@ -108,7 +108,7 @@ Robot : type {
 
 [context]
 robot :: Robot
-robot : crash "`robot` not initialized"
+robot : error "`robot` not initialized"
 
 say-hello :: () -> ()
 say-hello : () -> show (format "Hello, I'm _!" (name of robot))
@@ -241,7 +241,7 @@ Robot : type {
 
 [context]
 robot :: Robot
-robot : crash "`robot` not initialized"
+robot : error "`robot` not initialized"
 
 with-robot : syntax {
     with-robot 'name 'body -> with (robot : Robot { name : 'name }) 'body

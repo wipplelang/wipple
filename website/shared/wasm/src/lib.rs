@@ -995,7 +995,7 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
                             if let Err(error) = fut.await {
                                 let (completion_tx, completion_rx) = oneshot::channel();
                                 send_display(
-                                    format!("fatal error: {error}"),
+                                    format!("error: {error}"),
                                     Box::new(|| completion_tx.send(()).unwrap()),
                                 );
 
@@ -1029,7 +1029,7 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
             if let Err(error) = result {
                 let (completion_tx, completion_rx) = oneshot::channel();
                 send_display(
-                    format!("fatal error: {error}"),
+                    format!("error: {error}"),
                     Box::new(|| completion_tx.send(()).unwrap()),
                 );
 

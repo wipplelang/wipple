@@ -31,7 +31,7 @@ Turtle : type { handle :: UI }
 
 [context]
 turtle :: Turtle
-turtle : crash "use of turtle graphics outside `with-turtle`"
+turtle : error "use of turtle graphics outside `with-turtle`"
 
 [help "Create a new turtle drawing."]
 [help-group "Turtle Graphics"]
@@ -56,7 +56,7 @@ background : color -> handle of turtle . message "background" color
 [help-group "Turtle Graphics"]
 speed :: Number -> ()
 speed : speed -> {
-  if (speed < 0) (crash "`speed` must be at least 0")
+  if (speed < 0) (error "`speed` must be at least 0")
   handle of turtle . message "speed" speed
 }
 

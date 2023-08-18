@@ -3,6 +3,6 @@ code: |
     False . expect "hello, world"
 
 output: |
-    fatal error: hello, world
+    error: hello, world
 
 diagnostics: |

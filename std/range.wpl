@@ -20,12 +20,11 @@ Stride : N => type {
 N where (Numeric N) (Order N) (Add N N N) => instance (Iterate (Stride N) N) : range -> {
   { zero } : Numeric
   { min max step } : range
+
+  (max >= min) . expect "`max` must be greater than `min`"
+  (step >= zero) . expect "`step` must be positive"
+
   current : mutable min
-
-  if (max < min) { crash "`max` must be greater than `min`" }
-
-  if (step < zero) { crash "`step` must be positive" }
-
   iterator (() -> {
     if (get current >= max) { None } {
       n : get current

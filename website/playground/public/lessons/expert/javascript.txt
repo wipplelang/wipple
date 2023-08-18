@@ -91,7 +91,7 @@ My-Interface : type {
 
 [context]
 my-interface :: My-Interface
-my-interface : crash "`my-interface` used outside `with-my-interface`"
+my-interface : error "`my-interface` used outside `with-my-interface`"
 
 with-my-interface : syntax {
     with-my-interface 'body -> {

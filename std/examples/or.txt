@@ -31,7 +31,7 @@ id: tfh5aHJF
 type: code
 ---
 
-True or crash "unreachable"
+True or error "unreachable"
 
 ---
 id: xc63RSe-
