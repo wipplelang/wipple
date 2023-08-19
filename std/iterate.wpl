@@ -117,7 +117,7 @@ reduce : result f container -> {
 [help "Find the sum of all the numbers in an iterator."]
 [help-group "Collections"]
 sum :: Container N where (Iterate Container N) (Default N) (Add N N N) => Container -> N
-sum : reduce Default Add
+sum : reduce Default (+)
 
 [help "Implement this trait to enable reducing an iterator into your collection type."]
 [help-group "Collections"]
@@ -228,8 +228,8 @@ count : collection -> {
 
 [help "Collect two iterators into a single value."]
 [help-group "Collections"]
-join :: A B (infer Element) (C : A) where (Iterate A Element) (Iterate B Element) (Collect Element C) => A -> B -> C
-join : a b -> collect (flatten (list (Iterate a) (Iterate b)))
+join :: A B (infer Element) (C : A) where (Iterate A Element) (Iterate B Element) (Collect Element C) => B -> A -> C
+join : b a -> collect (flatten (list (Iterate a) (Iterate b)))
 
 [specialize]
 count :: Element => List Element -> Natural

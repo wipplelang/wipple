@@ -21,7 +21,7 @@ set! : x m -> intrinsic "set-mutable" m x
 [help "Swap the contents of two `Mutable` values."]
 [help-group "Utilities"]
 swap! :: A => Mutable A -> Mutable A -> ()
-swap! : a b -> {
+swap! : b a -> {
   temp : get a
   a . set! (get b)
   b . set! temp

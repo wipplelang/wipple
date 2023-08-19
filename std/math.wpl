@@ -7,164 +7,164 @@ use "logic"
 [help "Implements the `+` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot add `_` to `_`" Left Right]
-Add : (Left : Number) (Right : Number) (infer Sum) => trait (Left -> Right -> Sum)
+Add : (Left : Number) (Right : Number) (infer Sum) => trait (Right -> Left -> Sum)
 
 [help "Add two values together, returning the sum."]
 [help-group "Math"]
 [operator Addition-Precedence]
 + : syntax {
-  'a + 'b -> Add 'a 'b
-  'a + -> Add 'a
-  + 'b -> {
-    b : 'b
-    a -> Add a b
+  'a + 'b -> Add 'b 'a
+  'a + -> {
+    a : 'a
+    b -> Add b a
   }
+  + 'b -> Add 'b
   + -> Add
 }
 
-instance (Add Number Number Number) : a b -> intrinsic "add-number" a b
-instance (Add Integer Integer Integer) : a b -> intrinsic "add-integer" a b
-instance (Add Natural Natural Natural) : a b -> intrinsic "add-natural" a b
-instance (Add Byte Byte Byte) : a b -> intrinsic "add-byte" a b
-instance (Add Signed Signed Signed) : a b -> intrinsic "add-signed" a b
-instance (Add Unsigned Unsigned Unsigned) : a b -> intrinsic "add-unsigned" a b
-instance (Add Float Float Float) : a b -> intrinsic "add-float" a b
-instance (Add Double Double Double) : a b -> intrinsic "add-double" a b
+instance (Add Number Number Number) : b a -> intrinsic "add-number" a b
+instance (Add Integer Integer Integer) : b a -> intrinsic "add-integer" a b
+instance (Add Natural Natural Natural) : b a -> intrinsic "add-natural" a b
+instance (Add Byte Byte Byte) : b a -> intrinsic "add-byte" a b
+instance (Add Signed Signed Signed) : b a -> intrinsic "add-signed" a b
+instance (Add Unsigned Unsigned Unsigned) : b a -> intrinsic "add-unsigned" a b
+instance (Add Float Float Float) : b a -> intrinsic "add-float" a b
+instance (Add Double Double Double) : b a -> intrinsic "add-double" a b
 
 [help "Implements the `-` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot subtract `_` from `_`" Right Left]
-Subtract : (Left : Number) (Right : Number) (infer Difference) => trait (Left -> Right -> Difference)
+Subtract : (Left : Number) (Right : Number) (infer Difference) => trait (Right -> Left -> Difference)
 
 [help "Subtract the right side from the left side, returning the difference."]
 [help-group "Math"]
 [operator Addition-Precedence]
 - : syntax {
-  'a - 'b -> Subtract 'a 'b
-  'a - -> Subtract 'a
-  - 'b -> {
-    b : 'b
-    a -> Subtract a b
+  'a - 'b -> Subtract 'b 'a
+  'a - -> {
+    a : 'a
+    b -> Subtract b a
   }
+  - 'b -> Subtract 'b
   - -> Subtract
 }
 
-instance (Subtract Number Number Number) : a b -> intrinsic "subtract-number" a b
-instance (Subtract Integer Integer Integer) : a b -> intrinsic "subtract-integer" a b
-instance (Subtract Natural Natural Natural) : a b -> intrinsic "subtract-natural" a b
-instance (Subtract Byte Byte Byte) : a b -> intrinsic "subtract-byte" a b
-instance (Subtract Signed Signed Signed) : a b -> intrinsic "subtract-signed" a b
-instance (Subtract Unsigned Unsigned Unsigned) : a b -> intrinsic "subtract-unsigned" a b
-instance (Subtract Float Float Float) : a b -> intrinsic "subtract-float" a b
-instance (Subtract Double Double Double) : a b -> intrinsic "subtract-double" a b
+instance (Subtract Number Number Number) : b a -> intrinsic "subtract-number" a b
+instance (Subtract Integer Integer Integer) : b a -> intrinsic "subtract-integer" a b
+instance (Subtract Natural Natural Natural) : b a -> intrinsic "subtract-natural" a b
+instance (Subtract Byte Byte Byte) : b a -> intrinsic "subtract-byte" a b
+instance (Subtract Signed Signed Signed) : b a -> intrinsic "subtract-signed" a b
+instance (Subtract Unsigned Unsigned Unsigned) : b a -> intrinsic "subtract-unsigned" a b
+instance (Subtract Float Float Float) : b a -> intrinsic "subtract-float" a b
+instance (Subtract Double Double Double) : b a -> intrinsic "subtract-double" a b
 
 [help "Implements the `*` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot multiply `_` by `_`" Left Right]
-Multiply : (Left : Number) (Right : Number) (infer Product) => trait (Left -> Right -> Product)
+Multiply : (Left : Number) (Right : Number) (infer Product) => trait (Right -> Left -> Product)
 
 [help "Multiply two values together, returning the product."]
 [help-group "Math"]
 [operator Multiplication-Precedence]
 * : syntax {
-  'a * 'b -> Multiply 'a 'b
-  'a * -> Multiply 'a
-  * 'b -> {
-    b : 'b
-    a -> Multiply a b
+  'a * 'b -> Multiply 'b 'a
+  'a * -> {
+    a : 'a
+    b -> Multiply b a
   }
+  * 'b -> Multiply 'b
   * -> Multiply
 }
 
-instance (Multiply Number Number Number) : a b -> intrinsic "multiply-number" a b
-instance (Multiply Integer Integer Integer) : a b -> intrinsic "multiply-integer" a b
-instance (Multiply Natural Natural Natural) : a b -> intrinsic "multiply-natural" a b
-instance (Multiply Byte Byte Byte) : a b -> intrinsic "multiply-byte" a b
-instance (Multiply Signed Signed Signed) : a b -> intrinsic "multiply-signed" a b
-instance (Multiply Unsigned Unsigned Unsigned) : a b -> intrinsic "multiply-unsigned" a b
-instance (Multiply Float Float Float) : a b -> intrinsic "multiply-float" a b
-instance (Multiply Double Double Double) : a b -> intrinsic "multiply-double" a b
+instance (Multiply Number Number Number) : b a -> intrinsic "multiply-number" a b
+instance (Multiply Integer Integer Integer) : b a -> intrinsic "multiply-integer" a b
+instance (Multiply Natural Natural Natural) : b a -> intrinsic "multiply-natural" a b
+instance (Multiply Byte Byte Byte) : b a -> intrinsic "multiply-byte" a b
+instance (Multiply Signed Signed Signed) : b a -> intrinsic "multiply-signed" a b
+instance (Multiply Unsigned Unsigned Unsigned) : b a -> intrinsic "multiply-unsigned" a b
+instance (Multiply Float Float Float) : b a -> intrinsic "multiply-float" a b
+instance (Multiply Double Double Double) : b a -> intrinsic "multiply-double" a b
 
 [help "Implements the `/` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot divide `_` by `_`" Left Right]
-Divide : (Left : Number) (Right : Number) (infer Quotient) => trait (Left -> Right -> Quotient)
+Divide : (Left : Number) (Right : Number) (infer Quotient) => trait (Right -> Left -> Quotient)
 
 [help "Divide the left side by the right side, returning the quotient."]
 [help-group "Math"]
 [operator Multiplication-Precedence]
 / : syntax {
-  'a / 'b -> Divide 'a 'b
-  'a / -> Divide 'a
-  / 'b -> {
-    b : 'b
-    a -> Divide a b
+  'a / 'b -> Divide 'b 'a
+  'a / -> {
+    a : 'a
+    b -> Divide b a
   }
+  / 'b -> Divide 'b
   / -> Divide
 }
 
-instance (Divide Number Number Number) : a b -> intrinsic "divide-number" a b
-instance (Divide Integer Integer Integer) : a b -> intrinsic "divide-integer" a b
-instance (Divide Natural Natural Natural) : a b -> intrinsic "divide-natural" a b
-instance (Divide Byte Byte Byte) : a b -> intrinsic "divide-byte" a b
-instance (Divide Signed Signed Signed) : a b -> intrinsic "divide-signed" a b
-instance (Divide Unsigned Unsigned Unsigned) : a b -> intrinsic "divide-unsigned" a b
-instance (Divide Float Float Float) : a b -> intrinsic "divide-float" a b
-instance (Divide Double Double Double) : a b -> intrinsic "divide-double" a b
+instance (Divide Number Number Number) : b a -> intrinsic "divide-number" a b
+instance (Divide Integer Integer Integer) : b a -> intrinsic "divide-integer" a b
+instance (Divide Natural Natural Natural) : b a -> intrinsic "divide-natural" a b
+instance (Divide Byte Byte Byte) : b a -> intrinsic "divide-byte" a b
+instance (Divide Signed Signed Signed) : b a -> intrinsic "divide-signed" a b
+instance (Divide Unsigned Unsigned Unsigned) : b a -> intrinsic "divide-unsigned" a b
+instance (Divide Float Float Float) : b a -> intrinsic "divide-float" a b
+instance (Divide Double Double Double) : b a -> intrinsic "divide-double" a b
 
 [help "Implements the `mod` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot divide `_` by `_`" Left Right]
-Modulo : (Left : Number) (Right : Number) (infer Remainder) => trait (Left -> Right -> Remainder)
+Modulo : (Left : Number) (Right : Number) (infer Remainder) => trait (Right -> Left -> Remainder)
 
 [help "Divide the left side by the right side, returning the remainder."]
 [help-group "Math"]
 [operator Multiplication-Precedence]
 mod : syntax {
-  'a mod 'b -> Modulo 'a 'b
-  'a mod -> Modulo 'a
-  mod 'b -> {
-    b : 'b
-    a -> Modulo a b
+  'a mod 'b -> Modulo 'b 'a
+  'a mod -> {
+    a : 'a
+    b -> Modulo b a
   }
+  mod 'b -> Modulo 'b
   mod -> Modulo
 }
 
-instance (Modulo Number Number Number) : a b -> intrinsic "modulo-number" a b
-instance (Modulo Integer Integer Integer) : a b -> intrinsic "modulo-integer" a b
-instance (Modulo Natural Natural Natural) : a b -> intrinsic "modulo-natural" a b
-instance (Modulo Byte Byte Byte) : a b -> intrinsic "modulo-byte" a b
-instance (Modulo Signed Signed Signed) : a b -> intrinsic "modulo-signed" a b
-instance (Modulo Unsigned Unsigned Unsigned) : a b -> intrinsic "modulo-unsigned" a b
-instance (Modulo Float Float Float) : a b -> intrinsic "modulo-float" a b
-instance (Modulo Double Double Double) : a b -> intrinsic "modulo-double" a b
+instance (Modulo Number Number Number) : b a -> intrinsic "modulo-number" a b
+instance (Modulo Integer Integer Integer) : b a -> intrinsic "modulo-integer" a b
+instance (Modulo Natural Natural Natural) : b a -> intrinsic "modulo-natural" a b
+instance (Modulo Byte Byte Byte) : b a -> intrinsic "modulo-byte" a b
+instance (Modulo Signed Signed Signed) : b a -> intrinsic "modulo-signed" a b
+instance (Modulo Unsigned Unsigned Unsigned) : b a -> intrinsic "modulo-unsigned" a b
+instance (Modulo Float Float Float) : b a -> intrinsic "modulo-float" a b
+instance (Modulo Double Double Double) : b a -> intrinsic "modulo-double" a b
 
 [help "Implements the `^` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot raise `_` to the power of `_`" Left Right]
-Power : (Left : Number) (Right : Number) (infer Power) => trait (Left -> Right -> Power)
+Power : (Left : Number) (Right : Number) (infer Power) => trait (Right -> Left -> Power)
 
 [help "Raise the left side to the power of the right side."]
 [help-group "Math"]
 [operator Exponentiation-Precedence]
 ^ : syntax {
-  'a ^ 'b -> Power 'a 'b
-  'a ^ -> Power 'a
-  ^ 'b -> {
-    b : 'b
-    a -> Power a b
+  'a ^ 'b -> Power 'b 'a
+  'a ^ -> {
+    a : 'a
+    b -> Power b a
   }
+  ^ 'b -> Power 'b
   ^ -> Power
 }
 
-instance (Power Number Number Number) : a b -> intrinsic "power-number" a b
-instance (Power Integer Integer Integer) : a b -> intrinsic "power-integer" a b
-instance (Power Natural Natural Natural) : a b -> intrinsic "power-natural" a b
-instance (Power Byte Byte Byte) : a b -> intrinsic "power-byte" a b
-instance (Power Signed Signed Signed) : a b -> intrinsic "power-signed" a b
-instance (Power Unsigned Unsigned Unsigned) : a b -> intrinsic "power-unsigned" a b
-instance (Power Float Float Float) : a b -> intrinsic "power-float" a b
-instance (Power Double Double Double) : a b -> intrinsic "power-double" a b
+instance (Power Number Number Number) : b a -> intrinsic "power-number" a b
+instance (Power Integer Integer Integer) : b a -> intrinsic "power-integer" a b
+instance (Power Natural Natural Natural) : b a -> intrinsic "power-natural" a b
+instance (Power Byte Byte Byte) : b a -> intrinsic "power-byte" a b
+instance (Power Signed Signed Signed) : b a -> intrinsic "power-signed" a b
+instance (Power Unsigned Unsigned Unsigned) : b a -> intrinsic "power-unsigned" a b
+instance (Power Float Float Float) : b a -> intrinsic "power-float" a b
+instance (Power Double Double Double) : b a -> intrinsic "power-double" a b
 
 [help "Rounds down a number to the nearest integer."]
 [help-group "Math"]
