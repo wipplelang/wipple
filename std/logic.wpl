@@ -39,10 +39,7 @@ And : Left Right (infer Output) => trait (Left -> (() -> Right) -> Output)
 and : syntax {
   'a and 'b -> And 'a (() -> 'b)
   'a and -> And 'a
-  and 'b -> {
-    b : 'b
-    a -> a and b
-  }
+  and 'b -> a -> a and 'b
   and -> And
 }
 
@@ -56,10 +53,7 @@ Or : Left Right (infer Output) => trait (Left -> (() -> Right) -> Output)
 or : syntax {
   'a or 'b -> Or 'a (() -> 'b)
   'a or -> Or 'a
-  or 'b -> {
-    b : 'b
-    a -> a or b
-  }
+  or 'b -> a -> a or 'b
   or -> Or
 }
 
