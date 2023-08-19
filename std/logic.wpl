@@ -80,7 +80,7 @@ instance (Order Unsigned) : a b -> intrinsic "unsigned-ordering" a b
 instance (Order Float) : a b -> intrinsic "float-ordering" a b
 instance (Order Double) : a b -> intrinsic "double-ordering" a b
 
-[help "Returns `True ` if the left side is less than the right side."]
+[help "Returns `True` if the left side is less than the right side."]
 [help-group "Logic"]
 [operator Comparison-Precedence]
 < : syntax {
@@ -100,7 +100,7 @@ instance (Order Double) : a b -> intrinsic "double-ordering" a b
   < -> a b -> a < b
 }
 
-[help "Returns `True ` if the left side is greater than the right side."]
+[help "Returns `True` if the left side is greater than the right side."]
 [help-group "Logic"]
 [operator Comparison-Precedence]
 > : syntax {
@@ -120,7 +120,7 @@ instance (Order Double) : a b -> intrinsic "double-ordering" a b
   > -> a b -> a > b
 }
 
-[help "Returns `True ` if the left side is less than or equal to the right side."]
+[help "Returns `True` if the left side is less than or equal to the right side."]
 [help-group "Logic"]
 [operator Comparison-Precedence]
 <= : syntax {
@@ -140,7 +140,7 @@ instance (Order Double) : a b -> intrinsic "double-ordering" a b
   <= -> a b -> a <= b
 }
 
-[help "Returns `True ` if the left side is greater than or equal to the right side."]
+[help "Returns `True` if the left side is greater than or equal to the right side."]
 [help-group "Logic"]
 [operator Comparison-Precedence]
 >= : syntax {
@@ -164,7 +164,7 @@ instance (Order Double) : a b -> intrinsic "double-ordering" a b
 [help-group "Logic"]
 Equal : A => trait (A -> A -> Boolean)
 
-[help "Returns `True ` if both sides are equal."]
+[help "Returns `True` if both sides are equal."]
 [help-group "Logic"]
 [operator Comparison-Precedence]
 = : syntax {
@@ -177,7 +177,7 @@ Equal : A => trait (A -> A -> Boolean)
   = -> Equal
 }
 
-[help "Returns `True ` if the left side is not equal to the right side."]
+[help "Returns `True` if the left side is not equal to the right side."]
 [help-group "Logic"]
 [operator Comparison-Precedence]
 /= : syntax {
