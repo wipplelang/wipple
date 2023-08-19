@@ -116,8 +116,8 @@ reduce : result f container -> {
 
 [help "Find the sum of all the numbers in an iterator."]
 [help-group "Collections"]
-sum :: Container N where (Iterate Container N) (Numeric N) (Add N N N) => Container -> N
-sum : reduce (zero of Numeric) Add
+sum :: Container N where (Iterate Container N) (Default N) (Add N N N) => Container -> N
+sum : reduce Default Add
 
 [help "Implement this trait to enable reducing an iterator into your collection type."]
 [help-group "Collections"]

@@ -17,8 +17,8 @@ Stride : N => type {
   step :: N
 }
 
-N where (Numeric N) (Order N) (Add N N N) => instance (Iterate (Stride N) N) : range -> {
-  { zero } : Numeric
+N where (Default N) (Order N) (Add N N N) => instance (Iterate (Stride N) N) : range -> {
+  zero : Default
   { min max step } : range
 
   (max >= min) . expect "`max` must be greater than `min`"
