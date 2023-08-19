@@ -150,6 +150,8 @@ impl Typechecker {
                     info: Info::default(),
                 };
 
+                let mut row_ids = HashMap::new();
+
                 let rows = arms
                     .iter()
                     .filter_map(|arm| {
@@ -157,10 +159,14 @@ impl Typechecker {
                             return None;
                         }
 
+                        let id = self.compiler.new_reachable_marker_id();
+
+                        row_ids.insert(id, arm.span);
+
                         Some((
                             self.convert_match_pattern(&arm.pattern),
                             arm.guard.is_some(),
-                            self.compiler.new_reachable_marker_id(),
+                            id,
                         ))
                     })
                     .collect::<Vec<_>>();
@@ -209,7 +215,20 @@ impl Typechecker {
                     );
                 }
 
-                // TODO: Handle redundant patterns
+                for id in result.unreachable_arms(row_ids.keys().copied().collect()) {
+                    let span = *row_ids.get(&id).unwrap();
+
+                    self.compiler.add_warning(
+                        "redundant case in `when` expression",
+                        vec![
+                            Note::primary(
+                                span,
+                                "this case will never be executed because a different case already handles the same values",
+                            ),
+                        ],
+                        "redundant-case",
+                    );
+                }
             }
             _ => {}
         })
@@ -677,6 +696,13 @@ impl Match {
         add_missing_patterns(&self.tree, &mut Vec::new(), &mut patterns);
 
         patterns.into_iter().collect()
+    }
+
+    fn unreachable_arms(&self, arms: Vec<ReachableMarkerId>) -> Vec<ReachableMarkerId> {
+        HashSet::<ReachableMarkerId>::from_iter(arms)
+            .difference(&HashSet::from_iter(self.info.reachable.iter().copied()))
+            .copied()
+            .collect()
     }
 }
 
