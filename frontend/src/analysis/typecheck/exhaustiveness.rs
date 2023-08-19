@@ -503,7 +503,7 @@ impl Typechecker {
                 ty.name.to_string()
             }
             Pattern::Constructor(Constructor::Unbounded(ty), _) => self.format_ty(ty.clone()),
-            Pattern::Or(_) => todo!(),
+            Pattern::Or(_) => unreachable!(),
         }
     }
 

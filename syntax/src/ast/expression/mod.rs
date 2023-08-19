@@ -335,7 +335,6 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                 let operators = self.operators_in_list(exprs.iter().enumerate(), scope_set.clone());
 
                 if operators.is_empty() {
-                    // TODO: Remove `[operator]` in favor of this logic
                     for expr in &exprs {
                         if let parse::ExprKind::Name(name, name_scope) = &expr.kind {
                             let syntax = self.ast_builder.file.resolve_syntax(

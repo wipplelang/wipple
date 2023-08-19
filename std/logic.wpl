@@ -104,7 +104,7 @@ instance (Order Double) : b a -> intrinsic "double-ordering" a b
 [help-group "Logic"]
 [operator Comparison-Precedence]
 > : syntax {
-  'a > 'b -> when (Order 'a 'b) {
+  'a > 'b -> when (Order 'b 'a) {
     Ordering Less -> False
     Ordering Equal -> False
     Ordering Greater -> True
@@ -124,7 +124,7 @@ instance (Order Double) : b a -> intrinsic "double-ordering" a b
 [help-group "Logic"]
 [operator Comparison-Precedence]
 <= : syntax {
-  'a <= 'b -> when (Order 'a 'b) {
+  'a <= 'b -> when (Order 'b 'a) {
     Ordering Less -> True
     Ordering Equal -> True
     Ordering Greater -> False
@@ -144,7 +144,7 @@ instance (Order Double) : b a -> intrinsic "double-ordering" a b
 [help-group "Logic"]
 [operator Comparison-Precedence]
 >= : syntax {
-  'a >= 'b -> when (Order 'a 'b) {
+  'a >= 'b -> when (Order 'b 'a) {
     Ordering Less -> False
     Ordering Equal -> True
     Ordering Greater -> True

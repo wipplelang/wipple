@@ -17,7 +17,7 @@ diagnostics: |
        │
        ┌─ <dir>/std/math.wpl:16:14
        │
-    16 │   'a + 'b -> Add 'a 'b
+    16 │   'a + 'b -> Add 'b 'a
        │              --- actual error occurred here
        │
        = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types

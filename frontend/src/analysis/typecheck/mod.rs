@@ -3619,10 +3619,7 @@ impl Typechecker {
             MonomorphizedExpressionKind::Function(pattern, body, captures) => {
                 let input_ty = match &ty {
                     engine::Type::Function(input, _) => input.clone(),
-                    _ => {
-                        dbg!(&ty);
-                        return ExpressionKind::error(&self.compiler);
-                    }
+                    _ => return ExpressionKind::error(&self.compiler),
                 };
 
                 ExpressionKind::Function(

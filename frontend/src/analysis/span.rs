@@ -27,9 +27,15 @@ impl Span {
     }
 
     pub fn join(left: Span, right: Span) -> Self {
+        let primary = if right.primary_start() > left.primary_end() {
+            (left.primary_start(), right.primary_end())
+        } else {
+            left.primary
+        };
+
         Span {
             path: left.path,
-            primary: (left.primary_start(), right.primary_end()),
+            primary,
             expanded_from_operator: false,
             caller: None,
         }

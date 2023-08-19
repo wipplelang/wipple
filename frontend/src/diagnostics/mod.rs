@@ -443,7 +443,7 @@ impl FinalizedDiagnostics {
                         if include_trace {
                             if let Some(trace) = diagnostic.trace.into_inner() {
                                 return diagnostic.message
-                                    + &format!("\nat span {primary_span:?}\n{trace:?}");
+                                    + &format!("\nat span {primary_span:#?}\n{trace:#?}");
                             }
                         }
 

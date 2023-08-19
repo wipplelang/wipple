@@ -1,3 +1,5 @@
+#![warn(clippy::dbg_macro, clippy::todo)]
+
 use futures::channel::oneshot;
 use itertools::Itertools;
 use lazy_static::lazy_static;

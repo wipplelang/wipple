@@ -1,3 +1,5 @@
+#![warn(clippy::dbg_macro, clippy::todo)]
+
 use clap::Parser;
 use colored::Colorize;
 use parking_lot::Mutex;

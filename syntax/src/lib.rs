@@ -1,3 +1,5 @@
+#![warn(clippy::dbg_macro, clippy::todo)]
+
 pub mod ast;
 pub mod parse;
 
@@ -92,7 +94,7 @@ pub trait File<D: Driver> {
     fn use_builtin_syntax(&self, span: D::Span, name: &'static str);
 }
 
-pub trait Span {
+pub trait Span: Debug {
     fn join(left: Self, right: Self) -> Self;
     fn merge(&mut self, other: Self);
     fn set_expanded_from_operator(&mut self);

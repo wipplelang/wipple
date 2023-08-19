@@ -1,4 +1,5 @@
 #![allow(clippy::type_complexity)]
+#![warn(clippy::dbg_macro, clippy::todo)]
 
 use async_trait::async_trait;
 use futures::future::BoxFuture;

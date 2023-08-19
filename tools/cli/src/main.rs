@@ -1,3 +1,5 @@
+#![warn(clippy::dbg_macro, clippy::todo)]
+
 mod doc;
 mod lsp;
 

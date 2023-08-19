@@ -1,3 +1,10 @@
+#![warn(
+    clippy::dbg_macro,
+    clippy::todo,
+    clippy::print_stdout,
+    clippy::print_stderr
+)]
+
 #[macro_use]
 mod macros;
 
