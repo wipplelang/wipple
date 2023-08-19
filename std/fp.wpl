@@ -16,4 +16,7 @@ just : x _ -> x
 [help-template "(*input*) . (*function*)"]
 . : syntax {
   'x . 'f -> ('f) ('x)
+  'x . -> f -> f ('x)
+  . 'f -> 'f
+  . -> f x -> f x
 }

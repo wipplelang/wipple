@@ -312,21 +312,11 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                     );
 
                     match syntax {
-                        Ok(syntax) => match syntax.operator_precedence {
-                            Some(_) => {
-                                self.ast_builder.driver.syntax_error(
-                                    expr.span,
-                                    "expected values on both sides of operator",
-                                );
-
-                                return Err(self.ast_builder.syntax_error(list_span));
-                            }
-                            None => {
-                                return self
-                                    .expand_syntax(expr.span, syntax, vec![expr], scope_set)
-                                    .await;
-                            }
-                        },
+                        Ok(syntax) => {
+                            return self
+                                .expand_syntax(expr.span, syntax, vec![expr], scope_set)
+                                .await
+                        }
                         Err(ResolveSyntaxError::NotFound) => {}
                         Err(ResolveSyntaxError::Ambiguous) => {
                             self.ast_builder.driver.syntax_error(
@@ -455,64 +445,43 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                     let mut lhs = exprs;
                     let operator = lhs.pop().unwrap();
 
-                    if lhs.is_empty() {
-                        self.ast_builder.driver.syntax_error_with(
-                            [(
-                                max_expr.span,
-                                String::from("expected values on left side of operator"),
-                            )],
-                            Some(Fix::new(
-                                "insert a value to the left of the operator",
-                                FixRange::before(max_expr.span),
-                                "(*value*) ",
-                            )),
-                        );
+                    let lhs_count = lhs.len();
 
-                        Err(self.ast_builder.syntax_error(list_span))
-                    } else if rhs.is_empty() {
-                        self.ast_builder.driver.syntax_error_with(
-                            [(
-                                max_expr.span,
-                                String::from("expected values on right side of operator"),
-                            )],
-                            Some(Fix::new(
-                                "insert a value to the right of the operator",
-                                FixRange::after(max_expr.span),
-                                " (*value*)",
-                            )),
-                        );
+                    let lhs_span = lhs
+                        .first()
+                        .zip(lhs.last())
+                        .map(|(first, last)| Span::join(first.span, last.span));
 
-                        Err(self.ast_builder.syntax_error(list_span))
-                    } else {
-                        let lhs_span =
-                            Span::join(lhs.first().unwrap().span, lhs.last().unwrap().span);
+                    let lhs = lhs_span.map(|span| parse::Expr::list_or_expr(span, lhs));
 
-                        let lhs_count = lhs.len();
+                    let rhs_count = rhs.len();
 
-                        let lhs = parse::Expr::list_or_expr(lhs_span, lhs);
+                    let rhs_span = rhs
+                        .first()
+                        .zip(rhs.last())
+                        .map(|(first, last)| Span::join(first.span, last.span));
 
-                        let rhs_span =
-                            Span::join(rhs.first().unwrap().span, rhs.last().unwrap().span);
+                    let rhs = rhs_span.map(|span| parse::Expr::list_or_expr(span, rhs));
 
-                        let rhs_count = rhs.len();
+                    let mut list_span = Span::join(
+                        lhs_span.unwrap_or(operator.span),
+                        rhs_span.unwrap_or(operator.span),
+                    );
 
-                        let rhs = parse::Expr::list_or_expr(rhs_span, rhs);
+                    list_span.set_caller(max_expr.span);
 
-                        let mut list_span = Span::join(lhs_span, rhs_span);
-                        list_span.set_caller(max_expr.span);
-
-                        if lhs_count > 1 || rhs_count > 1 {
-                            list_span.set_expanded_from_operator();
-                        }
-
-                        self.expand_syntax(
-                            list_span,
-                            max_syntax,
-                            vec![lhs, operator, rhs],
-                            scope_set,
-                        )
-                        .await
+                    if lhs_count > 1 || rhs_count > 1 {
+                        list_span.set_expanded_from_operator();
                     }
+
+                    let input = lhs
+                        .into_iter()
+                        .chain(std::iter::once(operator))
+                        .chain(rhs)
+                        .collect();
+
+                    self.expand_syntax(list_span, max_syntax, input, scope_set)
+                        .await
                 }
             }
         }

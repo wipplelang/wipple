@@ -1,0 +1,17 @@
+code: |
+  list 1 2 3 . transform (+ 1) . each show
+
+  increment : + 2
+  double : * 2
+  square : ^ 2
+  list increment double square . transform (2 .) . each show
+
+output: |
+  2
+  3
+  4
+  4
+  4
+  4
+
+diagnostics: |

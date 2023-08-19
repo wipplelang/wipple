@@ -15,9 +15,9 @@ diagnostics: |
      6 │ accepts-text (1 + 2)
        │               ^^^^^ expected `Text`, but found `Number`
        │
-       ┌─ <dir>/std/math.wpl:15:25
+       ┌─ <dir>/std/math.wpl:16:14
        │
-    15 │ + : syntax { 'a + 'b -> Add 'a 'b }
-       │                         --- actual error occurred here
+    16 │   'a + 'b -> Add 'a 'b
+       │              --- actual error occurred here
        │
        = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types

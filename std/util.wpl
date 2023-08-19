@@ -12,6 +12,7 @@ of : syntax {
     { 'field : value } : 'value
     value
   }
+  'field of -> value -> 'field of value
 }
 
 [help "Exit the program with the provided message."]
@@ -82,7 +83,11 @@ As : Input Output => trait (Input -> Output)
 [help "Convert a value of one type into a value of a different type."]
 [help-group "Utilities"]
 [operator Casting-Precedence]
-as : syntax { 'x as 't -> (As 'x :: 't) }
+as : syntax {
+  'x as 't -> (As 'x :: 't)
+  as 't -> x -> x as 't
+  as -> As
+}
 
 A => instance (As A A) : it
 instance (As Natural Number) : n -> intrinsic "natural-to-number" n
@@ -97,7 +102,11 @@ As? : Input Output => trait (Input -> Maybe Output)
 [help "Convert a value of one type into a value of a different type, or `None` if the conversion fails."]
 [help-group "Utilities"]
 [operator Casting-Precedence]
-as? : syntax { 'x as? 't -> (As? 'x :: Maybe 't) }
+as? : syntax {
+  'x as? 't -> (As? 'x :: Maybe 't)
+  as? 't -> x -> x as? 't
+  as? -> As?
+}
 
 A => instance (As? A A) : Some
 instance (As? Number Natural) : n -> intrinsic "number-to-natural" n
@@ -106,7 +115,11 @@ instance (As? Integer Natural) : n -> intrinsic "integer-to-natural" n
 [help "Convert a value of one type into a value of a different type, or exit if the conversion fails."]
 [help-group "Utilities"]
 [operator Casting-Precedence]
-as! : syntax { 'x as! 't -> 'x as? 't . expect "conversion failed" }
+as! : syntax {
+  'x as! 't -> 'x as? 't . expect "conversion failed"
+  as! 't -> x -> x as! 't
+  as! -> x -> x as! _
+}
 
 [help "Represents the default or initial value of a type."]
 [help-group "Utilities"]
@@ -125,4 +138,5 @@ is : syntax {
     'pattern -> True
     _ -> False
   }
+  is 'pattern -> x -> x is 'pattern
 }

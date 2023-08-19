@@ -36,7 +36,15 @@ And : Left Right (infer Output) => trait (Left -> (() -> Right) -> Output)
 [help "Returns `True` if both sides are `True`."]
 [help-group "Logic"]
 [operator Conjunction-Precedence]
-and : syntax { 'a and 'b -> And 'a (() -> 'b) }
+and : syntax {
+  'a and 'b -> And 'a (() -> 'b)
+  'a and -> And 'a
+  and 'b -> {
+    b : 'b
+    a -> a and b
+  }
+  and -> And
+}
 
 instance (And Boolean Boolean Boolean) : a? -> b? -> if a? (b? ()) False
 
@@ -45,7 +53,15 @@ Or : Left Right (infer Output) => trait (Left -> (() -> Right) -> Output)
 [help "Returns `True` if either side is `True`."]
 [help-group "Logic"]
 [operator Disjunction-Precedence]
-or : syntax { 'a or 'b -> Or 'a (() -> 'b) }
+or : syntax {
+  'a or 'b -> Or 'a (() -> 'b)
+  'a or -> Or 'a
+  or 'b -> {
+    b : 'b
+    a -> a or b
+  }
+  or -> Or
+}
 
 instance (Or Boolean Boolean Boolean) : a? -> b? -> if a? True (b? ())
 
@@ -79,6 +95,15 @@ instance (Order Double) : a b -> intrinsic "double-ordering" a b
     Ordering Equal -> False
     Ordering Greater -> False
   }
+  'a < -> {
+    a : 'a
+    b -> a < b
+  }
+  < 'b -> {
+    b : 'b
+    a -> a < b
+  }
+  < -> a b -> a < b
 }
 
 [help "Returns `True ` if the left side is greater than the right side."]
@@ -90,6 +115,15 @@ instance (Order Double) : a b -> intrinsic "double-ordering" a b
     Ordering Equal -> False
     Ordering Greater -> True
   }
+  'a > -> {
+    a : 'a
+    b -> a > b
+  }
+  > 'b -> {
+    b : 'b
+    a -> a > b
+  }
+  > -> a b -> a > b
 }
 
 [help "Returns `True ` if the left side is less than or equal to the right side."]
@@ -101,6 +135,15 @@ instance (Order Double) : a b -> intrinsic "double-ordering" a b
     Ordering Equal -> True
     Ordering Greater -> False
   }
+  'a <= -> {
+    a : 'a
+    b -> a <= b
+  }
+  <= 'b -> {
+    b : 'b
+    a -> a <= b
+  }
+  <= -> a b -> a <= b
 }
 
 [help "Returns `True ` if the left side is greater than or equal to the right side."]
@@ -112,6 +155,15 @@ instance (Order Double) : a b -> intrinsic "double-ordering" a b
     Ordering Equal -> True
     Ordering Greater -> True
   }
+  'a >= -> {
+    a : 'a
+    b -> a >= b
+  }
+  >= 'b -> {
+    b : 'b
+    a -> a >= b
+  }
+  >= -> a b -> a >= b
 }
 
 [help "Implement this trait to enable equality testing between two values of your type."]
@@ -121,12 +173,28 @@ Equal : A => trait (A -> A -> Boolean)
 [help "Returns `True ` if both sides are equal."]
 [help-group "Logic"]
 [operator Comparison-Precedence]
-= : syntax { 'a = 'b -> Equal 'a 'b }
+= : syntax {
+  'a = 'b -> Equal 'a 'b
+  'a = -> Equal 'a
+  = 'b -> {
+    b : 'b
+    a -> a = b
+  }
+  = -> Equal
+}
 
 [help "Returns `True ` if the left side is not equal to the right side."]
 [help-group "Logic"]
 [operator Comparison-Precedence]
-/= : syntax { 'a /= 'b -> not ('a = 'b) }
+/= : syntax {
+  'a /= 'b -> not ('a = 'b)
+  'a /= -> not Equal 'a
+  /= 'b -> {
+    b : 'b
+    a -> a /= b
+  }
+  /= -> not Equal
+}
 
 instance (Equal Text) : a b -> intrinsic "text-equality" a b
 instance (Equal Number) : a b -> intrinsic "number-equality" a b

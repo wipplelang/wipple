@@ -12,7 +12,15 @@ Add : (Left : Number) (Right : Number) (infer Sum) => trait (Left -> Right -> Su
 [help "Add two values together, returning the sum."]
 [help-group "Math"]
 [operator Addition-Precedence]
-+ : syntax { 'a + 'b -> Add 'a 'b }
++ : syntax {
+  'a + 'b -> Add 'a 'b
+  'a + -> Add 'a
+  + 'b -> {
+    b : 'b
+    a -> Add a b
+  }
+  + -> Add
+}
 
 instance (Add Number Number Number) : a b -> intrinsic "add-number" a b
 instance (Add Integer Integer Integer) : a b -> intrinsic "add-integer" a b
@@ -31,7 +39,15 @@ Subtract : (Left : Number) (Right : Number) (infer Difference) => trait (Left ->
 [help "Subtract the right side from the left side, returning the difference."]
 [help-group "Math"]
 [operator Addition-Precedence]
-- : syntax { 'a - 'b -> Subtract 'a 'b }
+- : syntax {
+  'a - 'b -> Subtract 'a 'b
+  'a - -> Subtract 'a
+  - 'b -> {
+    b : 'b
+    a -> Subtract a b
+  }
+  - -> Subtract
+}
 
 instance (Subtract Number Number Number) : a b -> intrinsic "subtract-number" a b
 instance (Subtract Integer Integer Integer) : a b -> intrinsic "subtract-integer" a b
@@ -50,7 +66,15 @@ Multiply : (Left : Number) (Right : Number) (infer Product) => trait (Left -> Ri
 [help "Multiply two values together, returning the product."]
 [help-group "Math"]
 [operator Multiplication-Precedence]
-* : syntax { 'a * 'b -> Multiply 'a 'b }
+* : syntax {
+  'a * 'b -> Multiply 'a 'b
+  'a * -> Multiply 'a
+  * 'b -> {
+    b : 'b
+    a -> Multiply a b
+  }
+  * -> Multiply
+}
 
 instance (Multiply Number Number Number) : a b -> intrinsic "multiply-number" a b
 instance (Multiply Integer Integer Integer) : a b -> intrinsic "multiply-integer" a b
@@ -69,7 +93,15 @@ Divide : (Left : Number) (Right : Number) (infer Quotient) => trait (Left -> Rig
 [help "Divide the left side by the right side, returning the quotient."]
 [help-group "Math"]
 [operator Multiplication-Precedence]
-/ : syntax { 'a / 'b -> Divide 'a 'b }
+/ : syntax {
+  'a / 'b -> Divide 'a 'b
+  'a / -> Divide 'a
+  / 'b -> {
+    b : 'b
+    a -> Divide a b
+  }
+  / -> Divide
+}
 
 instance (Divide Number Number Number) : a b -> intrinsic "divide-number" a b
 instance (Divide Integer Integer Integer) : a b -> intrinsic "divide-integer" a b
@@ -88,7 +120,15 @@ Modulo : (Left : Number) (Right : Number) (infer Remainder) => trait (Left -> Ri
 [help "Divide the left side by the right side, returning the remainder."]
 [help-group "Math"]
 [operator Multiplication-Precedence]
-mod : syntax { 'a mod 'b -> Modulo 'a 'b }
+mod : syntax {
+  'a mod 'b -> Modulo 'a 'b
+  'a mod -> Modulo 'a
+  mod 'b -> {
+    b : 'b
+    a -> Modulo a b
+  }
+  mod -> Modulo
+}
 
 instance (Modulo Number Number Number) : a b -> intrinsic "modulo-number" a b
 instance (Modulo Integer Integer Integer) : a b -> intrinsic "modulo-integer" a b
@@ -107,7 +147,15 @@ Power : (Left : Number) (Right : Number) (infer Power) => trait (Left -> Right -
 [help "Raise the left side to the power of the right side."]
 [help-group "Math"]
 [operator Exponentiation-Precedence]
-^ : syntax { 'a ^ 'b -> Power 'a 'b }
+^ : syntax {
+  'a ^ 'b -> Power 'a 'b
+  'a ^ -> Power 'a
+  ^ 'b -> {
+    b : 'b
+    a -> Power a b
+  }
+  ^ -> Power
+}
 
 instance (Power Number Number Number) : a b -> intrinsic "power-number" a b
 instance (Power Integer Integer Integer) : a b -> intrinsic "power-integer" a b
