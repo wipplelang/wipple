@@ -13,7 +13,10 @@ id: SysmRG6i
 type: code
 ---
 
-times show 3.5 -- doesn't make sense to repeat something 3.5 times
+-- Doesn't make sense to repeat something 3.5 times
+repeat (3.5 times) {
+  show "Hello, world!"
+}
 
 ---
 id: NGhEiqwW
@@ -28,4 +31,6 @@ id: BlHtweYk
 type: code
 ---
 
-times show 3
+repeat (3 times) {
+  show "Hello, world!"
+}
