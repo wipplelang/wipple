@@ -15,7 +15,7 @@ locked: true
 
 # Specialization
 
-We haven't talked a lot about performance, but Wipple has a construct that can eliminate unnecessary work in some cases! Let's create a `Counter` iterator:
+We haven't talked a lot about performance, but Wipple has a construct that can eliminate unnecessary work in some cases! Let's create a `Counter` sequence:
 
 ---
 id: -VyPfdI0
@@ -27,8 +27,8 @@ Counter : type {
     max :: Natural
 }
 
-instance (Iterate Counter Natural) : { count max } -> {
-    iterator (() -> {
+instance (As-Sequence Counter Natural) : { count max } -> {
+    sequence {
         n : get count
         if (n = max) {
             None
@@ -36,7 +36,7 @@ instance (Iterate Counter Natural) : { count max } -> {
             increment! count
             Some n
         }
-    })
+    }
 }
 
 count-up-to :: Natural -> Counter
@@ -53,7 +53,7 @@ type: text
 locked: true
 ---
 
-The built-in `count` function takes an iterator and counts how many items there are in the iterator. It essentially works by incrementing a `Mutable Natural` for `each` time the iterator produces a new value. But our custom `Counter` iterator already knows its `count`, so iterating through each item is a lot of extra work! In computer science lingo, we can theoretically reduce `count`'s time complexity from $O(n)$ to $O(1)$.
+The built-in `count` function takes a sequence and counts how many items there are in the sequence. It essentially works by incrementing a `Mutable Natural` for `each` time the sequence produces a new value. But our custom `Counter` sequence already knows its `count`, so iterating through each item is a lot of extra work! In computer science lingo, we can theoretically reduce `count`'s time complexity from $O(n)$ to $O(1)$.
 
 Unfortunately, we can't change the `count` function because it's built in to Wipple. But since `count` is generic, what we can do is **specialize** it using the `[specialize]` attribute!
 
@@ -66,7 +66,7 @@ Counter : type {
     max :: Natural -- we only care about `max` in this example
 }
 
-instance (Iterate Counter Natural) : ...
+instance (As-Sequence Counter Natural) : ...
 
 [specialize]
 count :: Counter -> Natural

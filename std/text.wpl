@@ -1,18 +1,18 @@
 [[no-std]]
 
-use "iterate"
+use "sequence"
 use "fp"
 use "math"
 
 instance (Add Text Text Text) : b a -> format "__" a b
 
-instance (Iterate Text Text) : text -> \
-  Iterate (intrinsic "text-characters" text :: List Text)
+instance (As-Sequence Text Text) : text -> \
+  As-Sequence (intrinsic "text-characters" text :: List Text)
 
-instance (Collect Text Text) : iterator -> {
+instance (From-Sequence Text Text) : seq -> {
   text : mutable ""
   repeat {
-    when (next iterator) {
+    when (next seq) {
       Some c -> {
         text . set! (format "__" (get text) c)
         Continue

@@ -22,7 +22,7 @@ type: text
 locked: true
 ---
 
-In the above example, Wipple can't determine which type to collect into (ie. a type for which the `Collect` trait is implemented). You can provide a manual type annotation using the `::` operator:
+In the above example, Wipple can't determine which type to collect into (ie. a type for which the `From-Sequence` trait is implemented). You can provide a manual type annotation using the `::` operator:
 
 ---
 id: OIqhFkIL
@@ -38,7 +38,7 @@ type: text
 locked: true
 ---
 
-You don't need to provide the entire type to `::` — usually Wipple can infer the rest. Here, Wipple knows that if you're collecting into a list, the element type must be `Number` because that's the type of the value the iterator produces:
+You don't need to provide the entire type to `::` — usually Wipple can infer the rest. Here, Wipple knows that if you're collecting into a list, the element type must be `Number` because that's the type of the value the sequence produces:
 
 ---
 id: xVRFQwIZ

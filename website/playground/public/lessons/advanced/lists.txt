@@ -87,11 +87,11 @@ type: text
 locked: true
 ---
 
-## Iterators
+## Sequences
 
-An **iterator** is anything that produces values on demand. Wipple provides several functions that let you transform one iterator into another. These functions either take an iterator or produce one, or both! Lists are one kind of iterator (producing each item inside the list in order), but there are many others.
+A **sequence** is anything that produces values on demand. Wipple provides several functions that let you transform one sequence into another. These functions either take an sequence or produce one, or both! Lists are one kind of sequence (producing each item inside the list in order), but there are many others.
 
-`each` takes an iterator and calls a function for each item in the iterator:
+`each` takes a sequence and calls a function for each item in the sequence:
 
 ---
 id: 3lCsKd0y
@@ -107,7 +107,7 @@ type: text
 locked: true
 ---
 
-`transform` produces an iterator that transforms the contents of the provided iterator. `transform` is useful for converting a list of one type into a list of a different type:
+`transform` produces a sequence that transforms the contents of the provided sequence. `transform` is useful for converting a list of one type into a list of a different type:
 
 ---
 id: LrQCJfCG
@@ -145,7 +145,7 @@ type: text
 locked: true
 ---
 
-`filter` takes an iterator and only produces the items that satisfy the condition:
+`filter` takes a sequence and only produces the items that satisfy the condition:
 
 ---
 id: YOP73aZQ
@@ -163,7 +163,7 @@ type: text
 locked: true
 ---
 
-You can make your own iterators by implementing the `Iterate` trait:
+You can make your own sequences by implementing the `As-Sequence` trait:
 
 ---
 id: lYZGLYeA
@@ -175,10 +175,10 @@ Counter : type {
     max :: Natural
 }
 
-instance (Iterate Counter Natural) : counter -> {
+instance (As-Sequence Counter Natural) : counter -> {
     count : mutable (min of counter)
 
-    iterator (() -> {
+    sequence {
         n : get count
         if (n = (max of counter)) {
             None
@@ -186,7 +186,7 @@ instance (Iterate Counter Natural) : counter -> {
             increment! count
             Some n
         }
-    })
+    }
 }
 
 count :: Natural -> Natural -> Counter

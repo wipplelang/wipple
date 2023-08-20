@@ -8,7 +8,7 @@ locked: true
 
 `infer` can be applied to a type parameter to indicate that it should be inferred from the other type parameters. Usually, the type checker determines the types of type parameters from the type of the expression provided at the use site, and then checks to make sure any bounds are satisfied. `infer` reverses this process — it determines the type of the type parameter marked `infer` from any bounds, and then checks to make sure this type matches the type at the use site. `infer` doesn't change the behavior of valid code, but it can produce better error messages for invalid code.
 
-Use `infer` on type parameters that should depend on the types of other type parameters. For example, the `Element` type parameter used in the various iteration traits and functions is marked `infer` because it depends on the type of `Collection`. The math traits also use `infer` on the result type.
+Use `infer` on type parameters that should depend on the types of other type parameters. For example, the `Element` type parameter used in the various sequence traits and functions is marked `infer` because it depends on the type of `Collection`. The math traits also use `infer` on the result type.
 
 Notice the improved error message when `infer` is used in the example below:
 
@@ -25,13 +25,13 @@ accepts-text :: Text -> ()
 accepts-text : ...
 
 -- Without `infer`, the error message marks the bound as the issue
-uninferred-each :: Container Element where (Iterate Container Element) => (Element -> ()) -> Container -> ()
+uninferred-each :: Container Element where (As-Sequence Container Element) => (Element -> ()) -> Container -> ()
 uninferred-each : ...
 
 my-list . uninferred-each accepts-text
 
 -- With `infer`, the error message marks the input as the issue
-inferred-each :: Container (infer Element) where (Iterate Container Element) => (Element -> ()) -> Container -> ()
+inferred-each :: Container (infer Element) where (As-Sequence Container Element) => (Element -> ()) -> Container -> ()
 inferred-each : ...
 
 my-list . inferred-each accepts-text

@@ -1,6 +1,6 @@
 [[no-std]]
 
-use "iterate"
+use "sequence"
 
 [help "A continuous range between two numbers."]
 [help-group "Math"]
@@ -17,7 +17,7 @@ Stride : N => type {
   step :: N
 }
 
-N where (Default N) (Order N) (Add N N N) => instance (Iterate (Stride N) N) : range -> {
+N where (Default N) (Order N) (Add N N N) => instance (As-Sequence (Stride N) N) : range -> {
   zero : Default
   { min max step } : range
 
@@ -25,13 +25,13 @@ N where (Default N) (Order N) (Add N N N) => instance (Iterate (Stride N) N) : r
   (step >= zero) . expect "`step` must be positive"
 
   current : mutable min
-  iterator (() -> {
+  sequence {
     if (get current >= max) { None } {
       n : get current
       current . add! step
       Some n
     }
-  })
+  }
 }
 
 [help "Form a range or stride between two numbers."]

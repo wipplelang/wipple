@@ -6,7 +6,7 @@ locked: true
 
 # How to use `collect`
 
-`collect` takes an iterator and stores each value produced into a container. Usually, `collect` is the last function called in an iterator chain:
+`collect` takes a sequenc and stores each value produced into a container. Usually, `collect` is the last function called in a sequence chain:
 
 ---
 id: 1IKjyRPC
@@ -24,7 +24,7 @@ locked: true
 
 If you assign the result of `collect` to a variable, you usually need to annotate the type to indicate what kind of container to collect into. The type of the element, however, can usually be inferred using `_`, as shown above.
 
-`collect` uses the `Collect` trait, which you can implement for your own types:
+`collect` uses the `From-Sequence` trait, which you can implement for your own types:
 
 ---
 id: b2Qbp223
@@ -36,7 +36,7 @@ Sum : type { sum :: Number }
 
 instance (Default Sum) : Sum { sum : 0 }
 
-instance (Collect Number Sum) : reduce Default (next { sum } -> Sum { sum : sum + next })
+instance (From-Sequence Number Sum) : reduce Default (next { sum } -> Sum { sum : sum + next })
 
 { sum } : list 1 2 3 . collect :: Sum
 show sum

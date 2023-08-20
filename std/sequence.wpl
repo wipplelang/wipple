@@ -1,0 +1,255 @@
+[[no-std]]
+
+use "util"
+use "fp"
+use "mutable"
+use "list"
+use "logic"
+use "repeat"
+
+[help "A container for an sequence that produces the `next` value on demand."]
+[help-group "Collections"]
+[help-playground "https://wipple.dev/std/examples/as-sequence.txt"]
+Sequence : Element => type { next :: () -> Maybe Element }
+
+[help "Create a sequence from a function."]
+[help-group "Collections"]
+[help-playground "https://wipple.dev/std/examples/as-sequence.txt"]
+sequence : syntax {
+  sequence 'body -> Sequence { next : () -> 'body }
+}
+
+[help "Retrieve the next item in a sequence."]
+[help-group "Collections"]
+[help-playground "https://wipple.dev/std/examples/as-sequence.txt"]
+next :: Element => Sequence Element -> Maybe Element
+next : { next } -> next ()
+
+[help "Implement this trait to enable traversing your collection type."]
+[help-group "Collections"]
+[help-playground "https://wipple.dev/std/examples/as-sequence.txt"]
+As-Sequence : Container (infer Element) => trait (Container -> Sequence Element)
+
+Element => instance (As-Sequence (Sequence Element) Element) : it
+
+[help "Transform each item in a sequence, producing a new sequence."]
+[help-group "Collections"]
+transform :: Container (infer Element) Result where (As-Sequence Container Element) => (Element -> Result) -> Container -> Sequence Result
+transform : f container -> {
+  base : As-Sequence container
+
+  sequence {
+    when (next base) {
+      Some x -> Some (f x)
+      None -> None
+    }
+  }
+}
+
+[help "Keep only the items in sequence that satisfy the provided condition."]
+[help-group "Collections"]
+filter :: Container (infer Element) where (As-Sequence Container Element) => (Element -> Boolean) -> Container -> Sequence Element
+filter : include? container -> {
+  base : As-Sequence container
+
+  sequence {
+    repeat {
+      when (next base) {
+        Some x -> if (include? x) (Break (Some x)) Continue
+        None -> Break None
+      }
+    }
+  }
+}
+
+[help "Transform each item in a sequence, keeping only the items that aren't `None`."]
+[help-group "Collections"]
+try-filter :: Container (infer Element) Result where (As-Sequence Container Element) => (Element -> Maybe Result) -> Container -> Sequence Result
+try-filter : transform container -> {
+  base : As-Sequence container
+
+  sequence {
+    repeat {
+      when (next base) {
+        Some x -> when (transform x) {
+          Some x -> (Break (Some x))
+          None -> Continue
+        }
+        None -> Break None
+      }
+    }
+  }
+}
+
+[help "Flatten a sequence of iterators."]
+[help-group "Collections"]
+flatten :: Outer (infer Inner) (infer Element) where (As-Sequence Outer Inner) (As-Sequence Inner Element) => Outer -> Sequence Element
+flatten : outer-container -> {
+  outer : As-Sequence outer-container
+
+  when (next outer) {
+    Some inner-container -> {
+      inner : mutable (As-Sequence inner-container)
+
+      sequence {
+        repeat {
+          when (next (get inner)) {
+            Some x -> Break (Some x)
+            None -> when (next outer) {
+              Some inner-container -> {
+                inner . set! (As-Sequence inner-container)
+                Continue
+              }
+              None -> Break None
+            }
+          }
+        }
+      }
+    }
+    None -> sequence { None }
+  }
+}
+
+[help "Reduce a sequence down to a single item."]
+[help-group "Collections"]
+reduce :: Container Element Result where (As-Sequence Container Element) => Result -> (Element -> Result -> Result) -> Container -> Result
+reduce : result f container -> {
+  reduce-helper :: Element Result => Result -> (Element -> Result -> Result) -> Sequence Element -> Result
+  reduce-helper : result f seq -> when (next seq) {
+    Some next -> reduce-helper (f next result) f seq
+    None -> result
+  }
+
+  reduce-helper result f (As-Sequence container)
+}
+
+[help "Find the sum of all the numbers in a sequence."]
+[help-group "Collections"]
+sum :: Container N where (As-Sequence Container N) (Default N) (Add N N N) => Container -> N
+sum : reduce Default (+)
+
+[help "Implement this trait to enable reducing a sequence into your collection type."]
+[help-group "Collections"]
+[help-playground "https://wipple.dev/std/examples/collect.txt"]
+From-Sequence : (infer Element) Container => trait (Sequence Element -> Container)
+
+[help "Collect a sequence into a single value, like a `List`."]
+[help-group "Collections"]
+[help-playground "https://wipple.dev/std/examples/collect.txt"]
+collect :: Input (infer Element) Output where (From-Sequence Element Output) (As-Sequence Input Element) => Input -> Output -- FIXME: bound order shouldn't matter, but putting `As-Sequence` first breaks type inference
+collect : input -> From-Sequence (As-Sequence input)
+
+Element => instance (From-Sequence Element (List Element)) : seq -> {
+  l : mutable (list)
+  repeat {
+    when (next seq) {
+      Some x -> {
+        l . append! x
+        Continue
+      }
+      None -> Break ()
+    }
+  }
+
+  get l
+}
+
+Element => instance (As-Sequence (List Element) Element) : l -> {
+  index : mutable 0
+
+  sequence {
+    when (l . nth (get index)) {
+      Some element -> {
+        increment! index
+        Some element
+      }
+      None -> None
+    }
+  }
+}
+
+A => instance (As-Sequence (Maybe A) A) : maybe -> {
+  maybe : mutable maybe
+  sequence {
+    take! maybe
+  }
+}
+
+instance (From-Sequence () ()) : seq -> {
+  repeat {
+    when (next seq) {
+      Some () -> Continue
+      None -> Break ()
+    }
+  }
+}
+
+[help "Perform an action for each item in a sequence."]
+[help-group "Collections"]
+[help-playground "https://wipple.dev/std/examples/each.txt"]
+each :: Container (infer Element) where (As-Sequence Container Element) => (Element -> ()) -> Container -> ()
+each : f container -> container . transform f . collect
+
+[help "Split a sequence into groups of consecutive items satisfying a condition."]
+[help-group "Collections"]
+split-by :: Collection (infer Element) where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Sequence (List Element)
+split-by : separator? -> collection -> {
+  base : As-Sequence collection
+  group : mutable (Some (list))
+
+  sequence {
+    repeat {
+      when (next base) {
+        Some x -> {
+          if (separator? x) { Break (take! group) } {
+            group . set! (Some (when (get group) {
+              Some inner -> inner . append x
+              None -> list x
+            }))
+
+            Continue
+          }
+        }
+        None -> Break (take! group)
+      }
+    }
+  }
+}
+
+[help "Split a sequence into groups of consecutive items equal to a value."]
+[help-group "Collections"]
+split :: Collection (infer Element) where (As-Sequence Collection Element) (Equal Element) => Element -> Collection -> Sequence (List Element)
+split : separator -> split-by (x -> x = separator)
+
+[help "Count the number of items in a sequence."]
+[help-group "Collections"]
+count :: Collection (infer Element) where (As-Sequence Collection Element) => Collection -> Natural
+count : collection -> {
+  seq : As-Sequence collection
+
+  count : mutable 0
+  repeat {
+    when (next seq) {
+      Some _ -> {
+        increment! count
+        Continue
+      }
+      None -> Break ()
+    }
+  }
+
+  get count
+}
+
+[help "Collect two iterators into a single value."]
+[help-group "Collections"]
+join :: A B (infer Element) (C : A) where (As-Sequence A Element) (As-Sequence B Element) (From-Sequence Element C) => B -> A -> C
+join : b a -> collect (flatten (list (As-Sequence a) (As-Sequence b)))
+
+[specialize]
+count :: Element => List Element -> Natural
+count : list -> intrinsic "list-count" list
+
+[specialize]
+join :: Element => List Element -> List Element -> List Element
+join : l -> reduce l append

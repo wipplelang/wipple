@@ -4,7 +4,7 @@ use "fp"
 use "list"
 use "logic"
 use "util"
-use "iterate"
+use "sequence"
 
 [language "show"]
 [help "Implement this trait to enable `show`ing values of your type."]

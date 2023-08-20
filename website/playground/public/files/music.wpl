@@ -80,7 +80,7 @@ note : note -> length -> notes (list note) length
 
 [help "Play multiple notes on an instrument at the same time. See `note` for more information."]
 [help-group "Music"]
-notes :: Collection where (Iterate Collection Text) => Collection -> Note-Length -> ()
+notes :: Collection where (As-Sequence Collection Text) => Collection -> Note-Length -> ()
 notes : notes -> { ms-from-tempo } -> {
   instrument-name : name of name of instrument
   delta : get (delta of instrument)
