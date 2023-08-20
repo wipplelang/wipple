@@ -13,7 +13,7 @@ just : x _ -> x
 [operator Composition-Precedence]
 [help "Call a function on an input."]
 [help-group "Utilities"]
-[help-template "(*input*) . (*function*)"]
+[help-template "{%input%} . {%function%}"]
 . : syntax {
   'x . 'f -> ('f) ('x)
   'x . -> f -> f ('x)

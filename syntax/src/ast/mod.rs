@@ -87,126 +87,126 @@ impl BuiltinSyntaxDefinition {
         "instance",
         "Define a trait's value for a specific type or types.",
         "https://wipple.dev/std/examples/trait.txt",
-        "instance (*trait*)",
+        "instance {%trait%}",
     );
 
     pub(crate) const TYPE_FUNCTION: Self = Self::operator(
         "=>",
         "Define a type function.",
         "https://wipple.dev/std/examples/type-function.txt",
-        "(*parameters*) => (*type*)",
+        "{%parameters%} => {%type%}",
     );
 
     pub(crate) const SYNTAX: Self = Self::function(
         "syntax",
         "Define custom syntax.",
         "https://wipple.dev/std/examples/syntax.txt",
-        "syntax { (*rule*) -> (*expression*) }",
+        "syntax { {%rule%} -> {%expression%} }",
     );
 
     pub(crate) const TRAIT: Self = Self::function(
         "trait",
         "Define a trait.",
         "https://wipple.dev/std/examples/trait.txt",
-        "trait (*type*)",
+        "trait {%type%}",
     );
 
     pub(crate) const TYPE: Self = Self::function(
         "type",
         "Define a type.",
         "https://wipple.dev/std/examples/type.txt",
-        "type { (*fields*) }",
+        "type { {%fields%} }",
     );
 
     pub(crate) const ASSIGN: Self = Self::operator(
         ":",
         "Assign a value to a name.",
         "https://wipple.dev/std/examples/assign.txt",
-        "(*name*) : (*value*)",
+        "{%name%} : {%value%}",
     );
 
     pub(crate) const ANNOTATE: Self = Self::operator(
         "::",
         "Annotate a value with a type.",
         "https://wipple.dev/std/examples/annotate.txt",
-        "(*value*) :: (*type*)",
+        "{%value%} :: {%type%}",
     );
 
     pub(crate) const END: Self = Self::function(
         "end",
         "Return from a function early with a value.",
         "https://wipple.dev/std/examples/end.txt",
-        "end (*value*)",
+        "end {%value%}",
     );
 
     pub(crate) const EXTERNAL: Self = Self::function(
         "external",
         "Call a function defined in a different programming language.",
         "https://wipple.dev/std/examples/external.txt",
-        "external (*namespace*) (*identifier*) (*parameters*)",
+        "external {%namespace%} {%identifier%} {%parameters%}",
     );
 
     pub(crate) const FORMAT: Self = Self::function(
         "format",
         "Replace all the `_` placeholders in a piece of text with values.",
         "https://wipple.dev/std/examples/format.txt",
-        "format (*text*) (*parameters*)",
+        "format {%text%} {%parameters%}",
     );
 
     pub(crate) const FUNCTION: Self = Self::operator(
         "->",
         "Define a function.",
         "https://wipple.dev/std/examples/function.txt",
-        "(*input*) -> (*output*)",
+        "{%input%} -> {%output%}",
     );
 
     pub(crate) const INFER: Self = Self::function(
         "infer",
         "Mark a type parameter as inferred.",
         "https://wipple.dev/std/examples/infer.txt",
-        "infer (*type*)",
+        "infer {%type%}",
     );
 
     pub(crate) const COMMA: Self = Self::operator(
         ",",
         "Create a tuple.",
         "https://wipple.dev/std/examples/comma.txt",
-        "(*left*) , (*right*)",
+        "{%left%} , {%right%}",
     );
 
     pub(crate) const WHEN: Self = Self::function(
         "when",
         "Make a choice by matching patterns.",
         "https://wipple.dev/std/examples/when.txt",
-        "when {value} { (*pattern*) -> (*value*) }",
+        "when {value} { {%pattern%} -> {%value%} }",
     );
 
     pub(crate) const WITH: Self = Self::function(
         "with",
         "Override the value of a contextual constant.",
         "https://wipple.dev/std/examples/with.txt",
-        "with ((*constant*) : (*value*)) { (*code*) }",
+        "with ({%constant%} : {%value%}) { {%code%} }",
     );
 
     pub(crate) const OR: Self = Self::operator(
         "or",
         "Match multiple patterns in succession, or compare two `Boolean` values.",
         "https://wipple.dev/std/examples/or.txt",
-        "(*left*) or (*right*)",
+        "{%left%} or {%right%}",
     );
 
     pub(crate) const WHERE: Self = Self::operator(
         "where",
         "Add bounds to a pattern, or update the fields of a structure.",
         "https://wipple.dev/std/examples/where.txt",
-        "(*parameters*) where (*bounds*)",
+        "{%parameters%} where {%bounds%}",
     );
 
     pub(crate) const USE: Self = Self::function(
         "use",
         "Include code from another file.",
         "https://wipple.dev/std/examples/use.txt",
-        "use (*file*)",
+        "use {%file%}",
     );
 }
 

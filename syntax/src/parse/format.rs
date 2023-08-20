@@ -135,7 +135,7 @@ impl<D: Driver> Expr<D> {
     fn fmt(&self, f: &mut fmt::Formatter, indent: usize) -> fmt::Result {
         match &self.kind {
             ExprKind::Underscore => write!(f, "_")?,
-            ExprKind::Placeholder(placeholder) => write!(f, "(*{}*)", placeholder.as_ref())?,
+            ExprKind::Placeholder(placeholder) => write!(f, "{{%{}%}}", placeholder.as_ref())?,
             ExprKind::Name(name, _) => write!(f, "{}", name.as_ref())?,
             ExprKind::QuoteName(name) => write!(f, "'{}", name.as_ref())?,
             ExprKind::RepeatName(name) => write!(f, "...{}", name.as_ref())?,

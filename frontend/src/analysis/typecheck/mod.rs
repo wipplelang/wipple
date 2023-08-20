@@ -5336,7 +5336,7 @@ impl Typechecker {
                             let (description, replacement) = if num_inputs == 1 {
                                 (
                                     String::from("provide input"),
-                                    format!("({source_code} (*input*))"),
+                                    format!("({source_code} {{%input%}})"),
                                 )
                             } else {
                                 (
@@ -5345,7 +5345,7 @@ impl Typechecker {
                                         "({}{})",
                                         source_code,
                                         (0..num_inputs)
-                                            .map(|n| format!(" (*input {}*)", n + 1)) // TODO: Use parameter name defined in function
+                                            .map(|n| format!(" {{%input {}%}}", n + 1)) // TODO: Use parameter name defined in function
                                             .collect::<String>(),
                                     ),
                                 )

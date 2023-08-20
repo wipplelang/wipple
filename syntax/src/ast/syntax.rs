@@ -567,7 +567,7 @@ impl<D: Driver> AstBuilder<D> {
                                 Some(Fix::new(
                                     "insert a value to the right of the operator",
                                     FixRange::after(operator_span),
-                                    " (*value*)",
+                                    " {%value%}",
                                 )),
                             );
                         } else {
@@ -581,7 +581,7 @@ impl<D: Driver> AstBuilder<D> {
                                 Some(Fix::new(
                                     "insert a value to the left of the operator",
                                     FixRange::before(operator_span),
-                                    "(*value*) ",
+                                    "{%value%} ",
                                 )),
                             );
                         }
@@ -683,7 +683,7 @@ impl<D: Driver> AstBuilder<D> {
                 Some(Fix::new(
                     "insert a value to the left of the operator",
                     FixRange::before(operator_span),
-                    "(*value*) ",
+                    "{%value%} ",
                 )),
             );
 
@@ -698,7 +698,7 @@ impl<D: Driver> AstBuilder<D> {
                 Some(Fix::new(
                     "insert a value to the right of the operator",
                     FixRange::after(operator_span),
-                    " (*value*)",
+                    " {%value%}",
                 )),
             );
 

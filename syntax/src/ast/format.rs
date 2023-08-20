@@ -7,7 +7,7 @@ pub trait Format<D: Driver> {
 impl<D: Driver> Format<D> for parse::Expr<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
         Ok(match self.kind {
-            parse::ExprKind::Placeholder(placeholder) => format!("(*{}*)", placeholder.as_ref()),
+            parse::ExprKind::Placeholder(placeholder) => format!("{{%{}%}}", placeholder.as_ref()),
             parse::ExprKind::Underscore => String::from("_"),
             parse::ExprKind::Name(name, _) => name.as_ref().to_string(),
             parse::ExprKind::QuoteName(name) => format!("'{}", name.as_ref()),

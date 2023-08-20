@@ -9,25 +9,25 @@ use "repeat"
 
 [help "A container for an sequence that produces the `next` value on demand."]
 [help-group "Collections"]
-[help-playground "https://wipple.dev/std/examples/as-sequence.txt"]
+[help-playground "https://wipple.dev/std/examples/sequence.txt"]
 Sequence : Element => type { next :: () -> Maybe Element }
 
 [help "Create a sequence from a function."]
 [help-group "Collections"]
-[help-playground "https://wipple.dev/std/examples/as-sequence.txt"]
+[help-playground "https://wipple.dev/std/examples/sequence.txt"]
 sequence : syntax {
   sequence 'body -> Sequence { next : () -> 'body }
 }
 
 [help "Retrieve the next item in a sequence."]
 [help-group "Collections"]
-[help-playground "https://wipple.dev/std/examples/as-sequence.txt"]
+[help-playground "https://wipple.dev/std/examples/sequence.txt"]
 next :: Element => Sequence Element -> Maybe Element
 next : { next } -> next ()
 
 [help "Implement this trait to enable traversing your collection type."]
 [help-group "Collections"]
-[help-playground "https://wipple.dev/std/examples/as-sequence.txt"]
+[help-playground "https://wipple.dev/std/examples/sequence.txt"]
 As-Sequence : Container (infer Element) => trait (Container -> Sequence Element)
 
 Element => instance (As-Sequence (Sequence Element) Element) : it

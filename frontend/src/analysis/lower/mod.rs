@@ -1139,7 +1139,7 @@ impl Compiler {
                         .fix_with(
                             "give this instance a value",
                             FixRange::after(instance.span.first()),
-                            " : (*value*)",
+                            " : {%value%}",
                         ),
                     );
 

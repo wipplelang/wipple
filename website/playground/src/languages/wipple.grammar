@@ -25,7 +25,7 @@ Name { NamePrefix NameSuffix? }
   LineContinue { "\\" }
 
   Comment { "--" ![\n]* }
-  Placeholder { "(*" ![\(\)\*]* "*)" }
+  Placeholder { "{%" ![\{\}%]* "%}" }
   QuoteName { "'" $[A-Za-z0-9\-_]+ $[!?']? }
   RepeatName { "..." $[A-Za-z0-9\-_]+ $[!?']? }
   Text { '"' (!["\\] | "\\" _)* '"' }
