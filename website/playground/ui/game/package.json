@@ -6,7 +6,7 @@
     "scripts": {
         "dev": "vite",
         "build": "tsc && vite build && npm run build:doc",
-        "build:doc": "wipple doc ../../public/files/game.wpl --title 'Game Engine' --image 'https://wipple.gramer.dev/images/logo.svg' --std '../../../../std/std.wpl' > ../../dist/doc/game.html",
+        "build:doc": "wipple doc ../../public/files/game.wpl --title 'Game Engine' --image 'https://wipple.dev/images/logo.svg' --std '../../../../std/std.wpl' > ../../dist/doc/game.html",
         "preview": "vite preview"
     },
     "dependencies": {
