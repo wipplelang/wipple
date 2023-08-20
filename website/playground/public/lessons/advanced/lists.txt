@@ -13,7 +13,7 @@ type: text
 locked: true
 ---
 
-# Lists and iterators
+# Lists and sequences
 
 Often, you'll be writing programs that deal with a list of items instead of individual variables. Let's learn how to use lists in Wipple!
 

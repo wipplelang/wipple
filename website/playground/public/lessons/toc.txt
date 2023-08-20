@@ -37,7 +37,7 @@ locked: true
 - [Tuples](?lesson=advanced/tuples)
 - [Numeric types](?lesson=advanced/numeric-types)
 - [Mutability](?lesson=advanced/mutability)
-- [Lists and iterators](?lesson=advanced/lists)
+- [Lists and sequences](?lesson=advanced/lists)
 - [Randomness](?lesson=advanced/randomness)
 - [Making a video game](?lesson=advanced/video-game)
 - [Fractal graphics](?lesson=advanced/fractals)

@@ -1,6 +1,6 @@
 ---
 previous:
-  name: Lists and iterators
+  name: Lists and sequences
   link: ?lesson=advanced/lists
 next:
   name: Making a video game

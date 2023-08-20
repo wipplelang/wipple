@@ -3,7 +3,7 @@ previous:
   name: Numeric types
   link: ?lesson=advanced/numeric-types
 next:
-  name: Lists and iterators
+  name: Lists and sequences
   link: ?lesson=advanced/lists
 ---
 
