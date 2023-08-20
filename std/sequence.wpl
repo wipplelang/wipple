@@ -81,7 +81,7 @@ try-filter : transform container -> {
   }
 }
 
-[help "Flatten a sequence of iterators."]
+[help "Flatten a sequence of sequences."]
 [help-group "Collections"]
 flatten :: Outer (infer Inner) (infer Element) where (As-Sequence Outer Inner) (As-Sequence Inner Element) => Outer -> Sequence Element
 flatten : outer-container -> {
@@ -241,7 +241,7 @@ count : collection -> {
   get count
 }
 
-[help "Collect two iterators into a single value."]
+[help "Collect two sequences into a single value."]
 [help-group "Collections"]
 join :: A B (infer Element) (C : A) where (As-Sequence A Element) (As-Sequence B Element) (From-Sequence Element C) => B -> A -> C
 join : b a -> collect (flatten (list (As-Sequence a) (As-Sequence b)))

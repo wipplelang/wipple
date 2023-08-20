@@ -53,3 +53,14 @@ diagnostics: |
        │ this constant must satisfy the bounds of the original constant
        │
        = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
+
+    error: missing instance
+       ┌─ test:25:7
+       │
+     3 │ greet :: A where (Greet A) => A -> Text
+       │                  --------- required by this bound here
+       ·
+    25 │ show (greet Baz)
+       │       ^^^^^ could not find instance `Greet Baz`
+       │
+       = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance

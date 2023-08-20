@@ -729,37 +729,70 @@ impl Typechecker {
 
         let mut entrypoint_expr = None;
         if lowering_is_complete {
-            let mut count = 0;
-            let total = self.item_queue.len();
-            while let Some(mut item) = self.item_queue.pop_back() {
-                count += 1;
-                progress(count, total);
+            macro_rules! process_queue {
+                () => {{
+                    let mut count = 0;
+                    let total = self.item_queue.len();
+                    while let Some(mut item) = self.item_queue.pop_back() {
+                        count += 1;
+                        progress(count, total);
 
-                self.items.insert(item.id, (item.generic_id, None));
+                        self.items.insert(item.id, (item.generic_id, None));
 
-                let expr = self.repeatedly_monomorphize_expr(item.expr, &mut item.info);
+                        let expr = self.repeatedly_monomorphize_expr(item.expr, &mut item.info);
 
-                let expr = self.finalize_expr(expr);
+                        let expr = self.finalize_expr(expr);
 
-                let expr = self
-                    .resolve_plugins(expr, item.generic_id.map(|(_, id)| id), item.info)
-                    .await;
+                        let expr = self
+                            .resolve_plugins(expr, item.generic_id.map(|(_, id)| id), item.info)
+                            .await;
 
-                if item.contextual {
-                    if let Some((_, id)) = item.generic_id {
-                        // NOTE: This relies on the fact that contextual constants
-                        // can't be generic, so all monomorphized items will be the
-                        // same code. Thus, we can safely replace the ID
-                        self.contexts.insert(id, item.id);
+                        if item.contextual {
+                            if let Some((_, id)) = item.generic_id {
+                                // NOTE: This relies on the fact that contextual constants
+                                // can't be generic, so all monomorphized items will be the
+                                // same code. Thus, we can safely replace the ID
+                                self.contexts.insert(id, item.id);
+                            }
+                        }
+
+                        if item.entrypoint {
+                            entrypoint_expr = Some(expr.clone());
+                        }
+
+                        self.items.get_mut(&item.id).unwrap().1 = Some(expr);
                     }
-                }
-
-                if item.entrypoint {
-                    entrypoint_expr = Some(expr.clone());
-                }
-
-                self.items.get_mut(&item.id).unwrap().1 = Some(expr);
+                }};
             }
+
+            process_queue!();
+
+            // Replace constants with specialized versions as needed
+            let mut info = MonomorphizeInfo::default();
+            for id in self.items.keys().copied().collect::<Vec<_>>() {
+                if let (_, Some(expr)) = self.items.get(&id).unwrap() {
+                    let mut expr = expr.clone();
+                    expr.traverse_mut(|expr| {
+                        if let ExpressionKind::Constant(id) = &mut expr.kind {
+                            if let (Some((_, generic_id)), _) = self.items.get(id).unwrap() {
+                                if let Some(specialized_id) = self.specialized_constant_for(
+                                    *generic_id,
+                                    expr.id,
+                                    expr.span,
+                                    &expr.ty,
+                                    &mut info,
+                                ) {
+                                    *id = specialized_id;
+                                }
+                            }
+                        }
+                    });
+
+                    self.items.get_mut(&id).unwrap().1 = Some(expr);
+                }
+            }
+
+            process_queue!();
         }
 
         // Ensure specialized constants unify with their generic counterparts
@@ -1213,218 +1246,185 @@ impl Typechecker {
         use_id: impl Into<Option<ExpressionId>>,
         use_span: SpanList,
         use_ty: engine::UnresolvedType,
-        mut info: MonomorphizeInfo,
+        info: MonomorphizeInfo,
     ) -> Result<ItemId, FindInstanceError> {
         let use_id = use_id.into();
 
-        // Cache constant, ignoring variables
-        let use_ty_for_caching = {
-            let mut use_ty_for_caching = use_ty.clone();
-            use_ty_for_caching.apply(&self.ctx);
-
-            // HACK: Replace all variables with the same variable
-            let ctx = self.ctx.clone();
-            let unused_var = engine::TypeVariable(usize::MAX);
-            for var in use_ty_for_caching.all_vars() {
-                ctx.substitutions
-                    .borrow_mut()
-                    .insert(var, engine::UnresolvedType::Variable(unused_var));
-            }
-
-            use_ty_for_caching.apply(&ctx);
-
-            use_ty_for_caching
-        };
-
+        let use_ty_for_caching = self.use_ty_for_caching(use_ty.clone());
         if let Some(monomorphized_id) = info.cache.get(&(id, use_ty_for_caching.clone())) {
             return Ok(*monomorphized_id);
         }
 
         let monomorphized_id = self.compiler.new_item_id();
 
-        let mut candidates = Vec::with_capacity(1);
-        if !is_instance {
-            self.with_constant_decl(id, |decl| {
-                candidates.append(&mut decl.specializations.clone());
-            });
-        }
-
         let contextual = self
             .with_constant_decl(id, |decl| decl.attributes.is_contextual)
             .unwrap_or(false);
 
-        for &candidate in &candidates {
-            self.specialized_constants.insert(candidate, id);
-        }
-
-        candidates.push(id);
-
-        let last_index = candidates.len() - 1;
-        let is_last_candidate = |index: usize| index == last_index;
-
-        'check: for (index, candidate) in candidates.into_iter().enumerate() {
-            info.cache
-                .insert((candidate, use_ty_for_caching.clone()), monomorphized_id);
-
-            let mut info = info.clone();
-
-            let (constant_generic_ty, generic_bounds) = if is_instance {
-                let (tr, trait_params, span, bounds) = match self.with_instance_decl(id, |decl| {
-                    (
-                        decl.trait_id,
-                        decl.trait_params.clone(),
-                        decl.span,
-                        decl.bounds.clone(),
-                    )
-                }) {
-                    Some((tr, trait_params, span, bounds)) => (tr, trait_params, span, bounds),
-                    None => continue,
-                };
-
-                let ty = self.substitute_trait_params(
-                    tr,
-                    trait_params.clone().into_iter().map(From::from).collect(),
-                    span,
-                );
-
-                let (finalized_ty, resolved) = ty.finalize(&self.ctx);
-                if !resolved {
-                    self.add_error(self.error(engine::TypeError::UnresolvedType(ty), None, span));
-                    continue;
-                }
-
-                (finalized_ty, bounds)
-            } else {
-                match self
-                    .with_constant_decl(candidate, |decl| (decl.ty.clone(), decl.bounds.clone()))
-                {
-                    Some((generic_ty, bounds)) => (generic_ty, bounds),
-                    None => continue,
-                }
+        let (constant_generic_ty, generic_bounds) = if is_instance {
+            let (tr, trait_params, span, bounds) = match self.with_instance_decl(id, |decl| {
+                (
+                    decl.trait_id,
+                    decl.trait_params.clone(),
+                    decl.span,
+                    decl.bounds.clone(),
+                )
+            }) {
+                Some((tr, trait_params, span, bounds)) => (tr, trait_params, span, bounds),
+                None => return Ok(monomorphized_id),
             };
 
-            let mut bounds = generic_bounds.clone();
+            let ty = self.substitute_trait_params(
+                tr,
+                trait_params.clone().into_iter().map(From::from).collect(),
+                span,
+            );
 
-            let mut substitutions = engine::GenericSubstitutions::new();
-            for bound in &mut bounds {
-                for param in &mut bound.params {
-                    self.add_substitutions(param, &mut substitutions);
-                }
+            let (finalized_ty, resolved) = ty.finalize(&self.ctx);
+            assert!(resolved);
+
+            (finalized_ty, bounds)
+        } else {
+            self.with_constant_decl(id, |decl| (decl.ty.clone(), decl.bounds.clone()))
+                .unwrap()
+        };
+
+        let mut bounds = generic_bounds.clone();
+
+        let mut substitutions = engine::GenericSubstitutions::new();
+        for bound in &mut bounds {
+            for param in &mut bound.params {
+                self.add_substitutions(param, &mut substitutions);
             }
-
-            let mut generic_ty = engine::UnresolvedType::from(constant_generic_ty.clone());
-            self.add_substitutions(&mut generic_ty, &mut substitutions);
-
-            let (_, body) = self.generic_constants.get(&candidate).unwrap().clone();
-
-            let mut convert_info = ConvertInfo::new(id);
-
-            let prev_ctx = self.ctx.clone();
-
-            if let Err(error) = self.unify(use_id, use_span, use_ty.clone(), generic_ty.clone()) {
-                if is_last_candidate(index) {
-                    self.add_error(error);
-                } else {
-                    self.ctx = prev_ctx;
-                    continue 'check;
-                }
-            }
-
-            let mut generic_expr = self.convert_expr(body.clone(), &mut convert_info);
-
-            if let Err(error) = self.unify(
-                use_id,
-                use_span,
-                generic_ty.clone(),
-                generic_expr.ty.clone(),
-            ) {
-                if is_last_candidate(index) {
-                    self.add_error(error);
-                } else {
-                    self.ctx = prev_ctx;
-                    continue 'check;
-                }
-            }
-
-            // If the constant contains type parameters in bounds that are not referenced in the
-            // constant's type, instantiate them here
-            let generic_ty_params = generic_expr.ty.params();
-
-            generic_expr.traverse_mut(|expr| {
-                expr.ty.apply(&self.ctx);
-
-                for param in expr.ty.params() {
-                    if !substitutions.contains_key(&param) {
-                        let ty = if !generic_ty_params.contains(&param)
-                            && bounds.iter().any(|bound| {
-                                bound.params.iter().any(|ty| ty.params().contains(&param))
-                            }) {
-                            let default = self.get_default_for_param(param, Some(&substitutions));
-                            engine::UnresolvedType::Variable(self.ctx.new_variable(default))
-                        } else {
-                            engine::UnresolvedType::Parameter(param)
-                        };
-
-                        substitutions.insert(param, ty);
-                    }
-                }
-
-                expr.ty.instantiate_with(&self.ctx, &substitutions);
-            });
-
-            info.param_substitutions = substitutions;
-
-            for (generic_bound, mut bound) in generic_bounds.into_iter().zip(bounds) {
-                let instance_id = match self.instance_for_params(
-                    bound.trait_id,
-                    bound.params.clone(),
-                    use_id,
-                    use_span,
-                    Some(bound.clone()),
-                    Some((constant_generic_ty.clone(), generic_ty.clone())),
-                    generic_bound.params,
-                    &mut info,
-                ) {
-                    Ok(id) => id,
-                    Err(error) => {
-                        if is_last_candidate(index) {
-                            return Err(error);
-                        } else {
-                            self.ctx = prev_ctx;
-                            continue 'check;
-                        }
-                    }
-                };
-
-                for param in &mut bound.params {
-                    param.apply(&self.ctx);
-                }
-
-                let instances = info.bound_instances.entry(bound.trait_id).or_default();
-
-                if !instances.iter().any(|(params, ..)| params == &bound.params) {
-                    instances.push((
-                        bound.params,
-                        instance_id,
-                        bound.span,
-                        self.compiler.backtrace(),
-                    ));
-                }
-            }
-
-            self.item_queue.push_back(QueuedItem {
-                generic_id: Some((trait_id, candidate)),
-                id: monomorphized_id,
-                expr: generic_expr,
-                info,
-                contextual,
-                entrypoint: false,
-            });
-
-            break 'check;
         }
 
+        let mut generic_ty = engine::UnresolvedType::from(constant_generic_ty.clone());
+        self.add_substitutions(&mut generic_ty, &mut substitutions);
+
+        let (_, body) = self.generic_constants.get(&id).unwrap().clone();
+
+        let prev_ctx = self.ctx.clone();
+
+        if let Err(error) = self.unify(use_id, use_span, use_ty.clone(), generic_ty.clone()) {
+            self.add_error(error);
+
+            self.ctx = prev_ctx;
+            return Ok(monomorphized_id);
+        }
+
+        let mut convert_info = ConvertInfo::new(id);
+        let mut generic_expr = self.convert_expr(body.clone(), &mut convert_info);
+
+        if self
+            .unify(
+                use_id,
+                use_span,
+                generic_expr.ty.clone(),
+                generic_ty.clone(),
+            )
+            .is_err()
+        {
+            self.ctx = prev_ctx;
+            return Ok(monomorphized_id);
+        }
+
+        // If the constant contains type parameters in bounds that are not referenced in the
+        // constant's type, instantiate them here
+        let generic_ty_params = generic_expr.ty.params();
+
+        generic_expr.traverse_mut(|expr| {
+            expr.ty.apply(&self.ctx);
+
+            for param in expr.ty.params() {
+                if !substitutions.contains_key(&param) {
+                    let ty = if !generic_ty_params.contains(&param)
+                        && bounds
+                            .iter()
+                            .any(|bound| bound.params.iter().any(|ty| ty.params().contains(&param)))
+                    {
+                        let default = self.get_default_for_param(param, Some(&substitutions));
+                        engine::UnresolvedType::Variable(self.ctx.new_variable(default))
+                    } else {
+                        engine::UnresolvedType::Parameter(param)
+                    };
+
+                    substitutions.insert(param, ty);
+                }
+            }
+
+            expr.ty.instantiate_with(&self.ctx, &substitutions);
+        });
+
+        let mut monomorphize_info = info.clone();
+
+        monomorphize_info
+            .cache
+            .insert((id, use_ty_for_caching.clone()), monomorphized_id);
+
+        monomorphize_info.param_substitutions = substitutions;
+
+        for (generic_bound, mut bound) in generic_bounds.into_iter().zip(bounds) {
+            let instance_id = self.instance_for_params(
+                bound.trait_id,
+                bound.params.clone(),
+                use_id,
+                use_span,
+                Some(bound.clone()),
+                Some((constant_generic_ty.clone(), generic_ty.clone())),
+                generic_bound.params,
+                &mut monomorphize_info,
+            )?;
+
+            for param in &mut bound.params {
+                param.apply(&self.ctx);
+            }
+
+            let instances = monomorphize_info
+                .bound_instances
+                .entry(bound.trait_id)
+                .or_default();
+
+            if !instances.iter().any(|(params, ..)| params == &bound.params) {
+                instances.push((
+                    bound.params,
+                    instance_id,
+                    bound.span,
+                    self.compiler.backtrace(),
+                ));
+            }
+        }
+
+        self.item_queue.push_back(QueuedItem {
+            generic_id: Some((trait_id, id)),
+            id: monomorphized_id,
+            expr: generic_expr,
+            info: monomorphize_info,
+            contextual,
+            entrypoint: false,
+        });
+
         Ok(monomorphized_id)
+    }
+
+    fn use_ty_for_caching(
+        &mut self,
+        use_ty: impl Into<engine::UnresolvedType>,
+    ) -> engine::UnresolvedType {
+        let mut use_ty_for_caching = use_ty.into();
+        use_ty_for_caching.apply(&self.ctx);
+
+        // HACK: Replace all variables with the same variable
+        let ctx = self.ctx.clone();
+        let unused_var = engine::TypeVariable(usize::MAX);
+        for var in use_ty_for_caching.all_vars() {
+            ctx.substitutions
+                .borrow_mut()
+                .insert(var, engine::UnresolvedType::Variable(unused_var));
+        }
+
+        use_ty_for_caching.apply(&ctx);
+
+        use_ty_for_caching
     }
 
     fn typecheck_specialized_constant(
@@ -1432,8 +1432,6 @@ impl Typechecker {
         specialized_id: ConstantId,
         generic_id: ConstantId,
     ) {
-        let prev_ctx = self.ctx.clone();
-
         let specialized_constant_decl =
             match self.with_constant_decl(specialized_id, |decl| decl.clone()) {
                 Some(decl) => decl,
@@ -1445,6 +1443,8 @@ impl Typechecker {
                 Some(decl) => decl,
                 None => return,
             };
+
+        let prev_ctx = self.ctx.clone();
 
         if let Err(error) = self.ctx.unify(
             specialized_constant_decl.ty.clone().into(),
@@ -1458,6 +1458,7 @@ impl Typechecker {
                     )),
             );
 
+            self.ctx = prev_ctx;
             return;
         }
 
@@ -1554,6 +1555,59 @@ impl Typechecker {
         }
 
         self.ctx = prev_ctx;
+    }
+
+    fn specialized_constant_for(
+        &mut self,
+        generic_id: ConstantId,
+        use_id: ExpressionId,
+        use_span: SpanList,
+        use_ty: &engine::Type,
+        info: &mut MonomorphizeInfo,
+    ) -> Option<ItemId> {
+        let candidates =
+            self.with_constant_decl(generic_id, |decl| decl.specializations.clone())?;
+
+        candidates.into_iter().find_map(|candidate| {
+            let use_ty_for_caching = self.use_ty_for_caching(use_ty.clone());
+            if let Some(monomorphized_id) =
+                info.cache.get(&(generic_id, use_ty_for_caching.clone()))
+            {
+                return Some(*monomorphized_id);
+            }
+
+            self.specialized_constants.insert(candidate, generic_id);
+
+            let candidate_ty = self
+                .with_constant_decl(candidate, |decl| decl.ty.clone())
+                .unwrap();
+
+            let prev_ctx = self.ctx.clone();
+
+            if self
+                .unify(use_id, use_span, use_ty.clone().into(), candidate_ty)
+                .is_err()
+            {
+                self.ctx = prev_ctx;
+                return None;
+            };
+
+            let info = MonomorphizeInfo::default();
+
+            let id = self
+                .typecheck_constant_expr(
+                    false,
+                    None,
+                    candidate,
+                    use_id,
+                    use_span,
+                    use_ty.clone().into(),
+                    info,
+                )
+                .expect("specialized constants may not contain bounds");
+
+            Some(id)
+        })
     }
 }
 
@@ -3392,7 +3446,7 @@ impl Typechecker {
         find_instance!(|params: Params| {
             let mut candidates = Vec::new();
             for (mut instance_params, instance_id, span, _) in bound_instances.clone() {
-                let mut substitutions = engine::GenericSubstitutions::new(); // info.param_substitutions.clone();
+                let mut substitutions = engine::GenericSubstitutions::new();
                 let prev_ctx = self.ctx.clone();
 
                 for ty in &mut instance_params {
@@ -3418,7 +3472,7 @@ impl Typechecker {
         find_instance!(|params: Params| {
             let mut candidates = Vec::new();
             'check: for id in declared_instances.clone() {
-                let mut substitutions = engine::GenericSubstitutions::new(); // info.param_substitutions.clone();
+                let mut substitutions = engine::GenericSubstitutions::new();
                 let prev_ctx = self.ctx.clone();
 
                 let (mut instance_params, instance_span, generic_bounds) = match self
