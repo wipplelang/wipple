@@ -5,6 +5,7 @@ code: |
    True : type
    False : type
 
+   [sealed]
    [allow-overlapping-instances]
    Less-Than : A B R => trait
    N => instance (Less-Than N N False)
@@ -28,9 +29,9 @@ output: |
 
 diagnostics: |
    error: could not determine the type of this expression
-      ┌─ test:16:5
+      ┌─ test:17:5
       │
-   16 │ _ : _ -> a
+   17 │ _ : _ -> a
       │     ^^^^^^
       │     │
       │     try annotating the type with `::`
@@ -39,9 +40,9 @@ diagnostics: |
       = for more information, see https://wipple.dev/playground/?lesson=errors/unknown-type
 
    error: could not determine the type of this expression
-      ┌─ test:20:5
+      ┌─ test:21:5
       │
-   20 │ _ : _ -> b
+   21 │ _ : _ -> b
       │     ^^^^^^
       │     │
       │     try annotating the type with `::`
@@ -50,9 +51,9 @@ diagnostics: |
       = for more information, see https://wipple.dev/playground/?lesson=errors/unknown-type
 
    error: could not determine the type of this expression
-      ┌─ test:24:5
+      ┌─ test:25:5
       │
-   24 │ _ : _ -> c
+   25 │ _ : _ -> c
       │     ^^^^^^
       │     │
       │     try annotating the type with `::`

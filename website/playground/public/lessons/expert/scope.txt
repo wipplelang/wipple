@@ -124,7 +124,7 @@ type: text
 locked: true
 ---
 
-If you really need overlapping instances, you can put the `[allow-overlapping-instances]` **attribute** on your trait. This tells Wipple to disable checking for conflicts and just use the first instance that matches. We'll talk about attributes more in the next lesson.
+If you really need overlapping instances, you can put the `[sealed]` and `[allow-overlapping-instances]` **attributes** on your trait. This tells Wipple to disable checking for conflicts and just use the first instance that matches. We'll talk about attributes more in the next lesson.
 
 ---
 id: PQANcFe_
@@ -133,6 +133,7 @@ type: code
 
 X : type
 
+[sealed]
 [allow-overlapping-instances]
 My-Show : A => trait (A -> Text)
 

@@ -7,7 +7,8 @@ use crate::{
         HelpUrlFileAttribute, KeywordStatementAttribute, LanguageItemStatementAttribute,
         NoStdFileAttribute, OnMismatchStatementAttribute, OnUnimplementedStatementAttribute,
         OperatorPrecedenceStatementAttribute, PrivateStatementAttribute,
-        RecursionLimitFileAttribute, SpecializeStatementAttribute, SyntaxError,
+        RecursionLimitFileAttribute, SealedStatementAttribute, SpecializeStatementAttribute,
+        SyntaxError,
     },
     parse, Driver,
 };
@@ -70,6 +71,7 @@ pub struct StatementAttributes<D: Driver> {
     pub convert_from: Vec<ConvertFromStatementAttribute<D>>,
     pub derive: Option<DeriveStatementAttribute<D>>,
     pub private: Option<PrivateStatementAttribute<D>>,
+    pub sealed: Option<SealedStatementAttribute<D>>,
 }
 
 impl<D: Driver> Default for StatementAttributes<D> {
@@ -93,6 +95,7 @@ impl<D: Driver> Default for StatementAttributes<D> {
             convert_from: Default::default(),
             derive: Default::default(),
             private: Default::default(),
+            sealed: Default::default(),
         }
     }
 }

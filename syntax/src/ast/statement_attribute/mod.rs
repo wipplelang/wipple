@@ -15,6 +15,7 @@ definitions! {
     mod on_unimplemented;
     mod operator_precedence;
     mod private;
+    mod sealed;
     mod specialize;
 }
 
@@ -50,6 +51,7 @@ syntax_group! {
             OnUnimplemented,
             OperatorPrecedence,
             Private,
+            Sealed,
             Specialize,
         },
         terminal: {

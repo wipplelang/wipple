@@ -258,6 +258,7 @@ pub struct TraitAttributes {
         Vec<(InternedString, TypeParameterId)>,
         Option<InternedString>,
     )>,
+    pub sealed: bool,
     pub allow_overlapping_instances: bool,
     pub derive: Option<(SpanList, InternedString, InternedString)>,
 }
@@ -1107,18 +1108,24 @@ impl Compiler {
             let tr = instance.value.as_ref().unwrap().tr;
             let tr_decl = lowerer.declarations.traits.get(&tr).unwrap();
 
-            if tr_decl
-                .value
-                .as_ref()
-                .unwrap()
-                .attributes
-                .allow_overlapping_instances
-                && instance.span.first().path != tr_decl.span.first().path
-            {
+            let attributes = &tr_decl.value.as_ref().unwrap().attributes;
+
+            if attributes.sealed && instance.span.first().path != tr_decl.span.first().path {
                 self.add_error(
-                    "instance of trait that allows overlapping instances must occur in the same file as the trait",
+                    "instance of sealed trait must be in the same file in which the trait is defined",
                     vec![Note::primary(instance.span, "instance disallowed here")],
-                    ""
+                    "",
+                );
+            }
+
+            if attributes.allow_overlapping_instances && !attributes.sealed {
+                self.add_error(
+                    "trait that allows overlapping instances must be `sealed`",
+                    vec![Note::primary(
+                        tr_decl.span,
+                        "add `[sealed]` to this trait declaration",
+                    )],
+                    "",
                 );
             }
 
@@ -4677,6 +4684,7 @@ impl Lowerer {
                     attribute.trailing_segment,
                 ))
             }),
+            sealed: attributes.sealed.is_some(),
             allow_overlapping_instances: attributes.allow_overlapping_instances.is_some(),
             derive: attributes
                 .derive

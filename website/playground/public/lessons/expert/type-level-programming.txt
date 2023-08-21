@@ -160,6 +160,7 @@ True : type
 False : type
 
 -- Define the relationship
+[sealed]
 [allow-overlapping-instances]
 Equal : A B Are-Equal => trait
 
@@ -182,7 +183,7 @@ type: text
 locked: true
 ---
 
-And indeed, $2 = 1$ is false and $2 = 2$ is true! Notice that we need to use `[allow-overlapping-instances]` because the `S A` and `S B` in the second `instance` could also potentially satisfy the `A` in the first instance if `A` and `B` are the same, so we need to tell Wipple to give the first `instance` priority.
+And indeed, $2 = 1$ is false and $2 = 2$ is true! Notice that we need to use `[sealed]` and `[allow-overlapping-instances]` because the `S A` and `S B` in the second `instance` could also potentially satisfy the `A` in the first instance if `A` and `B` are the same, so we need to tell Wipple to give the first `instance` priority.
 
 Let's combine both `Add` and `Equal` to do some algebra!
 
@@ -199,6 +200,7 @@ Add : A B Sum => trait
 B => instance (Add Z B B)
 A B Sum where (Add A B Sum) => instance (Add (S A) B (S Sum))
 
+[sealed]
 [allow-overlapping-instances]
 Equal : A B => trait -- we don't need `Are-Equal` for this example
 A => instance (Equal A A)
