@@ -253,3 +253,20 @@ count : list -> intrinsic "list-count" list
 [specialize]
 join :: Element => List Element -> List Element -> List Element
 join : l -> reduce l append
+
+[help "Take up to a fixed number of values from a sequence."]
+[help-group "Collections"]
+take :: Collection (infer Element) where (As-Sequence Collection Element) => Natural -> Collection -> Sequence Element
+take : count collection -> {
+  seq : As-Sequence collection
+
+  counter : mutable 0
+  sequence {
+    if (get counter >= count) {
+      None
+    } {
+      increment! counter
+      next seq
+    }
+  }
+}
