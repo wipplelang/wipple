@@ -270,3 +270,37 @@ take : count collection -> {
     }
   }
 }
+
+[help "Find the first item in a sequence that satisfies a condition."]
+[help-group "Collections"]
+find :: Collection Element where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Maybe Element
+find : found? collection -> {
+  seq : As-Sequence collection
+
+  repeat {
+    when (next seq) {
+      Some element -> if (found? element) (Break (Some element)) Continue
+      None -> Break None
+    }
+  }
+}
+
+[help "Find the index of the first item in a sequence that satisfies a condition."]
+[help-group "Collections"]
+find-index :: Collection Element where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Maybe Natural
+find-index : found? collection -> {
+  seq : As-Sequence collection
+  counter : mutable 0
+
+  repeat {
+    when (next seq) {
+      Some element -> if (found? element) {
+        Break (Some (get counter))
+      } {
+        increment! counter
+        Continue
+      }
+      None -> Break None
+    }
+  }
+}
