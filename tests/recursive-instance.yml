@@ -1,7 +1,0 @@
-code: |
-    show (Some (Some 42))
-
-output: |
-    Some Some 42
-
-diagnostics: |

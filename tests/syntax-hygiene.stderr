@@ -1,0 +1,11 @@
+warning: unused variable
+  ┌─ test:9:7
+  │
+3 │     x : "Inner"
+  │     - actual warning occurred here
+  ·
+9 │ show (get x)
+  │       ^^^ `x` is never used
+  │
+  = for more information, see https://wipple.dev/playground/?lesson=errors/unused-variable
+

@@ -1,9 +1,0 @@
-code: |
-    show (Some 42 is Some _)
-    show (Some 42 is None)
-
-output: |
-    True
-    False
-
-diagnostics: |

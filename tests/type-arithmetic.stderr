@@ -1,0 +1,11 @@
+error: could not determine the type of this expression
+   ┌─ test:11:5
+   │
+11 │ _ : _ -> result
+   │     ^^^^^^^^^^^
+   │     │
+   │     try annotating the type with `::`
+   │     this has type `_ -> S (S (S (S (S Z))))`
+   │
+   = for more information, see https://wipple.dev/playground/?lesson=errors/unknown-type
+

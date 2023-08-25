@@ -1,0 +1,9 @@
+T : A => trait (A -> Text)
+
+foo :: A where (T A) => A -> Text
+foo : x -> T x
+
+A : type
+instance (T A) : _ -> "Hello, world!"
+
+show (foo A)

@@ -1,0 +1,13 @@
+mySyntax : syntax {}
+
+myType : type
+
+myTrait : trait
+
+myConstant :: a => ()
+myConstant : ()
+
+myVariable : 42
+a1 : 1
+a-2 : 2
+24-hours : 24

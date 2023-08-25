@@ -1,0 +1,6 @@
+Number-Function : type (() -> Number)
+
+foo :: Number-Function
+foo : () -> 42
+
+show (foo ())

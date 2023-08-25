@@ -1,0 +1,7 @@
+increment! :: Mutable Number -> ()
+increment! : n -> n . set! (get n + 1)
+
+x : mutable 1
+increment! x
+x : get x
+show x

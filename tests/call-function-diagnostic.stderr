@@ -1,0 +1,11 @@
+error: mismatched types
+  ┌─ test:4:15
+  │
+4 │ displays-text produces-text
+  │               ^^^^^^^^^^^^^
+  │               │
+  │               expected `Text`, but found `() -> Text`
+  │               try providing an input to this function
+  │
+  = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types
+

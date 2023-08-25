@@ -1,7 +1,0 @@
-code: |
-    show `red`
-
-output: |
-    red
-
-diagnostics: |

@@ -3,7 +3,6 @@
 use clap::Parser;
 use colored::Colorize;
 use parking_lot::Mutex;
-use serde::{Deserialize, Serialize};
 use std::{
     env, fs,
     io::{self, Write},
@@ -15,10 +14,10 @@ use wipple_frontend::helpers::Shared;
 
 #[derive(Parser)]
 struct Args {
-    path: PathBuf,
+    files: Vec<PathBuf>,
 
     #[clap(long)]
-    apply: bool,
+    write: bool,
 
     #[clap(long)]
     junit: bool,
@@ -60,21 +59,28 @@ async fn main() -> anyhow::Result<()> {
 
     let pass_count = AtomicUsize::new(0);
     let fail_count = AtomicUsize::new(0);
+    let update_count = AtomicUsize::new(0);
     let results = Mutex::new(Vec::new());
 
-    let run_path = |path: PathBuf| async {
-        let test_name = path.to_string_lossy().into_owned();
+    let run_path = |src_path: PathBuf| async {
+        let test_name = src_path.to_string_lossy().to_string();
+        let stdout_path = src_path.with_extension("stdout");
+        let stderr_path = src_path.with_extension("stderr");
 
         eprint!(
             "{} {}",
             " RUNS ".black().on_bright_black(),
-            test_name.as_str().bold()
+            test_name.bold(),
         );
 
-        let file = fs::File::open(&path)?;
-        let test_case = serde_yaml::from_reader(file)?;
+        let src = fs::read_to_string(&src_path)?;
+        let stdout = fs::read_to_string(&stdout_path).ok();
+        let stderr = fs::read_to_string(&stderr_path).ok();
+
         let result = run(
-            &test_case,
+            &src,
+            stdout.as_deref(),
+            stderr.as_deref(),
             compiler.clone(),
             args.optimize,
             args.show_expansion_history,
@@ -89,58 +95,72 @@ async fn main() -> anyhow::Result<()> {
             eprintln!(
                 "\r{} {}",
                 " PASS ".bright_white().on_bright_green(),
-                test_name.as_str().bold()
+                test_name.bold()
             );
+        } else if args.write {
+            update_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+            eprintln!(
+                "\r{} {}",
+                " UPDATE ".bright_white().on_bright_black(),
+                test_name.bold()
+            );
+
+            if !result.output.is_empty() {
+                fs::write(&stdout_path, &result.output)?;
+            }
+
+            if !result.diagnostics.is_empty() {
+                fs::write(&stderr_path, &result.diagnostics)?;
+            }
         } else {
             fail_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
             eprintln!(
                 "\r{} {}",
                 " FAIL ".bright_white().on_bright_red(),
-                test_name.as_str().bold()
+                test_name.bold()
             );
 
-            if !result.output_diff.is_empty() {
-                eprintln!("\nOutput:\n");
-                result.output_diff.print();
+            if let Some(output_diff) = result.output_diff.as_ref() {
+                if !output_diff.is_empty() {
+                    eprintln!("\nOutput:\n");
+                    output_diff.print();
+                }
             }
 
-            if !result.diagnostics_diff.is_empty() {
-                eprintln!("\nDiagnostics:\n");
-                result.diagnostics_diff.print();
+            if let Some(diagnostics_diff) = result.diagnostics_diff.as_ref() {
+                if !diagnostics_diff.is_empty() {
+                    eprintln!("\nDiagnostics:\n");
+                    diagnostics_diff.print();
+                }
             }
 
-            eprintln!();
+            if result.output_diff.is_some() || result.diagnostics_diff.is_some() {
+                eprintln!();
+            }
         }
 
-        results.lock().push((test_name, path, result));
+        results.lock().push((test_name, src_path, result));
 
         anyhow::Result::<()>::Ok(())
     };
 
-    if args.path.is_file() {
-        run_path(args.path).await?;
-    } else {
-        let mut entries = fs::read_dir(args.path)?
-            .map(|entry| entry.map(|e| e.path()))
-            .collect::<Result<Vec<_>, _>>()?;
-
-        entries.sort_unstable();
-
-        for entry in entries {
-            run_path(entry).await?;
-        }
+    for file in args.files {
+        run_path(file).await?;
     }
 
     let pass_count = pass_count.into_inner();
     let fail_count = fail_count.into_inner();
+    let update_count = update_count.into_inner();
     let results = results.into_inner();
 
     eprintln!(
-        "\n{} tests, {}, {}",
-        pass_count + fail_count,
+        "\n{} tests, {}, {}, {}",
+        pass_count + fail_count + update_count,
         format!("{pass_count} passed").green(),
         format!("{fail_count} failed").red(),
+        format!("{update_count} updated").bright_black(),
     );
 
     if args.junit {
@@ -156,14 +176,18 @@ async fn main() -> anyhow::Result<()> {
                         } else {
                             let mut buf = Vec::new();
 
-                            if !result.output_diff.is_empty() {
-                                writeln!(buf, "\nOutput:\n").unwrap();
-                                result.output_diff.write_to(&mut buf, false);
+                            if let Some(output_diff) = result.output_diff {
+                                if !output_diff.is_empty() {
+                                    writeln!(buf, "\nOutput:\n").unwrap();
+                                    output_diff.write_to(&mut buf, false);
+                                }
                             }
 
-                            if !result.diagnostics_diff.is_empty() {
-                                writeln!(buf, "\nDiagnostics:\n").unwrap();
-                                result.diagnostics_diff.write_to(&mut buf, false);
+                            if let Some(diagnostics_diff) = result.diagnostics_diff {
+                                if !diagnostics_diff.is_empty() {
+                                    writeln!(buf, "\nDiagnostics:\n").unwrap();
+                                    diagnostics_diff.write_to(&mut buf, false);
+                                }
                             }
 
                             let msg = String::from_utf8(buf).unwrap();
@@ -185,13 +209,6 @@ async fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
-}
-
-#[derive(Serialize, Deserialize)]
-struct TestCase {
-    code: String,
-    output: String,
-    diagnostics: String,
 }
 
 struct Diff(Vec<(similar::ChangeTag, String)>);
@@ -232,18 +249,24 @@ impl Diff {
 }
 
 struct TestResult {
-    output_diff: Diff,
-    diagnostics_diff: Diff,
+    output_diff: Option<Diff>,
+    output: String,
+    diagnostics_diff: Option<Diff>,
+    diagnostics: String,
 }
 
 impl TestResult {
     fn passed(&self) -> bool {
-        self.output_diff.is_empty() && self.diagnostics_diff.is_empty()
+        (self.output.is_empty() || self.output_diff.as_ref().is_some_and(Diff::is_empty))
+            && (self.diagnostics.is_empty()
+                || self.diagnostics_diff.as_ref().is_some_and(Diff::is_empty))
     }
 }
 
 async fn run(
-    test_case: &TestCase,
+    src: &str,
+    stdout: Option<&str>,
+    stderr: Option<&str>,
     compiler: wipple_frontend::Compiler,
     optimize: bool,
     show_expansion_history: bool,
@@ -255,7 +278,7 @@ async fn run(
         .loader
         .virtual_paths()
         .lock()
-        .insert(test_path, Arc::from(test_case.code.as_str()));
+        .insert(test_path, Arc::from(src));
 
     let (program, diagnostics) = compiler
         .analyze_with(
@@ -329,8 +352,10 @@ async fn run(
     diagnostics = diagnostics.replace(env!("CARGO_WORKSPACE_DIR"), "<dir>/");
 
     Ok(TestResult {
-        output_diff: diff(test_case.output.trim(), output.trim()),
-        diagnostics_diff: diff(test_case.diagnostics.trim(), diagnostics.trim()),
+        output_diff: stdout.map(|expected| diff(expected, &output)),
+        output,
+        diagnostics_diff: stderr.map(|expected| diff(expected, &diagnostics)),
+        diagnostics,
     })
 }
 

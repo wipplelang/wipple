@@ -1,0 +1,11 @@
+Z : type
+S : N => type
+
+Add : A B Sum => trait
+A => instance (Add Z A A)
+A B Sum where (Add A B Sum) => instance (Add (S A) B (S Sum))
+
+result :: A where (Add (S (S (S Z))) (S (S Z)) A) => A
+result : ...
+
+_ : _ -> result
