@@ -1,0 +1,138 @@
+---
+lesson:
+  title: Decision making
+  subtitle: Learn how to make decisions based on user input.
+previous:
+  name: Variables
+  link: ?lesson=v2/beginner/variables
+---
+
+---
+id: fCw6w5Vs
+type: text
+locked: true
+---
+
+Up until now, we've written pretty simple programs that always produce the same output. Now, we'll introduce a way for your code to make decisions about its input!
+
+Let's say you wanted to write a program to grant or deny access based on a password. To do this, we need three things:
+
+-   A way to ask the user for a password
+-   A way to compare the provided password with the correct one
+-   A way to display `access granted` or `access denied` depending on whether the passwords are the same or not
+
+The first thing — asking the user for a password — is done with the `prompt` command:
+
+---
+id: 4Mt8YkZk
+type: code
+---
+
+password : prompt "Enter a password (not your actual password, please!)"
+message : format "You entered _" password
+show message
+
+---
+id: Y2UuYUud
+type: text
+locked: true
+---
+
+And you can check if two variables contain the same value using the equal sign (`=`):
+
+---
+id: 02LsZUH-
+type: code
+---
+
+password : prompt "Enter a password"
+correct-password : "123"
+show (password = correct-password)
+
+---
+id: KChNmsqx
+type: text
+locked: true
+---
+
+Depending on what you type in, the program will show "True" or "False", where `True` means the passwords are the same, and `False` means they are different.
+
+Now we can make a decision on what to display using the `if` command! `if` accepts a condition and two other values. If the condition is `True`, the first value will be produced, and if the condition is `False`, the second value will be produced.
+
+Let's put it all together!
+
+---
+id: -F0vsrvh
+type: code
+---
+
+password : prompt "Enter a password"
+correct-password : "123"
+message : if (password = correct-password) "Access granted!" "Access denied!"
+show message
+
+---
+id: I-BwiLtf
+type: text
+locked: true
+---
+
+If you're feeling pretty confident with all of this, try extending the example to ask the user for their name and greet them if they enter the correct password. (Hint: you'll need to use another variable, along with `prompt` and `format`).
+
+---
+id: xsY8WcP5
+type: code
+---
+
+---
+id: 45dG8R6m
+type: text
+locked: true
+---
+
+In addition to `=`, here are some other logic symbols you can use:
+
+<table>
+    <tbody>
+        <tr>
+            <td><b>Symbol</b></td>
+            <td><b>Function</b></td>
+        </tr>
+        <tr>
+            <td><code>a = b</code></td>
+            <td>Is <code>a</code> equal to <code>b</code>?</td>
+        </tr>
+        <tr>
+            <td><code>a /= b</code></td>
+            <td>Is <code>a</code> not equal to <code>b</code>?</td>
+        </tr>
+        <tr>
+            <td><code>a < b</code></td>
+            <td>Is <code>a</code> less than <code>b</code>?</td>
+        </tr>
+        <tr>
+            <td><code>a > b</code></td>
+            <td>Is <code>a</code> greater than <code>b</code>?</td>
+        </tr>
+        <tr>
+            <td><code>a <= b</code></td>
+            <td>Is <code>a</code> less than or equal to <code>b</code>?</td>
+        </tr>
+        <tr>
+            <td><code>a >= b</code></td>
+            <td>Is <code>a</code> greater than or equal to <code>b</code>?</td>
+        </tr>
+        <tr>
+            <td><code>a and b</code></td>
+            <td>Are both <code>a</code> and <code>b</code> <code>True</code>?</td>
+        </tr>
+        <tr>
+            <td><code>a or b</code></td>
+            <td>Is either <code>a</code> or <code>b</code> <code>True</code>?</td>
+        </tr>
+    </tbody>
+</table>
+
+## Great work!
+
+Congratulations, you've made it to the end of the Beginner lessons! 🥳 Feel free to explore the Wipple Playground and write your own programs. (To open a blank page, click on the Wipple logo at the top of the page.) If you want to learn more, try moving on to the Intermediate lessons.

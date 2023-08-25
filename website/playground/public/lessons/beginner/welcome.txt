@@ -1,7 +1,10 @@
 ---
+lesson:
+  title: Welcome!
+  subtitle: Learn how to navigate the Wipple Playground.
 next:
-  name: Math
-  link: ?lesson=beginner/math
+  name: Getting started
+  link: ?lesson=v2/beginner/getting-started
 ---
 
 ---
@@ -9,8 +12,6 @@ id: LUzRzjQn
 type: text
 locked: true
 ---
-
-# Welcome!
 
 Welcome to the Wipple Playground! The Wipple Playground is a place where you can learn the Wipple programming language, build interactive programs, and experiment with Wipple code. Let's get started!
 
@@ -85,4 +86,4 @@ To collaborate with others on your code, click the three dots in the top right o
 
 To share your creation with others, click the three dots next to the beginner mode button at the bottom of the screen, and select Copy Link. Then you can paste the link wherever you want! Visiting the link will restore your code.
 
-Alright, let's dive into some Wipple code — click the right arrow to continue!
+Alright, let's start learning Wipple — click the right arrow to continue!

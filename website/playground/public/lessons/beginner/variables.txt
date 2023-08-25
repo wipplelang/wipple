@@ -1,10 +1,13 @@
 ---
+lesson:
+  title: Variables
+  subtitle: Learn how to separate commands into multiple steps.
 previous:
-  name: Text
-  link: ?lesson=beginner/text
+  name: Graphics
+  link: ?lesson=beginner/graphics
 next:
-  name: User input
-  link: ?lesson=beginner/input
+  name: Decision making
+  link: ?lesson=beginner/decision-making
 ---
 
 ---
@@ -12,8 +15,6 @@ id: p9AsWEtw
 type: text
 locked: true
 ---
-
-# Variables
 
 It can get confusing to write lots of commands inside each other. Instead, we can give names to each step! This concept is called **variables** — just like in math, where you can give the variable $x$ a value (eg. 5), you can make your own variables in Wipple!
 
@@ -49,7 +50,7 @@ type: text
 locked: true
 ---
 
-Notice that there's no need to limit yourself to a single letter — variable names can be as descriptive as you want! The only restriction is that if you want to have multiple words, you need to separate them with a `-`. That way, a space always represents the end of one command and the beginning of the next command.
+Notice that there's no need to limit yourself to a single letter — variable names can be as descriptive as you want! The only restriction is that if you want to have multiple words, you need to separate them with a dash (`-`). That way, a space always represents the end of one command and the beginning of the next command.
 
 ---
 id: bwxDK7sh

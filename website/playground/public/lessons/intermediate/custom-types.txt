@@ -46,7 +46,7 @@ That code is pretty difficult to read, and every time we want to add a new perso
 
 Well good news, because Wipple has something specifically designed for this problem — custom types!
 
-To define a custom type, you use the `type` function and list out all the variables that go inside, along with their types:
+To define a custom type, you use the `type` command and list out all the variables that go inside, along with their types:
 
 ---
 id: Hw9MUMGS

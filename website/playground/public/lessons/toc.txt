@@ -1,4 +1,6 @@
 ---
+lesson:
+  title: Learn Wipple
 ---
 
 ---
@@ -7,22 +9,18 @@ type: text
 locked: true
 ---
 
-# Learn Wipple
-
 ## Beginner
 
-- [Welcome!](?lesson=beginner/welcome)
-- [Math](?lesson=beginner/math)
-- [Graphics](?lesson=beginner/graphics)
-- [Text](?lesson=beginner/text)
-- [Variables](?lesson=beginner/variables)
-- [User input](?lesson=beginner/input)
-- [Functions](?lesson=beginner/functions)
-- [Making music](?lesson=beginner/music)
+- [Welcome!](?lesson=v2/beginner/welcome)
+- [Getting started](?lesson=v2/beginner/getting-started)
+- [Graphics](?lesson=v2/beginner/graphics)
+- [Variables](?lesson=v2/beginner/variables)
+- [Decision making](?lesson=v2/beginner/decision-making)
 
 ## Intermediate
 
-- [Logic and decision making](?lesson=intermediate/logic)
+- [Functions](?lesson=intermediate/functions)
+- [Making music](?lesson=intermediate/making-music)
 - [The type system](?lesson=intermediate/types)
 - [Making your own types](?lesson=intermediate/custom-types)
 - [Patterns](?lesson=intermediate/patterns)

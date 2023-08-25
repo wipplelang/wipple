@@ -1,10 +1,13 @@
 ---
+lesson:
+  title: Graphics
+  subtitle: Learn some more Wipple commands by drawing graphics.
 previous:
-  name: Math
-  link: ?lesson=beginner/math
+  name: Getting started
+  link: ?lesson=v2/beginner/getting-started
 next:
-  name: Text
-  link: ?lesson=beginner/text
+  name: Variables
+  link: ?lesson=v2/beginner/variables
 ---
 
 ---
@@ -13,11 +16,9 @@ type: text
 locked: true
 ---
 
-# Graphics
-
 Let's learn some more Wipple commands by drawing some graphics!
 
-All of Wipple's graphics functionality is behind `turtle`. We can write `use "turtle"` at the top of our code to tell the computer that we'd like to use turtle graphics:
+All of Wipple's graphics functionality is in a file, or **library**, named `turtle`. We can write `use "turtle"` at the top of our code to tell the computer that we'd like to access to the turtle graphics library:
 
 ---
 id: 8uH-M6ww
@@ -32,7 +33,9 @@ type: text
 locked: true
 ---
 
-And then we can create a turtle with the `with-turtle` command:
+Don't forget to write `use "turtle"` at the top of every code block!
+
+Next, we can create a turtle using the `with-turtle` command:
 
 ---
 id: tVT53pcn
@@ -42,7 +45,7 @@ type: code
 use "turtle"
 
 with-turtle {
-    -- More to follow...
+  -- More to follow...
 }
 
 ---
@@ -51,7 +54,7 @@ type: text
 locked: true
 ---
 
-Great! The `with-turtle` command accepts a "block" of code, which begins with `{` and ends with `}`. A **block** is a way to group multiple commands into one. The thing to remember is that all of your drawing commands must go inside the block.
+Great! The `with-turtle` command accepts a "block" of code, which begins with `{` and ends with `}`. (These symbols are called **braces** and are located above the Return key on your keyboard.) Similar to parentheses, a **block** is a way to group multiple commands into one. The thing to remember is that all of your drawing commands must go inside the block.
 
 ---
 id: WKUel-ak
@@ -61,7 +64,7 @@ type: code
 use "turtle"
 
 with-turtle {
-    forward (50 pixels)
+  forward (50 pixels)
 }
 
 ---
@@ -80,14 +83,14 @@ type: code
 use "turtle"
 
 with-turtle {
-    forward (50 pixels)
-    left (90 degrees)
-    forward (50 pixels)
-    left (90 degrees)
-    forward (50 pixels)
-    left (90 degrees)
-    forward (50 pixels)
-    left (90 degrees)
+  forward (50 pixels)
+  left (90 degrees)
+  forward (50 pixels)
+  left (90 degrees)
+  forward (50 pixels)
+  left (90 degrees)
+  forward (50 pixels)
+  left (90 degrees)
 }
 
 ---
@@ -96,7 +99,31 @@ type: text
 locked: true
 ---
 
-Here are a few more commands — they should be pretty self-explanatory:
+Hmm, notice how we repeat the same two lines of code multiple times? There's a better way to do this, with the `repeat` command!
+
+---
+id: jzr7pshk
+type: code
+---
+
+use "turtle"
+
+with-turtle {
+  repeat (4 times) {
+    forward (50 pixels)
+    left (90 degrees)
+  }
+}
+
+---
+id: yoYPowvW
+type: text
+locked: true
+---
+
+The `repeat` command accepts a number of `times`, and repeats the block of code that number of times. `repeat` is very useful, and we'll be using it a lot!
+
+Here are a few more commands:
 
 ---
 id: rS44ihW_
@@ -106,14 +133,17 @@ type: code
 use "turtle"
 
 with-turtle {
-    width (500 pixels)
-    right (90 degrees)
-    color `red`
-    forward (50 pixels)
-    color `green`
-    forward (50 pixels)
-    color `blue`
-    forward (50 pixels)
+  width (500 pixels)
+  right (90 degrees)
+
+  color `red`
+  forward (50 pixels)
+
+  color `green`
+  forward (50 pixels)
+
+  color `blue`
+  forward (50 pixels)
 }
 
 ---
@@ -124,7 +154,7 @@ locked: true
 
 You can change the colors by clicking on them. If you want to add a new color, click the `+` button in the top right and select the color symbol.
 
-Try experimenting with turtle graphics in the space below!
+Try drawing your own shapes in the space below! If you run into an error, be sure to hover your mouse over the code highlighted in red to see how to fix the problem.
 
 ---
 id: oJoojiVl

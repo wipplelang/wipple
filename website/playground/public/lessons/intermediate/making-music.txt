@@ -1,7 +1,13 @@
 ---
+lesson:
+  title: Making music
+  subtitle: Use Wipple to play your own music!
 previous:
   name: Functions
-  link: ?lesson=beginner/functions
+  link: ?lesson=intermediate/functions
+next:
+  name: The type system
+  link: ?lesson=intermediate/types
 ---
 
 ---
@@ -9,8 +15,6 @@ id: qWMDKjVo
 type: text
 locked: true
 ---
-
-# Making music
 
 Let's look at how we can use Wipple to make music! If we `use "music"`, we get access to `with-music` and various instruments:
 
@@ -155,13 +159,3 @@ Try writing your own music below!
 id: lXl8kpAu
 type: code
 ---
-
----
-id: LRGwo7lA
-type: text
-locked: true
----
-
-## Great work!
-
-Congratulations, you've made it to the end of the Beginner lessons! 🥳 Feel free to explore the Wipple Playground and write your own programs. (To open a fresh editor, click on the Wipple logo at the top of the page.) If you want to learn more, try moving on to the Intermediate lessons.

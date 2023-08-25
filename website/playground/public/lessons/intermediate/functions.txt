@@ -1,10 +1,10 @@
 ---
-previous:
-  name: User input
-  link: ?lesson=beginner/input
+lesson:
+  title: Functions
+  subtitle: Learn how to reuse code using functions.
 next:
   name: Making music
-  link: ?lesson=beginner/music
+  link: ?lesson=intermediate/making-music
 ---
 
 ---
@@ -81,97 +81,7 @@ type: text
 locked: true
 ---
 
-If you just want to make a function that "does something" _without_ accepting any input, you can use the empty list (`()`) as the input:
-
----
-id: L6ekFSux
-type: code
----
-
-hello-world : () -> show "Hello, world!"
-
-hello-world ()
-hello-world ()
-hello-world ()
-
----
-id: aipbbKsD
-type: text
-locked: true
----
-
-Likewise, the result of `show` and other functions that just "do something" without producing any output is `()`.
-
-## Repeating commands with `repeat`
-
-The `repeat` command repeats some code the specified number of `times`. Let's try it out!
-
----
-id: FxtpJx16
-type: code
----
-
-repeat (5 times) {
-  show "Hello, world!"
-}
-
----
-id: VETmdYWx
-type: text
-locked: true
----
-
-Do you remember this code from earlier?
-
----
-id: t0CwoKBS
-type: code
----
-
-use "turtle"
-
-with-turtle {
-    forward (50 pixels)
-    left (90 degrees)
-    forward (50 pixels)
-    left (90 degrees)
-    forward (50 pixels)
-    left (90 degrees)
-    forward (50 pixels)
-    left (90 degrees)
-}
-
----
-id: Jh_nbyCP
-type: text
-locked: true
----
-
-Let's change it to use `repeat` and functions!
-
----
-id: 3uCAuJGe
-type: code
----
-
-use "turtle"
-
-draw-square : () -> repeat (4 times) {
-  forward (50 pixels)
-  left (90 degrees)
-}
-
-with-turtle {
-  draw-square ()
-}
-
----
-id: ilLJ-ZAY
-type: text
-locked: true
----
-
-Cool!! We can also add a second input, `size`, to control the size of the square:
+Let's go back to turtle graphics and add some functions. We can make a `draw-square` function whose input is `size`, and now we can draw a square of any size!
 
 ---
 id: FczH-Iu7
@@ -200,4 +110,6 @@ type: text
 locked: true
 ---
 
-We're almost at the end — let's put everything together and make some music!
+Learning how to use functions is one of the most important skills you can have as a programmer. Over time, you'll figure out when it's a good idea to split your code into functions. For now, though, a good rule of thumb is that any time you have multiple pieces of code that do the same thing, you can make your code easier to read and change by using functions instead. The majority of the remaining Learn Wipple lessons are focused on making your code less repetitive by using and composing functions!
+
+Now for something fun... in the next lesson!

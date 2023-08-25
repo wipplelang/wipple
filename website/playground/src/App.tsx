@@ -51,7 +51,14 @@ export interface Settings {
     beginner?: boolean;
 }
 
+interface LessonInfo {
+    title: string;
+    subtitle?: string;
+    image?: string;
+}
+
 const App = () => {
+    const [lessonInfo, setLessonInfo] = useState<LessonInfo>();
     const [sections, setSections] = useState<Section[]>([]);
     const [previousPage, setPreviousPage] = useState<PageLink | undefined>();
     const [nextPage, setNextPage] = useState<PageLink | undefined>();
@@ -103,11 +110,13 @@ const App = () => {
                     const data = await (await fetch(path)).text();
 
                     const file: {
+                        lesson?: { title: string; subtitle: string };
                         sections: Section[];
                         previous?: PageLink;
                         next?: PageLink;
                     } = convertLesson(data);
 
+                    setLessonInfo(file.lesson);
                     setSections(file.sections);
                     setPreviousPage(file.previous);
                     setNextPage(file.next);
@@ -246,147 +255,173 @@ const App = () => {
                             </div>
                         </div>
                     ) : (
-                        <DndContext
-                            sensors={sensors}
-                            collisionDetection={closestCenter}
-                            onDragEnd={(event) => {
-                                setActiveId(undefined);
-                                const { active, over } = event;
+                        <div className="flex flex-col gap-4 w-full">
+                            {lessonInfo && (
+                                <div className="relative flex items-center justify-center prose dark:prose-invert max-w-none min-h-[30vh] border-2 border-gray-100 dark:border-gray-700 rounded-lg">
+                                    <img
+                                        src={lessonInfo.image ?? "/playground/images/lesson-bg.svg"}
+                                        className="absolute inset-0 w-full h-full object-cover -z-10"
+                                    />
 
-                                if (active.id !== over?.id) {
-                                    setSections((items) => {
-                                        const oldIndex = items.findIndex((s) => s.id === active.id);
-                                        const newIndex = items.findIndex((s) => s.id === over?.id);
+                                    <div className="flex flex-col items-center justify-center gap-2 m-4 prose-headings:m-0 text-center">
+                                        <h1>{lessonInfo.title}</h1>
 
-                                        return arrayMove(items, oldIndex, newIndex);
-                                    });
-                                }
-                            }}
-                            onDragStart={(event) => {
-                                setActiveId(event.active.id as string);
-                            }}
-                            autoScroll
-                        >
-                            <SortableContext
-                                items={sections}
-                                strategy={verticalListSortingStrategy}
-                            >
-                                {sections.map((section, index) => (
-                                    <SortableItem
-                                        key={section.id}
-                                        id={section.id}
-                                        onPressAdd={(type) => {
-                                            setSections(
-                                                produce((sections) => {
-                                                    sections.push({
-                                                        id: nanoid(8),
-                                                        type,
-                                                        value: "",
-                                                        locked: type === "text" ? false : undefined,
-                                                    });
-                                                })
+                                        {lessonInfo.subtitle && (
+                                            <h3 className="opacity-50">{lessonInfo.subtitle}</h3>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={(event) => {
+                                    setActiveId(undefined);
+                                    const { active, over } = event;
+
+                                    if (active.id !== over?.id) {
+                                        setSections((items) => {
+                                            const oldIndex = items.findIndex(
+                                                (s) => s.id === active.id
                                             );
-                                        }}
-                                        onPressRemove={
-                                            sections.length > 1
-                                                ? () => {
-                                                      setSections(
-                                                          produce((sections) => {
-                                                              sections.splice(index, 1);
-                                                          })
-                                                      );
-                                                  }
-                                                : undefined
-                                        }
-                                        lock={
-                                            section.type === "text"
-                                                ? {
-                                                      isLocked: section.locked ?? false,
-                                                      onChangeLocked: (locked) => {
-                                                          setSections(
-                                                              produce((sections) => {
-                                                                  const section = sections[index];
+                                            const newIndex = items.findIndex(
+                                                (s) => s.id === over?.id
+                                            );
 
-                                                                  if (section.type !== "text") {
-                                                                      throw new Error(
-                                                                          `section mismatch: ${JSON.stringify(
-                                                                              section,
-                                                                              null,
-                                                                              4
-                                                                          )}`
-                                                                      );
-                                                                  }
-
-                                                                  section.locked = locked;
-                                                              })
-                                                          );
-                                                      },
-                                                  }
-                                                : undefined
-                                        }
-                                        lint={
-                                            section.type === "code"
-                                                ? {
-                                                      lintEnabled: section.lint ?? true,
-                                                      onChangeLintEnabled: (lint) => {
-                                                          setSections(
-                                                              produce((sections) => {
-                                                                  const section = sections[index];
-
-                                                                  if (section.type !== "code") {
-                                                                      throw new Error(
-                                                                          `section mismatch: ${JSON.stringify(
-                                                                              section,
-                                                                              null,
-                                                                              4
-                                                                          )}`
-                                                                      );
-                                                                  }
-
-                                                                  section.lint = lint;
-                                                              })
-                                                          );
-                                                      },
-                                                  }
-                                                : undefined
-                                        }
-                                    >
-                                        <SectionContainer
-                                            section={section}
-                                            autoFocus={index === 0}
-                                            settings={settings}
-                                            onChange={(newSection) => {
+                                            return arrayMove(items, oldIndex, newIndex);
+                                        });
+                                    }
+                                }}
+                                onDragStart={(event) => {
+                                    setActiveId(event.active.id as string);
+                                }}
+                                autoScroll
+                            >
+                                <SortableContext
+                                    items={sections}
+                                    strategy={verticalListSortingStrategy}
+                                >
+                                    {sections.map((section, index) => (
+                                        <SortableItem
+                                            key={section.id}
+                                            id={section.id}
+                                            onPressAdd={(type) => {
                                                 setSections(
                                                     produce((sections) => {
-                                                        newSection(
-                                                            // HACK: index doesn't work
-                                                            sections.find(
-                                                                (s) => s.id === section.id
-                                                            )!
-                                                        );
+                                                        sections.push({
+                                                            id: nanoid(8),
+                                                            type,
+                                                            value: "",
+                                                            locked:
+                                                                type === "text" ? false : undefined,
+                                                        });
                                                     })
                                                 );
                                             }}
-                                        />
-                                    </SortableItem>
-                                ))}
-                            </SortableContext>
+                                            onPressRemove={
+                                                sections.length > 1
+                                                    ? () => {
+                                                          setSections(
+                                                              produce((sections) => {
+                                                                  sections.splice(index, 1);
+                                                              })
+                                                          );
+                                                      }
+                                                    : undefined
+                                            }
+                                            lock={
+                                                section.type === "text"
+                                                    ? {
+                                                          isLocked: section.locked ?? false,
+                                                          onChangeLocked: (locked) => {
+                                                              setSections(
+                                                                  produce((sections) => {
+                                                                      const section =
+                                                                          sections[index];
 
-                            <DragOverlay>
-                                {activeId && (
-                                    <div className="flex items-center">
-                                        <SideMenu />
+                                                                      if (section.type !== "text") {
+                                                                          throw new Error(
+                                                                              `section mismatch: ${JSON.stringify(
+                                                                                  section,
+                                                                                  null,
+                                                                                  4
+                                                                              )}`
+                                                                          );
+                                                                      }
 
-                                        <SectionContainer
-                                            section={sections.find((s) => s.id === activeId)!}
-                                            autoFocus={false}
-                                            settings={settings}
-                                            onChange={() => {}}
-                                        />
-                                    </div>
-                                )}
-                            </DragOverlay>
-                        </DndContext>
+                                                                      section.locked = locked;
+                                                                  })
+                                                              );
+                                                          },
+                                                      }
+                                                    : undefined
+                                            }
+                                            lint={
+                                                section.type === "code"
+                                                    ? {
+                                                          lintEnabled: section.lint ?? true,
+                                                          onChangeLintEnabled: (lint) => {
+                                                              setSections(
+                                                                  produce((sections) => {
+                                                                      const section =
+                                                                          sections[index];
+
+                                                                      if (section.type !== "code") {
+                                                                          throw new Error(
+                                                                              `section mismatch: ${JSON.stringify(
+                                                                                  section,
+                                                                                  null,
+                                                                                  4
+                                                                              )}`
+                                                                          );
+                                                                      }
+
+                                                                      section.lint = lint;
+                                                                  })
+                                                              );
+                                                          },
+                                                      }
+                                                    : undefined
+                                            }
+                                        >
+                                            <SectionContainer
+                                                section={section}
+                                                autoFocus={index === 0}
+                                                settings={settings}
+                                                onChange={(newSection) => {
+                                                    setSections(
+                                                        produce((sections) => {
+                                                            newSection(
+                                                                // HACK: index doesn't work
+                                                                sections.find(
+                                                                    (s) => s.id === section.id
+                                                                )!
+                                                            );
+                                                        })
+                                                    );
+                                                }}
+                                            />
+                                        </SortableItem>
+                                    ))}
+                                </SortableContext>
+
+                                <DragOverlay>
+                                    {activeId && (
+                                        <div className="flex items-center">
+                                            <SideMenu />
+
+                                            <SectionContainer
+                                                section={sections.find((s) => s.id === activeId)!}
+                                                autoFocus={false}
+                                                settings={settings}
+                                                onChange={() => {}}
+                                            />
+                                        </div>
+                                    )}
+                                </DragOverlay>
+                            </DndContext>
+                        </div>
                     )}
 
                     <div className="flex my-5 gap-4">

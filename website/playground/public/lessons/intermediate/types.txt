@@ -1,7 +1,7 @@
 ---
 previous:
-  name: Logic and decision making
-  link: ?lesson=intermediate/logic
+  name: Making music
+  link: ?lesson=intermediate/making-music
 next:
   name: Making your own types
   link: ?lesson=intermediate/custom-types
@@ -33,7 +33,7 @@ locked: true
 
 ...you'll notice that we can only type numbers into the text box, because it only makes sense to add `1` to a number. So how does it _know?_
 
-Essentially, the type system works by giving every piece of code a **type**, which represents the "kind of thing" that code produces. In the same way variables are denoted with a single colon `:`, types are denoted with a double colon `::`. So we can say that `1` is a `Number`, or `1 :: Number`. Likewise, `"hello" :: Text`.
+Essentially, the type system works by giving every piece of code a **type**, which represents the "kind of thing" that code produces. Types begin with a capital letter, and in the same way variables are denoted with a single colon `:`, types are denoted with a double colon `::`. So we can say that `1` is a `Number`, or `1 :: Number`. Likewise, `"hello" :: Text`.
 
 Let's try making a mistake and see if Wipple catches it:
 
