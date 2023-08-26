@@ -768,28 +768,58 @@ impl Typechecker {
             process_queue!();
 
             // Replace constants with specialized versions as needed
-            let mut info = MonomorphizeInfo::default();
-            for id in self.items.keys().copied().collect::<Vec<_>>() {
-                if let (_, Some(expr)) = self.items.get(&id).unwrap() {
-                    let mut expr = expr.clone();
-                    expr.traverse_mut(|expr| {
-                        if let ExpressionKind::Constant(id) = &mut expr.kind {
-                            if let (Some((_, generic_id)), _) = self.items.get(id).unwrap() {
-                                if let Some(specialized_id) = self.specialized_constant_for(
-                                    *generic_id,
-                                    expr.id,
-                                    expr.span,
-                                    &expr.ty,
-                                    &mut info,
-                                ) {
-                                    *id = specialized_id;
-                                }
-                            }
-                        }
-                    });
 
-                    self.items.get_mut(&id).unwrap().1 = Some(expr);
-                }
+            fn specialize(
+                typechecker: &mut Typechecker,
+                id: ItemId,
+                info: &mut MonomorphizeInfo,
+                cache: &mut BTreeSet<ItemId>,
+            ) {
+                let mut expr = typechecker
+                    .items
+                    .get(&id)
+                    .unwrap()
+                    .1
+                    .as_ref()
+                    .unwrap()
+                    .clone();
+
+                expr.traverse_mut(|expr| {
+                    if let ExpressionKind::Constant(id) = &mut expr.kind {
+                        if let (Some((_, generic_id)), _) = typechecker
+                            .items
+                            .get(id)
+                            .unwrap_or_else(|| panic!("{id:?} at {:?}", expr.span))
+                        {
+                            if let Some(specialized_id) = typechecker.specialized_constant_for(
+                                *generic_id,
+                                expr.id,
+                                expr.span,
+                                &expr.ty,
+                                info,
+                            ) {
+                                *id = specialized_id;
+                            }
+
+                            if cache.contains(id) {
+                                return;
+                            }
+
+                            cache.insert(*id);
+                        }
+                    }
+                });
+
+                *typechecker.items.get_mut(&id).unwrap().1.as_mut().unwrap() = expr;
+            }
+
+            if let Some(id) = entrypoint_item {
+                specialize(
+                    &mut self,
+                    id,
+                    &mut MonomorphizeInfo::default(),
+                    &mut BTreeSet::new(),
+                );
             }
 
             process_queue!();
@@ -1255,7 +1285,7 @@ impl Typechecker {
             return Ok(*monomorphized_id);
         }
 
-        let monomorphized_id = self.compiler.new_item_id();
+        let monomorphized_id = self.compiler.new_item_id_with(id.file);
 
         let contextual = self
             .with_constant_decl(id, |decl| decl.attributes.is_contextual)
@@ -4256,7 +4286,7 @@ impl Typechecker {
             })
             .collect::<Vec<_>>();
 
-        let item = self.compiler.new_item_id();
+        let item = self.compiler.new_item_id_with(id.file);
 
         if !tr.attributes.allow_overlapping_instances {
             // Check if the instance collides with any other instances -- there's no
