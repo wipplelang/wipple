@@ -11,11 +11,11 @@ locked: true
 
 ## Beginner
 
-- [Welcome!](?lesson=v2/beginner/welcome)
-- [Getting started](?lesson=v2/beginner/getting-started)
-- [Graphics](?lesson=v2/beginner/graphics)
-- [Variables](?lesson=v2/beginner/variables)
-- [Decision making](?lesson=v2/beginner/decision-making)
+- [Welcome!](?lesson=beginner/welcome)
+- [Getting started](?lesson=beginner/getting-started)
+- [Graphics](?lesson=beginner/graphics)
+- [Variables](?lesson=beginner/variables)
+- [Decision making](?lesson=beginner/decision-making)
 
 ## Intermediate
 

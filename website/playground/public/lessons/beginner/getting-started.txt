@@ -4,10 +4,10 @@ lesson:
   subtitle: Learn Wipple's basic commands.
 previous:
   name: Welcome!
-  link: ?lesson=v2/beginner/welcome
+  link: ?lesson=beginner/welcome
 next:
   name: Graphics
-  link: ?lesson=v2/beginner/graphics
+  link: ?lesson=beginner/graphics
 ---
 
 ---

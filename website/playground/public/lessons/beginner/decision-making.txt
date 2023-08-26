@@ -4,7 +4,7 @@ lesson:
   subtitle: Learn how to make decisions based on user input.
 previous:
   name: Variables
-  link: ?lesson=v2/beginner/variables
+  link: ?lesson=beginner/variables
 ---
 
 ---

@@ -4,10 +4,10 @@ lesson:
   subtitle: Learn some more Wipple commands by drawing graphics.
 previous:
   name: Getting started
-  link: ?lesson=v2/beginner/getting-started
+  link: ?lesson=beginner/getting-started
 next:
   name: Variables
-  link: ?lesson=v2/beginner/variables
+  link: ?lesson=beginner/variables
 ---
 
 ---

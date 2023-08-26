@@ -4,7 +4,7 @@ lesson:
   subtitle: Learn how to navigate the Wipple Playground.
 next:
   name: Getting started
-  link: ?lesson=v2/beginner/getting-started
+  link: ?lesson=beginner/getting-started
 ---
 
 ---
