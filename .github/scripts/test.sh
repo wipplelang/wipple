@@ -3,4 +3,4 @@
 set -e
 
 mkdir junit-reports
-cargo run --bin wipple-test tests --junit > junit-reports/TEST-wipple.xml
+cargo run --bin wipple-test -- --junit tests/*.wpl > junit-reports/TEST-wipple.xml
