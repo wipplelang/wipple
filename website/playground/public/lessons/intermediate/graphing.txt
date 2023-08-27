@@ -44,7 +44,7 @@ use "graphing"
 with-graph {
     min-y 0
     max-y 100
-    color "blue"
+    color `blue`
     plot (x -> x ^ 2)
 }
 
@@ -64,13 +64,13 @@ type: code
 use "graphing"
 
 with-graph {
-    color "red"
+    color `red`
     plot (x -> x)
 
-    color "green"
+    color `green`
     plot (x -> x ^ 2)
 
-    color "blue"
+    color `blue`
     plot (x -> x ^ 3)
 }
 
