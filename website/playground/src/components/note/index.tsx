@@ -35,6 +35,7 @@ export const Note = (props: { children: string }) => {
                 left: "10%",
                 fontSize: "16pt",
                 fontFamily: "Opus Note Names",
+                color: "black",
             }}
         >
             {String.fromCharCode(character)}
