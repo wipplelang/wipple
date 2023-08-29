@@ -1,5 +1,5 @@
 import * as tonal from "tonal";
-import "./Opus Note Names.otf";
+import "./style.css";
 
 export const Note = (props: { children: string }) => {
     const note = tonal.Note.get(props.children)!;
