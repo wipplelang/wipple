@@ -8,6 +8,7 @@ import "./styles/globals.css";
 import "./styles/language-wipple.css";
 import "katex/dist/katex.min.css";
 import ErrorIcon from "@mui/icons-material/Error";
+import "react-piano/dist/styles.css";
 
 wipple.register();
 

@@ -58,6 +58,9 @@ import { closeBrackets } from "@codemirror/autocomplete";
 import { useCollaboration } from "../helpers";
 import PeopleAltRounded from "@mui/icons-material/PeopleAltRounded";
 import GroupAddRounded from "@mui/icons-material/GroupAddRounded";
+import { Piano } from "react-piano";
+import { Note } from "./note";
+import * as tonal from "tonal";
 
 export interface CodeEditorProps {
     id: string;
@@ -1173,6 +1176,10 @@ const Asset = (props: {
             // fall through
         }
 
+        if (/^[A-Ga-g][#b]?\d+$/.test(props.asset)) {
+            return <NoteAsset note={props.asset} onChangeNote={props.onChange} />;
+        }
+
         return <ErrorAsset />;
     })();
 
@@ -1300,6 +1307,56 @@ const UrlAsset = (props: { url: URL }) => {
 
     return <ErrorAsset />;
 };
+
+const NoteAsset = (props: { note: string; onChangeNote?: (note: string) => void }) => (
+    <AssetContainer>
+        <PopupState variant="popover">
+            {(popupState) => (
+                <>
+                    <div className="flex w-full h-full" style={{ backgroundColor: "white" }}>
+                        <div
+                            style={{
+                                pointerEvents: props.onChangeNote == null ? "none" : undefined,
+                            }}
+                            className="relative w-full h-full"
+                            {...bindToggle(popupState)}
+                        >
+                            <Note>{props.note}</Note>
+                        </div>
+                    </div>
+
+                    <Popover
+                        {...bindPopover(popupState)}
+                        anchorOrigin={{ horizontal: "left", vertical: "bottom" }}
+                    >
+                        <div className="max-w-[100vw] overflow-x-scroll">
+                            <Piano
+                                noteRange={{ first: 21, last: 108 }}
+                                width={800}
+                                playNote={() => {}}
+                                stopNote={(midi: number) => {
+                                    const note = tonal.Note.fromMidi(midi);
+                                    props.onChangeNote?.(note);
+                                }}
+                                renderNoteLabel={({ midiNumber, isAccidental }: any) => {
+                                    if (isAccidental) return null;
+
+                                    const note = tonal.Note.fromMidi(midiNumber);
+
+                                    return (
+                                        <p className="w-full text-[6pt] text-black text-center">
+                                            {note}
+                                        </p>
+                                    );
+                                }}
+                            />
+                        </div>
+                    </Popover>
+                </>
+            )}
+        </PopupState>
+    </AssetContainer>
+);
 
 const ErrorAsset = () => (
     <AssetContainer error>
