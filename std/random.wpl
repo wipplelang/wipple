@@ -13,14 +13,53 @@ Random : Range Value => trait (Range -> Value)
 random :: Range Value where (Random Range Value) => Range -> Value
 random : Random
 
-instance (Random (Range Number) Number) : { min max } -> intrinsic "random-number" min max
-instance (Random (Range Integer) Integer) : { min max } -> intrinsic "random-integer" min max
-instance (Random (Range Natural) Natural) : { min max } -> intrinsic "random-natural" min max
-instance (Random (Range Byte) Byte) : { min max } -> intrinsic "random-byte" min max
-instance (Random (Range Signed) Signed) : { min max } -> intrinsic "random-signed" min max
-instance (Random (Range Unsigned) Unsigned) : { min max } -> intrinsic "random-unsigned" min max
-instance (Random (Range Float) Float) : { min max } -> intrinsic "random-float" min max
-instance (Random (Range Double) Double) : { min max } -> intrinsic "random-double" min max
+instance (Random (Range Number) Number) : { min max } -> {
+  (max >= min) . expect "`max` must be greater than `min`"
+
+  intrinsic "random-number" min max
+}
+
+instance (Random (Range Integer) Integer) : { min max } -> {
+  (max >= min) . expect "`max` must be greater than `min`"
+
+  intrinsic "random-integer" min max
+}
+
+instance (Random (Range Natural) Natural) : { min max } -> {
+  (max >= min) . expect "`max` must be greater than `min`"
+
+  intrinsic "random-natural" min max
+}
+
+instance (Random (Range Byte) Byte) : { min max } -> {
+  (max >= min) . expect "`max` must be greater than `min`"
+
+  intrinsic "random-byte" min max
+}
+
+instance (Random (Range Signed) Signed) : { min max } -> {
+  (max >= min) . expect "`max` must be greater than `min`"
+
+  intrinsic "random-signed" min max
+}
+
+instance (Random (Range Unsigned) Unsigned) : { min max } -> {
+  (max >= min) . expect "`max` must be greater than `min`"
+
+  intrinsic "random-unsigned" min max
+}
+
+instance (Random (Range Float) Float) : { min max } -> {
+  (max >= min) . expect "`max` must be greater than `min`"
+
+  intrinsic "random-float" min max
+}
+
+instance (Random (Range Double) Double) : { min max } -> {
+  (max >= min) . expect "`max` must be greater than `min`"
+
+  intrinsic "random-double" min max
+}
 
 Element => instance (Random (List Element) (Maybe Element)) : l -> \
   (l . nth (random (0 to (count l))))
