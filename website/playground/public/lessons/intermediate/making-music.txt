@@ -42,7 +42,7 @@ Press Play and you should hear a note!
 The basic structure of `with-music` is the same as `with-turtle`, there's just a little more going on. Let's break it down:
 
   -  `with-instrument` lets you load an instrument to be played by `music`. You can look at the list of instrument names by clicking the + icon on the right of the code editor, and scrolling down to the Music section.
-  -  `note` lets you play a note for a duration of time. Write the note name (`A` through `G`) followed by the octave number. For example, `C1` is a low-pitched note while `C7` is a high-pitched note. You can specify a sharp using `#` (eg. `F#4`) and a flat using `b` (eg. `Eb3`).
+  -  `note` lets you play a note for a duration of time. Add a note by pressing the `+` button in the top right of the code editor. Click on the note to bring up a keyboard, and click on a key to change the note.
 
 You can have multiple `with-instrument`s and they will all play simultaneously, so you can make your own orchestra!
 

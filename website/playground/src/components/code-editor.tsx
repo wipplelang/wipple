@@ -1227,7 +1227,7 @@ const ColorAsset = (props: { color: string; onChangeColor?: (color: string) => v
                             color={props.color}
                             onChangeComplete={(color) => {
                                 props.onChangeColor?.(color.hex);
-                                popupState.setOpen(false);
+                                popupState.close();
                             }}
                         />
                     </Popover>
@@ -1335,6 +1335,7 @@ const NoteAsset = (props: { note: string; onChangeNote?: (note: string) => void 
                                 width={800}
                                 playNote={() => {}}
                                 stopNote={(midi: number) => {
+                                    popupState.close();
                                     const note = tonal.Note.fromMidi(midi);
                                     props.onChangeNote?.(note);
                                 }}
@@ -1469,5 +1470,10 @@ const builtinCompletions: SpecialCompletion[] = [
         element: () => <Asset asset="/images/logo.svg" disabled />,
         help: "Insert an image.",
         template: "`/images/logo.svg`",
+    },
+    {
+        element: () => <Asset asset="C4" disabled />,
+        help: "Insert a note.",
+        template: "`C4`",
     },
 ];
