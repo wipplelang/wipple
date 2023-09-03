@@ -51,7 +51,7 @@ pub fn substitute<D: Driver>(
                 *expr = replacement.clone();
             }
         }
-        ExprKind::List(lines) | ExprKind::RepeatList(lines) => {
+        ExprKind::List(lines) | ExprKind::RepeatList(lines) | ExprKind::RepeatBlock(lines) => {
             for line in lines {
                 for expr in &mut line.exprs {
                     substitute(expr, replacement_name.clone(), replacement.clone());

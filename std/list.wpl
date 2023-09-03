@@ -4,10 +4,22 @@ use "util"
 use "fp"
 use "mutable"
 
+-- By swapping the order of the inputs, we typecheck the list before
+-- typechecking the elements, so the error message is on the elements that don't
+-- belong rather than on the resultant list.
+[private]
+build-list! :: A => Mutable (List A) -> A -> ()
+build-list! : l e -> l . append! e
+
 [help "Create a `List` with the specified elements."]
 [help-group "Collections"]
 list : syntax {
-  list ...x -> (intrinsic "make-empty-list" :: List _) ...(. append 'x)
+  list -> intrinsic "make-empty-list" :: List _
+  list ...x -> {
+    l : mutable (intrinsic "make-empty-list" :: List _)
+    ...{ (build-list! l 'x) }
+    get l
+  }
 }
 
 instance (Default (List _)) : list

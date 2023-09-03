@@ -11,6 +11,7 @@ use crate::{
     parse, Driver, Span,
 };
 use async_trait::async_trait;
+use either::Either;
 use futures::{stream, StreamExt};
 use std::collections::{HashMap, HashSet};
 use wipple_util::Shared;
@@ -29,6 +30,7 @@ syntax_group! {
             List,
             ListRepetition,
             Block,
+            BlockRepetition,
         },
     }
 }
@@ -232,6 +234,31 @@ impl<D: Driver> BlockSyntaxPattern<D> {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct BlockRepetitionSyntaxPattern<D: Driver> {
+    pub span: D::Span,
+    pub patterns: Vec<Result<SyntaxPattern<D>, SyntaxError<D>>>,
+}
+
+impl<D: Driver> BlockRepetitionSyntaxPattern<D> {
+    pub fn span(&self) -> D::Span {
+        self.span
+    }
+}
+
+impl<D: Driver> Format<D> for BlockRepetitionSyntaxPattern<D> {
+    fn format(self) -> Result<String, SyntaxError<D>> {
+        Ok(format!(
+            "...{{ {} }}",
+            self.patterns
+                .into_iter()
+                .map(|pattern| pattern?.format())
+                .collect::<Result<Vec<_>, _>>()?
+                .join(" ")
+        ))
+    }
+}
+
 #[derive(Clone)]
 pub struct SyntaxPatternSyntaxContext<D: Driver> {
     pub(super) ast_builder: AstBuilder<D>,
@@ -310,43 +337,59 @@ impl<D: Driver> SyntaxContext<D> for SyntaxPatternSyntaxContext<D> {
 
                     Ok(ListRepetitionSyntaxPattern { span, patterns }.into())
                 }
-                Err(expr) => match expr.kind {
-                    parse::ExprKind::Underscore => {
-                        Ok(UnderscoreSyntaxPattern { span: expr.span }.into())
-                    }
-                    parse::ExprKind::Name(name, _) => Ok(NameSyntaxPattern {
-                        span: expr.span,
-                        name,
-                    }
-                    .into()),
-                    parse::ExprKind::QuoteName(name) => Ok(VariableSyntaxPattern {
-                        span: expr.span,
-                        name,
-                    }
-                    .into()),
-                    parse::ExprKind::RepeatName(name) => Ok(VariableRepetitionSyntaxPattern {
-                        span: expr.span,
-                        name,
-                    }
-                    .into()),
-                    parse::ExprKind::Text(text, raw) => Ok(TextSyntaxPattern {
-                        span: expr.span,
-                        text,
-                        raw,
-                    }
-                    .into()),
-                    parse::ExprKind::Number(number) => Ok(NumberSyntaxPattern {
-                        span: expr.span,
-                        number,
-                    }
-                    .into()),
-                    _ => {
-                        self.ast_builder
-                            .driver
-                            .syntax_error(expr.span, "expected syntax pattern");
+                Err(expr) => match expr.try_into_block_repetition_exprs() {
+                    Ok((span, exprs)) => {
+                        let patterns = stream::iter(exprs)
+                            .then(|expr| {
+                                self.ast_builder.build_expr::<SyntaxPatternSyntax>(
+                                    self.clone(),
+                                    expr,
+                                    scope_set.clone(),
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                            .await;
 
-                        Err(self.ast_builder.syntax_error(expr.span))
+                        Ok(BlockRepetitionSyntaxPattern { span, patterns }.into())
                     }
+                    Err(expr) => match expr.kind {
+                        parse::ExprKind::Underscore => {
+                            Ok(UnderscoreSyntaxPattern { span: expr.span }.into())
+                        }
+                        parse::ExprKind::Name(name, _) => Ok(NameSyntaxPattern {
+                            span: expr.span,
+                            name,
+                        }
+                        .into()),
+                        parse::ExprKind::QuoteName(name) => Ok(VariableSyntaxPattern {
+                            span: expr.span,
+                            name,
+                        }
+                        .into()),
+                        parse::ExprKind::RepeatName(name) => Ok(VariableRepetitionSyntaxPattern {
+                            span: expr.span,
+                            name,
+                        }
+                        .into()),
+                        parse::ExprKind::Text(text, raw) => Ok(TextSyntaxPattern {
+                            span: expr.span,
+                            text,
+                            raw,
+                        }
+                        .into()),
+                        parse::ExprKind::Number(number) => Ok(NumberSyntaxPattern {
+                            span: expr.span,
+                            number,
+                        }
+                        .into()),
+                        _ => {
+                            self.ast_builder
+                                .driver
+                                .syntax_error(expr.span, "expected syntax pattern");
+
+                            Err(self.ast_builder.syntax_error(expr.span))
+                        }
+                    },
                 },
             },
         }
@@ -357,6 +400,13 @@ impl<D: Driver> SyntaxContext<D> for SyntaxPatternSyntaxContext<D> {
 pub(crate) enum SyntaxExpression<D: Driver> {
     Single(parse::Expr<D>),
     Repeated(Vec<parse::Expr<D>>),
+}
+
+#[derive(Debug)]
+enum ExpandResult<D: Driver> {
+    Single(parse::Expr<D>),
+    List(Vec<parse::Expr<D>>),
+    Block(Vec<parse::Statement<D>>),
 }
 
 impl<D: Driver> SyntaxPattern<D> {
@@ -487,9 +537,38 @@ impl<D: Driver> SyntaxPattern<D> {
                     return None;
                 }
                 SyntaxPattern::Block(pattern) => {
+                    let expr = input.next()?;
+
+                    let mut statements = match &expr.kind {
+                        parse::ExprKind::Block(statements) => statements.iter(),
+                        _ => return None,
+                    };
+
+                    for statement in &mut statements {
+                        let mut exprs =
+                            Box::new(statement.lines.iter().flat_map(|line| line.exprs.iter()))
+                                as Box<dyn Iterator<Item = _>>;
+
+                        Self::match_inner(
+                            ast_builder,
+                            pattern.statements.clone().into_iter().flatten(),
+                            &mut exprs,
+                            vars,
+                        )?;
+
+                        if exprs.next().is_some() {
+                            return None; // extra trailing expressions
+                        }
+                    }
+
+                    if statements.next().is_some() {
+                        return None; // extra trailing statements
+                    }
+                }
+                SyntaxPattern::BlockRepetition(pattern) => {
                     ast_builder.driver.syntax_error(
                         pattern.span,
-                        "blocks in syntax patterns are not yet supported",
+                        "block repetitions may not appear inside a syntax pattern",
                     );
 
                     return None;
@@ -509,11 +588,9 @@ impl<D: Driver> SyntaxPattern<D> {
     ) -> Result<parse::Expr<D>, SyntaxError<D>> {
         let body_span = body.span();
 
-        let mut exprs = Self::expand_inner(ast_builder, body, vars, source_span, scope)?;
-
-        (exprs.len() == 1)
-            .then(|| exprs.pop().unwrap())
-            .ok_or_else(|| {
+        match Self::expand_inner(ast_builder, body, vars, source_span, scope)? {
+            ExpandResult::Single(expr) => Ok(expr),
+            _ => {
                 ast_builder.driver.syntax_error_with(
                     [
                         (
@@ -525,8 +602,9 @@ impl<D: Driver> SyntaxPattern<D> {
                     None,
                 );
 
-                ast_builder.syntax_error(body_span)
-            })
+                Err(ast_builder.syntax_error(body_span))
+            }
+        }
     }
 
     fn expand_inner(
@@ -535,31 +613,31 @@ impl<D: Driver> SyntaxPattern<D> {
         vars: &HashMap<D::InternedString, SyntaxExpression<D>>,
         source_span: D::Span,
         scope: &ScopeSet<D::Scope>,
-    ) -> Result<Vec<parse::Expr<D>>, SyntaxError<D>> {
+    ) -> Result<ExpandResult<D>, SyntaxError<D>> {
         Ok(match body {
-            SyntaxPattern::Unit(pattern) => vec![parse::Expr {
+            SyntaxPattern::Unit(pattern) => ExpandResult::Single(parse::Expr {
                 span: pattern.span.merged_with(source_span),
                 kind: parse::ExprKind::List(Vec::new()),
-            }],
-            SyntaxPattern::Name(pattern) => vec![parse::Expr {
+            }),
+            SyntaxPattern::Name(pattern) => ExpandResult::Single(parse::Expr {
                 span: pattern.span.merged_with(source_span),
                 kind: parse::ExprKind::Name(pattern.name, Some(scope.clone())),
-            }],
-            SyntaxPattern::Text(pattern) => vec![parse::Expr {
+            }),
+            SyntaxPattern::Text(pattern) => ExpandResult::Single(parse::Expr {
                 span: pattern.span.merged_with(source_span),
                 kind: parse::ExprKind::Text(pattern.text.clone(), pattern.text),
-            }],
-            SyntaxPattern::Number(pattern) => vec![parse::Expr {
+            }),
+            SyntaxPattern::Number(pattern) => ExpandResult::Single(parse::Expr {
                 span: pattern.span.merged_with(source_span),
                 kind: parse::ExprKind::Number(pattern.number),
-            }],
-            SyntaxPattern::Underscore(pattern) => vec![parse::Expr {
+            }),
+            SyntaxPattern::Underscore(pattern) => ExpandResult::Single(parse::Expr {
                 span: pattern.span.merged_with(source_span),
                 kind: parse::ExprKind::Underscore,
-            }],
+            }),
             SyntaxPattern::Variable(pattern) => match vars.get(&pattern.name) {
                 Some(expr) => match expr {
-                    SyntaxExpression::Single(expr) => vec![expr.clone()],
+                    SyntaxExpression::Single(expr) => ExpandResult::Single(expr.clone()),
                     SyntaxExpression::Repeated(_) => {
                         ast_builder.driver.syntax_error(
                             pattern.span,
@@ -580,8 +658,8 @@ impl<D: Driver> SyntaxPattern<D> {
             },
             SyntaxPattern::VariableRepetition(pattern) => match vars.get(&pattern.name) {
                 Some(expr) => match expr {
-                    SyntaxExpression::Single(expr) => vec![expr.clone()],
-                    SyntaxExpression::Repeated(exprs) => exprs.clone(),
+                    SyntaxExpression::Single(expr) => ExpandResult::Single(expr.clone()),
+                    SyntaxExpression::Repeated(exprs) => ExpandResult::List(exprs.clone()),
                 },
                 None => {
                     ast_builder.driver.syntax_error(
@@ -592,21 +670,33 @@ impl<D: Driver> SyntaxPattern<D> {
                     return Err(ast_builder.syntax_error(pattern.span));
                 }
             },
-            SyntaxPattern::List(pattern) => {
-                vec![parse::Expr::list_or_expr(
-                    pattern.span.merged_with(source_span),
-                    pattern
-                        .patterns
-                        .into_iter()
-                        .map(|pattern| {
-                            Self::expand_inner(ast_builder, pattern?, vars, source_span, scope)
-                        })
-                        .collect::<Result<Vec<_>, _>>()?
-                        .into_iter()
-                        .flatten()
-                        .collect(),
-                )]
-            }
+            SyntaxPattern::List(pattern) => ExpandResult::Single(parse::Expr::list_or_expr(
+                pattern.span.merged_with(source_span),
+                pattern
+                    .patterns
+                    .into_iter()
+                    .map(|pattern| {
+                        Self::expand_inner(ast_builder, pattern?, vars, source_span, scope)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?
+                    .into_iter()
+                    .map(|result| match result {
+                        ExpandResult::Single(expr) => Ok(Either::Left(std::iter::once(expr))),
+                        ExpandResult::List(exprs) => Ok(Either::Right(exprs.into_iter())),
+                        ExpandResult::Block(_) => {
+                            ast_builder.driver.syntax_error(
+                                pattern.span,
+                                "cannot use a block repetition pattern outside a block",
+                            );
+
+                            Err(ast_builder.syntax_error(pattern.span))
+                        }
+                    })
+                    .collect::<Result<Vec<_>, _>>()?
+                    .into_iter()
+                    .flatten()
+                    .collect(),
+            )),
             SyntaxPattern::ListRepetition(pattern) => {
                 let mut used_vars = HashSet::new();
                 for pattern in pattern.patterns.iter().flatten() {
@@ -646,39 +736,59 @@ impl<D: Driver> SyntaxPattern<D> {
                     1 => {
                         let (repeated_var, values) = used_repetitions.into_iter().next().unwrap();
 
-                        values
-                            .iter()
-                            .map(|value| {
-                                let vars = vars
-                                    .clone()
-                                    .into_iter()
-                                    .chain(std::iter::once((
-                                        repeated_var.clone(),
-                                        SyntaxExpression::Single(value.clone()),
-                                    )))
-                                    .collect();
+                        ExpandResult::List(
+                            values
+                                .iter()
+                                .map(|value| {
+                                    let vars = vars
+                                        .clone()
+                                        .into_iter()
+                                        .chain(std::iter::once((
+                                            repeated_var.clone(),
+                                            SyntaxExpression::Single(value.clone()),
+                                        )))
+                                        .collect();
 
-                                Ok(pattern
-                                    .patterns
-                                    .clone()
-                                    .into_iter()
-                                    .map(|pattern| {
-                                        Self::expand_inner(
-                                            ast_builder,
-                                            pattern?,
-                                            &vars,
-                                            source_span,
-                                            scope,
-                                        )
-                                    })
-                                    .collect::<Result<Vec<_>, _>>()?
-                                    .into_iter()
-                                    .flatten())
-                            })
-                            .collect::<Result<Vec<_>, _>>()?
-                            .into_iter()
-                            .flatten()
-                            .collect()
+                                    Ok(pattern
+                                        .patterns
+                                        .clone()
+                                        .into_iter()
+                                        .map(|pattern| {
+                                            Self::expand_inner(
+                                                ast_builder,
+                                                pattern?,
+                                                &vars,
+                                                source_span,
+                                                scope,
+                                            )
+                                        })
+                                        .collect::<Result<Vec<_>, _>>()?
+                                        .into_iter()
+                                        .map(|result| match result {
+                                            ExpandResult::Single(expr) => {
+                                                Ok(Either::Left(std::iter::once(expr)))
+                                            }
+                                            ExpandResult::List(exprs) => {
+                                                Ok(Either::Right(exprs.into_iter()))
+                                            }
+                                            ExpandResult::Block(_) => {
+                                                ast_builder.driver.syntax_error(
+                                                    pattern.span,
+                                                    "cannot use a block repetition pattern outside a block",
+                                                );
+
+                                                Err(ast_builder.syntax_error(pattern.span))
+                                            }
+                                        })
+                                        .collect::<Result<Vec<_>, _>>()?
+                                        .into_iter()
+                                        .flatten())
+                                })
+                                .collect::<Result<Vec<_>, _>>()?
+                                .into_iter()
+                                .flatten()
+                                .collect(),
+                        )
                     }
                     _ => {
                         ast_builder.driver.syntax_error(
@@ -690,32 +800,138 @@ impl<D: Driver> SyntaxPattern<D> {
                     }
                 }
             }
-            SyntaxPattern::Block(pattern) => {
-                vec![parse::Expr {
-                    span: pattern.span.merged_with(source_span),
-                    kind: parse::ExprKind::Block(
-                        pattern
-                            .statements
-                            .into_iter()
-                            .map(|pattern| {
-                                let statement =
-                                    Self::expand(ast_builder, pattern?, vars, source_span, scope)?;
+            SyntaxPattern::Block(pattern) => ExpandResult::Single(parse::Expr {
+                span: pattern.span.merged_with(source_span),
+                kind: parse::ExprKind::Block(
+                    pattern
+                        .statements
+                        .into_iter()
+                        .map(|pattern| {
+                            Self::expand_inner(ast_builder, pattern?, vars, source_span, scope)
+                        })
+                        .collect::<Result<Vec<_>, _>>()?
+                        .into_iter()
+                        .map(|result| match result {
+                            ExpandResult::Single(expr) => Ok(vec![parse::Statement {
+                                lines: vec![parse::ListLine::from(vec![expr])],
+                            }]),
+                            ExpandResult::List(_) => {
+                                ast_builder.driver.syntax_error(
+                                    pattern.span,
+                                    "cannot use a list repetition pattern outside a list",
+                                );
 
-                                Ok(parse::Statement {
-                                    lines: vec![parse::ListLine {
-                                        leading_lines: 0,
-                                        attributes: Vec::new(),
-                                        exprs: match statement.try_into_list_exprs() {
-                                            Ok((_, exprs)) => exprs.collect(),
-                                            Err(statement) => vec![statement],
-                                        },
-                                        comment: None,
-                                    }],
+                                Err(ast_builder.syntax_error(pattern.span))
+                            }
+                            ExpandResult::Block(statements) => Ok(statements),
+                        })
+                        .collect::<Result<Vec<_>, _>>()?
+                        .into_iter()
+                        .flatten()
+                        .collect(),
+                ),
+            }),
+            SyntaxPattern::BlockRepetition(pattern) => {
+                let mut used_vars = HashSet::new();
+                for pattern in pattern.patterns.iter().flatten() {
+                    pattern.collect_used_variables(&mut used_vars);
+                }
+
+                let used_repetitions = used_vars
+                    .into_iter()
+                    .map(|var| match vars.get(&var) {
+                        Some(expr) => Ok(match expr {
+                            SyntaxExpression::Single(_) => None,
+                            SyntaxExpression::Repeated(exprs) => Some((var, exprs)),
+                        }),
+                        None => {
+                            ast_builder.driver.syntax_error(
+                                pattern.span,
+                                format!("cannot find syntax variable `{}`", var.as_ref()),
+                            );
+
+                            Err(ast_builder.syntax_error(pattern.span))
+                        }
+                    })
+                    .collect::<Result<Vec<_>, _>>()?
+                    .into_iter()
+                    .flatten()
+                    .collect::<HashMap<_, _>>();
+
+                match used_repetitions.len() {
+                    0 => {
+                        ast_builder.driver.syntax_error(
+                            pattern.span,
+                            "block repetition must contain a repeated variable",
+                        );
+
+                        return Err(ast_builder.syntax_error(pattern.span));
+                    }
+                    1 => {
+                        let (repeated_var, values) = used_repetitions.into_iter().next().unwrap();
+
+                        ExpandResult::Block(
+                            values
+                                .iter()
+                                .map(|value| {
+                                    let vars = vars
+                                        .clone()
+                                        .into_iter()
+                                        .chain(std::iter::once((
+                                            repeated_var.clone(),
+                                            SyntaxExpression::Single(value.clone()),
+                                        )))
+                                        .collect();
+
+                                    Ok(pattern
+                                        .patterns
+                                        .clone()
+                                        .into_iter()
+                                        .map(|pattern| {
+                                            Self::expand_inner(
+                                                ast_builder,
+                                                pattern?,
+                                                &vars,
+                                                source_span,
+                                                scope,
+                                            )
+                                        })
+                                        .collect::<Result<Vec<_>, _>>()?
+                                        .into_iter()
+                                        .map(|result| match result {
+                                            ExpandResult::Single(expr) => Ok(vec![parse::Statement {
+                                                lines: vec![parse::ListLine::from(vec![expr])],
+                                            }]),
+                                            ExpandResult::List(_) => {
+                                                ast_builder.driver.syntax_error(
+                                                    pattern.span,
+                                                    "cannot use a list repetition pattern outside a list",
+                                                );
+
+                                                Err(ast_builder.syntax_error(pattern.span))
+                                            }
+                                            ExpandResult::Block(statements) => Ok(statements),
+                                        })
+                                        .collect::<Result<Vec<_>, _>>()?
+                                        .into_iter()
+                                        .flatten()
+                                        .collect::<Vec<_>>())
                                 })
-                            })
-                            .collect::<Result<_, _>>()?,
-                    ),
-                }]
+                                .collect::<Result<Vec<_>, _>>()?
+                                .into_iter()
+                                .flatten()
+                                .collect(),
+                        )
+                    }
+                    _ => {
+                        ast_builder.driver.syntax_error(
+                            pattern.span,
+                            "list repetition may not contain multiple repeated variables",
+                        );
+
+                        return Err(ast_builder.syntax_error(pattern.span));
+                    }
+                }
             }
         })
     }
@@ -727,7 +943,8 @@ impl<D: Driver> SyntaxPattern<D> {
             | SyntaxPattern::Number(_)
             | SyntaxPattern::Text(_)
             | SyntaxPattern::Underscore(_)
-            | SyntaxPattern::ListRepetition(_) => {}
+            | SyntaxPattern::ListRepetition(_)
+            | SyntaxPattern::BlockRepetition(_) => {}
             SyntaxPattern::Variable(pattern) => {
                 vars.insert(pattern.name.clone());
             }

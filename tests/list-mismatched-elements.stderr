@@ -1,0 +1,16 @@
+error: mismatched types
+  ┌─ test:1:18
+  │
+1 │ my-list : list 1 "hi" ()
+  │                  ^^^^ expected `Number`, but found `Text`
+  │
+  = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types
+
+error: mismatched types
+  ┌─ test:1:23
+  │
+1 │ my-list : list 1 "hi" ()
+  │                       ^ expected `Number`, but found `()`
+  │
+  = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types
+

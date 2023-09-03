@@ -47,6 +47,15 @@ impl<D: Driver> Format<D> for parse::Expr<D> {
                     .collect::<Result<Vec<_>, _>>()?
                     .join("\n")
             ),
+            parse::ExprKind::RepeatBlock(lines) => format!(
+                "...{{ {} }}",
+                lines
+                    .into_iter()
+                    .flat_map(|line| line.exprs)
+                    .map(|expr| expr.format())
+                    .collect::<Result<Vec<_>, _>>()?
+                    .join(" ")
+            ),
             parse::ExprKind::SourceCode(code) => code,
         })
     }

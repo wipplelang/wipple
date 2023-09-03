@@ -40,6 +40,7 @@ pub enum ExprKind<D: Driver> {
     List(Vec<ListLine<D>>),
     RepeatList(Vec<ListLine<D>>),
     Block(Vec<Statement<D>>),
+    RepeatBlock(Vec<ListLine<D>>),
     SourceCode(String),
 }
 
@@ -93,6 +94,17 @@ impl<D: Driver> Expr<D> {
     ) -> Result<(D::Span, impl Iterator<Item = Expr<D>> + Send), Self> {
         match self.kind {
             ExprKind::RepeatList(lines) => {
+                Ok((self.span, lines.into_iter().flat_map(|line| line.exprs)))
+            }
+            _ => Err(self),
+        }
+    }
+
+    pub fn try_into_block_repetition_exprs(
+        self,
+    ) -> Result<(D::Span, impl Iterator<Item = Expr<D>> + Send), Self> {
+        match self.kind {
+            ExprKind::RepeatBlock(lines) => {
                 Ok((self.span, lines.into_iter().flat_map(|line| line.exprs)))
             }
             _ => Err(self),
@@ -465,6 +477,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
             try_parse_list,
             try_parse_repeat_list,
             try_parse_block,
+            try_parse_repeat_block,
         )
     }
 
@@ -748,6 +761,29 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                 Ok(Expr::new(
                     Span::join(span, end_span),
                     ExprKind::Block(statements),
+                ))
+            }
+            Some(_) => Err(ParseError::WrongTokenType),
+            None => Err(ParseError::EndOfFile),
+        }
+    }
+
+    pub fn try_parse_repeat_block(&mut self) -> Result<Expr<D>, ParseError> {
+        let (span, token) = self.peek();
+
+        match token {
+            Some(Token::RepeatLeftBrace) => {
+                self.consume();
+
+                if let (_, Some(Token::LineBreak)) = self.peek() {
+                    self.consume();
+                }
+
+                let (lines, end_span) = self.parse_list_contents(Token::RightBrace);
+
+                Ok(Expr::new(
+                    Span::join(span, end_span),
+                    ExprKind::RepeatBlock(lines),
                 ))
             }
             Some(_) => Err(ParseError::WrongTokenType),

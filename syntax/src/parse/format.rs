@@ -222,6 +222,28 @@ impl<D: Driver> Expr<D> {
 
                 write!(f, "}}")?;
             }
+            ExprKind::RepeatBlock(lines) => {
+                write!(f, "...{{")?;
+
+                if self.is_multiline(false) {
+                    writeln!(f)?;
+
+                    for (index, line) in lines.iter().enumerate() {
+                        line.fmt(f, indent + 1, true, index == 0)?;
+                        writeln!(f)?;
+                    }
+
+                    write!(f, "{}", INDENT.repeat(indent))?;
+                } else if let Some(line) = lines.first() {
+                    write!(f, " ")?;
+
+                    line.fmt(f, indent, false, false)?;
+
+                    write!(f, " ")?;
+                }
+
+                write!(f, "}}")?;
+            }
             ExprKind::SourceCode(code) => write!(f, "{}", code)?,
         }
 
@@ -237,11 +259,13 @@ impl<D: Driver> Expr<D> {
             | ExprKind::RepeatName(_)
             | ExprKind::Number(_) => false,
             ExprKind::Text(_, raw) | ExprKind::Asset(raw) => raw.as_ref().contains('\n'),
-            ExprKind::List(lines) | ExprKind::RepeatList(lines) => match lines.len() {
-                0 => false,
-                1 => lines.first().unwrap().is_multiline(in_block),
-                _ => true,
-            },
+            ExprKind::List(lines) | ExprKind::RepeatList(lines) | ExprKind::RepeatBlock(lines) => {
+                match lines.len() {
+                    0 => false,
+                    1 => lines.first().unwrap().is_multiline(in_block),
+                    _ => true,
+                }
+            }
             ExprKind::Block(statements) => match statements.len() {
                 0 => false,
                 1 => {
