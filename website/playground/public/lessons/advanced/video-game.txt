@@ -81,4 +81,4 @@ type: text
 locked: true
 ---
 
-Otherwise, everything is up to you! The body of `with-game` is evaluated every frame, so you can use `mutable` at the top level to store any state you might need. [Here](https://wipple.dev/playground/?file=https://raw.githubusercontent.com/wipplelang/playground-examples/main/road-rage.wpl) is a complex game you can use for inspiration (click "Expand" under the `•••` menu to see the code). The full documentation for the game engine is available [here](https://wipple.dev/doc/game.html). Have fun!
+Otherwise, everything is up to you! The body of `with-game` is evaluated every frame, so you can use `mutable` at the top level to store any state you might need. [Here](https://wipple.dev/playground/?file=https://raw.githubusercontent.com/wipplelang/playground-examples/main/road-rage.txt) is a complex game you can use for inspiration (click "Expand" under the `•••` menu to see the code). The full documentation for the game engine is available [here](https://wipple.dev/doc/game.html). Have fun!
