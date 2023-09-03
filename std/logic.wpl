@@ -207,3 +207,13 @@ instance (Equal Float) : b a -> intrinsic "float-equality" a b
 instance (Equal Double) : b a -> intrinsic "double-equality" a b
 instance (Equal ()) : () () -> True
 instance (Equal Boolean) : b a -> if a b (not b)
+
+[help "Returns the larger of the two inputs."]
+[help-group "Logic"]
+max :: A where (Order A) => A -> A -> A
+max : a b -> if (a >= b) a b
+
+[help "Returns the smaller of the two inputs."]
+[help-group "Logic"]
+min :: A where (Order A) => A -> A -> A
+min : a b -> if (a <= b) a b
