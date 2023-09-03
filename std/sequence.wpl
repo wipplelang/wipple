@@ -304,3 +304,29 @@ find-index : found? collection -> {
     }
   }
 }
+
+[help "Returns `True` if a condition is true for all items in a sequence, or `True` if the sequence is empty."]
+[help-group "Collections"]
+all? :: Collection Element where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Boolean
+all? : condition? collection -> {
+  all-helper :: Element => (Element -> Boolean) -> Sequence Element -> Boolean
+  all-helper : condition? seq -> when (next seq) {
+    Some element -> condition? element and all-helper condition? seq
+    None -> True
+  }
+
+  all-helper condition? (As-Sequence collection)
+}
+
+[help "Returns `True` if a condition is true for any item in a sequence, or `False` if the sequence is empty."]
+[help-group "Collections"]
+any? :: Collection Element where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Boolean
+any? : condition? collection -> {
+  any-helper :: Element => (Element -> Boolean) -> Sequence Element -> Boolean
+  any-helper : condition? seq -> when (next seq) {
+    Some element -> condition? element or any-helper condition? seq
+    None -> False
+  }
+
+  any-helper condition? (As-Sequence collection)
+}
