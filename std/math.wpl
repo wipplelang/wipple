@@ -203,3 +203,8 @@ instance (Negate Integer) : n -> intrinsic "negate-integer" n
 instance (Negate Signed) : n -> intrinsic "negate-signed" n
 instance (Negate Float) : n -> intrinsic "negate-float" n
 instance (Negate Double) : n -> intrinsic "negate-double" n
+
+[help "Check if a number is divisible by another number."]
+[help-group "Math"]
+divisible-by? :: N where (Modulo N N N) (Equal N) (Default N) => N -> N -> Boolean
+divisible-by? : a b -> a mod b = Default
