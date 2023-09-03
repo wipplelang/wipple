@@ -160,6 +160,9 @@ impl LanguageServer for Backend {
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 completion_provider: Some(CompletionOptions::default()),
                 document_formatting_provider: Some(OneOf::Left(true)),
+                definition_provider: Some(OneOf::Left(true)),
+                references_provider: Some(OneOf::Left(true)),
+                rename_provider: Some(OneOf::Left(true)),
                 ..ServerCapabilities::default()
             },
         })
@@ -753,6 +756,143 @@ impl LanguageServer for Backend {
         }]))
     }
 
+    async fn goto_definition(
+        &self,
+        params: GotoDefinitionParams,
+    ) -> jsonrpc::Result<Option<GotoDefinitionResponse>> {
+        let document =
+            self.document_from(&params.text_document_position_params.text_document.uri)?;
+
+        let line_col_lookup = document.line_col_lookup();
+        let range_from = |span: Span| {
+            let (start_line, start_col) = line_col_lookup.get(span.primary_start())?;
+            let (end_line, end_col) = line_col_lookup.get(span.primary_end())?;
+
+            Some(Range::new(
+                Position::new(start_line as u32 - 1, start_col as u32 - 1),
+                Position::new(end_line as u32 - 1, end_col as u32 - 1),
+            ))
+        };
+
+        let position = params.text_document_position_params.position;
+
+        let definition_span = match self.declaration_and_uses_at_cursor(
+            &document,
+            (position.line as usize, position.character as usize),
+        ) {
+            Some((span, _)) => span,
+            None => return Ok(None),
+        };
+
+        if definition_span.path.as_str() != document.path.as_str() {
+            return Ok(None);
+        }
+
+        let range = match range_from(definition_span) {
+            Some(position) => position,
+            None => return Ok(None),
+        };
+
+        Ok(Some(GotoDefinitionResponse::Scalar(Location {
+            uri: params.text_document_position_params.text_document.uri,
+            range,
+        })))
+    }
+
+    async fn references(&self, params: ReferenceParams) -> jsonrpc::Result<Option<Vec<Location>>> {
+        let document = self.document_from(&params.text_document_position.text_document.uri)?;
+
+        let line_col_lookup = document.line_col_lookup();
+        let range_from = |span: Span| {
+            let (start_line, start_col) = line_col_lookup.get(span.primary_start())?;
+            let (end_line, end_col) = line_col_lookup.get(span.primary_end())?;
+
+            Some(Range::new(
+                Position::new(start_line as u32 - 1, start_col as u32 - 1),
+                Position::new(end_line as u32 - 1, end_col as u32 - 1),
+            ))
+        };
+
+        let position = params.text_document_position.position;
+
+        let locations = match self.declaration_and_uses_at_cursor(
+            &document,
+            (position.line as usize, position.character as usize),
+        ) {
+            Some((_, uses)) => uses
+                .into_iter()
+                .filter_map(|span| {
+                    if span.path.as_str() != document.path.as_str() {
+                        return None;
+                    }
+
+                    let range = range_from(span)?;
+
+                    Some(Location {
+                        uri: params.text_document_position.text_document.uri.clone(),
+                        range,
+                    })
+                })
+                .collect::<Vec<_>>(),
+            None => return Ok(None),
+        };
+
+        Ok((!locations.is_empty()).then_some(locations))
+    }
+
+    async fn rename(&self, params: RenameParams) -> jsonrpc::Result<Option<WorkspaceEdit>> {
+        let document = self.document_from(&params.text_document_position.text_document.uri)?;
+
+        let line_col_lookup = document.line_col_lookup();
+        let range_from = |span: Span| {
+            let (start_line, start_col) = line_col_lookup.get(span.primary_start())?;
+            let (end_line, end_col) = line_col_lookup.get(span.primary_end())?;
+
+            Some(Range::new(
+                Position::new(start_line as u32 - 1, start_col as u32 - 1),
+                Position::new(end_line as u32 - 1, end_col as u32 - 1),
+            ))
+        };
+
+        let position = params.text_document_position.position;
+
+        let (decl, uses) = match self.declaration_and_uses_at_cursor(
+            &document,
+            (position.line as usize, position.character as usize),
+        ) {
+            Some((decl, uses)) => (decl, uses),
+            None => return Ok(None),
+        };
+
+        let edits = std::iter::once(decl)
+            .chain(uses)
+            .filter_map(|span| {
+                if span.path.as_str() != document.path.as_str() {
+                    return None;
+                }
+
+                range_from(span)
+            })
+            .map(|range| {
+                OneOf::Left(TextEdit {
+                    range,
+                    new_text: params.new_name.clone(),
+                })
+            })
+            .collect::<Vec<_>>();
+
+        Ok(Some(WorkspaceEdit {
+            document_changes: Some(DocumentChanges::Edits(vec![TextDocumentEdit {
+                text_document: OptionalVersionedTextDocumentIdentifier {
+                    uri: params.text_document_position.text_document.uri.clone(),
+                    version: None,
+                },
+                edits,
+            }])),
+            ..Default::default()
+        }))
+    }
+
     async fn shutdown(&self) -> jsonrpc::Result<()> {
         Ok(())
     }
@@ -896,5 +1036,70 @@ impl Backend {
         self.client
             .publish_diagnostics(uri, diagnostics, None)
             .await;
+    }
+
+    fn declaration_and_uses_at_cursor(
+        &self,
+        document: &Document,
+        cursor: (usize, usize),
+    ) -> Option<(Span, Vec<Span>)> {
+        let offset_lookup = document.offset_lookup();
+
+        let position = offset_lookup.get(cursor.0, cursor.1);
+        let cursor_span = Span::new(document.path, position..position);
+
+        let within_cursor = |mut span: Span| {
+            let mut cursor_span = cursor_span;
+            cursor_span.path = FilePath::Virtual(InternedString::new(cursor_span.path.as_str()));
+            span.path = FilePath::Virtual(InternedString::new(span.path.as_str()));
+            cursor_span.is_subspan_of(span)
+        };
+
+        macro_rules! find {
+            ($kind:ident) => {{
+                for decl in document.program.declarations.$kind.values() {
+                    for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
+                        if !within_cursor(span.original()) {
+                            continue;
+                        }
+
+                        return Some((
+                            decl.span.original(),
+                            decl.uses.iter().map(|span| span.original()).collect(),
+                        ));
+                    }
+                }
+            }};
+            ($($kind:ident),* $(,)?) => {
+                $(find!($kind);)*
+            }
+        }
+
+        find!(
+            syntaxes,
+            types,
+            traits,
+            constants,
+            builtin_types,
+            type_parameters,
+            variables,
+            builtin_syntaxes,
+        );
+
+        for decl in document
+            .program
+            .declarations
+            .instances
+            .values()
+            .flat_map(|instances| instances.values())
+        {
+            if !within_cursor(decl.span.original()) {
+                continue;
+            }
+
+            return Some((decl.span.original(), Vec::new()));
+        }
+
+        None
     }
 }
