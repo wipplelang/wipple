@@ -8,6 +8,7 @@ use "mutable"
 -- typechecking the elements, so the error message is on the elements that don't
 -- belong rather than on the resultant list.
 [private]
+[diagnostic "collection-elements"]
 build-list! :: A => Mutable (List A) -> A -> ()
 build-list! : l e -> l . append! e
 

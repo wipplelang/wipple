@@ -450,11 +450,13 @@ impl LanguageItems {
 #[non_exhaustive]
 pub struct DiagnosticItems {
     pub accepts_text: Vec<ConstantId>,
+    pub collection_elements: Vec<ConstantId>,
 }
 
 impl DiagnosticItems {
     fn merge(&mut self, other: DiagnosticItems) {
         self.accepts_text.extend(other.accepts_text);
+        self.collection_elements.extend(other.collection_elements);
     }
 }
 
@@ -1922,6 +1924,28 @@ impl Lowerer {
                             };
 
                             self.file_info.diagnostic_items.accepts_text.push(constant);
+                        }
+                        ast::DiagnosticItemStatementAttributeKind::CollectionElements => {
+                            let constant = match scope_value {
+                                Some(AnyDeclaration::Constant(id, _)) => id,
+                                _ => {
+                                    self.compiler.add_error(
+                                        "`unique-elements` diagnostic item expects a constant",
+                                        vec![Note::primary(
+                                            decl.span,
+                                            "expected constant declaration here",
+                                        )],
+                                        "",
+                                    );
+
+                                    break 'diagnostic_items;
+                                }
+                            };
+
+                            self.file_info
+                                .diagnostic_items
+                                .collection_elements
+                                .push(constant);
                         }
                     }
                 }

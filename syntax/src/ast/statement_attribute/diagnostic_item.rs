@@ -26,6 +26,7 @@ impl<D: Driver> DiagnosticItemStatementAttribute<D> {
 #[strum(serialize_all = "kebab-case")]
 pub enum DiagnosticItemStatementAttributeKind {
     AcceptsText,
+    CollectionElements,
 }
 
 impl<D: Driver> Format<D> for DiagnosticItemStatementAttribute<D> {

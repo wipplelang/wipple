@@ -5605,6 +5605,34 @@ impl Typechecker {
                     notes.push(note);
                 }
 
+                if let Some(id) = error.expr {
+                    if let Some((func, _)) = self.start_of_call_chain_for(id) {
+                        let mut constant_id = None;
+                        func.traverse(|expr| {
+                            if let ExpressionKind::Constant(id) = &expr.kind {
+                                constant_id = Some(id);
+                            }
+                        });
+
+                        if let Some(id) = constant_id {
+                            if let Some((Some((_, constant)), _)) = self.items.get(id) {
+                                if self
+                                    .entrypoint
+                                    .info
+                                    .diagnostic_items
+                                    .collection_elements
+                                    .contains(constant)
+                                {
+                                    notes.push(Note::secondary(
+                                        error.span,
+                                        "this element must have the same type as the other elements",
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+
                 self.compiler
                     .error_with_trace("mismatched types", notes, "mismatched-types", error.trace)
                     .fix(fix)
@@ -5761,5 +5789,12 @@ impl Typechecker {
     fn expr_for(&mut self, id: ExpressionId) -> Option<Expression> {
         self.root_for(id.owner)
             .and_then(|expr| expr.as_root_query(id).cloned())
+    }
+
+    fn start_of_call_chain_for(&mut self, id: ExpressionId) -> Option<(Expression, Expression)> {
+        self.root_for(id.owner).and_then(|expr| {
+            expr.as_root_query_start_of_call_chain(id)
+                .map(|(func, input)| (func.clone(), input.clone()))
+        })
     }
 }
