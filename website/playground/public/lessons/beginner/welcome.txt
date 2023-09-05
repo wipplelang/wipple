@@ -19,15 +19,14 @@ Welcome to the Wipple Playground! The Wipple Playground is a place where you can
 
 ### Code boxes
 
-The box below contains Wipple code. You can edit the code in the box at any time. When you're going through the lessons, make sure to change the code and see what it does. Go ahead and type your name into the prompt!
+The box below contains Wipple code. You can edit the code in the box at any time. When you're going through the lessons, make sure to change the code and see what it does. Try changing the greeting in the code box below!
 
 ---
 id: iIJMIDrl
 type: code
 ---
 
-name : prompt "What is your name?"
-show (format "Welcome to Wipple, _!" name)
+show "Hello, {{NAME}}!"
 
 ---
 id: ynZvaF_J
@@ -37,7 +36,7 @@ locked: true
 
 ### Beginner mode
 
-By default, the Wipple Playground is in beginner mode. Beginner mode highlights matching parentheses and braces to make it easier to see the structure of your code. You can always turn off beginner mode by clicking the button in the bottom left of the screen.
+By default, the Wipple Playground is in beginner mode. Beginner mode highlights matching parentheses and braces to make it easier to see the structure of your code. You can always turn off beginner mode by clicking Settings in the top left of the screen.
 
 ### Errors
 
@@ -84,6 +83,6 @@ To collaborate with others on your code, click the three dots in the top right o
 
 ### Sharing your code with others
 
-To share your creation with others, click the three dots next to the beginner mode button at the bottom of the screen, and select Copy Link. Then you can paste the link wherever you want! Visiting the link will restore your code.
+To share your creation with others, click the Share button in the top left of the screen, and select Copy Link. Then you can paste the link wherever you want! Visiting the link will restore your code.
 
 Alright, let's start learning Wipple — click the right arrow to continue!

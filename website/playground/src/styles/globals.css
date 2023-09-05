@@ -24,10 +24,6 @@ code {
     font-variant-ligatures: none;
 }
 
-.full-height-container {
-    min-height: calc(100vh - 4.25rem);
-}
-
 .sortable-helper {
     @apply z-10;
 }

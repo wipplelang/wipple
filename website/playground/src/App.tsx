@@ -22,11 +22,19 @@ import LockIcon from "@mui/icons-material/Lock";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
 import CodeIcon from "@mui/icons-material/Code";
 import CodeOffIcon from "@mui/icons-material/CodeOff";
-import PopupState, { bindMenu, bindTrigger } from "material-ui-popup-state";
-import { CircularProgress, Menu, MenuItem, debounce } from "@mui/material";
+import PopupState, { bindDialog, bindMenu, bindTrigger } from "material-ui-popup-state";
+import {
+    Button,
+    Checkbox,
+    CircularProgress,
+    Dialog,
+    Menu,
+    MenuItem,
+    TextField,
+    debounce,
+} from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import LinkIcon from "@mui/icons-material/Link";
 import DataObjectIcon from "@mui/icons-material/DataObject";
 import ListAltIcon from "@mui/icons-material/ListAlt";
@@ -49,6 +57,7 @@ interface PageLink {
 
 export interface Settings {
     beginner?: boolean;
+    name?: string;
 }
 
 interface LessonInfo {
@@ -115,6 +124,15 @@ const App = () => {
                         previous?: PageLink;
                         next?: PageLink;
                     } = convertLesson(data);
+
+                    file.sections = file.sections.map(
+                        produce((section) => {
+                            section.value = section.value.replaceAll(
+                                "{{NAME}}",
+                                settings.name || "Wipple"
+                            );
+                        })
+                    );
 
                     setLessonInfo(file.lesson);
                     setSections(file.sections);
@@ -196,18 +214,143 @@ const App = () => {
 
     return (
         <main>
-            <div className="full-height-container flex flex-col p-6 mb-8 mx-auto max-w-4xl">
-                <div className="flex items-center justify-between pb-6">
-                    <a
-                        href="/playground"
-                        className="flex items-center gap-3 text-black dark:text-white"
-                    >
-                        <img src="./images/logo.svg" alt="Wipple Playground" className="h-10" />
-                        <h1 className="hidden sm:block font-semibold">Wipple Playground</h1>
-                    </a>
+            <div className="h-screen">
+                <div className="fixed top-0 left-0 right-0 z-50">
+                    <div className="flex items-center gap-4 p-4 flex-shrink-0 overflow-x-scroll bg-white dark:bg-black text-gray-500 dark:text-gray-400">
+                        <a href="/" target="_blank" className="flex-shrink-0">
+                            <img
+                                src="./images/logo.svg"
+                                alt="Wipple Playground"
+                                className="w-6 h-6"
+                            />
+                        </a>
 
-                    <div className="flex gap-4 text-gray-500 dark:text-gray-400">
+                        <a href="/playground" target="_blank">
+                            New
+                        </a>
+
                         <a href="?lesson=toc">Learn</a>
+
+                        <PopupState variant="popover">
+                            {(popupState) => (
+                                <>
+                                    <button {...bindTrigger(popupState)}>
+                                        <p>Share</p>
+                                    </button>
+
+                                    <Menu {...bindMenu(popupState)} sx={{ marginTop: 1 }}>
+                                        <MenuItem
+                                            onClick={async () => {
+                                                await navigator.clipboard.writeText(
+                                                    window.location.href
+                                                );
+                                                popupState.close();
+                                            }}
+                                        >
+                                            <LinkIcon sx={{ marginRight: 1 }} /> Copy Link
+                                        </MenuItem>
+
+                                        <MenuItem
+                                            onClick={async () => {
+                                                const json = JSON.stringify({ sections }, null, 4);
+                                                await navigator.clipboard.writeText(json);
+                                                popupState.close();
+                                            }}
+                                        >
+                                            <DataObjectIcon sx={{ marginRight: 1 }} /> Copy JSON
+                                        </MenuItem>
+
+                                        <MenuItem
+                                            onClick={async () => {
+                                                let text = "";
+                                                for (const section of sections) {
+                                                    text += "---\n";
+                                                    for (const [key, value] of Object.entries(
+                                                        section
+                                                    )) {
+                                                        if (key === "value" || value == null) {
+                                                            continue;
+                                                        }
+
+                                                        text += `${key}: ${value}\n`;
+                                                    }
+
+                                                    text += `---\n\n${section.value}\n\n`;
+                                                }
+
+                                                await navigator.clipboard.writeText(text);
+                                                popupState.close();
+                                            }}
+                                        >
+                                            <ListAltIcon sx={{ marginRight: 1 }} /> Copy text
+                                        </MenuItem>
+                                    </Menu>
+                                </>
+                            )}
+                        </PopupState>
+
+                        <PopupState variant="popover">
+                            {(popupState) => (
+                                <>
+                                    <button {...bindTrigger(popupState)}>Settings</button>
+
+                                    <Dialog {...bindDialog(popupState)} fullWidth>
+                                        <div className="flex flex-col gap-8 p-8 text-black dark:text-white">
+                                            <h1 className="text-2xl font-semibold w-full text-center">
+                                                Settings
+                                            </h1>
+
+                                            <div className="flex flex-row gap-2">
+                                                <div className="flex flex-col flex-1">
+                                                    <p className="font-semibold">Beginner mode</p>
+                                                    <p className="opacity-50">
+                                                        Highlight code blocks and hide errors to
+                                                        make it easier to focus.
+                                                    </p>
+                                                </div>
+
+                                                <Checkbox
+                                                    checked={settings.beginner ?? true}
+                                                    onChange={(_e, checked) => {
+                                                        setSettings(
+                                                            produce((settings) => {
+                                                                settings.beginner = checked;
+                                                            })
+                                                        );
+                                                    }}
+                                                />
+                                            </div>
+
+                                            <div className="flex flex-col gap-2">
+                                                <div className="flex flex-col flex-1">
+                                                    <p className="font-semibold">Your name</p>
+                                                    <p className="opacity-50">
+                                                        Use your name in code examples throughout
+                                                        Learn Wipple.
+                                                    </p>
+                                                </div>
+
+                                                <TextField
+                                                    value={settings.name}
+                                                    placeholder="Wipple"
+                                                    onChange={(e) => {
+                                                        setSettings(
+                                                            produce((settings) => {
+                                                                settings.name = e.target.value;
+                                                            })
+                                                        );
+                                                    }}
+                                                />
+                                            </div>
+
+                                            <Button variant="contained" onClick={popupState.close}>
+                                                Done
+                                            </Button>
+                                        </div>
+                                    </Dialog>
+                                </>
+                            )}
+                        </PopupState>
 
                         <a target="_blank" href="https://forms.gle/ijfLtvJ5FT6heJsD7">
                             Feedback
@@ -215,7 +358,7 @@ const App = () => {
                     </div>
                 </div>
 
-                <div className="flex flex-col flex-1">
+                <div className="flex flex-col flex-1 p-6 pt-14 mx-auto w-screen max-w-4xl">
                     {isLoading ? (
                         <div className="flex flex-col flex-1 items-center justify-center">
                             <CircularProgress />
@@ -252,6 +395,17 @@ const App = () => {
                                 <a className="welcome-button" href="?lesson=toc">
                                     Learn Wipple
                                 </a>
+
+                                <div className="text-gray-400 dark:text-gray-500 mt-4">
+                                    Made by{" "}
+                                    <a
+                                        target="_blank"
+                                        href="https://gramer.dev"
+                                        className="text-gray-500 dark:text-gray-400"
+                                    >
+                                        Wilson Gramer
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     ) : (
@@ -424,7 +578,7 @@ const App = () => {
                         </div>
                     )}
 
-                    <div className="flex my-5 gap-4">
+                    <div className="flex mt-5 gap-4">
                         <div className="flex-1">
                             {previousPage && (
                                 <a href={previousPage.link}>
@@ -459,103 +613,9 @@ const App = () => {
                     </div>
                 </div>
             </div>
-
-            <div className="fixed bottom-0 flex flex-col gap-4 w-full z-50">
-                <div className="w-full h-4 -mb-4 z-50 bg-gradient-to-t from-white dark:from-gray-900 to-transparent"></div>
-
-                <div className="flex items-center justify-between w-full max-w-4xl mx-auto text-sm px-6 py-4 bg-white dark:bg-gray-900">
-                    <div className="flex items-center gap-4">
-                        <button
-                            className={`px-1.5 py-0.5 rounded-md ${
-                                settings.beginner ?? true
-                                    ? "bg-blue-500 text-white"
-                                    : "bg-gray-200 dark:bg-gray-400 text-gray-500 dark:text-gray-800"
-                            }`}
-                            onClick={() => {
-                                setSettings(
-                                    produce((settings) => {
-                                        settings.beginner = !(settings.beginner ?? true);
-                                    })
-                                );
-                            }}
-                        >
-                            Beginner mode
-                        </button>
-
-                        <OptionsButton sections={sections} />
-                    </div>
-
-                    <div className="text-gray-400 dark:text-gray-500">
-                        Made by{" "}
-                        <a
-                            target="_blank"
-                            href="https://gramer.dev"
-                            className="text-gray-500 dark:text-gray-400"
-                        >
-                            Wilson Gramer
-                        </a>
-                    </div>
-                </div>
-            </div>
         </main>
     );
 };
-
-const OptionsButton = (props: { sections: Section[] }) => (
-    <PopupState variant="popover">
-        {(popupState) => (
-            <>
-                <button {...bindTrigger(popupState)}>
-                    <MoreHorizIcon className="text-gray-500 dark:text-gray-400" />
-                </button>
-
-                <Menu {...bindMenu(popupState)}>
-                    <MenuItem
-                        onClick={async () => {
-                            await navigator.clipboard.writeText(window.location.href);
-                            popupState.close();
-                        }}
-                    >
-                        <LinkIcon sx={{ marginRight: 1 }} /> Copy Link
-                    </MenuItem>
-
-                    <MenuItem
-                        onClick={async () => {
-                            const json = JSON.stringify({ sections: props.sections }, null, 4);
-                            await navigator.clipboard.writeText(json);
-                            popupState.close();
-                        }}
-                    >
-                        <DataObjectIcon sx={{ marginRight: 1 }} /> Copy JSON
-                    </MenuItem>
-
-                    <MenuItem
-                        onClick={async () => {
-                            let text = "";
-                            for (const section of props.sections) {
-                                text += "---\n";
-                                for (const [key, value] of Object.entries(section)) {
-                                    if (key === "value" || value == null) {
-                                        continue;
-                                    }
-
-                                    text += `${key}: ${value}\n`;
-                                }
-
-                                text += `---\n\n${section.value}\n\n`;
-                            }
-
-                            await navigator.clipboard.writeText(text);
-                            popupState.close();
-                        }}
-                    >
-                        <ListAltIcon sx={{ marginRight: 1 }} /> Copy text
-                    </MenuItem>
-                </Menu>
-            </>
-        )}
-    </PopupState>
-);
 
 const SideMenu = (props: {
     grabberProps?: any;
