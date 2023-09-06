@@ -34,6 +34,17 @@ Maybe : Value => type {
   Some Value
 }
 
+A where (Equal A) => instance (Equal (Maybe A)) : a b -> when a {
+  Some x -> when b {
+    Some y -> x = y
+    None -> False
+  }
+  None -> when b {
+    Some _ -> False
+    None -> True
+  }
+}
+
 [help "Represents the success or failure of an operation."]
 [help-group "Utilities"]
 [on-mismatch Success "try handling the case where the `Result` is `Error`, eg. using `when`, `try` or `expect`"]
