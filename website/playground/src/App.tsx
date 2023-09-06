@@ -214,402 +214,389 @@ const App = () => {
 
     return (
         <main>
-            <div className="h-screen">
-                <div className="fixed top-0 left-0 right-0 z-50">
-                    <div className="flex items-center gap-4 p-4 flex-shrink-0 overflow-x-scroll bg-white dark:bg-black text-gray-500 dark:text-gray-400">
-                        <a href="/" target="_blank" className="flex-shrink-0">
-                            <img
-                                src="./images/logo.svg"
-                                alt="Wipple Playground"
-                                className="w-6 h-6"
-                            />
-                        </a>
+            <div className="fixed top-0 left-0 right-0 z-50">
+                <div className="flex items-center gap-4 p-4 flex-shrink-0 overflow-x-scroll bg-white dark:bg-black text-gray-500 dark:text-gray-400">
+                    <a href="/" target="_blank" className="flex-shrink-0">
+                        <img src="./images/logo.svg" alt="Wipple Playground" className="w-6 h-6" />
+                    </a>
 
-                        <a href="/playground" target="_blank">
-                            New
-                        </a>
+                    <a href="/playground" target="_blank">
+                        New
+                    </a>
 
-                        <a href="?lesson=toc">Learn</a>
+                    <a href="?lesson=toc">Learn</a>
 
-                        <PopupState variant="popover">
-                            {(popupState) => (
-                                <>
-                                    <button {...bindTrigger(popupState)}>
-                                        <p>Share</p>
-                                    </button>
-
-                                    <Menu {...bindMenu(popupState)} sx={{ marginTop: 1 }}>
-                                        <MenuItem
-                                            onClick={async () => {
-                                                await navigator.clipboard.writeText(
-                                                    window.location.href
-                                                );
-                                                popupState.close();
-                                            }}
-                                        >
-                                            <LinkIcon sx={{ marginRight: 1 }} /> Copy Link
-                                        </MenuItem>
-
-                                        <MenuItem
-                                            onClick={async () => {
-                                                const json = JSON.stringify({ sections }, null, 4);
-                                                await navigator.clipboard.writeText(json);
-                                                popupState.close();
-                                            }}
-                                        >
-                                            <DataObjectIcon sx={{ marginRight: 1 }} /> Copy JSON
-                                        </MenuItem>
-
-                                        <MenuItem
-                                            onClick={async () => {
-                                                let text = "";
-                                                for (const section of sections) {
-                                                    text += "---\n";
-                                                    for (const [key, value] of Object.entries(
-                                                        section
-                                                    )) {
-                                                        if (key === "value" || value == null) {
-                                                            continue;
-                                                        }
-
-                                                        text += `${key}: ${value}\n`;
-                                                    }
-
-                                                    text += `---\n\n${section.value}\n\n`;
-                                                }
-
-                                                await navigator.clipboard.writeText(text);
-                                                popupState.close();
-                                            }}
-                                        >
-                                            <ListAltIcon sx={{ marginRight: 1 }} /> Copy text
-                                        </MenuItem>
-                                    </Menu>
-                                </>
-                            )}
-                        </PopupState>
-
-                        <PopupState variant="popover">
-                            {(popupState) => (
-                                <>
-                                    <button {...bindTrigger(popupState)}>Settings</button>
-
-                                    <Dialog {...bindDialog(popupState)} fullWidth>
-                                        <div className="flex flex-col gap-8 p-8 text-black dark:text-white">
-                                            <h1 className="text-2xl font-semibold w-full text-center">
-                                                Settings
-                                            </h1>
-
-                                            <div className="flex flex-row gap-2">
-                                                <div className="flex flex-col flex-1">
-                                                    <p className="font-semibold">Beginner mode</p>
-                                                    <p className="opacity-50">
-                                                        Highlight code blocks and hide errors to
-                                                        make it easier to focus.
-                                                    </p>
-                                                </div>
-
-                                                <Checkbox
-                                                    checked={settings.beginner ?? true}
-                                                    onChange={(_e, checked) => {
-                                                        setSettings(
-                                                            produce((settings) => {
-                                                                settings.beginner = checked;
-                                                            })
-                                                        );
-                                                    }}
-                                                />
-                                            </div>
-
-                                            <div className="flex flex-col gap-2">
-                                                <div className="flex flex-col flex-1">
-                                                    <p className="font-semibold">Your name</p>
-                                                    <p className="opacity-50">
-                                                        Use your name in code examples throughout
-                                                        Learn Wipple.
-                                                    </p>
-                                                </div>
-
-                                                <TextField
-                                                    value={settings.name}
-                                                    placeholder="Wipple"
-                                                    onChange={(e) => {
-                                                        setSettings(
-                                                            produce((settings) => {
-                                                                settings.name = e.target.value;
-                                                            })
-                                                        );
-                                                    }}
-                                                />
-                                            </div>
-
-                                            <Button variant="contained" onClick={popupState.close}>
-                                                Done
-                                            </Button>
-                                        </div>
-                                    </Dialog>
-                                </>
-                            )}
-                        </PopupState>
-
-                        <a target="_blank" href="https://forms.gle/ijfLtvJ5FT6heJsD7">
-                            Feedback
-                        </a>
-                    </div>
-                </div>
-
-                <div className="flex flex-col flex-1 p-6 pt-14 mx-auto w-screen max-w-4xl">
-                    {isLoading ? (
-                        <div className="flex flex-col flex-1 items-center justify-center">
-                            <CircularProgress />
-                        </div>
-                    ) : sections.length === 0 ? (
-                        <div className="flex flex-col flex-1 gap-4 my-8 items-center justify-center text-center max-w-sm mx-auto">
-                            <img src="./images/logo.svg" alt="Wipple Playground" className="h-20" />
-
-                            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                                Welcome to Wipple
-                            </h1>
-
-                            <p className="xl text-gray-600 dark:text-gray-500">
-                                Learn to code with Wipple — make drawings, play music, explore math,
-                                and more.
-                            </p>
-
-                            <div className="flex flex-col gap-4 items-stretch w-full">
-                                <button
-                                    className="welcome-button"
-                                    onClick={() => {
-                                        setSections([
-                                            {
-                                                id: nanoid(8),
-                                                type: "code",
-                                                value: "",
-                                            },
-                                        ]);
-                                    }}
-                                >
-                                    Start coding
+                    <PopupState variant="popover">
+                        {(popupState) => (
+                            <>
+                                <button {...bindTrigger(popupState)}>
+                                    <p>Share</p>
                                 </button>
 
-                                <a className="welcome-button" href="?lesson=toc">
-                                    Learn Wipple
-                                </a>
-
-                                <div className="text-gray-400 dark:text-gray-500 mt-4">
-                                    Made by{" "}
-                                    <a
-                                        target="_blank"
-                                        href="https://gramer.dev"
-                                        className="text-gray-500 dark:text-gray-400"
+                                <Menu {...bindMenu(popupState)} sx={{ marginTop: 1 }}>
+                                    <MenuItem
+                                        onClick={async () => {
+                                            await navigator.clipboard.writeText(
+                                                window.location.href
+                                            );
+                                            popupState.close();
+                                        }}
                                     >
-                                        Wilson Gramer
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col gap-4 w-full">
-                            {lessonInfo && (
-                                <div className="relative flex items-center justify-center prose dark:prose-invert max-w-none min-h-[30vh] border-2 border-gray-100 dark:border-gray-700 rounded-lg">
-                                    <img
-                                        src={lessonInfo.image ?? "/playground/images/lesson-bg.svg"}
-                                        className="absolute inset-0 w-full h-full object-cover -z-10"
-                                    />
+                                        <LinkIcon sx={{ marginRight: 1 }} /> Copy Link
+                                    </MenuItem>
 
-                                    <div className="flex flex-col items-center justify-center gap-2 m-4 prose-headings:m-0 text-center">
-                                        <h1>{lessonInfo.title}</h1>
+                                    <MenuItem
+                                        onClick={async () => {
+                                            const json = JSON.stringify({ sections }, null, 4);
+                                            await navigator.clipboard.writeText(json);
+                                            popupState.close();
+                                        }}
+                                    >
+                                        <DataObjectIcon sx={{ marginRight: 1 }} /> Copy JSON
+                                    </MenuItem>
 
-                                        {lessonInfo.subtitle && (
-                                            <h3 className="opacity-50">{lessonInfo.subtitle}</h3>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
+                                    <MenuItem
+                                        onClick={async () => {
+                                            let text = "";
+                                            for (const section of sections) {
+                                                text += "---\n";
+                                                for (const [key, value] of Object.entries(
+                                                    section
+                                                )) {
+                                                    if (key === "value" || value == null) {
+                                                        continue;
+                                                    }
 
-                            <DndContext
-                                sensors={sensors}
-                                collisionDetection={closestCenter}
-                                onDragEnd={(event) => {
-                                    setActiveId(undefined);
-                                    const { active, over } = event;
+                                                    text += `${key}: ${value}\n`;
+                                                }
 
-                                    if (active.id !== over?.id) {
-                                        setSections((items) => {
-                                            const oldIndex = items.findIndex(
-                                                (s) => s.id === active.id
-                                            );
-                                            const newIndex = items.findIndex(
-                                                (s) => s.id === over?.id
-                                            );
-
-                                            return arrayMove(items, oldIndex, newIndex);
-                                        });
-                                    }
-                                }}
-                                onDragStart={(event) => {
-                                    setActiveId(event.active.id as string);
-                                }}
-                                autoScroll
-                            >
-                                <SortableContext
-                                    items={sections}
-                                    strategy={verticalListSortingStrategy}
-                                >
-                                    {sections.map((section, index) => (
-                                        <SortableItem
-                                            key={section.id}
-                                            id={section.id}
-                                            onPressAdd={(type) => {
-                                                setSections(
-                                                    produce((sections) => {
-                                                        sections.push({
-                                                            id: nanoid(8),
-                                                            type,
-                                                            value: "",
-                                                            locked:
-                                                                type === "text" ? false : undefined,
-                                                        });
-                                                    })
-                                                );
-                                            }}
-                                            onPressRemove={
-                                                sections.length > 1
-                                                    ? () => {
-                                                          setSections(
-                                                              produce((sections) => {
-                                                                  sections.splice(index, 1);
-                                                              })
-                                                          );
-                                                      }
-                                                    : undefined
+                                                text += `---\n\n${section.value}\n\n`;
                                             }
-                                            lock={
-                                                section.type === "text"
-                                                    ? {
-                                                          isLocked: section.locked ?? false,
-                                                          onChangeLocked: (locked) => {
-                                                              setSections(
-                                                                  produce((sections) => {
-                                                                      const section =
-                                                                          sections[index];
 
-                                                                      if (section.type !== "text") {
-                                                                          throw new Error(
-                                                                              `section mismatch: ${JSON.stringify(
-                                                                                  section,
-                                                                                  null,
-                                                                                  4
-                                                                              )}`
-                                                                          );
-                                                                      }
+                                            await navigator.clipboard.writeText(text);
+                                            popupState.close();
+                                        }}
+                                    >
+                                        <ListAltIcon sx={{ marginRight: 1 }} /> Copy text
+                                    </MenuItem>
+                                </Menu>
+                            </>
+                        )}
+                    </PopupState>
 
-                                                                      section.locked = locked;
-                                                                  })
-                                                              );
-                                                          },
-                                                      }
-                                                    : undefined
-                                            }
-                                            lint={
-                                                section.type === "code"
-                                                    ? {
-                                                          lintEnabled: section.lint ?? true,
-                                                          onChangeLintEnabled: (lint) => {
-                                                              setSections(
-                                                                  produce((sections) => {
-                                                                      const section =
-                                                                          sections[index];
+                    <PopupState variant="popover">
+                        {(popupState) => (
+                            <>
+                                <button {...bindTrigger(popupState)}>Settings</button>
 
-                                                                      if (section.type !== "code") {
-                                                                          throw new Error(
-                                                                              `section mismatch: ${JSON.stringify(
-                                                                                  section,
-                                                                                  null,
-                                                                                  4
-                                                                              )}`
-                                                                          );
-                                                                      }
+                                <Dialog {...bindDialog(popupState)} fullWidth>
+                                    <div className="flex flex-col gap-8 p-8 text-black dark:text-white">
+                                        <h1 className="text-2xl font-semibold w-full text-center">
+                                            Settings
+                                        </h1>
 
-                                                                      section.lint = lint;
-                                                                  })
-                                                              );
-                                                          },
-                                                      }
-                                                    : undefined
-                                            }
-                                        >
-                                            <SectionContainer
-                                                section={section}
-                                                autoFocus={index === 0}
-                                                settings={settings}
-                                                onChange={(newSection) => {
-                                                    setSections(
-                                                        produce((sections) => {
-                                                            newSection(
-                                                                // HACK: index doesn't work
-                                                                sections.find(
-                                                                    (s) => s.id === section.id
-                                                                )!
-                                                            );
+                                        <div className="flex flex-row gap-2">
+                                            <div className="flex flex-col flex-1">
+                                                <p className="font-semibold">Beginner mode</p>
+                                                <p className="opacity-50">
+                                                    Highlight code blocks and hide errors to make it
+                                                    easier to focus.
+                                                </p>
+                                            </div>
+
+                                            <Checkbox
+                                                checked={settings.beginner ?? true}
+                                                onChange={(_e, checked) => {
+                                                    setSettings(
+                                                        produce((settings) => {
+                                                            settings.beginner = checked;
                                                         })
                                                     );
                                                 }}
                                             />
-                                        </SortableItem>
-                                    ))}
-                                </SortableContext>
+                                        </div>
 
-                                <DragOverlay>
-                                    {activeId && (
-                                        <div className="flex items-center">
-                                            <SideMenu />
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex flex-col flex-1">
+                                                <p className="font-semibold">Your name</p>
+                                                <p className="opacity-50">
+                                                    Use your name in code examples throughout Learn
+                                                    Wipple.
+                                                </p>
+                                            </div>
 
-                                            <SectionContainer
-                                                section={sections.find((s) => s.id === activeId)!}
-                                                autoFocus={false}
-                                                settings={settings}
-                                                onChange={() => {}}
+                                            <TextField
+                                                value={settings.name}
+                                                placeholder="Wipple"
+                                                onChange={(e) => {
+                                                    setSettings(
+                                                        produce((settings) => {
+                                                            settings.name = e.target.value;
+                                                        })
+                                                    );
+                                                }}
                                             />
                                         </div>
+
+                                        <Button variant="contained" onClick={popupState.close}>
+                                            Done
+                                        </Button>
+                                    </div>
+                                </Dialog>
+                            </>
+                        )}
+                    </PopupState>
+
+                    <a target="_blank" href="https://forms.gle/ijfLtvJ5FT6heJsD7">
+                        Feedback
+                    </a>
+                </div>
+            </div>
+
+            <div className="flex flex-col flex-1 p-6 pt-20 mx-auto w-screen max-w-4xl h-screen">
+                {isLoading ? (
+                    <div className="flex flex-col flex-1 items-center justify-center">
+                        <CircularProgress />
+                    </div>
+                ) : sections.length === 0 ? (
+                    <div className="flex flex-col flex-1 gap-4 my-8 items-center justify-center text-center max-w-sm mx-auto">
+                        <img src="./images/logo.svg" alt="Wipple Playground" className="h-20" />
+
+                        <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                            Welcome to Wipple
+                        </h1>
+
+                        <p className="xl text-gray-600 dark:text-gray-500">
+                            Learn to code with Wipple — make drawings, play music, explore math, and
+                            more.
+                        </p>
+
+                        <div className="flex flex-col gap-4 items-stretch w-full">
+                            <button
+                                className="welcome-button"
+                                onClick={() => {
+                                    setSections([
+                                        {
+                                            id: nanoid(8),
+                                            type: "code",
+                                            value: "",
+                                        },
+                                    ]);
+                                }}
+                            >
+                                Start coding
+                            </button>
+
+                            <a className="welcome-button" href="?lesson=toc">
+                                Learn Wipple
+                            </a>
+
+                            <div className="text-gray-400 dark:text-gray-500 mt-4">
+                                Made by{" "}
+                                <a
+                                    target="_blank"
+                                    href="https://gramer.dev"
+                                    className="text-gray-500 dark:text-gray-400"
+                                >
+                                    Wilson Gramer
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex flex-col gap-4 w-full">
+                        {lessonInfo && (
+                            <div className="relative flex items-center justify-center prose dark:prose-invert max-w-none min-h-[30vh] border-2 border-gray-100 dark:border-gray-700 rounded-lg">
+                                <img
+                                    src={lessonInfo.image ?? "/playground/images/lesson-bg.svg"}
+                                    className="absolute inset-0 w-full h-full object-cover -z-10"
+                                />
+
+                                <div className="flex flex-col items-center justify-center gap-2 m-4 prose-headings:m-0 text-center">
+                                    <h1>{lessonInfo.title}</h1>
+
+                                    {lessonInfo.subtitle && (
+                                        <h3 className="opacity-50">{lessonInfo.subtitle}</h3>
                                     )}
-                                </DragOverlay>
-                            </DndContext>
-                        </div>
-                    )}
+                                </div>
+                            </div>
+                        )}
 
-                    <div className="flex mt-5 gap-4">
-                        <div className="flex-1">
-                            {previousPage && (
-                                <a href={previousPage.link}>
-                                    <div
-                                        className="p-4 rounded-md border-sky-100 dark:border-sky-900 text-sky-500"
-                                        style={{ borderWidth: 1 }}
-                                    >
-                                        <div>
-                                            <ArrowBackIcon className="-ml-1 mb-2" />
-                                        </div>
-                                        {previousPage.name}
-                                    </div>
-                                </a>
-                            )}
-                        </div>
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={(event) => {
+                                setActiveId(undefined);
+                                const { active, over } = event;
 
-                        <div className="flex-1">
-                            {nextPage && (
-                                <a href={nextPage.link}>
-                                    <div
-                                        className="text-right p-4 rounded-md dark:border-sky-900 border-sky-100 text-sky-500"
-                                        style={{ borderWidth: 1 }}
+                                if (active.id !== over?.id) {
+                                    setSections((items) => {
+                                        const oldIndex = items.findIndex((s) => s.id === active.id);
+                                        const newIndex = items.findIndex((s) => s.id === over?.id);
+
+                                        return arrayMove(items, oldIndex, newIndex);
+                                    });
+                                }
+                            }}
+                            onDragStart={(event) => {
+                                setActiveId(event.active.id as string);
+                            }}
+                            autoScroll
+                        >
+                            <SortableContext
+                                items={sections}
+                                strategy={verticalListSortingStrategy}
+                            >
+                                {sections.map((section, index) => (
+                                    <SortableItem
+                                        key={section.id}
+                                        id={section.id}
+                                        onPressAdd={(type) => {
+                                            setSections(
+                                                produce((sections) => {
+                                                    sections.push({
+                                                        id: nanoid(8),
+                                                        type,
+                                                        value: "",
+                                                        locked: type === "text" ? false : undefined,
+                                                    });
+                                                })
+                                            );
+                                        }}
+                                        onPressRemove={
+                                            sections.length > 1
+                                                ? () => {
+                                                      setSections(
+                                                          produce((sections) => {
+                                                              sections.splice(index, 1);
+                                                          })
+                                                      );
+                                                  }
+                                                : undefined
+                                        }
+                                        lock={
+                                            section.type === "text"
+                                                ? {
+                                                      isLocked: section.locked ?? false,
+                                                      onChangeLocked: (locked) => {
+                                                          setSections(
+                                                              produce((sections) => {
+                                                                  const section = sections[index];
+
+                                                                  if (section.type !== "text") {
+                                                                      throw new Error(
+                                                                          `section mismatch: ${JSON.stringify(
+                                                                              section,
+                                                                              null,
+                                                                              4
+                                                                          )}`
+                                                                      );
+                                                                  }
+
+                                                                  section.locked = locked;
+                                                              })
+                                                          );
+                                                      },
+                                                  }
+                                                : undefined
+                                        }
+                                        lint={
+                                            section.type === "code"
+                                                ? {
+                                                      lintEnabled: section.lint ?? true,
+                                                      onChangeLintEnabled: (lint) => {
+                                                          setSections(
+                                                              produce((sections) => {
+                                                                  const section = sections[index];
+
+                                                                  if (section.type !== "code") {
+                                                                      throw new Error(
+                                                                          `section mismatch: ${JSON.stringify(
+                                                                              section,
+                                                                              null,
+                                                                              4
+                                                                          )}`
+                                                                      );
+                                                                  }
+
+                                                                  section.lint = lint;
+                                                              })
+                                                          );
+                                                      },
+                                                  }
+                                                : undefined
+                                        }
                                     >
-                                        <div className="ml-auto">
-                                            <ArrowForwardIcon className="-mr-1 mb-2" />
-                                        </div>
-                                        {nextPage.name}
+                                        <SectionContainer
+                                            section={section}
+                                            autoFocus={index === 0}
+                                            settings={settings}
+                                            onChange={(newSection) => {
+                                                setSections(
+                                                    produce((sections) => {
+                                                        newSection(
+                                                            // HACK: index doesn't work
+                                                            sections.find(
+                                                                (s) => s.id === section.id
+                                                            )!
+                                                        );
+                                                    })
+                                                );
+                                            }}
+                                        />
+                                    </SortableItem>
+                                ))}
+                            </SortableContext>
+
+                            <DragOverlay>
+                                {activeId && (
+                                    <div className="flex items-center">
+                                        <SideMenu />
+
+                                        <SectionContainer
+                                            section={sections.find((s) => s.id === activeId)!}
+                                            autoFocus={false}
+                                            settings={settings}
+                                            onChange={() => {}}
+                                        />
                                     </div>
-                                </a>
-                            )}
-                        </div>
+                                )}
+                            </DragOverlay>
+                        </DndContext>
+                    </div>
+                )}
+
+                <div className="flex mt-5 gap-4">
+                    <div className="flex-1">
+                        {previousPage && (
+                            <a href={previousPage.link}>
+                                <div
+                                    className="p-4 rounded-md border-sky-100 dark:border-sky-900 text-sky-500"
+                                    style={{ borderWidth: 1 }}
+                                >
+                                    <div>
+                                        <ArrowBackIcon className="-ml-1 mb-2" />
+                                    </div>
+                                    {previousPage.name}
+                                </div>
+                            </a>
+                        )}
+                    </div>
+
+                    <div className="flex-1">
+                        {nextPage && (
+                            <a href={nextPage.link}>
+                                <div
+                                    className="text-right p-4 rounded-md dark:border-sky-900 border-sky-100 text-sky-500"
+                                    style={{ borderWidth: 1 }}
+                                >
+                                    <div className="ml-auto">
+                                        <ArrowForwardIcon className="-mr-1 mb-2" />
+                                    </div>
+                                    {nextPage.name}
+                                </div>
+                            </a>
+                        )}
                     </div>
                 </div>
             </div>
