@@ -744,6 +744,7 @@ impl IrGen {
                 *self.terminator_for(label, *pos) = Some(Terminator::Jump(body_pos));
 
                 *pos = else_pos;
+                self.statements_for(label, *pos).push(Statement::Drop);
             }
             ssa::PatternKind::Destructure(fields) => {
                 let (id, needs_deref) = match input_ty {
