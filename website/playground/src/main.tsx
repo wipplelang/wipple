@@ -1,7 +1,8 @@
 import { createTheme, ThemeProvider, useMediaQuery } from "@mui/material";
-import React, { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import ReactDOM from "react-dom/client";
 import * as Sentry from "@sentry/react";
+import { Globals as SpringGlobals } from "react-spring";
 import App from "./App";
 import { wipple } from "./languages";
 import "./styles/globals.css";
@@ -19,6 +20,13 @@ const Main = () => {
         () => createTheme({ palette: { mode: prefersDarkMode ? "dark" : "light" } }),
         [prefersDarkMode]
     );
+
+    const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion)");
+    useEffect(() => {
+        SpringGlobals.assign({
+            skipAnimation: prefersReducedMotion,
+        });
+    }, [prefersReducedMotion]);
 
     return (
         <ThemeProvider theme={theme}>

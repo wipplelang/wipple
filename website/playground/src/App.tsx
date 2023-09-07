@@ -213,9 +213,9 @@ const App = () => {
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 1 } }));
 
     return (
-        <main>
+        <div>
             <div className="fixed top-0 left-0 right-0 z-50">
-                <div className="flex items-center gap-4 p-4 flex-shrink-0 overflow-x-scroll bg-white dark:bg-black text-gray-500 dark:text-gray-400">
+                <div className="flex items-center gap-4 p-4 flex-shrink-0 overflow-x-scroll text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75 backdrop-blur-lg">
                     <a href="/" target="_blank" className="flex-shrink-0">
                         <img src="./images/logo.svg" alt="Wipple Playground" className="w-6 h-6" />
                     </a>
@@ -353,7 +353,7 @@ const App = () => {
                 </div>
             </div>
 
-            <div className="flex flex-col flex-1 p-6 pt-20 mx-auto w-screen max-w-4xl h-screen">
+            <main className="flex flex-col flex-1 p-6 py-20 mx-auto w-screen max-w-4xl h-screen">
                 {isLoading ? (
                     <div className="flex flex-col flex-1 items-center justify-center">
                         <CircularProgress />
@@ -566,7 +566,7 @@ const App = () => {
                     </div>
                 )}
 
-                <div className="flex mt-5 gap-4">
+                <div className="flex pt-5 pb-8 gap-4">
                     <div className="flex-1">
                         {previousPage && (
                             <a href={previousPage.link}>
@@ -599,8 +599,8 @@ const App = () => {
                         )}
                     </div>
                 </div>
-            </div>
-        </main>
+            </main>
+        </div>
     );
 };
 

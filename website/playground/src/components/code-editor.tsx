@@ -11,7 +11,7 @@ import MenuList from "@mui/material/MenuList";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import useMediaQuery from "@mui/material/useMediaQuery";
-import { Globals as SpringGlobals, useSpring, animated } from "react-spring";
+import { useSpring, animated } from "react-spring";
 import useMeasure from "react-use-measure";
 import {
     AnalysisOutputDiagnostic,
@@ -92,13 +92,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
     const containerID = `code-editor-container-${props.id}`;
 
     const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
-
-    const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion)");
-    useEffect(() => {
-        SpringGlobals.assign({
-            skipAnimation: prefersReducedMotion,
-        });
-    }, [prefersReducedMotion]);
 
     // Store settings in a ref so that the code editor can access them even
     // after they change
