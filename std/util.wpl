@@ -34,15 +34,10 @@ Maybe : Value => type {
   Some Value
 }
 
-A where (Equal A) => instance (Equal (Maybe A)) : a b -> when a {
-  Some x -> when b {
-    Some y -> x = y
-    None -> False
-  }
-  None -> when b {
-    Some _ -> False
-    None -> True
-  }
+A where (Equal A) => instance (Equal (Maybe A)) : a b -> when (a , b) {
+  Some x , Some y -> x = y
+  None , None -> True
+  _ -> False
 }
 
 [help "Represents the success or failure of an operation."]
