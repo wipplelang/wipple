@@ -135,4 +135,4 @@ In addition to `=`, here are some other logic symbols you can use:
 
 ## Great work!
 
-Congratulations, you've made it to the end of the Beginner lessons! 🥳 Feel free to explore the Wipple Playground and write your own programs. (To open a blank page, click on the Wipple logo at the top of the page.) If you want to learn more, try moving on to the Intermediate lessons.
+Congratulations, you've made it to the end of the Beginner lessons! 🥳 Feel free to explore the Wipple Playground and write your own programs. (To open a blank page, click on New at the top of the page.) If you want to learn more, try moving on to the Intermediate lessons.

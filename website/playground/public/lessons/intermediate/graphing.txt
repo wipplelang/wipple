@@ -116,4 +116,4 @@ locked: true
 
 ## Great work!
 
-Congratulations, you've made it to the end of the Intermediate lessons! 😎 Feel free to explore the Wipple Playground and write your own programs. (To open a fresh editor, click on the Wipple logo at the top of the page.) If you want to learn more, try moving on to the Advanced lessons.
+Congratulations, you've made it to the end of the Intermediate lessons! 😎 Feel free to explore the Wipple Playground and write your own programs. (To open a fresh editor, click on New at the top of the page.) If you want to learn more, try moving on to the Advanced lessons.
