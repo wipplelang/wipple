@@ -566,39 +566,41 @@ const App = () => {
                     </div>
                 )}
 
-                <div className="flex pt-5 pb-8 gap-4">
-                    <div className="flex-1">
-                        {previousPage && (
-                            <a href={previousPage.link}>
-                                <div
-                                    className="p-4 rounded-md border-sky-100 dark:border-sky-900 text-sky-500"
-                                    style={{ borderWidth: 1 }}
-                                >
-                                    <div>
-                                        <ArrowBackIcon className="-ml-1 mb-2" />
+                {previousPage || nextPage ? (
+                    <div className="flex pt-5 pb-8 gap-4">
+                        <div className="flex-1">
+                            {previousPage && (
+                                <a href={previousPage.link}>
+                                    <div
+                                        className="p-4 rounded-md border-sky-100 dark:border-sky-900 text-sky-500"
+                                        style={{ borderWidth: 1 }}
+                                    >
+                                        <div>
+                                            <ArrowBackIcon className="-ml-1 mb-2" />
+                                        </div>
+                                        {previousPage.name}
                                     </div>
-                                    {previousPage.name}
-                                </div>
-                            </a>
-                        )}
-                    </div>
+                                </a>
+                            )}
+                        </div>
 
-                    <div className="flex-1">
-                        {nextPage && (
-                            <a href={nextPage.link}>
-                                <div
-                                    className="text-right p-4 rounded-md dark:border-sky-900 border-sky-100 text-sky-500"
-                                    style={{ borderWidth: 1 }}
-                                >
-                                    <div className="ml-auto">
-                                        <ArrowForwardIcon className="-mr-1 mb-2" />
+                        <div className="flex-1">
+                            {nextPage && (
+                                <a href={nextPage.link}>
+                                    <div
+                                        className="text-right p-4 rounded-md dark:border-sky-900 border-sky-100 text-sky-500"
+                                        style={{ borderWidth: 1 }}
+                                    >
+                                        <div className="ml-auto">
+                                            <ArrowForwardIcon className="-mr-1 mb-2" />
+                                        </div>
+                                        {nextPage.name}
                                     </div>
-                                    {nextPage.name}
-                                </div>
-                            </a>
-                        )}
+                                </a>
+                            )}
+                        </div>
                     </div>
-                </div>
+                ) : null}
             </main>
         </div>
     );
