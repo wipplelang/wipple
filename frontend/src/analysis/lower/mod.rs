@@ -855,6 +855,7 @@ pub enum Intrinsic {
     ListInsertAt,
     ListRemoveAt,
     ListCount,
+    ListSlice,
     TextCharacters,
     RandomNumber,
     RandomInteger,

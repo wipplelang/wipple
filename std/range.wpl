@@ -47,3 +47,7 @@ to : syntax {
     max : 'max
   }
 }
+
+[help "Retrieve the elements of a list between a range of indices."]
+slice :: A => Range Natural -> List A -> List A
+slice : { min max } list -> intrinsic "list-slice" list min max

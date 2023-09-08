@@ -842,6 +842,11 @@ impl Interpreter {
                         Ok(Value::Natural(list.len() as u64))
                     })
                 }
+                ir::Intrinsic::ListSlice => {
+                    runtime_fn!((Value::List(mut list), Value::Natural(start), Value::Natural(end)) => async {
+                        Ok(Value::List(list.slice((start as usize)..(end as usize))))
+                    })
+                }
                 ir::Intrinsic::TextCharacters => {
                     runtime_fn!((Value::Text(text)) => async {
                         Ok(Value::List(

@@ -768,6 +768,7 @@ mod util {
                 Intrinsic::ListInsertAt => true,
                 Intrinsic::ListRemoveAt => true,
                 Intrinsic::ListCount => true,
+                Intrinsic::ListSlice => true,
                 Intrinsic::TextCharacters => true,
                 Intrinsic::RandomNumber => false,
                 Intrinsic::RandomInteger => false,
