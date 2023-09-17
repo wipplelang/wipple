@@ -27,7 +27,7 @@
 Wipple was designed with just a few rules and minimal punctuation, making it a great language for students.
 
 ```wipple
-greet : name -> format "Hello, _!" name
+greet : name -> "Hello, _!" name
 show (greet "world") -- Hello, world!
 ```
 
@@ -38,10 +38,10 @@ Wipple’s functional style and extensible constructs enable you to describe and
 ```wipple
 report-card :: Grade -> Text
 report-card : grade -> when grade {
-    A -> "top of the class"
-    B -> "good job"
-    C -> "need to study"
-    D or F -> "didn't pass"
+  A -> "top of the class"
+  B -> "good job"
+  C -> "need to study"
+  D or F -> "didn't pass"
 }
 ```
 
@@ -51,16 +51,16 @@ Wipple’s type system automatically checks your mistakes to prevent bugs. And w
 
 ```wipple
 Person : type {
-    name :: Text
-    age :: Number
+  name :: Text
+  age :: Number
 }
 
 instance (Show Person) : { name age } -> \
-    format "_ is _ years old" name age
+  "_ is _ years old" name age
 
 bob : Person {
-    name : "Bob"
-    age : 30
+  name : "Bob"
+  age : 30
 }
 
 show bob -- Bob is 30 years old

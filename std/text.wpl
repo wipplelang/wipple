@@ -4,7 +4,7 @@ use "sequence"
 use "fp"
 use "math"
 
-instance (Add Text Text Text) : b a -> format "__" a b
+instance (Add Text Text Text) : b a -> "__" a b
 
 instance (As-Sequence Text Text) : text -> \
   As-Sequence (intrinsic "text-characters" text :: List Text)
@@ -14,7 +14,7 @@ instance (From-Sequence Text Text) : seq -> {
   repeat {
     when (next seq) {
       Some c -> {
-        text . set! (format "__" (get text) c)
+        text . set! ("__" (get text) c)
         Continue
       }
       None -> Break ()

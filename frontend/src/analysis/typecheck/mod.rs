@@ -2211,7 +2211,7 @@ impl Typechecker {
                             "cannot find `show` language item",
                             vec![Note::primary(
                                 expr.span,
-                                "using `format` requires the `show` language item",
+                                "using placeholder text requires the `show` language item",
                             )],
                             "",
                         );
@@ -5628,6 +5628,19 @@ impl Typechecker {
                                         "this element must have the same type as the other elements",
                                     ));
                                 }
+                            }
+                        }
+                    }
+                }
+
+                if let engine::UnresolvedType::Builtin(engine::BuiltinType::Text) = actual {
+                    if let engine::UnresolvedType::Function(_, _) = expected {
+                        if let Some(id) = error.expr {
+                            if self.start_of_call_chain_for(id).is_some() {
+                                notes.push(Note::secondary(
+                                    error.span,
+                                    "formatting only works on text literals",
+                                ));
                             }
                         }
                     }

@@ -74,7 +74,7 @@
 
                 <div class="example-code">
                     {% highlight "wipple" %}
-greet : name -> format "Hello, _!" name
+greet : name -> "Hello, _!" name
 show (greet "world") -- Hello, world!
                     {% endhighlight %}
                 </div>
@@ -94,10 +94,10 @@ show (greet "world") -- Hello, world!
                     {% highlight "wipple" %}
 report-card :: Grade -> Text
 report-card : grade -> when grade {
-    A -> "top of the class"
-    B -> "good job"
-    C -> "need to study"
-    D or F -> "didn't pass"
+  A -> "top of the class"
+  B -> "good job"
+  C -> "need to study"
+  D or F -> "didn't pass"
 }
                     {% endhighlight %}
                 </div>
@@ -116,16 +116,16 @@ report-card : grade -> when grade {
                 <div class="example-code">
                     {% highlight "wipple" %}
 Person : type {
-    name :: Text
-    age :: Number
+  name :: Text
+  age :: Number
 }
 
 instance (Show Person) : { name age } -> \
-    format "_ is _ years old" name age
+  "_ is _ years old" name age
 
 bob : Person {
-    name : "Bob"
-    age : 30
+  name : "Bob"
+  age : 30
 }
 
 show bob -- Bob is 30 years old

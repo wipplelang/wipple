@@ -29,7 +29,7 @@ type: code
 ---
 
 password : prompt "Enter a password (not your actual password, please!)"
-message : format "You entered _" password
+message : "You entered _" password
 show message
 
 ---
@@ -77,7 +77,7 @@ type: text
 locked: true
 ---
 
-If you're feeling pretty confident with all of this, try extending the example to ask the user for their name and greet them if they enter the correct password. (Hint: you'll need to use another variable, along with `prompt` and `format`).
+If you're feeling pretty confident with all of this, try extending the example to ask the user for their name and greet them if they enter the correct password. (Hint: you'll need to use another variable, along with `prompt` and placeholder text).
 
 ---
 id: xsY8WcP5

@@ -15,7 +15,7 @@ locked: true
 
 # Domain-specific languages
 
-It's time to learn how Wipple really works under the hood and harness its power to build your own **domain-specific languages** (DSLs). Many of the "functions" we've discussed, like `when`, `if`, `list` and `format`, are actually defined as custom syntax! But before we learn how to make our own syntax, let's take a look at one more concept: **context**.
+It's time to learn how Wipple really works under the hood and harness its power to build your own **domain-specific languages** (DSLs). Many of the "functions" we've discussed, like `when`, `if`, and `list`, are actually defined as custom syntax! But before we learn how to make our own syntax, let's take a look at one more concept: **context**.
 
 Have you ever wondered why we need `with-turtle`, `with-music`, `with-graph`, and so on? The high-level answer is that Wipple needs to know _which_ turtle or instrument or graph to use. But functions like `forward` and `note` and `plot` don't accept `Turtle` or `Music` or `Graph` values!
 
@@ -58,7 +58,7 @@ robot :: Robot
 robot : error "`robot` not initialized"
 
 with (robot : Robot { name : "Bot" }) {
-    show (format "Hello, I'm _!" (name of robot))
+    show ("Hello, I'm _!" (name of robot))
 }
 
 ---
@@ -83,7 +83,7 @@ robot :: Robot
 robot : error "`robot` not initialized"
 
 say-hello :: () -> ()
-say-hello : () -> show (format "Hello, I'm _!" (name of robot))
+say-hello : () -> show ("Hello, I'm _!" (name of robot))
 
 with (robot : Robot { name : "Bot" }) {
     say-hello ()
@@ -111,7 +111,7 @@ robot :: Robot
 robot : error "`robot` not initialized"
 
 say-hello :: () -> ()
-say-hello : () -> show (format "Hello, I'm _!" (name of robot))
+say-hello : () -> show ("Hello, I'm _!" (name of robot))
 
 with-robot :: Text -> (() -> ()) -> ()
 with-robot : name f -> with (robot : Robot { name }) (f ())
@@ -248,7 +248,7 @@ with-robot : syntax {
 }
 
 say-hello : syntax {
-    say-hello -> show (format "Hello, I'm _!" (name of robot))
+    say-hello -> show ("Hello, I'm _!" (name of robot))
 }
 
 with-robot "Bot" {
@@ -274,7 +274,7 @@ type: code
 
 [operator Addition-Precedence]
 says : syntax {
-    'person says 'greeting -> show (format "_, I'm _!" 'greeting 'person)
+    'person says 'greeting -> show ("_, I'm _!" 'greeting 'person)
 }
 
 "Alice" says "Hello"

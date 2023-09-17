@@ -5,4 +5,4 @@ Person : type {
 instance (Show Person) : { name } -> name
 
 bob : Person { name : "Bob" }
-show (format "Hello, _!" bob)
+show ("Hello, _!" bob)

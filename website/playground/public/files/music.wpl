@@ -85,9 +85,9 @@ notes : notes -> { ms-from-tempo } -> {
   instrument-name : name of name of instrument
   delta : get (delta of instrument)
   ms : ms-from-tempo (get (tempo of music)) - delta
-  notes : notes . transform (note -> format "_," note) . collect :: Text
+  notes : notes . transform (note -> "_," note) . collect :: Text
 
-  delta : handle of music . message "notes" (format "_ _ _" instrument-name ms notes)
+  delta : handle of music . message "notes" ("_ _ _" instrument-name ms notes)
   (delta >= 0) . expect "music stopped"
 
   delta of instrument . set! delta

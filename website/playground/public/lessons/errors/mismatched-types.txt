@@ -14,7 +14,7 @@ type: code
 ---
 
 emphasize :: Text -> Text
-emphasize : text -> format "_!" text
+emphasize : text -> "_!" text
 
 show (emphasize 3)
 
@@ -34,7 +34,7 @@ type: code
 ---
 
 emphasize :: Text -> Text
-emphasize : text -> format "_!" text
+emphasize : text -> "_!" text
 
 show (emphasize "3")
 
@@ -52,7 +52,7 @@ type: code
 ---
 
 emphasize :: Text -> Text
-emphasize : text -> format "_!" text
+emphasize : text -> "_!" text
 
 show (emphasize (Show 3))
 
@@ -70,7 +70,7 @@ type: code
 ---
 
 emphasize :: Number -> Text
-emphasize : n -> format "_!" n
+emphasize : n -> "_!" n
 
 show (emphasize 3)
 
@@ -88,7 +88,7 @@ type: code
 ---
 
 emphasize :: A where (Show A) => A -> Text
-emphasize : n -> format "_!" n
+emphasize : n -> "_!" n
 
 show (emphasize 3)
 

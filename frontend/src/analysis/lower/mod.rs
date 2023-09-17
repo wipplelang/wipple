@@ -2657,6 +2657,60 @@ impl Lowerer {
                 };
 
                 match function {
+                    ast::Expression::Text(function) => {
+                        let mut segments = function
+                            .text
+                            .as_ref()
+                            .split('_')
+                            .map(InternedString::new)
+                            .collect::<Vec<_>>();
+
+                        let inputs = expr
+                            .inputs
+                            .iter()
+                            .map(|expr| match expr {
+                                Ok(expr) => self.lower_expr(expr, ctx),
+                                Err(error) => Expression {
+                                    id: self.compiler.new_expression_id(ctx.owner),
+                                    span: error.span,
+                                    kind: ExpressionKind::error(&self.compiler),
+                                },
+                            })
+                            .collect::<Vec<_>>();
+
+                        let trailing_segment =
+                            (segments.len() > inputs.len()).then(|| segments.pop().unwrap());
+
+                        if segments.len() != inputs.len() {
+                            self.compiler.add_error(
+                                "wrong number of inputs to placeholder text",
+                                vec![Note::primary(
+                                    function.span(),
+                                    format!(
+                                        "text contains {} placeholders, but {} inputs were provided",
+                                        segments.len(),
+                                        inputs.len()
+                                    ),
+                                )],
+                                "",
+                            );
+
+                            return Expression {
+                                id: self.compiler.new_expression_id(ctx.owner),
+                                span: expr.span,
+                                kind: ExpressionKind::error(&self.compiler),
+                            };
+                        }
+
+                        Expression {
+                            id: self.compiler.new_expression_id(ctx.owner),
+                            span: expr.span,
+                            kind: ExpressionKind::Format(
+                                segments.into_iter().zip(inputs).collect(),
+                                trailing_segment,
+                            ),
+                        }
+                    }
                     ast::Expression::Name(ty_name) => {
                         let input = match expr.inputs.first() {
                             Some(input) => input,
@@ -3140,29 +3194,6 @@ impl Lowerer {
                             },
                         })
                         .collect(),
-                ),
-            },
-            ast::Expression::Format(expr) => Expression {
-                id: self.compiler.new_expression_id(ctx.owner),
-                span: expr.span(),
-                kind: ExpressionKind::Format(
-                    expr.segments
-                        .iter()
-                        .map(|segment| {
-                            (
-                                segment.string,
-                                match &segment.expr {
-                                    Ok(expr) => self.lower_expr(expr, ctx),
-                                    Err(error) => Expression {
-                                        id: self.compiler.new_expression_id(ctx.owner),
-                                        span: error.span,
-                                        kind: ExpressionKind::error(&self.compiler),
-                                    },
-                                },
-                            )
-                        })
-                        .collect(),
-                    expr.trailing_segment,
                 ),
             },
             ast::Expression::Unit(expr) => Expression {

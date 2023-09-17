@@ -149,7 +149,7 @@ Person : type {
     age :: Number
 }
 
-instance (Show Person) : person -> format "_ is _ years old" (name of person) (age of person)
+instance (Show Person) : person -> "_ is _ years old" (name of person) (age of person)
 
 alice : Person {
     name : "Alice"

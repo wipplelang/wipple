@@ -23,14 +23,14 @@ type: text
 locked: true
 ---
 
-`show` only accepts a single value. If you want to `show` multiple values on one line, you can use `format`:
+`show` only accepts a single value. If you want to `show` multiple values on one line, you can use placeholder text:
 
 ---
 id: WKWpp7Bq
 type: code
 ---
 
-show (format "_ + _ = _" 1 2 (1 + 2))
+show ("_ + _ = _" 1 2 (1 + 2))
 
 ---
 id: RK8KJc3S
@@ -50,7 +50,7 @@ Person : type {
   age :: Number
 }
 
-instance (Show Person) : { name age } -> format "_ is _ years old" name age
+instance (Show Person) : { name age } -> "_ is _ years old" name age
 
 bob : Person {
   name : "Bob"

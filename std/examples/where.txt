@@ -36,7 +36,7 @@ type: code
 ---
 
 greet :: A where (Show A) => A -> Text
-greet : name -> format "Hello, _!" name
+greet : name -> "Hello, _!" name
 
 show (greet "Alice")
 show (greet 5)
@@ -59,7 +59,7 @@ Person : type {
   age :: Natural
 }
 
-instance (Show Person) : { name age } -> format "_ is _ years old" name age
+instance (Show Person) : { name age } -> "_ is _ years old" name age
 
 alice : Person {
   name : "Alice"

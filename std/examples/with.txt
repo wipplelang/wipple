@@ -19,7 +19,7 @@ excited : False -- the constant's default value
 
 greet :: Text -> ()
 greet : name -> {
-  greeting : if excited (format "Hi _!!!" name) (format "Hello, _" name)
+  greeting : if excited ("Hi _!!!" name) ("Hello, _" name)
   show greeting
 }
 

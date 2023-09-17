@@ -23,15 +23,15 @@ type: code
 ---
 
 alice : "Alice"
-alice-greeting : format "Hello, _!" alice
+alice-greeting : "Hello, _!" alice
 show alice-greeting
 
 bob : "Bob"
-bob-greeting : format "Hello, _!" bob
+bob-greeting : "Hello, _!" bob
 show bob-greeting
 
 charlie : "Charlie"
-charlie-greeting : format "Hello, _!" charlie
+charlie-greeting : "Hello, _!" charlie
 show charlie-greeting
 
 ---
@@ -48,7 +48,7 @@ type: code
 ---
 
 greet : name -> {
-    greeting : format "Hello, _!" name
+    greeting : "Hello, _!" name
     show greeting
 }
 

@@ -79,7 +79,7 @@ up : dy -> translate (0 , dy)
 
 x , y : origin . up 3
 
-show (format "(_, _)" x y)
+show ("(_, _)" x y)
 
 ---
 id: E710TI67

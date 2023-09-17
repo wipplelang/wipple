@@ -1,7 +1,7 @@
 Greet : A => trait (A -> Text)
 
 greet :: A where (Greet A) => A -> Text
-greet : x -> format "Hello, _!" (Greet x)
+greet : x -> "Hello, _!" (Greet x)
 
 Foo : type
 instance (Greet Foo) : just "Foo"

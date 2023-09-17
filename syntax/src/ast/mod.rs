@@ -146,13 +146,6 @@ impl BuiltinSyntaxDefinition {
         "external {%namespace%} {%identifier%} {%parameters%}",
     );
 
-    pub(crate) const FORMAT: Self = Self::function(
-        "format",
-        "Replace all the `_` placeholders in a piece of text with values.",
-        "https://wipple.dev/std/examples/format.txt",
-        "format {%text%} {%parameters%}",
-    );
-
     pub(crate) const FUNCTION: Self = Self::operator(
         "->",
         "Define a function.",

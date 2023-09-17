@@ -23,7 +23,7 @@ type: code
 ---
 
 n : prompt "Enter a number"
-show (format "The next number after _ is _" n (n + 1))
+show ("The next number after _ is _" n (n + 1))
 
 ---
 id: IPvAClCM

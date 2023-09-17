@@ -35,18 +35,18 @@ instance (Show Boolean) : x? -> if x? "True" "False"
 instance (Show None-Error) : just "found `None`"
 
 Value where (Show Value) => instance (Show (Maybe Value)) : x? -> when x? {
-  Some x -> format "Some _" (Show x)
+  Some x -> "Some _" (Show x)
   None -> "None"
 }
 
 Success Failure where (Show Success) (Show Failure) => instance (Show (Result Success Failure)) : x? -> when x? {
-  OK x -> format "OK _" x
-  Error e -> format "Error _" e
+  OK x -> "OK _" x
+  Error e -> "Error _" e
 }
 
 Success Failure where (Show Failure) => instance (Expect (Result Success Failure) Success) : message -> x? -> when x? {
   OK x -> x
-  Error e -> error (format "_: _" message e)
+  Error e -> error ("_: _" message e)
 }
 
 [help "Implement the `read` function."]

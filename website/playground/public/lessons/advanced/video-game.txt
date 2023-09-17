@@ -56,7 +56,7 @@ type: text
 locked: true
 ---
 
-If you want to fill a line with a character without having to hack your way around `format` or `list`, you can use the `render-fill` and `render-line-fill` functions. And `bg` and `fg` let you control the color of each character:
+If you want to fill a line with a character without having to hack your way around placeholder text or `list`, you can use the `render-fill` and `render-line-fill` functions. And `bg` and `fg` let you control the color of each character:
 
 ---
 id: HRqlh0KJ

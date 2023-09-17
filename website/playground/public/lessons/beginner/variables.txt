@@ -88,11 +88,9 @@ type: text
 locked: true
 ---
 
-## The `format` command
+## Placeholder text
 
-Let's learn one more command, called `format`. It lets you put variables inside text!
-
-To use `format`, you provide some text containing `_` placeholders. The placeholders will be replaced with the variables you provide after the text:
+Did you know that you can put variables inside text? All you have to do is insert some `_` placeholders, and the placeholders will be replaced with the variables you provide after the text:
 
 ---
 id: NSc_duTa
@@ -100,7 +98,7 @@ type: code
 ---
 
 name : "your name here"
-greeting : format "Hello, _!" name
+greeting : "Hello, _!" name
 show greeting
 
 ---
