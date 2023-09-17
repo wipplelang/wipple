@@ -1,7 +1,7 @@
 mod builtins;
 
 use crate::{
-    analysis::{ast, Analysis, ScopeSet, Span, SpanList},
+    analysis::{ast, parse, Analysis, ScopeSet, Span, SpanList},
     diagnostics::{Fix, FixRange, Note},
     helpers::{did_you_mean, Backtrace, InternedString, Shared},
     BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, ExpressionId, FieldIndex, FilePath,
@@ -2562,11 +2562,25 @@ impl Lowerer {
         }
 
         match expr {
-            ast::Expression::Text(expr) => Expression {
-                id: self.compiler.new_expression_id(ctx.owner),
-                span: expr.span,
-                kind: ExpressionKind::Text(expr.text),
-            },
+            ast::Expression::Text(expr) => {
+                let (segments, _) = segments(&expr.text);
+                if !segments.is_empty() {
+                    self.compiler.add_warning(
+                        "text contains placeholders, but no inputs were provided",
+                        vec![Note::primary(
+                            expr.span,
+                            r"try escaping the placeholders using '\_'",
+                        )],
+                        "",
+                    );
+                }
+
+                Expression {
+                    id: self.compiler.new_expression_id(ctx.owner),
+                    span: expr.span,
+                    kind: ExpressionKind::Text(expr.text.ignoring_escaped_underscores()),
+                }
+            }
             ast::Expression::Number(expr) => Expression {
                 id: self.compiler.new_expression_id(ctx.owner),
                 span: expr.span,
@@ -2658,12 +2672,7 @@ impl Lowerer {
 
                 match function {
                     ast::Expression::Text(function) => {
-                        let mut segments = function
-                            .text
-                            .as_ref()
-                            .split('_')
-                            .map(InternedString::new)
-                            .collect::<Vec<_>>();
+                        let (segments, trailing_segment) = segments(&function.text);
 
                         let inputs = expr
                             .inputs
@@ -2677,9 +2686,6 @@ impl Lowerer {
                                 },
                             })
                             .collect::<Vec<_>>();
-
-                        let trailing_segment =
-                            (segments.len() > inputs.len()).then(|| segments.pop().unwrap());
 
                         if segments.len() != inputs.len() {
                             self.compiler.add_error(
@@ -2706,8 +2712,12 @@ impl Lowerer {
                             id: self.compiler.new_expression_id(ctx.owner),
                             span: expr.span,
                             kind: ExpressionKind::Format(
-                                segments.into_iter().zip(inputs).collect(),
-                                trailing_segment,
+                                segments
+                                    .into_iter()
+                                    .map(InternedString::new)
+                                    .zip(inputs)
+                                    .collect(),
+                                trailing_segment.map(InternedString::new),
                             ),
                         }
                     }
@@ -3489,7 +3499,7 @@ impl Lowerer {
             },
             ast::Pattern::Text(pattern) => Pattern {
                 span: pattern.span,
-                kind: PatternKind::Text(pattern.text),
+                kind: PatternKind::Text(pattern.text.ignoring_escaped_underscores()),
             },
             ast::Pattern::Name(pattern) => {
                 match self.peek(pattern.name, AnyDeclaration::as_constant, &pattern.scope) {
@@ -5191,4 +5201,28 @@ impl Lowerer {
 
         (notes, fixes.pop_front())
     }
+}
+
+fn segments(text: &parse::Text<Analysis>) -> (Vec<String>, Option<String>) {
+    let (text, escaped_underscores) = text.with_escaped_underscores();
+    let text = text.as_str();
+
+    let mut segments = vec![String::new()];
+    if !text.is_empty() {
+        let is_placeholder =
+            |index, ch| ch == '_' && escaped_underscores.binary_search(&index).is_err();
+
+        for (index, ch) in text.char_indices() {
+            if is_placeholder(index, ch) {
+                segments.push(String::new());
+            } else if let Some(segment) = segments.last_mut() {
+                segment.push(ch);
+            } else {
+                segments.push(String::from(ch));
+            }
+        }
+    }
+
+    let trailing_segment = segments.pop();
+    (segments, trailing_segment)
 }

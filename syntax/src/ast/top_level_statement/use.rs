@@ -46,8 +46,11 @@ impl<D: Driver> Syntax<D> for UseTopLevelStatementSyntax {
 
                 let input = exprs.pop().unwrap();
                 match &input.kind {
-                    parse::ExprKind::Text(text, _) => {
-                        let path = context.ast_builder.driver.make_path(text.clone());
+                    parse::ExprKind::Text(text) => {
+                        let path = context
+                            .ast_builder
+                            .driver
+                            .make_path(text.ignoring_escaped_underscores().clone());
 
                         Ok(UseTopLevelStatement {
                             path,

@@ -73,9 +73,9 @@ impl<D: Driver> Format<D> for NameSyntaxPattern<D> {
 #[derive(Debug, Clone)]
 pub struct TextSyntaxPattern<D: Driver> {
     pub span: D::Span,
-    pub text: D::InternedString,
-    pub raw: D::InternedString,
+    pub text: parse::Text<D>,
 }
+
 impl<D: Driver> TextSyntaxPattern<D> {
     pub fn span(&self) -> D::Span {
         self.span
@@ -84,7 +84,7 @@ impl<D: Driver> TextSyntaxPattern<D> {
 
 impl<D: Driver> Format<D> for TextSyntaxPattern<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
-        Ok(format!("\"{}\"", self.raw.as_ref()))
+        Ok(format!("\"{}\"", self.text.raw().as_ref()))
     }
 }
 
@@ -371,10 +371,9 @@ impl<D: Driver> SyntaxContext<D> for SyntaxPatternSyntaxContext<D> {
                             name,
                         }
                         .into()),
-                        parse::ExprKind::Text(text, raw) => Ok(TextSyntaxPattern {
+                        parse::ExprKind::Text(text) => Ok(TextSyntaxPattern {
                             span: expr.span,
                             text,
-                            raw,
                         }
                         .into()),
                         parse::ExprKind::Number(number) => Ok(NumberSyntaxPattern {
@@ -482,8 +481,10 @@ impl<D: Driver> SyntaxPattern<D> {
                 SyntaxPattern::Text(pattern) => {
                     let expr = input.next()?;
 
-                    if let parse::ExprKind::Text(text, _) = &expr.kind {
-                        if *text == pattern.text {
+                    if let parse::ExprKind::Text(text) = &expr.kind {
+                        if text.ignoring_escaped_underscores()
+                            == pattern.text.ignoring_escaped_underscores()
+                        {
                             continue;
                         }
                     }
@@ -625,7 +626,7 @@ impl<D: Driver> SyntaxPattern<D> {
             }),
             SyntaxPattern::Text(pattern) => ExpandResult::Single(parse::Expr {
                 span: pattern.span.merged_with(source_span),
-                kind: parse::ExprKind::Text(pattern.text.clone(), pattern.text),
+                kind: parse::ExprKind::Text(pattern.text.clone()),
             }),
             SyntaxPattern::Number(pattern) => ExpandResult::Single(parse::Expr {
                 span: pattern.span.merged_with(source_span),

@@ -48,7 +48,7 @@ impl<D: Driver> Syntax<D> for DiagnosticAliasStatementAttributeSyntax {
 
                 let expr = exprs.pop().unwrap();
                 let diagnostic_alias = match expr.kind {
-                    parse::ExprKind::Text(text, _) => text,
+                    parse::ExprKind::Text(text) => text.ignoring_escaped_underscores(),
                     _ => {
                         context
                             .ast_builder

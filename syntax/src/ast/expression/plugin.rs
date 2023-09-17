@@ -63,7 +63,7 @@ impl<D: Driver> Syntax<D> for PluginExpressionSyntax {
                 let namespace = exprs.next().unwrap();
                 let path_span = namespace.span;
                 let path = match namespace.kind {
-                    parse::ExprKind::Text(text, _) => text,
+                    parse::ExprKind::Text(text) => text.ignoring_escaped_underscores(),
                     _ => {
                         context
                             .ast_builder
@@ -77,7 +77,7 @@ impl<D: Driver> Syntax<D> for PluginExpressionSyntax {
                 let identifier = exprs.next().unwrap();
                 let name_span = identifier.span;
                 let name = match identifier.kind {
-                    parse::ExprKind::Text(text, _) => text,
+                    parse::ExprKind::Text(text) => text.ignoring_escaped_underscores(),
                     _ => {
                         context
                             .ast_builder

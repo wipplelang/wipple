@@ -71,7 +71,7 @@ pub fn substitute<D: Driver>(
         | ExprKind::Underscore
         | ExprKind::Name(_, _)
         | ExprKind::RepeatName(_)
-        | ExprKind::Text(_, _)
+        | ExprKind::Text(_)
         | ExprKind::Number(_)
         | ExprKind::Asset(_)
         | ExprKind::SourceCode(_) => {}

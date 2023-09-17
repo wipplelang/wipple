@@ -60,7 +60,7 @@ impl<D: Driver> Syntax<D> for IntrinsicExpressionSyntax {
                 let name = exprs.next().unwrap();
                 let name_span = name.span;
                 let name = match name.kind {
-                    parse::ExprKind::Text(text, _) => text,
+                    parse::ExprKind::Text(text) => text.ignoring_escaped_underscores(),
                     _ => {
                         context
                             .ast_builder

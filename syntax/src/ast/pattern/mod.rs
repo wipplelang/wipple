@@ -59,8 +59,7 @@ impl<D: Driver> Format<D> for NamePattern<D> {
 #[derive(Debug, Clone)]
 pub struct TextPattern<D: Driver> {
     pub span: D::Span,
-    pub text: D::InternedString,
-    pub raw: D::InternedString,
+    pub text: parse::Text<D>,
 }
 
 impl<D: Driver> TextPattern<D> {
@@ -71,7 +70,7 @@ impl<D: Driver> TextPattern<D> {
 
 impl<D: Driver> Format<D> for TextPattern<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
-        Ok(format!("\"{}\"", self.raw.as_ref()))
+        Ok(format!("\"{}\"", self.text.raw().as_ref()))
     }
 }
 
@@ -233,10 +232,9 @@ impl<D: Driver> SyntaxContext<D> for PatternSyntaxContext<D> {
                 scope: scope.unwrap_or_else(|| scope_set.lock().clone()),
             }
             .into()),
-            parse::ExprKind::Text(text, raw) => Ok(TextPattern {
+            parse::ExprKind::Text(text) => Ok(TextPattern {
                 span: expr.span,
                 text,
-                raw,
             }
             .into()),
             parse::ExprKind::Number(number) => Ok(NumberPattern {

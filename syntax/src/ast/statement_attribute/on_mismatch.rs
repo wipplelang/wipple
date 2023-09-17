@@ -42,7 +42,7 @@ impl<D: Driver> Syntax<D> for OnMismatchStatementAttributeSyntax {
                     1 => {
                         let expr = exprs.pop().unwrap();
                         let message = match expr.kind {
-                            parse::ExprKind::Text(text, _) => text,
+                            parse::ExprKind::Text(text) => text.ignoring_escaped_underscores(),
                             _ => {
                                 context
                                     .ast_builder
@@ -79,7 +79,7 @@ impl<D: Driver> Syntax<D> for OnMismatchStatementAttributeSyntax {
 
                         let message_expr = exprs.next().unwrap();
                         let message = match message_expr.kind {
-                            parse::ExprKind::Text(text, _) => text,
+                            parse::ExprKind::Text(text) => text.ignoring_escaped_underscores(),
                             _ => {
                                 context
                                     .ast_builder

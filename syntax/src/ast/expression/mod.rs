@@ -93,8 +93,7 @@ impl<D: Driver> Format<D> for NameExpression<D> {
 #[derive(Debug, Clone)]
 pub struct TextExpression<D: Driver> {
     pub span: D::Span,
-    pub text: D::InternedString,
-    pub raw: D::InternedString,
+    pub text: parse::Text<D>,
 }
 
 impl<D: Driver> TextExpression<D> {
@@ -105,7 +104,7 @@ impl<D: Driver> TextExpression<D> {
 
 impl<D: Driver> Format<D> for TextExpression<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
-        Ok(format!("\"{}\"", self.raw.as_ref()))
+        Ok(format!("\"{}\"", self.text.raw().as_ref()))
     }
 }
 
@@ -255,10 +254,9 @@ impl<D: Driver> SyntaxContext<D> for ExpressionSyntaxContext<D> {
                     scope_set: name_scope.unwrap_or_else(|| scope_set.lock().clone()),
                 }
                 .into()),
-                parse::ExprKind::Text(text, raw) => Ok(TextExpression {
+                parse::ExprKind::Text(text) => Ok(TextExpression {
                     span: expr.span,
                     text,
-                    raw,
                 }
                 .into()),
                 parse::ExprKind::Number(number) => Ok(NumberExpression {

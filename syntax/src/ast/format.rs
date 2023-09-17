@@ -12,7 +12,7 @@ impl<D: Driver> Format<D> for parse::Expr<D> {
             parse::ExprKind::Name(name, _) => name.as_ref().to_string(),
             parse::ExprKind::QuoteName(name) => format!("'{}", name.as_ref()),
             parse::ExprKind::RepeatName(name) => format!("...{}", name.as_ref()),
-            parse::ExprKind::Text(_, raw) => format!("\"{}\"", raw.as_ref()),
+            parse::ExprKind::Text(text) => format!("\"{}\"", text.raw().as_ref()),
             parse::ExprKind::Asset(raw) => format!("`{}`", raw.as_ref()),
             parse::ExprKind::Number(number) => number.as_ref().to_string(),
             parse::ExprKind::List(lines) => format!(

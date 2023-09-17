@@ -55,8 +55,8 @@ impl<D: Driver> Syntax<D> for LanguageItemStatementAttributeSyntax {
 
                 let expr = exprs.pop().unwrap();
                 let language_item = match expr.kind {
-                    parse::ExprKind::Text(text, _) => {
-                        match text.as_ref().parse::<LanguageItemStatementAttributeKind>() {
+                    parse::ExprKind::Text(text) => {
+                        match text.ignoring_escaped_underscores().as_ref().parse::<LanguageItemStatementAttributeKind>() {
                             Ok(item) => item,
                             Err(_) => {
                                 context.ast_builder.driver.syntax_error_with(

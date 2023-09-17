@@ -67,7 +67,7 @@ impl<D: Driver> Syntax<D> for HelpTemplateStatementAttributeSyntax {
 
                 let expr = exprs.pop().unwrap();
                 let help_template_text = match expr.kind {
-                    parse::ExprKind::Text(text, _) => text,
+                    parse::ExprKind::Text(text) => text.ignoring_escaped_underscores(),
                     _ => {
                         context
                             .ast_builder

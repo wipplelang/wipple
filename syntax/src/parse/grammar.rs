@@ -34,7 +34,7 @@ pub enum ExprKind<D: Driver> {
     Name(D::InternedString, Option<ScopeSet<D::Scope>>),
     QuoteName(D::InternedString),
     RepeatName(D::InternedString),
-    Text(D::InternedString, D::InternedString),
+    Text(Text<D>),
     Number(D::InternedString),
     Asset(D::InternedString),
     List(Vec<ListLine<D>>),
@@ -42,6 +42,27 @@ pub enum ExprKind<D: Driver> {
     Block(Vec<Statement<D>>),
     RepeatBlock(Vec<ListLine<D>>),
     SourceCode(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct Text<D: Driver> {
+    parsed: D::InternedString,
+    escaped_underscores: Vec<usize>,
+    raw: D::InternedString,
+}
+
+impl<D: Driver> Text<D> {
+    pub fn with_escaped_underscores(&self) -> (D::InternedString, &[usize]) {
+        (self.parsed.clone(), &self.escaped_underscores)
+    }
+
+    pub fn ignoring_escaped_underscores(&self) -> D::InternedString {
+        self.parsed.clone()
+    }
+
+    pub fn raw(&self) -> D::InternedString {
+        self.raw.clone()
+    }
 }
 
 impl<D: Driver> Expr<D> {
@@ -571,10 +592,17 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                 self.consume();
 
                 let mut unescaped = String::with_capacity(raw.len());
+                let mut escaped_underscores = Vec::new();
                 let mut error = false;
 
                 rustc_lexer::unescape::unescape_str(raw, &mut |range, result| match result {
                     Ok(ch) => unescaped.push(ch),
+                    Err(rustc_lexer::unescape::EscapeError::InvalidEscape)
+                        if &raw[range.clone()] == r"\_" =>
+                    {
+                        escaped_underscores.push(unescaped.len());
+                        unescaped.push('_');
+                    }
                     Err(e) => {
                         error = true;
 
@@ -594,7 +622,11 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                 } else {
                     Ok(Expr::new(
                         span,
-                        ExprKind::Text(self.driver.intern(unescaped), self.driver.intern(raw)),
+                        ExprKind::Text(Text {
+                            parsed: self.driver.intern(unescaped),
+                            escaped_underscores,
+                            raw: self.driver.intern(raw),
+                        }),
                     ))
                 }
             }

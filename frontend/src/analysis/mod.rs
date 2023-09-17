@@ -11,7 +11,7 @@ pub use typecheck::{
     Arm, Bound, Expression, ExpressionKind, Intrinsic, LiteralKind, Pattern, PatternKind, Program,
     Type, TypeAnnotation, TypeAnnotationKind, TypeStructure,
 };
-pub use wipple_syntax::ast;
+pub use wipple_syntax::{ast, parse};
 
 pub type ScopeSet = wipple_syntax::ScopeSet<ScopeId>;
 
@@ -565,7 +565,11 @@ impl wipple_syntax::File<Analysis> for File {
         {
             builtin_syntax_uses.insert(
                 name,
-                (compiler.new_builtin_syntax_id(), definition, im::HashSet::from_iter([span])),
+                (
+                    compiler.new_builtin_syntax_id(),
+                    definition,
+                    im::HashSet::from_iter([span]),
+                ),
             );
         }
     }

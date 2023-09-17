@@ -17,12 +17,7 @@ pub struct UseStatement<D: Driver> {
 
 #[derive(Debug, Clone)]
 pub enum UseStatementKind<D: Driver> {
-    File(
-        D::Span,
-        D::InternedString,
-        D::InternedString,
-        Option<D::Path>,
-    ),
+    File(D::Span, parse::Text<D>, Option<D::Path>),
 }
 
 impl<D: Driver> UseStatement<D> {
@@ -37,7 +32,7 @@ impl<D: Driver> Format<D> for UseStatement<D> {
             "{}use {}",
             self.attributes.format()?,
             match self.kind? {
-                UseStatementKind::File(_, _, raw_file, _) => format!("\"{}\"", raw_file.as_ref()),
+                UseStatementKind::File(_, file, _) => format!("\"{}\"", file.raw().as_ref()),
             }
         ))
     }
@@ -63,8 +58,11 @@ impl<D: Driver> Syntax<D> for UseStatementSyntax {
 
                 let input = exprs.pop().unwrap();
                 let kind = match input.kind {
-                    parse::ExprKind::Text(text, raw) => {
-                        let path = context.ast_builder.driver.make_path(text.clone());
+                    parse::ExprKind::Text(text) => {
+                        let path = context
+                            .ast_builder
+                            .driver
+                            .make_path(text.ignoring_escaped_underscores().clone());
 
                         if let Some(path) = path {
                             context
@@ -81,7 +79,7 @@ impl<D: Driver> Syntax<D> for UseStatementSyntax {
                                 .await;
                         }
 
-                        Ok(UseStatementKind::File(input.span, text, raw, path))
+                        Ok(UseStatementKind::File(input.span, text, path))
                     }
                     _ => {
                         context
