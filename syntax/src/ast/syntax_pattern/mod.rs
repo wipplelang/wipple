@@ -395,6 +395,16 @@ impl<D: Driver> SyntaxContext<D> for SyntaxPatternSyntaxContext<D> {
             },
         }
     }
+
+    fn wrap_attributes(
+        self,
+        attributes: Result<Vec<parse::Attribute<D>>, parse::UnexpectedAttributeError<D>>,
+        body: Self::Body,
+    ) -> Self::Body {
+        self.ast_builder.forbid_attributes(attributes);
+
+        body
+    }
 }
 
 #[derive(Debug, Clone)]

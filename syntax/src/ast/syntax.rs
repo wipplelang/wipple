@@ -45,6 +45,12 @@ pub(crate) trait SyntaxContext<D: Driver>: Clone + Send + Sync {
         expr: parse::Expr<D>,
         scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>>;
+
+    fn wrap_attributes(
+        self,
+        attributes: Result<Vec<parse::Attribute<D>>, parse::UnexpectedAttributeError<D>>,
+        body: Self::Body,
+    ) -> Self::Body;
 }
 
 #[derive(Debug, Clone)]
@@ -119,6 +125,14 @@ impl<D: Driver> SyntaxContext<D> for RawSyntaxContext {
     ) -> Result<Self::Body, SyntaxError<D>> {
         Ok(expr)
     }
+
+    fn wrap_attributes(
+        self,
+        _attributes: Result<Vec<parse::Attribute<D>>, parse::UnexpectedAttributeError<D>>,
+        body: Self::Body,
+    ) -> Self::Body {
+        body
+    }
 }
 
 impl<D: Driver> Syntax<D> for std::convert::Infallible {
@@ -161,6 +175,14 @@ impl<D: Driver> SyntaxContext<D> for std::convert::Infallible {
         _expr: parse::Expr<D>,
         _scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
+        unreachable!()
+    }
+
+    fn wrap_attributes(
+        self,
+        _attributes: Result<Vec<parse::Attribute<D>>, parse::UnexpectedAttributeError<D>>,
+        _body: Self::Body,
+    ) -> Self::Body {
         unreachable!()
     }
 }
@@ -333,13 +355,25 @@ pub enum OperatorAssociativity {
 }
 
 impl<D: Driver> AstBuilder<D> {
-    fn make_into_list(&self, mut exprs: Vec<parse::Expr<D>>) -> Vec<parse::Expr<D>> {
+    fn make_into_list(
+        &self,
+        mut exprs: Vec<parse::Expr<D>>,
+    ) -> (
+        Result<Vec<parse::Attribute<D>>, parse::UnexpectedAttributeError<D>>,
+        Vec<parse::Expr<D>>,
+    ) {
+        let mut attributes = Ok(Vec::new());
+
         while exprs.len() == 1 {
             let expr = exprs.pop().unwrap();
 
             match expr.try_into_list_exprs() {
                 Ok((_, attrs, list_exprs)) => {
-                    self.forbid_attributes(attrs);
+                    match (attrs, &mut attributes) {
+                        (Ok(attrs), Ok(attribtes)) => attribtes.extend(attrs),
+                        (Err(error), Ok(_)) => attributes = Err(error),
+                        _ => {}
+                    }
 
                     exprs = list_exprs;
                 }
@@ -350,11 +384,13 @@ impl<D: Driver> AstBuilder<D> {
             }
         }
 
-        exprs
+        (attributes, exprs)
     }
 
     pub(crate) fn list_matches_syntax<S: Syntax<D>>(&self, exprs: Vec<parse::Expr<D>>) -> bool {
-        let exprs = self.make_into_list(exprs);
+        let (attrs, exprs) = self.make_into_list(exprs);
+
+        self.forbid_attributes(attrs);
 
         for rule in S::rules().0 {
             if rule.shallow {
@@ -385,7 +421,7 @@ impl<D: Driver> AstBuilder<D> {
         exprs: Vec<parse::Expr<D>>,
         scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Option<Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>> {
-        let exprs = self.make_into_list(exprs);
+        let (attrs, exprs) = self.make_into_list(exprs);
 
         let prev_scope_set = scope_set.lock().clone();
 
@@ -397,13 +433,13 @@ impl<D: Driver> AstBuilder<D> {
                     if let Some(fut) = self.apply_function_syntax::<S>(
                         rule.name,
                         apply,
-                        context,
+                        context.clone(),
                         span,
                         &exprs,
                         scope_set.clone(),
                     ) {
                         if let Some(result) = fut.await {
-                            return Some(result);
+                            return Some(result.map(|expr| context.wrap_attributes(attrs, expr)));
                         }
 
                         *scope_set.lock() = prev_scope_set.clone();
@@ -414,13 +450,13 @@ impl<D: Driver> AstBuilder<D> {
                         rule.name,
                         associativity,
                         apply,
-                        context,
+                        context.clone(),
                         span,
                         &exprs,
                         scope_set.clone(),
                     ) {
                         if let Some(result) = fut.await {
-                            return Some(result);
+                            return Some(result.map(|expr| context.wrap_attributes(attrs, expr)));
                         }
 
                         *scope_set.lock() = prev_scope_set.clone();
@@ -780,5 +816,15 @@ impl<D: Driver> SyntaxContext<D> for ErrorSyntaxContext<D> {
         _scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         Err(self.ast_builder.syntax_error(expr.span))
+    }
+
+    fn wrap_attributes(
+        self,
+        attributes: Result<Vec<parse::Attribute<D>>, parse::UnexpectedAttributeError<D>>,
+        body: Self::Body,
+    ) -> Self::Body {
+        self.ast_builder.forbid_attributes(attributes);
+
+        body
     }
 }
