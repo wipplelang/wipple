@@ -6,12 +6,12 @@ use "math"
 [help "Create a new `Mutable` value."]
 [help-group "Utilities"]
 mutable :: A => A -> Mutable A
-mutable : x -> intrinsic "make-mutable" x
+mutable : x -> ([pure] intrinsic "make-mutable" x)
 
 [help "Retrieve the value inside a `Mutable`."]
 [help-group "Utilities"]
 get :: A => Mutable A -> A
-get : m -> intrinsic "get-mutable" m
+get : m -> ([pure] intrinsic "get-mutable" m)
 
 [help "Update the value contained inside a `Mutable`."]
 [help-group "Utilities"]

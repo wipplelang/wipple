@@ -1,7 +1,5 @@
 use crate::{
-    analysis::{
-        Arm, Attribute, Expression, ExpressionKind, Intrinsic, Pattern, PatternKind, Program, Type,
-    },
+    analysis::{Arm, Attribute, Expression, ExpressionKind, Pattern, PatternKind, Program, Type},
     Compiler, ItemId, Optimize, VariableId,
 };
 use parking_lot::RwLock;
@@ -577,14 +575,9 @@ mod util {
                 ExpressionKind::Format(segments, _) => segments
                     .iter()
                     .all(|(_, expr)| expr.is_pure_inner(program, function_call, stack)),
-                ExpressionKind::Intrinsic(intrinsic, inputs) => {
-                    intrinsic.is_pure()
-                        && inputs
-                            .iter()
-                            .all(|expr| expr.is_pure_inner(program, function_call, stack))
-                }
                 ExpressionKind::Plugin(_, _, _) => panic!("found unresolved plugin"),
-                ExpressionKind::External(_, _, _)
+                ExpressionKind::Intrinsic(_, _)
+                | ExpressionKind::External(_, _, _)
                 | ExpressionKind::Initialize(_, _)
                 | ExpressionKind::With(_, _)
                 | ExpressionKind::ContextualConstant(_)
@@ -642,149 +635,6 @@ mod util {
             });
 
             variables
-        }
-    }
-
-    impl Intrinsic {
-        // TODO: In the future, add a [pure] attribute instead of checking these manually
-        fn is_pure(&self) -> bool {
-            match self {
-                Intrinsic::Crash => false,
-                Intrinsic::Display => false,
-                Intrinsic::Prompt => false,
-                Intrinsic::Choice => false,
-                Intrinsic::WithUi => false,
-                Intrinsic::MessageUi => false,
-                Intrinsic::WithContinuation => false,
-                Intrinsic::WithTaskGroup => false,
-                Intrinsic::Task => false,
-                Intrinsic::InBackground => false,
-                Intrinsic::Delay => false,
-                Intrinsic::NumberToText => true,
-                Intrinsic::IntegerToText => true,
-                Intrinsic::NaturalToText => true,
-                Intrinsic::ByteToText => true,
-                Intrinsic::SignedToText => true,
-                Intrinsic::UnsignedToText => true,
-                Intrinsic::FloatToText => true,
-                Intrinsic::DoubleToText => true,
-                Intrinsic::TextToNumber => true,
-                Intrinsic::TextToInteger => true,
-                Intrinsic::TextToNatural => true,
-                Intrinsic::TextToByte => true,
-                Intrinsic::TextToSigned => true,
-                Intrinsic::TextToUnsigned => true,
-                Intrinsic::TextToFloat => true,
-                Intrinsic::TextToDouble => true,
-                Intrinsic::NaturalToNumber => true,
-                Intrinsic::NumberToNatural => true,
-                Intrinsic::NaturalToInteger => true,
-                Intrinsic::IntegerToNatural => true,
-                Intrinsic::AddNumber => true,
-                Intrinsic::SubtractNumber => true,
-                Intrinsic::MultiplyNumber => true,
-                Intrinsic::DivideNumber => true,
-                Intrinsic::ModuloNumber => true,
-                Intrinsic::PowerNumber => true,
-                Intrinsic::FloorNumber => true,
-                Intrinsic::CeilNumber => true,
-                Intrinsic::SqrtNumber => true,
-                Intrinsic::NegateNumber => true,
-                Intrinsic::AddInteger => true,
-                Intrinsic::SubtractInteger => true,
-                Intrinsic::MultiplyInteger => true,
-                Intrinsic::DivideInteger => true,
-                Intrinsic::ModuloInteger => true,
-                Intrinsic::PowerInteger => true,
-                Intrinsic::NegateInteger => true,
-                Intrinsic::AddNatural => true,
-                Intrinsic::SubtractNatural => true,
-                Intrinsic::MultiplyNatural => true,
-                Intrinsic::DivideNatural => true,
-                Intrinsic::ModuloNatural => true,
-                Intrinsic::PowerNatural => true,
-                Intrinsic::AddByte => true,
-                Intrinsic::SubtractByte => true,
-                Intrinsic::MultiplyByte => true,
-                Intrinsic::DivideByte => true,
-                Intrinsic::ModuloByte => true,
-                Intrinsic::PowerByte => true,
-                Intrinsic::AddSigned => true,
-                Intrinsic::SubtractSigned => true,
-                Intrinsic::MultiplySigned => true,
-                Intrinsic::DivideSigned => true,
-                Intrinsic::ModuloSigned => true,
-                Intrinsic::PowerSigned => true,
-                Intrinsic::AddUnsigned => true,
-                Intrinsic::NegateSigned => true,
-                Intrinsic::SubtractUnsigned => true,
-                Intrinsic::MultiplyUnsigned => true,
-                Intrinsic::DivideUnsigned => true,
-                Intrinsic::ModuloUnsigned => true,
-                Intrinsic::PowerUnsigned => true,
-                Intrinsic::AddFloat => true,
-                Intrinsic::SubtractFloat => true,
-                Intrinsic::MultiplyFloat => true,
-                Intrinsic::DivideFloat => true,
-                Intrinsic::ModuloFloat => true,
-                Intrinsic::PowerFloat => true,
-                Intrinsic::FloorFloat => true,
-                Intrinsic::CeilFloat => true,
-                Intrinsic::SqrtFloat => true,
-                Intrinsic::NegateFloat => true,
-                Intrinsic::AddDouble => true,
-                Intrinsic::SubtractDouble => true,
-                Intrinsic::MultiplyDouble => true,
-                Intrinsic::DivideDouble => true,
-                Intrinsic::ModuloDouble => true,
-                Intrinsic::PowerDouble => true,
-                Intrinsic::FloorDouble => true,
-                Intrinsic::CeilDouble => true,
-                Intrinsic::SqrtDouble => true,
-                Intrinsic::NegateDouble => true,
-                Intrinsic::TextEquality => true,
-                Intrinsic::NumberEquality => true,
-                Intrinsic::IntegerEquality => true,
-                Intrinsic::NaturalEquality => true,
-                Intrinsic::ByteEquality => true,
-                Intrinsic::SignedEquality => true,
-                Intrinsic::UnsignedEquality => true,
-                Intrinsic::FloatEquality => true,
-                Intrinsic::DoubleEquality => true,
-                Intrinsic::TextOrdering => true,
-                Intrinsic::NumberOrdering => true,
-                Intrinsic::IntegerOrdering => true,
-                Intrinsic::NaturalOrdering => true,
-                Intrinsic::ByteOrdering => true,
-                Intrinsic::SignedOrdering => true,
-                Intrinsic::UnsignedOrdering => true,
-                Intrinsic::FloatOrdering => true,
-                Intrinsic::DoubleOrdering => true,
-                Intrinsic::MakeMutable => true,
-                Intrinsic::GetMutable => false,
-                Intrinsic::SetMutable => false,
-                Intrinsic::MakeEmptyList => true,
-                Intrinsic::ListFirst => true,
-                Intrinsic::ListLast => true,
-                Intrinsic::ListInitial => true,
-                Intrinsic::ListTail => true,
-                Intrinsic::ListNth => true,
-                Intrinsic::ListAppend => true,
-                Intrinsic::ListPrepend => true,
-                Intrinsic::ListInsertAt => true,
-                Intrinsic::ListRemoveAt => true,
-                Intrinsic::ListCount => true,
-                Intrinsic::ListSlice => true,
-                Intrinsic::TextCharacters => true,
-                Intrinsic::RandomNumber => false,
-                Intrinsic::RandomInteger => false,
-                Intrinsic::RandomNatural => false,
-                Intrinsic::RandomByte => false,
-                Intrinsic::RandomSigned => false,
-                Intrinsic::RandomUnsigned => false,
-                Intrinsic::RandomFloat => false,
-                Intrinsic::RandomDouble => false,
-            }
         }
     }
 }

@@ -15,9 +15,9 @@ build-list! : l e -> l . append! e
 [help "Create a `List` with the specified elements."]
 [help-group "Collections"]
 list : syntax {
-  list -> intrinsic "make-empty-list" :: List _
+  list -> ([pure] intrinsic "make-empty-list" :: List _)
   list ...x -> {
-    l : mutable (intrinsic "make-empty-list" :: List _)
+    l : mutable ([pure] intrinsic "make-empty-list" :: List _)
     ...{ (build-list! l 'x) }
     get l
   }
@@ -28,32 +28,32 @@ instance (Default (List _)) : list
 [help "Retrieve the first item inside a `List`, if it exists."]
 [help-group "Collections"]
 first :: A => List A -> Maybe A
-first : l -> intrinsic "list-first" l
+first : l -> ([pure] intrinsic "list-first" l)
 
 [help "Retrieve the last item inside a `List`, if it exists."]
 [help-group "Collections"]
 last :: A => List A -> Maybe A
-last : l -> intrinsic "list-last" l
+last : l -> ([pure] intrinsic "list-last" l)
 
 [help "Retrieve all but the last item inside a `List`."]
 [help-group "Collections"]
 initial :: A => List A -> Maybe (List A)
-initial : l -> intrinsic "list-initial" l
+initial : l -> ([pure] intrinsic "list-initial" l)
 
 [help "Retrieve all but the first item inside a `List`."]
 [help-group "Collections"]
 tail :: A => List A -> Maybe (List A)
-tail : l -> intrinsic "list-tail" l
+tail : l -> ([pure] intrinsic "list-tail" l)
 
 [help "Retrieve the value in a `List` at a particular index, if it exists."]
 [help-group "Collections"]
 nth :: A => Natural -> List A -> Maybe A
-nth : index l -> intrinsic "list-nth" l index
+nth : index l -> ([pure] intrinsic "list-nth" l index)
 
 [help "Add a new item to the end of a `List`."]
 [help-group "Collections"]
 append :: A => A -> List A -> List A
-append : new l -> intrinsic "list-append" l new
+append : new l -> ([pure] intrinsic "list-append" l new)
 
 [help "Add a new item to the end of a `Mutable List`."]
 [help-group "Collections"]
@@ -63,7 +63,7 @@ append! : new l -> l . set! (l . get . append new)
 [help "Insert a new item at a particular index inside a `List`."]
 [help-group "Collections"]
 insert-at :: A => Natural -> A -> List A -> Maybe (List A)
-insert-at : index new l -> intrinsic "list-insert-at" l index new
+insert-at : index new l -> ([pure] intrinsic "list-insert-at" l index new)
 
 [help "Insert a new item at a particular index inside a `Mutable List`."]
 [help-group "Collections"]
@@ -79,7 +79,7 @@ insert-at! : index new l -> when (l . get . insert-at index new) {
 [help "Remove the item at a particular index inside a `List`."]
 [help-group "Collections"]
 remove-at :: A => Natural -> List A -> Maybe (List A)
-remove-at : index l -> intrinsic "list-remove-at" l index
+remove-at : index l -> ([pure] intrinsic "list-remove-at" l index)
 
 [help "Remove the item at a particular index inside a `Mutable List`."]
 [help-group "Collections"]
