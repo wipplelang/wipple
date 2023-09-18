@@ -12,6 +12,7 @@ use std::{
     path::PathBuf,
     process::ExitCode,
     sync::Arc,
+    thread,
 };
 use wipple_default_loader as loader;
 use wipple_frontend::{Compiler, Loader};
@@ -98,18 +99,40 @@ enum CompileFormat {
     Ir,
 }
 
-#[tokio::main]
-async fn main() -> ExitCode {
-    match run().await {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(error) => {
-            if !error.to_string().is_empty() {
-                eprintln!("{error}");
-            }
+fn main() -> ExitCode {
+    #[cfg(debug_assertions)]
+    const STACK_SIZE: usize = 20 * 1024 * 1024; // 20 MiB
 
-            ExitCode::FAILURE
-        }
-    }
+    #[cfg(not(debug_assertions))]
+    const STACK_SIZE: usize = 6 * 1024 * 1024; // 6 MiB
+
+    let thread = thread::Builder::new()
+        .name(String::from("wipple"))
+        .stack_size(STACK_SIZE);
+
+    thread
+        .spawn(|| {
+            let rt = tokio::runtime::Builder::new_multi_thread()
+                .thread_stack_size(STACK_SIZE)
+                .build()
+                .unwrap();
+
+            rt.block_on(async {
+                match run().await {
+                    Ok(()) => ExitCode::SUCCESS,
+                    Err(error) => {
+                        if !error.to_string().is_empty() {
+                            eprintln!("{error}");
+                        }
+
+                        ExitCode::FAILURE
+                    }
+                }
+            })
+        })
+        .unwrap()
+        .join()
+        .unwrap()
 }
 
 const PROGRESS_BAR_TICK_SPEED: u64 = 80;
