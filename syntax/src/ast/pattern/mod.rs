@@ -243,7 +243,10 @@ impl<D: Driver> SyntaxContext<D> for PatternSyntaxContext<D> {
             }
             .into()),
             parse::ExprKind::List(_) => {
-                let (span, mut exprs) = expr.try_into_list_exprs().unwrap();
+                let (span, attrs, exprs) = expr.try_into_list_exprs().unwrap();
+                self.ast_builder.forbid_attributes(attrs);
+
+                let mut exprs = exprs.into_iter();
 
                 let name_expr = match exprs.next() {
                     Some(expr) => expr,

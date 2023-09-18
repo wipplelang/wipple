@@ -281,6 +281,11 @@ impl Converter<'_> {
                         .map(|(&index, field)| (index, self.convert_expr(field, false)))
                         .collect(),
                 ),
+                analysis::ExpressionKind::Attributed(_attributes, expr) => {
+                    // TODO: Handle attributes as necessary
+
+                    return self.convert_expr(expr, tail);
+                }
             },
         }
     }

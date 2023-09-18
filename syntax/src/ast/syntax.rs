@@ -338,8 +338,10 @@ impl<D: Driver> AstBuilder<D> {
             let expr = exprs.pop().unwrap();
 
             match expr.try_into_list_exprs() {
-                Ok((_, list_exprs)) => {
-                    exprs = list_exprs.collect();
+                Ok((_, attrs, list_exprs)) => {
+                    self.forbid_attributes(attrs);
+
+                    exprs = list_exprs;
                 }
                 Err(expr) => {
                     exprs.push(expr);

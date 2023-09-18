@@ -88,7 +88,11 @@ impl<D: Driver> Syntax<D> for WhereTypePatternSyntax {
                 let bounds = stream::iter(rhs_exprs)
                     .then(|expr| async {
                         match expr.try_into_list_exprs() {
-                            Ok((span, mut exprs)) => {
+                            Ok((span, attrs, exprs)) => {
+                                context.ast_builder.forbid_attributes(attrs);
+
+                                let mut exprs = exprs.into_iter();
+
                                 let trait_name = match exprs.next() {
                                     Some(expr) => expr,
                                     None => {

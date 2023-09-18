@@ -106,8 +106,11 @@ impl<D: Driver> SyntaxContext<D> for TypeMemberSyntaxContext<D> {
             .clone()
             .try_into_list_exprs()
             .ok()
-            .and_then(|(_, exprs)| {
+            .and_then(|(_, attrs, exprs)| {
+                self.ast_builder.forbid_attributes(attrs);
+
                 exprs
+                    .into_iter()
                     .map(|expr| match &expr.kind {
                         parse::ExprKind::Name(name, scope) => Some((
                             expr.span,
@@ -120,7 +123,11 @@ impl<D: Driver> SyntaxContext<D> for TypeMemberSyntaxContext<D> {
             });
 
         match expr.try_into_list_exprs() {
-            Ok((span, mut list)) => {
+            Ok((span, attrs, list)) => {
+                self.ast_builder.forbid_attributes(attrs);
+
+                let mut list = list.into_iter();
+
                 let name_expr = match list.next() {
                     Some(expr) => expr,
                     None => {

@@ -11,7 +11,7 @@ mod queries;
 pub mod traverse;
 
 pub use engine::{BottomTypeReason, BuiltinType, GenericSubstitutions, Type, TypeStructure};
-pub use lower::{Intrinsic, TypeAnnotation, TypeAnnotationKind};
+pub use lower::{Attribute, Intrinsic, TypeAnnotation, TypeAnnotationKind};
 
 use crate::{
     analysis::{lower, SpanList},
@@ -234,6 +234,7 @@ macro_rules! expr {
                 ContextualConstant(ConstantId),
                 End(Box<[<$prefix Expression>]>),
                 Extend(Box<[<$prefix Expression>]>, BTreeMap<FieldIndex, [<$prefix Expression>]>),
+                Attributed(Vec<Attribute>, Box<[<$prefix Expression>]>),
                 $($kinds)*
             }
 
@@ -414,6 +415,9 @@ impl From<UnresolvedExpression> for MonomorphizedExpression {
                             .map(|(index, expr)| (index, expr.into()))
                             .collect(),
                     )
+                }
+                UnresolvedExpressionKind::Attributed(attributes, value) => {
+                    MonomorphizedExpressionKind::Attributed(attributes, Box::new((*value).into()))
                 }
             },
         }
@@ -2391,6 +2395,16 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Extend(Box::new(value), fields),
                 }
             }
+            lower::ExpressionKind::Attributed(attributes, expr) => {
+                let expr = self.convert_expr(*expr, info);
+
+                UnresolvedExpression {
+                    id: expr.id,
+                    span: expr.span,
+                    ty: expr.ty.clone(),
+                    kind: UnresolvedExpressionKind::Attributed(attributes, Box::new(expr)),
+                }
+            }
         }
     }
 
@@ -2864,6 +2878,12 @@ impl Typechecker {
                             .into_iter()
                             .map(|(index, field)| (index, self.monomorphize_expr(field, info)))
                             .collect(),
+                    )
+                }
+                MonomorphizedExpressionKind::Attributed(attributes, expr) => {
+                    MonomorphizedExpressionKind::Attributed(
+                        attributes,
+                        Box::new(self.monomorphize_expr(*expr, info)),
                     )
                 }
             })(),
@@ -3805,6 +3825,9 @@ impl Typechecker {
                     .map(|(index, field)| (index, self.finalize_expr(field)))
                     .collect(),
             ),
+            MonomorphizedExpressionKind::Attributed(attributes, expr) => {
+                ExpressionKind::Attributed(attributes, Box::new(self.finalize_expr(*expr)))
+            }
         })();
 
         Expression {

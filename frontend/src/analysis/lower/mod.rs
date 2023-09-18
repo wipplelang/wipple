@@ -507,6 +507,7 @@ pub enum ExpressionKind {
         Box<Expression>,
         Vec<((SpanList, InternedString), Expression)>,
     ),
+    Attributed(Vec<Attribute>, Box<Expression>),
 }
 
 impl ExpressionKind {
@@ -595,6 +596,9 @@ impl Expression {
                 for (_, expr) in fields {
                     expr.traverse_mut_inner(f);
                 }
+            }
+            ExpressionKind::Attributed(_, expr) => {
+                expr.traverse_mut_inner(f);
             }
         }
     }
@@ -865,6 +869,24 @@ pub enum Intrinsic {
     RandomUnsigned,
     RandomFloat,
     RandomDouble,
+}
+
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    strum::EnumString,
+    strum::Display,
+    Serialize,
+    Deserialize,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum Attribute {
+    Pure,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -3110,10 +3132,10 @@ impl Lowerer {
                     Ok(func) => func,
                     Err(_) => {
                         self.compiler.add_error(
-                            "unknown runtime function",
+                            "unknown intrinsic",
                             vec![Note::primary(
                                 expr.span(),
-                                "check the Wipple source code for the latest list of runtime functions"
+                                "check the Wipple source code for the latest list of intrinsics",
                             )],
                             "",
                         );
@@ -3383,6 +3405,44 @@ impl Lowerer {
                     id: self.compiler.new_expression_id(ctx.owner),
                     span: expr.span(),
                     kind: ExpressionKind::Extend(Box::new(value), fields),
+                }
+            }
+            ast::Expression::Attributed(expr) => {
+                let attributes = expr
+                    .attributes
+                    .iter()
+                    .filter_map(|&(span, name)| {
+                        match name.parse() {
+                            Ok(attr) => Some(attr),
+                            Err(_) => {
+                                self.compiler.add_error(
+                                    "unknown attribute",
+                                    vec![Note::primary(
+                                        span,
+                                        "check the Wipple source code for the latest list of attributes"
+                                    )],
+                                    "",
+                                );
+
+                                None
+                            }
+                        }
+                    })
+                    .collect();
+
+                let expr = match &expr.expr {
+                    Ok(expr) => self.lower_expr(expr, ctx),
+                    Err(error) => Expression {
+                        id: self.compiler.new_expression_id(ctx.owner),
+                        span: error.span,
+                        kind: ExpressionKind::error(&self.compiler),
+                    },
+                };
+
+                Expression {
+                    id: self.compiler.new_expression_id(ctx.owner),
+                    span: expr.span,
+                    kind: ExpressionKind::Attributed(attributes, Box::new(expr)),
                 }
             }
         }

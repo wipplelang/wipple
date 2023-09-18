@@ -8,8 +8,8 @@ pub mod typecheck;
 
 pub use span::{Span, SpanList};
 pub use typecheck::{
-    Arm, Bound, Expression, ExpressionKind, Intrinsic, LiteralKind, Pattern, PatternKind, Program,
-    Type, TypeAnnotation, TypeAnnotationKind, TypeStructure,
+    Arm, Attribute, Bound, Expression, ExpressionKind, Intrinsic, LiteralKind, Pattern,
+    PatternKind, Program, Type, TypeAnnotation, TypeAnnotationKind, TypeStructure,
 };
 pub use wipple_syntax::{ast, parse};
 
