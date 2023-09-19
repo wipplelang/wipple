@@ -9,7 +9,7 @@ pub mod typecheck;
 pub use span::{Span, SpanList};
 pub use typecheck::{
     Arm, Bound, Expression, ExpressionKind, Intrinsic, LiteralKind, Pattern, PatternKind, Program,
-    Semantics, Type, TypeAnnotation, TypeAnnotationKind, TypeStructure,
+    Semantics, Type, TypeAnnotation, TypeAnnotationKind, TypeKind, TypeStructure, TypeUsage,
 };
 pub use wipple_syntax::{ast, parse};
 

@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use std::{collections::BTreeMap, io};
 use wipple_default_loader::is_relative_to_entrypoint;
-use wipple_frontend::analysis::{Program, Type};
+use wipple_frontend::analysis::{Program, TypeKind};
 
 #[derive(Debug, clap::Parser)]
 pub struct Options {
@@ -131,7 +131,7 @@ pub fn document(
         groups.entry(group).or_default().items.insert(
             decl.name.to_string(),
             HelpItem {
-                kind: if matches!(decl.ty, Type::Function(_, _)) {
+                kind: if matches!(decl.ty.kind, TypeKind::Function(_, _)) {
                     String::from("function")
                 } else {
                     String::from("constant")

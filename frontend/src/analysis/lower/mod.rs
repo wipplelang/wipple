@@ -689,6 +689,7 @@ impl Pattern {
 pub struct TypeAnnotation {
     pub span: SpanList,
     pub kind: TypeAnnotationKind,
+    pub usage: Option<TypeUsage>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -706,6 +707,25 @@ impl TypeAnnotationKind {
     pub(crate) fn error(compiler: &Compiler) -> Self {
         TypeAnnotationKind::Error(compiler.backtrace())
     }
+}
+
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    strum::EnumString,
+    strum::Display,
+    Serialize,
+    Deserialize,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum TypeUsage {
+    Once,
+    Borrowed,
 }
 
 #[derive(Debug, Clone)]
@@ -1555,6 +1575,7 @@ impl Lowerer {
                                                         kind: TypeAnnotationKind::error(
                                                             &self.compiler,
                                                         ),
+                                                        usage: None,
                                                     },
                                                 };
 
@@ -1577,6 +1598,7 @@ impl Lowerer {
                                                             kind: TypeAnnotationKind::error(
                                                                 &self.compiler,
                                                             ),
+                                                            usage: None,
                                                         },
                                                     })
                                                     .collect::<Vec<_>>();
@@ -1696,6 +1718,7 @@ impl Lowerer {
                         Err(error) => TypeAnnotation {
                             span: error.span,
                             kind: TypeAnnotationKind::error(&self.compiler),
+                            usage: None,
                         },
                     });
 
@@ -1813,6 +1836,7 @@ impl Lowerer {
                             Err(error) => TypeAnnotation {
                                 span: error.span,
                                 kind: TypeAnnotationKind::error(&self.compiler),
+                                usage: None,
                             },
                         })
                         .collect::<Vec<_>>();
@@ -2591,7 +2615,7 @@ impl Lowerer {
                         "text contains placeholders, but no inputs were provided",
                         vec![Note::primary(
                             expr.span,
-                            r"try escaping the placeholders using '\_'",
+                            r"try escaping the placeholders using `\_`",
                         )],
                         "",
                     );
@@ -3202,6 +3226,7 @@ impl Lowerer {
                     Err(error) => TypeAnnotation {
                         span: error.span,
                         kind: TypeAnnotationKind::error(&self.compiler),
+                        usage: None,
                     },
                 };
 
@@ -3880,6 +3905,7 @@ impl Lowerer {
                     Err(error) => TypeAnnotation {
                         span: error.span,
                         kind: TypeAnnotationKind::error(&self.compiler),
+                        usage: None,
                     },
                 };
 
@@ -3946,6 +3972,7 @@ impl Lowerer {
                     Err(error) => TypeAnnotation {
                         span: error.span,
                         kind: TypeAnnotationKind::Error(error.trace.clone()),
+                        usage: None,
                     },
                 };
 
@@ -3954,12 +3981,14 @@ impl Lowerer {
                     Err(error) => TypeAnnotation {
                         span: error.span,
                         kind: TypeAnnotationKind::Error(error.trace.clone()),
+                        usage: None,
                     },
                 };
 
                 TypeAnnotation {
                     span: ty.span(),
                     kind: TypeAnnotationKind::Function(Box::new(input), Box::new(output)),
+                    usage: None,
                 }
             }
             ast::Type::Tuple(ty) => TypeAnnotation {
@@ -3972,18 +4001,22 @@ impl Lowerer {
                             Err(error) => TypeAnnotation {
                                 span: error.span,
                                 kind: TypeAnnotationKind::Error(error.trace.clone()),
+                                usage: None,
                             },
                         })
                         .collect(),
                 ),
+                usage: None,
             },
             ast::Type::Placeholder(ty) => TypeAnnotation {
                 span: ty.span(),
                 kind: TypeAnnotationKind::Placeholder,
+                usage: None,
             },
             ast::Type::Unit(ty) => TypeAnnotation {
                 span: ty.span(),
                 kind: TypeAnnotationKind::Tuple(Vec::new()),
+                usage: None,
             },
             ast::Type::Named(ty) => {
                 let parameters = ty
@@ -3994,6 +4027,7 @@ impl Lowerer {
                         Err(error) => TypeAnnotation {
                             span: error.span,
                             kind: TypeAnnotationKind::Error(error.trace.clone()),
+                            usage: None,
                         },
                     })
                     .collect();
@@ -4014,6 +4048,7 @@ impl Lowerer {
                     TypeAnnotation {
                         span: ty.span,
                         kind: TypeAnnotationKind::Named(id, parameters),
+                        usage: None,
                     }
                 } else if let Some(param) = self
                     .get(
@@ -4059,6 +4094,7 @@ impl Lowerer {
                     TypeAnnotation {
                         span: ty.span,
                         kind: TypeAnnotationKind::Parameter(param),
+                        usage: None,
                     }
                 } else if let Ok(Some(builtin)) = self.get(
                     ty.name,
@@ -4076,6 +4112,7 @@ impl Lowerer {
                     TypeAnnotation {
                         span: ty.span,
                         kind: TypeAnnotationKind::Builtin(builtin, parameters),
+                        usage: None,
                     }
                 } else if let Err(candidates) = self.get(
                     ty.name,
@@ -4109,6 +4146,7 @@ impl Lowerer {
                     return TypeAnnotation {
                         span: ty.span,
                         kind: TypeAnnotationKind::error(&self.compiler),
+                        usage: None,
                     };
                 } else {
                     let (notes, fix) = self.diagnostic_notes_for_unresolved_name(
@@ -4134,8 +4172,26 @@ impl Lowerer {
                     TypeAnnotation {
                         span: ty.span,
                         kind: TypeAnnotationKind::error(&self.compiler),
+                        usage: None,
                     }
                 }
+            }
+            ast::Type::Use(ty) => {
+                let mut inner = match &ty.ty {
+                    Ok(ty) => self.lower_type(ty, ctx, fallback_scope),
+                    Err(error) => TypeAnnotation {
+                        span: error.span,
+                        kind: TypeAnnotationKind::Error(error.trace.clone()),
+                        usage: None,
+                    },
+                };
+
+                inner.usage = Some(match ty.kind {
+                    ast::UseKind::Once => TypeUsage::Once,
+                    ast::UseKind::Borrowed => TypeUsage::Borrowed,
+                });
+
+                inner
             }
         }
     }
@@ -4409,6 +4465,7 @@ impl Lowerer {
                                     Err(error) => TypeAnnotation {
                                         span: error.span,
                                         kind: TypeAnnotationKind::error(&self.compiler),
+                                        usage: None,
                                     },
                                 })
                                 .collect();
@@ -4709,6 +4766,7 @@ impl Lowerer {
                         Err(error) => TypeAnnotation {
                             span: error.span,
                             kind: TypeAnnotationKind::error(&self.compiler),
+                            usage: None,
                         },
                     };
 
@@ -5011,14 +5069,17 @@ impl Lowerer {
                             TypeAnnotation {
                                 span,
                                 kind: TypeAnnotationKind::Parameter(*param),
+                                usage: None,
                             }
                         })
                         .collect(),
                 ),
+                usage: None,
             },
             |result, next| TypeAnnotation {
                 span: SpanList::join(next.span, result.span),
                 kind: TypeAnnotationKind::Function(Box::new(next.clone()), Box::new(result)),
+                usage: None,
             },
         );
 

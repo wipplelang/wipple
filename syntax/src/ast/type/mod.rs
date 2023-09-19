@@ -1,6 +1,7 @@
 definitions! {
     mod function;
     mod tuple;
+    mod r#use;
 }
 
 use crate::ScopeSet;
@@ -22,6 +23,7 @@ syntax_group! {
         non_terminal: {
             Function,
             Tuple,
+            Use,
         },
         terminal: {
             Placeholder,

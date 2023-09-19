@@ -2,7 +2,7 @@ use crate::FieldIndex;
 
 use super::{
     Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, Type, TypeAnnotation,
-    TypeAnnotationKind, TypeDeclKind, TypeStructure,
+    TypeAnnotationKind, TypeDeclKind, TypeKind, TypeStructure,
 };
 use std::fmt;
 
@@ -76,8 +76,8 @@ impl Expression {
         match &self.kind {
             ExpressionKind::Error(_) => write!(f, "<error expression>")?,
             ExpressionKind::Marker => {
-                let id = match self.ty {
-                    Type::Named(id, _, _) => id,
+                let id = match self.ty.kind {
+                    TypeKind::Named(id, _, _) => id,
                     _ => {
                         write!(f, "<unknown marker type>")?;
                         return Ok(());
@@ -165,8 +165,8 @@ impl Expression {
                 write!(f, ")")?;
             }
             ExpressionKind::Function(pattern, value, _) => {
-                let input_ty = match &self.ty {
-                    Type::Function(input, _) => input,
+                let input_ty = match &self.ty.kind {
+                    TypeKind::Function(input, _) => input,
                     _ => {
                         write!(f, "<unknown function>")?;
                         return Ok(());
@@ -215,8 +215,8 @@ impl Expression {
                 value.display_with(f, file, indent)?;
             }
             ExpressionKind::Structure(fields) => {
-                let id = match self.ty {
-                    Type::Named(id, _, _) => id,
+                let id = match self.ty.kind {
+                    TypeKind::Named(id, _, _) => id,
                     _ => {
                         write!(f, "<unknown structure type>")?;
                         return Ok(());
@@ -256,8 +256,8 @@ impl Expression {
                 write!(f, "{}}})", "\t".repeat(indent))?;
             }
             ExpressionKind::Variant(index, values) => {
-                let id = match self.ty {
-                    Type::Named(id, _, _) => id,
+                let id = match self.ty.kind {
+                    TypeKind::Named(id, _, _) => id,
                     _ => {
                         write!(f, "<unknown enumeration type>")?;
                         return Ok(());
@@ -354,8 +354,8 @@ impl Expression {
                 write!(f, ")")?;
             }
             ExpressionKind::Extend(value, fields) => {
-                let id = match self.ty {
-                    Type::Named(id, _, _) => Some(id),
+                let id = match self.ty.kind {
+                    TypeKind::Named(id, _, _) => Some(id),
                     _ => None,
                 };
 
@@ -445,8 +445,8 @@ impl Pattern {
                 write!(f, "{name}")?;
             }
             PatternKind::Destructure(_, fields) => {
-                let (id, field_tys) = match input_ty {
-                    Type::Named(id, _, TypeStructure::Structure(fields)) => (id, fields),
+                let (id, field_tys) = match &input_ty.kind {
+                    TypeKind::Named(id, _, TypeStructure::Structure(fields)) => (id, fields),
                     _ => {
                         write!(f, "<unknown structure type>")?;
                         return Ok(());
@@ -483,8 +483,8 @@ impl Pattern {
                 write!(f, "{}}}", "\t".repeat(indent))?;
             }
             PatternKind::Variant(id, index, patterns) => {
-                let variant_tys = match input_ty {
-                    Type::Named(_, _, TypeStructure::Enumeration(variants)) => variants,
+                let variant_tys = match &input_ty.kind {
+                    TypeKind::Named(_, _, TypeStructure::Enumeration(variants)) => variants,
                     _ => {
                         write!(f, "<unknown enumeration type>")?;
                         return Ok(());
@@ -531,8 +531,8 @@ impl Pattern {
                 write!(f, ")")?;
             }
             PatternKind::Tuple(patterns) => {
-                let value_tys = match input_ty {
-                    Type::Tuple(tys) => tys,
+                let value_tys = match &input_ty.kind {
+                    TypeKind::Tuple(tys) => tys,
                     _ => {
                         write!(f, "<unknown tuple pattern>")?;
                         return Ok(());

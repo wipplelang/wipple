@@ -578,8 +578,10 @@ fn get_syntax_highlighting(
             expr.kind,
             wipple_frontend::analysis::ExpressionKind::Variable(_)
                 | wipple_frontend::analysis::ExpressionKind::Constant(_)
-        ) && matches!(expr.ty, wipple_frontend::analysis::Type::Function(_, _))
-        {
+        ) && matches!(
+            expr.ty.kind,
+            wipple_frontend::analysis::TypeKind::Function(_, _)
+        ) {
             items.push(AnalysisOutputSyntaxHighlightingItem {
                 start: expr.span.original().primary_start(),
                 end: expr.span.original().primary_end(),
@@ -668,7 +670,7 @@ fn get_completions(program: &wipple_frontend::analysis::Program) -> AnalysisOutp
 
     for decl in program.declarations.constants.values() {
         let completion = Completion {
-            kind: matches!(decl.ty, wipple_frontend::analysis::Type::Function(_, _))
+            kind: matches!(decl.ty.kind, wipple_frontend::analysis::TypeKind::Function(_, _))
                 .then_some("function"),
             name: decl.name.to_string(),
             help: decl.attributes.decl_attributes.help.iter().join("\n"),
@@ -707,7 +709,7 @@ fn get_completions(program: &wipple_frontend::analysis::Program) -> AnalysisOutp
         };
 
         variables.push(Completion {
-            kind: matches!(decl.ty, wipple_frontend::analysis::Type::Function(_, _))
+            kind: matches!(decl.ty.kind, wipple_frontend::analysis::TypeKind::Function(_, _))
                 .then_some("function"),
             name: name.clone(),
             help: String::new(),
@@ -1240,7 +1242,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                 ..Default::default()
             };
 
-            let is_function = matches!(decl.ty, wipple_frontend::analysis::Type::Function(_, _));
+            let is_function = matches!(decl.ty.kind, wipple_frontend::analysis::TypeKind::Function(_, _));
 
             hovers.push((
                 span.original(),

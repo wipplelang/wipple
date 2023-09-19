@@ -63,7 +63,10 @@ impl Optimize for Program {
 
 pub mod ssa {
     use super::*;
-    use crate::{analysis::SpanList, ConstantId};
+    use crate::{
+        analysis::{SpanList, TypeKind},
+        ConstantId,
+    };
 
     #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
     pub struct Options {}
@@ -103,7 +106,10 @@ pub mod ssa {
                                                     ty: remaining
                                                         .last()
                                                         .map(|expr| expr.ty.clone())
-                                                        .unwrap_or_else(|| Type::Tuple(Vec::new())),
+                                                        .unwrap_or_else(|| Type {
+                                                            usage: None,
+                                                            kind: TypeKind::Tuple(Vec::new()),
+                                                        }),
                                                     span,
                                                     kind: ExpressionKind::Block(
                                                         convert_block(

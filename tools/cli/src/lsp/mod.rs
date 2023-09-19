@@ -12,7 +12,7 @@ use wipple_frontend::{
             format::{format_type, Format, TypeFunctionFormat},
             SyntaxDecl, TraitDecl, Type, TypeDecl, TypeDeclKind,
         },
-        Expression, ExpressionKind, Program, Span,
+        Expression, ExpressionKind, Program, Span, TypeKind,
     },
     diagnostics::DiagnosticLevel,
     helpers::InternedString,
@@ -243,7 +243,7 @@ impl LanguageServer for Backend {
             if matches!(
                 expr.kind,
                 ExpressionKind::Variable(_) | ExpressionKind::Constant(_)
-            ) && matches!(expr.ty, Type::Function(_, _))
+            ) && matches!(expr.ty.kind, TypeKind::Function(_, _))
             {
                 semantic_tokens.push((expr.span, SemanticTokenType::FUNCTION));
             }
