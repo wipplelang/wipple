@@ -5,6 +5,7 @@ definitions! {
     mod function;
     mod intrinsic;
     mod plugin;
+    mod semantics;
     mod tuple;
     mod when;
     mod r#where;
@@ -38,6 +39,7 @@ syntax_group! {
             External,
             Intrinsic,
             Plugin,
+            Semantics,
             With,
             Where,
             When,
@@ -50,7 +52,6 @@ syntax_group! {
             Asset,
             Call,
             Block,
-            Attributed,
         },
     }
 }
@@ -197,32 +198,6 @@ impl<D: Driver> Format<D> for BlockExpression<D> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct AttributedExpression<D: Driver> {
-    pub span: D::Span,
-    pub attributes: Vec<(D::Span, D::InternedString)>,
-    pub expr: Result<Box<Expression<D>>, SyntaxError<D>>,
-}
-
-impl<D: Driver> AttributedExpression<D> {
-    pub fn span(&self) -> D::Span {
-        self.span
-    }
-}
-
-impl<D: Driver> Format<D> for AttributedExpression<D> {
-    fn format(self) -> Result<String, SyntaxError<D>> {
-        Ok(format!(
-            "{}{}",
-            self.attributes
-                .into_iter()
-                .map(|(_, attribute)| format!("[{}] ", attribute.as_ref()))
-                .collect::<String>(),
-            self.expr?.format()?,
-        ))
-    }
-}
-
 #[derive(Clone)]
 pub struct ExpressionSyntaxContext<D: Driver> {
     pub(super) ast_builder: AstBuilder<D>,
@@ -273,22 +248,7 @@ impl<D: Driver> SyntaxContext<D> for ExpressionSyntaxContext<D> {
         scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         match expr.try_into_list_exprs() {
-            Ok((span, attributes, exprs)) => {
-                let attributes = self.parse_attributes(attributes);
-
-                let expr = self.expand_list(span, exprs, scope_set).await;
-
-                if attributes.is_empty() {
-                    expr
-                } else {
-                    Ok(AttributedExpression {
-                        span,
-                        attributes,
-                        expr: expr.map(Box::new),
-                    }
-                    .into())
-                }
-            }
+            Ok((span, exprs)) => self.expand_list(span, exprs.collect(), scope_set).await,
             Err(expr) => match expr.kind {
                 parse::ExprKind::Name(name, name_scope) => Ok(NameExpression {
                     span: expr.span,
@@ -325,20 +285,6 @@ impl<D: Driver> SyntaxContext<D> for ExpressionSyntaxContext<D> {
                 }
             },
         }
-    }
-
-    fn wrap_attributes(
-        self,
-        attributes: Result<Vec<parse::Attribute<D>>, parse::UnexpectedAttributeError<D>>,
-        body: Self::Body,
-    ) -> Self::Body {
-        let attributes = self.parse_attributes(attributes);
-
-        Expression::Attributed(AttributedExpression {
-            span: body.span(),
-            attributes,
-            expr: Ok(Box::new(body)),
-        })
     }
 }
 
@@ -636,54 +582,5 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
         );
 
         Err(self.ast_builder.syntax_error(span))
-    }
-
-    fn parse_attributes(
-        &self,
-        attributes: Result<Vec<parse::Attribute<D>>, parse::UnexpectedAttributeError<D>>,
-    ) -> Vec<(D::Span, D::InternedString)> {
-        match attributes {
-            Ok(attributes) => attributes
-                .into_iter()
-                .filter_map(|mut attr| match attr.exprs.len() {
-                    0 => {
-                        self.ast_builder
-                            .driver
-                            .syntax_error(attr.span, "attribute must not be empty");
-
-                        None
-                    }
-                    1 => {
-                        let expr = attr.exprs.pop().unwrap();
-
-                        match expr.kind {
-                            parse::ExprKind::Name(name, _) => Some((expr.span, name)),
-                            _ => {
-                                self.ast_builder
-                                    .driver
-                                    .syntax_error(expr.span, "expected name in attribute");
-
-                                None
-                            }
-                        }
-                    }
-                    _ => {
-                        self.ast_builder.driver.syntax_error(
-                            attr.span,
-                            "complex attributes not supported in expression position",
-                        );
-
-                        None
-                    }
-                })
-                .collect(),
-            Err(error) => {
-                self.ast_builder
-                    .driver
-                    .syntax_error(error.span, "attribute not allowed here");
-
-                Vec::new()
-            }
-        }
     }
 }

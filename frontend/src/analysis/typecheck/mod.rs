@@ -11,7 +11,7 @@ mod queries;
 pub mod traverse;
 
 pub use engine::{BottomTypeReason, BuiltinType, GenericSubstitutions, Type, TypeStructure};
-pub use lower::{Attribute, Intrinsic, TypeAnnotation, TypeAnnotationKind};
+pub use lower::{Intrinsic, Semantics, TypeAnnotation, TypeAnnotationKind};
 
 use crate::{
     analysis::{lower, SpanList},
@@ -234,7 +234,7 @@ macro_rules! expr {
                 ContextualConstant(ConstantId),
                 End(Box<[<$prefix Expression>]>),
                 Extend(Box<[<$prefix Expression>]>, BTreeMap<FieldIndex, [<$prefix Expression>]>),
-                Attributed(Vec<Attribute>, Box<[<$prefix Expression>]>),
+                Semantics(Semantics, Box<[<$prefix Expression>]>),
                 $($kinds)*
             }
 
@@ -416,8 +416,8 @@ impl From<UnresolvedExpression> for MonomorphizedExpression {
                             .collect(),
                     )
                 }
-                UnresolvedExpressionKind::Attributed(attributes, value) => {
-                    MonomorphizedExpressionKind::Attributed(attributes, Box::new((*value).into()))
+                UnresolvedExpressionKind::Semantics(semantics, value) => {
+                    MonomorphizedExpressionKind::Semantics(semantics, Box::new((*value).into()))
                 }
             },
         }
@@ -2395,14 +2395,14 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Extend(Box::new(value), fields),
                 }
             }
-            lower::ExpressionKind::Attributed(attributes, expr) => {
+            lower::ExpressionKind::Semantics(semantics, expr) => {
                 let expr = self.convert_expr(*expr, info);
 
                 UnresolvedExpression {
                     id: expr.id,
                     span: expr.span,
                     ty: expr.ty.clone(),
-                    kind: UnresolvedExpressionKind::Attributed(attributes, Box::new(expr)),
+                    kind: UnresolvedExpressionKind::Semantics(semantics, Box::new(expr)),
                 }
             }
         }
@@ -2880,9 +2880,9 @@ impl Typechecker {
                             .collect(),
                     )
                 }
-                MonomorphizedExpressionKind::Attributed(attributes, expr) => {
-                    MonomorphizedExpressionKind::Attributed(
-                        attributes,
+                MonomorphizedExpressionKind::Semantics(semantics, expr) => {
+                    MonomorphizedExpressionKind::Semantics(
+                        semantics,
                         Box::new(self.monomorphize_expr(*expr, info)),
                     )
                 }
@@ -3825,8 +3825,8 @@ impl Typechecker {
                     .map(|(index, field)| (index, self.finalize_expr(field)))
                     .collect(),
             ),
-            MonomorphizedExpressionKind::Attributed(attributes, expr) => {
-                ExpressionKind::Attributed(attributes, Box::new(self.finalize_expr(*expr)))
+            MonomorphizedExpressionKind::Semantics(semantics, expr) => {
+                ExpressionKind::Semantics(semantics, Box::new(self.finalize_expr(*expr)))
             }
         })();
 

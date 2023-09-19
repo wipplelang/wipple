@@ -248,7 +248,7 @@ join : b a -> collect (flatten (list (As-Sequence a) (As-Sequence b)))
 
 [specialize]
 count :: Element => List Element -> Natural
-count : list -> ([pure] intrinsic "list-count" list)
+count : list -> semantics "pure" (intrinsic "list-count" list)
 
 [specialize]
 join :: Element => List Element -> List Element -> List Element

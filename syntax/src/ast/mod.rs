@@ -521,22 +521,4 @@ impl<D: Driver> AstBuilder<D> {
             Some(result)
         }))
     }
-
-    fn forbid_attributes(
-        &self,
-        attrs: Result<Vec<parse::Attribute<D>>, parse::UnexpectedAttributeError<D>>,
-    ) {
-        match attrs {
-            Ok(attrs) => {
-                for attr in attrs {
-                    self.driver
-                        .syntax_error(attr.span, "attribute not allowed here");
-                }
-            }
-            Err(error) => {
-                self.driver
-                    .syntax_error(error.span, "attribute not allowed here");
-            }
-        }
-    }
 }

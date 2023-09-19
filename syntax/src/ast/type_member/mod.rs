@@ -106,11 +106,8 @@ impl<D: Driver> SyntaxContext<D> for TypeMemberSyntaxContext<D> {
             .clone()
             .try_into_list_exprs()
             .ok()
-            .and_then(|(_, attrs, exprs)| {
-                self.ast_builder.forbid_attributes(attrs);
-
+            .and_then(|(_, exprs)| {
                 exprs
-                    .into_iter()
                     .map(|expr| match &expr.kind {
                         parse::ExprKind::Name(name, scope) => Some((
                             expr.span,
@@ -123,11 +120,7 @@ impl<D: Driver> SyntaxContext<D> for TypeMemberSyntaxContext<D> {
             });
 
         match expr.try_into_list_exprs() {
-            Ok((span, attrs, list)) => {
-                self.ast_builder.forbid_attributes(attrs);
-
-                let mut list = list.into_iter();
-
+            Ok((span, mut list)) => {
                 let name_expr = match list.next() {
                     Some(expr) => expr,
                     None => {
@@ -195,15 +188,5 @@ impl<D: Driver> SyntaxContext<D> for TypeMemberSyntaxContext<D> {
                 }
             },
         }
-    }
-
-    fn wrap_attributes(
-        self,
-        attributes: Result<Vec<parse::Attribute<D>>, parse::UnexpectedAttributeError<D>>,
-        body: Self::Body,
-    ) -> Self::Body {
-        self.ast_builder.forbid_attributes(attributes);
-
-        body
     }
 }

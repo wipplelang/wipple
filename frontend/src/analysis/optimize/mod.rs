@@ -1,5 +1,5 @@
 use crate::{
-    analysis::{Arm, Attribute, Expression, ExpressionKind, Pattern, PatternKind, Program, Type},
+    analysis::{Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, Semantics, Type},
     Compiler, ItemId, Optimize, VariableId,
 };
 use parking_lot::RwLock;
@@ -591,8 +591,8 @@ mod util {
                             .values()
                             .all(|field| field.is_pure_inner(program, function_call, stack))
                 }
-                ExpressionKind::Attributed(attributes, expr) => {
-                    attributes.contains(&Attribute::Pure)
+                ExpressionKind::Semantics(semantics, expr) => {
+                    *semantics == Semantics::Pure
                         || expr.is_pure_inner(program, function_call, stack)
                 }
             }

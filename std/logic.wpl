@@ -71,14 +71,14 @@ Ordering : type {
 [help-group "Logic"]
 Order : A => trait (A -> A -> Ordering)
 
-instance (Order Number) : b a -> ([pure] intrinsic "number-ordering" a b)
-instance (Order Integer) : b a -> ([pure] intrinsic "integer-ordering" a b)
-instance (Order Natural) : b a -> ([pure] intrinsic "natural-ordering" a b)
-instance (Order Byte) : b a -> ([pure] intrinsic "byte-ordering" a b)
-instance (Order Signed) : b a -> ([pure] intrinsic "signed-ordering" a b)
-instance (Order Unsigned) : b a -> ([pure] intrinsic "unsigned-ordering" a b)
-instance (Order Float) : b a -> ([pure] intrinsic "float-ordering" a b)
-instance (Order Double) : b a -> ([pure] intrinsic "double-ordering" a b)
+instance (Order Number) : b a -> semantics "pure" (intrinsic "number-ordering" a b)
+instance (Order Integer) : b a -> semantics "pure" (intrinsic "integer-ordering" a b)
+instance (Order Natural) : b a -> semantics "pure" (intrinsic "natural-ordering" a b)
+instance (Order Byte) : b a -> semantics "pure" (intrinsic "byte-ordering" a b)
+instance (Order Signed) : b a -> semantics "pure" (intrinsic "signed-ordering" a b)
+instance (Order Unsigned) : b a -> semantics "pure" (intrinsic "unsigned-ordering" a b)
+instance (Order Float) : b a -> semantics "pure" (intrinsic "float-ordering" a b)
+instance (Order Double) : b a -> semantics "pure" (intrinsic "double-ordering" a b)
 
 [help "Returns `True` if the left side is less than the right side."]
 [help-group "Logic"]
@@ -196,15 +196,15 @@ Equal : A => trait (A -> A -> Boolean)
   /= -> b a -> not (Equal b a)
 }
 
-instance (Equal Text) : b a -> ([pure] intrinsic "text-equality" a b)
-instance (Equal Number) : b a -> ([pure] intrinsic "number-equality" a b)
-instance (Equal Integer) : b a -> ([pure] intrinsic "integer-equality" a b)
-instance (Equal Natural) : b a -> ([pure] intrinsic "natural-equality" a b)
-instance (Equal Byte) : b a -> ([pure] intrinsic "byte-equality" a b)
-instance (Equal Signed) : b a -> ([pure] intrinsic "signed-equality" a b)
-instance (Equal Unsigned) : b a -> ([pure] intrinsic "unsigned-equality" a b)
-instance (Equal Float) : b a -> ([pure] intrinsic "float-equality" a b)
-instance (Equal Double) : b a -> ([pure] intrinsic "double-equality" a b)
+instance (Equal Text) : b a -> semantics "pure" (intrinsic "text-equality" a b)
+instance (Equal Number) : b a -> semantics "pure" (intrinsic "number-equality" a b)
+instance (Equal Integer) : b a -> semantics "pure" (intrinsic "integer-equality" a b)
+instance (Equal Natural) : b a -> semantics "pure" (intrinsic "natural-equality" a b)
+instance (Equal Byte) : b a -> semantics "pure" (intrinsic "byte-equality" a b)
+instance (Equal Signed) : b a -> semantics "pure" (intrinsic "signed-equality" a b)
+instance (Equal Unsigned) : b a -> semantics "pure" (intrinsic "unsigned-equality" a b)
+instance (Equal Float) : b a -> semantics "pure" (intrinsic "float-equality" a b)
+instance (Equal Double) : b a -> semantics "pure" (intrinsic "double-equality" a b)
 instance (Equal ()) : () () -> True
 instance (Equal Boolean) : b a -> if a b (not b)
 

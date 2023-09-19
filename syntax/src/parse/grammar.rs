@@ -1,5 +1,3 @@
-#![allow(clippy::type_complexity)]
-
 use crate::ScopeSet;
 use crate::{parse::Token, Driver, Span};
 use lazy_static::lazy_static;
@@ -67,11 +65,6 @@ impl<D: Driver> Text<D> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct UnexpectedAttributeError<D: Driver> {
-    pub span: D::Span,
-}
-
 impl<D: Driver> Expr<D> {
     pub fn list(span: D::Span, exprs: Vec<Expr<D>>) -> Self {
         Expr {
@@ -110,37 +103,9 @@ impl<D: Driver> Expr<D> {
 
     pub fn try_into_list_exprs(
         self,
-    ) -> Result<
-        (
-            D::Span,
-            Result<Vec<Attribute<D>>, UnexpectedAttributeError<D>>,
-            Vec<Expr<D>>,
-        ),
-        Self,
-    > {
+    ) -> Result<(D::Span, impl Iterator<Item = Expr<D>> + Send), Self> {
         match self.kind {
-            ExprKind::List(lines) => {
-                let mut attributes = Ok(Vec::new());
-                let mut exprs = Vec::new();
-
-                for (index, line) in lines.into_iter().enumerate() {
-                    for attribute in line.attributes {
-                        if index == 0 {
-                            if let Ok(attributes) = attributes.as_mut() {
-                                attributes.push(attribute);
-                            }
-                        } else if attributes.is_ok() {
-                            attributes = Err(UnexpectedAttributeError {
-                                span: attribute.span,
-                            });
-                        }
-                    }
-
-                    exprs.extend(line.exprs);
-                }
-
-                Ok((self.span, attributes, exprs))
-            }
+            ExprKind::List(lines) => Ok((self.span, lines.into_iter().flat_map(|line| line.exprs))),
             _ => Err(self),
         }
     }
@@ -757,8 +722,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
             }
 
             // Consume expressions
-            let (attributes, exprs, token, end_span, comment) = (|| {
-                let mut attributes = Vec::new();
+            let (exprs, token, end_span, comment) = (|| {
                 let mut exprs = Vec::new();
                 let mut comment = None;
                 loop {
@@ -767,7 +731,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                     match token {
                         Some(Token::LineBreak) => {
                             self.consume();
-                            return (attributes, exprs, token, None, comment);
+                            return (exprs, token, None, comment);
                         }
                         Some(Token::Comment(c)) => {
                             self.consume();
@@ -775,20 +739,18 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                         }
                         Some(token) if token == end_token => {
                             self.consume();
-                            return (attributes, exprs, Some(token), Some(span), comment);
+                            return (exprs, Some(token), Some(span), comment);
                         }
                         None => {
                             self.consume();
-                            return (attributes, exprs, token, Some(span), comment);
+                            return (exprs, token, Some(span), comment);
                         }
                         _ => {
-                            if let Some(attribute) = self.try_parse_attribute() {
-                                attributes.push(attribute);
-                            } else if let Some(expr) = self.parse_expr() {
+                            if let Some(expr) = self.parse_expr() {
                                 exprs.push(expr);
                             } else {
                                 error = true;
-                                return (attributes, exprs, token, None, comment);
+                                return (exprs, token, None, comment);
                             }
                         }
                     }
@@ -798,7 +760,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
             if leading_lines > 0 || !exprs.is_empty() || comment.is_some() {
                 lines.push(ListLine {
                     leading_lines,
-                    attributes,
+                    attributes: Vec::new(),
                     exprs,
                     comment,
                 });

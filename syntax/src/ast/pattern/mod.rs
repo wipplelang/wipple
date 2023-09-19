@@ -243,10 +243,7 @@ impl<D: Driver> SyntaxContext<D> for PatternSyntaxContext<D> {
             }
             .into()),
             parse::ExprKind::List(_) => {
-                let (span, attrs, exprs) = expr.try_into_list_exprs().unwrap();
-                self.ast_builder.forbid_attributes(attrs);
-
-                let mut exprs = exprs.into_iter();
+                let (span, mut exprs) = expr.try_into_list_exprs().unwrap();
 
                 let name_expr = match exprs.next() {
                     Some(expr) => expr,
@@ -295,15 +292,5 @@ impl<D: Driver> SyntaxContext<D> for PatternSyntaxContext<D> {
                 Err(self.ast_builder.syntax_error(expr.span))
             }
         }
-    }
-
-    fn wrap_attributes(
-        self,
-        attributes: Result<Vec<parse::Attribute<D>>, parse::UnexpectedAttributeError<D>>,
-        body: Self::Body,
-    ) -> Self::Body {
-        self.ast_builder.forbid_attributes(attributes);
-
-        body
     }
 }

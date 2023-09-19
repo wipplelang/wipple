@@ -65,11 +65,7 @@ impl<D: Driver> Syntax<D> for InstanceStatementSyntax {
 
                 let (trait_name, trait_span, trait_scope, trait_parameters) =
                     match input.try_into_list_exprs() {
-                        Ok((span, attrs, exprs)) => {
-                            context.ast_builder.forbid_attributes(attrs);
-
-                            let mut exprs = exprs.into_iter();
-
+                        Ok((span, mut exprs)) => {
                             let trait_name = match exprs.next() {
                                 Some(expr) => expr,
                                 None => {

@@ -96,8 +96,8 @@ as : syntax {
 }
 
 A => instance (As A A) : it
-instance (As Natural Number) : n -> ([pure] intrinsic "natural-to-number" n)
-instance (As Natural Integer) : n -> ([pure] intrinsic "natural-to-integer" n)
+instance (As Natural Number) : n -> semantics "pure" (intrinsic "natural-to-number" n)
+instance (As Natural Integer) : n -> semantics "pure" (intrinsic "natural-to-integer" n)
 Success => instance (As (Result Success _) (Maybe Success)) : result -> when result {
   OK x -> Some x
   Error _ -> None
@@ -115,8 +115,8 @@ as? : syntax {
 }
 
 A => instance (As? A A) : Some
-instance (As? Number Natural) : n -> ([pure] intrinsic "number-to-natural" n)
-instance (As? Integer Natural) : n -> ([pure] intrinsic "integer-to-natural" n)
+instance (As? Number Natural) : n -> semantics "pure" (intrinsic "number-to-natural" n)
+instance (As? Integer Natural) : n -> semantics "pure" (intrinsic "integer-to-natural" n)
 
 [help "Convert a value of one type into a value of a different type, or exit if the conversion fails."]
 [help-group "Utilities"]

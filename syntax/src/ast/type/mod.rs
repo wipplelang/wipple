@@ -140,11 +140,7 @@ impl<D: Driver> SyntaxContext<D> for TypeSyntaxContext<D> {
         scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         match expr.try_into_list_exprs() {
-            Ok((span, attrs, exprs)) => {
-                self.ast_builder.forbid_attributes(attrs);
-
-                let mut exprs = exprs.into_iter();
-
+            Ok((span, mut exprs)) => {
                 let (name_span, name, name_scope_set) = match exprs.next() {
                     Some(expr) => match expr.kind {
                         parse::ExprKind::Name(name, name_scope) => (
@@ -202,15 +198,5 @@ impl<D: Driver> SyntaxContext<D> for TypeSyntaxContext<D> {
                 }
             },
         }
-    }
-
-    fn wrap_attributes(
-        self,
-        attributes: Result<Vec<parse::Attribute<D>>, parse::UnexpectedAttributeError<D>>,
-        body: Self::Body,
-    ) -> Self::Body {
-        self.ast_builder.forbid_attributes(attributes);
-
-        body
     }
 }

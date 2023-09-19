@@ -92,12 +92,12 @@ impl<D: Driver> fmt::Display for File<D> {
         }
 
         for (index, line) in self.comments.iter().enumerate() {
-            line.fmt(f, 0, false, index == 0, false)?;
+            line.fmt(f, 0, false, index == 0)?;
             writeln!(f)?;
         }
 
         for attribute in &self.attributes {
-            attribute.fmt(f, ("[[", "]]"), 0, false)?;
+            attribute.fmt(f, ("[[", "]]"), 0)?;
         }
 
         if !self.attributes.is_empty() {
@@ -111,13 +111,7 @@ impl<D: Driver> fmt::Display for File<D> {
                     indent += 1;
                 }
 
-                line.fmt(
-                    f,
-                    indent,
-                    true,
-                    statement_index == 0 && line_index == 0,
-                    false,
-                )?;
+                line.fmt(f, indent, true, statement_index == 0 && line_index == 0)?;
 
                 if line_index + 1 < statement.lines.len() {
                     write!(f, " \\")?;
@@ -155,13 +149,13 @@ impl<D: Driver> Expr<D> {
                     writeln!(f)?;
 
                     for (index, line) in lines.iter().enumerate() {
-                        line.fmt(f, indent + 1, true, index == 0, true)?;
+                        line.fmt(f, indent + 1, true, index == 0)?;
                         writeln!(f)?;
                     }
 
                     write!(f, "{}", INDENT.repeat(indent))?;
                 } else if let Some(line) = lines.first() {
-                    line.fmt(f, indent, false, false, true)?;
+                    line.fmt(f, indent, false, false)?;
                 }
 
                 write!(f, ")")?;
@@ -173,13 +167,13 @@ impl<D: Driver> Expr<D> {
                     writeln!(f)?;
 
                     for (index, line) in lines.iter().enumerate() {
-                        line.fmt(f, indent + 1, true, index == 0, true)?;
+                        line.fmt(f, indent + 1, true, index == 0)?;
                         writeln!(f)?;
                     }
 
                     write!(f, "{}", INDENT.repeat(indent))?;
                 } else if let Some(line) = lines.first() {
-                    line.fmt(f, indent, false, false, true)?;
+                    line.fmt(f, indent, false, false)?;
                 }
 
                 write!(f, ")")?;
@@ -197,13 +191,7 @@ impl<D: Driver> Expr<D> {
                                 indent += 1;
                             }
 
-                            line.fmt(
-                                f,
-                                indent + 1,
-                                true,
-                                statement_index == 0 && line_index == 0,
-                                false,
-                            )?;
+                            line.fmt(f, indent + 1, true, statement_index == 0 && line_index == 0)?;
 
                             if line_index + 1 < statement.lines.len() {
                                 write!(f, " \\")?;
@@ -226,7 +214,7 @@ impl<D: Driver> Expr<D> {
                             .lines
                             .first()
                             .unwrap()
-                            .fmt(f, indent, false, false, false)?;
+                            .fmt(f, indent, false, false)?;
 
                         write!(f, " ")?;
                     }
@@ -241,7 +229,7 @@ impl<D: Driver> Expr<D> {
                     writeln!(f)?;
 
                     for (index, line) in lines.iter().enumerate() {
-                        line.fmt(f, indent + 1, true, index == 0, false)?;
+                        line.fmt(f, indent + 1, true, index == 0)?;
                         writeln!(f)?;
                     }
 
@@ -249,7 +237,7 @@ impl<D: Driver> Expr<D> {
                 } else if let Some(line) = lines.first() {
                     write!(f, " ")?;
 
-                    line.fmt(f, indent, false, false, false)?;
+                    line.fmt(f, indent, false, false)?;
 
                     write!(f, " ")?;
                 }
@@ -272,16 +260,13 @@ impl<D: Driver> Expr<D> {
             | ExprKind::Number(_) => false,
             ExprKind::Text(text) => text.raw().as_ref().contains('\n'),
             ExprKind::Asset(raw) => raw.as_ref().contains('\n'),
-            ExprKind::List(lines) | ExprKind::RepeatList(lines) => match lines.len() {
-                0 => false,
-                1 => lines.first().unwrap().is_multiline(in_block, true),
-                _ => true,
-            },
-            ExprKind::RepeatBlock(lines) => match lines.len() {
-                0 => false,
-                1 => lines.first().unwrap().is_multiline(in_block, false),
-                _ => true,
-            },
+            ExprKind::List(lines) | ExprKind::RepeatList(lines) | ExprKind::RepeatBlock(lines) => {
+                match lines.len() {
+                    0 => false,
+                    1 => lines.first().unwrap().is_multiline(in_block),
+                    _ => true,
+                }
+            }
             ExprKind::Block(statements) => match statements.len() {
                 0 => false,
                 1 => {
@@ -292,7 +277,7 @@ impl<D: Driver> Expr<D> {
                         1 => {
                             let line = lines.first().unwrap();
                             (!line.exprs.is_empty() || line.comment.is_some())
-                                && (line.leading_lines > 0 || line.is_multiline(true, false))
+                                && (line.leading_lines > 0 || line.is_multiline(true))
                         }
                         _ => true,
                     }
@@ -310,14 +295,8 @@ impl<D: Driver> Attribute<D> {
         f: &mut fmt::Formatter,
         (start, end): (&str, &str),
         indent: usize,
-        inline: bool,
     ) -> fmt::Result {
-        write!(
-            f,
-            "{}{}",
-            INDENT.repeat(if inline { 0 } else { indent }),
-            start
-        )?;
+        write!(f, "{}{}", INDENT.repeat(indent), start)?;
 
         for (index, expr) in self.exprs.iter().enumerate() {
             if index > 0 {
@@ -333,11 +312,7 @@ impl<D: Driver> Attribute<D> {
             write!(f, " --{}", comment.as_ref())?;
         }
 
-        if inline {
-            write!(f, " ")?;
-        } else {
-            writeln!(f)?;
-        }
+        writeln!(f)?;
 
         Ok(())
     }
@@ -350,14 +325,13 @@ impl<D: Driver> ListLine<D> {
         indent: usize,
         indent_self: bool,
         first_line: bool,
-        inline_attrs: bool,
     ) -> fmt::Result {
         if !first_line && self.leading_lines > 0 {
             writeln!(f)?;
         }
 
         for attribute in &self.attributes {
-            attribute.fmt(f, ("[", "]"), indent, inline_attrs)?;
+            attribute.fmt(f, ("[", "]"), indent)?;
         }
 
         if indent_self {
@@ -383,8 +357,8 @@ impl<D: Driver> ListLine<D> {
         Ok(())
     }
 
-    fn is_multiline(&self, in_block: bool, inline_attrs: bool) -> bool {
-        !inline_attrs && !self.attributes.is_empty()
+    fn is_multiline(&self, in_block: bool) -> bool {
+        !self.attributes.is_empty()
             || (in_block
                 && self
                     .exprs

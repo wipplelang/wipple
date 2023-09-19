@@ -384,15 +384,9 @@ impl Expression {
                 }
                 write!(f, "{}}}", "\t".repeat(indent))?;
             }
-            ExpressionKind::Attributed(attributes, expr) => {
-                write!(f, "(")?;
-
-                for attribute in attributes {
-                    write!(f, "[{}] ", attribute)?;
-                }
-
+            ExpressionKind::Semantics(semantics, expr) => {
+                write!(f, "(semantics {:?} ", semantics.to_string())?;
                 expr.display_with(f, file, indent)?;
-
                 write!(f, ")")?;
             }
         }

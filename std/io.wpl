@@ -23,14 +23,14 @@ show :: A where (Show A) => A -> ()
 show : x -> intrinsic "display" (Show x)
 
 instance (Show Text) : it
-instance (Show Number) : n -> ([pure] intrinsic "number-to-text" n)
-instance (Show Integer) : n -> ([pure] intrinsic "integer-to-text" n)
-instance (Show Natural) : n -> ([pure] intrinsic "natural-to-text" n)
-instance (Show Byte) : n -> ([pure] intrinsic "byte-to-text" n)
-instance (Show Signed) : n -> ([pure] intrinsic "signed-to-text" n)
-instance (Show Unsigned) : n -> ([pure] intrinsic "unsigned-to-text" n)
-instance (Show Float) : n -> ([pure] intrinsic "float-to-text" n)
-instance (Show Double) : n -> ([pure] intrinsic "double-to-text" n)
+instance (Show Number) : n -> semantics "pure" (intrinsic "number-to-text" n)
+instance (Show Integer) : n -> semantics "pure" (intrinsic "integer-to-text" n)
+instance (Show Natural) : n -> semantics "pure" (intrinsic "natural-to-text" n)
+instance (Show Byte) : n -> semantics "pure" (intrinsic "byte-to-text" n)
+instance (Show Signed) : n -> semantics "pure" (intrinsic "signed-to-text" n)
+instance (Show Unsigned) : n -> semantics "pure" (intrinsic "unsigned-to-text" n)
+instance (Show Float) : n -> semantics "pure" (intrinsic "float-to-text" n)
+instance (Show Double) : n -> semantics "pure" (intrinsic "double-to-text" n)
 instance (Show Boolean) : x? -> if x? "True" "False"
 instance (Show None-Error) : just "found `None`"
 
@@ -59,14 +59,14 @@ read :: A where (Read A) => Text -> Maybe A
 read : Read
 
 instance (Read Text) : Some
-instance (Read Number) : text -> ([pure] intrinsic "text-to-number" text)
-instance (Read Integer) : text -> ([pure] intrinsic "text-to-integer" text)
-instance (Read Natural) : text -> ([pure] intrinsic "text-to-natural" text)
-instance (Read Byte) : text -> ([pure] intrinsic "text-to-byte" text)
-instance (Read Signed) : text -> ([pure] intrinsic "text-to-signed" text)
-instance (Read Unsigned) : text -> ([pure] intrinsic "text-to-unsigned" text)
-instance (Read Float) : text -> ([pure] intrinsic "text-to-float" text)
-instance (Read Double) : text -> ([pure] intrinsic "text-to-double" text)
+instance (Read Number) : text -> semantics "pure" (intrinsic "text-to-number" text)
+instance (Read Integer) : text -> semantics "pure" (intrinsic "text-to-integer" text)
+instance (Read Natural) : text -> semantics "pure" (intrinsic "text-to-natural" text)
+instance (Read Byte) : text -> semantics "pure" (intrinsic "text-to-byte" text)
+instance (Read Signed) : text -> semantics "pure" (intrinsic "text-to-signed" text)
+instance (Read Unsigned) : text -> semantics "pure" (intrinsic "text-to-unsigned" text)
+instance (Read Float) : text -> semantics "pure" (intrinsic "text-to-float" text)
+instance (Read Double) : text -> semantics "pure" (intrinsic "text-to-double" text)
 
 [help-group "Input and Output"]
 [help "Read a value from the user with the provided prompt."]

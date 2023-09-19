@@ -507,7 +507,7 @@ pub enum ExpressionKind {
         Box<Expression>,
         Vec<((SpanList, InternedString), Expression)>,
     ),
-    Attributed(Vec<Attribute>, Box<Expression>),
+    Semantics(Semantics, Box<Expression>),
 }
 
 impl ExpressionKind {
@@ -597,7 +597,7 @@ impl Expression {
                     expr.traverse_mut_inner(f);
                 }
             }
-            ExpressionKind::Attributed(_, expr) => {
+            ExpressionKind::Semantics(_, expr) => {
                 expr.traverse_mut_inner(f);
             }
         }
@@ -885,7 +885,7 @@ pub enum Intrinsic {
 )]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
-pub enum Attribute {
+pub enum Semantics {
     Pure,
 }
 
@@ -3132,10 +3132,10 @@ impl Lowerer {
                     Ok(func) => func,
                     Err(_) => {
                         self.compiler.add_error(
-                            "unknown intrinsic",
+                            "unknown runtime function",
                             vec![Note::primary(
                                 expr.span(),
-                                "check the Wipple source code for the latest list of intrinsics",
+                                "check the Wipple source code for the latest list of runtime functions"
                             )],
                             "",
                         );
@@ -3407,30 +3407,29 @@ impl Lowerer {
                     kind: ExpressionKind::Extend(Box::new(value), fields),
                 }
             }
-            ast::Expression::Attributed(expr) => {
-                let attributes = expr
-                    .attributes
-                    .iter()
-                    .filter_map(|&(span, name)| {
-                        match name.parse() {
-                            Ok(attr) => Some(attr),
-                            Err(_) => {
-                                self.compiler.add_error(
-                                    "unknown attribute",
-                                    vec![Note::primary(
-                                        span,
-                                        "check the Wipple source code for the latest list of attributes"
-                                    )],
-                                    "",
-                                );
 
-                                None
-                            }
-                        }
-                    })
-                    .collect();
+            ast::Expression::Semantics(expr) => {
+                let semantics = match expr.semantics_text.as_str().parse::<Semantics>() {
+                    Ok(func) => func,
+                    Err(_) => {
+                        self.compiler.add_error(
+                            "unknown semantics",
+                            vec![Note::primary(
+                                expr.span(),
+                                "check the Wipple source code for the latest list of semantics",
+                            )],
+                            "",
+                        );
 
-                let expr = match &expr.expr {
+                        return Expression {
+                            id: self.compiler.new_expression_id(ctx.owner),
+                            span: expr.span(),
+                            kind: ExpressionKind::error(&self.compiler),
+                        };
+                    }
+                };
+
+                let value = match &expr.value {
                     Ok(expr) => self.lower_expr(expr, ctx),
                     Err(error) => Expression {
                         id: self.compiler.new_expression_id(ctx.owner),
@@ -3441,8 +3440,8 @@ impl Lowerer {
 
                 Expression {
                     id: self.compiler.new_expression_id(ctx.owner),
-                    span: expr.span,
-                    kind: ExpressionKind::Attributed(attributes, Box::new(expr)),
+                    span: expr.span(),
+                    kind: ExpressionKind::Semantics(semantics, Box::new(value)),
                 }
             }
         }

@@ -22,14 +22,14 @@ Add : (Left : Number) (Right : Number) (infer Sum) => trait (Right -> Left -> Su
   + -> Add
 }
 
-instance (Add Number Number Number) : b a -> ([pure] intrinsic "add-number" a b)
-instance (Add Integer Integer Integer) : b a -> ([pure] intrinsic "add-integer" a b)
-instance (Add Natural Natural Natural) : b a -> ([pure] intrinsic "add-natural" a b)
-instance (Add Byte Byte Byte) : b a -> ([pure] intrinsic "add-byte" a b)
-instance (Add Signed Signed Signed) : b a -> ([pure] intrinsic "add-signed" a b)
-instance (Add Unsigned Unsigned Unsigned) : b a -> ([pure] intrinsic "add-unsigned" a b)
-instance (Add Float Float Float) : b a -> ([pure] intrinsic "add-float" a b)
-instance (Add Double Double Double) : b a -> ([pure] intrinsic "add-double" a b)
+instance (Add Number Number Number) : b a -> semantics "pure" (intrinsic "add-number" a b)
+instance (Add Integer Integer Integer) : b a -> semantics "pure" (intrinsic "add-integer" a b)
+instance (Add Natural Natural Natural) : b a -> semantics "pure" (intrinsic "add-natural" a b)
+instance (Add Byte Byte Byte) : b a -> semantics "pure" (intrinsic "add-byte" a b)
+instance (Add Signed Signed Signed) : b a -> semantics "pure" (intrinsic "add-signed" a b)
+instance (Add Unsigned Unsigned Unsigned) : b a -> semantics "pure" (intrinsic "add-unsigned" a b)
+instance (Add Float Float Float) : b a -> semantics "pure" (intrinsic "add-float" a b)
+instance (Add Double Double Double) : b a -> semantics "pure" (intrinsic "add-double" a b)
 
 [help "Implements the `-` operator."]
 [help-group "Math"]
@@ -49,14 +49,14 @@ Subtract : (Left : Number) (Right : Number) (infer Difference) => trait (Right -
   - -> Subtract
 }
 
-instance (Subtract Number Number Number) : b a -> ([pure] intrinsic "subtract-number" a b)
-instance (Subtract Integer Integer Integer) : b a -> ([pure] intrinsic "subtract-integer" a b)
-instance (Subtract Natural Natural Natural) : b a -> ([pure] intrinsic "subtract-natural" a b)
-instance (Subtract Byte Byte Byte) : b a -> ([pure] intrinsic "subtract-byte" a b)
-instance (Subtract Signed Signed Signed) : b a -> ([pure] intrinsic "subtract-signed" a b)
-instance (Subtract Unsigned Unsigned Unsigned) : b a -> ([pure] intrinsic "subtract-unsigned" a b)
-instance (Subtract Float Float Float) : b a -> ([pure] intrinsic "subtract-float" a b)
-instance (Subtract Double Double Double) : b a -> ([pure] intrinsic "subtract-double" a b)
+instance (Subtract Number Number Number) : b a -> semantics "pure" (intrinsic "subtract-number" a b)
+instance (Subtract Integer Integer Integer) : b a -> semantics "pure" (intrinsic "subtract-integer" a b)
+instance (Subtract Natural Natural Natural) : b a -> semantics "pure" (intrinsic "subtract-natural" a b)
+instance (Subtract Byte Byte Byte) : b a -> semantics "pure" (intrinsic "subtract-byte" a b)
+instance (Subtract Signed Signed Signed) : b a -> semantics "pure" (intrinsic "subtract-signed" a b)
+instance (Subtract Unsigned Unsigned Unsigned) : b a -> semantics "pure" (intrinsic "subtract-unsigned" a b)
+instance (Subtract Float Float Float) : b a -> semantics "pure" (intrinsic "subtract-float" a b)
+instance (Subtract Double Double Double) : b a -> semantics "pure" (intrinsic "subtract-double" a b)
 
 [help "Implements the `*` operator."]
 [help-group "Math"]
@@ -76,14 +76,14 @@ Multiply : (Left : Number) (Right : Number) (infer Product) => trait (Right -> L
   * -> Multiply
 }
 
-instance (Multiply Number Number Number) : b a -> ([pure] intrinsic "multiply-number" a b)
-instance (Multiply Integer Integer Integer) : b a -> ([pure] intrinsic "multiply-integer" a b)
-instance (Multiply Natural Natural Natural) : b a -> ([pure] intrinsic "multiply-natural" a b)
-instance (Multiply Byte Byte Byte) : b a -> ([pure] intrinsic "multiply-byte" a b)
-instance (Multiply Signed Signed Signed) : b a -> ([pure] intrinsic "multiply-signed" a b)
-instance (Multiply Unsigned Unsigned Unsigned) : b a -> ([pure] intrinsic "multiply-unsigned" a b)
-instance (Multiply Float Float Float) : b a -> ([pure] intrinsic "multiply-float" a b)
-instance (Multiply Double Double Double) : b a -> ([pure] intrinsic "multiply-double" a b)
+instance (Multiply Number Number Number) : b a -> semantics "pure" (intrinsic "multiply-number" a b)
+instance (Multiply Integer Integer Integer) : b a -> semantics "pure" (intrinsic "multiply-integer" a b)
+instance (Multiply Natural Natural Natural) : b a -> semantics "pure" (intrinsic "multiply-natural" a b)
+instance (Multiply Byte Byte Byte) : b a -> semantics "pure" (intrinsic "multiply-byte" a b)
+instance (Multiply Signed Signed Signed) : b a -> semantics "pure" (intrinsic "multiply-signed" a b)
+instance (Multiply Unsigned Unsigned Unsigned) : b a -> semantics "pure" (intrinsic "multiply-unsigned" a b)
+instance (Multiply Float Float Float) : b a -> semantics "pure" (intrinsic "multiply-float" a b)
+instance (Multiply Double Double Double) : b a -> semantics "pure" (intrinsic "multiply-double" a b)
 
 [help "Implements the `/` operator."]
 [help-group "Math"]
@@ -103,14 +103,14 @@ Divide : (Left : Number) (Right : Number) (infer Quotient) => trait (Right -> Le
   / -> Divide
 }
 
-instance (Divide Number Number Number) : b a -> ([pure] intrinsic "divide-number" a b)
-instance (Divide Integer Integer Integer) : b a -> ([pure] intrinsic "divide-integer" a b)
-instance (Divide Natural Natural Natural) : b a -> ([pure] intrinsic "divide-natural" a b)
-instance (Divide Byte Byte Byte) : b a -> ([pure] intrinsic "divide-byte" a b)
-instance (Divide Signed Signed Signed) : b a -> ([pure] intrinsic "divide-signed" a b)
-instance (Divide Unsigned Unsigned Unsigned) : b a -> ([pure] intrinsic "divide-unsigned" a b)
-instance (Divide Float Float Float) : b a -> ([pure] intrinsic "divide-float" a b)
-instance (Divide Double Double Double) : b a -> ([pure] intrinsic "divide-double" a b)
+instance (Divide Number Number Number) : b a -> semantics "pure" (intrinsic "divide-number" a b)
+instance (Divide Integer Integer Integer) : b a -> semantics "pure" (intrinsic "divide-integer" a b)
+instance (Divide Natural Natural Natural) : b a -> semantics "pure" (intrinsic "divide-natural" a b)
+instance (Divide Byte Byte Byte) : b a -> semantics "pure" (intrinsic "divide-byte" a b)
+instance (Divide Signed Signed Signed) : b a -> semantics "pure" (intrinsic "divide-signed" a b)
+instance (Divide Unsigned Unsigned Unsigned) : b a -> semantics "pure" (intrinsic "divide-unsigned" a b)
+instance (Divide Float Float Float) : b a -> semantics "pure" (intrinsic "divide-float" a b)
+instance (Divide Double Double Double) : b a -> semantics "pure" (intrinsic "divide-double" a b)
 
 [help "Implements the `mod` operator."]
 [help-group "Math"]
@@ -130,14 +130,14 @@ mod : syntax {
   mod -> Modulo
 }
 
-instance (Modulo Number Number Number) : b a -> ([pure] intrinsic "modulo-number" a b)
-instance (Modulo Integer Integer Integer) : b a -> ([pure] intrinsic "modulo-integer" a b)
-instance (Modulo Natural Natural Natural) : b a -> ([pure] intrinsic "modulo-natural" a b)
-instance (Modulo Byte Byte Byte) : b a -> ([pure] intrinsic "modulo-byte" a b)
-instance (Modulo Signed Signed Signed) : b a -> ([pure] intrinsic "modulo-signed" a b)
-instance (Modulo Unsigned Unsigned Unsigned) : b a -> ([pure] intrinsic "modulo-unsigned" a b)
-instance (Modulo Float Float Float) : b a -> ([pure] intrinsic "modulo-float" a b)
-instance (Modulo Double Double Double) : b a -> ([pure] intrinsic "modulo-double" a b)
+instance (Modulo Number Number Number) : b a -> semantics "pure" (intrinsic "modulo-number" a b)
+instance (Modulo Integer Integer Integer) : b a -> semantics "pure" (intrinsic "modulo-integer" a b)
+instance (Modulo Natural Natural Natural) : b a -> semantics "pure" (intrinsic "modulo-natural" a b)
+instance (Modulo Byte Byte Byte) : b a -> semantics "pure" (intrinsic "modulo-byte" a b)
+instance (Modulo Signed Signed Signed) : b a -> semantics "pure" (intrinsic "modulo-signed" a b)
+instance (Modulo Unsigned Unsigned Unsigned) : b a -> semantics "pure" (intrinsic "modulo-unsigned" a b)
+instance (Modulo Float Float Float) : b a -> semantics "pure" (intrinsic "modulo-float" a b)
+instance (Modulo Double Double Double) : b a -> semantics "pure" (intrinsic "modulo-double" a b)
 
 [help "Implements the `^` operator."]
 [help-group "Math"]
@@ -157,52 +157,52 @@ Power : (Left : Number) (Right : Number) (infer Power) => trait (Right -> Left -
   ^ -> Power
 }
 
-instance (Power Number Number Number) : b a -> ([pure] intrinsic "power-number" a b)
-instance (Power Integer Integer Integer) : b a -> ([pure] intrinsic "power-integer" a b)
-instance (Power Natural Natural Natural) : b a -> ([pure] intrinsic "power-natural" a b)
-instance (Power Byte Byte Byte) : b a -> ([pure] intrinsic "power-byte" a b)
-instance (Power Signed Signed Signed) : b a -> ([pure] intrinsic "power-signed" a b)
-instance (Power Unsigned Unsigned Unsigned) : b a -> ([pure] intrinsic "power-unsigned" a b)
-instance (Power Float Float Float) : b a -> ([pure] intrinsic "power-float" a b)
-instance (Power Double Double Double) : b a -> ([pure] intrinsic "power-double" a b)
+instance (Power Number Number Number) : b a -> semantics "pure" (intrinsic "power-number" a b)
+instance (Power Integer Integer Integer) : b a -> semantics "pure" (intrinsic "power-integer" a b)
+instance (Power Natural Natural Natural) : b a -> semantics "pure" (intrinsic "power-natural" a b)
+instance (Power Byte Byte Byte) : b a -> semantics "pure" (intrinsic "power-byte" a b)
+instance (Power Signed Signed Signed) : b a -> semantics "pure" (intrinsic "power-signed" a b)
+instance (Power Unsigned Unsigned Unsigned) : b a -> semantics "pure" (intrinsic "power-unsigned" a b)
+instance (Power Float Float Float) : b a -> semantics "pure" (intrinsic "power-float" a b)
+instance (Power Double Double Double) : b a -> semantics "pure" (intrinsic "power-double" a b)
 
 [help "Rounds down a number to the nearest integer."]
 [help-group "Math"]
 Floor : (N : Number) => trait (N -> N)
 floor :: N where (Floor N) => N -> N
 floor : Floor
-instance (Floor Number) : n -> ([pure] intrinsic "floor-number" n)
-instance (Floor Float) : n -> ([pure] intrinsic "floor-float" n)
-instance (Floor Double) : n -> ([pure] intrinsic "floor-double" n)
+instance (Floor Number) : n -> semantics "pure" (intrinsic "floor-number" n)
+instance (Floor Float) : n -> semantics "pure" (intrinsic "floor-float" n)
+instance (Floor Double) : n -> semantics "pure" (intrinsic "floor-double" n)
 
 [help "Rounds up a number to the nearest integer."]
 [help-group "Math"]
 Ceil : (N : Number) => trait (N -> N)
 ceil :: N where (Ceil N) => N -> N
 ceil : Ceil
-instance (Ceil Number) : n -> ([pure] intrinsic "ceil-number" n)
-instance (Ceil Float) : n -> ([pure] intrinsic "ceil-float" n)
-instance (Ceil Double) : n -> ([pure] intrinsic "ceil-double" n)
+instance (Ceil Number) : n -> semantics "pure" (intrinsic "ceil-number" n)
+instance (Ceil Float) : n -> semantics "pure" (intrinsic "ceil-float" n)
+instance (Ceil Double) : n -> semantics "pure" (intrinsic "ceil-double" n)
 
 [help "Calculates the square root of a number."]
 [help-group "Math"]
 Sqrt : (N : Number) => trait (N -> N)
 sqrt :: N where (Sqrt N) => N -> N
 sqrt : Sqrt
-instance (Sqrt Number) : n -> ([pure] intrinsic "sqrt-number" n)
-instance (Sqrt Float) : n -> ([pure] intrinsic "sqrt-float" n)
-instance (Sqrt Double) : n -> ([pure] intrinsic "sqrt-double" n)
+instance (Sqrt Number) : n -> semantics "pure" (intrinsic "sqrt-number" n)
+instance (Sqrt Float) : n -> semantics "pure" (intrinsic "sqrt-float" n)
+instance (Sqrt Double) : n -> semantics "pure" (intrinsic "sqrt-double" n)
 
 [help "Negates the sign of a number."]
 [help-group "Math"]
 Negate : (N : Number) => trait (N -> N)
 negate :: N where (Negate N) => N -> N
 negate : Negate
-instance (Negate Number) : n -> ([pure] intrinsic "negate-number" n)
-instance (Negate Integer) : n -> ([pure] intrinsic "negate-integer" n)
-instance (Negate Signed) : n -> ([pure] intrinsic "negate-signed" n)
-instance (Negate Float) : n -> ([pure] intrinsic "negate-float" n)
-instance (Negate Double) : n -> ([pure] intrinsic "negate-double" n)
+instance (Negate Number) : n -> semantics "pure" (intrinsic "negate-number" n)
+instance (Negate Integer) : n -> semantics "pure" (intrinsic "negate-integer" n)
+instance (Negate Signed) : n -> semantics "pure" (intrinsic "negate-signed" n)
+instance (Negate Float) : n -> semantics "pure" (intrinsic "negate-float" n)
+instance (Negate Double) : n -> semantics "pure" (intrinsic "negate-double" n)
 
 [help "Check if a number is divisible by another number."]
 [help-group "Math"]

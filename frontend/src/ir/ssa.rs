@@ -281,8 +281,8 @@ impl Converter<'_> {
                         .map(|(&index, field)| (index, self.convert_expr(field, false)))
                         .collect(),
                 ),
-                analysis::ExpressionKind::Attributed(_attributes, expr) => {
-                    // TODO: Handle attributes as necessary
+                analysis::ExpressionKind::Semantics(_semantics, expr) => {
+                    // TODO: Handle semantics as necessary
 
                     return self.convert_expr(expr, tail);
                 }

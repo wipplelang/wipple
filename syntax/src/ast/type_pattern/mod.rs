@@ -123,9 +123,7 @@ impl<D: Driver> SyntaxContext<D> for TypePatternSyntaxContext<D> {
         scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         match expr.try_into_list_exprs() {
-            Ok((span, attrs, exprs)) => {
-                self.ast_builder.forbid_attributes(attrs);
-
+            Ok((span, exprs)) => {
                 let patterns = stream::iter(exprs)
                     .then(|expr| {
                         self.ast_builder.build_expr::<TypePatternSyntax>(
@@ -155,15 +153,5 @@ impl<D: Driver> SyntaxContext<D> for TypePatternSyntaxContext<D> {
                 }
             },
         }
-    }
-
-    fn wrap_attributes(
-        self,
-        attributes: Result<Vec<parse::Attribute<D>>, parse::UnexpectedAttributeError<D>>,
-        body: Self::Body,
-    ) -> Self::Body {
-        self.ast_builder.forbid_attributes(attributes);
-
-        body
     }
 }
