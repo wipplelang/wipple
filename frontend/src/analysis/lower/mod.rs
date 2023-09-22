@@ -2588,25 +2588,11 @@ impl Lowerer {
         }
 
         match expr {
-            ast::Expression::Text(expr) => {
-                let (segments, _) = segments(&expr.text);
-                if !segments.is_empty() {
-                    self.compiler.add_warning(
-                        "text contains placeholders, but no inputs were provided",
-                        vec![Note::primary(
-                            expr.span,
-                            r"try escaping the placeholders using '\_'",
-                        )],
-                        "",
-                    );
-                }
-
-                Expression {
-                    id: self.compiler.new_expression_id(ctx.owner),
-                    span: expr.span,
-                    kind: ExpressionKind::Text(expr.text.ignoring_escaped_underscores()),
-                }
-            }
+            ast::Expression::Text(expr) => Expression {
+                id: self.compiler.new_expression_id(ctx.owner),
+                span: expr.span,
+                kind: ExpressionKind::Text(expr.text.ignoring_escaped_underscores()),
+            },
             ast::Expression::Number(expr) => Expression {
                 id: self.compiler.new_expression_id(ctx.owner),
                 span: expr.span,
