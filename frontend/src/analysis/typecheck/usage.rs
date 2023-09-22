@@ -1,8 +1,8 @@
 use crate::{
     analysis::{
         self,
-        typecheck::{engine, Typechecker},
-        SpanList,
+        typecheck::{BuiltinType, Type, Typechecker},
+        SpanList, TypeStructure,
     },
     diagnostics::Note,
     VariableId,
@@ -22,14 +22,9 @@ impl Typechecker {
 
             let var_name = decl.name.as_deref().unwrap_or("<unknown>").to_string();
 
-            let id = match decl.ty {
-                engine::Type::Named(id, _, _) => id,
-                _ => return None,
-            };
+            let message = self.on_reuse_message(&decl.ty)?.to_string();
 
-            let ty = decls.types.get(&id).unwrap();
-
-            Some((var_name, ty.attributes.on_reuse?))
+            Some((var_name, message))
         };
 
         type TrackUsed = im::OrdMap<VariableId, Vec<SpanList>>;
@@ -160,5 +155,51 @@ impl Typechecker {
         //         );
         //     }
         // }
+    }
+}
+
+impl Typechecker {
+    fn on_reuse_message(&self, ty: &Type) -> Option<&'static str> {
+        match ty {
+            Type::Named(id, _, structure) => {
+                if let Some(message) = self
+                    .declarations
+                    .borrow()
+                    .types
+                    .get(id)
+                    .unwrap()
+                    .attributes
+                    .on_reuse
+                {
+                    return Some(message.as_str());
+                }
+
+                match structure {
+                    TypeStructure::Marker | TypeStructure::Recursive(_) => None,
+                    TypeStructure::Structure(tys) => {
+                        tys.iter().find_map(|ty| self.on_reuse_message(ty))
+                    }
+                    TypeStructure::Enumeration(variants) => variants
+                        .iter()
+                        .flatten()
+                        .find_map(|ty| self.on_reuse_message(ty)),
+                }
+            }
+            Type::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => self.on_reuse_message(ty),
+                BuiltinType::Number
+                | BuiltinType::Integer
+                | BuiltinType::Natural
+                | BuiltinType::Byte
+                | BuiltinType::Signed
+                | BuiltinType::Unsigned
+                | BuiltinType::Float
+                | BuiltinType::Double
+                | BuiltinType::Text
+                | BuiltinType::Ui
+                | BuiltinType::TaskGroup => None,
+            },
+            _ => None,
+        }
     }
 }
