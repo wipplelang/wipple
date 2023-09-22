@@ -934,7 +934,7 @@ impl Typechecker {
             for decl in self.declarations.borrow().constants.values() {
                 if let Some(expr) = decl.body.as_ref() {
                     self.check_exhaustiveness(expr);
-                    self.collect_usage(expr);
+                    self.check_usage(expr);
                 }
             }
 
@@ -947,17 +947,15 @@ impl Typechecker {
             {
                 if let Some(expr) = decl.body.as_ref() {
                     self.check_exhaustiveness(expr);
-                    self.collect_usage(expr);
+                    self.check_usage(expr);
                 }
             }
 
             if let Some(expr) = entrypoint_expr {
                 self.check_exhaustiveness(&expr);
-                self.collect_usage(&expr);
+                self.check_usage(&expr);
             }
         }
-
-        self.report_unused();
 
         // Build the final program
 
@@ -4210,6 +4208,20 @@ impl Typechecker {
         self.generic_constants.insert(id, (false, decl.value.value));
 
         let ty = self.convert_generic_type_annotation(decl.value.ty.clone());
+
+        if let Some(on_reuse_message) = self.on_reuse_message(&ty) {
+            self.compiler.add_error(
+                on_reuse_message,
+                vec![
+                    Note::primary(
+                        decl.span,
+                        "constant value may not contain type marked with `[on-reuse]`",
+                    ),
+                    Note::secondary(decl.span, "constants are implicitly copied when used, but `[on-reuse]` types may not be copied"),
+                ],
+                "reused-variable",
+            );
+        }
 
         let bounds = decl
             .value

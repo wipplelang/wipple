@@ -11,7 +11,7 @@ use im::ordmap::Entry;
 use std::{mem, ops::ControlFlow};
 
 impl Typechecker {
-    pub fn collect_usage(&self, expr: &analysis::Expression) {
+    pub fn check_usage(&self, expr: &analysis::Expression) {
         let reuse_info = |var: VariableId| {
             let decls = self.declarations.borrow();
 
@@ -122,44 +122,7 @@ impl Typechecker {
         );
     }
 
-    pub fn report_unused(&self) {
-        // TODO
-
-        // let decls = self.declarations.borrow();
-        // let used = self.used.take();
-
-        // for (&var, decl) in &decls.variables {
-        //     if !used.contains_key(&var) {
-        //         let id = match decl.ty {
-        //             engine::Type::Named(id, _, _) => id,
-        //             _ => return,
-        //         };
-
-        //         let ty = decls.types.get(&id).unwrap();
-
-        //         let message = match ty.attributes.on_reuse {
-        //             Some(message) => message,
-        //             None => return,
-        //         };
-
-        //         self.compiler.add_error(
-        //             format!(
-        //                 "`{}` was never used",
-        //                 decl.name.as_deref().unwrap_or("<unknown>")
-        //             ),
-        //             vec![Note::primary(
-        //                 decl.span,
-        //                 "try passing this variable to a function",
-        //             )],
-        //             "never-used",
-        //         );
-        //     }
-        // }
-    }
-}
-
-impl Typechecker {
-    fn on_reuse_message(&self, ty: &Type) -> Option<&'static str> {
+    pub(crate) fn on_reuse_message(&self, ty: &Type) -> Option<&'static str> {
         match ty {
             Type::Named(id, _, structure) => {
                 if let Some(message) = self

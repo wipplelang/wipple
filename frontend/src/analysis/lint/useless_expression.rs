@@ -9,6 +9,17 @@ impl Compiler {
             }
         }
 
+        for decl in program
+            .declarations
+            .instances
+            .values()
+            .flat_map(|decls| decls.values())
+        {
+            if let Some(expr) = &decl.body {
+                self.check_useless_expression(expr, program);
+            }
+        }
+
         for item in program.items.values() {
             let item = item.read();
             let (_, expr) = &*item;
