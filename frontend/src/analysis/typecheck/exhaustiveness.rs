@@ -231,7 +231,8 @@ impl Typechecker {
                 }
             }
             _ => {}
-        })
+        },
+        |_| {},)
     }
 
     fn convert_match_pattern(&self, pattern: &analysis::Pattern) -> Pattern {

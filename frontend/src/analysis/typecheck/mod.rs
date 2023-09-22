@@ -9,6 +9,7 @@ mod exhaustiveness;
 pub mod format;
 mod queries;
 pub mod traverse;
+mod usage;
 
 pub use engine::{BottomTypeReason, BuiltinType, GenericSubstitutions, Type, TypeStructure};
 pub use lower::{Intrinsic, Semantics, TypeAnnotation, TypeAnnotationKind};
@@ -481,39 +482,45 @@ expr!(pub, "", engine::Type, {
 impl Expression {
     pub fn contains_error(&self) -> bool {
         let mut contains_error = false;
-        self.traverse(|expr| {
-            contains_error |= matches!(expr.kind, ExpressionKind::Error(_));
+        self.traverse(
+            |expr| {
+                contains_error |= matches!(expr.kind, ExpressionKind::Error(_));
 
-            contains_error |= match &expr.kind {
-                ExpressionKind::Error(_) => true,
-                ExpressionKind::Function(pattern, _, _)
-                | ExpressionKind::Initialize(pattern, _) => pattern.contains_error(),
-                ExpressionKind::When(_, arms) => {
-                    arms.iter().any(|arm| arm.pattern.contains_error())
-                }
-                ExpressionKind::With((None, _), _) => true,
-                _ => false,
-            };
-        });
+                contains_error |= match &expr.kind {
+                    ExpressionKind::Error(_) => true,
+                    ExpressionKind::Function(pattern, _, _)
+                    | ExpressionKind::Initialize(pattern, _) => pattern.contains_error(),
+                    ExpressionKind::When(_, arms) => {
+                        arms.iter().any(|arm| arm.pattern.contains_error())
+                    }
+                    ExpressionKind::With((None, _), _) => true,
+                    _ => false,
+                };
+            },
+            |_| {},
+        );
 
         contains_error
     }
 
     pub fn find_first_unresolved_plugin(&self) -> Option<ExpressionId> {
         let mut deepest_plugin = None;
-        self.traverse(|expr| {
-            if let ExpressionKind::Plugin(_, _, inputs) = &expr.kind {
-                deepest_plugin = Some(
-                    deepest_plugin
-                        .or_else(|| {
-                            inputs
-                                .iter()
-                                .find_map(Expression::find_first_unresolved_plugin)
-                        })
-                        .unwrap_or(expr.id),
-                )
-            }
-        });
+        self.traverse(
+            |expr| {
+                if let ExpressionKind::Plugin(_, _, inputs) = &expr.kind {
+                    deepest_plugin = Some(
+                        deepest_plugin
+                            .or_else(|| {
+                                inputs
+                                    .iter()
+                                    .find_map(Expression::find_first_unresolved_plugin)
+                            })
+                            .unwrap_or(expr.id),
+                    )
+                }
+            },
+            |_| {},
+        );
 
         deepest_plugin
     }
@@ -788,31 +795,34 @@ impl Typechecker {
                     .unwrap()
                     .clone();
 
-                expr.traverse_mut(|expr| {
-                    if let ExpressionKind::Constant(id) = &mut expr.kind {
-                        if let (Some((_, generic_id)), _) = typechecker
-                            .items
-                            .get(id)
-                            .unwrap_or_else(|| panic!("{id:?} at {:?}", expr.span))
-                        {
-                            if let Some(specialized_id) = typechecker.specialized_constant_for(
-                                *generic_id,
-                                expr.id,
-                                expr.span,
-                                &expr.ty,
-                                info,
-                            ) {
-                                *id = specialized_id;
-                            }
+                expr.traverse_mut(
+                    |expr| {
+                        if let ExpressionKind::Constant(id) = &mut expr.kind {
+                            if let (Some((_, generic_id)), _) = typechecker
+                                .items
+                                .get(id)
+                                .unwrap_or_else(|| panic!("{id:?} at {:?}", expr.span))
+                            {
+                                if let Some(specialized_id) = typechecker.specialized_constant_for(
+                                    *generic_id,
+                                    expr.id,
+                                    expr.span,
+                                    &expr.ty,
+                                    info,
+                                ) {
+                                    *id = specialized_id;
+                                }
 
-                            if cache.contains(id) {
-                                return;
-                            }
+                                if cache.contains(id) {
+                                    return;
+                                }
 
-                            cache.insert(*id);
+                                cache.insert(*id);
+                            }
                         }
-                    }
-                });
+                    },
+                    |_| {},
+                );
 
                 *typechecker.items.get_mut(&id).unwrap().1.as_mut().unwrap() = expr;
             }
@@ -885,13 +895,16 @@ impl Typechecker {
         for (_, expr) in items.values_mut() {
             let expr = expr.as_mut().unwrap();
 
-            expr.traverse_mut(|expr| {
-                if let ExpressionKind::Constant(id) = &mut expr.kind {
-                    if let Some(mapped_id) = map.get(id) {
-                        *id = *mapped_id;
+            expr.traverse_mut(
+                |expr| {
+                    if let ExpressionKind::Constant(id) = &mut expr.kind {
+                        if let Some(mapped_id) = map.get(id) {
+                            *id = *mapped_id;
+                        }
                     }
-                }
-            })
+                },
+                |_| {},
+            )
         }
 
         for (generic_id, item_id) in &mut self.contexts {
@@ -900,12 +913,13 @@ impl Typechecker {
             }
         }
 
-        // Check exhaustiveness
+        // Check exhaustiveness and usage
 
         if !self.compiler.has_errors() {
             for decl in self.declarations.borrow().constants.values() {
                 if let Some(expr) = decl.body.as_ref() {
                     self.check_exhaustiveness(expr);
+                    self.check_usage(expr);
                 }
             }
 
@@ -918,11 +932,13 @@ impl Typechecker {
             {
                 if let Some(expr) = decl.body.as_ref() {
                     self.check_exhaustiveness(expr);
+                    self.check_usage(expr);
                 }
             }
 
             if let Some(expr) = entrypoint_expr {
                 self.check_exhaustiveness(&expr);
+                self.check_usage(&expr);
             }
         }
 
@@ -988,21 +1004,24 @@ impl Typechecker {
                 };
 
                 let mut is_unresolved = false;
-                expr.traverse(|expr| {
-                    is_unresolved |= match &expr.kind {
-                        MonomorphizedExpressionKind::UnresolvedTrait(_)
-                        | MonomorphizedExpressionKind::UnresolvedConstant(_) => true,
-                        MonomorphizedExpressionKind::Function(pattern, _, _)
-                        | MonomorphizedExpressionKind::Initialize(pattern, _) => {
-                            pattern_is_unresolved(pattern)
-                        }
-                        MonomorphizedExpressionKind::When(_, arms) => {
-                            arms.iter().any(|arm| pattern_is_unresolved(&arm.pattern))
-                        }
+                expr.traverse(
+                    |expr| {
+                        is_unresolved |= match &expr.kind {
+                            MonomorphizedExpressionKind::UnresolvedTrait(_)
+                            | MonomorphizedExpressionKind::UnresolvedConstant(_) => true,
+                            MonomorphizedExpressionKind::Function(pattern, _, _)
+                            | MonomorphizedExpressionKind::Initialize(pattern, _) => {
+                                pattern_is_unresolved(pattern)
+                            }
+                            MonomorphizedExpressionKind::When(_, arms) => {
+                                arms.iter().any(|arm| pattern_is_unresolved(&arm.pattern))
+                            }
 
-                        _ => false,
-                    };
-                });
+                            _ => false,
+                        };
+                    },
+                    |_| {},
+                );
 
                 is_unresolved
             };
@@ -1011,9 +1030,12 @@ impl Typechecker {
                 break;
             }
 
-            expr.traverse_mut(|expr| {
-                expr.ty.substitute_defaults(&self.ctx);
-            });
+            expr.traverse_mut(
+                |expr| {
+                    expr.ty.substitute_defaults(&self.ctx);
+                },
+                |_| {},
+            );
 
             substituted_defaults = true;
 
@@ -1366,28 +1388,30 @@ impl Typechecker {
         // constant's type, instantiate them here
         let generic_ty_params = generic_expr.ty.params();
 
-        generic_expr.traverse_mut(|expr| {
-            expr.ty.apply(&self.ctx);
+        generic_expr.traverse_mut(
+            |expr| {
+                expr.ty.apply(&self.ctx);
 
-            for param in expr.ty.params() {
-                if !substitutions.contains_key(&param) {
-                    let ty = if !generic_ty_params.contains(&param)
-                        && bounds
-                            .iter()
-                            .any(|bound| bound.params.iter().any(|ty| ty.params().contains(&param)))
-                    {
-                        let default = self.get_default_for_param(param, Some(&substitutions));
-                        engine::UnresolvedType::Variable(self.ctx.new_variable(default))
-                    } else {
-                        engine::UnresolvedType::Parameter(param)
-                    };
+                for param in expr.ty.params() {
+                    if !substitutions.contains_key(&param) {
+                        let ty = if !generic_ty_params.contains(&param)
+                            && bounds.iter().any(|bound| {
+                                bound.params.iter().any(|ty| ty.params().contains(&param))
+                            }) {
+                            let default = self.get_default_for_param(param, Some(&substitutions));
+                            engine::UnresolvedType::Variable(self.ctx.new_variable(default))
+                        } else {
+                            engine::UnresolvedType::Parameter(param)
+                        };
 
-                    substitutions.insert(param, ty);
+                        substitutions.insert(param, ty);
+                    }
                 }
-            }
 
-            expr.ty.instantiate_with(&self.ctx, &substitutions);
-        });
+                expr.ty.instantiate_with(&self.ctx, &substitutions);
+            },
+            |_| {},
+        );
 
         let mut monomorphize_info = info.clone();
 
@@ -5631,11 +5655,14 @@ impl Typechecker {
                 if let Some(id) = error.expr {
                     if let Some((func, _)) = self.start_of_call_chain_for(id) {
                         let mut constant_id = None;
-                        func.traverse(|expr| {
-                            if let ExpressionKind::Constant(id) = &expr.kind {
-                                constant_id = Some(id);
-                            }
-                        });
+                        func.traverse(
+                            |expr| {
+                                if let ExpressionKind::Constant(id) = &expr.kind {
+                                    constant_id = Some(id);
+                                }
+                            },
+                            |_| {},
+                        );
 
                         if let Some(id) = constant_id {
                             if let Some((Some((_, constant)), _)) = self.items.get(id) {

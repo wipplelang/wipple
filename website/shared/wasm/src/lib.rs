@@ -599,14 +599,14 @@ fn get_syntax_highlighting(
 
     for decl in program.declarations.constants.values() {
         if let Some(expr) = &decl.body {
-            expr.traverse(&mut traverse_semantic_tokens);
+            expr.traverse(&mut traverse_semantic_tokens, |_| {});
         }
     }
 
     for instances in program.declarations.instances.values() {
         for decl in instances.values() {
             if let Some(expr) = &decl.body {
-                expr.traverse(&mut traverse_semantic_tokens);
+                expr.traverse(&mut traverse_semantic_tokens, |_| {});
             }
         }
     }
@@ -620,7 +620,7 @@ fn get_syntax_highlighting(
             continue;
         }
 
-        expr.traverse(&mut traverse_semantic_tokens);
+        expr.traverse(&mut traverse_semantic_tokens, |_| {});
     }
 
     let items = items
@@ -1124,39 +1124,42 @@ pub fn hover(start: usize, end: usize) -> JsValue {
             continue;
         }
 
-        expr.traverse(|expr| {
-            // Don't show type of entire file
-            if let Some(entrypoint) = &analysis.program.entrypoint {
-                if let Some(item) = analysis.program.items.get(entrypoint) {
-                    let item = item.read();
-                    let (_, item) = &*item;
+        expr.traverse(
+            |expr| {
+                // Don't show type of entire file
+                if let Some(entrypoint) = &analysis.program.entrypoint {
+                    if let Some(item) = analysis.program.items.get(entrypoint) {
+                        let item = item.read();
+                        let (_, item) = &*item;
 
-                    if expr.span == item.span {
-                        return;
+                        if expr.span == item.span {
+                            return;
+                        }
                     }
                 }
-            }
 
-            if matches!(
-                expr.kind,
-                ExpressionKind::Variable(_) | ExpressionKind::Constant(_)
-            ) {
-                return;
-            }
+                if matches!(
+                    expr.kind,
+                    ExpressionKind::Variable(_) | ExpressionKind::Constant(_)
+                ) {
+                    return;
+                }
 
-            if !within_hover(expr.span.original()) {
-                return;
-            }
+                if !within_hover(expr.span.original()) {
+                    return;
+                }
 
-            hovers.push((
-                expr.span.original(),
-                HoverOutput {
-                    code: format_type(expr.ty.clone(), Format::default()),
-                    help: String::new(),
-                    url: None,
-                },
-            ));
-        })
+                hovers.push((
+                    expr.span.original(),
+                    HoverOutput {
+                        code: format_type(expr.ty.clone(), Format::default()),
+                        help: String::new(),
+                        url: None,
+                    },
+                ));
+            },
+            |_| {},
+        )
     }
 
     fn find_nearest_help_url(

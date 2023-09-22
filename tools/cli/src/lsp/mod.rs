@@ -251,14 +251,14 @@ impl LanguageServer for Backend {
 
         for decl in document.program.declarations.constants.values() {
             if let Some(expr) = &decl.body {
-                expr.traverse(&mut traverse_semantic_tokens);
+                expr.traverse(&mut traverse_semantic_tokens, |_| {});
             }
         }
 
         for instances in document.program.declarations.instances.values() {
             for decl in instances.values() {
                 if let Some(expr) = &decl.body {
-                    expr.traverse(&mut traverse_semantic_tokens);
+                    expr.traverse(&mut traverse_semantic_tokens, |_| {});
                 }
             }
         }
@@ -272,7 +272,7 @@ impl LanguageServer for Backend {
                 continue;
             }
 
-            expr.traverse(&mut traverse_semantic_tokens);
+            expr.traverse(&mut traverse_semantic_tokens, |_| {});
         }
 
         semantic_tokens.reverse();
@@ -399,42 +399,46 @@ impl LanguageServer for Backend {
                 continue;
             }
 
-            expr.traverse(|expr| {
-                // Don't show type of entire file
-                if let Some(entrypoint) = document.program.entrypoint {
-                    if let Some(item) = document.program.items.get(&entrypoint) {
-                        let item = item.read();
-                        let (_, item) = &*item;
+            expr.traverse(
+                |expr| {
+                    // Don't show type of entire file
+                    if let Some(entrypoint) = document.program.entrypoint {
+                        if let Some(item) = document.program.items.get(&entrypoint) {
+                            let item = item.read();
+                            let (_, item) = &*item;
 
-                        if expr.span == item.span {
-                            return;
+                            if expr.span == item.span {
+                                return;
+                            }
                         }
                     }
-                }
 
-                if matches!(
-                    expr.kind,
-                    ExpressionKind::Variable(_) | ExpressionKind::Constant(_)
-                ) {
-                    return;
-                }
+                    if matches!(
+                        expr.kind,
+                        ExpressionKind::Variable(_) | ExpressionKind::Constant(_)
+                    ) {
+                        return;
+                    }
 
-                if !within_hover(expr.span.original()) {
-                    return;
-                }
+                    if !within_hover(expr.span.original()) {
+                        return;
+                    }
 
-                if let Some(range) = range_from(expr.span.original()) {
-                    let contents = code_segment(format_type(expr.ty.clone(), Format::default()));
+                    if let Some(range) = range_from(expr.span.original()) {
+                        let contents =
+                            code_segment(format_type(expr.ty.clone(), Format::default()));
 
-                    hovers.push((
-                        expr.span,
-                        Hover {
-                            range: Some(range),
-                            contents: HoverContents::Scalar(contents),
-                        },
-                    ));
-                }
-            })
+                        hovers.push((
+                            expr.span,
+                            Hover {
+                                range: Some(range),
+                                contents: HoverContents::Scalar(contents),
+                            },
+                        ));
+                    }
+                },
+                |_| {},
+            )
         }
 
         macro_rules! type_decls {

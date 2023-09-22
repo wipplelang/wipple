@@ -219,6 +219,7 @@ pub struct TypeAttributes {
     pub decl_attributes: DeclarationAttributes,
     pub on_mismatch: Vec<(Option<TypeParameterId>, InternedString)>,
     pub convert_from: Vec<(TypeAnnotation, wipple_syntax::parse::Expr<Analysis>)>,
+    pub is_linear: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -4715,6 +4716,7 @@ impl Lowerer {
                     (ty, attribute.replacement.clone())
                 })
                 .collect(),
+            is_linear: attributes.linear.is_some(),
         }
     }
 
