@@ -219,7 +219,7 @@ pub struct TypeAttributes {
     pub decl_attributes: DeclarationAttributes,
     pub on_mismatch: Vec<(Option<TypeParameterId>, InternedString)>,
     pub convert_from: Vec<(TypeAnnotation, wipple_syntax::parse::Expr<Analysis>)>,
-    pub is_linear: bool,
+    pub on_reuse: Option<InternedString>,
 }
 
 #[derive(Debug, Clone)]
@@ -1503,6 +1503,7 @@ impl Lowerer {
                                                         constructor: self
                                                             .generate_variant_constructor(
                                                                 id,
+                                                                ctx.owner,
                                                                 *name,
                                                                 *span,
                                                                 index,
@@ -1585,6 +1586,7 @@ impl Lowerer {
                                                 let constructor = self
                                                     .generate_variant_constructor(
                                                         id,
+                                                        ctx.owner,
                                                         variant.name,
                                                         variant.span,
                                                         index,
@@ -3577,7 +3579,7 @@ impl Lowerer {
                         }
                     }
                     Ok(_) => {
-                        let var = self.compiler.new_variable_id_in(self.file);
+                        let var = self.compiler.new_variable_id(ctx.owner);
 
                         self.insert(pattern.name, AnyDeclaration::Variable(var), &pattern.scope);
 
@@ -4716,7 +4718,10 @@ impl Lowerer {
                     (ty, attribute.replacement.clone())
                 })
                 .collect(),
-            is_linear: attributes.linear.is_some(),
+            on_reuse: attributes
+                .on_reuse
+                .as_ref()
+                .map(|attribute| attribute.on_reuse_text),
         }
     }
 
@@ -4992,6 +4997,7 @@ impl Lowerer {
     fn generate_variant_constructor(
         &mut self,
         id: TypeId,
+        owner: Option<ConstantId>,
         name: InternedString,
         span: SpanList,
         index: VariantIndex,
@@ -5027,7 +5033,7 @@ impl Lowerer {
         let variables = tys
             .iter()
             .map(|ty| {
-                let var = self.compiler.new_variable_id_in(self.file);
+                let var = self.compiler.new_variable_id(owner);
 
                 self.declarations.variables.insert(
                     var,

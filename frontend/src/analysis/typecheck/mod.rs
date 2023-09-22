@@ -643,6 +643,7 @@ struct Typechecker {
     contexts: BTreeMap<ConstantId, ItemId>,
     item_queue: im::Vector<QueuedItem>,
     items: im::OrdMap<ItemId, (Option<(Option<TraitId>, ConstantId)>, Option<Expression>)>,
+    used: RefCell<im::OrdMap<VariableId, Vec<SpanList>>>,
     entrypoint_expr: Option<UnresolvedExpression>,
     entrypoint_item: Option<ItemId>,
     errors: RefCell<im::Vector<Error>>,
@@ -701,6 +702,7 @@ impl Typechecker {
             contexts: Default::default(),
             item_queue: Default::default(),
             items: Default::default(),
+            used: Default::default(),
             entrypoint_expr: Default::default(),
             entrypoint_item: None,
             errors: Default::default(),
@@ -919,7 +921,7 @@ impl Typechecker {
             for decl in self.declarations.borrow().constants.values() {
                 if let Some(expr) = decl.body.as_ref() {
                     self.check_exhaustiveness(expr);
-                    self.check_usage(expr);
+                    self.collect_usage(expr);
                 }
             }
 
@@ -932,15 +934,17 @@ impl Typechecker {
             {
                 if let Some(expr) = decl.body.as_ref() {
                     self.check_exhaustiveness(expr);
-                    self.check_usage(expr);
+                    self.collect_usage(expr);
                 }
             }
 
             if let Some(expr) = entrypoint_expr {
                 self.check_exhaustiveness(&expr);
-                self.check_usage(&expr);
+                self.collect_usage(&expr);
             }
         }
+
+        self.report_unused();
 
         // Build the final program
 

@@ -186,7 +186,6 @@ file_ids!(
     r#trait,
     r#type,
     type_parameter,
-    variable,
     builtin_syntax,
 );
 
@@ -235,7 +234,7 @@ macro_rules! node_ids {
     };
 }
 
-node_ids!(expression, pattern);
+node_ids!(expression, pattern, variable);
 
 macro_rules! ids {
     ($($(#[$meta:meta])* $id:ident),* $(,)?) => {

@@ -210,7 +210,10 @@ pub mod propagate {
                                     ExpressionKind::When(_, arms) => {
                                         for arm in arms {
                                             for var in arm.pattern.variables() {
-                                                new_vars.insert(var, compiler.new_variable_id());
+                                                new_vars.insert(
+                                                    var,
+                                                    compiler.new_variable_id(var.owner),
+                                                );
                                             }
 
                                             arm.pattern.traverse_mut(|pattern| {
@@ -224,7 +227,8 @@ pub mod propagate {
                                     }
                                     ExpressionKind::Initialize(pattern, _) => {
                                         for var in pattern.variables() {
-                                            new_vars.insert(var, compiler.new_variable_id());
+                                            new_vars
+                                                .insert(var, compiler.new_variable_id(var.owner));
                                         }
 
                                         pattern.traverse_mut(|pattern| {
@@ -241,7 +245,8 @@ pub mod propagate {
                                         }
 
                                         for var in pattern.variables() {
-                                            new_vars.insert(var, compiler.new_variable_id());
+                                            new_vars
+                                                .insert(var, compiler.new_variable_id(var.owner));
                                         }
 
                                         pattern.traverse_mut(|pattern| {
@@ -357,7 +362,7 @@ pub mod inline {
                                     let new_vars = pattern
                                         .variables()
                                         .into_iter()
-                                        .map(|var| (var, compiler.new_variable_id()))
+                                        .map(|var| (var, compiler.new_variable_id(var.owner)))
                                         .collect::<BTreeMap<_, _>>();
 
                                     let mut pattern = pattern.clone();

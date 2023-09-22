@@ -34,7 +34,7 @@ impl Typechecker {
 
                 let result = match_compiler.compile(
                     Variable {
-                        id: self.compiler.new_variable_id(),
+                        id: self.compiler.new_variable_id(None),
                         ty: self.convert_ty(&value.ty),
                     },
                     rows,
@@ -99,7 +99,7 @@ impl Typechecker {
 
                 let result = match_compiler.compile(
                     Variable {
-                        id: self.compiler.new_variable_id(),
+                        id: self.compiler.new_variable_id(None),
                         ty: self.convert_ty(input_ty),
                     },
                     rows,
@@ -173,7 +173,7 @@ impl Typechecker {
 
                 let result = match_compiler.compile(
                     Variable {
-                        id: self.compiler.new_variable_id(),
+                        id: self.compiler.new_variable_id(None),
                         ty: self.convert_ty(&input.ty),
                     },
                     rows,
@@ -931,7 +931,7 @@ impl<'a> MatchCompiler<'a> {
     fn new_variables(&mut self, tys: impl IntoIterator<Item = Type>) -> Vec<Variable> {
         tys.into_iter()
             .map(|ty| Variable {
-                id: self.typechecker.compiler.new_variable_id(),
+                id: self.typechecker.compiler.new_variable_id(None),
                 ty,
             })
             .collect()

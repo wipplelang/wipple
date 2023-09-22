@@ -7,15 +7,10 @@ use crate::{
     diagnostics::Note,
     VariableId,
 };
-use std::{
-    cell::RefCell,
-    collections::{btree_map::Entry, BTreeMap},
-};
+use im::ordmap::Entry;
 
 impl Typechecker {
-    pub fn check_usage(&self, expr: &analysis::Expression) {
-        let used: RefCell<BTreeMap<VariableId, Vec<SpanList>>> = Default::default();
-
+    pub fn collect_usage(&self, expr: &analysis::Expression) {
         let check_used = |var: VariableId, spans: Vec<SpanList>| {
             let decls = self.declarations.borrow();
 
@@ -31,37 +26,41 @@ impl Typechecker {
 
             let ty = decls.types.get(&id).unwrap();
 
-            if !ty.attributes.is_linear {
-                return;
-            }
+            let message = match ty.attributes.on_reuse {
+                Some(message) => message,
+                None => return,
+            };
 
-            match used.borrow_mut().entry(var) {
+            match self.used.borrow_mut().entry(var) {
                 Entry::Vacant(entry) => {
                     entry.insert(spans);
                 }
                 Entry::Occupied(entry) => {
+                    let var_name = decl.name.as_deref().unwrap_or("<unknown>");
+
                     self.compiler.add_error(
-                        "cannot use this value more than once",
+                        message,
                         spans
                             .iter()
                             .copied()
-                            .map(|span| Note::primary(span, "this value has already been used"))
-                            .chain(
-                                entry
-                                    .get()
-                                    .iter()
-                                    .copied()
-                                    .map(|span| Note::secondary(span, "value used here")),
-                            )
+                            .map(|span| {
+                                Note::primary(
+                                    span,
+                                    format!("cannot use `{var_name}` more than once"),
+                                )
+                            })
+                            .chain(entry.get().iter().copied().map(|span| {
+                                Note::secondary(span, format!("`{var_name}` first used here"))
+                            }))
                             .collect(),
-                        "used-multiple-times",
+                        "reused-variable",
                     );
                 }
             }
         };
 
         expr.traverse_with(
-            Vec::<BTreeMap<_, Vec<_>>>::new(),
+            Vec::<im::OrdMap<_, Vec<_>>>::new(),
             |expr, branch| match &expr.kind {
                 analysis::ExpressionKind::Variable(var) => {
                     if let Some(branch) = branch.last_mut() {
@@ -71,7 +70,7 @@ impl Typechecker {
                     }
                 }
                 analysis::ExpressionKind::When(_, _) => {
-                    branch.push(BTreeMap::new());
+                    branch.push(im::OrdMap::new());
                 }
                 analysis::ExpressionKind::Constant(_) => {
                     // TODO: Handle constants
@@ -87,16 +86,40 @@ impl Typechecker {
                 }
             },
         );
+    }
 
-        // for expr in unused.values() {
-        //     self.compiler.add_error(
-        //         "value was never used",
-        //         vec![Note::primary(
-        //             expr.span,
-        //             "try passing this value to a function",
-        //         )],
-        //         "never-used",
-        //     );
+    pub fn report_unused(&self) {
+        // TODO
+
+        // let decls = self.declarations.borrow();
+        // let used = self.used.take();
+
+        // for (&var, decl) in &decls.variables {
+        //     if !used.contains_key(&var) {
+        //         let id = match decl.ty {
+        //             engine::Type::Named(id, _, _) => id,
+        //             _ => return,
+        //         };
+
+        //         let ty = decls.types.get(&id).unwrap();
+
+        //         let message = match ty.attributes.on_reuse {
+        //             Some(message) => message,
+        //             None => return,
+        //         };
+
+        //         self.compiler.add_error(
+        //             format!(
+        //                 "`{}` was never used",
+        //                 decl.name.as_deref().unwrap_or("<unknown>")
+        //             ),
+        //             vec![Note::primary(
+        //                 decl.span,
+        //                 "try passing this variable to a function",
+        //             )],
+        //             "never-used",
+        //         );
+        //     }
         // }
     }
 }
