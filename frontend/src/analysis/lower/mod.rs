@@ -888,6 +888,7 @@ pub enum Intrinsic {
 #[strum(serialize_all = "kebab-case")]
 pub enum Semantics {
     Pure,
+    Nonconsuming,
 }
 
 #[derive(Debug, Clone, Copy)]

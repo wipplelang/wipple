@@ -68,6 +68,11 @@ impl Typechecker {
             check_used: &impl Fn(VariableId, Vec<SpanList>, &mut TrackUsed),
         ) -> ControlFlow<()> {
             match &expr.kind {
+                analysis::ExpressionKind::Semantics(semantics, _) => {
+                    if *semantics == analysis::Semantics::Nonconsuming {
+                        return ControlFlow::Break(());
+                    }
+                }
                 analysis::ExpressionKind::Variable(var) => {
                     if let Some(branch) = branch {
                         check_used(*var, vec![expr.span], branch);
@@ -126,13 +131,8 @@ impl Typechecker {
         match ty {
             Type::Named(id, _, structure) => {
                 if let Some(message) = self
-                    .declarations
-                    .borrow()
-                    .types
-                    .get(id)
+                    .with_type_decl(*id, |decl| decl.attributes.on_reuse)
                     .unwrap()
-                    .attributes
-                    .on_reuse
                 {
                     return Some(message.as_str());
                 }

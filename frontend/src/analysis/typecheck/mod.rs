@@ -4441,6 +4441,37 @@ impl Typechecker {
             }
         }
 
+        let trait_params = params
+            .into_iter()
+            .map(|(param, _)| param)
+            .collect::<Vec<_>>();
+
+        let (ty, _) = self
+            .substitute_trait_params(
+                trait_id,
+                trait_params
+                    .clone()
+                    .into_iter()
+                    .map(engine::UnresolvedType::from)
+                    .collect(),
+                decl.span,
+            )
+            .finalize(&self.ctx);
+
+        if let Some(on_reuse_message) = self.on_reuse_message(&ty) {
+            self.compiler.add_error(
+                on_reuse_message,
+                vec![
+                    Note::primary(
+                        decl.span,
+                        "instance value may not contain type marked with `[on-reuse]`",
+                    ),
+                    Note::secondary(decl.span, "instances are implicitly copied when used, but `[on-reuse]` types may not be copied"),
+                ],
+                "reused-variable",
+            );
+        }
+
         let decl = InstanceDecl {
             span: decl.span,
             params: decl.value.parameters,
@@ -4452,7 +4483,7 @@ impl Typechecker {
                 .map(|bound| (bound.tr, bound.parameters))
                 .collect(),
             trait_id,
-            trait_params: params.into_iter().map(|(param, _)| param).collect(),
+            trait_params,
             trait_param_annotations: decl.value.tr_parameters,
             body: None,
             item,
