@@ -1,0 +1,18 @@
+[on-reuse "cannot use X more than once"]
+X : type
+
+f :: X -> ()
+f : _ -> ()
+
+x : X
+
+when 1 {
+  1 -> {
+    f x
+    f x
+  }
+  2 -> f x
+  _ -> f x
+}
+
+f x

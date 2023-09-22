@@ -1,0 +1,26 @@
+error: cannot use X more than once
+   ┌─ test:12:7
+   │
+11 │     f x
+   │       - `x` first used here
+12 │     f x
+   │       ^ cannot use `x` more than once
+   │
+   = for more information, see https://wipple.dev/playground/?lesson=errors/reused-variable
+
+error: cannot use X more than once
+   ┌─ test:18:3
+   │
+11 │     f x
+   │       - `x` first used here
+   ·
+14 │   2 -> f x
+   │          - `x` first used here
+15 │   _ -> f x
+   │          - `x` first used here
+   ·
+18 │ f x
+   │   ^ cannot use `x` more than once
+   │
+   = for more information, see https://wipple.dev/playground/?lesson=errors/reused-variable
+

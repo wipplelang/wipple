@@ -18,7 +18,7 @@ list : syntax {
   list -> semantics "pure" (intrinsic "make-empty-list" :: List _)
   list ...x -> {
     l : mutable (semantics "pure" (intrinsic "make-empty-list" :: List _))
-    ...{ (build-list! l 'x) }
+    ...{ (semantics "nonconsuming" (build-list! l 'x)) }
     get l
   }
 }

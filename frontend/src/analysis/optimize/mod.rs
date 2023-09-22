@@ -6,6 +6,7 @@ use parking_lot::RwLock;
 use std::{
     collections::{BTreeMap, BTreeSet},
     mem,
+    ops::ControlFlow,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -75,77 +76,84 @@ pub mod ssa {
                 let (id, expr) = &mut *item;
                 let id = id.map(|(_, id)| id);
 
-                expr.traverse_mut(|expr| {
-                    if let ExpressionKind::Block(exprs, _) = &mut expr.kind {
-                        fn convert_block(
-                            exprs: &[Expression],
-                            span: SpanList,
-                            id: Option<ConstantId>,
-                            compiler: &Compiler,
-                        ) -> Vec<Expression> {
-                            let mut result = Vec::new();
-                            for (index, expr) in exprs.iter().enumerate() {
-                                if let ExpressionKind::Initialize(pattern, value) = &expr.kind {
-                                    let remaining = &exprs[(index + 1)..];
+                expr.traverse_mut(
+                    |expr| {
+                        if let ExpressionKind::Block(exprs, _) = &mut expr.kind {
+                            fn convert_block(
+                                exprs: &[Expression],
+                                span: SpanList,
+                                id: Option<ConstantId>,
+                                compiler: &Compiler,
+                            ) -> Vec<Expression> {
+                                let mut result = Vec::new();
+                                for (index, expr) in exprs.iter().enumerate() {
+                                    if let ExpressionKind::Initialize(pattern, value) = &expr.kind {
+                                        let remaining = &exprs[(index + 1)..];
 
-                                    result.push(Expression {
-                                        id: expr.id,
-                                        span: expr.span,
-                                        ty: expr.ty.clone(),
-                                        kind: ExpressionKind::When(
-                                            value.clone(),
-                                            vec![Arm {
-                                                span: pattern.span,
-                                                pattern: pattern.clone(),
-                                                guard: None,
-                                                body: Expression {
-                                                    id: compiler.new_expression_id(id),
-                                                    ty: remaining
-                                                        .last()
-                                                        .map(|expr| expr.ty.clone())
-                                                        .unwrap_or_else(|| Type::Tuple(Vec::new())),
-                                                    span,
-                                                    kind: ExpressionKind::Block(
-                                                        convert_block(
-                                                            remaining,
-                                                            remaining.first().map_or(
-                                                                span,
-                                                                |expr| {
-                                                                    SpanList::join(
-                                                                        expr.span,
-                                                                        remaining
-                                                                            .last()
-                                                                            .unwrap()
-                                                                            .span,
-                                                                    )
-                                                                },
+                                        result.push(Expression {
+                                            id: expr.id,
+                                            span: expr.span,
+                                            ty: expr.ty.clone(),
+                                            kind: ExpressionKind::When(
+                                                value.clone(),
+                                                vec![Arm {
+                                                    span: pattern.span,
+                                                    pattern: pattern.clone(),
+                                                    guard: None,
+                                                    body: Expression {
+                                                        id: compiler.new_expression_id(id),
+                                                        ty: remaining
+                                                            .last()
+                                                            .map(|expr| expr.ty.clone())
+                                                            .unwrap_or_else(|| {
+                                                                Type::Tuple(Vec::new())
+                                                            }),
+                                                        span,
+                                                        kind: ExpressionKind::Block(
+                                                            convert_block(
+                                                                remaining,
+                                                                remaining.first().map_or(
+                                                                    span,
+                                                                    |expr| {
+                                                                        SpanList::join(
+                                                                            expr.span,
+                                                                            remaining
+                                                                                .last()
+                                                                                .unwrap()
+                                                                                .span,
+                                                                        )
+                                                                    },
+                                                                ),
+                                                                id,
+                                                                compiler,
                                                             ),
-                                                            id,
-                                                            compiler,
+                                                            false,
                                                         ),
-                                                        false,
-                                                    ),
-                                                },
-                                            }],
-                                        ),
-                                    });
+                                                    },
+                                                }],
+                                            ),
+                                        });
 
-                                    break;
-                                } else {
-                                    result.push(expr.clone());
+                                        break;
+                                    } else {
+                                        result.push(expr.clone());
+                                    }
                                 }
+
+                                result
                             }
 
-                            result
+                            *exprs = convert_block(exprs, expr.span, id, compiler);
+
+                            if exprs.len() == 1 {
+                                *expr = exprs.pop().unwrap();
+                            }
                         }
 
-                        *exprs = convert_block(exprs, expr.span, id, compiler);
-
-                        if exprs.len() == 1 {
-                            *expr = exprs.pop().unwrap();
-                        }
-                    }
-                });
+                        ControlFlow::Continue(())
+                    },
+                    |_| ControlFlow::Continue(()),
+                );
             }
 
             self
@@ -176,77 +184,106 @@ pub mod propagate {
                     let mut item = self.items.get(&item_id).unwrap().write();
                     let (_, expr) = &mut *item;
 
-                    expr.traverse_mut(|expr| {
-                        let constant = match &expr.kind {
-                            ExpressionKind::Constant(constant) if *constant != item_id => *constant,
-                            _ => return,
-                        };
+                    expr.traverse_mut(
+                        |expr| {
+                            let constant = match &expr.kind {
+                                ExpressionKind::Constant(constant) if *constant != item_id => {
+                                    *constant
+                                }
+                                _ => return ControlFlow::Continue(()),
+                            };
 
-                        let body = &self.items.get(&constant).unwrap().read().1;
+                            let body = &self.items.get(&constant).unwrap().read().1;
 
-                        if !body.is_pure(&self) {
-                            return;
-                        }
-
-                        propagated = true;
-                        *expr = body.clone();
-
-                        // Replace the variables in the inlined constant with new variables
-
-                        let mut new_vars = BTreeMap::new();
-                        expr.traverse_mut(|expr| match &mut expr.kind {
-                            ExpressionKind::Constant(c) if *c == constant => {
-                                expr.kind = ExpressionKind::ExpandedConstant(constant);
+                            if !body.is_pure(&self) {
+                                return ControlFlow::Continue(());
                             }
-                            ExpressionKind::When(_, arms) => {
-                                for arm in arms {
-                                    for var in arm.pattern.variables() {
-                                        new_vars.insert(var, compiler.new_variable_id());
-                                    }
 
-                                    arm.pattern.traverse_mut(|pattern| {
-                                        if let PatternKind::Variable(var) = &mut pattern.kind {
-                                            *var = *new_vars.get(var).unwrap();
+                            propagated = true;
+                            *expr = body.clone();
+
+                            // Replace the variables in the inlined constant with new variables
+
+                            let mut new_vars = BTreeMap::new();
+                            expr.traverse_mut(
+                                |expr| {
+                                    match &mut expr.kind {
+                                        ExpressionKind::Constant(c) if *c == constant => {
+                                            expr.kind = ExpressionKind::ExpandedConstant(constant);
                                         }
-                                    });
-                                }
-                            }
-                            ExpressionKind::Initialize(pattern, _) => {
-                                for var in pattern.variables() {
-                                    new_vars.insert(var, compiler.new_variable_id());
-                                }
+                                        ExpressionKind::When(_, arms) => {
+                                            for arm in arms {
+                                                for var in arm.pattern.variables() {
+                                                    new_vars.insert(
+                                                        var,
+                                                        compiler.new_variable_id(var.owner),
+                                                    );
+                                                }
 
-                                pattern.traverse_mut(|pattern| {
-                                    if let PatternKind::Variable(var) = &mut pattern.kind {
-                                        *var = *new_vars.get(var).unwrap();
-                                    }
-                                });
-                            }
-                            ExpressionKind::Function(pattern, _, captures) => {
-                                for (var, _) in captures {
-                                    if let Some(v) = new_vars.get(var) {
-                                        *var = *v;
-                                    }
-                                }
+                                                arm.pattern.traverse_mut(|pattern| {
+                                                    if let PatternKind::Variable(var) =
+                                                        &mut pattern.kind
+                                                    {
+                                                        *var = *new_vars.get(var).unwrap();
+                                                    }
+                                                });
+                                            }
+                                        }
+                                        ExpressionKind::Initialize(pattern, _) => {
+                                            for var in pattern.variables() {
+                                                new_vars.insert(
+                                                    var,
+                                                    compiler.new_variable_id(var.owner),
+                                                );
+                                            }
 
-                                for var in pattern.variables() {
-                                    new_vars.insert(var, compiler.new_variable_id());
-                                }
+                                            pattern.traverse_mut(|pattern| {
+                                                if let PatternKind::Variable(var) =
+                                                    &mut pattern.kind
+                                                {
+                                                    *var = *new_vars.get(var).unwrap();
+                                                }
+                                            });
+                                        }
+                                        ExpressionKind::Function(pattern, _, captures) => {
+                                            for (var, _) in captures {
+                                                if let Some(v) = new_vars.get(var) {
+                                                    *var = *v;
+                                                }
+                                            }
 
-                                pattern.traverse_mut(|pattern| {
-                                    if let PatternKind::Variable(var) = &mut pattern.kind {
-                                        *var = *new_vars.get(var).unwrap();
+                                            for var in pattern.variables() {
+                                                new_vars.insert(
+                                                    var,
+                                                    compiler.new_variable_id(var.owner),
+                                                );
+                                            }
+
+                                            pattern.traverse_mut(|pattern| {
+                                                if let PatternKind::Variable(var) =
+                                                    &mut pattern.kind
+                                                {
+                                                    *var = *new_vars.get(var).unwrap();
+                                                }
+                                            });
+                                        }
+                                        ExpressionKind::Variable(var) => {
+                                            if let Some(v) = new_vars.get(var) {
+                                                *var = *v;
+                                            }
+                                        }
+                                        _ => {}
                                     }
-                                });
-                            }
-                            ExpressionKind::Variable(var) => {
-                                if let Some(v) = new_vars.get(var) {
-                                    *var = *v;
-                                }
-                            }
-                            _ => {}
-                        });
-                    });
+
+                                    ControlFlow::Continue(())
+                                },
+                                |_| ControlFlow::Continue(()),
+                            );
+
+                            ControlFlow::Continue(())
+                        },
+                        |_| ControlFlow::Continue(()),
+                    );
 
                     if !propagated || options.pass_limit.map_or(false, |limit| passes > limit) {
                         break;
@@ -294,124 +331,153 @@ pub mod inline {
                     let (constant, mut expr) = self.items.get(&item).unwrap().write().clone();
 
                     // Inline function calls
-                    expr.traverse_mut_with(im::HashSet::new(), |expr, scope| {
-                        // We only perform this optimization when the program is in SSA form, so we
-                        // only need to check for functions and `when` expressions. In addition, we
-                        // only need to check for calls to function expressions because constants
-                        // are inlined before this pass.
-                        match &mut expr.kind {
-                            ExpressionKind::Function(pattern, _, _) => {
-                                for var in pattern.variables() {
-                                    scope.insert(var);
-                                }
-                            }
-                            ExpressionKind::When(_, arms) => {
-                                for arm in arms {
-                                    for var in arm.pattern.variables() {
+                    expr.traverse_mut_with(
+                        im::HashSet::new(),
+                        |expr, scope| {
+                            // We only perform this optimization when the program is in SSA form, so we
+                            // only need to check for functions and `when` expressions. In addition, we
+                            // only need to check for calls to function expressions because constants
+                            // are inlined before this pass.
+                            match &mut expr.kind {
+                                ExpressionKind::Function(pattern, _, _) => {
+                                    for var in pattern.variables() {
                                         scope.insert(var);
                                     }
                                 }
-                            }
-                            ExpressionKind::Call(func, input, _first) => {
-                                let (pattern, body, captures) = match &func.kind {
-                                    ExpressionKind::Function(pattern, body, captures) => {
-                                        (pattern, body, captures)
+                                ExpressionKind::When(_, arms) => {
+                                    for arm in arms {
+                                        for var in arm.pattern.variables() {
+                                            scope.insert(var);
+                                        }
                                     }
-                                    _ => return,
-                                };
-
-                                let captures = captures
-                                    .iter()
-                                    .map(|(var, _)| *var)
-                                    .collect::<im::HashSet<VariableId>>();
-
-                                if !captures.is_subset(scope)
-                                    || body.sub_expression_count() > options.threshold
-                                {
-                                    return;
                                 }
-
-                                inlined = true;
-
-                                // Replace the variables in the inlined function with new variables
-                                // to prevent a cycle, where a variable references itself in its own
-                                // definition
-
-                                let new_vars = pattern
-                                    .variables()
-                                    .into_iter()
-                                    .map(|var| (var, compiler.new_variable_id()))
-                                    .collect::<BTreeMap<_, _>>();
-
-                                let mut pattern = pattern.clone();
-                                pattern.traverse_mut(|pattern| {
-                                    if let PatternKind::Variable(var) = &mut pattern.kind {
-                                        *var = *new_vars.get(var).unwrap();
-                                    }
-                                });
-
-                                let mut body = body.as_ref().clone();
-                                body.traverse_mut(|expr| match &mut expr.kind {
-                                    ExpressionKind::Variable(var) => {
-                                        if let Some(v) = new_vars.get(var) {
-                                            *var = *v;
+                                ExpressionKind::Call(func, input, _first) => {
+                                    let (pattern, body, captures) = match &func.kind {
+                                        ExpressionKind::Function(pattern, body, captures) => {
+                                            (pattern, body, captures)
                                         }
+                                        _ => return ControlFlow::Continue(()),
+                                    };
+
+                                    let captures = captures
+                                        .iter()
+                                        .map(|(var, _)| *var)
+                                        .collect::<im::HashSet<VariableId>>();
+
+                                    if !captures.is_subset(scope)
+                                        || body.sub_expression_count() > options.threshold
+                                    {
+                                        return ControlFlow::Continue(());
                                     }
-                                    ExpressionKind::Function(_, _, captures) => {
-                                        for (var, _) in captures {
-                                            if let Some(v) = new_vars.get(var) {
-                                                *var = *v;
+
+                                    inlined = true;
+
+                                    // Replace the variables in the inlined function with new variables
+                                    // to prevent a cycle, where a variable references itself in its own
+                                    // definition
+
+                                    let new_vars = pattern
+                                        .variables()
+                                        .into_iter()
+                                        .map(|var| (var, compiler.new_variable_id(var.owner)))
+                                        .collect::<BTreeMap<_, _>>();
+
+                                    let mut pattern = pattern.clone();
+                                    pattern.traverse_mut(|pattern| {
+                                        if let PatternKind::Variable(var) = &mut pattern.kind {
+                                            *var = *new_vars.get(var).unwrap();
+                                        }
+                                    });
+
+                                    let mut body = body.as_ref().clone();
+                                    body.traverse_mut(
+                                        |expr| {
+                                            match &mut expr.kind {
+                                                ExpressionKind::Variable(var) => {
+                                                    if let Some(v) = new_vars.get(var) {
+                                                        *var = *v;
+                                                    }
+                                                }
+                                                ExpressionKind::Function(_, _, captures) => {
+                                                    for (var, _) in captures {
+                                                        if let Some(v) = new_vars.get(var) {
+                                                            *var = *v;
+                                                        }
+                                                    }
+                                                }
+                                                _ => {}
                                             }
-                                        }
-                                    }
-                                    _ => {}
-                                });
 
-                                expr.kind = ExpressionKind::When(
-                                    input.clone(),
-                                    vec![Arm {
-                                        span: input.span,
-                                        pattern,
-                                        guard: None,
-                                        body,
-                                    }],
-                                );
+                                            ControlFlow::Continue(())
+                                        },
+                                        |_| ControlFlow::Continue(()),
+                                    );
+
+                                    expr.kind = ExpressionKind::When(
+                                        input.clone(),
+                                        vec![Arm {
+                                            span: input.span,
+                                            pattern,
+                                            guard: None,
+                                            body,
+                                        }],
+                                    );
+                                }
+                                _ => {}
                             }
-                            _ => {}
-                        }
-                    });
+
+                            ControlFlow::Continue(())
+                        },
+                        |_, _| ControlFlow::Continue(()),
+                    );
 
                     // Inline variables
-                    expr.traverse_mut(|expr| {
-                        if let ExpressionKind::When(input, arms) = &mut expr.kind {
-                            if input.is_pure(&self) && arms.len() == 1 {
-                                let input = input.as_ref().clone();
-                                let arm = arms.first().unwrap();
+                    expr.traverse_mut(
+                        |expr| {
+                            if let ExpressionKind::When(input, arms) = &mut expr.kind {
+                                if input.is_pure(&self) && arms.len() == 1 {
+                                    let input = input.as_ref().clone();
+                                    let arm = arms.first().unwrap();
 
-                                if let PatternKind::Variable(var) = arm.pattern.kind {
-                                    if arm.guard.is_none() {
-                                        inlined = true;
+                                    if let PatternKind::Variable(var) = arm.pattern.kind {
+                                        if arm.guard.is_none() {
+                                            inlined = true;
 
-                                        *expr = arms.pop().unwrap().body;
-                                        expr.traverse_mut(|expr| match &mut expr.kind {
-                                            ExpressionKind::Variable(v) => {
-                                                if *v == var {
-                                                    *expr = input.clone();
-                                                }
-                                            }
-                                            ExpressionKind::Function(_, _, captures) => {
-                                                *captures = mem::take(captures)
-                                                    .into_iter()
-                                                    .filter(|(v, _)| *v != var)
-                                                    .collect();
-                                            }
-                                            _ => {}
-                                        });
+                                            *expr = arms.pop().unwrap().body;
+                                            expr.traverse_mut(
+                                                |expr| {
+                                                    match &mut expr.kind {
+                                                        ExpressionKind::Variable(v) => {
+                                                            if *v == var {
+                                                                *expr = input.clone();
+                                                            }
+                                                        }
+                                                        ExpressionKind::Function(
+                                                            _,
+                                                            _,
+                                                            captures,
+                                                        ) => {
+                                                            *captures = mem::take(captures)
+                                                                .into_iter()
+                                                                .filter(|(v, _)| *v != var)
+                                                                .collect();
+                                                        }
+                                                        _ => {}
+                                                    }
+
+                                                    ControlFlow::Continue(())
+                                                },
+                                                |_| ControlFlow::Continue(()),
+                                            );
+                                        }
                                     }
                                 }
                             }
-                        }
-                    });
+
+                            ControlFlow::Continue(())
+                        },
+                        |_| ControlFlow::Continue(()),
+                    );
 
                     self.items.insert(item, RwLock::new((constant, expr)));
                 }
@@ -457,15 +523,20 @@ pub mod unused {
                             let item = item.read();
                             let (_, expr) = &*item;
 
-                            expr.traverse(|expr| {
-                                if let ExpressionKind::Constant(item)
-                                | ExpressionKind::ExpandedConstant(item) = expr.kind
-                                {
-                                    if used.insert(item) {
-                                        track_used(program, item, used);
+                            expr.traverse(
+                                |expr| {
+                                    if let ExpressionKind::Constant(item)
+                                    | ExpressionKind::ExpandedConstant(item) = expr.kind
+                                    {
+                                        if used.insert(item) {
+                                            track_used(program, item, used);
+                                        }
                                     }
-                                }
-                            });
+
+                                    ControlFlow::Continue(())
+                                },
+                                |_| ControlFlow::Continue(()),
+                            );
                         }
                     }
 
@@ -490,7 +561,13 @@ mod util {
     impl Expression {
         pub fn sub_expression_count(&self) -> usize {
             let mut count = 0;
-            self.traverse(|_| count += 1);
+            self.traverse(
+                |_| {
+                    count += 1;
+                    ControlFlow::Continue(())
+                },
+                |_| ControlFlow::Continue(()),
+            );
             count
         }
 
