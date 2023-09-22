@@ -5132,15 +5132,10 @@ impl Typechecker {
         let (trait_span, trait_ty, trait_params) = self
             .with_trait_decl(trait_id, |decl| {
                 (
-                decl.span,
-                decl.ty
-                    .as_ref()
-                    .expect(
-                        "`substitute_trait_params` may only be used with traits that have values",
-                    )
-                    .clone(),
-                decl.params.clone(),
-            )
+                    decl.span,
+                    decl.ty.clone().unwrap_or(engine::Type::Error),
+                    decl.params.clone(),
+                )
             })
             .expect("instance should have already been accessed at least once");
 
