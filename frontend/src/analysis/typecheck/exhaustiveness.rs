@@ -11,228 +11,237 @@ use crate::{
     ReachableMarkerId, TypeId, VariableId, VariantIndex,
 };
 use itertools::Itertools;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::{
+    collections::{BTreeMap, HashMap, HashSet},
+    ops::ControlFlow,
+};
 
 impl Typechecker {
     pub fn check_exhaustiveness(&self, expr: &analysis::Expression) {
-        expr.traverse(|expr| match &expr.kind {
-            analysis::ExpressionKind::Initialize(pattern, value) => {
-                if pattern.contains_error() {
-                    return;
-                }
-
-                let match_compiler = MatchCompiler {
-                    typechecker: self,
-                    info: Info::default(),
-                };
-
-                let rows = vec![(
-                    self.convert_match_pattern(pattern),
-                    false,
-                    self.compiler.new_reachable_marker_id(), // TODO
-                )];
-
-                let result = match_compiler.compile(
-                    Variable {
-                        id: self.compiler.new_variable_id(None),
-                        ty: self.convert_ty(&value.ty),
-                    },
-                    rows,
-                );
-
-                if result.info.missing {
-                    let mut missing_patterns = result
-                        .missing_patterns()
-                        .into_iter()
-                        .map(|pattern| format!("`{}`", self.format_pattern(&pattern, false)))
-                        .sorted()
-                        .collect::<Vec<_>>();
-
-                    self.compiler.add_error(
-                        "variable assignment not handle all possible values",
-                        vec![
-                            Note::primary(
-                                pattern.span,
-                                match missing_patterns.len() {
-                                    0 => unreachable!(),
-                                    1 => format!(
-                                        "the {} pattern is not handled",
-                                        missing_patterns.pop().unwrap()
-                                    ),
-                                    _ => {
-                                        let last_missing_pattern = missing_patterns.pop().unwrap();
-
-                                        format!(
-                                            "the {} and {} patterns are not handled",
-                                            missing_patterns.join(", "),
-                                            last_missing_pattern
-                                        )
-                                    }
-                                },
-                            ),
-                            Note::secondary(pattern.span, "try using a `when` expression instead"),
-                        ],
-                        "nonexhaustive-variable",
-                    );
-                }
-            }
-            analysis::ExpressionKind::Function(pattern, _, _) => {
-                if pattern.contains_error() {
-                    return;
-                }
-
-                let input_ty = match &expr.ty {
-                    analysis::Type::Function(input, _) => input.as_ref(),
-                    _ => unreachable!(),
-                };
-
-                let match_compiler = MatchCompiler {
-                    typechecker: self,
-                    info: Info::default(),
-                };
-
-                let rows = vec![(
-                    self.convert_match_pattern(pattern),
-                    false,
-                    self.compiler.new_reachable_marker_id(), // TODO
-                )];
-
-                let result = match_compiler.compile(
-                    Variable {
-                        id: self.compiler.new_variable_id(None),
-                        ty: self.convert_ty(input_ty),
-                    },
-                    rows,
-                );
-
-                if result.info.missing {
-                    let mut missing_patterns = result
-                        .missing_patterns()
-                        .into_iter()
-                        .map(|pattern| format!("`{}`", self.format_pattern(&pattern, false)))
-                        .sorted()
-                        .collect::<Vec<_>>();
-
-                    self.compiler.add_error(
-                        "function input not handle all possible values",
-                        vec![
-                            Note::primary(
-                                pattern.span,
-                                match missing_patterns.len() {
-                                    0 => unreachable!(),
-                                    1 => format!(
-                                        "the {} pattern is not handled",
-                                        missing_patterns.pop().unwrap()
-                                    ),
-                                    _ => {
-                                        let last_missing_pattern = missing_patterns.pop().unwrap();
-
-                                        format!(
-                                            "the {} and {} patterns are not handled",
-                                            missing_patterns.join(", "),
-                                            last_missing_pattern
-                                        )
-                                    }
-                                },
-                            ),
-                            Note::secondary(
-                                pattern.span,
-                                "try using a `when` expression inside the function instead",
-                            ),
-                        ],
-                        "nonexhaustive-variable",
-                    );
-                }
-            }
-            analysis::ExpressionKind::When(input, arms) => {
-                let match_compiler = MatchCompiler {
-                    typechecker: self,
-                    info: Info::default(),
-                };
-
-                let mut row_ids = HashMap::new();
-
-                let rows = arms
-                    .iter()
-                    .filter_map(|arm| {
-                        if arm.pattern.contains_error() {
-                            return None;
+        expr.traverse(
+            |expr| {
+                match &expr.kind {
+                    analysis::ExpressionKind::Initialize(pattern, value) => {
+                        if pattern.contains_error() {
+                            return ControlFlow::Continue(());
                         }
 
-                        let id = self.compiler.new_reachable_marker_id();
+                        let match_compiler = MatchCompiler {
+                            typechecker: self,
+                            info: Info::default(),
+                        };
 
-                        row_ids.insert(id, arm.span);
+                        let rows = vec![(
+                            self.convert_match_pattern(pattern),
+                            false,
+                            self.compiler.new_reachable_marker_id(), // TODO
+                        )];
 
-                        Some((
-                            self.convert_match_pattern(&arm.pattern),
-                            arm.guard.is_some(),
-                            id,
-                        ))
-                    })
-                    .collect::<Vec<_>>();
-
-                let result = match_compiler.compile(
-                    Variable {
-                        id: self.compiler.new_variable_id(None),
-                        ty: self.convert_ty(&input.ty),
-                    },
-                    rows,
-                );
-
-                if result.info.missing {
-                    let mut missing_patterns = result
-                        .missing_patterns()
-                        .into_iter()
-                        .map(|pattern| format!("`{}`", self.format_pattern(&pattern, false)))
-                        .sorted()
-                        .collect::<Vec<_>>();
-
-                    self.compiler.add_error(
-                        format!(
-                            "`when` expression does not handle all possible values of {}",
-                            self.format_ty(input.ty.clone())
-                        ),
-                        vec![Note::primary(
-                            expr.span,
-                            match missing_patterns.len() {
-                                0 => unreachable!(),
-                                1 => format!(
-                                    "try adding a case for the {} pattern",
-                                    missing_patterns.pop().unwrap()
-                                ),
-                                _ => {
-                                    let last_missing_pattern = missing_patterns.pop().unwrap();
-
-                                    format!(
-                                        "try adding cases for the {} and {} patterns",
-                                        missing_patterns.join(", "),
-                                        last_missing_pattern
-                                    )
-                                }
+                        let result = match_compiler.compile(
+                            Variable {
+                                id: self.compiler.new_variable_id(None),
+                                ty: self.convert_ty(&value.ty),
                             },
-                        )],
-                        "nonexhaustive-when",
-                    );
+                            rows,
+                        );
+
+                        if result.info.missing {
+                            let mut missing_patterns = result
+                                .missing_patterns()
+                                .into_iter()
+                                .map(|pattern| format!("`{}`", self.format_pattern(&pattern, false)))
+                                .sorted()
+                                .collect::<Vec<_>>();
+
+                            self.compiler.add_error(
+                                "variable assignment not handle all possible values",
+                                vec![
+                                    Note::primary(
+                                        pattern.span,
+                                        match missing_patterns.len() {
+                                            0 => unreachable!(),
+                                            1 => format!(
+                                                "the {} pattern is not handled",
+                                                missing_patterns.pop().unwrap()
+                                            ),
+                                            _ => {
+                                                let last_missing_pattern = missing_patterns.pop().unwrap();
+
+                                                format!(
+                                                    "the {} and {} patterns are not handled",
+                                                    missing_patterns.join(", "),
+                                                    last_missing_pattern
+                                                )
+                                            }
+                                        },
+                                    ),
+                                    Note::secondary(pattern.span, "try using a `when` expression instead"),
+                                ],
+                                "nonexhaustive-variable",
+                            );
+                        }
+                    }
+                    analysis::ExpressionKind::Function(pattern, _, _) => {
+                        if pattern.contains_error() {
+                            return ControlFlow::Continue(());
+                        }
+
+                        let input_ty = match &expr.ty {
+                            analysis::Type::Function(input, _) => input.as_ref(),
+                            _ => unreachable!(),
+                        };
+
+                        let match_compiler = MatchCompiler {
+                            typechecker: self,
+                            info: Info::default(),
+                        };
+
+                        let rows = vec![(
+                            self.convert_match_pattern(pattern),
+                            false,
+                            self.compiler.new_reachable_marker_id(), // TODO
+                        )];
+
+                        let result = match_compiler.compile(
+                            Variable {
+                                id: self.compiler.new_variable_id(None),
+                                ty: self.convert_ty(input_ty),
+                            },
+                            rows,
+                        );
+
+                        if result.info.missing {
+                            let mut missing_patterns = result
+                                .missing_patterns()
+                                .into_iter()
+                                .map(|pattern| format!("`{}`", self.format_pattern(&pattern, false)))
+                                .sorted()
+                                .collect::<Vec<_>>();
+
+                            self.compiler.add_error(
+                                "function input not handle all possible values",
+                                vec![
+                                    Note::primary(
+                                        pattern.span,
+                                        match missing_patterns.len() {
+                                            0 => unreachable!(),
+                                            1 => format!(
+                                                "the {} pattern is not handled",
+                                                missing_patterns.pop().unwrap()
+                                            ),
+                                            _ => {
+                                                let last_missing_pattern = missing_patterns.pop().unwrap();
+
+                                                format!(
+                                                    "the {} and {} patterns are not handled",
+                                                    missing_patterns.join(", "),
+                                                    last_missing_pattern
+                                                )
+                                            }
+                                        },
+                                    ),
+                                    Note::secondary(
+                                        pattern.span,
+                                        "try using a `when` expression inside the function instead",
+                                    ),
+                                ],
+                                "nonexhaustive-variable",
+                            );
+                        }
+                    }
+                    analysis::ExpressionKind::When(input, arms) => {
+                        let match_compiler = MatchCompiler {
+                            typechecker: self,
+                            info: Info::default(),
+                        };
+
+                        let mut row_ids = HashMap::new();
+
+                        let rows = arms
+                            .iter()
+                            .filter_map(|arm| {
+                                if arm.pattern.contains_error() {
+                                    return None;
+                                }
+
+                                let id = self.compiler.new_reachable_marker_id();
+
+                                row_ids.insert(id, arm.span);
+
+                                Some((
+                                    self.convert_match_pattern(&arm.pattern),
+                                    arm.guard.is_some(),
+                                    id,
+                                ))
+                            })
+                            .collect::<Vec<_>>();
+
+                        let result = match_compiler.compile(
+                            Variable {
+                                id: self.compiler.new_variable_id(None),
+                                ty: self.convert_ty(&input.ty),
+                            },
+                            rows,
+                        );
+
+                        if result.info.missing {
+                            let mut missing_patterns = result
+                                .missing_patterns()
+                                .into_iter()
+                                .map(|pattern| format!("`{}`", self.format_pattern(&pattern, false)))
+                                .sorted()
+                                .collect::<Vec<_>>();
+
+                            self.compiler.add_error(
+                                format!(
+                                    "`when` expression does not handle all possible values of {}",
+                                    self.format_ty(input.ty.clone())
+                                ),
+                                vec![Note::primary(
+                                    expr.span,
+                                    match missing_patterns.len() {
+                                        0 => unreachable!(),
+                                        1 => format!(
+                                            "try adding a case for the {} pattern",
+                                            missing_patterns.pop().unwrap()
+                                        ),
+                                        _ => {
+                                            let last_missing_pattern = missing_patterns.pop().unwrap();
+
+                                            format!(
+                                                "try adding cases for the {} and {} patterns",
+                                                missing_patterns.join(", "),
+                                                last_missing_pattern
+                                            )
+                                        }
+                                    },
+                                )],
+                                "nonexhaustive-when",
+                            );
+                        }
+
+                        for id in result.unreachable_arms(row_ids.keys().copied().collect()) {
+                            let span = *row_ids.get(&id).unwrap();
+
+                            self.compiler.add_warning(
+                                "redundant case in `when` expression",
+                                vec![
+                                    Note::primary(
+                                        span,
+                                        "this case will never be executed because a different case already handles the same values",
+                                    ),
+                                ],
+                                "redundant-case",
+                            );
+                        }
+                    }
+                    _ => {}
                 }
 
-                for id in result.unreachable_arms(row_ids.keys().copied().collect()) {
-                    let span = *row_ids.get(&id).unwrap();
-
-                    self.compiler.add_warning(
-                        "redundant case in `when` expression",
-                        vec![
-                            Note::primary(
-                                span,
-                                "this case will never be executed because a different case already handles the same values",
-                            ),
-                        ],
-                        "redundant-case",
-                    );
-                }
-            }
-            _ => {}
-        },
-        |_| {},)
+                ControlFlow::Continue(())
+            },
+            |_| ControlFlow::Continue(()),
+        )
     }
 
     fn convert_match_pattern(&self, pattern: &analysis::Pattern) -> Pattern {

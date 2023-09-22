@@ -30,6 +30,7 @@ use std::{
     cell::RefCell,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     mem,
+    ops::ControlFlow,
     os::raw::{c_int, c_uint},
 };
 
@@ -496,8 +497,14 @@ impl Expression {
                     ExpressionKind::With((None, _), _) => true,
                     _ => false,
                 };
+
+                if contains_error {
+                    ControlFlow::Break(())
+                } else {
+                    ControlFlow::Continue(())
+                }
             },
-            |_| {},
+            |_| ControlFlow::Continue(()),
         );
 
         contains_error
@@ -516,10 +523,12 @@ impl Expression {
                                     .find_map(Expression::find_first_unresolved_plugin)
                             })
                             .unwrap_or(expr.id),
-                    )
+                    );
                 }
+
+                ControlFlow::Continue(())
             },
-            |_| {},
+            |_| ControlFlow::Continue(()),
         );
 
         deepest_plugin
@@ -816,14 +825,16 @@ impl Typechecker {
                                 }
 
                                 if cache.contains(id) {
-                                    return;
+                                    return ControlFlow::Continue(());
                                 }
 
                                 cache.insert(*id);
                             }
                         }
+
+                        ControlFlow::Continue(())
                     },
-                    |_| {},
+                    |_| ControlFlow::Continue(()),
                 );
 
                 *typechecker.items.get_mut(&id).unwrap().1.as_mut().unwrap() = expr;
@@ -904,8 +915,10 @@ impl Typechecker {
                             *id = *mapped_id;
                         }
                     }
+
+                    ControlFlow::Continue(())
                 },
-                |_| {},
+                |_| ControlFlow::Continue(()),
             )
         }
 
@@ -1023,8 +1036,10 @@ impl Typechecker {
 
                             _ => false,
                         };
+
+                        ControlFlow::Continue(())
                     },
-                    |_| {},
+                    |_| ControlFlow::Continue(()),
                 );
 
                 is_unresolved
@@ -1037,8 +1052,10 @@ impl Typechecker {
             expr.traverse_mut(
                 |expr| {
                     expr.ty.substitute_defaults(&self.ctx);
+
+                    ControlFlow::Continue(())
                 },
-                |_| {},
+                |_| ControlFlow::Continue(()),
             );
 
             substituted_defaults = true;
@@ -1413,8 +1430,10 @@ impl Typechecker {
                 }
 
                 expr.ty.instantiate_with(&self.ctx, &substitutions);
+
+                ControlFlow::Continue(())
             },
-            |_| {},
+            |_| ControlFlow::Continue(()),
         );
 
         let mut monomorphize_info = info.clone();
@@ -5664,8 +5683,10 @@ impl Typechecker {
                                 if let ExpressionKind::Constant(id) = &expr.kind {
                                     constant_id = Some(id);
                                 }
+
+                                ControlFlow::Continue(())
                             },
-                            |_| {},
+                            |_| ControlFlow::Continue(()),
                         );
 
                         if let Some(id) = constant_id {

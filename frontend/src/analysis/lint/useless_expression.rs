@@ -1,4 +1,5 @@
 use crate::{analysis, diagnostics::*, Compiler};
+use std::ops::ControlFlow;
 
 impl Compiler {
     pub(super) fn useless_expression_lint(&self, program: &analysis::Program) {
@@ -37,8 +38,10 @@ impl Compiler {
                         }
                     }
                 }
+
+                ControlFlow::Continue(())
             },
-            |_| {},
+            |_| ControlFlow::Continue(()),
         );
     }
 }

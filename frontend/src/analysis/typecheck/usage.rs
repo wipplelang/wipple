@@ -8,38 +8,45 @@ use crate::{
     VariableId,
 };
 use im::ordmap::Entry;
+use std::{mem, ops::ControlFlow};
 
 impl Typechecker {
     pub fn collect_usage(&self, expr: &analysis::Expression) {
-        let check_used = |var: VariableId, spans: Vec<SpanList>| {
+        let reuse_info = |var: VariableId| {
             let decls = self.declarations.borrow();
 
             let decl = match decls.variables.get(&var) {
                 Some(decl) => decl,
-                None => return,
+                None => return None,
             };
+
+            let var_name = decl.name.as_deref().unwrap_or("<unknown>").to_string();
 
             let id = match decl.ty {
                 engine::Type::Named(id, _, _) => id,
-                _ => return,
+                _ => return None,
             };
 
             let ty = decls.types.get(&id).unwrap();
 
-            let message = match ty.attributes.on_reuse {
-                Some(message) => message,
+            Some((var_name, ty.attributes.on_reuse?))
+        };
+
+        type TrackUsed = im::OrdMap<VariableId, Vec<SpanList>>;
+
+        let check_used = |var: VariableId, spans: Vec<SpanList>, used: &mut TrackUsed| {
+            let (var_name, on_reuse_message) = match reuse_info(var) {
+                Some((var_name, on_reuse_message)) => (var_name, on_reuse_message),
                 None => return,
             };
 
-            match self.used.borrow_mut().entry(var) {
+            match used.entry(var) {
                 Entry::Vacant(entry) => {
                     entry.insert(spans);
                 }
                 Entry::Occupied(entry) => {
-                    let var_name = decl.name.as_deref().unwrap_or("<unknown>");
-
                     self.compiler.add_error(
-                        message,
+                        on_reuse_message,
                         spans
                             .iter()
                             .copied()
@@ -59,32 +66,64 @@ impl Typechecker {
             }
         };
 
-        expr.traverse_with(
-            Vec::<im::OrdMap<_, Vec<_>>>::new(),
-            |expr, branch| match &expr.kind {
+        fn enter(
+            expr: &analysis::Expression,
+            typechecker: &Typechecker,
+            branch: &mut Option<TrackUsed>,
+            check_used: &impl Fn(VariableId, Vec<SpanList>, &mut TrackUsed),
+        ) -> ControlFlow<()> {
+            match &expr.kind {
                 analysis::ExpressionKind::Variable(var) => {
-                    if let Some(branch) = branch.last_mut() {
-                        branch.entry(*var).or_default().push(expr.span);
+                    if let Some(branch) = branch {
+                        check_used(*var, vec![expr.span], branch);
                     } else {
-                        check_used(*var, vec![expr.span]);
+                        check_used(*var, vec![expr.span], &mut typechecker.used.borrow_mut());
                     }
                 }
-                analysis::ExpressionKind::When(_, _) => {
-                    branch.push(im::OrdMap::new());
-                }
-                analysis::ExpressionKind::Constant(_) => {
-                    // TODO: Handle constants
+                analysis::ExpressionKind::When(input, arms) => {
+                    enter(input, typechecker, branch, check_used);
+
+                    let mut all_branches = TrackUsed::new();
+                    for arm in arms {
+                        let prev_branch = mem::replace(branch, Some(TrackUsed::new()));
+
+                        if let Some(guard) = &arm.guard {
+                            guard.traverse(
+                                |expr| enter(expr, typechecker, branch, check_used),
+                                |_| ControlFlow::Continue(()),
+                            );
+                        }
+
+                        arm.body.traverse(
+                            |expr| enter(expr, typechecker, branch, check_used),
+                            |_| ControlFlow::Continue(()),
+                        );
+
+                        let new_branch = mem::replace(branch, prev_branch).unwrap();
+
+                        for (var, spans) in new_branch {
+                            all_branches.entry(var).or_default().extend(spans);
+                        }
+                    }
+
+                    for (var, spans) in all_branches {
+                        check_used(var, spans, &mut typechecker.used.borrow_mut());
+                    }
+
+                    // Don't iterate over the `when` expression's children;
+                    // we already do that above
+                    return ControlFlow::Break(());
                 }
                 _ => {}
-            },
-            |expr, branch| {
-                if let analysis::ExpressionKind::When(_, _) = &expr.kind {
-                    let vars = branch.pop().unwrap();
-                    for (var, spans) in vars {
-                        check_used(var, spans);
-                    }
-                }
-            },
+            }
+
+            ControlFlow::Continue(())
+        }
+
+        let mut branch = None;
+        expr.traverse(
+            |expr| enter(expr, self, &mut branch, &check_used),
+            |_| ControlFlow::Continue(()),
         );
     }
 

@@ -12,6 +12,7 @@ use std::{
     collections::HashMap,
     future::Future,
     mem,
+    ops::ControlFlow,
     pin::Pin,
     sync::{atomic::AtomicBool, Arc},
 };
@@ -571,7 +572,7 @@ fn get_syntax_highlighting(
 
     let mut traverse_semantic_tokens = |expr: &wipple_frontend::analysis::Expression| {
         if expr.span.original().path != playground_path {
-            return;
+            return ControlFlow::Continue(());
         }
 
         if matches!(
@@ -595,18 +596,20 @@ fn get_syntax_highlighting(
                 },
             });
         }
+
+        ControlFlow::Continue(())
     };
 
     for decl in program.declarations.constants.values() {
         if let Some(expr) = &decl.body {
-            expr.traverse(&mut traverse_semantic_tokens, |_| {});
+            expr.traverse(&mut traverse_semantic_tokens, |_| ControlFlow::Continue(()));
         }
     }
 
     for instances in program.declarations.instances.values() {
         for decl in instances.values() {
             if let Some(expr) = &decl.body {
-                expr.traverse(&mut traverse_semantic_tokens, |_| {});
+                expr.traverse(&mut traverse_semantic_tokens, |_| ControlFlow::Continue(()));
             }
         }
     }
@@ -620,7 +623,7 @@ fn get_syntax_highlighting(
             continue;
         }
 
-        expr.traverse(&mut traverse_semantic_tokens, |_| {});
+        expr.traverse(&mut traverse_semantic_tokens, |_| ControlFlow::Continue(()));
     }
 
     let items = items
@@ -1133,7 +1136,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                         let (_, item) = &*item;
 
                         if expr.span == item.span {
-                            return;
+                            return ControlFlow::Continue(());
                         }
                     }
                 }
@@ -1142,11 +1145,11 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                     expr.kind,
                     ExpressionKind::Variable(_) | ExpressionKind::Constant(_)
                 ) {
-                    return;
+                    return ControlFlow::Continue(());
                 }
 
                 if !within_hover(expr.span.original()) {
-                    return;
+                    return ControlFlow::Continue(());
                 }
 
                 hovers.push((
@@ -1157,8 +1160,10 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                         url: None,
                     },
                 ));
+
+                ControlFlow::Continue(())
             },
-            |_| {},
+            |_| ControlFlow::Continue(()),
         )
     }
 

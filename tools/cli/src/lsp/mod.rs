@@ -1,6 +1,7 @@
 use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
 use std::{
     collections::{HashMap, HashSet},
+    ops::ControlFlow,
     sync::Arc,
 };
 use tower_lsp::{jsonrpc, lsp_types::*, Client, LanguageServer, LspService, Server};
@@ -237,7 +238,7 @@ impl LanguageServer for Backend {
 
         let mut traverse_semantic_tokens = |expr: &Expression| {
             if expr.span.original().path.as_str() != document.path.as_str() {
-                return;
+                return ControlFlow::Continue(());
             }
 
             if matches!(
@@ -247,18 +248,20 @@ impl LanguageServer for Backend {
             {
                 semantic_tokens.push((expr.span, SemanticTokenType::FUNCTION));
             }
+
+            ControlFlow::Continue(())
         };
 
         for decl in document.program.declarations.constants.values() {
             if let Some(expr) = &decl.body {
-                expr.traverse(&mut traverse_semantic_tokens, |_| {});
+                expr.traverse(&mut traverse_semantic_tokens, |_| ControlFlow::Continue(()));
             }
         }
 
         for instances in document.program.declarations.instances.values() {
             for decl in instances.values() {
                 if let Some(expr) = &decl.body {
-                    expr.traverse(&mut traverse_semantic_tokens, |_| {});
+                    expr.traverse(&mut traverse_semantic_tokens, |_| ControlFlow::Continue(()));
                 }
             }
         }
@@ -272,7 +275,7 @@ impl LanguageServer for Backend {
                 continue;
             }
 
-            expr.traverse(&mut traverse_semantic_tokens, |_| {});
+            expr.traverse(&mut traverse_semantic_tokens, |_| ControlFlow::Continue(()));
         }
 
         semantic_tokens.reverse();
@@ -408,7 +411,7 @@ impl LanguageServer for Backend {
                             let (_, item) = &*item;
 
                             if expr.span == item.span {
-                                return;
+                                return ControlFlow::Continue(());
                             }
                         }
                     }
@@ -417,11 +420,11 @@ impl LanguageServer for Backend {
                         expr.kind,
                         ExpressionKind::Variable(_) | ExpressionKind::Constant(_)
                     ) {
-                        return;
+                        return ControlFlow::Continue(());
                     }
 
                     if !within_hover(expr.span.original()) {
-                        return;
+                        return ControlFlow::Continue(());
                     }
 
                     if let Some(range) = range_from(expr.span.original()) {
@@ -436,8 +439,10 @@ impl LanguageServer for Backend {
                             },
                         ));
                     }
+
+                    ControlFlow::Continue(())
                 },
-                |_| {},
+                |_| ControlFlow::Continue(()),
             )
         }
 

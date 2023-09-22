@@ -2,6 +2,7 @@ use crate::{
     analysis::{Expression, ExpressionKind},
     ExpressionId,
 };
+use std::ops::ControlFlow;
 
 impl Expression {
     /// Treating `self` as the root expression, find the expression with the
@@ -15,8 +16,10 @@ impl Expression {
                 if e.id == id {
                     expr = Some(e);
                 }
+
+                ControlFlow::Continue(())
             },
-            |_| {},
+            |_| ControlFlow::Continue(()),
         );
 
         expr
@@ -32,8 +35,10 @@ impl Expression {
                         .take()
                         .expect("found multiple expressions with the same ID");
                 }
+
+                ControlFlow::Continue(())
             },
-            |_| {},
+            |_| ControlFlow::Continue(()),
         );
 
         new.is_none()
@@ -48,8 +53,10 @@ impl Expression {
                 if expr.id == id {
                     parent = p;
                 }
+
+                ControlFlow::Continue(())
             },
-            |_, _| {},
+            |_, _| ControlFlow::Continue(()),
         );
 
         parent
