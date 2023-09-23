@@ -53,6 +53,7 @@
     },
     "devDependencies": {
         "@sentry/vite-plugin": "^0.7.2",
+        "@types/gtag.js": "^0.0.14",
         "@types/js-yaml": "^4.0.5",
         "@types/line-column": "^1.0.0",
         "@types/node": "^18.14.1",

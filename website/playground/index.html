@@ -12,6 +12,18 @@
         <link rel="icon" href="./images/favicon.ico" />
         <link rel="apple-touch-icon" href="./images/logo-192.png" />
 
+        <!-- Google tag (gtag.js) -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=%VITE_GA4_ID%"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag() {
+                dataLayer.push(arguments);
+            }
+            gtag("js", new Date());
+
+            gtag("config", "%VITE_GA4_ID%", { page_location: window.location.pathname });
+        </script>
+
         <style>
             .loading {
                 font-family: "Inter", system-ui, sans-serif;

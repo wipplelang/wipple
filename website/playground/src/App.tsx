@@ -58,6 +58,7 @@ interface PageLink {
 export interface Settings {
     beginner?: boolean;
     name?: string;
+    analytics?: boolean;
 }
 
 interface LessonInfo {
@@ -212,6 +213,23 @@ const App = () => {
     const [activeId, setActiveId] = useState<string | undefined>(undefined);
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 1 } }));
 
+    useEffect(() => {
+        if (!lessonInfo?.title || !(settings.analytics ?? true)) return;
+
+        window.gtag("event", "screen_view", {
+            screen_name: `Lesson "${lessonInfo.title}"`,
+        });
+    }, [lessonInfo?.title, settings.analytics]);
+
+    useEffect(() => {
+        const consent = settings.analytics ?? true ? "granted" : "denied";
+
+        window.gtag("consent", "update", {
+            ad_storage: consent,
+            analytics_storage: consent,
+        });
+    }, [settings.analytics]);
+
     return (
         <div>
             <div className="fixed top-0 left-0 right-0 z-50">
@@ -332,6 +350,26 @@ const App = () => {
                                                     setSettings(
                                                         produce((settings) => {
                                                             settings.name = e.target.value;
+                                                        })
+                                                    );
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div className="flex flex-row gap-2">
+                                            <div className="flex flex-col flex-1">
+                                                <p className="font-semibold">Allow analytics</p>
+                                                <p className="opacity-50">
+                                                    Help make Wipple better by reporting analytics.
+                                                </p>
+                                            </div>
+
+                                            <Checkbox
+                                                checked={settings.analytics ?? true}
+                                                onChange={(_e, checked) => {
+                                                    setSettings(
+                                                        produce((settings) => {
+                                                            settings.analytics = checked;
                                                         })
                                                     );
                                                 }}
