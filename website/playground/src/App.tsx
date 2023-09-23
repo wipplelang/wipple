@@ -65,6 +65,7 @@ interface LessonInfo {
     title: string;
     subtitle?: string;
     image?: string;
+    certificate?: boolean;
 }
 
 const App = () => {
@@ -120,7 +121,7 @@ const App = () => {
                     const data = await (await fetch(path)).text();
 
                     const file: {
-                        lesson?: { title: string; subtitle: string };
+                        lesson?: LessonInfo;
                         sections: Section[];
                         previous?: PageLink;
                         next?: PageLink;
@@ -603,6 +604,17 @@ const App = () => {
                         </DndContext>
                     </div>
                 )}
+
+                {lessonInfo?.certificate && settings.name ? (
+                    <div className="flex justify-center w-full py-5">
+                        <Button
+                            variant="contained"
+                            href={`/playground/certificate.html?name=${encodeURI(settings.name)}`}
+                        >
+                            Print Certificate of Completion
+                        </Button>
+                    </div>
+                ) : null}
 
                 {previousPage || nextPage ? (
                     <div className="flex pt-5 pb-8 gap-4">

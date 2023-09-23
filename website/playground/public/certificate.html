@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+
+        <title>Wipple Certificate of Completion</title>
+
+        <style>
+            @import url("https://fonts.googleapis.com/css2?family=Grenze+Gotisch&display=swap");
+
+            @media print {
+                @page {
+                    size: landscape;
+                }
+            }
+
+            body {
+                font-family: "Grenze Gotisch", serif;
+                text-align: center;
+                line-height: normal;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+            }
+
+            h1 {
+                font-size: 96px;
+                font-weight: normal;
+                margin: 0;
+            }
+
+            h2 {
+                font-size: 72px;
+                font-weight: normal;
+                margin: 0;
+            }
+
+            p {
+                font-size: 36px;
+                font-weight: normal;
+                margin: 0;
+            }
+
+            .underlined {
+                text-decoration: underline;
+                text-decoration-skip-ink: none;
+            }
+        </style>
+
+        <script type="text/javascript">
+            window.onload = () => {
+                const name = new URLSearchParams(window.location.search).get("name");
+
+                const date = new Date().toLocaleDateString(undefined, {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                });
+
+                document.getElementById("name").textContent = name;
+                document.getElementById("date").textContent = date;
+
+                window.print();
+            };
+        </script>
+    </head>
+
+    <body style="display: flex; flex-direction: column; gap: 10px">
+        <h1>Certificate of Completion</h1>
+
+        <p>This is to certify that</p>
+
+        <h2 class="underlined" id="name"></h2>
+
+        <p>has successfully learned the</p>
+
+        <h2>Wipple Programming Language</h2>
+
+        <div
+            style="
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 76px;
+                margin-top: 40px;
+                width: 100%;
+            "
+        >
+            <p class="underlined" style="flex: 1; text-align: right" id="date"></p>
+
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 16px">
+                <img src="/images/logo.svg" style="width: 120px; height: 120px" />
+                <p style="font-size: 20px; font-family: sans-serif">wipple.dev</p>
+            </div>
+
+            <p style="flex: 1; text-align: left">
+                <img
+                    src="/images/certificate-signature.png"
+                    style="height: 58px; padding-top: 28px"
+                />
+            </p>
+        </div>
+    </body>
+</html>

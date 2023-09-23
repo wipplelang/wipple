@@ -2,6 +2,7 @@
 lesson:
   title: Decision making
   subtitle: Learn how to make decisions based on user input.
+  certificate: true
 previous:
   name: Variables
   link: ?lesson=beginner/variables
