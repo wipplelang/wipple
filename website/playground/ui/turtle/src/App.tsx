@@ -74,6 +74,16 @@ export const App = (props: AppProps) => {
                         case "pen-down":
                             await turtle.penDown();
                             break;
+                        case "icon":
+                            if (value) {
+                                turtle._turtleImage = value;
+                            } else {
+                                turtle._turtleImage = turtleImageElement;
+                            }
+
+                            turtle.resize();
+                            await new Promise((resolve) => requestAnimationFrame(resolve));
+                            break;
                         case "color":
                             await turtle.setPenColor(value);
                             break;

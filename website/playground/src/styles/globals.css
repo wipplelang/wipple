@@ -4,6 +4,11 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+    font-family: "Segoe UI Emoji";
+    src: url(/playground/fonts/seguiemj.ttf) format("truetype");
+}
+
 body {
     @apply bg-white dark:bg-gray-900 ui-font;
     tab-size: 2;

@@ -112,3 +112,8 @@ right : { deg } -> handle of turtle . message "right" deg
 [help-group "Turtle Graphics"]
 rotate :: Angle -> ()
 rotate : { deg } -> handle of turtle . message "rotate" deg
+
+[help "Set the turtle icon."]
+[help-group "Turtle Graphics"]
+icon :: Text -> ()
+icon : text -> handle of turtle . message "icon" text

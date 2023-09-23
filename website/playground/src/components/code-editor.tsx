@@ -52,7 +52,7 @@ import { styleTags, tags as t } from "@lezer/highlight";
 import { LRLanguage, LanguageSupport } from "@codemirror/language";
 import { parser } from "../languages/wipple.grammar";
 import { Settings } from "../App";
-import { CircularProgress, Popover } from "@mui/material";
+import { Popover } from "@mui/material";
 import { SwatchesPicker } from "react-color";
 import { closeBrackets } from "@codemirror/autocomplete";
 import { useCollaboration } from "../helpers";
@@ -61,6 +61,10 @@ import GroupAddRounded from "@mui/icons-material/GroupAddRounded";
 import { Piano } from "react-piano";
 import { Note } from "./note";
 import * as tonal from "tonal";
+import emojiRegex from "emoji-regex";
+import emojiData from "@emoji-mart/data";
+import EmojiPicker from "@emoji-mart/react";
+import graphemeSplit from "graphemesplit";
 
 export interface CodeEditorProps {
     id: string;
@@ -1159,18 +1163,12 @@ const Asset = (props: {
             return <ColorAsset color={props.asset} onChangeColor={props.onChange} />;
         }
 
-        try {
-            const url = new URL(
-                props.asset,
-                props.asset[0] === "/" ? window.location.origin : undefined
-            );
-            return <UrlAsset url={url} />;
-        } catch {
-            // fall through
-        }
-
         if (/^[A-Ga-g][#b]?\d+$/.test(props.asset)) {
             return <NoteAsset note={props.asset} onChangeNote={props.onChange} />;
+        }
+
+        if (emojiRegex().test(props.asset) && graphemeSplit(props.asset).length === 1) {
+            return <EmojiAsset emoji={props.asset} onChangeEmoji={props.onChange} />;
         }
 
         return <ErrorAsset />;
@@ -1230,77 +1228,6 @@ const ColorAsset = (props: { color: string; onChangeColor?: (color: string) => v
     </AssetContainer>
 );
 
-const cache: Record<string, Response | null> = {};
-
-const UrlAsset = (props: { url: URL }) => {
-    const [response, setResponse] = useState<Response>();
-    const [error, setError] = useState(false);
-
-    useEffect(() => {
-        (async () => {
-            const cached = cache[props.url.toString()];
-            if (cached !== undefined) {
-                if (cached !== null) {
-                    setResponse(cached);
-                }
-
-                return;
-            } else
-                try {
-                    const response = await fetch(props.url);
-
-                    if (response.status < 200 || response.status >= 300) {
-                        setError(true);
-                        return;
-                    }
-
-                    cache[props.url.toString()] = response;
-
-                    setResponse(response);
-                } catch (error) {
-                    console.error(error);
-                    setError(true);
-
-                    cache[props.url.toString()] = null;
-                }
-        })();
-    }, [props.url]);
-
-    if (error) {
-        return <ErrorAsset />;
-    }
-
-    const contentType = response?.headers.get("Content-Type");
-
-    if (contentType === undefined) {
-        return (
-            <AssetContainer>
-                <div className="flex items-center justify-center w-full h-full">
-                    <CircularProgress size={10} thickness={6} />
-                </div>
-            </AssetContainer>
-        );
-    }
-
-    if (contentType === null) {
-        return <ErrorAsset />;
-    }
-
-    if (contentType.includes("image")) {
-        return (
-            <AssetContainer>
-                <a target="_blank" href={props.url.toString()}>
-                    <img src={props.url.toString()} className="w-full h-full object-cover" />
-                </a>
-            </AssetContainer>
-        );
-    }
-
-    // TODO: Support previews for more asset types
-
-    return <ErrorAsset />;
-};
-
 const NoteAsset = (props: { note: string; onChangeNote?: (note: string) => void }) => (
     <AssetContainer>
         <PopupState variant="popover">
@@ -1345,6 +1272,48 @@ const NoteAsset = (props: { note: string; onChangeNote?: (note: string) => void 
                                 }}
                             />
                         </div>
+                    </Popover>
+                </>
+            )}
+        </PopupState>
+    </AssetContainer>
+);
+
+const EmojiAsset = (props: { emoji: string; onChangeEmoji?: (emoji: string) => void }) => (
+    <AssetContainer>
+        <PopupState variant="popover">
+            {(popupState) => (
+                <>
+                    <div className="flex w-full h-full">
+                        <div
+                            style={{
+                                pointerEvents: props.onChangeEmoji == null ? "none" : undefined,
+                            }}
+                            className="relative w-full h-full"
+                            {...bindToggle(popupState)}
+                        >
+                            <p
+                                style={{
+                                    position: "absolute",
+                                    top: "-0.1em",
+                                    left: "-0.1em",
+                                    fontSize: "8pt",
+                                    fontFamily: "Segoe UI Emoji",
+                                }}
+                            >
+                                {props.emoji}
+                            </p>
+                        </div>
+                    </div>
+
+                    <Popover
+                        {...bindPopover(popupState)}
+                        anchorOrigin={{ horizontal: "left", vertical: "bottom" }}
+                    >
+                        <EmojiPicker
+                            data={emojiData}
+                            onEmojiSelect={(emoji: any) => props.onChangeEmoji?.(emoji.native)}
+                        />
                     </Popover>
                 </>
             )}
@@ -1460,9 +1429,9 @@ const builtinCompletions: SpecialCompletion[] = [
         template: "`#007aff`",
     },
     {
-        element: () => <Asset asset="/images/logo.svg" disabled />,
-        help: "Insert an image.",
-        template: "`/images/logo.svg`",
+        element: () => <Asset asset="😀" disabled />,
+        help: "Insert an emoji.",
+        template: "`😀`",
     },
     {
         element: () => <Asset asset="C4" disabled />,

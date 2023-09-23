@@ -64,8 +64,14 @@ turtley.Turtle = class Turtle {
             throw new Error(`Parameter "height" must be a number`);
         if ("appendTo" in options && !(options.appendTo instanceof HTMLElement))
             throw new Error(`Parameter "appendTo" must be an HTMLElement`);
-        if ("turtleImage" in options && !(options.turtleImage instanceof HTMLImageElement))
-            throw new Error(`Parameter "turtleImage" must be an HTMLImageElement`);
+        if (
+            "turtleImage" in options &&
+            !(
+                options.turtleImage instanceof HTMLImageElement ||
+                typeof options.turtleImage === "string"
+            )
+        )
+            throw new Error(`Parameter "turtleImage" must be an HTMLImageElement or a string`);
         if ("turtleWidth" in options && typeof options.turtleWidth !== "number")
             throw new Error(`Parameter "turtleWidth" must be a number`);
         if ("turtleHeight" in options && typeof options.turtleHeight !== "number")
@@ -360,13 +366,18 @@ turtley.Turtle = class Turtle {
             // this._visibleCtx.stroke();
             // this._visibleCtx.fill();
 
-            this._visibleCtx.drawImage(
-                this._turtleImage,
-                -(this._turtleWidth / 2),
-                -(this._turtleHeight / 2),
-                this._turtleWidth,
-                this._turtleHeight
-            );
+            if (this._turtleImage instanceof HTMLImageElement) {
+                this._visibleCtx.drawImage(
+                    this._turtleImage,
+                    -(this._turtleWidth / 2),
+                    -(this._turtleHeight / 2),
+                    this._turtleWidth,
+                    this._turtleHeight
+                );
+            } else {
+                this._visibleCtx.font = `${this._turtleWidth}px 'Segoe UI Emoji'`;
+                this._visibleCtx.fillText(this._turtleImage, -20, 0);
+            }
 
             this._visibleCtx.restore();
         }

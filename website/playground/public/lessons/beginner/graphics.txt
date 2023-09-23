@@ -133,6 +133,7 @@ type: code
 use "turtle"
 
 with-turtle {
+  icon `😀`
   width (500 pixels)
   right (90 degrees)
 
