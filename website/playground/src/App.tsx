@@ -363,6 +363,14 @@ const App = () => {
                                                 <p className="opacity-50">
                                                     Help make Wipple better by reporting analytics.
                                                 </p>
+                                                <p className="text-sm text-blue-500">
+                                                    <a
+                                                        target="_blank"
+                                                        href="https://support.google.com/analytics/answer/6004245"
+                                                    >
+                                                        {"Google Analytics Privacy Policy ->"}
+                                                    </a>
+                                                </p>
                                             </div>
 
                                             <Checkbox
