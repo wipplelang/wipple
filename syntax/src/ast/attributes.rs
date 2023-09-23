@@ -5,7 +5,7 @@ use crate::{
         DiagnosticItemStatementAttribute, HelpGroupStatementAttribute,
         HelpPlaygroundStatementAttribute, HelpStatementAttribute, HelpTemplateStatementAttribute,
         HelpUrlFileAttribute, KeywordStatementAttribute, LanguageItemStatementAttribute,
-        NoStdFileAttribute, OnMismatchStatementAttribute, OnReuseStatementAttribute,
+        NoReuseStatementAttribute, NoStdFileAttribute, OnMismatchStatementAttribute,
         OnUnimplementedStatementAttribute, OperatorPrecedenceStatementAttribute,
         PrivateStatementAttribute, RecursionLimitFileAttribute, SealedStatementAttribute,
         SpecializeStatementAttribute, SyntaxError,
@@ -72,7 +72,7 @@ pub struct StatementAttributes<D: Driver> {
     pub derive: Option<DeriveStatementAttribute<D>>,
     pub private: Option<PrivateStatementAttribute<D>>,
     pub sealed: Option<SealedStatementAttribute<D>>,
-    pub on_reuse: Option<OnReuseStatementAttribute<D>>,
+    pub no_reuse: Option<NoReuseStatementAttribute<D>>,
 }
 
 impl<D: Driver> Default for StatementAttributes<D> {
@@ -97,7 +97,7 @@ impl<D: Driver> Default for StatementAttributes<D> {
             derive: Default::default(),
             private: Default::default(),
             sealed: Default::default(),
-            on_reuse: Default::default(),
+            no_reuse: Default::default(),
         }
     }
 }

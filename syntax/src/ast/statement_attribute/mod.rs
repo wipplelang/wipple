@@ -11,7 +11,7 @@ definitions! {
     mod help_template;
     mod keyword;
     mod language_item;
-    mod on_reuse;
+    mod no_reuse;
     mod on_mismatch;
     mod on_unimplemented;
     mod operator_precedence;
@@ -48,8 +48,8 @@ syntax_group! {
             HelpTemplate,
             Keyword,
             LanguageItem,
+            NoReuse,
             OnMismatch,
-            OnReuse,
             OnUnimplemented,
             OperatorPrecedence,
             Private,

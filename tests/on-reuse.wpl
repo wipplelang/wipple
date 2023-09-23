@@ -1,4 +1,4 @@
-[on-reuse "cannot use X more than once"]
+[no-reuse]
 X : type
 
 f :: X -> ()

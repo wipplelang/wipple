@@ -6,7 +6,7 @@ locked: true
 
 # How to fix the "cannot use more than once" error
 
-Some types in Wipple disallow being used more than once. For example, `Sequence` may only be used once because after it produces a value, it now refers to the next value. Once all of the values are produced, eg. with `each`, the sequence is no longer useful, and any attempts to call `each` again will do nothing. To prevent these kinds of bugs, `Sequence` uses the `[on-reuse]` attribute to prevent sequences from being used multiple times.
+Some types in Wipple disallow being used more than once. For example, `Sequence` may only be used once because after it produces a value, it now refers to the next value. Once all of the values are produced, eg. with `each`, the sequence is no longer useful, and any attempts to call `each` again will do nothing. To prevent these kinds of bugs, `Sequence` uses the `[no-reuse]` attribute to prevent sequences from being used multiple times.
 
 ---
 id: t52tNHIc

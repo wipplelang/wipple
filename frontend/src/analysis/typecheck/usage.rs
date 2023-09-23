@@ -22,7 +22,7 @@ impl Typechecker {
 
             let var_name = decl.name.as_deref().unwrap_or("<unknown>").to_string();
 
-            let message = self.on_reuse_message(&decl.ty)?.to_string();
+            let message = self.no_reuse_message(&decl.ty)?.to_string();
 
             Some((var_name, message))
         };
@@ -30,8 +30,8 @@ impl Typechecker {
         type TrackUsed = im::OrdMap<VariableId, Vec<SpanList>>;
 
         let check_used = |var: VariableId, spans: Vec<SpanList>, used: &mut TrackUsed| {
-            let (var_name, on_reuse_message) = match reuse_info(var) {
-                Some((var_name, on_reuse_message)) => (var_name, on_reuse_message),
+            let (var_name, no_reuse_message) = match reuse_info(var) {
+                Some((var_name, no_reuse_message)) => (var_name, no_reuse_message),
                 None => return,
             };
 
@@ -41,16 +41,11 @@ impl Typechecker {
                 }
                 Entry::Occupied(entry) => {
                     self.compiler.add_error(
-                        on_reuse_message,
+                        no_reuse_message,
                         spans
                             .iter()
                             .copied()
-                            .map(|span| {
-                                Note::primary(
-                                    span,
-                                    format!("cannot use `{var_name}` more than once"),
-                                )
-                            })
+                            .map(|span| Note::primary(span, format!("`{var_name}` reused here")))
                             .chain(entry.get().iter().copied().map(|span| {
                                 Note::secondary(span, format!("`{var_name}` first used here"))
                             }))
@@ -127,29 +122,32 @@ impl Typechecker {
         );
     }
 
-    pub(crate) fn on_reuse_message(&self, ty: &Type) -> Option<&'static str> {
+    pub(crate) fn no_reuse_message(&self, ty: &Type) -> Option<String> {
         match ty {
             Type::Named(id, _, structure) => {
-                if let Some(message) = self
-                    .with_type_decl(*id, |decl| decl.attributes.on_reuse)
+                if let (ty_name, Some(message)) = self
+                    .with_type_decl(*id, |decl| (decl.name, decl.attributes.no_reuse))
                     .unwrap()
                 {
-                    return Some(message.as_str());
+                    return Some(message.as_ref().map_or_else(
+                        || format!("cannot use `{ty_name}` more than once"),
+                        ToString::to_string,
+                    ));
                 }
 
                 match structure {
                     TypeStructure::Marker | TypeStructure::Recursive(_) => None,
                     TypeStructure::Structure(tys) => {
-                        tys.iter().find_map(|ty| self.on_reuse_message(ty))
+                        tys.iter().find_map(|ty| self.no_reuse_message(ty))
                     }
                     TypeStructure::Enumeration(variants) => variants
                         .iter()
                         .flatten()
-                        .find_map(|ty| self.on_reuse_message(ty)),
+                        .find_map(|ty| self.no_reuse_message(ty)),
                 }
             }
             Type::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => self.on_reuse_message(ty),
+                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => self.no_reuse_message(ty),
                 BuiltinType::Number
                 | BuiltinType::Integer
                 | BuiltinType::Natural

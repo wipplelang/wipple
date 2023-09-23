@@ -4209,15 +4209,15 @@ impl Typechecker {
 
         let ty = self.convert_generic_type_annotation(decl.value.ty.clone());
 
-        if let Some(on_reuse_message) = self.on_reuse_message(&ty) {
+        if let Some(no_reuse_message) = self.no_reuse_message(&ty) {
             self.compiler.add_error(
-                on_reuse_message,
+                no_reuse_message,
                 vec![
                     Note::primary(
                         decl.span,
-                        "constant value may not contain type marked with `[on-reuse]`",
+                        "constant value may not contain type marked with `[no-reuse]`",
                     ),
-                    Note::secondary(decl.span, "constants are implicitly copied when used, but `[on-reuse]` types may not be copied"),
+                    Note::secondary(decl.span, "constants are implicitly copied when used, but `[no-reuse]` types may not be copied"),
                 ],
                 "reused-variable",
             );
@@ -4458,15 +4458,15 @@ impl Typechecker {
             )
             .finalize(&self.ctx);
 
-        if let Some(on_reuse_message) = self.on_reuse_message(&ty) {
+        if let Some(no_reuse_message) = self.no_reuse_message(&ty) {
             self.compiler.add_error(
-                on_reuse_message,
+                no_reuse_message,
                 vec![
                     Note::primary(
                         decl.span,
-                        "instance value may not contain type marked with `[on-reuse]`",
+                        "instance value may not contain type marked with `[no-reuse]`",
                     ),
-                    Note::secondary(decl.span, "instances are implicitly copied when used, but `[on-reuse]` types may not be copied"),
+                    Note::secondary(decl.span, "instances are implicitly copied when used, but `[no-reuse]` types may not be copied"),
                 ],
                 "reused-variable",
             );
