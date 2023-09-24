@@ -217,8 +217,8 @@ const App = () => {
     useEffect(() => {
         if (!lessonInfo?.title || !(settings.analytics ?? true)) return;
 
-        window.gtag("event", "screen_view", {
-            screen_name: `Lesson "${lessonInfo.title}"`,
+        window.gtag("event", "page_view", {
+            page_title: `Lesson "${lessonInfo.title}"`,
         });
     }, [lessonInfo?.title, settings.analytics]);
 
