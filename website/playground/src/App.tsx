@@ -617,6 +617,7 @@ const App = () => {
                     <div className="flex justify-center w-full py-5">
                         <Button
                             variant="contained"
+                            target="_blank"
                             href={`/playground/certificate.html?name=${encodeURI(settings.name)}`}
                         >
                             Print Certificate of Completion
