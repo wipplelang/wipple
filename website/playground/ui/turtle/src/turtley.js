@@ -376,7 +376,7 @@ turtley.Turtle = class Turtle {
                 );
             } else {
                 this._visibleCtx.font = `${this._turtleWidth}px 'Segoe UI Emoji'`;
-                this._visibleCtx.fillText(this._turtleImage, -20, 0);
+                this._visibleCtx.fillText(this._turtleImage, -20, 10);
             }
 
             this._visibleCtx.restore();
