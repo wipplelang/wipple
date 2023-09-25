@@ -49,6 +49,7 @@ interface UiElement {
 }
 
 export interface PlaygroundRunner {
+    isRunning: () => boolean;
     format: () => Promise<string | undefined>;
     hover: (start: number, end: number) => Promise<HoverOutput | null>;
 }
@@ -72,7 +73,7 @@ export const PlaygroundRunner = forwardRef<
 >((props, ref) => {
     const runner = useRunner({ id: props.id, code: props.code });
 
-    const [isRunning, setRunning] = useState(false);
+    const [isRunning, setRunning] = useRefState(false);
     const [output, setOutput] = useRefState<OutputInternal | undefined>(undefined);
     const appendToOutput = (code: string, item: OutputItem) =>
         setOutput((output) =>
@@ -266,6 +267,7 @@ export const PlaygroundRunner = forwardRef<
     }, [props.code, props.lint, props.autoRun]);
 
     useImperativeHandle(ref, () => ({
+        isRunning: () => isRunning.current,
         format: () => runner.format(props.code),
         hover: runner.hover,
     }));
@@ -529,7 +531,7 @@ export const PlaygroundRunner = forwardRef<
                                         }
                                     })}
 
-                                    {isRunning ? (
+                                    {isRunning.current ? (
                                         <div className="bouncing-loader">
                                             <div />
                                             <div />
