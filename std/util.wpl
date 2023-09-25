@@ -59,7 +59,7 @@ Try : Value Success Failure => trait (Value -> Result Success Failure)
 [help-group "Utilities"]
 None-Error : type
 
-Expect : Container Value => trait (Text -> Container -> Value)
+Expect : Container (infer Value) => trait (Text -> Container -> Value)
 
 Value => instance (Expect (Maybe Value) Value) : message -> x? -> when x? {
   Some x -> x
@@ -74,14 +74,14 @@ Success Failure => instance (Unwrap-Message (Result Success Failure)) : just "ca
 
 [help "Produces the `Some` value contained within a `Maybe`, or exits the program with the provided message."]
 [help-group "Utilities"]
-expect :: Container Value where (Expect Container Value) => Text -> Container -> Value
+expect :: Container (infer Value) where (Expect Container Value) => Text -> Container -> Value
 expect : Expect
 
 instance (Expect Boolean ()) : msg bool -> if bool () (error msg)
 
 [help "Produces the `Some` value contained within a `Maybe`, or exits the program."]
 [help-group "Utilities"]
-unwrap :: Container Value where (Expect Container Value) (Unwrap-Message Container) => Container -> Value
+unwrap :: Container (infer Value) where (Expect Container Value) (Unwrap-Message Container) => Container -> Value
 unwrap : x? -> expect (Unwrap-Message x?) x?
 
 As : Input Output => trait (Input -> Output)
