@@ -1,4 +1,4 @@
-show (0 to 0 . random :: Number)
-show (1 to 2 . random :: Integer)
-show (list 1 . random)
-show ((list) . random :: Maybe Number)
+show (random (0 to 0))
+show (random ((1 :: Integer) to 2))
+show (random (list 1))
+show (random (list :: List Number))
