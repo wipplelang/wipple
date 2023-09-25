@@ -11,7 +11,7 @@ mutable : x -> semantics "pure" (intrinsic "make-mutable" x)
 [help "Retrieve the value inside a `Mutable`."]
 [help-group "Utilities"]
 get :: A => Mutable A -> A
-get : m -> semantics "pure" (intrinsic "get-mutable" m)
+get : m -> intrinsic "get-mutable" m
 
 [help "Update the value contained inside a `Mutable`."]
 [help-group "Utilities"]
