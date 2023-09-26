@@ -100,7 +100,7 @@ export const useRunner = (context: any) => {
     }, []);
 
     return {
-        analyze: (code: string, lint: boolean) =>
+        analyze: (code: string, lint: boolean, setup: string | undefined) =>
             new Promise<AnalysisOutput>(async (resolve, reject) => {
                 const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = async (event) => {
@@ -161,7 +161,7 @@ export const useRunner = (context: any) => {
                     reset();
                 };
 
-                runner.current!.postMessage({ operation: "analyze", code, lint, context });
+                runner.current!.postMessage({ operation: "analyze", code, lint, setup, context });
             }),
         run: (handleConsole: (request: AnalysisConsoleRequest) => void) =>
             new Promise<void>(async (resolve, reject) => {

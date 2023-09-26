@@ -44,3 +44,7 @@ resolution : n -> handle of graph . message "resolution" n
 [help-group "Graphing"]
 plot :: (Number -> Number) -> ()
 plot : f -> handle of graph . message "function" f
+
+[entrypoint]
+entrypoint :: Entrypoint
+entrypoint : program -> with-graph { program () }

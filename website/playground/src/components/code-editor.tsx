@@ -72,6 +72,7 @@ export interface CodeEditorProps {
     autoRun: boolean;
     onChangeAutoRun: (autoRun: boolean) => void;
     lint: boolean;
+    setup: string | undefined;
     collapse: boolean;
     onChangeCollapse: (collapse: boolean) => void;
     settings: Settings;
@@ -479,6 +480,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
         let html = await (await fetch("/playground/embed.html")).text();
         html = html.replaceAll("{{ORIGIN}}", window.location.origin);
         html = html.replace("{{CODE}}", props.code);
+        html = html.replace("{{SETUP}}", props.setup ?? "");
 
         const blob = new Blob([html], { type: "text/html" });
 
@@ -864,6 +866,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         outputClassName="bg-gray-50 dark:bg-gray-800"
                         beginner={props.settings.beginner ?? true}
                         lint={props.lint}
+                        setup={props.setup}
                         autoRun={props.autoRun}
                         containsTemplates={() => containsTemplates.current!}
                         onReset={onReset}

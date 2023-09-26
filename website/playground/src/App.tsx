@@ -39,14 +39,15 @@ import LinkIcon from "@mui/icons-material/Link";
 import DataObjectIcon from "@mui/icons-material/DataObject";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import { nanoid } from "nanoid";
-import { CodeEditor, TextEditor } from "./components";
+import { CodeEditor, Picker, TextEditor } from "./components";
 import { convertLesson } from "./helpers";
 import { useRefState } from "shared";
 import { useMemo } from "react";
 import { Draft, produce } from "immer";
 
 type Section = { id: string; value: string } & (
-    | { type: "code"; lint?: boolean; autoRun?: boolean; collapse?: boolean }
+    | { type: "picker" }
+    | { type: "code"; setup?: string; lint?: boolean; autoRun?: boolean; collapse?: boolean }
     | { type: "text"; locked?: boolean }
 );
 
@@ -425,7 +426,7 @@ const App = () => {
                                     setSections([
                                         {
                                             id: nanoid(8),
-                                            type: "code",
+                                            type: "picker",
                                             value: "",
                                         },
                                     ]);
@@ -494,105 +495,109 @@ const App = () => {
                                 items={sections}
                                 strategy={verticalListSortingStrategy}
                             >
-                                {sections.map((section, index) => (
-                                    <SortableItem
-                                        key={section.id}
-                                        id={section.id}
-                                        onPressAdd={(type) => {
-                                            setSections(
-                                                produce((sections) => {
-                                                    sections.push({
-                                                        id: nanoid(8),
-                                                        type,
-                                                        value: "",
-                                                        locked: type === "text" ? false : undefined,
-                                                    });
-                                                })
-                                            );
-                                        }}
-                                        onPressRemove={
-                                            sections.length > 1
-                                                ? () => {
-                                                      setSections(
-                                                          produce((sections) => {
-                                                              sections.splice(index, 1);
-                                                          })
-                                                      );
-                                                  }
-                                                : undefined
-                                        }
-                                        lock={
-                                            section.type === "text"
-                                                ? {
-                                                      isLocked: section.locked ?? false,
-                                                      onChangeLocked: (locked) => {
-                                                          setSections(
-                                                              produce((sections) => {
-                                                                  const section = sections[index];
+                                {sections.map((section, index) => {
+                                    const deleteSection = () => {
+                                        setSections(
+                                            produce((sections) => {
+                                                sections.splice(index, 1);
+                                            })
+                                        );
+                                    };
 
-                                                                  if (section.type !== "text") {
-                                                                      throw new Error(
-                                                                          `section mismatch: ${JSON.stringify(
-                                                                              section,
-                                                                              null,
-                                                                              4
-                                                                          )}`
-                                                                      );
-                                                                  }
-
-                                                                  section.locked = locked;
-                                                              })
-                                                          );
-                                                      },
-                                                  }
-                                                : undefined
-                                        }
-                                        lint={
-                                            section.type === "code"
-                                                ? {
-                                                      lintEnabled: section.lint ?? true,
-                                                      onChangeLintEnabled: (lint) => {
-                                                          setSections(
-                                                              produce((sections) => {
-                                                                  const section = sections[index];
-
-                                                                  if (section.type !== "code") {
-                                                                      throw new Error(
-                                                                          `section mismatch: ${JSON.stringify(
-                                                                              section,
-                                                                              null,
-                                                                              4
-                                                                          )}`
-                                                                      );
-                                                                  }
-
-                                                                  section.lint = lint;
-                                                              })
-                                                          );
-                                                      },
-                                                  }
-                                                : undefined
-                                        }
-                                    >
-                                        <SectionContainer
-                                            section={section}
-                                            autoFocus={index === 0}
-                                            settings={settings}
-                                            onChange={(newSection) => {
+                                    return (
+                                        <SortableItem
+                                            key={section.id}
+                                            id={section.id}
+                                            onPressAdd={(type) => {
                                                 setSections(
                                                     produce((sections) => {
-                                                        newSection(
-                                                            // HACK: index doesn't work
-                                                            sections.find(
-                                                                (s) => s.id === section.id
-                                                            )!
-                                                        );
+                                                        sections.push({
+                                                            id: nanoid(8),
+                                                            type,
+                                                            value: "",
+                                                            locked:
+                                                                type === "text" ? false : undefined,
+                                                        });
                                                     })
                                                 );
                                             }}
-                                        />
-                                    </SortableItem>
-                                ))}
+                                            onPressRemove={deleteSection}
+                                            lock={
+                                                section.type === "text"
+                                                    ? {
+                                                          isLocked: section.locked ?? false,
+                                                          onChangeLocked: (locked) => {
+                                                              setSections(
+                                                                  produce((sections) => {
+                                                                      const section =
+                                                                          sections[index];
+
+                                                                      if (section.type !== "text") {
+                                                                          throw new Error(
+                                                                              `section mismatch: ${JSON.stringify(
+                                                                                  section,
+                                                                                  null,
+                                                                                  4
+                                                                              )}`
+                                                                          );
+                                                                      }
+
+                                                                      section.locked = locked;
+                                                                  })
+                                                              );
+                                                          },
+                                                      }
+                                                    : undefined
+                                            }
+                                            lint={
+                                                section.type === "code"
+                                                    ? {
+                                                          lintEnabled: section.lint ?? true,
+                                                          onChangeLintEnabled: (lint) => {
+                                                              setSections(
+                                                                  produce((sections) => {
+                                                                      const section =
+                                                                          sections[index];
+
+                                                                      if (section.type !== "code") {
+                                                                          throw new Error(
+                                                                              `section mismatch: ${JSON.stringify(
+                                                                                  section,
+                                                                                  null,
+                                                                                  4
+                                                                              )}`
+                                                                          );
+                                                                      }
+
+                                                                      section.lint = lint;
+                                                                  })
+                                                              );
+                                                          },
+                                                      }
+                                                    : undefined
+                                            }
+                                        >
+                                            <SectionContainer
+                                                section={section}
+                                                autoFocus={index === 0}
+                                                settings={settings}
+                                                onChange={(newSection) => {
+                                                    setSections(
+                                                        produce((sections) => {
+                                                            newSection(
+                                                                // HACK: index doesn't work
+                                                                sections.find(
+                                                                    (s) => s.id === section.id
+                                                                )!
+                                                            );
+                                                        })
+                                                    );
+                                                }}
+                                                onDelete={deleteSection}
+                                            />
+                                        </SortableItem>
+                                    );
+                                })}
                             </SortableContext>
 
                             <DragOverlay>
@@ -605,6 +610,7 @@ const App = () => {
                                             autoFocus={false}
                                             settings={settings}
                                             onChange={() => {}}
+                                            onDelete={() => {}}
                                         />
                                     </div>
                                 )}
@@ -692,20 +698,10 @@ const SideMenu = (props: {
                                 disabled={props.onPressAdd == null}
                                 onClick={() => {
                                     popupState.close();
-                                    props.onPressAdd?.("code");
+                                    props.onPressAdd?.("picker");
                                 }}
                             >
-                                <AddIcon /> Add Code
-                            </MenuItem>
-
-                            <MenuItem
-                                disabled={props.onPressAdd == null}
-                                onClick={() => {
-                                    popupState.close();
-                                    props.onPressAdd?.("text");
-                                }}
-                            >
-                                <TextIcon /> Add Text
+                                <AddIcon /> Add Section
                             </MenuItem>
 
                             {props.lock && (
@@ -819,15 +815,38 @@ const SectionContainer = (props: {
     autoFocus: boolean;
     settings: Settings;
     onChange: (newSection: (section: Draft<Section>) => void) => void;
+    onDelete: () => void;
 }) => {
     let content: JSX.Element;
     switch (props.section.type) {
+        case "picker":
+            content = (
+                <Picker
+                    onSelect={(options) => {
+                        props.onChange((section) => {
+                            switch (options.type) {
+                                case "code":
+                                    section.type = "code";
+                                    (section as Draft<Section & { type: "code" }>).setup =
+                                        options.setup;
+                                    break;
+                                case "text":
+                                    section.type = "text";
+                                    break;
+                            }
+                        });
+                    }}
+                    onCancel={props.onDelete}
+                />
+            );
+            break;
         case "code":
             content = (
                 <CodeEditor
                     id={props.section.id}
                     code={props.section.value}
                     lint={props.section.lint ?? true}
+                    setup={props.section.setup}
                     autoRun={props.section.autoRun ?? true}
                     onChangeAutoRun={(autoRun) => {
                         props.onChange((section) => {

@@ -166,3 +166,7 @@ button : () -> when (handle of game . message "button" ()) {
   8 -> Some Right
   _ -> None
 }
+
+[entrypoint]
+entrypoint :: Entrypoint
+entrypoint : program -> with-game { program () }

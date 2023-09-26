@@ -24,13 +24,13 @@ onmessage = async (event) => {
                     cancel = undefined;
                 }
 
-                const { code, lint } = event.data;
+                const { code, setup, lint } = event.data;
 
                 const analysis = await new Promise((resolve, reject) => {
                     runner.analyze(
                         code,
                         lint,
-                        null, // TODO: Provide program kind (implicit imports)
+                        setup,
                         (path, name, input, api) =>
                             new Promise((resolve, reject) => {
                                 const responderId = uuid();

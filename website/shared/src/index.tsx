@@ -62,6 +62,7 @@ export const PlaygroundRunner = forwardRef<
         outputClassName?: string;
         beginner: boolean;
         lint: boolean;
+        setup: string | undefined;
         autoRun: boolean;
         containsTemplates: () => boolean;
         onReset?: () => void;
@@ -105,14 +106,14 @@ export const PlaygroundRunner = forwardRef<
 
     const run = useMemo(
         () =>
-            debounce(async (code: string, lint: boolean) => {
+            debounce(async (code: string, lint: boolean, setup: string | undefined) => {
                 try {
                     props.onReset?.();
 
                     setRunning(true);
                     setFatalError(false);
 
-                    const analysis = await runner.analyze(code, lint);
+                    const analysis = await runner.analyze(code, lint, setup);
 
                     const diagnostics = props.containsTemplates() ? [] : analysis.diagnostics;
 
@@ -262,9 +263,9 @@ export const PlaygroundRunner = forwardRef<
 
     useEffect(() => {
         if (props.autoRun) {
-            run(props.code, props.lint);
+            run(props.code, props.lint, props.setup);
         }
-    }, [props.code, props.lint, props.autoRun]);
+    }, [props.code, props.lint, props.setup, props.autoRun]);
 
     useImperativeHandle(ref, () => ({
         isRunning: () => isRunning.current,
@@ -545,7 +546,9 @@ export const PlaygroundRunner = forwardRef<
                                                 variant="contained"
                                                 size="small"
                                                 endIcon={<Refresh />}
-                                                onClick={() => run(props.code, props.lint)}
+                                                onClick={() =>
+                                                    run(props.code, props.lint, props.setup)
+                                                }
                                             >
                                                 Run again
                                             </Button>

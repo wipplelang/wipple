@@ -117,3 +117,7 @@ rotate : { deg } -> handle of turtle . message "rotate" deg
 [help-group "Turtle Graphics"]
 icon :: Text -> ()
 icon : text -> handle of turtle . message "icon" text
+
+[entrypoint]
+entrypoint :: Entrypoint
+entrypoint : program -> with-turtle { program () }

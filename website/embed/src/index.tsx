@@ -6,7 +6,7 @@ import { PlaygroundRunner } from "shared";
 import "./styles/globals.css";
 import "katex/dist/katex.min.css";
 
-const App = (props: { code: string }) => {
+const App = (props: { code: string; setup: string }) => {
     const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
 
     const theme = useMemo(
@@ -29,6 +29,7 @@ const App = (props: { code: string }) => {
                     code={props.code}
                     beginner
                     lint={false}
+                    setup={props.setup || undefined}
                     autoRun
                     containsTemplates={() => false}
                     footer={Footer}
@@ -81,6 +82,11 @@ const Footer = () => (
         outputElement.id = "output";
         codeElement.appendChild(outputElement);
 
-        ReactDOM.createRoot(outputElement).render(<App code={scriptElement.text} />);
+        ReactDOM.createRoot(outputElement).render(
+            <App
+                code={scriptElement.text}
+                setup={scriptElement.attributes.getNamedItem("setup")?.value ?? ""}
+            />
+        );
     }
 })();
