@@ -91,6 +91,9 @@ struct BuildOptions {
 
     #[clap(long)]
     no_lint: bool,
+
+    #[clap(long)]
+    r#use: Vec<String>,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -638,7 +641,12 @@ async fn build_with_passes<P>(
             path,
             &wipple_frontend::analysis::Options::new()
                 .tracking_progress(analysis_progress)
-                .lint(!options.no_lint),
+                .lint(!options.no_lint)
+                .with_implicit_imports(options.r#use.iter().map(|path| {
+                    wipple_frontend::FilePath::Path(wipple_frontend::helpers::InternedString::new(
+                        path,
+                    ))
+                })),
         )
         .await;
 

@@ -30,6 +30,7 @@ onmessage = async (event) => {
                     runner.analyze(
                         code,
                         lint,
+                        null, // TODO: Provide program kind (implicit imports)
                         (path, name, input, api) =>
                             new Promise((resolve, reject) => {
                                 const responderId = uuid();

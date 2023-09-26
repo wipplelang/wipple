@@ -23,7 +23,8 @@ pub trait Driver: Debug + Clone + Send + Sync + 'static {
     fn make_path(&self, path: Self::InternedString) -> Option<Self::Path>;
     fn make_span(&self, path: Self::Path, range: std::ops::Range<usize>) -> Self::Span;
 
-    fn std_path(&self) -> Option<Self::Path>;
+    fn implicit_entrypoint_imports(&self) -> Vec<Self::Path>;
+    fn implicit_dependency_imports(&self) -> Vec<Self::Path>;
 
     /// Allows the driver to download files in parallel so loading is faster.
     async fn queue_files(&self, source_path: Option<Self::Path>, paths: Vec<Self::Path>) {
@@ -60,6 +61,8 @@ pub enum ResolveSyntaxError {
 }
 
 pub trait File<D: Driver> {
+    fn is_entrypoint(&self) -> bool;
+
     fn code(&self) -> &str;
 
     fn make_scope(&self) -> D::Scope;
@@ -185,6 +188,10 @@ impl FixRange {
 pub struct SingleFile(pub String);
 
 impl<D: Driver<Span = (), File = SingleFile, Scope = ()>> File<D> for SingleFile {
+    fn is_entrypoint(&self) -> bool {
+        true
+    }
+
     fn code(&self) -> &str {
         &self.0
     }

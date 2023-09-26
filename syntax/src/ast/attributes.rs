@@ -5,7 +5,7 @@ use crate::{
         DiagnosticItemStatementAttribute, HelpGroupStatementAttribute,
         HelpPlaygroundStatementAttribute, HelpStatementAttribute, HelpTemplateStatementAttribute,
         HelpUrlFileAttribute, KeywordStatementAttribute, LanguageItemStatementAttribute,
-        NoReuseStatementAttribute, NoStdFileAttribute, OnMismatchStatementAttribute,
+        NoImplicitUseFileAttribute, NoReuseStatementAttribute, OnMismatchStatementAttribute,
         OnUnimplementedStatementAttribute, OperatorPrecedenceStatementAttribute,
         PrivateStatementAttribute, RecursionLimitFileAttribute, SealedStatementAttribute,
         SpecializeStatementAttribute, SyntaxError,
@@ -17,7 +17,7 @@ use crate::{
 pub struct FileAttributes<D: Driver> {
     pub raw: Vec<parse::Attribute<D>>,
     pub help_url: Option<HelpUrlFileAttribute<D>>,
-    pub no_std: Option<NoStdFileAttribute<D>>,
+    pub no_implicit_use: Option<NoImplicitUseFileAttribute<D>>,
     pub recursion_limit: Option<RecursionLimitFileAttribute<D>>,
 }
 
@@ -26,7 +26,7 @@ impl<D: Driver> Default for FileAttributes<D> {
         Self {
             raw: Default::default(),
             help_url: Default::default(),
-            no_std: Default::default(),
+            no_implicit_use: Default::default(),
             recursion_limit: Default::default(),
         }
     }

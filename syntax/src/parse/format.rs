@@ -34,7 +34,11 @@ pub fn format(code: &str) -> Option<String> {
 
         fn make_span(&self, _path: Self::Path, _range: std::ops::Range<usize>) -> Self::Span {}
 
-        fn std_path(&self) -> Option<Self::Path> {
+        fn implicit_entrypoint_imports(&self) -> Vec<Self::Path> {
+            unimplemented!()
+        }
+
+        fn implicit_dependency_imports(&self) -> Vec<Self::Path> {
             unimplemented!()
         }
 

@@ -289,10 +289,21 @@ pub(crate) async fn build<D: Driver>(
 
     let mut queue = Vec::new();
 
-    if ast_builder.attributes.lock().no_std.is_none() {
-        if let Some(std_path) = ast_builder.driver.std_path() {
-            queue.push(std_path);
-        }
+    let implicit_imports = ast_builder
+        .attributes
+        .lock()
+        .no_implicit_use
+        .is_none()
+        .then(|| {
+            if ast_builder.file.is_entrypoint() {
+                ast_builder.driver.implicit_entrypoint_imports()
+            } else {
+                ast_builder.driver.implicit_dependency_imports()
+            }
+        });
+
+    if let Some(implicit_imports) = implicit_imports.as_ref() {
+        queue.extend(implicit_imports.clone());
     }
 
     let statements = stream::iter(parse_file.statements)
@@ -322,12 +333,12 @@ pub(crate) async fn build<D: Driver>(
 
     ast_builder.driver.queue_files(Some(path), queue).await;
 
-    if ast_builder.attributes.lock().no_std.is_none() {
-        if let Some(std_path) = ast_builder.driver.std_path() {
+    if let Some(implicit_imports) = implicit_imports {
+        for implicit_path in implicit_imports {
             ast_builder
                 .driver
                 .clone()
-                .syntax_of(Some((path, ast_builder.file.clone())), None, std_path)
+                .syntax_of(Some((path, ast_builder.file.clone())), None, implicit_path)
                 .await;
         }
     }

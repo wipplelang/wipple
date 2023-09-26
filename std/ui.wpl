@@ -1,4 +1,4 @@
-[[no-std]]
+[[no-implicit-use]]
 
 [help "Use a UI element from a JavaScript file."]
 [help-group "User Interface"]

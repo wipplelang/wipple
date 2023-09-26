@@ -1,4 +1,4 @@
-[[no-std]]
+[[no-implicit-use]]
 [[help-url "https://wipple.dev/doc/std.html"]]
 
 use "async"

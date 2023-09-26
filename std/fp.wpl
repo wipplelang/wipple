@@ -1,4 +1,4 @@
-[[no-std]]
+[[no-implicit-use]]
 
 [help "Returns its input unmodified."]
 [help-group "Utilities"]

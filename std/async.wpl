@@ -1,4 +1,4 @@
-[[no-std]]
+[[no-implicit-use]]
 
 use "math"
 

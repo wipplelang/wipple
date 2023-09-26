@@ -34,6 +34,7 @@ use wipple_util::Backtrace;
 pub struct Options {
     progress: Option<Shared<Box<dyn Fn(Progress) + Send + Sync>>>,
     lint: bool,
+    implicit_imports: Vec<FilePath>,
 }
 
 impl Options {
@@ -41,6 +42,7 @@ impl Options {
         Options {
             progress: None,
             lint: true,
+            implicit_imports: Vec::new(),
         }
     }
 
@@ -54,6 +56,11 @@ impl Options {
 
     pub fn lint(mut self, lint: bool) -> Self {
         self.lint = lint;
+        self
+    }
+
+    pub fn with_implicit_imports(mut self, imports: impl IntoIterator<Item = FilePath>) -> Self {
+        self.implicit_imports = Vec::from_iter(imports);
         self
     }
 }
@@ -225,8 +232,17 @@ impl wipple_syntax::Driver for Analysis {
         SpanList::from(Span::new(path, range))
     }
 
-    fn std_path(&self) -> Option<Self::Path> {
-        self.compiler.loader.std_path()
+    fn implicit_entrypoint_imports(&self) -> Vec<Self::Path> {
+        self.compiler
+            .loader
+            .std_path()
+            .into_iter()
+            .chain(self.options.implicit_imports.clone())
+            .collect()
+    }
+
+    fn implicit_dependency_imports(&self) -> Vec<Self::Path> {
+        Vec::from_iter(self.compiler.loader.std_path())
     }
 
     async fn queue_files(&self, source_path: Option<Self::Path>, paths: Vec<Self::Path>) {
@@ -381,6 +397,7 @@ impl wipple_syntax::Driver for Analysis {
         self.stack.lock().push(resolved_path);
 
         let file = File {
+            is_entrypoint: source_file.is_none(),
             code,
             compiler: self.compiler.clone(),
             path: resolved_path,
@@ -473,6 +490,7 @@ impl wipple_syntax::Span for SpanList {
 pub struct File {
     compiler: Compiler,
     path: FilePath,
+    is_entrypoint: bool,
     code: Arc<str>,
     dependencies: Shared<Vec<Arc<wipple_syntax::ast::File<Analysis>>>>,
     syntax_declarations:
@@ -492,6 +510,10 @@ pub struct File {
 }
 
 impl wipple_syntax::File<Analysis> for File {
+    fn is_entrypoint(&self) -> bool {
+        self.is_entrypoint
+    }
+
     fn code(&self) -> &str {
         &self.code
     }

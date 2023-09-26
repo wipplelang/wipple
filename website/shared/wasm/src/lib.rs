@@ -285,6 +285,7 @@ fn get_analysis<'a>() -> Option<MappedMutexGuard<'a, Analysis>> {
 pub fn analyze(
     code: String,
     lint: bool,
+    kind: Option<String>,
     handle_plugin: js_sys::Function,
     callback: js_sys::Function,
 ) {
@@ -382,7 +383,13 @@ pub fn analyze(
         let (program, diagnostics) = COMPILER
             .analyze_with(
                 wipple_frontend::FilePath::Virtual(*PLAYGROUND_PATH),
-                &wipple_frontend::analysis::Options::new().lint(lint),
+                &wipple_frontend::analysis::Options::new()
+                    .lint(lint)
+                    .with_implicit_imports(kind.map(|path| {
+                        wipple_frontend::FilePath::Path(
+                            wipple_frontend::helpers::InternedString::new(path),
+                        )
+                    })),
             )
             .await;
 

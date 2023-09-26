@@ -1,6 +1,6 @@
 definitions! {
     mod help_url;
-    mod no_std;
+    mod no_implicit_use;
     mod recursion_limit;
 }
 
@@ -20,7 +20,7 @@ syntax_group! {
     pub type FileAttribute<FileAttributeSyntaxContext> {
         non_terminal: {
             HelpUrl,
-            NoStd,
+            NoImplicitUse,
             RecursionLimit,
         },
         terminal: {},
