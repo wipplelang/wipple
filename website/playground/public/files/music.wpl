@@ -46,7 +46,17 @@ Instrument : type {
 
 [context]
 instrument :: Instrument
-instrument : acoustic-grand-piano
+instrument : load-instrument acoustic-grand-piano
+
+load-instrument :: Instrument-Name -> Instrument
+load-instrument : instrument-name -> {
+  handle of music . message "load-instrument" (name of instrument-name)
+
+  Instrument {
+    name : instrument-name
+    delta : mutable 0
+  }
+}
 
 [help "Play an instrument."]
 [help-group "Music"]
@@ -101,7 +111,6 @@ rest : length -> notes (list) length
 [entrypoint]
 entrypoint :: Entrypoint
 entrypoint : program -> with-music { program () }
-
 
 [help "An instrument you can use with `load-instrument`."]
 [help-group "Music"]

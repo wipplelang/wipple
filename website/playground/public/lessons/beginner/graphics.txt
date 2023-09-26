@@ -16,56 +16,14 @@ type: text
 locked: true
 ---
 
-Let's learn some more Wipple commands by drawing some graphics!
-
-All of Wipple's graphics functionality is in a file, or **library**, named `turtle`. We can write `use "turtle"` at the top of our code to tell the computer that we'd like to access to the turtle graphics library:
+Let's learn some more Wipple commands by drawing some graphics! Click **Turtle** in the box below to start.
 
 ---
-id: 8uH-M6ww
-type: code
+id: XP_lw27j
+type: picker
 ---
 
-use "turtle"
 
----
-id: PywAcOaX
-type: text
-locked: true
----
-
-Don't forget to write `use "turtle"` at the top of every code block!
-
-Next, we can create a turtle using the `with-turtle` command:
-
----
-id: tVT53pcn
-type: code
----
-
-use "turtle"
-
-with-turtle {
-  -- More to follow...
-}
-
----
-id: v9th9bx8
-type: text
-locked: true
----
-
-Great! The `with-turtle` command accepts a "block" of code, which begins with `{` and ends with `}`. (These symbols are called **braces** and are located above the Return key on your keyboard.) Similar to parentheses, a **block** is a way to group multiple commands into one. The thing to remember is that all of your drawing commands must go inside the block.
-
----
-id: WKUel-ak
-type: code
----
-
-use "turtle"
-
-with-turtle {
-  forward (50 pixels)
-}
 
 ---
 id: uz7Cf3yF
@@ -73,25 +31,37 @@ type: text
 locked: true
 ---
 
-As you can see, the `forward` command lets us move the turtle forward by a number of `pixels`. We also have the `backward`, `left` and `right` commands to control the turtle's movement. Let's draw a square!
+The turtle moves around based on your commands. The `forward` command lets us move the turtle forward by a number of `pixels`:
 
 ---
-id: 6vb4ybv9
+id: 6rHumtfp
 type: code
+setup: turtle
 ---
 
-use "turtle"
+forward (50 pixels)
 
-with-turtle {
-  forward (50 pixels)
-  left (90 degrees)
-  forward (50 pixels)
-  left (90 degrees)
-  forward (50 pixels)
-  left (90 degrees)
-  forward (50 pixels)
-  left (90 degrees)
-}
+---
+id: adX84t54
+type: text
+---
+
+We also have the `backward`, `left` and `right` commands to control the turtle's movement. Let's draw a square!
+
+---
+id: Vn7dOoiZ
+type: code
+setup: turtle
+---
+
+forward (50 pixels)
+left (90 degrees)
+forward (50 pixels)
+left (90 degrees)
+forward (50 pixels)
+left (90 degrees)
+forward (50 pixels)
+left (90 degrees)
 
 ---
 id: P__ROLa0
@@ -102,17 +72,14 @@ locked: true
 Hmm, notice how we repeat the same two lines of code multiple times? There's a better way to do this, with the `repeat` command!
 
 ---
-id: jzr7pshk
+id: 7gSd_8oy
 type: code
+setup: turtle
 ---
 
-use "turtle"
-
-with-turtle {
-  repeat (4 times) {
-    forward (50 pixels)
-    left (90 degrees)
-  }
+repeat (4 times) {
+  forward (50 pixels)
+  left (90 degrees)
 }
 
 ---
@@ -121,31 +88,32 @@ type: text
 locked: true
 ---
 
-The `repeat` command accepts a number of `times`, and repeats the block of code that number of times. `repeat` is very useful, and we'll be using it a lot!
+The `repeat` command accepts a number of `times`, and repeats the provided code that number of times. Don't forget to put the code between curly braces (`{` and `}`)! This tells the computer to only repeat the commands between the braces.
 
 Here are a few more commands:
 
+-  `icon` lets you change the turtle to whatever you want — click on the image box to select an icon!
+-  `width` and `height` let you change the size of the canvas.
+-  `color` lets you change the color of the line being drawn — click on the color to change it!
+
 ---
-id: rS44ihW_
+id: 9vNnefoP
 type: code
+setup: turtle
 ---
 
-use "turtle"
+icon `😀`
+width (500 pixels)
+right (90 degrees)
 
-with-turtle {
-  icon `😀`
-  width (500 pixels)
-  right (90 degrees)
+color `red`
+forward (50 pixels)
 
-  color `red`
-  forward (50 pixels)
+color `green`
+forward (50 pixels)
 
-  color `green`
-  forward (50 pixels)
-
-  color `blue`
-  forward (50 pixels)
-}
+color `blue`
+forward (50 pixels)
 
 ---
 id: wGHvKzZB
@@ -153,11 +121,10 @@ type: text
 locked: true
 ---
 
-You can change the colors by clicking on them. If you want to add a new color, click the `+` button in the top right and select the color symbol.
-
 Try drawing your own shapes in the space below! If you run into an error, be sure to hover your mouse over the code highlighted in red to see how to fix the problem.
 
 ---
-id: oJoojiVl
+id: 6Igl0a3t
 type: code
+setup: turtle
 ---
