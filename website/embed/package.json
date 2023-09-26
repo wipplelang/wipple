@@ -4,7 +4,7 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "tsc && vite build"
+        "build": "NODE_OPTIONS=--max-old-space-size=8192 tsc && vite build"
     },
     "dependencies": {
         "@emotion/react": "^11.10.6",
