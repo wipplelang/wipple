@@ -15,3 +15,5 @@ use "sequence"
 use "text"
 use "ui"
 use "util"
+
+Entrypoint : type ((() -> ()) -> ())

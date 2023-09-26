@@ -405,7 +405,7 @@ impl LanguageServer for Backend {
             expr.traverse(
                 |expr| {
                     // Don't show type of entire file
-                    if let Some(entrypoint) = document.program.entrypoint {
+                    if let Some(entrypoint) = document.program.top_level {
                         if let Some(item) = document.program.items.get(&entrypoint) {
                             let item = item.read();
                             let (_, item) = &*item;

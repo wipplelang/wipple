@@ -17,6 +17,7 @@ pub struct Program {
     pub structures: BTreeMap<StructureId, Vec<Type>>,
     pub enumerations: BTreeMap<EnumerationId, Vec<Vec<Type>>>,
     pub entrypoint: ItemId,
+    pub entrypoint_wrapper: Option<ItemId>,
 }
 
 #[derive(Debug, Clone)]
@@ -138,7 +139,7 @@ impl Compiler {
                         converter.convert_expr(
                             item,
                             program
-                                .entrypoint
+                                .top_level
                                 .map_or(true, |entrypoint| id != entrypoint),
                         ),
                     )
@@ -147,7 +148,8 @@ impl Compiler {
             contexts: program.contexts.clone(),
             structures: converter.structures,
             enumerations: converter.enumerations,
-            entrypoint: program.entrypoint.expect("no entrypoint provided"),
+            entrypoint: program.top_level.expect("no entrypoint provided"),
+            entrypoint_wrapper: program.entrypoint_wrapper,
         }
     }
 }

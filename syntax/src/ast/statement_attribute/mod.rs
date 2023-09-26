@@ -5,6 +5,7 @@ definitions! {
     mod derive;
     mod diagnostic_alias;
     mod diagnostic_item;
+    mod entrypoint;
     mod help;
     mod help_group;
     mod help_playground;
@@ -42,6 +43,7 @@ syntax_group! {
             Derive,
             DiagnosticAlias,
             DiagnosticItem,
+            Entrypoint,
             Help,
             HelpGroup,
             HelpPlayground,

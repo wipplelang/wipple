@@ -1,0 +1,8 @@
+[entrypoint]
+entrypoint :: Entrypoint
+entrypoint : program -> {
+    program ()
+    program ()
+}
+
+show "Hello, world!"

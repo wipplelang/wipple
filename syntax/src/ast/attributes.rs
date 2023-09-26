@@ -2,13 +2,14 @@ use crate::{
     ast::{
         format::Format, AllowOverlappingInstancesStatementAttribute, ContextualStatementAttribute,
         ConvertFromStatementAttribute, DeriveStatementAttribute, DiagnosticAliasStatementAttribute,
-        DiagnosticItemStatementAttribute, HelpGroupStatementAttribute,
-        HelpPlaygroundStatementAttribute, HelpStatementAttribute, HelpTemplateStatementAttribute,
-        HelpUrlFileAttribute, KeywordStatementAttribute, LanguageItemStatementAttribute,
-        NoImplicitUseFileAttribute, NoReuseStatementAttribute, OnMismatchStatementAttribute,
-        OnUnimplementedStatementAttribute, OperatorPrecedenceStatementAttribute,
-        PrivateStatementAttribute, RecursionLimitFileAttribute, SealedStatementAttribute,
-        SpecializeStatementAttribute, SyntaxError,
+        DiagnosticItemStatementAttribute, EntrypointStatementAttribute,
+        HelpGroupStatementAttribute, HelpPlaygroundStatementAttribute, HelpStatementAttribute,
+        HelpTemplateStatementAttribute, HelpUrlFileAttribute, KeywordStatementAttribute,
+        LanguageItemStatementAttribute, NoImplicitUseFileAttribute, NoReuseStatementAttribute,
+        OnMismatchStatementAttribute, OnUnimplementedStatementAttribute,
+        OperatorPrecedenceStatementAttribute, PrivateStatementAttribute,
+        RecursionLimitFileAttribute, SealedStatementAttribute, SpecializeStatementAttribute,
+        SyntaxError,
     },
     parse, Driver,
 };
@@ -73,6 +74,7 @@ pub struct StatementAttributes<D: Driver> {
     pub private: Option<PrivateStatementAttribute<D>>,
     pub sealed: Option<SealedStatementAttribute<D>>,
     pub no_reuse: Option<NoReuseStatementAttribute<D>>,
+    pub entrypoint: Option<EntrypointStatementAttribute<D>>,
 }
 
 impl<D: Driver> Default for StatementAttributes<D> {
@@ -98,6 +100,7 @@ impl<D: Driver> Default for StatementAttributes<D> {
             private: Default::default(),
             sealed: Default::default(),
             no_reuse: Default::default(),
+            entrypoint: Default::default(),
         }
     }
 }

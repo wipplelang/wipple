@@ -56,7 +56,7 @@ pub fn document(
         .items
         .get(
             program
-                .entrypoint
+                .top_level
                 .as_ref()
                 .expect("compilation failed; no entrypoint set"),
         )

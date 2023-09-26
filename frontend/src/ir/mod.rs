@@ -137,7 +137,7 @@ impl Compiler {
 
         for (id, item) in &program.items {
             let label = gen.new_label(|_, _| {
-                if *id == program.entrypoint {
+                if program.entrypoint_wrapper.is_none() && *id == program.entrypoint {
                     LabelKind::Entrypoint
                 } else {
                     LabelKind::Constant(item.ty.clone())
@@ -150,9 +150,31 @@ impl Compiler {
         for (id, constant) in program.items {
             let label = *gen.items.get(&id).unwrap();
             let mut pos = gen.new_basic_block(label, "item entrypoint");
-            gen.gen_expr(constant, label, &mut pos);
-            *gen.terminator_for(label, pos) = Some(Terminator::Return);
+
+            macro_rules! gen_item {
+                () => {{
+                    gen.gen_expr(constant, label, &mut pos);
+                    *gen.terminator_for(label, pos) = Some(Terminator::Return);
+                }};
+            }
+
+            if let Some(entrypoint_wrapper) = program.entrypoint_wrapper {
+                if id == entrypoint_wrapper {
+                    gen.gen_entrypoint_wrapper(constant, program.entrypoint, label, &mut pos);
+                } else if id == program.entrypoint {
+                    gen.gen_wrapped_entrypoint(constant, label, &mut pos);
+                } else {
+                    gen_item!();
+                }
+            } else {
+                gen_item!();
+            }
         }
+
+        let entrypoint = *gen
+            .items
+            .get(&program.entrypoint_wrapper.unwrap_or(program.entrypoint))
+            .unwrap();
 
         Program {
             labels: gen
@@ -162,7 +184,7 @@ impl Compiler {
                 .collect(),
             structures: gen.structures,
             enumerations: gen.enumerations,
-            entrypoint: *gen.items.get(&program.entrypoint).unwrap(),
+            entrypoint,
         }
     }
 }
@@ -227,6 +249,56 @@ impl IrGen {
 }
 
 impl IrGen {
+    fn gen_entrypoint_wrapper(
+        &mut self,
+        expr: ssa::Expression,
+        wrapped: ItemId,
+        label: usize,
+        pos: &mut usize,
+    ) {
+        self.gen_expr(expr, label, pos);
+
+        let id = *self
+            .items
+            .get(&wrapped)
+            .unwrap_or_else(|| panic!("cannot find {wrapped:?}"));
+
+        self.statements_for(label, *pos).push(Statement::Expression(
+            Type::FunctionReference(
+                Box::new(Type::Tuple(Vec::new())),
+                Box::new(Type::Tuple(Vec::new())),
+            ),
+            Expression::Constant(id),
+        ));
+
+        *self.terminator_for(label, *pos) = Some(Terminator::TailCall);
+    }
+
+    fn gen_wrapped_entrypoint(&mut self, expr: ssa::Expression, label: usize, pos: &mut usize) {
+        let wrapped_label = self.new_label(|_, _| {
+            LabelKind::Function(Type::Tuple(Vec::new()), Type::Tuple(Vec::new()))
+        });
+
+        let mut wrapped_pos = self.new_basic_block(wrapped_label, "wrapped entrypoint");
+
+        self.statements_for(wrapped_label, wrapped_pos)
+            .push(Statement::Drop);
+
+        self.gen_expr(expr, wrapped_label, &mut wrapped_pos);
+
+        *self.terminator_for(wrapped_label, wrapped_pos) = Some(Terminator::Return);
+
+        self.statements_for(label, *pos).push(Statement::Expression(
+            Type::FunctionReference(
+                Box::new(Type::Tuple(Vec::new())),
+                Box::new(Type::Tuple(Vec::new())),
+            ),
+            Expression::Function(wrapped_label),
+        ));
+
+        *self.terminator_for(label, *pos) = Some(Terminator::Return);
+    }
+
     fn gen_expr(&mut self, expr: ssa::Expression, label: usize, pos: &mut usize) {
         match expr.kind {
             ssa::ExpressionKind::Marker => {

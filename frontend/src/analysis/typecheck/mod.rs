@@ -44,7 +44,8 @@ pub enum Progress {
 pub struct Program {
     pub items: BTreeMap<ItemId, RwLock<(Option<(Option<TraitId>, ConstantId)>, Expression)>>,
     pub contexts: BTreeMap<ConstantId, ItemId>,
-    pub entrypoint: Option<ItemId>,
+    pub top_level: Option<ItemId>,
+    pub entrypoint_wrapper: Option<ItemId>,
     pub file_attributes: BTreeMap<FilePath, lower::FileAttributes>,
     pub declarations: Declarations,
     pub exported: HashMap<InternedString, HashSet<lower::AnyDeclaration>>,
@@ -621,11 +622,11 @@ impl Error {
 impl Compiler {
     pub(crate) async fn typecheck_with_progress(
         &self,
-        entrypoint: lower::File,
+        top_level: lower::File,
         complete: bool,
         mut progress: impl FnMut(Progress),
     ) -> Program {
-        let mut typechecker = Typechecker::new(self.clone(), entrypoint);
+        let mut typechecker = Typechecker::new(self.clone(), top_level);
 
         progress(Progress::CollectingTypes);
         typechecker.collect_types();
@@ -641,9 +642,9 @@ impl Compiler {
 #[derive(Debug, Clone)]
 struct Typechecker {
     compiler: Compiler,
-    entrypoint: lower::File,
+    top_level: lower::File,
     exported: HashMap<InternedString, HashSet<lower::AnyDeclaration>>,
-    lowered_entrypoint_expr: lower::Expression,
+    lowered_top_level_expr: lower::Expression,
     ctx: engine::Context,
     declarations: RefCell<DeclarationsInner>,
     instances: im::OrdMap<TraitId, Vec<ConstantId>>,
@@ -653,8 +654,8 @@ struct Typechecker {
     item_queue: im::Vector<QueuedItem>,
     items: im::OrdMap<ItemId, (Option<(Option<TraitId>, ConstantId)>, Option<Expression>)>,
     used: RefCell<im::OrdMap<VariableId, Vec<SpanList>>>,
-    entrypoint_expr: Option<UnresolvedExpression>,
-    entrypoint_item: Option<ItemId>,
+    top_level_expr: Option<UnresolvedExpression>,
+    top_level_item: Option<ItemId>,
     errors: RefCell<im::Vector<Error>>,
 }
 
@@ -665,7 +666,7 @@ struct QueuedItem {
     expr: UnresolvedExpression,
     info: MonomorphizeInfo,
     contextual: bool,
-    entrypoint: bool,
+    top_level: bool,
 }
 
 impl Typechecker {
@@ -686,22 +687,22 @@ impl Typechecker {
 }
 
 impl Typechecker {
-    pub fn new(compiler: Compiler, mut entrypoint_file: lower::File) -> Self {
-        let lowered_entrypoint_expr = lower::Expression {
+    pub fn new(compiler: Compiler, mut top_level_file: lower::File) -> Self {
+        let lowered_top_level_expr = lower::Expression {
             id: compiler.new_expression_id(None),
-            span: entrypoint_file.span,
-            kind: lower::ExpressionKind::Block(mem::take(&mut entrypoint_file.statements), true),
+            span: top_level_file.span,
+            kind: lower::ExpressionKind::Block(mem::take(&mut top_level_file.statements), true),
         };
 
-        let exported = mem::take(&mut entrypoint_file.exported)
+        let exported = mem::take(&mut top_level_file.exported)
             .into_iter()
             .map(|(name, values)| (name, values.into_iter().map(|(_, value)| value).collect()))
             .collect::<HashMap<_, _>>();
 
         Typechecker {
             compiler,
-            entrypoint: entrypoint_file,
-            lowered_entrypoint_expr,
+            top_level: top_level_file,
+            lowered_top_level_expr,
             exported,
             ctx: Default::default(),
             declarations: Default::default(),
@@ -712,8 +713,8 @@ impl Typechecker {
             item_queue: Default::default(),
             items: Default::default(),
             used: Default::default(),
-            entrypoint_expr: Default::default(),
-            entrypoint_item: None,
+            top_level_expr: Default::default(),
+            top_level_item: None,
             errors: Default::default(),
         }
     }
@@ -727,29 +728,74 @@ impl Typechecker {
         lowering_is_complete: bool,
         mut progress: impl FnMut(usize, usize),
     ) -> Program {
-        // Queue the entrypoint
+        // Queue the top level
 
-        let entrypoint_item = mem::take(&mut self.entrypoint_expr).map(|entrypoint| {
-            let entrypoint_id = self.compiler.new_item_id_in(entrypoint.span.first().path);
+        let top_level_item = mem::take(&mut self.top_level_expr).map(|top_level| {
+            let top_level_id = self.compiler.new_item_id_in(top_level.span.first().path);
             let info = MonomorphizeInfo::default();
 
             self.item_queue.push_back(QueuedItem {
                 generic_id: None,
-                id: entrypoint_id,
-                expr: entrypoint,
+                id: top_level_id,
+                expr: top_level,
                 info,
                 contextual: false,
-                entrypoint: true,
+                top_level: true,
             });
 
-            entrypoint_id
+            top_level_id
         });
 
-        self.entrypoint_item = entrypoint_item;
+        self.top_level_item = top_level_item;
+
+        if let Some(entrypoint) = self.top_level.info.entrypoint {
+            if let Some(decl) = self.with_constant_decl(entrypoint, |decl| decl.clone()) {
+                if decl.ty
+                    != engine::Type::Function(
+                        Box::new(engine::Type::Function(
+                            Box::new(engine::Type::Tuple(Vec::new())),
+                            Box::new(engine::Type::Tuple(Vec::new())),
+                        )),
+                        Box::new(engine::Type::Tuple(Vec::new())),
+                    )
+                {
+                    self.compiler.add_error(
+                        "wrong type for entrypoint",
+                        vec![Note::primary(
+                            decl.span,
+                            "this should have a type of `Entrypoint`",
+                        )],
+                        "",
+                    );
+                }
+
+                if !decl.params.is_empty() || !decl.bounds.is_empty() {
+                    self.compiler.add_error(
+                        "entrypoint may not be generic",
+                        vec![Note::primary(
+                            decl.span,
+                            "this should have no type parameters or bounds",
+                        )],
+                        "",
+                    );
+                }
+
+                self.typecheck_constant_expr(
+                    false,
+                    None,
+                    entrypoint,
+                    None,
+                    decl.span,
+                    decl.ty.into(),
+                    MonomorphizeInfo::default(),
+                )
+                .expect("specialized constants may not contain bounds");
+            }
+        }
 
         // Monomorphize constants
 
-        let mut entrypoint_expr = None;
+        let mut top_level_expr = None;
         if lowering_is_complete {
             macro_rules! process_queue {
                 () => {{
@@ -778,8 +824,8 @@ impl Typechecker {
                             }
                         }
 
-                        if item.entrypoint {
-                            entrypoint_expr = Some(expr.clone());
+                        if item.top_level {
+                            top_level_expr = Some(expr.clone());
                         }
 
                         self.items.get_mut(&item.id).unwrap().1 = Some(expr);
@@ -840,7 +886,7 @@ impl Typechecker {
                 *typechecker.items.get_mut(&id).unwrap().1.as_mut().unwrap() = expr;
             }
 
-            if let Some(id) = entrypoint_item {
+            if let Some(id) = top_level_item {
                 specialize(
                     &mut self,
                     id,
@@ -951,7 +997,7 @@ impl Typechecker {
                 }
             }
 
-            if let Some(expr) = entrypoint_expr {
+            if let Some(expr) = top_level_expr {
                 self.check_exhaustiveness(&expr);
                 self.check_usage(&expr);
             }
@@ -965,8 +1011,13 @@ impl Typechecker {
                 .map(|(id, (ids, expr))| (id, RwLock::new((ids, expr.unwrap()))))
                 .collect(),
             contexts: self.contexts,
-            entrypoint: entrypoint_item,
-            file_attributes: self.entrypoint.attributes,
+            top_level: top_level_item,
+            entrypoint_wrapper: self
+                .top_level
+                .info
+                .entrypoint
+                .and_then(|id| generic_id_map.get(&id).copied()),
+            file_attributes: self.top_level.attributes,
             exported: self.exported,
             declarations: self.declarations.into_inner().into(),
         }
@@ -978,7 +1029,7 @@ impl Typechecker {
         info: &mut MonomorphizeInfo,
     ) -> MonomorphizedExpression {
         let recursion_limit = self
-            .entrypoint
+            .top_level
             .info
             .recursion_limit
             .unwrap_or(Compiler::DEFAULT_RECURSION_LIMIT);
@@ -1068,13 +1119,13 @@ impl Typechecker {
 impl Typechecker {
     pub fn collect_types(&mut self) {
         let mut info = ConvertInfo::new(None);
-        let expr = self.convert_expr(self.lowered_entrypoint_expr.clone(), &mut info);
-        self.entrypoint_expr = Some(expr);
+        let expr = self.convert_expr(self.lowered_top_level_expr.clone(), &mut info);
+        self.top_level_expr = Some(expr);
 
         macro_rules! declaration {
             ($kind:ident) => {
                 paste::paste! {
-                    self.entrypoint
+                    self.top_level
                         .declarations
                         .$kind
                         .keys()
@@ -1479,7 +1530,7 @@ impl Typechecker {
             expr: generic_expr,
             info: monomorphize_info,
             contextual,
-            entrypoint: false,
+            top_level: false,
         });
 
         Ok(monomorphized_id)
@@ -2253,7 +2304,7 @@ impl Typechecker {
                 }
             }
             lower::ExpressionKind::Format(segments, trailing_segment) => {
-                let show_trait = match self.entrypoint.info.language_items.show {
+                let show_trait = match self.top_level.info.language_items.show {
                     Some(show_trait) => show_trait,
                     None => {
                         self.compiler.add_error(
@@ -2949,7 +3000,7 @@ impl Typechecker {
             guard: arm.guard.map(|guard| {
                 let guard = self.monomorphize_expr(guard, info);
 
-                if let Some(boolean_ty) = self.entrypoint.info.language_items.boolean {
+                if let Some(boolean_ty) = self.top_level.info.language_items.boolean {
                     if let Err(error) = self.unify(
                         guard.id,
                         guard.span,
@@ -3322,7 +3373,7 @@ impl Typechecker {
         info: &mut MonomorphizeInfo,
     ) -> Result<Option<ConstantId>, FindInstanceError> {
         let recursion_limit = self
-            .entrypoint
+            .top_level
             .info
             .recursion_limit
             .unwrap_or(Compiler::DEFAULT_RECURSION_LIMIT);
@@ -4068,7 +4119,7 @@ impl Typechecker {
             return Some(f(decl));
         }
 
-        let decl = self.entrypoint.declarations.syntaxes.get(&id)?.clone();
+        let decl = self.top_level.declarations.syntaxes.get(&id)?.clone();
 
         let decl = SyntaxDecl {
             name: decl
@@ -4094,7 +4145,7 @@ impl Typechecker {
             return Some(f(decl));
         }
 
-        let decl = self.entrypoint.declarations.types.get(&id)?.clone();
+        let decl = self.top_level.declarations.types.get(&id)?.clone();
 
         let decl = TypeDecl {
             name: decl
@@ -4169,7 +4220,7 @@ impl Typechecker {
             return Some(f(decl));
         }
 
-        let decl = self.entrypoint.declarations.traits.get(&id)?.clone();
+        let decl = self.top_level.declarations.traits.get(&id)?.clone();
 
         let decl = TraitDecl {
             name: decl
@@ -4203,7 +4254,7 @@ impl Typechecker {
             return Some(f(decl));
         }
 
-        let decl = self.entrypoint.declarations.constants.get(&id)?.clone();
+        let decl = self.top_level.declarations.constants.get(&id)?.clone();
 
         self.generic_constants.insert(id, (false, decl.value.value));
 
@@ -4256,7 +4307,7 @@ impl Typechecker {
             ty,
             reduced_ty: None,
             specializations: self
-                .entrypoint
+                .top_level
                 .specializations
                 .get(&id)
                 .cloned()
@@ -4280,7 +4331,7 @@ impl Typechecker {
         id: ConstantId,
         f: impl FnOnce(&InstanceDecl) -> T,
     ) -> Option<T> {
-        let decl = self.entrypoint.declarations.instances.get(&id)?.clone();
+        let decl = self.top_level.declarations.instances.get(&id)?.clone();
 
         let trait_id = decl.value.tr;
 
@@ -4508,7 +4559,7 @@ impl Typechecker {
             return Some(f(decl));
         }
 
-        let decl = self.entrypoint.declarations.builtin_types.get(&id)?.clone();
+        let decl = self.top_level.declarations.builtin_types.get(&id)?.clone();
 
         let decl = BuiltinTypeDecl {
             name: decl
@@ -4537,7 +4588,7 @@ impl Typechecker {
         }
 
         let decl = self
-            .entrypoint
+            .top_level
             .declarations
             .type_parameters
             .get(&id)?
@@ -4572,7 +4623,7 @@ impl Typechecker {
             return Some(f(decl));
         }
 
-        let decl = self.entrypoint.declarations.variables.get(&id)?.clone();
+        let decl = self.top_level.declarations.variables.get(&id)?.clone();
 
         let decl = VariableDecl {
             name: decl.name,
@@ -4599,7 +4650,7 @@ impl Typechecker {
         }
 
         let decl = self
-            .entrypoint
+            .top_level
             .declarations
             .builtin_syntaxes
             .get(&id)?
@@ -4778,7 +4829,7 @@ impl Typechecker {
                     })
                     .collect::<Vec<_>>();
 
-                let ty = self.entrypoint.declarations.types.get(&id).unwrap().clone();
+                let ty = self.top_level.declarations.types.get(&id).unwrap().clone();
 
                 for param in ty.value.parameters.iter().skip(params.len()) {
                     let name = match self.with_type_parameter_decl(*param, |decl| decl.name) {
@@ -4871,7 +4922,7 @@ impl Typechecker {
             TypeAnnotationKind::Parameter(id) => engine::UnresolvedType::Parameter(id),
             TypeAnnotationKind::Builtin(id, mut parameters) => {
                 let builtin_ty = self
-                    .entrypoint
+                    .top_level
                     .declarations
                     .builtin_types
                     .get(&id)
@@ -5730,7 +5781,7 @@ impl Typechecker {
                         if let Some(id) = constant_id {
                             if let Some((Some((_, constant)), _)) = self.items.get(id) {
                                 if self
-                                    .entrypoint
+                                    .top_level
                                     .info
                                     .diagnostic_items
                                     .collection_elements
@@ -5907,7 +5958,7 @@ impl Typechecker {
                 .flatten(),
             None => self
                 .items
-                .get(&self.entrypoint_item?)
+                .get(&self.top_level_item?)
                 .and_then(|(_, expr)| expr.clone()),
         }
     }

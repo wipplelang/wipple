@@ -408,6 +408,7 @@ pub struct BuiltinSyntaxDeclaration {
 pub struct FileInfo {
     pub recursion_limit: Option<usize>,
     pub language_items: LanguageItems,
+    pub entrypoint: Option<ConstantId>,
     pub diagnostic_items: DiagnosticItems,
     pub diagnostic_aliases: DiagnosticAliases,
 }
@@ -421,6 +422,8 @@ impl FileInfo {
         };
 
         self.language_items.merge(other.language_items);
+
+        self.entrypoint = other.entrypoint.or(self.entrypoint);
 
         self.diagnostic_items.merge(other.diagnostic_items);
 
@@ -1927,6 +1930,41 @@ impl Lowerer {
                             self.file_info.language_items.show = Some(tr);
                         }
                     }
+                }
+            }
+
+            'entrypoint: {
+                if decl.attributes.entrypoint.is_some() {
+                    if self.file_info.entrypoint.is_some() {
+                        self.compiler.add_error(
+                            "`entrypoint` may only be defined once",
+                            vec![Note::primary(
+                                decl.span,
+                                "`entrypoint` already defined elsewhere",
+                            )],
+                            "",
+                        );
+
+                        break 'entrypoint;
+                    }
+
+                    let constant = match scope_value {
+                        Some(AnyDeclaration::Constant(id, _)) => id,
+                        _ => {
+                            self.compiler.add_error(
+                                "`entrypoint` expects a constant",
+                                vec![Note::primary(
+                                    decl.span,
+                                    "expected constant declaration here",
+                                )],
+                                "",
+                            );
+
+                            break 'entrypoint;
+                        }
+                    };
+
+                    self.file_info.entrypoint = Some(constant);
                 }
             }
 

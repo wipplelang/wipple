@@ -515,7 +515,7 @@ pub mod unused {
     impl Program {
         pub(super) fn unused(mut self, options: Options, _compiler: &Compiler) -> Program {
             if options.constants {
-                if let Some(entrypoint) = self.entrypoint {
+                if let Some(entrypoint) = self.top_level {
                     let mut used = BTreeSet::from([entrypoint]);
 
                     fn track_used(program: &Program, item: ItemId, used: &mut BTreeSet<ItemId>) {

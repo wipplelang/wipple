@@ -1137,7 +1137,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
         expr.traverse(
             |expr| {
                 // Don't show type of entire file
-                if let Some(entrypoint) = &analysis.program.entrypoint {
+                if let Some(entrypoint) = &analysis.program.top_level {
                     if let Some(item) = analysis.program.items.get(entrypoint) {
                         let item = item.read();
                         let (_, item) = &*item;
