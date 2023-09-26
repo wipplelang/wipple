@@ -117,6 +117,7 @@ fn main() -> ExitCode {
         .spawn(|| {
             let rt = tokio::runtime::Builder::new_multi_thread()
                 .thread_stack_size(STACK_SIZE)
+                .enable_all()
                 .build()
                 .unwrap();
 
