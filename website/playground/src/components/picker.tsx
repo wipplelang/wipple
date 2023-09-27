@@ -14,7 +14,7 @@ export interface PickerProps {
 
 export const Picker = (props: PickerProps) => {
     return (
-        <div className="relative flex flex-col gap-4 p-4 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
+        <div className="relative flex flex-col gap-4 p-4 border-2 border-gray-100 dark:border-gray-700 rounded-lg text-black dark:text-white">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold">What would you like to create?</h1>
 
