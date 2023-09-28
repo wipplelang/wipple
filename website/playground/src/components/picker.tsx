@@ -83,19 +83,25 @@ const PickerItem = (props: {
     description: string;
     onSelect: () => void;
 }) => (
-    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg">
+    <div className="group bg-gray-50 dark:bg-gray-800 rounded-lg">
         <Button
             variant="outlined"
             color="inherit"
             sx={{ border: "none", padding: 2, width: "100%", height: "100%" }}
             onClick={props.onSelect}
         >
-            <div className="flex flex-col gap-2 w-full h-full">
-                {typeof props.icon === "string" ? (
-                    <img src={props.icon} className={props.iconClassName} />
-                ) : (
-                    <props.icon className={props.iconClassName} fontSize="large" color="inherit" />
-                )}
+            <div className="flex flex-col items-start gap-2 w-full h-full">
+                <div className="group-hover:scale-110 transition-transform">
+                    {typeof props.icon === "string" ? (
+                        <img src={props.icon} className={props.iconClassName} />
+                    ) : (
+                        <props.icon
+                            className={props.iconClassName}
+                            fontSize="large"
+                            color="inherit"
+                        />
+                    )}
+                </div>
 
                 <div className="flex flex-col normal-case text-left ui-font tracking-normal">
                     <p className="text-lg font-bold">{props.name}</p>
