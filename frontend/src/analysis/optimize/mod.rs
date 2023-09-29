@@ -280,7 +280,7 @@ pub mod propagate {
                                 |_| ControlFlow::Continue(()),
                             );
 
-                            ControlFlow::Continue(())
+                            ControlFlow::Break(false)
                         },
                         |_| ControlFlow::Continue(()),
                     );
@@ -558,6 +558,12 @@ pub mod unused {
 mod util {
     use super::*;
 
+    #[derive(Debug, Default)]
+    struct Info {
+        function_call: Option<BTreeSet<VariableId>>,
+        expanded_constant: bool,
+    }
+
     impl Expression {
         pub fn sub_expression_count(&self) -> usize {
             let mut count = 0;
@@ -572,15 +578,10 @@ mod util {
         }
 
         pub fn is_pure(&self, program: &Program) -> bool {
-            self.is_pure_inner(program, None, &mut Vec::new())
+            self.is_pure_inner(program, &mut Info::default())
         }
 
-        fn is_pure_inner(
-            &self,
-            program: &Program,
-            function_call: Option<&BTreeSet<VariableId>>,
-            stack: &mut Vec<ItemId>,
-        ) -> bool {
+        fn is_pure_inner(&self, program: &Program, info: &mut Info) -> bool {
             match &self.kind {
                 ExpressionKind::Error(_) => false,
                 ExpressionKind::Marker
@@ -593,21 +594,23 @@ mod util {
                 | ExpressionKind::Unsigned(_)
                 | ExpressionKind::Float(_)
                 | ExpressionKind::Double(_) => true,
-                ExpressionKind::Variable(var) => {
-                    function_call.map_or(false, |vars| vars.contains(var))
-                }
+                ExpressionKind::Variable(var) => info
+                    .function_call
+                    .as_ref()
+                    .map_or(false, |vars| vars.contains(var)),
                 ExpressionKind::Function(_, _, _) => true,
-                ExpressionKind::Block(exprs, _) => exprs
-                    .iter()
-                    .all(|expr| expr.is_pure_inner(program, function_call, stack)),
+                ExpressionKind::Block(exprs, _) => {
+                    exprs.iter().all(|expr| expr.is_pure_inner(program, info))
+                }
                 ExpressionKind::Call(func, input, _) => {
                     let mut func = func.as_ref().clone();
-                    let mut inner_function_call = None;
+                    let prev_function_call = mem::take(&mut info.function_call);
+                    let prev_expanded_constant = info.expanded_constant;
                     loop {
                         match &func.kind {
                             ExpressionKind::Function(pattern, body, captures) => {
                                 let function_call =
-                                    inner_function_call.get_or_insert_with(BTreeSet::new);
+                                    info.function_call.get_or_insert_with(BTreeSet::new);
                                 function_call.extend(pattern.variables());
                                 function_call.extend(captures.iter().map(|(var, _)| *var));
 
@@ -615,43 +618,47 @@ mod util {
                             }
                             ExpressionKind::Constant(constant)
                             | ExpressionKind::ExpandedConstant(constant) => {
-                                if let Some(body) = Self::constant_is_pure(
-                                    constant,
-                                    program,
-                                    inner_function_call.as_ref(),
-                                    stack,
-                                ) {
+                                if info.expanded_constant {
+                                    return false;
+                                } else if let Some(body) =
+                                    Self::pure_constant_body(constant, program, info)
+                                {
                                     func = body;
+                                    info.expanded_constant = true;
                                 } else {
-                                    break;
+                                    return false;
                                 }
                             }
                             _ => break,
                         }
                     }
 
-                    func.is_pure_inner(program, inner_function_call.as_ref(), stack)
-                        && input.is_pure_inner(program, function_call, stack)
+                    let func_is_pure = func.is_pure_inner(program, info);
+
+                    info.function_call = prev_function_call;
+                    info.expanded_constant = prev_expanded_constant;
+
+                    func_is_pure && input.is_pure_inner(program, info)
                 }
                 ExpressionKind::When(expr, arms) => {
-                    expr.is_pure_inner(program, function_call, stack)
+                    expr.is_pure_inner(program, info)
                         && arms
                             .iter()
                             .map(|arm| &arm.body)
-                            .all(|expr| expr.is_pure_inner(program, function_call, stack))
+                            .all(|expr| expr.is_pure_inner(program, info))
                 }
-                ExpressionKind::Structure(exprs) => exprs
-                    .iter()
-                    .all(|expr| expr.is_pure_inner(program, function_call, stack)),
-                ExpressionKind::Variant(_, exprs) => exprs
-                    .iter()
-                    .all(|expr| expr.is_pure_inner(program, function_call, stack)),
-                ExpressionKind::Tuple(exprs) => exprs
-                    .iter()
-                    .all(|expr| expr.is_pure_inner(program, function_call, stack)),
+                ExpressionKind::Structure(exprs) => {
+                    exprs.iter().all(|expr| expr.is_pure_inner(program, info))
+                }
+                ExpressionKind::Variant(_, exprs) => {
+                    exprs.iter().all(|expr| expr.is_pure_inner(program, info))
+                }
+                ExpressionKind::Tuple(exprs) => {
+                    exprs.iter().all(|expr| expr.is_pure_inner(program, info))
+                }
                 ExpressionKind::Format(segments, _) => segments
                     .iter()
-                    .all(|(_, expr)| expr.is_pure_inner(program, function_call, stack)),
+                    .all(|(_, expr)| expr.is_pure_inner(program, info)),
                 ExpressionKind::Plugin(_, _, _) => panic!("found unresolved plugin"),
                 ExpressionKind::Intrinsic(_, _)
                 | ExpressionKind::External(_, _, _)
@@ -660,45 +667,34 @@ mod util {
                 | ExpressionKind::ContextualConstant(_)
                 | ExpressionKind::End(_) => false,
                 ExpressionKind::Constant(constant) | ExpressionKind::ExpandedConstant(constant) => {
-                    Self::constant_is_pure(constant, program, function_call, stack).is_some()
+                    Self::pure_constant_body(constant, program, info).is_some()
                 }
                 ExpressionKind::Extend(value, fields) => {
-                    value.is_pure_inner(program, function_call, stack)
+                    value.is_pure_inner(program, info)
                         && fields
                             .values()
-                            .all(|field| field.is_pure_inner(program, function_call, stack))
+                            .all(|field| field.is_pure_inner(program, info))
                 }
                 ExpressionKind::Semantics(semantics, expr) => {
-                    *semantics == Semantics::Pure
-                        || expr.is_pure_inner(program, function_call, stack)
+                    *semantics == Semantics::Pure || expr.is_pure_inner(program, info)
                 }
             }
         }
 
-        fn constant_is_pure(
+        fn pure_constant_body(
             constant: &ItemId,
             program: &Program,
-            function_call: Option<&BTreeSet<VariableId>>,
-            stack: &mut Vec<ItemId>,
+            info: &mut Info,
         ) -> Option<Expression> {
-            if stack.contains(constant) {
-                return None;
-            }
-
             let item = match program.items.get(constant) {
                 Some(item) => item,
                 None => return None,
             };
 
-            stack.push(*constant);
-
             let item = item.read();
             let (_, body) = &*item;
 
-            let is_pure = body.is_pure_inner(program, function_call, stack);
-            stack.pop();
-
-            is_pure.then(|| body.clone())
+            body.is_pure_inner(program, info).then(|| body.clone())
         }
     }
 

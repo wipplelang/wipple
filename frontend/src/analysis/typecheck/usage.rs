@@ -61,11 +61,11 @@ impl Typechecker {
             typechecker: &Typechecker,
             branch: &mut Option<TrackUsed>,
             check_used: &impl Fn(VariableId, Vec<SpanList>, &mut TrackUsed),
-        ) -> ControlFlow<()> {
+        ) -> ControlFlow<bool, ()> {
             match &expr.kind {
                 analysis::ExpressionKind::Semantics(semantics, _) => {
                     if *semantics == analysis::Semantics::Nonconsuming {
-                        return ControlFlow::Break(());
+                        return ControlFlow::Break(true);
                     }
                 }
                 analysis::ExpressionKind::Variable(var) => {
@@ -107,7 +107,7 @@ impl Typechecker {
 
                     // Don't iterate over the `when` expression's children;
                     // we already do that above
-                    return ControlFlow::Break(());
+                    return ControlFlow::Break(true);
                 }
                 _ => {}
             }

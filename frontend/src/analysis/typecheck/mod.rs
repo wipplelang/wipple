@@ -500,7 +500,7 @@ impl Expression {
                 };
 
                 if contains_error {
-                    ControlFlow::Break(())
+                    ControlFlow::Break(false)
                 } else {
                     ControlFlow::Continue(())
                 }
