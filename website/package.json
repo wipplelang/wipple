@@ -1,7 +1,7 @@
 {
     "workspaces": [
-        "embed",
         "home",
+        "embed",
         "netlify",
         "playground",
         "shared"

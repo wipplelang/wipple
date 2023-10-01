@@ -55,7 +55,7 @@ import { Settings } from "../App";
 import { Popover } from "@mui/material";
 import { SwatchesPicker } from "react-color";
 import { closeBrackets } from "@codemirror/autocomplete";
-import { useCollaboration } from "../helpers";
+import { RemoteCursor, remoteCursors, remoteCursorsTheme, useCollaboration } from "../helpers";
 import PeopleAltRounded from "@mui/icons-material/PeopleAltRounded";
 import GroupAddRounded from "@mui/icons-material/GroupAddRounded";
 import { Piano } from "react-piano";
@@ -509,6 +509,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
         onPeerJoined: (user) => {
             connectedUsers.current.push(user);
             sendCodeToPeer(user);
+            sendCursorToPeer(user);
         },
         onPeerReceive: (user, data) => collaborationOnPeerReceive.current?.(user, data),
     });
@@ -519,14 +520,86 @@ export const CodeEditor = (props: CodeEditorProps) => {
         setUserId(userId);
     };
 
+    const joinedHostUserId = useRef<string | undefined>();
+
     const joinHost = async (hostUserId: string) => {
         await collaboration.connectToHost(hostUserId);
+        joinedHostUserId.current = hostUserId;
     };
 
     const stopCollaborating = async () => {
         await collaboration.disconnect();
         setCollaborationMode(undefined);
         setUserId(undefined);
+        joinedHostUserId.current = undefined;
+    };
+
+    const cursors = useRef<Record<string, RemoteCursor>>({});
+
+    const sendCursorToHost = async () => {
+        try {
+            const range = view.current!.hasFocus
+                ? view.current!.state.selection.asSingle().ranges[0]
+                : undefined;
+
+            await collaboration.sendToHost({
+                cursor: range
+                    ? {
+                          name: props.settings.name || "Anonymous",
+                          from: range.from,
+                          to: range.to,
+                          anchor: range.anchor,
+                      }
+                    : null,
+            });
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const sendCursorToPeer = async (user: string) => {
+        try {
+            const range = view.current!.hasFocus
+                ? view.current!.state.selection.asSingle().ranges[0]
+                : undefined;
+
+            await collaboration.sendToPeer(user, {
+                cursor: range
+                    ? {
+                          name: props.settings.name || "Anonymous",
+                          from: range.from,
+                          to: range.to,
+                          anchor: range.anchor,
+                      }
+                    : null,
+            });
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const sendCursorToAllPeers = async (options?: { except: string }) => {
+        try {
+            const range = view.current!.hasFocus
+                ? view.current!.state.selection.asSingle().ranges[0]
+                : undefined;
+
+            await collaboration.sendToAllPeers(
+                {
+                    cursor: range
+                        ? {
+                              name: props.settings.name || "Anonymous",
+                              from: range.from,
+                              to: range.to,
+                              anchor: range.anchor,
+                          }
+                        : null,
+                },
+                options
+            );
+        } catch (error) {
+            console.error(error);
+        }
     };
 
     const sendCodeToHost = async () => {
@@ -566,25 +639,39 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         collaborationOnHostReceive.current = (data) => {
                             this.sender = null;
 
-                            this.view.dispatch({
-                                changes: {
-                                    from: 0,
-                                    to: this.view.state.doc.length,
-                                    insert: data.code,
-                                },
-                            });
+                            if ("code" in data) {
+                                this.view.dispatch({
+                                    changes: {
+                                        from: 0,
+                                        to: this.view.state.doc.length,
+                                        insert: data.code,
+                                    },
+                                });
+                            }
+
+                            if ("cursor" in data) {
+                                cursors.current[joinedHostUserId.current!] = data.cursor;
+                                this.view.dispatch();
+                            }
                         };
 
                         collaborationOnPeerReceive.current = (user, data) => {
                             this.sender = user;
 
-                            this.view.dispatch({
-                                changes: {
-                                    from: 0,
-                                    to: this.view.state.doc.length,
-                                    insert: data.code,
-                                },
-                            });
+                            if ("code" in data) {
+                                this.view.dispatch({
+                                    changes: {
+                                        from: 0,
+                                        to: this.view.state.doc.length,
+                                        insert: data.code,
+                                    },
+                                });
+                            }
+
+                            if ("cursor" in data) {
+                                cursors.current[user] = data.cursor;
+                                this.view.dispatch();
+                            }
                         };
                     }
 
@@ -592,23 +679,44 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         const sender = this.sender;
                         this.sender = undefined;
 
-                        if (!update.docChanged || !userId.current) return;
+                        if (!userId.current) return;
 
-                        if (sender === null) {
-                            // The code was sent from the host; do nothing
-                        } else if (sender === undefined) {
-                            // The code was updated locally
-                            switch (collaborationMode.current) {
-                                case "host":
-                                    await sendCodeToAllPeers();
-                                    break;
-                                case "join":
-                                    await sendCodeToHost();
-                                    break;
+                        if (update.docChanged) {
+                            if (sender === null) {
+                                // The code was sent from the host; do nothing
+                            } else if (sender === undefined) {
+                                // The code was updated locally
+                                switch (collaborationMode.current) {
+                                    case "host":
+                                        await sendCodeToAllPeers();
+                                        break;
+                                    case "join":
+                                        await sendCodeToHost();
+                                        break;
+                                }
+                            } else {
+                                // The code was sent from a peer
+                                await sendCodeToAllPeers({ except: sender });
                             }
-                        } else {
-                            // The code was sent from a peer
-                            await sendCodeToAllPeers({ except: sender });
+                        }
+
+                        if (update.focusChanged || update.selectionSet) {
+                            if (sender === null) {
+                                // The selection was sent from the host; do nothing
+                            } else if (sender === undefined) {
+                                // The selection was updated locally
+                                switch (collaborationMode.current) {
+                                    case "host":
+                                        await sendCursorToAllPeers();
+                                        break;
+                                    case "join":
+                                        await sendCursorToHost();
+                                        break;
+                                }
+                            } else {
+                                // The selection was sent from a peer
+                                await sendCursorToAllPeers({ except: sender });
+                            }
                         }
                     }
 
@@ -660,6 +768,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     highlight,
                     closeBrackets(),
                     peerExtension,
+                    remoteCursorsTheme,
+                    remoteCursors(() => cursors.current),
                     EditorView.updateListener.of(onChange),
                 ],
             }),

@@ -52,6 +52,7 @@ export interface PlaygroundRunner {
     isRunning: () => boolean;
     format: () => Promise<string | undefined>;
     hover: (start: number, end: number) => Promise<HoverOutput | null>;
+    clearOutput: () => void;
 }
 
 export const PlaygroundRunner = forwardRef<
@@ -120,7 +121,7 @@ export const PlaygroundRunner = forwardRef<
                     props.onAnalyze?.({ ...analysis, diagnostics });
 
                     setOutput({
-                        code: code,
+                        code,
                         items: [],
                         diagnostics,
                     });
@@ -271,6 +272,7 @@ export const PlaygroundRunner = forwardRef<
         isRunning: () => isRunning.current,
         format: () => runner.format(props.code),
         hover: runner.hover,
+        clearOutput: () => setOutput({ code: props.code, items: [], diagnostics: [] }),
     }));
 
     return (

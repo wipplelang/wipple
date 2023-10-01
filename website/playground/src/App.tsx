@@ -235,9 +235,9 @@ const App = () => {
     return (
         <div>
             <div className="fixed top-0 left-0 right-0 z-50">
-                <div className="flex items-center gap-4 p-4 flex-shrink-0 overflow-x-scroll text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75 backdrop-blur-lg">
+                <div className="flex items-center gap-4 p-4 flex-shrink-0 overflow-x-scroll text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75 backdrop-blur-lg disable-scrollbars">
                     <a href="/" target="_blank" className="flex-shrink-0">
-                        <img src="./images/logo.svg" alt="Wipple Playground" className="w-6 h-6" />
+                        <img src="./images/logo.svg" alt="Wipple" className="w-6 h-6" />
                     </a>
 
                     <a href="/playground" target="_blank">
@@ -249,9 +249,7 @@ const App = () => {
                     <PopupState variant="popover">
                         {(popupState) => (
                             <>
-                                <button {...bindTrigger(popupState)}>
-                                    <p>Share</p>
-                                </button>
+                                <button {...bindTrigger(popupState)}>Share</button>
 
                                 <Menu {...bindMenu(popupState)} sx={{ marginTop: 1 }}>
                                     <MenuItem

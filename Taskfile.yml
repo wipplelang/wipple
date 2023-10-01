@@ -27,17 +27,6 @@ tasks:
             - cargo install --force --path tools/cli
         env:
             CARGO_TARGET_DIR: target
-        sources:
-            - backends/**/*
-            - frontend/**/*
-            - loaders/**/*
-            - syntax/**/*
-            - tools/**/*
-            - util/**/*
-            - Cargo.lock
-            - Cargo.toml
-        generates:
-            - "{{.HOME}}/.cargo/bin/wipple"
 
     serve:
         run: once
@@ -49,39 +38,33 @@ tasks:
         run: once
         deps:
             - cli
+            - website-shared
             - website-home
             - website-compiler-docs
-            - website-shared
             - website-embed
             - website-playground
             - website-std
             - website-doc
 
-    website-home:
+    website-shared:
         run: once
         deps:
             - cli
+        dir: website/shared
+        cmds:
+            - (cd .. && npm i)
+            - npm run build
+
+    website-home:
+        run: once
+        deps:
+            - website-shared
         dir: website/home
         cmds:
             - npm i
             - npm run build
             - mkdir -p ../_site
             - cp -r ./_site/* ../_site
-        sources:
-            - images/**/*
-            - prism/**/*
-            - styles/**/*
-            - .eleventy.js
-            - index.html
-            - package.json
-            - postcss.config.js
-            - tailwind.config.js
-            - robots.txt
-        generates:
-            - ../_site/images/**/*
-            - ../_site/styles/**/*
-            - ../_site/index.html
-            - ../_site/robots.txt
 
     website-compiler-docs:
         run: once
@@ -92,30 +75,6 @@ tasks:
             - mdbook build
             - mkdir -p ../_site/compiler-docs
             - cp -r book/* ../_site/compiler-docs
-        sources:
-            - scripts/**/*
-            - src/**/*
-            - theme/**/*
-            - book.toml
-        generates:
-            - ../_site/book/**/*
-
-    website-shared:
-        run: once
-        deps:
-            - website-home
-        dir: website/shared
-        cmds:
-            - (cd .. && npm i)
-            - npm run build
-        sources:
-            - src/**/*
-            - wasm/**/*
-            - build.js
-            - tsconfig.json
-            - tsconfig.node.json
-        generates:
-            - dist/**/*
 
     website-playground:
         run: once
@@ -142,25 +101,12 @@ tasks:
     website-playground-app:
         run: once
         deps:
+            - website-home
             - website-shared
         dir: website/playground
         cmds:
             - npm i
             - npm run build
-        sources:
-            - ../shared/dist/**/*
-            - src/**/*
-            - .env
-            - index.html
-            - package.json
-            - postcss.config.cjs
-            - tailwind.config.cjs
-            - tsconfig.json
-            - tsconfig.node.json
-            - vite.config.ts
-        generates:
-            - dist/assets/**/*
-            - dist/*.html
 
     website-playground-public:
         run: once
@@ -186,19 +132,11 @@ tasks:
             - npm i
             - npm run build
             - cp dist/* ../../dist/ui/{{.NAME}}
-        sources:
-          - src/**/*
-          - package.json
-          - package-lock.json
-          - tsconfig.json
-          - tsconfig.node.json
-          - vite.config.ts
-        generates:
-          - ../../dist/ui/{{.NAME}}/**/*
 
     website-embed:
         run: once
         deps:
+            - website-home
             - website-shared
             - website-playground
         dir: website/embed
@@ -206,18 +144,6 @@ tasks:
             - npm run build
             - mkdir -p ../_site/embed
             - cp -r dist/* ../_site/embed
-        sources:
-            - ../shared/dist/**/*
-            - src/**/*
-            - index.html
-            - package.json
-            - postcss.config.cjs
-            - tailwind.config.cjs
-            - tsconfig.json
-            - tsconfig.node.json
-            - vite.config.ts
-        generates:
-            - ../_site/embed/**/*
 
     website-std:
         run: once
@@ -227,10 +153,6 @@ tasks:
         cmds:
             - mkdir -p _site/std
             - cp -r ../std/* _site/std
-        sources:
-            - ../std/**/*
-        generates:
-            - _site/std/**/*
 
     website-doc:
         run: once
@@ -248,8 +170,3 @@ tasks:
                 --std ../std/std.wpl
                 > _site/doc/std.html
             - mv _site/playground/doc/*.html _site/doc
-        sources:
-            - ../std/**/*
-            - _site/playground/doc/*.html
-        generates:
-            - _site/doc/**/*
