@@ -55,7 +55,13 @@ import { Settings } from "../App";
 import { Popover } from "@mui/material";
 import { SwatchesPicker } from "react-color";
 import { closeBrackets } from "@codemirror/autocomplete";
-import { RemoteCursor, remoteCursors, remoteCursorsTheme, useCollaboration } from "../helpers";
+import {
+    RemoteCursor,
+    remoteCursors,
+    remoteCursorsTheme,
+    useCollaboration,
+    userColor,
+} from "../helpers";
 import PeopleAltRounded from "@mui/icons-material/PeopleAltRounded";
 import GroupAddRounded from "@mui/icons-material/GroupAddRounded";
 import { Piano } from "react-piano";
@@ -518,6 +524,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
         const { userId } = await collaboration.initialize();
         setCollaborationMode(mode);
         setUserId(userId);
+        updateEditable();
+        updateCollaborationStyles();
     };
 
     const joinedHostUserId = useRef<string | undefined>();
@@ -525,6 +533,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
     const joinHost = async (hostUserId: string) => {
         await collaboration.connectToHost(hostUserId);
         joinedHostUserId.current = hostUserId;
+        updateEditable();
+        updateCollaborationStyles();
     };
 
     const stopCollaborating = async () => {
@@ -532,9 +542,22 @@ export const CodeEditor = (props: CodeEditorProps) => {
         setCollaborationMode(undefined);
         setUserId(undefined);
         joinedHostUserId.current = undefined;
+        cursors.current = {};
+        updateEditable();
+        updateCollaborationStyles();
     };
 
     const cursors = useRef<Record<string, RemoteCursor>>({});
+
+    const isEditable = () =>
+        Object.values(cursors.current).filter((cursor) => cursor != null).length === 0;
+
+    const editableConfig = useMemo(() => new Compartment(), []);
+    const updateEditable = () => {
+        view.current?.dispatch({
+            effects: editableConfig.reconfigure(EditorView.editable.of(isEditable())),
+        });
+    };
 
     const sendCursorToHost = async () => {
         try {
@@ -651,6 +674,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
                             if ("cursor" in data) {
                                 cursors.current[joinedHostUserId.current!] = data.cursor;
+                                updateEditable();
+                                updateCollaborationStyles();
                                 this.view.dispatch();
                             }
                         };
@@ -670,6 +695,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
                             if ("cursor" in data) {
                                 cursors.current[user] = data.cursor;
+                                updateEditable();
+                                updateCollaborationStyles();
                                 this.view.dispatch();
                             }
                         };
@@ -681,7 +708,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
                         if (!userId.current) return;
 
-                        if (update.docChanged) {
+                        if (update.docChanged && isEditable()) {
                             if (sender === null) {
                                 // The code was sent from the host; do nothing
                             } else if (sender === undefined) {
@@ -701,6 +728,10 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         }
 
                         if (update.focusChanged || update.selectionSet) {
+                            if ((!isEditable() || !update.selectionSet) && update.view.hasFocus) {
+                                return;
+                            }
+
                             if (sender === null) {
                                 // The selection was sent from the host; do nothing
                             } else if (sender === undefined) {
@@ -717,6 +748,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                 // The selection was sent from a peer
                                 await sendCursorToAllPeers({ except: sender });
                             }
+
+                            updateEditable();
+                            updateCollaborationStyles();
                         }
                     }
 
@@ -771,6 +805,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     remoteCursorsTheme,
                     remoteCursors(() => cursors.current),
                     EditorView.updateListener.of(onChange),
+                    editableConfig.of(EditorView.editable.of(true)),
                 ],
             }),
             parent: editor.current!,
@@ -791,11 +826,35 @@ export const CodeEditor = (props: CodeEditorProps) => {
         view.current!.dispatch();
     }, [props.settings]);
 
+    const getCollaborationStyles = () => {
+        const firstCursor = Object.entries(cursors.current).find(
+            ([_user, cursor]) => cursor != null
+        );
+
+        if (!firstCursor) {
+            return undefined;
+        }
+
+        const [user, _cursor] = firstCursor;
+        const color = userColor(user);
+
+        return {
+            borderColor: `${color}40`,
+            "--tw-shadow-color": `${color}20`,
+        };
+    };
+
+    const [collaborationStyles, setCollaborationStyles] = useState(getCollaborationStyles);
+    const updateCollaborationStyles = () => setCollaborationStyles(getCollaborationStyles());
+
     return (
         <div id={containerID}>
             <div className="relative -mt-3.5">
                 <div className="flex flex-row justify-end w-full pr-4 -mb-3.5">
-                    <div className="code-editor-outlined rounded-md shadow-lg shadow-gray-100 dark:shadow-gray-900 h-7 text-gray-500 text-opacity-50 z-10">
+                    <div
+                        className="code-editor-outlined rounded-md shadow-lg shadow-gray-100 dark:shadow-gray-900 h-7 text-gray-500 text-opacity-50 z-10"
+                        style={collaborationStyles}
+                    >
                         {collaborationMode.current && (
                             <div className="inline-block code-editor-outlined -my-0.5 -ml-0.5 px-2">
                                 <PeopleAltRounded
@@ -962,7 +1021,10 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     </div>
                 </div>
 
-                <div className="code-editor-outlined rounded-lg">
+                <div
+                    className="code-editor-outlined rounded-lg shadow-lg shadow-transparent"
+                    style={collaborationStyles}
+                >
                     <animated.div style={firstLayout ? undefined : animatedCodeEditorStyle}>
                         <div ref={codeEditorContainerRef} className="p-4">
                             <div className="language-wipple" ref={editor} />

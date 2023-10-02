@@ -39,11 +39,7 @@ code {
 }
 
 .code-editor-outlined {
-    @apply bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 overflow-clip;
-}
-
-.collaborating .code-editor-outlined {
-    @apply border-blue-500 dark:border-blue-400;
+    @apply bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 overflow-clip transition-all;
 }
 
 .code-editor-button {

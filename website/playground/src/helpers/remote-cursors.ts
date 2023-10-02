@@ -7,6 +7,7 @@ import * as pair from "lib0/pair";
 import ColorHash from "color-hash";
 
 const colorHash = new ColorHash({ lightness: 0.5, saturation: 0.9 });
+export const userColor = (user: string) => colorHash.hex(user);
 
 export interface RemoteCursor {
     peer: string;
@@ -153,7 +154,7 @@ export const remoteCursors = (getRemoteCursors: () => Record<string, RemoteCurso
                         return;
                     }
 
-                    const color = colorHash.hex(peer);
+                    const color = userColor(peer);
                     const colorLight = `${color}33`;
                     const start = from;
                     const end = to;
