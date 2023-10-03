@@ -178,6 +178,7 @@ pub struct DeclarationAttributes {
     pub help: Vec<InternedString>,
     pub help_group: Option<InternedString>,
     pub help_playground: Option<InternedString>,
+    pub help_show_code: bool,
     pub help_template: Option<InternedString>,
     pub private: bool,
 }
@@ -4621,6 +4622,7 @@ impl Lowerer {
                 .help_playground
                 .as_ref()
                 .map(|attribute| attribute.help_playground_text),
+            help_show_code: statement_attributes.help_show_code.is_some(),
             help_template: statement_attributes
                 .help_template
                 .as_ref()

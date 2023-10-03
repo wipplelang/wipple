@@ -5512,7 +5512,7 @@ impl Typechecker {
             _ => {}
         }
 
-        let operator_note = || {
+        let operator_note = |typechecker: &Self| {
             error
                 .span
                 .first()
@@ -5528,13 +5528,24 @@ impl Typechecker {
                     )
                     .chain(left.map(|span| Note::secondary(
                         span,
-                        format!("this is parsed as one single input to `{name}`"),
+                        format!(
+                            "{} is parsed as one single input to `{name}`",
+                            typechecker.compiler
+                                .source_code_for_span(span.first())
+                                .map_or_else(|| String::from("this"), |code| format!("`{code}`")),
+                        ),
                     )))
                     .chain(right.map(|span| Note::secondary(
                         span,
-                        format!("this is parsed as one single input to `{name}`"),
+                        format!(
+                            "{} is parsed as one single input to `{name}`",
+                            typechecker.compiler
+                                .source_code_for_span(span.first())
+                                .map_or_else(|| String::from("this"), |code| format!("`{code}`")),
+                        ),
                     )))
                 })
+                .collect::<Vec<_>>()
         };
 
         let mut diagnostic = match *error.error {
@@ -5775,7 +5786,7 @@ impl Typechecker {
                     }
                 }
 
-                notes.extend(operator_note());
+                notes.extend(operator_note(self));
 
                 if let Some(id) = error.expr {
                     if let Some((func, _)) = self.start_of_call_chain_for(id) {
@@ -5854,13 +5865,22 @@ impl Typechecker {
                             .clone()
                             .into_iter()
                             .zip(params.clone())
-                            .collect::<engine::GenericSubstitutions>();
+                            .collect::<BTreeMap<_, _>>();
 
                         segments
                             .iter()
                             .map(|(text, param)| {
                                 let ty = trait_params.get(param).unwrap().clone();
-                                text.to_string() + &self.format_type(ty, Default::default())
+
+                                let span: Option<SpanList> = todo!();
+
+                                let code = span
+                                    .and_then(|span| {
+                                        self.compiler.source_code_for_span(span.first())
+                                    })
+                                    .unwrap_or_else(|| self.format_type(ty, Default::default()));
+
+                                text.to_string() + &format!("`{code}`")
                             })
                             .chain(trailing_segment.map(|text| text.to_string()))
                             .collect()
@@ -5900,7 +5920,7 @@ impl Typechecker {
                             "this instance could apply, but its bounds weren't satisfied",
                         )
                     }))
-                    .chain(operator_note())
+                    .chain(operator_note(self))
                     .collect(),
                     "missing-instance",
                     error.trace,
@@ -5944,7 +5964,10 @@ impl Typechecker {
                     };
 
                 let message = format!(
-                    "number does not fit into a {}",
+                    "{} does not fit into a {}",
+                    self.compiler
+                        .source_code_for_span(error.span.first())
+                        .map_or_else(|| String::from("number"), |code| format!("`{code}`")),
                     self.format_type(ty, format)
                 );
 
