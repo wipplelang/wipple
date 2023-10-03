@@ -30,7 +30,7 @@ struct AnalysisOutput {
     completions: AnalysisOutputCompletions,
 }
 
-#[derive(PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AnalysisOutputDiagnostic {
     level: AnalysisOutputDiagnosticLevel,
@@ -40,33 +40,33 @@ struct AnalysisOutputDiagnostic {
     example: Option<String>,
 }
 
-#[derive(PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "camelCase")]
 enum AnalysisOutputDiagnosticLevel {
-    Warning,
     Error,
+    Warning,
 }
 
-#[derive(PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AnalysisOutputDiagnosticNote {
-    code: String,
     span: AnalysisOutputDiagnosticSpan,
     messages: Vec<String>,
+    code: String,
 }
 
-#[derive(PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub struct AnalysisOutputDiagnosticFix {
-    pub description: String,
     pub start: usize,
     pub end: usize,
+    pub description: String,
     pub replacement: String,
 }
 
-#[derive(PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AnalysisOutputDiagnosticSpan {
-    pub file: String,
+    pub file: Option<String>,
     pub start: usize,
     pub end: usize,
 }
@@ -413,7 +413,13 @@ pub fn analyze(
                             .unwrap_or_else(|| span.primary_range());
 
                         AnalysisOutputDiagnosticSpan {
-                            file: span.path.to_string(),
+                            file: if span.path
+                                == wipple_frontend::FilePath::Virtual(*PLAYGROUND_PATH)
+                            {
+                                None
+                            } else {
+                                Some(span.path.to_string())
+                            },
                             start: range.start,
                             end: range.end,
                         }
@@ -439,10 +445,9 @@ pub fn analyze(
                             )
                         }))
                     {
-                        if let Some(existing) = notes
-                            .iter_mut()
-                            .find(|(existing_span, _)| *existing_span == span)
-                        {
+                        if let Some(existing) = notes.iter_mut().find(|(existing_span, note)| {
+                            *existing_span == span && !note.messages.contains(&message)
+                        }) {
                             existing.1.messages.push(message);
                         } else {
                             notes.push((
@@ -467,7 +472,16 @@ pub fn analyze(
                         }
                     },
                     message: diagnostic.message,
-                    notes: notes.into_iter().map(|(_, note)| note).collect(),
+                    notes: {
+                        let mut notes = notes.into_iter().map(|(_, note)| note);
+
+                        // Sort the notes, keeping the first note in place
+                        notes
+                            .next()
+                            .into_iter()
+                            .chain(notes.sorted().dedup())
+                            .collect()
+                    },
                     fix: diagnostic.fix.map(|fix| AnalysisOutputDiagnosticFix {
                         description: fix.description,
                         start: fix.range.range().start,
@@ -477,6 +491,7 @@ pub fn analyze(
                     example: (!diagnostic.example.is_empty()).then_some(diagnostic.example),
                 }
             })
+            .sorted()
             .dedup()
             .collect();
 

@@ -15,7 +15,7 @@ export interface AnalysisOutputDiagnostic {
     notes: {
         code: string;
         span: {
-            file: string;
+            file?: string;
             start: number;
             end: number;
         };

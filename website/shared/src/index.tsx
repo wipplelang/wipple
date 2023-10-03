@@ -395,10 +395,9 @@ export const PlaygroundRunner = forwardRef<
                                                             >
                                                                 <div>
                                                                     <p className="semibold text-xs opacity-50">
-                                                                        {note.span.file ===
-                                                                        "playground"
-                                                                            ? ""
-                                                                            : `${note.span.file}, `}
+                                                                        {note.span.file
+                                                                            ? `${note.span.file}, `
+                                                                            : ""}
                                                                         line {line}
                                                                     </p>
 
