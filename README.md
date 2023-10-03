@@ -50,20 +50,20 @@ report-card : grade -> when grade {
 Wipple’s type system automatically checks your mistakes to prevent bugs. And with traits, you can add new functionality to others’ code.
 
 ```wipple
-Person : type {
+Sport : type {
   name :: Text
-  age :: Number
+  players :: Number
 }
 
-instance (Show Person) : { name age } -> \
-  "_ is _ years old" name age
+instance (Show Sport) : { name players } -> \
+  "_ has _ players per team" name players
 
-bob : Person {
-  name : "Bob"
-  age : 30
+basketball : Sport {
+  name : "Basketball"
+  players : 5
 }
 
-show bob -- Bob is 30 years old
+show basketball -- Basketball has 5 players per team
 ```
 
 ## Learn Wipple

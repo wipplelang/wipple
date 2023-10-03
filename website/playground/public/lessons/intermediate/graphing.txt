@@ -12,19 +12,15 @@ locked: true
 
 # Graphing functions
 
-Let's end the Intermediate lessons with another practical use for Wipple — plotting mathematical functions on a graph! The syntax is very similar to turtle graphics
-— we'll start with `use "graphing"` and plot a simple function:
+Let's end the Intermediate lessons with another practical use for Wipple — plotting mathematical functions on a graph! If you create a Math program, you can use `plot` to plot a function:
 
 ---
 id: 0JHgycw1
 type: code
+setup: graphing
 ---
 
-use "graphing"
-
-with-graph {
-    plot (x -> x ^ 2)
-}
+plot (x -> x ^ 2)
 
 ---
 id: tsRfDO81
@@ -37,16 +33,13 @@ The graph looks like that by default. But we can change the bounds as well as th
 ---
 id: GFJMSYKq
 type: code
+setup: graphing
 ---
 
-use "graphing"
-
-with-graph {
-    min-y 0
-    max-y 100
-    color `blue`
-    plot (x -> x ^ 2)
-}
+min-y 0
+max-y 100
+color `blue`
+plot (x -> x ^ 2)
 
 ---
 id: OVoko3gj
@@ -59,20 +52,17 @@ You can also graph multiple functions at the same time, each with its own color:
 ---
 id: 56O7OiZa
 type: code
+setup: graphing
 ---
 
-use "graphing"
+color `red`
+plot (x -> x)
 
-with-graph {
-    color `red`
-    plot (x -> x)
+color `green`
+plot (x -> x ^ 2)
 
-    color `green`
-    plot (x -> x ^ 2)
-
-    color `blue`
-    plot (x -> x ^ 3)
-}
+color `blue`
+plot (x -> x ^ 3)
 
 ---
 id: 4SeoIMT1
@@ -85,13 +75,10 @@ This next example makes a zig-zag by using `mod`, which returns the remainder of
 ---
 id: OP01Vv65
 type: code
+setup: graphing
 ---
 
-use "graphing"
-
-with-graph {
-    plot (x -> x mod 2)
-}
+plot (x -> x mod 2)
 
 ---
 id: Jw4MAYzs
@@ -104,6 +91,7 @@ Go ahead and graph your own functions in the space below!
 ---
 id: K5MSP8b-
 type: code
+setup: graphing
 ---
 
 

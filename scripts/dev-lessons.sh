@@ -1,5 +1,5 @@
 #!/bin/bash
 
-node scripts/dev-watcher 'task website' &
+task --watch website-playground-public-dev &
 npx http-server -c-1 website/_site --cors &
 wait

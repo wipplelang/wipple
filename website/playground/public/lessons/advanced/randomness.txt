@@ -70,9 +70,8 @@ Under the hood, `random` uses the `Random` trait, which you can implement on you
 ---
 id: YbIVTo2X
 type: code
+setup: turtle
 ---
-
-use "turtle"
 
 Command : type {
   Move Pixels
@@ -87,15 +86,13 @@ instance (Random () Command) : () -> when (random (0 to 3) :: Natural) {
   _ -> error "unreachable"
 }
 
-with-turtle {
-  speed 100
+speed 100
 
-  repeat (100 times) {
-    when (random ()) {
-      Move distance -> forward distance
-      Turn angle -> left angle
-      Color c -> color c
-    }
+repeat (100 times) {
+  when (random ()) {
+    Move distance -> forward distance
+    Turn angle -> left angle
+    Color c -> color c
   }
 }
 

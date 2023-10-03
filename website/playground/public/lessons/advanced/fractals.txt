@@ -19,9 +19,8 @@ To build our fractal, we need to define a function that calls itself some of the
 ---
 id: QL4pDCXF
 type: code
+setup: turtle
 ---
-
-use "turtle"
 
 triangle :: Number -> ()
 triangle : size -> if (size > 5) {
@@ -42,16 +41,14 @@ triangle : size -> if (size > 5) {
     left (120 degrees)
 }
 
-with-turtle {
-    speed 10
+speed 10
 
-    -- Set up
-    position (30 pixels , 30 pixels)
-    left (30 degrees)
+-- Set up
+position (30 pixels , 30 pixels)
+left (30 degrees)
 
-    -- Draw the fractal
-    triangle 100
-}
+-- Draw the fractal
+triangle 100
 
 ---
 id: cIF0hpwc
@@ -64,9 +61,8 @@ Here's another example!
 ---
 id: vsFCKbbI
 type: code
+setup: turtle
 ---
-
-use "turtle"
 
 scale :: Number
 scale : 0.8
@@ -82,11 +78,9 @@ tree : size -> if (size > 5) {
     backward (size pixels)
 }
 
-with-turtle {
-    speed 10
-    position (0 pixels , 50 pixels)
-    tree 25
-}
+speed 10
+position (0 pixels , 50 pixels)
+tree 25
 
 ---
 id: 2QVOavEz
@@ -99,6 +93,7 @@ Try creating your own fractal graphics in the space below! Adding color might be
 ---
 id: dvw7rFco
 type: code
+setup: turtle
 ---
 
 

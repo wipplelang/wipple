@@ -35,40 +35,33 @@ with-music : syntax {
 tempo :: Number -> ()
 tempo : new-tempo -> tempo of music . set! new-tempo
 
-Instrument-Name : type { name :: Text }
-
-instance (As Text Instrument-Name) : name -> Instrument-Name { name }
-
 Instrument : type {
-  name :: Instrument-Name
+  name :: Text
   delta :: Mutable Number
 }
 
 [context]
 instrument :: Instrument
-instrument : load-instrument acoustic-grand-piano
+instrument : load-instrument "acoustic_grand_piano"
 
-load-instrument :: Instrument-Name -> Instrument
-load-instrument : instrument-name -> {
-  handle of music . message "load-instrument" (name of instrument-name)
+[private]
+load-instrument :: Text -> Instrument
+load-instrument : name -> {
+  handle of music . message "load-instrument" name
 
   Instrument {
-    name : instrument-name
+    name
     delta : mutable 0
   }
 }
 
-[help "Play an instrument."]
-[help-group "Music"]
-with-instrument : syntax {
-  with-instrument 'name 'body -> {
-    instrument-name : ('name :: Instrument-Name)
-    handle of music . message "load-instrument" (name of instrument-name)
-
-    with (instrument : Instrument {
-      name : instrument-name
-      delta : mutable 0
-    }) { task-group of music . task 'body }
+[private]
+with-instrument :: Text -> (() -> ()) -> ()
+with-instrument : name body -> {
+  with (instrument : load-instrument name) {
+    task-group of music . task {
+      body ()
+    }
   }
 }
 
@@ -92,7 +85,7 @@ note : note -> length -> notes (list note) length
 [help-group "Music"]
 notes :: Collection where (As-Sequence Collection Text) => Collection -> Note-Length -> ()
 notes : notes -> { ms-from-tempo } -> {
-  instrument-name : name of name of instrument
+  instrument-name : name of instrument
   delta : get (delta of instrument)
   ms : ms-from-tempo (get (tempo of music)) - delta
   notes : notes . transform (note -> "_," note) . collect :: Text
@@ -112,647 +105,776 @@ rest : length -> notes (list) length
 entrypoint :: Entrypoint
 entrypoint : program -> with-music { program () }
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `accordion` instrument."]
 [help-group "Music"]
-accordion :: Instrument-Name
-accordion : "accordion" as _
+accordion : syntax {
+  accordion 'body -> with-instrument "accordion" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `acoustic_bass` instrument."]
 [help-group "Music"]
-acoustic-bass :: Instrument-Name
-acoustic-bass : "acoustic_bass" as _
+acoustic-bass : syntax {
+  acoustic-bass 'body -> with-instrument "acoustic_bass" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `acoustic_grand_piano` instrument."]
 [help-group "Music"]
-acoustic-grand-piano :: Instrument-Name
-acoustic-grand-piano : "acoustic_grand_piano" as _
+acoustic-grand-piano : syntax {
+  acoustic-grand-piano 'body -> with-instrument "acoustic_grand_piano" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `acoustic_guitar_nylon` instrument."]
 [help-group "Music"]
-acoustic-guitar-nylon :: Instrument-Name
-acoustic-guitar-nylon : "acoustic_guitar_nylon" as _
+acoustic-guitar-nylon : syntax {
+  acoustic-guitar-nylon 'body -> with-instrument "acoustic_guitar_nylon" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `acoustic_guitar_steel` instrument."]
 [help-group "Music"]
-acoustic-guitar-steel :: Instrument-Name
-acoustic-guitar-steel : "acoustic_guitar_steel" as _
+acoustic-guitar-steel : syntax {
+  acoustic-guitar-steel 'body -> with-instrument "acoustic_guitar_steel" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `agogo` instrument."]
 [help-group "Music"]
-agogo :: Instrument-Name
-agogo : "agogo" as _
+agogo : syntax {
+  agogo 'body -> with-instrument "agogo" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `alto_sax` instrument."]
 [help-group "Music"]
-alto-sax :: Instrument-Name
-alto-sax : "alto_sax" as _
+alto-sax : syntax {
+  alto-sax 'body -> with-instrument "alto_sax" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `applause` instrument."]
 [help-group "Music"]
-applause :: Instrument-Name
-applause : "applause" as _
+applause : syntax {
+  applause 'body -> with-instrument "applause" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `bagpipe` instrument."]
 [help-group "Music"]
-bagpipe :: Instrument-Name
-bagpipe : "bagpipe" as _
+bagpipe : syntax {
+  bagpipe 'body -> with-instrument "bagpipe" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `banjo` instrument."]
 [help-group "Music"]
-banjo :: Instrument-Name
-banjo : "banjo" as _
+banjo : syntax {
+  banjo 'body -> with-instrument "banjo" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `baritone_sax` instrument."]
 [help-group "Music"]
-baritone-sax :: Instrument-Name
-baritone-sax : "baritone_sax" as _
+baritone-sax : syntax {
+  baritone-sax 'body -> with-instrument "baritone_sax" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `bassoon` instrument."]
 [help-group "Music"]
-bassoon :: Instrument-Name
-bassoon : "bassoon" as _
+bassoon : syntax {
+  bassoon 'body -> with-instrument "bassoon" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `bird_tweet` instrument."]
 [help-group "Music"]
-bird-tweet :: Instrument-Name
-bird-tweet : "bird_tweet" as _
+bird-tweet : syntax {
+  bird-tweet 'body -> with-instrument "bird_tweet" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `blown_bottle` instrument."]
 [help-group "Music"]
-blown-bottle :: Instrument-Name
-blown-bottle : "blown_bottle" as _
+blown-bottle : syntax {
+  blown-bottle 'body -> with-instrument "blown_bottle" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `brass_section` instrument."]
 [help-group "Music"]
-brass-section :: Instrument-Name
-brass-section : "brass_section" as _
+brass-section : syntax {
+  brass-section 'body -> with-instrument "brass_section" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `breath_noise` instrument."]
 [help-group "Music"]
-breath-noise :: Instrument-Name
-breath-noise : "breath_noise" as _
+breath-noise : syntax {
+  breath-noise 'body -> with-instrument "breath_noise" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `bright_acoustic_piano` instrument."]
 [help-group "Music"]
-bright-acoustic-piano :: Instrument-Name
-bright-acoustic-piano : "bright_acoustic_piano" as _
+bright-acoustic-piano : syntax {
+  bright-acoustic-piano 'body -> with-instrument "bright_acoustic_piano" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `celesta` instrument."]
 [help-group "Music"]
-celesta :: Instrument-Name
-celesta : "celesta" as _
+celesta : syntax {
+  celesta 'body -> with-instrument "celesta" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `cello` instrument."]
 [help-group "Music"]
-cello :: Instrument-Name
-cello : "cello" as _
+cello : syntax {
+  cello 'body -> with-instrument "cello" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `choir_aahs` instrument."]
 [help-group "Music"]
-choir-aahs :: Instrument-Name
-choir-aahs : "choir_aahs" as _
+choir-aahs : syntax {
+  choir-aahs 'body -> with-instrument "choir_aahs" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `church_organ` instrument."]
 [help-group "Music"]
-church-organ :: Instrument-Name
-church-organ : "church_organ" as _
+church-organ : syntax {
+  church-organ 'body -> with-instrument "church_organ" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `clarinet` instrument."]
 [help-group "Music"]
-clarinet :: Instrument-Name
-clarinet : "clarinet" as _
+clarinet : syntax {
+  clarinet 'body -> with-instrument "clarinet" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `clavinet` instrument."]
 [help-group "Music"]
-clavinet :: Instrument-Name
-clavinet : "clavinet" as _
+clavinet : syntax {
+  clavinet 'body -> with-instrument "clavinet" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `contrabass` instrument."]
 [help-group "Music"]
-contrabass :: Instrument-Name
-contrabass : "contrabass" as _
+contrabass : syntax {
+  contrabass 'body -> with-instrument "contrabass" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `distortion_guitar` instrument."]
 [help-group "Music"]
-distortion-guitar :: Instrument-Name
-distortion-guitar : "distortion_guitar" as _
+distortion-guitar : syntax {
+  distortion-guitar 'body -> with-instrument "distortion_guitar" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `drawbar_organ` instrument."]
 [help-group "Music"]
-drawbar-organ :: Instrument-Name
-drawbar-organ : "drawbar_organ" as _
+drawbar-organ : syntax {
+  drawbar-organ 'body -> with-instrument "drawbar_organ" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `dulcimer` instrument."]
 [help-group "Music"]
-dulcimer :: Instrument-Name
-dulcimer : "dulcimer" as _
+dulcimer : syntax {
+  dulcimer 'body -> with-instrument "dulcimer" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `electric_bass_finger` instrument."]
 [help-group "Music"]
-electric-bass-finger :: Instrument-Name
-electric-bass-finger : "electric_bass_finger" as _
+electric-bass-finger : syntax {
+  electric-bass-finger 'body -> with-instrument "electric_bass_finger" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `electric_bass_pick` instrument."]
 [help-group "Music"]
-electric-bass-pick :: Instrument-Name
-electric-bass-pick : "electric_bass_pick" as _
+electric-bass-pick : syntax {
+  electric-bass-pick 'body -> with-instrument "electric_bass_pick" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `electric_grand_piano` instrument."]
 [help-group "Music"]
-electric-grand-piano :: Instrument-Name
-electric-grand-piano : "electric_grand_piano" as _
+electric-grand-piano : syntax {
+  electric-grand-piano 'body -> with-instrument "electric_grand_piano" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `electric_guitar_clean` instrument."]
 [help-group "Music"]
-electric-guitar-clean :: Instrument-Name
-electric-guitar-clean : "electric_guitar_clean" as _
+electric-guitar-clean : syntax {
+  electric-guitar-clean 'body -> with-instrument "electric_guitar_clean" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `electric_guitar_jazz` instrument."]
 [help-group "Music"]
-electric-guitar-jazz :: Instrument-Name
-electric-guitar-jazz : "electric_guitar_jazz" as _
+electric-guitar-jazz : syntax {
+  electric-guitar-jazz 'body -> with-instrument "electric_guitar_jazz" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `electric_guitar_muted` instrument."]
 [help-group "Music"]
-electric-guitar-muted :: Instrument-Name
-electric-guitar-muted : "electric_guitar_muted" as _
+electric-guitar-muted : syntax {
+  electric-guitar-muted 'body -> with-instrument "electric_guitar_muted" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `electric_piano_1` instrument."]
 [help-group "Music"]
-electric-piano-1 :: Instrument-Name
-electric-piano-1 : "electric_piano_1" as _
+electric-piano-1 : syntax {
+  electric-piano-1 'body -> with-instrument "electric_piano_1" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `electric_piano_2` instrument."]
 [help-group "Music"]
-electric-piano-2 :: Instrument-Name
-electric-piano-2 : "electric_piano_2" as _
+electric-piano-2 : syntax {
+  electric-piano-2 'body -> with-instrument "electric_piano_2" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `english_horn` instrument."]
 [help-group "Music"]
-english-horn :: Instrument-Name
-english-horn : "english_horn" as _
+english-horn : syntax {
+  english-horn 'body -> with-instrument "english_horn" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `fiddle` instrument."]
 [help-group "Music"]
-fiddle :: Instrument-Name
-fiddle : "fiddle" as _
+fiddle : syntax {
+  fiddle 'body -> with-instrument "fiddle" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `flute` instrument."]
 [help-group "Music"]
-flute :: Instrument-Name
-flute : "flute" as _
+flute : syntax {
+  flute 'body -> with-instrument "flute" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `french_horn` instrument."]
 [help-group "Music"]
-french-horn :: Instrument-Name
-french-horn : "french_horn" as _
+french-horn : syntax {
+  french-horn 'body -> with-instrument "french_horn" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `fretless_bass` instrument."]
 [help-group "Music"]
-fretless-bass :: Instrument-Name
-fretless-bass : "fretless_bass" as _
+fretless-bass : syntax {
+  fretless-bass 'body -> with-instrument "fretless_bass" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `fx_1_rain` instrument."]
 [help-group "Music"]
-fx-1-rain :: Instrument-Name
-fx-1-rain : "fx_1_rain" as _
+fx-1-rain : syntax {
+  fx-1-rain 'body -> with-instrument "fx_1_rain" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `fx_2_soundtrack` instrument."]
 [help-group "Music"]
-fx-2-soundtrack :: Instrument-Name
-fx-2-soundtrack : "fx_2_soundtrack" as _
+fx-2-soundtrack : syntax {
+  fx-2-soundtrack 'body -> with-instrument "fx_2_soundtrack" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `fx_3_crystal` instrument."]
 [help-group "Music"]
-fx-3-crystal :: Instrument-Name
-fx-3-crystal : "fx_3_crystal" as _
+fx-3-crystal : syntax {
+  fx-3-crystal 'body -> with-instrument "fx_3_crystal" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `fx_4_atmosphere` instrument."]
 [help-group "Music"]
-fx-4-atmosphere :: Instrument-Name
-fx-4-atmosphere : "fx_4_atmosphere" as _
+fx-4-atmosphere : syntax {
+  fx-4-atmosphere 'body -> with-instrument "fx_4_atmosphere" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `fx_5_brightness` instrument."]
 [help-group "Music"]
-fx-5-brightness :: Instrument-Name
-fx-5-brightness : "fx_5_brightness" as _
+fx-5-brightness : syntax {
+  fx-5-brightness 'body -> with-instrument "fx_5_brightness" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `fx_6_goblins` instrument."]
 [help-group "Music"]
-fx-6-goblins :: Instrument-Name
-fx-6-goblins : "fx_6_goblins" as _
+fx-6-goblins : syntax {
+  fx-6-goblins 'body -> with-instrument "fx_6_goblins" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `fx_7_echoes` instrument."]
 [help-group "Music"]
-fx-7-echoes :: Instrument-Name
-fx-7-echoes : "fx_7_echoes" as _
+fx-7-echoes : syntax {
+  fx-7-echoes 'body -> with-instrument "fx_7_echoes" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `fx_8_scifi` instrument."]
 [help-group "Music"]
-fx-8-scifi :: Instrument-Name
-fx-8-scifi : "fx_8_scifi" as _
+fx-8-scifi : syntax {
+  fx-8-scifi 'body -> with-instrument "fx_8_scifi" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `glockenspiel` instrument."]
 [help-group "Music"]
-glockenspiel :: Instrument-Name
-glockenspiel : "glockenspiel" as _
+glockenspiel : syntax {
+  glockenspiel 'body -> with-instrument "glockenspiel" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `guitar_fret_noise` instrument."]
 [help-group "Music"]
-guitar-fret-noise :: Instrument-Name
-guitar-fret-noise : "guitar_fret_noise" as _
+guitar-fret-noise : syntax {
+  guitar-fret-noise 'body -> with-instrument "guitar_fret_noise" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `guitar_harmonics` instrument."]
 [help-group "Music"]
-guitar-harmonics :: Instrument-Name
-guitar-harmonics : "guitar_harmonics" as _
+guitar-harmonics : syntax {
+  guitar-harmonics 'body -> with-instrument "guitar_harmonics" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `gunshot` instrument."]
 [help-group "Music"]
-gunshot :: Instrument-Name
-gunshot : "gunshot" as _
+gunshot : syntax {
+  gunshot 'body -> with-instrument "gunshot" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `harmonica` instrument."]
 [help-group "Music"]
-harmonica :: Instrument-Name
-harmonica : "harmonica" as _
+harmonica : syntax {
+  harmonica 'body -> with-instrument "harmonica" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `harpsichord` instrument."]
 [help-group "Music"]
-harpsichord :: Instrument-Name
-harpsichord : "harpsichord" as _
+harpsichord : syntax {
+  harpsichord 'body -> with-instrument "harpsichord" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `helicopter` instrument."]
 [help-group "Music"]
-helicopter :: Instrument-Name
-helicopter : "helicopter" as _
+helicopter : syntax {
+  helicopter 'body -> with-instrument "helicopter" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `honkytonk_piano` instrument."]
 [help-group "Music"]
-honkytonk-piano :: Instrument-Name
-honkytonk-piano : "honkytonk_piano" as _
+honkytonk-piano : syntax {
+  honkytonk-piano 'body -> with-instrument "honkytonk_piano" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `kalimba` instrument."]
 [help-group "Music"]
-kalimba :: Instrument-Name
-kalimba : "kalimba" as _
+kalimba : syntax {
+  kalimba 'body -> with-instrument "kalimba" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `koto` instrument."]
 [help-group "Music"]
-koto :: Instrument-Name
-koto : "koto" as _
+koto : syntax {
+  koto 'body -> with-instrument "koto" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `lead_1_square` instrument."]
 [help-group "Music"]
-lead-1-square :: Instrument-Name
-lead-1-square : "lead_1_square" as _
+lead-1-square : syntax {
+  lead-1-square 'body -> with-instrument "lead_1_square" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `lead_2_sawtooth` instrument."]
 [help-group "Music"]
-lead-2-sawtooth :: Instrument-Name
-lead-2-sawtooth : "lead_2_sawtooth" as _
+lead-2-sawtooth : syntax {
+  lead-2-sawtooth 'body -> with-instrument "lead_2_sawtooth" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `lead_3_calliope` instrument."]
 [help-group "Music"]
-lead-3-calliope :: Instrument-Name
-lead-3-calliope : "lead_3_calliope" as _
+lead-3-calliope : syntax {
+  lead-3-calliope 'body -> with-instrument "lead_3_calliope" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `lead_4_chiff` instrument."]
 [help-group "Music"]
-lead-4-chiff :: Instrument-Name
-lead-4-chiff : "lead_4_chiff" as _
+lead-4-chiff : syntax {
+  lead-4-chiff 'body -> with-instrument "lead_4_chiff" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `lead_5_charang` instrument."]
 [help-group "Music"]
-lead-5-charang :: Instrument-Name
-lead-5-charang : "lead_5_charang" as _
+lead-5-charang : syntax {
+  lead-5-charang 'body -> with-instrument "lead_5_charang" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `lead_6_voice` instrument."]
 [help-group "Music"]
-lead-6-voice :: Instrument-Name
-lead-6-voice : "lead_6_voice" as _
+lead-6-voice : syntax {
+  lead-6-voice 'body -> with-instrument "lead_6_voice" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `lead_7_fifths` instrument."]
 [help-group "Music"]
-lead-7-fifths :: Instrument-Name
-lead-7-fifths : "lead_7_fifths" as _
+lead-7-fifths : syntax {
+  lead-7-fifths 'body -> with-instrument "lead_7_fifths" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `lead_8_bass__lead` instrument."]
 [help-group "Music"]
-lead-8-bass-lead :: Instrument-Name
-lead-8-bass-lead : "lead_8_bass__lead" as _
+lead-8-bass-lead : syntax {
+  lead-8-bass-lead 'body -> with-instrument "lead_8_bass__lead" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `marimba` instrument."]
 [help-group "Music"]
-marimba :: Instrument-Name
-marimba : "marimba" as _
+marimba : syntax {
+  marimba 'body -> with-instrument "marimba" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `melodic_tom` instrument."]
 [help-group "Music"]
-melodic-tom :: Instrument-Name
-melodic-tom : "melodic_tom" as _
+melodic-tom : syntax {
+  melodic-tom 'body -> with-instrument "melodic_tom" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `music_box` instrument."]
 [help-group "Music"]
-music-box :: Instrument-Name
-music-box : "music_box" as _
+music-box : syntax {
+  music-box 'body -> with-instrument "music_box" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `muted_trumpet` instrument."]
 [help-group "Music"]
-muted-trumpet :: Instrument-Name
-muted-trumpet : "muted_trumpet" as _
+muted-trumpet : syntax {
+  muted-trumpet 'body -> with-instrument "muted_trumpet" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `oboe` instrument."]
 [help-group "Music"]
-oboe :: Instrument-Name
-oboe : "oboe" as _
+oboe : syntax {
+  oboe 'body -> with-instrument "oboe" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `ocarina` instrument."]
 [help-group "Music"]
-ocarina :: Instrument-Name
-ocarina : "ocarina" as _
+ocarina : syntax {
+  ocarina 'body -> with-instrument "ocarina" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `orchestra_hit` instrument."]
 [help-group "Music"]
-orchestra-hit :: Instrument-Name
-orchestra-hit : "orchestra_hit" as _
+orchestra-hit : syntax {
+  orchestra-hit 'body -> with-instrument "orchestra_hit" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `orchestral_harp` instrument."]
 [help-group "Music"]
-orchestral-harp :: Instrument-Name
-orchestral-harp : "orchestral_harp" as _
+orchestral-harp : syntax {
+  orchestral-harp 'body -> with-instrument "orchestral_harp" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `overdriven_guitar` instrument."]
 [help-group "Music"]
-overdriven-guitar :: Instrument-Name
-overdriven-guitar : "overdriven_guitar" as _
+overdriven-guitar : syntax {
+  overdriven-guitar 'body -> with-instrument "overdriven_guitar" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `pad_1_new_age` instrument."]
 [help-group "Music"]
-pad-1-new-age :: Instrument-Name
-pad-1-new-age : "pad_1_new_age" as _
+pad-1-new-age : syntax {
+  pad-1-new-age 'body -> with-instrument "pad_1_new_age" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `pad_2_warm` instrument."]
 [help-group "Music"]
-pad-2-warm :: Instrument-Name
-pad-2-warm : "pad_2_warm" as _
+pad-2-warm : syntax {
+  pad-2-warm 'body -> with-instrument "pad_2_warm" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `pad_3_polysynth` instrument."]
 [help-group "Music"]
-pad-3-polysynth :: Instrument-Name
-pad-3-polysynth : "pad_3_polysynth" as _
+pad-3-polysynth : syntax {
+  pad-3-polysynth 'body -> with-instrument "pad_3_polysynth" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `pad_4_choir` instrument."]
 [help-group "Music"]
-pad-4-choir :: Instrument-Name
-pad-4-choir : "pad_4_choir" as _
+pad-4-choir : syntax {
+  pad-4-choir 'body -> with-instrument "pad_4_choir" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `pad_5_bowed` instrument."]
 [help-group "Music"]
-pad-5-bowed :: Instrument-Name
-pad-5-bowed : "pad_5_bowed" as _
+pad-5-bowed : syntax {
+  pad-5-bowed 'body -> with-instrument "pad_5_bowed" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `pad_6_metallic` instrument."]
 [help-group "Music"]
-pad-6-metallic :: Instrument-Name
-pad-6-metallic : "pad_6_metallic" as _
+pad-6-metallic : syntax {
+  pad-6-metallic 'body -> with-instrument "pad_6_metallic" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `pad_7_halo` instrument."]
 [help-group "Music"]
-pad-7-halo :: Instrument-Name
-pad-7-halo : "pad_7_halo" as _
+pad-7-halo : syntax {
+  pad-7-halo 'body -> with-instrument "pad_7_halo" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `pad_8_sweep` instrument."]
 [help-group "Music"]
-pad-8-sweep :: Instrument-Name
-pad-8-sweep : "pad_8_sweep" as _
+pad-8-sweep : syntax {
+  pad-8-sweep 'body -> with-instrument "pad_8_sweep" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `pan_flute` instrument."]
 [help-group "Music"]
-pan-flute :: Instrument-Name
-pan-flute : "pan_flute" as _
+pan-flute : syntax {
+  pan-flute 'body -> with-instrument "pan_flute" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `percussive_organ` instrument."]
 [help-group "Music"]
-percussive-organ :: Instrument-Name
-percussive-organ : "percussive_organ" as _
+percussive-organ : syntax {
+  percussive-organ 'body -> with-instrument "percussive_organ" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `percussion` instrument."]
 [help-group "Music"]
-percussion :: Instrument-Name
-percussion : "percussion" as _
+percussion : syntax {
+  percussion 'body -> with-instrument "percussion" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `piccolo` instrument."]
 [help-group "Music"]
-piccolo :: Instrument-Name
-piccolo : "piccolo" as _
+piccolo : syntax {
+  piccolo 'body -> with-instrument "piccolo" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `pizzicato_strings` instrument."]
 [help-group "Music"]
-pizzicato-strings :: Instrument-Name
-pizzicato-strings : "pizzicato_strings" as _
+pizzicato-strings : syntax {
+  pizzicato-strings 'body -> with-instrument "pizzicato_strings" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `recorder` instrument."]
 [help-group "Music"]
-recorder :: Instrument-Name
-recorder : "recorder" as _
+recorder : syntax {
+  recorder 'body -> with-instrument "recorder" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `reed_organ` instrument."]
 [help-group "Music"]
-reed-organ :: Instrument-Name
-reed-organ : "reed_organ" as _
+reed-organ : syntax {
+  reed-organ 'body -> with-instrument "reed_organ" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `reverse_cymbal` instrument."]
 [help-group "Music"]
-reverse-cymbal :: Instrument-Name
-reverse-cymbal : "reverse_cymbal" as _
+reverse-cymbal : syntax {
+  reverse-cymbal 'body -> with-instrument "reverse_cymbal" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `rock_organ` instrument."]
 [help-group "Music"]
-rock-organ :: Instrument-Name
-rock-organ : "rock_organ" as _
+rock-organ : syntax {
+  rock-organ 'body -> with-instrument "rock_organ" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `seashore` instrument."]
 [help-group "Music"]
-seashore :: Instrument-Name
-seashore : "seashore" as _
+seashore : syntax {
+  seashore 'body -> with-instrument "seashore" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `shakuhachi` instrument."]
 [help-group "Music"]
-shakuhachi :: Instrument-Name
-shakuhachi : "shakuhachi" as _
+shakuhachi : syntax {
+  shakuhachi 'body -> with-instrument "shakuhachi" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `shamisen` instrument."]
 [help-group "Music"]
-shamisen :: Instrument-Name
-shamisen : "shamisen" as _
+shamisen : syntax {
+  shamisen 'body -> with-instrument "shamisen" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `shanai` instrument."]
 [help-group "Music"]
-shanai :: Instrument-Name
-shanai : "shanai" as _
+shanai : syntax {
+  shanai 'body -> with-instrument "shanai" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `sitar` instrument."]
 [help-group "Music"]
-sitar :: Instrument-Name
-sitar : "sitar" as _
+sitar : syntax {
+  sitar 'body -> with-instrument "sitar" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `slap_bass_1` instrument."]
 [help-group "Music"]
-slap-bass-1 :: Instrument-Name
-slap-bass-1 : "slap_bass_1" as _
+slap-bass-1 : syntax {
+  slap-bass-1 'body -> with-instrument "slap_bass_1" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `slap_bass_2` instrument."]
 [help-group "Music"]
-slap-bass-2 :: Instrument-Name
-slap-bass-2 : "slap_bass_2" as _
+slap-bass-2 : syntax {
+  slap-bass-2 'body -> with-instrument "slap_bass_2" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `soprano_sax` instrument."]
 [help-group "Music"]
-soprano-sax :: Instrument-Name
-soprano-sax : "soprano_sax" as _
+soprano-sax : syntax {
+  soprano-sax 'body -> with-instrument "soprano_sax" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `steel_drums` instrument."]
 [help-group "Music"]
-steel-drums :: Instrument-Name
-steel-drums : "steel_drums" as _
+steel-drums : syntax {
+  steel-drums 'body -> with-instrument "steel_drums" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `string_ensemble_1` instrument."]
 [help-group "Music"]
-string-ensemble-1 :: Instrument-Name
-string-ensemble-1 : "string_ensemble_1" as _
+string-ensemble-1 : syntax {
+  string-ensemble-1 'body -> with-instrument "string_ensemble_1" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `string_ensemble_2` instrument."]
 [help-group "Music"]
-string-ensemble-2 :: Instrument-Name
-string-ensemble-2 : "string_ensemble_2" as _
+string-ensemble-2 : syntax {
+  string-ensemble-2 'body -> with-instrument "string_ensemble_2" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `synth_bass_1` instrument."]
 [help-group "Music"]
-synth-bass-1 :: Instrument-Name
-synth-bass-1 : "synth_bass_1" as _
+synth-bass-1 : syntax {
+  synth-bass-1 'body -> with-instrument "synth_bass_1" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `synth_bass_2` instrument."]
 [help-group "Music"]
-synth-bass-2 :: Instrument-Name
-synth-bass-2 : "synth_bass_2" as _
+synth-bass-2 : syntax {
+  synth-bass-2 'body -> with-instrument "synth_bass_2" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `synth_brass_1` instrument."]
 [help-group "Music"]
-synth-brass-1 :: Instrument-Name
-synth-brass-1 : "synth_brass_1" as _
+synth-brass-1 : syntax {
+  synth-brass-1 'body -> with-instrument "synth_brass_1" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `synth_brass_2` instrument."]
 [help-group "Music"]
-synth-brass-2 :: Instrument-Name
-synth-brass-2 : "synth_brass_2" as _
+synth-brass-2 : syntax {
+  synth-brass-2 'body -> with-instrument "synth_brass_2" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `synth_choir` instrument."]
 [help-group "Music"]
-synth-choir :: Instrument-Name
-synth-choir : "synth_choir" as _
+synth-choir : syntax {
+  synth-choir 'body -> with-instrument "synth_choir" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `synth_drum` instrument."]
 [help-group "Music"]
-synth-drum :: Instrument-Name
-synth-drum : "synth_drum" as _
+synth-drum : syntax {
+  synth-drum 'body -> with-instrument "synth_drum" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `synth_strings_1` instrument."]
 [help-group "Music"]
-synth-strings-1 :: Instrument-Name
-synth-strings-1 : "synth_strings_1" as _
+synth-strings-1 : syntax {
+  synth-strings-1 'body -> with-instrument "synth_strings_1" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `synth_strings_2` instrument."]
 [help-group "Music"]
-synth-strings-2 :: Instrument-Name
-synth-strings-2 : "synth_strings_2" as _
+synth-strings-2 : syntax {
+  synth-strings-2 'body -> with-instrument "synth_strings_2" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `taiko_drum` instrument."]
 [help-group "Music"]
-taiko-drum :: Instrument-Name
-taiko-drum : "taiko_drum" as _
+taiko-drum : syntax {
+  taiko-drum 'body -> with-instrument "taiko_drum" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `tango_accordion` instrument."]
 [help-group "Music"]
-tango-accordion :: Instrument-Name
-tango-accordion : "tango_accordion" as _
+tango-accordion : syntax {
+  tango-accordion 'body -> with-instrument "tango_accordion" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `telephone_ring` instrument."]
 [help-group "Music"]
-telephone-ring :: Instrument-Name
-telephone-ring : "telephone_ring" as _
+telephone-ring : syntax {
+  telephone-ring 'body -> with-instrument "telephone_ring" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `tenor_sax` instrument."]
 [help-group "Music"]
-tenor-sax :: Instrument-Name
-tenor-sax : "tenor_sax" as _
+tenor-sax : syntax {
+  tenor-sax 'body -> with-instrument "tenor_sax" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `timpani` instrument."]
 [help-group "Music"]
-timpani :: Instrument-Name
-timpani : "timpani" as _
+timpani : syntax {
+  timpani 'body -> with-instrument "timpani" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `tinkle_bell` instrument."]
 [help-group "Music"]
-tinkle-bell :: Instrument-Name
-tinkle-bell : "tinkle_bell" as _
+tinkle-bell : syntax {
+  tinkle-bell 'body -> with-instrument "tinkle_bell" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `tremolo_strings` instrument."]
 [help-group "Music"]
-tremolo-strings :: Instrument-Name
-tremolo-strings : "tremolo_strings" as _
+tremolo-strings : syntax {
+  tremolo-strings 'body -> with-instrument "tremolo_strings" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `trombone` instrument."]
 [help-group "Music"]
-trombone :: Instrument-Name
-trombone : "trombone" as _
+trombone : syntax {
+  trombone 'body -> with-instrument "trombone" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `trumpet` instrument."]
 [help-group "Music"]
-trumpet :: Instrument-Name
-trumpet : "trumpet" as _
+trumpet : syntax {
+  trumpet 'body -> with-instrument "trumpet" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `tuba` instrument."]
 [help-group "Music"]
-tuba :: Instrument-Name
-tuba : "tuba" as _
+tuba : syntax {
+  tuba 'body -> with-instrument "tuba" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `tubular_bells` instrument."]
 [help-group "Music"]
-tubular-bells :: Instrument-Name
-tubular-bells : "tubular_bells" as _
+tubular-bells : syntax {
+  tubular-bells 'body -> with-instrument "tubular_bells" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `vibraphone` instrument."]
 [help-group "Music"]
-vibraphone :: Instrument-Name
-vibraphone : "vibraphone" as _
+vibraphone : syntax {
+  vibraphone 'body -> with-instrument "vibraphone" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `viola` instrument."]
 [help-group "Music"]
-viola :: Instrument-Name
-viola : "viola" as _
+viola : syntax {
+  viola 'body -> with-instrument "viola" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `violin` instrument."]
 [help-group "Music"]
-violin :: Instrument-Name
-violin : "violin" as _
+violin : syntax {
+  violin 'body -> with-instrument "violin" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `voice_oohs` instrument."]
 [help-group "Music"]
-voice-oohs :: Instrument-Name
-voice-oohs : "voice_oohs" as _
+voice-oohs : syntax {
+  voice-oohs 'body -> with-instrument "voice_oohs" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `whistle` instrument."]
 [help-group "Music"]
-whistle :: Instrument-Name
-whistle : "whistle" as _
+whistle : syntax {
+  whistle 'body -> with-instrument "whistle" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `woodblock` instrument."]
 [help-group "Music"]
-woodblock :: Instrument-Name
-woodblock : "woodblock" as _
+woodblock : syntax {
+  woodblock 'body -> with-instrument "woodblock" (() -> 'body)
+}
 
-[help "An instrument you can use with `load-instrument`."]
+[help "Play music on the `xylophone` instrument."]
 [help-group "Music"]
-xylophone :: Instrument-Name
-xylophone : "xylophone" as _
+xylophone : syntax {
+  xylophone 'body -> with-instrument "xylophone" (() -> 'body)
+}

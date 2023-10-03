@@ -252,7 +252,7 @@ say-hello : syntax {
 }
 
 with-robot "Bot" {
-    say-hello
+    (say-hello)
 }
 
 ---
@@ -299,5 +299,5 @@ type: code
 use "https://raw.githubusercontent.com/wipplelang/playground-examples/main/robot.wpl"
 
 with-robot "Bot" {
-    say-hello
+    (say-hello)
 }

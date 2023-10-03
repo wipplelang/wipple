@@ -15,24 +15,24 @@ locked: true
 
 # Functions
 
-In Wipple, a **function** is a way to take a piece of code and use it multiple times without having to copy-paste the code over and over again. For example, let's say we wanted to make a program that greets people by their name:
+In Wipple, a **function** is a way to take a piece of code and use it multiple times without having to copy-paste the code over and over again. For example, let's say we wanted to make a program that displays the sports you can play:
 
 ---
 id: WxZ0GcYt
 type: code
 ---
 
-alice : "Alice"
-alice-greeting : "Hello, _!" alice
-show alice-greeting
+basketball : "basketball"
+plays-basketball : "I can play _!" basketball
+show plays-basketball
 
-bob : "Bob"
-bob-greeting : "Hello, _!" bob
-show bob-greeting
+soccer : "soccer"
+plays-soccer : "I can play _!" soccer
+show plays-soccer
 
-charlie : "Charlie"
-charlie-greeting : "Hello, _!" charlie
-show charlie-greeting
+golf : "golf"
+plays-golf : "I can play _!" golf
+show plays-golf
 
 ---
 id: QOix0O8A
@@ -40,21 +40,21 @@ type: text
 locked: true
 ---
 
-This code is getting a bit repetitive, but it has a pattern — the greeting only differs by the name of the person. That means we can make a function that accepts a name and produces a greeting!
+This code is getting a bit repetitive, but it has a pattern — the text only differs by the name of the sport. That means we can make a function that accepts a sport and displays the text!
 
 ---
 id: fcSyJB-_
 type: code
 ---
 
-greet : name -> {
-    greeting : "Hello, _!" name
-    show greeting
+plays : sport -> {
+  plays-sport : "I can play _!" sport
+  show plays-sport
 }
 
-greet "Alice"
-greet "Bob"
-greet "Charlie"
+plays "basketball"
+plays "soccer"
+plays "golf"
 
 ---
 id: Cq5ngAJX
@@ -86,23 +86,20 @@ Let's go back to turtle graphics and add some functions. We can make a `draw-squ
 ---
 id: FczH-Iu7
 type: code
+setup: turtle
 ---
-
-use "turtle"
 
 draw-square : size -> repeat (4 times) {
   forward size
   left (90 degrees)
 }
 
-with-turtle {
-    speed 2
-    draw-square (10 pixels)
-    draw-square (20 pixels)
-    draw-square (30 pixels)
-    draw-square (40 pixels)
-    draw-square (50 pixels)
-}
+speed 2
+draw-square (10 pixels)
+draw-square (20 pixels)
+draw-square (30 pixels)
+draw-square (40 pixels)
+draw-square (50 pixels)
 
 ---
 id: J4qtaLF0

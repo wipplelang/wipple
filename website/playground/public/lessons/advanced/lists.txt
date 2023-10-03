@@ -114,29 +114,29 @@ id: LrQCJfCG
 type: code
 ---
 
-Person : type {
-    name :: Text
-    age :: Number
+Sport : type {
+  name :: Text
+  players :: Number
 }
 
-alice : Person {
-    name : "Alice"
-    age : 25
+basketball : Sport {
+  name : "Basketball"
+  players : 5
 }
 
-bob : Person {
-    name : "Bob"
-    age : 30
+soccer : Sport {
+  name : "Soccer"
+  players : 11
 }
 
-charlie : Person {
-    name : "Charlie"
-    age : 35
+golf : Sport {
+  name : "Golf"
+  players : 1
 }
 
-people : list alice bob charlie
+sports : list basketball soccer golf
 
-names : people . transform (person -> name of person)
+names : sports . transform (sport -> name of sport)
 names . each show
 
 ---

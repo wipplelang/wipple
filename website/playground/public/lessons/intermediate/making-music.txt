@@ -16,20 +16,15 @@ type: text
 locked: true
 ---
 
-Let's look at how we can use Wipple to make music! If we `use "music"`, we get access to `with-music` and various instruments:
+Let's look at how we can use Wipple to make music! If we create a Music program, we get access to `note`:
 
 ---
 id: Cnuyoqyl
 type: code
+setup: music
 ---
 
-use "music"
-
-with-music {
-    with-instrument acoustic-grand-piano {
-        note `C4` (4 beats)
-    }
-}
+note `C4` (4 beats)
 
 ---
 id: 7wo2QQvJ
@@ -39,74 +34,86 @@ locked: true
 
 Press Play and you should hear a note!
 
-The basic structure of `with-music` is the same as `with-turtle`, there's just a little more going on. Let's break it down:
+To add another note, press the `+` button in the top right of the code editor and select "Insert a note". Click on the note to bring up a keyboard, and click on a key to change the note.
 
-  -  `with-instrument` lets you load an instrument to be played by `music`. You can look at the list of instrument names by clicking the + icon on the right of the code editor, and scrolling down to the Music section.
-  -  `note` lets you play a note for a duration of time. Add a note by pressing the `+` button in the top right of the code editor. Click on the note to bring up a keyboard, and click on a key to change the note.
+To play music on a particular instrument, write the instrument's name followed by a block of code. You can look at the list of instruments by clicking the + icon on the right of the code editor and scrolling down to the Music section.
 
-You can have multiple `with-instrument`s and they will all play simultaneously, so you can make your own orchestra!
+---
+id: DYBP0Jex
+type: code
+setup: music
+---
+
+orchestra-hit {
+  note `C4` (4 beats)
+}
+
+---
+id: KNuMZLJj
+type: text
+locked: true
+---
+
+You can have multiple instruments and they will all play simultaneously, so you can make your own orchestra!
 
 ---
 id: be9CTigs
 type: code
+setup: music
 ---
 
-use "music"
+tempo 144
 
-with-music {
-    tempo 144
+violin {
+  note `G4` ((1 / 2) beats)
+  note `G4` ((1 / 2) beats)
+  note `G4` ((1 / 2) beats)
+  note `Eb4` (4 beats)
+  rest (2 beats)
 
-    with-instrument violin {
-        note `G4` ((1 / 2) beats)
-        note `G4` ((1 / 2) beats)
-        note `G4` ((1 / 2) beats)
-        note `Eb4` (4 beats)
-        rest (2 beats)
+  note `F4` ((1 / 2) beats)
+  note `F4` ((1 / 2) beats)
+  note `F4` ((1 / 2) beats)
+  note `D4` (4 beats)
+}
 
-        note `F4` ((1 / 2) beats)
-        note `F4` ((1 / 2) beats)
-        note `F4` ((1 / 2) beats)
-        note `D4` (4 beats)
-    }
+viola {
+  note `G3` ((1 / 2) beats)
+  note `G3` ((1 / 2) beats)
+  note `G3` ((1 / 2) beats)
+  note `Eb3` (4 beats)
+  rest (2 beats)
 
-    with-instrument viola {
-        note `G3` ((1 / 2) beats)
-        note `G3` ((1 / 2) beats)
-        note `G3` ((1 / 2) beats)
-        note `Eb3` (4 beats)
-        rest (2 beats)
+  note `F3` ((1 / 2) beats)
+  note `F3` ((1 / 2) beats)
+  note `F3` ((1 / 2) beats)
+  note `D3` (4 beats)
+}
 
-        note `F3` ((1 / 2) beats)
-        note `F3` ((1 / 2) beats)
-        note `F3` ((1 / 2) beats)
-        note `D3` (4 beats)
-    }
+cello {
+  note `G2` ((1 / 2) beats)
+  note `G2` ((1 / 2) beats)
+  note `G2` ((1 / 2) beats)
+  note `Eb2` (4 beats)
+  rest (2 beats)
 
-    with-instrument cello {
-        note `G2` ((1 / 2) beats)
-        note `G2` ((1 / 2) beats)
-        note `G2` ((1 / 2) beats)
-        note `Eb2` (4 beats)
-        rest (2 beats)
+  note `F2` ((1 / 2) beats)
+  note `F2` ((1 / 2) beats)
+  note `F2` ((1 / 2) beats)
+  note `D2` (4 beats)
+}
 
-        note `F2` ((1 / 2) beats)
-        note `F2` ((1 / 2) beats)
-        note `F2` ((1 / 2) beats)
-        note `D2` (4 beats)
-    }
+contrabass {
+  note `G2` ((1 / 2) beats)
+  note `G2` ((1 / 2) beats)
+  note `G2` ((1 / 2) beats)
+  note `Eb2` (4 beats)
+  rest (2 beats)
 
-    with-instrument contrabass {
-        note `G2` ((1 / 2) beats)
-        note `G2` ((1 / 2) beats)
-        note `G2` ((1 / 2) beats)
-        note `Eb2` (4 beats)
-        rest (2 beats)
-
-        note `F2` ((1 / 2) beats)
-        note `F2` ((1 / 2) beats)
-        note `F2` ((1 / 2) beats)
-        note `D2` (4 beats)
-    }
+  note `F2` ((1 / 2) beats)
+  note `F2` ((1 / 2) beats)
+  note `F2` ((1 / 2) beats)
+  note `D2` (4 beats)
 }
 
 ---
@@ -115,36 +122,33 @@ type: text
 locked: true
 ---
 
-You can combine `with-instrument` with `repeat` to make repeating sections of music, and you can use `notes` to play a `list` of notes at the same time:
+You can use `repeat` to make repeating sections of music, and you can use `notes` to play a `list` of notes at the same time:
 
 ---
 id: lXkYRH9r
 type: code
+setup: music
 ---
 
-use "music"
+tempo 140
 
-with-music {
-    tempo 132
-
-    with-instrument marimba {
-        repeat (4 times) {
-            notes (list `C5` `C4`) ((1 / 4) beats)
-            note `Bb4` ((1 / 4) beats)
-            note `G4` ((1 / 2) beats)
-            note `C5` ((1 / 2) beats)
-            notes (list `F4` `Bb3`) ((1 / 2) beats)
-            note `C5` ((1 / 2) beats)
-            note `Bb4` ((1 / 2) beats)
-            note `C5` ((1 / 2) beats)
-            notes (list `F4` `A3`) ((1 / 2) beats)
-            rest ((3 / 2) beats)
-            notes (list `G4` `Eb4`) (1 beats)
-            notes (list `G4` `C4`) ((1 / 2) beats)
-            notes (list `Bb4` `Eb4`) ((1 / 2) beats)
-            notes (list `C5` `F4`) ((1 / 2) beats)
-        }
-    }
+marimba {
+  repeat (4 times) {
+    notes (list `C5` `C4`) ((1 / 4) beats)
+    note `Bb4` ((1 / 4) beats)
+    note `G4` ((1 / 2) beats)
+    note `C5` ((1 / 2) beats)
+    notes (list `F4` `Bb3`) ((1 / 2) beats)
+    note `C5` ((1 / 2) beats)
+    note `Bb4` ((1 / 2) beats)
+    note `C5` ((1 / 2) beats)
+    notes (list `F4` `A3`) ((1 / 2) beats)
+    rest ((3 / 2) beats)
+    notes (list `G4` `Eb4`) (1 beats)
+    notes (list `G4` `C4`) ((1 / 2) beats)
+    notes (list `Bb4` `Eb4`) ((1 / 2) beats)
+    notes (list `C5` `F4`) ((1 / 2) beats)
+  }
 }
 
 ---
@@ -158,4 +162,5 @@ Try writing your own music below!
 ---
 id: lXl8kpAu
 type: code
+setup: music
 ---

@@ -97,8 +97,8 @@ My-Show : A => trait (A -> Text)
 instance (My-Show Text) : text -> text
 
 instance (My-Show Boolean) : bool -> when bool {
-    True -> "True"
-    False -> "False"
+  True -> "True"
+  False -> "False"
 }
 
 ---
@@ -121,8 +121,8 @@ My-Show : A => trait (A -> Text)
 instance (My-Show Text) : text -> text
 
 instance (My-Show Boolean) : bool -> when bool {
-    True -> "True"
-    False -> "False"
+  True -> "True"
+  False -> "False"
 }
 
 my-show :: A where (My-Show A) => A -> ()
@@ -144,19 +144,19 @@ id: mMENxugD
 type: code
 ---
 
-Person : type {
-    name :: Text
-    age :: Number
+Sport : type {
+  name :: Text
+  players :: Number
 }
 
-instance (Show Person) : person -> "_ is _ years old" (name of person) (age of person)
+instance (Show Sport) : sport -> "_ has _ players per team" (name of sport) (players of sport)
 
-alice : Person {
-    name : "Alice"
-    age : 25
+basketball : Sport {
+  name : "Basketball"
+  players : 5
 }
 
-show alice
+show basketball
 
 ---
 id: CjQ_KB1d

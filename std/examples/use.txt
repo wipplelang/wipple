@@ -6,27 +6,7 @@ locked: true
 
 # How to use `use`
 
-`use` allows you to import third-party libraries. For example, the Wipple Playground includes the `turtle` library for making drawings:
-
----
-id: 2pUKa3ef
-type: code
----
-
-use "turtle"
-
-with-turtle {
-  color `blue`
-  forward (50 pixels)
-}
-
----
-id: znyR7eV5
-type: text
-locked: true
----
-
-If you want to share your own code, you can upload it to [GitHub](https://github.com):
+`use` allows you to import third-party libraries, eg. from GitHub:
 
 ---
 id: iimVvMBH

@@ -85,6 +85,15 @@ tasks:
             - mkdir -p ../_site/playground
             - cp -r dist/* ../_site/playground
 
+    website-playground-public-dev:
+        dir: website/playground
+        cmds:
+            - task: website-playground-public
+            - mkdir -p ../_site/playground
+            - cp -r dist/* ../_site/playground
+        sources:
+            - public/**/*
+
     website-playground-all:
         deps:
             - website-playground-app
@@ -109,17 +118,10 @@ tasks:
             - npm run build
 
     website-playground-public:
-        run: once
         dir: website/playground
         cmds:
             - mkdir -p dist
             - cp -r public/* dist
-        sources:
-            - public/**/*
-        generates:
-            - dist/files/**/*
-            - dist/images/**/*
-            - dist/lessons/**/*
 
     website-playground-ui:
         label: 'website-playground-ui-{{.NAME}}'

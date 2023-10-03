@@ -15,18 +15,15 @@ locked: true
 
 # Making a video game
 
-It's time for our most challenging project yet — making a video game! Wipple has a built-in, arcade-style game engine available with `use "game"`:
+It's time for our most challenging project yet — making a video game! Wipple has a built-in, arcade-style game engine available if you make a Game program:
 
 ---
 id: m7rPCXPq
 type: code
+setup: game
 ---
 
-use "game"
-
-with-game {
-  render-line "Hello, world!"
-}
+render-line "Hello, world!"
 
 ---
 id: wV676HcT
@@ -39,15 +36,12 @@ The game engine is inspired by [SmileBASIC](http://smilebasic.com/en/e-manual/) 
 ---
 id: s8TYrvmB
 type: code
+setup: game
 ---
 
-use "game"
-
-with-game {
-  -- width and height are defined in the game engine
-  repeat ((width * height) times) {
-    render-glyph 3
-  }
+-- width and height are defined in the game engine
+repeat ((width * height) times) {
+  render-glyph 3
 }
 
 ---
@@ -61,19 +55,16 @@ If you want to fill a line with a character without having to hack your way arou
 ---
 id: HRqlh0KJ
 type: code
+setup: game
 ---
 
-use "game"
-
-with-game {
-  bg `#263238`
-  fg `#689f38`
-  render-line-fill "H H EEE L   L   OOO" 6
-  render-line-fill "H H E   L   L   O O" 6
-  render-line-fill "HHH EEE L   L   O O" 6
-  render-line-fill "H H E   L   L   O O" 6
-  render-line-fill "H H EEE LLL LLL OOO" 6
-}
+bg `#263238`
+fg `#689f38`
+render-line-fill "H H EEE L   L   OOO" 6
+render-line-fill "H H E   L   L   O O" 6
+render-line-fill "HHH EEE L   L   O O" 6
+render-line-fill "H H E   L   L   O O" 6
+render-line-fill "H H EEE LLL LLL OOO" 6
 
 ---
 id: GalFlh1N
@@ -81,4 +72,4 @@ type: text
 locked: true
 ---
 
-Otherwise, everything is up to you! The body of `with-game` is evaluated every frame, so you can use `mutable` at the top level to store any state you might need. [Here](https://wipple.dev/playground/?file=https://raw.githubusercontent.com/wipplelang/playground-examples/main/road-rage.txt) is a complex game you can use for inspiration (click "Expand" under the `•••` menu to see the code). The full documentation for the game engine is available [here](https://wipple.dev/doc/game.html). Have fun!
+Otherwise, everything is up to you! The whole program is evaluated every frame, so you can use a `mutable` constant to store any state you might need. (Make sure you use a constant – otherwise the variable will be reset every frame!) [Here](https://wipple.dev/playground/?file=https://raw.githubusercontent.com/wipplelang/playground-examples/main/road-rage.txt) is a complex game you can use for inspiration (click "Expand" under the `•••` menu to see the code). The full documentation for the game engine is available [here](https://wipple.dev/doc/game.html). Have fun!

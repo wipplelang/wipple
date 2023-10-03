@@ -58,21 +58,25 @@ locked: true
 
 This idea of calling a function with only one input at a time is called **partial application**, and if used correctly, it can make your code much easier to read. It can take a while to really embrace partial application, but when you do, it just makes sense — _"increment is add one"_ is almost an English sentence!
 
-In other languages, you might have a function `age` that sets the age of a `Person` object. But in functional languages like Wipple, you usually create a new, updated `Person` value instead of mutating the original:
+In other languages, you might have a function `score` that sets the number of points a `Team` object has scored. But in functional languages like Wipple, you usually create a new, updated `Team` value instead of mutating the original:
 
 ---
 id: CLL97pQ8
 type: code
 ---
 
-Person : type { age :: Number }
+Team : type {
+  points :: Number
+}
 
-age :: Person -> Number -> Person
-age : person years -> Person { age : (age of person) + years }
+score :: Team -> Number -> Team
+score : team points-to-add -> Team {
+  points : (points of team) + points-to-add
+}
 
-alice : Person { age : 25 }
-alice : age alice 1
-show (age of alice)
+celtics : Team { points : 80 }
+celtics : score celtics 2
+show (points of celtics)
 
 ---
 id: xU-N53hK
@@ -82,26 +86,30 @@ locked: true
 
 This makes programs easier to reason about and debug, because you can always look back at the original value to see what has changed. It also means that changes are localized to wherever they are applied — you're always dealing with your own copy of a value instead of having to worry about changing a copy somewhere else in the program.
 
-Also, notice how we redeclare the `alice` variable after changing the age. Wipple allows you to reuse variable names if you don't need the original anymore. In this case, we only want to deal with the updated `alice`, so we can overwrite that variable. If you want to learn more about how this works, check out the Expert lesson on scope!
+Also, notice how we redeclare the `celtics` variable after changing the number of points. Wipple allows you to reuse variable names if you don't need the original anymore. In this case, we only want to deal with the updated `celtics`, so we can overwrite that variable. If you want to learn more about how this works, check out the Expert lesson on scope!
 
-OK, now let's say we want to add a `birthday` function that increments the person's age by one:
+OK, now let's say we want to add a `basket` function that increments the team's score by 2:
 
 ---
 id: 5gRtfAbG
 type: code
 ---
 
-Person : type { age :: Number }
+Team : type {
+  points :: Number
+}
 
-age :: Person -> Number -> Person
-age : person years -> Person { age : (age of person) + years }
+score :: Team -> Number -> Team
+score : team points-to-add -> Team {
+  points : (points of team) + points-to-add
+}
 
-birthday :: Person -> Person
-birthday : person -> age person 1
+basket :: Team -> Team
+basket : team -> score team 2
 
-alice : Person { age : 25 }
-alice : birthday alice
-show (age of alice)
+celtics : Team { points : 80 }
+celtics : basket celtics
+show (points of celtics)
 
 ---
 id: hHBx9Iv9
@@ -109,20 +117,28 @@ type: text
 locked: true
 ---
 
-This code is probably how you'd do it in other languages, but watch what happens if we swap the order of `years` and `person`:
+This code is probably how you'd do it in other languages, but watch what happens if we swap the order of `points-to-add` and `team`:
 
 ---
 id: 3t_JDbj2
 type: code
 ---
 
-Person : type { age :: Number }
+Team : type {
+  points :: Number
+}
 
-age :: Number -> Person -> Person
-age : ...
+score :: Number -> Team -> Team
+score : points-to-add team -> Team {
+  points : (points of team) + points-to-add
+}
 
-birthday :: Person -> Person
-birthday : person -> age 1 person
+basket :: Team -> Team
+basket : team -> score 2 team
+
+celtics : Team { points : 80 }
+celtics : basket celtics
+show (points of celtics)
 
 ---
 id: KhIL3gsq
@@ -137,13 +153,21 @@ id: TICqE1rc
 type: code
 ---
 
-Person : type { age :: Number }
+Team : type {
+  points :: Number
+}
 
-age :: Number -> Person -> Person
-age : ...
+score :: Number -> Team -> Team
+score : points-to-add team -> Team {
+  points : (points of team) + points-to-add
+}
 
-birthday :: Person -> Person
-birthday : age 1
+basket :: Team -> Team
+basket : score 2
+
+celtics : Team { points : 80 }
+celtics : basket celtics
+show (points of celtics)
 
 ---
 id: ARgdOFWr
@@ -151,7 +175,7 @@ type: text
 locked: true
 ---
 
-Much nicer! Now `birthday` doesn't have to deal with passing a `Person` around, it can just focus on what it's really trying to do — increment the age by one. In general, any time you see `c -> f a b c`, you can replace it with `f a b`.
+Much nicer — all of the above examples produce the same output! Now `basket` doesn't have to deal with passing a `Team` around, it can just focus on what it's really trying to do — increment the score by 2. In general, any time you see `x -> f x`, you can replace it with `f`.
 
 ## Dot syntax
 

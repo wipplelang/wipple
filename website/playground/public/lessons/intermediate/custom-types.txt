@@ -15,26 +15,24 @@ locked: true
 
 # Making your own types
 
-Let's say we want to store some information about a person. We can do that with multiple variables, like so:
+Let's say we want to store some information about a sport. We can do that with multiple variables, like so:
 
 ---
 id: OvrEYGel
 type: code
 ---
 
-display-person : name age favorite-color -> show ("_ is _ years old and their favorite color is _" name age favorite-color)
+show-sport : name emoji players -> show ("_ _ has _ players per team" name emoji players)
 
-alice-name : "Alice"
-alice-age : 25
-alice-favorite-color : "red"
+basketball-name : "Basketball"
+basketball-emoji : `🏀`
+basketball-players : 5
+show-sport basketball-name basketball-emoji basketball-players
 
-display-person alice-name alice-age alice-favorite-color
-
-bob-name : "Bob"
-bob-age : 30
-bob-favorite-color : "blue"
-
-display-person bob-name bob-age bob-favorite-color
+soccer-name : "Soccer"
+soccer-emoji : `⚽️`
+soccer-players : 11
+show-sport soccer-name soccer-emoji soccer-players
 
 ---
 id: H0FSve89
@@ -42,7 +40,7 @@ type: text
 locked: true
 ---
 
-That code is pretty difficult to read, and every time we want to add a new person, we need three more variables. What if we could "package up" all that information into a single variable?
+That code is pretty difficult to read, and every time we want to add a new sport, we need three more variables. What if we could "package up" all that information into a single variable?
 
 Well good news, because Wipple has something specifically designed for this problem — custom types!
 
@@ -53,10 +51,10 @@ id: Hw9MUMGS
 type: code
 ---
 
-Person : type {
-    name :: Text
-    age :: Number
-    favorite-color :: Text
+Sport : type {
+  name :: Text
+  emoji :: Text
+  players :: Number
 }
 
 ---
@@ -67,7 +65,7 @@ locked: true
 
 If you're confused about what `::` means, make sure you read the previous lesson on Wipple's type system!
 
-Alright, now we can make a new person by giving each of those variables a value:
+Alright, now we can make a new sport by giving each of those variables a value:
 
 ---
 id: lW8g-I6i
@@ -75,22 +73,22 @@ type: code
 lint: false
 ---
 
-Person : type {
-    name :: Text
-    age :: Number
-    favorite-color :: Text
+Sport : type {
+  name :: Text
+  emoji :: Text
+  players :: Number
 }
 
-alice : Person {
-    name : "Alice"
-    age : 25
-    favorite-color : "red"
+basketball : Sport {
+  name : "Basketball"
+  emoji : `🏀`
+  players : 5
 }
 
-bob : Person {
-    name : "Bob"
-    age : 30
-    favorite-color : "blue"
+soccer : Sport {
+  name : "Soccer"
+  emoji : `⚽️`
+  players : 11
 }
 
 ---
@@ -99,7 +97,7 @@ type: text
 locked: true
 ---
 
-Great! Notice the distinction between the double colon `::` and the single colon `:` — you always use the single colon when you're making a _value_ (like `"Alice"` or `25`), and you only use the double colon when you're providing a _type_ (like `Text` or `Number`).
+Great! Notice the distinction between the double colon `::` and the single colon `:` — you always use the single colon when you're making a _value_ (like `"Basketball"` or `5`), and you only use the double colon when you're providing a _type_ (like `Text` or `Number`).
 
 So now that we've packaged up our information into a single variable for each person, how do we get the information back out? Just use the `of` operator:
 
@@ -108,19 +106,19 @@ id: v3QyZwVD
 type: code
 ---
 
-Person : type {
-    name :: Text
-    age :: Number
-    favorite-color :: Text
+Sport : type {
+  name :: Text
+  emoji :: Text
+  players :: Number
 }
 
-alice : Person {
-    name : "Alice"
-    age : 25
-    favorite-color : "red"
+basketball : Sport {
+  name : "Basketball"
+  emoji : `🏀`
+  players : 5
 }
 
-show (name of alice)
+show (emoji of basketball)
 
 ---
 id: qsnUTqD-
@@ -135,28 +133,28 @@ id: 2DqbvzG5
 type: code
 ---
 
-Person : type {
-    name :: Text
-    age :: Number
-    favorite-color :: Text
+Sport : type {
+  name :: Text
+  emoji :: Text
+  players :: Number
 }
 
-display-person : person -> show ("_ is _ years old and their favorite color is _" (name of person) (age of person) (favorite-color of person))
+show-sport : sport -> show ("_ _ has _ players per team" (name of sport) (emoji of sport) (players of sport))
 
-alice : Person {
-    name : "Alice"
-    age : 25
-    favorite-color : "red"
+basketball : Sport {
+  name : "Basketball"
+  emoji : `🏀`
+  players : 5
 }
 
-bob : Person {
-    name : "Bob"
-    age : 30
-    favorite-color : "blue"
+soccer : Sport {
+  name : "Soccer"
+  emoji : `⚽️`
+  players : 11
 }
 
-display-person alice
-display-person bob
+show-sport basketball
+show-sport soccer
 
 ---
 id: jwh0OF5W
