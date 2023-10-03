@@ -15,7 +15,7 @@ pub type ScopeSet<S> = im::OrdSet<S>;
 pub trait Driver: Debug + Clone + Send + Sync + 'static {
     type InternedString: Debug + Clone + Eq + AsRef<str> + Eq + Hash + Send + Sync;
     type Path: Debug + Copy + Send + Sync + 'static;
-    type Span: Debug + Copy + Span + Send + Sync + 'static;
+    type Span: Debug + Copy + Span<InternedString = Self::InternedString> + Send + Sync + 'static;
     type File: Debug + Clone + Send + Sync + File<Self> + 'static;
     type Scope: Debug + Copy + Eq + Ord + Send + Sync;
 
@@ -97,11 +97,22 @@ pub trait File<D: Driver> {
     fn use_builtin_syntax(&self, span: D::Span, name: &'static str);
 }
 
-pub trait Span: Debug {
+pub trait Span: Sized + Debug {
+    type InternedString: Debug + Clone + Eq + AsRef<str> + Eq + Hash + Send + Sync;
+
     fn join(left: Self, right: Self) -> Self;
+
     fn merge(&mut self, other: Self);
-    fn set_expanded_from_operator(&mut self);
+
+    fn set_expanded_from_operator(
+        &mut self,
+        name: Self::InternedString,
+        left: Option<Self>,
+        right: Option<Self>,
+    );
+
     fn set_caller(&mut self, caller: Self);
+
     fn range(&self) -> Range<usize>;
 
     fn merged_with(mut self, other: Self) -> Self
@@ -239,13 +250,20 @@ impl<D: Driver<Span = (), File = SingleFile, Scope = ()>> File<D> for SingleFile
 }
 
 impl Span for () {
+    type InternedString = String;
+
     fn join(_left: Self, _right: Self) -> Self {}
 
     fn merge(&mut self, _other: Self) {
         // do nothing
     }
 
-    fn set_expanded_from_operator(&mut self) {
+    fn set_expanded_from_operator(
+        &mut self,
+        _name: Self::InternedString,
+        _left: Option<Self>,
+        _right: Option<Self>,
+    ) {
         // do nothing
     }
 

@@ -1,4 +1,4 @@
-use crate::FilePath;
+use crate::{helpers::InternedString, FilePath};
 use internment::Intern;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
@@ -8,7 +8,7 @@ use std::{hash::Hash, ops::Range};
 pub struct Span {
     pub path: FilePath,
     pub primary: (usize, usize),
-    pub expanded_from_operator: bool,
+    pub expanded_from_operator: Option<(InternedString, Option<SpanList>, Option<SpanList>)>,
     pub caller: Option<(usize, usize)>,
 }
 
@@ -17,7 +17,7 @@ impl Span {
         Span {
             path,
             primary: (range.start, range.end),
-            expanded_from_operator: false,
+            expanded_from_operator: None,
             caller: None,
         }
     }
@@ -36,7 +36,7 @@ impl Span {
         Span {
             path: left.path,
             primary,
-            expanded_from_operator: false,
+            expanded_from_operator: None,
             caller: None,
         }
     }
@@ -74,7 +74,7 @@ impl Span {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SpanList {
-    first: Span,
+    first: Intern<Span>,
     sources: Intern<SpanSources>,
 }
 
@@ -97,39 +97,51 @@ impl Hash for SpanSources {
 
 impl SpanList {
     pub fn first(self) -> Span {
-        self.first
+        *self.first
     }
 
     pub fn original(self) -> Span {
-        self.sources.0.lock().last().copied().unwrap_or(self.first)
+        self.sources.0.lock().last().copied().unwrap_or(*self.first)
     }
 
     pub fn split_iter(self) -> (Span, impl Iterator<Item = Span>) {
         // Can't return a reference to `self.sources.0.lock()`
         #[allow(clippy::unnecessary_to_owned)]
-        (self.first, self.sources.0.lock().to_vec().into_iter().rev())
+        (
+            *self.first,
+            self.sources.0.lock().to_vec().into_iter().rev(),
+        )
     }
 
     pub fn join(left: SpanList, right: SpanList) -> SpanList {
         SpanList {
-            first: Span::join(left.first, right.first),
+            first: Intern::new(Span::join(*left.first, *right.first)),
             sources: left.sources,
         }
     }
 
-    pub fn set_expanded_from_operator(&mut self) {
-        self.first.expanded_from_operator = true;
+    pub fn set_expanded_from_operator(
+        &mut self,
+        name: InternedString,
+        left: Option<SpanList>,
+        right: Option<SpanList>,
+    ) {
+        let mut first = *self.first;
+        first.expanded_from_operator = Some((name, left, right));
+        self.first = Intern::new(first);
     }
 
     pub fn set_caller(&mut self, caller: SpanList) {
         if self.first.path == caller.first.path {
-            self.first.caller = Some((caller.first.primary_start(), caller.first.primary_end()));
+            let mut first = *self.first;
+            first.caller = Some((caller.first.primary_start(), caller.first.primary_end()));
+            self.first = Intern::new(first);
         }
     }
 
     #[must_use]
     pub fn merge(self, span: SpanList) -> SpanList {
-        let sources = std::iter::once(self.first)
+        let sources = std::iter::once(*self.first)
             .chain(span.sources.0.lock().iter().copied())
             .collect::<Vec<_>>();
 
@@ -143,7 +155,7 @@ impl SpanList {
 impl From<Span> for SpanList {
     fn from(span: Span) -> Self {
         SpanList {
-            first: span,
+            first: Intern::new(span),
             sources: Default::default(),
         }
     }

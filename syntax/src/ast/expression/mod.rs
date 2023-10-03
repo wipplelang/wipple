@@ -390,13 +390,20 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                 } else {
                     let operators = VecDeque::from(operators);
 
-                    let (mut max_index, mut max_expr, mut max_syntax, mut max_precedence) =
-                        operators.front().cloned().unwrap();
+                    let (
+                        mut max_index,
+                        mut max_name,
+                        mut max_expr,
+                        mut max_syntax,
+                        mut max_precedence,
+                    ) = operators.front().cloned().unwrap();
 
-                    for (index, expr, syntax, precedence) in operators.iter().skip(1).cloned() {
+                    for (index, name, expr, syntax, precedence) in operators.iter().skip(1).cloned()
+                    {
                         macro_rules! replace {
                             () => {{
                                 max_index = index;
+                                max_name = name;
                                 max_expr = expr;
                                 max_syntax = syntax;
                                 max_precedence = precedence;
@@ -406,35 +413,41 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                         match precedence.cmp(&max_precedence) {
                             Ordering::Greater => replace!(),
                             Ordering::Less => continue,
-                            Ordering::Equal => match precedence.associativity() {
-                                OperatorAssociativity::Left => {
-                                    if index > max_index {
-                                        replace!();
+                            Ordering::Equal => {
+                                match precedence.associativity() {
+                                    OperatorAssociativity::Left => {
+                                        if index > max_index {
+                                            replace!();
+                                        }
                                     }
-                                }
-                                OperatorAssociativity::Right => {
-                                    if index < max_index {
-                                        replace!()
+                                    OperatorAssociativity::Right => {
+                                        if index < max_index {
+                                            replace!()
+                                        }
                                     }
-                                }
-                                OperatorAssociativity::None => {
-                                    self.ast_builder.driver.syntax_error_with(
-                                        [
-                                            (
-                                                exprs[index].span,
-                                                String::from("only one of this operator may be provided at a time"),
-                                            ),
-                                            (
-                                                exprs[max_index].span,
-                                                String::from("first use of this operator"),
-                                            ),
-                                        ],
-                                        Some(Fix::new("remove this operator", FixRange::replace(exprs[index].span), "")),
-                                    );
+                                    OperatorAssociativity::None => {
+                                        self.ast_builder.driver.syntax_error_with(
+                                            [
+                                                (
+                                                    exprs[index].span,
+                                                    format!("only one of `{}` may be provided at a time", max_name.as_ref()),
+                                                ),
+                                                (
+                                                    exprs[max_index].span,
+                                                    format!("first use of `{}`", max_name.as_ref()),
+                                                ),
+                                            ],
+                                            Some(Fix::new(
+                                                format!("remove this use of `{}`", max_name.as_ref()),
+                                                FixRange::replace(exprs[index].span),
+                                                "",
+                                            )),
+                                        );
 
-                                    return Err(self.ast_builder.syntax_error(list_span));
+                                        return Err(self.ast_builder.syntax_error(list_span));
+                                    }
                                 }
-                            },
+                            }
                         }
                     }
 
@@ -468,7 +481,11 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                     list_span.set_caller(max_expr.span);
 
                     if lhs_count > 1 || rhs_count > 1 {
-                        list_span.set_expanded_from_operator();
+                        list_span.set_expanded_from_operator(
+                            max_name,
+                            (lhs_count > 1).then_some(lhs_span).flatten(),
+                            (rhs_count > 1).then_some(rhs_span).flatten(),
+                        );
                     }
 
                     let input = lhs
@@ -490,6 +507,7 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
         scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Vec<(
         usize,
+        D::InternedString,
         parse::Expr<D>,
         SyntaxAssignmentValue<D>,
         OperatorPrecedenceStatementAttributeKind,
@@ -511,7 +529,13 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                             if let Some(attribute) = &syntax.operator_precedence {
                                 let precedence = attribute.precedence;
 
-                                return Some((index, expr.clone(), syntax, precedence));
+                                return Some((
+                                    index,
+                                    name.clone(),
+                                    expr.clone(),
+                                    syntax,
+                                    precedence,
+                                ));
                             }
                         }
                         Err(ResolveSyntaxError::NotFound) => {}

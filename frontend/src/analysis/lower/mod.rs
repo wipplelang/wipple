@@ -5264,7 +5264,7 @@ impl Lowerer {
                     span,
                     format!("if you meant to write a mathematical expression, try using whitespace: `{lhs} {op} {rhs}`"),
                 ),
-                Fix::new("add whitespace around operator", FixRange::replace(span.first()), format!("{lhs} {op} {rhs}")),
+                Fix::new(format!("add whitespace around `{op}`"), FixRange::replace(span.first()), format!("{lhs} {op} {rhs}")),
             )))
             .chain(
                 did_you_mean::comment(&name).map(|()| (

@@ -465,6 +465,8 @@ impl wipple_syntax::Driver for Analysis {
 }
 
 impl wipple_syntax::Span for SpanList {
+    type InternedString = InternedString;
+
     fn join(left: Self, right: Self) -> Self {
         SpanList::join(left, right)
     }
@@ -473,8 +475,13 @@ impl wipple_syntax::Span for SpanList {
         *self = SpanList::merge(*self, other);
     }
 
-    fn set_expanded_from_operator(&mut self) {
-        self.set_expanded_from_operator();
+    fn set_expanded_from_operator(
+        &mut self,
+        name: InternedString,
+        left: Option<Self>,
+        right: Option<Self>,
+    ) {
+        self.set_expanded_from_operator(name, left, right);
     }
 
     fn set_caller(&mut self, caller: Self) {

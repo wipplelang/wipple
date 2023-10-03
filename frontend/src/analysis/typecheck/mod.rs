@@ -5513,13 +5513,28 @@ impl Typechecker {
         }
 
         let operator_note = || {
-            error.span.first().expanded_from_operator.then(|| {
-                Note::secondary(
-                    error.span,
-                    "operators consume all expressions on either side; you may be missing parentheses",
-                )
-                .use_caller_if_available()
-            })
+            error
+                .span
+                .first()
+                .expanded_from_operator
+                .into_iter()
+                .flat_map(|(name, left, right)| {
+                    std::iter::once(
+                        Note::secondary(
+                            error.span,
+                            format!("`{name}` consumes all expressions on either side; you may be missing parentheses"),
+                        )
+                        .use_caller_if_available()
+                    )
+                    .chain(left.map(|span| Note::secondary(
+                        span,
+                        format!("this is parsed as one single input to `{name}`"),
+                    )))
+                    .chain(right.map(|span| Note::secondary(
+                        span,
+                        format!("this is parsed as one single input to `{name}`"),
+                    )))
+                })
         };
 
         let mut diagnostic = match *error.error {
@@ -5760,9 +5775,7 @@ impl Typechecker {
                     }
                 }
 
-                if let Some(note) = operator_note() {
-                    notes.push(note);
-                }
+                notes.extend(operator_note());
 
                 if let Some(id) = error.expr {
                     if let Some((func, _)) = self.start_of_call_chain_for(id) {

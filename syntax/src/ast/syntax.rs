@@ -562,10 +562,10 @@ impl<D: Driver> AstBuilder<D> {
                             self.driver.syntax_error_with(
                                 [(
                                     operator_span,
-                                    String::from("expected values on right side of operator"),
+                                    format!("expected values on right side of `{name}`"),
                                 )],
                                 Some(Fix::new(
-                                    "insert a value to the right of the operator",
+                                    format!("insert a value to the right of `{name}`"),
                                     FixRange::after(operator_span),
                                     " {%value%}",
                                 )),
@@ -576,10 +576,10 @@ impl<D: Driver> AstBuilder<D> {
                             self.driver.syntax_error_with(
                                 [(
                                     operator_span,
-                                    String::from("expected values on left side of operator"),
+                                    format!("expected values on left side of `{name}`"),
                                 )],
                                 Some(Fix::new(
-                                    "insert a value to the left of the operator",
+                                    format!("insert a value to the left of `{name}"),
                                     FixRange::before(operator_span),
                                     "{%value%} ",
                                 )),
@@ -644,17 +644,12 @@ impl<D: Driver> AstBuilder<D> {
                             [
                                 (
                                     exprs[*occurrence].span,
-                                    String::from(
-                                        "only one of this operator may be provided at a time",
-                                    ),
+                                    format!("only one of `{name}` may be provided at a time"),
                                 ),
-                                (
-                                    exprs[*first].span,
-                                    String::from("first use of this operator"),
-                                ),
+                                (exprs[*first].span, format!("first use of `{name}`")),
                             ],
                             Some(Fix::new(
-                                "remove this operator",
+                                format!("remove this use of `{name}`"),
                                 FixRange::replace(exprs[*occurrence].span),
                                 "",
                             )),
@@ -678,10 +673,10 @@ impl<D: Driver> AstBuilder<D> {
             self.driver.syntax_error_with(
                 [(
                     operator_span,
-                    String::from("expected values on left side of operator"),
+                    format!("expected values on left side of `{name}`"),
                 )],
                 Some(Fix::new(
-                    "insert a value to the left of the operator",
+                    format!("insert a value to the left of `{name}`"),
                     FixRange::before(operator_span),
                     "{%value%} ",
                 )),
@@ -693,10 +688,10 @@ impl<D: Driver> AstBuilder<D> {
             self.driver.syntax_error_with(
                 [(
                     operator_span,
-                    String::from("expected values on right side of operator"),
+                    format!("expected values on right side of `{name}`"),
                 )],
                 Some(Fix::new(
-                    "insert a value to the right of the operator",
+                    format!("insert a value to the right of `{name}`"),
                     FixRange::after(operator_span),
                     " {%value%}",
                 )),

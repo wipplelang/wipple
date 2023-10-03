@@ -2,10 +2,11 @@ error: cannot add `()` to `Number`
    ┌─ test:1:8
    │
  1 │ show 1 + 2
-   │        ^
-   │        │
-   │        could not find instance `Add () Number _`
-   │        operators consume all expressions on either side; you may be missing parentheses
+   │ ------ ^
+   │ │      │
+   │ │      could not find instance `Add () Number _`
+   │ │      `+` consumes all expressions on either side; you may be missing parentheses
+   │ this is parsed as one single input to `+`
    │
    ┌─ <dir>/std/math.wpl:16:14
    │
@@ -18,10 +19,11 @@ error: missing instance
    ┌─ test:2:11
    │
  2 │ show True or False
-   │           ^^
-   │           │
-   │           could not find instance `Or () Boolean _`
-   │           operators consume all expressions on either side; you may be missing parentheses
+   │ --------- ^^
+   │ │         │
+   │ │         could not find instance `Or () Boolean _`
+   │ │         `or` consumes all expressions on either side; you may be missing parentheses
+   │ this is parsed as one single input to `or`
    │
    ┌─ <dir>/std/logic.wpl:54:15
    │
