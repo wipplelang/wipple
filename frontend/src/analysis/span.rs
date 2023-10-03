@@ -31,9 +31,8 @@ impl Span {
     }
 
     pub fn join(left: Span, right: Span) -> Self {
-        let primary = if left.is_subspan_of(right)
-            || right.is_subspan_of(left)
-            || right.primary_start() > left.primary_end()
+        let primary = if right.primary_end().saturating_sub(left.primary_start())
+            > (left.primary_end() - left.primary_start())
         {
             (left.primary_start(), right.primary_end())
         } else {

@@ -13,7 +13,7 @@ error: mismatched types
   ┌─ test:1:23
   │
 1 │ my-list : list 1 "hi" ()
-  │                       ^
+  │                       ^^
   │                       │
   │                       expected `Number`, but found `()`
   │                       this element must have the same type as the other elements
