@@ -5991,6 +5991,15 @@ impl Typechecker {
                     .attributes
                     .clone();
 
+                let trait_params = self
+                    .declarations
+                    .borrow()
+                    .traits
+                    .get(&id)
+                    .unwrap()
+                    .params
+                    .clone();
+
                 let format = if params
                     .iter()
                     .map(|ty| ty.visible_vars().len())
@@ -6008,13 +6017,7 @@ impl Typechecker {
                 let error_message = trait_attributes.on_unimplemented.map_or_else(
                     || String::from("missing instance"),
                     |(segments, trailing_segment)| {
-                        let trait_params = self
-                            .declarations
-                            .borrow()
-                            .traits
-                            .get(&id)
-                            .unwrap()
-                            .params
+                        let trait_params = trait_params
                             .clone()
                             .into_iter()
                             .zip(params.clone())
@@ -6053,21 +6056,25 @@ impl Typechecker {
                     Note::primary(error.span, note_message).use_caller_if_available(),
                 )
                 .chain(
-                    params
+                    trait_params
                         .into_iter()
-                        .filter_map(|param| {
-                            let span = param.span?;
+                        .zip(params)
+                        .filter_map(|(param, ty)| {
+                            let span = ty.span?;
 
                             if span == error.span
                                 || !span.first().is_subspan_of(error.span.first())
-                                || param.contains_vars()
+                                || matches!(ty.kind, engine::UnresolvedTypeKind::Variable(_))
+                                || self
+                                    .with_type_parameter_decl(param, |decl| decl.infer)
+                                    .unwrap_or(false)
                             {
                                 return None;
                             }
 
                             Some(Note::secondary(
                                 span,
-                                format!("this has type {}", self.format_type(param, format)),
+                                format!("this has type {}", self.format_type(ty, format)),
                             ))
                         })
                         .collect::<Vec<_>>(),
