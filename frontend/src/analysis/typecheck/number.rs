@@ -4,7 +4,7 @@ macro_rules! parse_number {
         (|| {
             use $crate::analysis::typecheck::engine::{BuiltinType, TypeError};
 
-            let builtin = match $ty {
+            let builtin = match &$ty.kind {
                 $expr_ty::Builtin(builtin) => builtin,
                 _ => return None,
             };

@@ -2,7 +2,7 @@ use crate::{
     analysis::{
         self,
         typecheck::{BuiltinType, Type, Typechecker},
-        SpanList, TypeStructure,
+        SpanList, TypeKind, TypeStructure,
     },
     diagnostics::Note,
     VariableId,
@@ -123,8 +123,8 @@ impl Typechecker {
     }
 
     pub(crate) fn no_reuse_message(&self, ty: &Type) -> Option<String> {
-        match ty {
-            Type::Named(id, _, structure) => {
+        match &ty.kind {
+            TypeKind::Named(id, _, structure) => {
                 if let (ty_name, Some(message)) = self
                     .with_type_decl(*id, |decl| (decl.name, decl.attributes.no_reuse))
                     .unwrap()
@@ -146,7 +146,7 @@ impl Typechecker {
                         .find_map(|ty| self.no_reuse_message(ty)),
                 }
             }
-            Type::Builtin(ty) => match ty {
+            TypeKind::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => self.no_reuse_message(ty),
                 BuiltinType::Number
                 | BuiltinType::Integer

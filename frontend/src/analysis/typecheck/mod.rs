@@ -11,7 +11,9 @@ mod queries;
 pub mod traverse;
 mod usage;
 
-pub use engine::{BottomTypeReason, BuiltinType, GenericSubstitutions, Type, TypeStructure};
+pub use engine::{
+    BottomTypeReason, BuiltinType, GenericSubstitutions, Type, TypeKind, TypeStructure,
+};
 pub use lower::{Intrinsic, Semantics, TypeAnnotation, TypeAnnotationKind};
 
 use crate::{
@@ -751,13 +753,17 @@ impl Typechecker {
         if let Some(entrypoint) = self.top_level.info.entrypoint {
             if let Some(decl) = self.with_constant_decl(entrypoint, |decl| decl.clone()) {
                 if decl.ty
-                    != engine::Type::Function(
-                        Box::new(engine::Type::Function(
-                            Box::new(engine::Type::Tuple(Vec::new())),
-                            Box::new(engine::Type::Tuple(Vec::new())),
-                        )),
-                        Box::new(engine::Type::Tuple(Vec::new())),
+                    != engine::TypeKind::Function(
+                        Box::new(
+                            engine::TypeKind::Function(
+                                Box::new(engine::TypeKind::Tuple(Vec::new()).with_span(None)),
+                                Box::new(engine::TypeKind::Tuple(Vec::new()).with_span(None)),
+                            )
+                            .with_span(None),
+                        ),
+                        Box::new(engine::TypeKind::Tuple(Vec::new()).with_span(None)),
                     )
+                    .with_span(None)
                 {
                     self.compiler.add_error(
                         "wrong type for entrypoint",
@@ -1047,7 +1053,7 @@ impl Typechecker {
                 return MonomorphizedExpression {
                     id: expr.id,
                     span: expr.span,
-                    ty: engine::UnresolvedType::Error,
+                    ty: engine::UnresolvedTypeKind::Error.with_span(expr.span),
                     kind: MonomorphizedExpressionKind::error(&self.compiler),
                 };
             }
@@ -1469,9 +1475,10 @@ impl Typechecker {
                                 bound.params.iter().any(|ty| ty.params().contains(&param))
                             }) {
                             let default = self.get_default_for_param(param, Some(&substitutions));
-                            engine::UnresolvedType::Variable(self.ctx.new_variable(default))
+                            engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(default))
+                                .with_span(None)
                         } else {
-                            engine::UnresolvedType::Parameter(param)
+                            engine::UnresolvedTypeKind::Parameter(param).with_span(None)
                         };
 
                         substitutions.insert(param, ty);
@@ -1547,9 +1554,10 @@ impl Typechecker {
         let ctx = self.ctx.clone();
         let unused_var = engine::TypeVariable(usize::MAX);
         for var in use_ty_for_caching.all_vars() {
-            ctx.substitutions
-                .borrow_mut()
-                .insert(var, engine::UnresolvedType::Variable(unused_var));
+            ctx.substitutions.borrow_mut().insert(
+                var,
+                engine::UnresolvedTypeKind::Variable(unused_var).with_span(None),
+            );
         }
 
         use_ty_for_caching.apply(&ctx);
@@ -1611,7 +1619,9 @@ impl Typechecker {
                 for param in ty.params() {
                     if !substitutions.contains_key(&param) {
                         let default = self.get_default_for_param(param, Some(&substitutions));
-                        let ty = engine::UnresolvedType::Variable(self.ctx.new_variable(default));
+                        let ty =
+                            engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(default))
+                                .with_span(None);
                         substitutions.insert(param, ty);
                     }
                 }
@@ -1769,22 +1779,25 @@ impl Typechecker {
             lower::ExpressionKind::Error(trace) => UnresolvedExpression {
                 id: expr.id,
                 span: expr.span,
-                ty: engine::UnresolvedType::Error,
+                ty: engine::UnresolvedTypeKind::Error.with_span(expr.span),
                 kind: UnresolvedExpressionKind::Error(trace),
             },
             lower::ExpressionKind::Marker(id) => {
                 let mut ty = {
                     self.with_type_decl(id, |ty| ty.params.clone()).map_or(
-                        engine::UnresolvedType::Error,
+                        engine::UnresolvedTypeKind::Error.with_span(expr.span),
                         |params| {
-                            engine::UnresolvedType::Named(
+                            engine::UnresolvedTypeKind::Named(
                                 id,
                                 params
                                     .into_iter()
-                                    .map(engine::UnresolvedType::Parameter)
+                                    .map(|param| {
+                                        engine::UnresolvedTypeKind::Parameter(param).with_span(None)
+                                    })
                                     .collect(),
                                 engine::TypeStructure::Marker,
                             )
+                            .with_span(expr.span)
                         },
                     )
                 };
@@ -1806,7 +1819,10 @@ impl Typechecker {
                             constant.attributes.is_contextual,
                         )
                     })
-                    .unwrap_or((engine::UnresolvedType::Error, false));
+                    .unwrap_or((
+                        engine::UnresolvedTypeKind::Error.with_span(expr.span),
+                        false,
+                    ));
 
                 self.instantiate_generics(&mut ty);
 
@@ -1840,21 +1856,23 @@ impl Typechecker {
                     UnresolvedExpression {
                         id: expr.id,
                         span: expr.span,
-                        ty: engine::UnresolvedType::Error,
+                        ty: engine::UnresolvedTypeKind::Error.with_span(expr.span),
                         kind: UnresolvedExpressionKind::error(&self.compiler),
                     }
                 } else {
                     UnresolvedExpression {
                         id: expr.id,
                         span: expr.span,
-                        ty: engine::UnresolvedType::Variable(self.ctx.new_variable(None)),
+                        ty: engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None))
+                            .with_span(expr.span),
                         kind: UnresolvedExpressionKind::Trait(id),
                     }
                 }
             }
             lower::ExpressionKind::Variable(var) => {
                 let ty = info.variables.get(&var).cloned().unwrap_or_else(|| {
-                    engine::UnresolvedType::Variable(self.ctx.new_variable(None))
+                    engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None))
+                        .with_span(expr.span)
                 });
 
                 UnresolvedExpression {
@@ -1867,13 +1885,15 @@ impl Typechecker {
             lower::ExpressionKind::Text(text) => UnresolvedExpression {
                 id: expr.id,
                 span: expr.span,
-                ty: engine::UnresolvedType::Builtin(engine::BuiltinType::Text),
+                ty: engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Text)
+                    .with_span(expr.span),
                 kind: UnresolvedExpressionKind::Text(text),
             },
             lower::ExpressionKind::Number(number) => UnresolvedExpression {
                 id: expr.id,
                 span: expr.span,
-                ty: engine::UnresolvedType::NumericVariable(self.ctx.new_variable(None)),
+                ty: engine::UnresolvedTypeKind::NumericVariable(self.ctx.new_variable(None))
+                    .with_span(expr.span),
                 kind: UnresolvedExpressionKind::Number(number),
             },
             lower::ExpressionKind::Block(statements, top_level) => {
@@ -1885,7 +1905,9 @@ impl Typechecker {
                 let ty = statements
                     .last()
                     .map(|statement| statement.ty.clone())
-                    .unwrap_or_else(|| engine::UnresolvedType::Tuple(Vec::new()));
+                    .unwrap_or_else(|| {
+                        engine::UnresolvedTypeKind::Tuple(Vec::new()).with_span(expr.span)
+                    });
 
                 UnresolvedExpression {
                     id: expr.id,
@@ -1898,16 +1920,18 @@ impl Typechecker {
                 let input = self.convert_expr(*input, info);
                 let function = self.convert_expr(*function, info);
 
-                let output_ty = engine::UnresolvedType::Variable(self.ctx.new_variable(None));
+                let output_ty = engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None))
+                    .with_span(expr.span);
 
                 if let Err(error) = self.unify(
                     function.id,
                     function.span,
                     function.ty.clone(),
-                    engine::UnresolvedType::Function(
+                    engine::UnresolvedTypeKind::Function(
                         Box::new(input.ty.clone()),
                         Box::new(output_ty.clone()),
-                    ),
+                    )
+                    .with_span(function.span),
                 ) {
                     self.add_error(error);
                 }
@@ -1924,7 +1948,8 @@ impl Typechecker {
                 }
             }
             lower::ExpressionKind::Function(pattern, body, captures) => {
-                let input_ty = engine::UnresolvedType::Variable(self.ctx.new_variable(None));
+                let input_ty = engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None))
+                    .with_span(pattern.span);
                 let pattern = self.convert_pattern(pattern, input_ty.clone(), None, info);
 
                 let prev_function_end_value = info.function_end_value.take();
@@ -1947,10 +1972,11 @@ impl Typechecker {
                 UnresolvedExpression {
                     id: expr.id,
                     span: expr.span,
-                    ty: engine::UnresolvedType::Function(
+                    ty: engine::UnresolvedTypeKind::Function(
                         Box::new(input_ty),
                         Box::new(body.ty.clone()),
-                    ),
+                    )
+                    .with_span(expr.span),
                     kind: UnresolvedExpressionKind::Function(pattern, Box::new(body), captures),
                 }
             }
@@ -1977,7 +2003,8 @@ impl Typechecker {
 
                         first_type
                     } else {
-                        engine::UnresolvedType::Variable(self.ctx.new_variable(None))
+                        engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None))
+                            .with_span(expr.span)
                     }
                 };
 
@@ -1997,7 +2024,8 @@ impl Typechecker {
                 UnresolvedExpression {
                     id: expr.id,
                     span: expr.span,
-                    ty: engine::UnresolvedType::Variable(self.ctx.new_variable(None)),
+                    ty: engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None))
+                        .with_span(expr.span),
                     kind: UnresolvedExpressionKind::External(lib, identifier, inputs),
                 }
             }
@@ -2010,7 +2038,8 @@ impl Typechecker {
                 UnresolvedExpression {
                     id: expr.id,
                     span: expr.span,
-                    ty: engine::UnresolvedType::Variable(self.ctx.new_variable(None)),
+                    ty: engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None))
+                        .with_span(expr.span),
                     kind: UnresolvedExpressionKind::Intrinsic(func, inputs),
                 }
             }
@@ -2023,7 +2052,8 @@ impl Typechecker {
                 UnresolvedExpression {
                     id: expr.id,
                     span: expr.span,
-                    ty: engine::UnresolvedType::Variable(self.ctx.new_variable(None)),
+                    ty: engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None))
+                        .with_span(expr.span),
                     kind: UnresolvedExpressionKind::Plugin(path, name, inputs),
                 }
             }
@@ -2050,7 +2080,7 @@ impl Typechecker {
                 UnresolvedExpression {
                     id: expr.id,
                     span: expr.span,
-                    ty: engine::UnresolvedType::Tuple(Vec::new()),
+                    ty: engine::UnresolvedTypeKind::Tuple(Vec::new()).with_span(expr.span),
                     kind: UnresolvedExpressionKind::Initialize(pattern, Box::new(value)),
                 }
             }
@@ -2063,7 +2093,7 @@ impl Typechecker {
                         return UnresolvedExpression {
                             id: expr.id,
                             span: expr.span,
-                            ty: engine::UnresolvedType::Error,
+                            ty: engine::UnresolvedTypeKind::Error.with_span(expr.span),
                             kind: UnresolvedExpressionKind::error(&self.compiler),
                         }
                     }
@@ -2090,20 +2120,21 @@ impl Typechecker {
                         return UnresolvedExpression {
                             id: expr.id,
                             span: expr.span,
-                            ty: engine::UnresolvedType::Error,
+                            ty: engine::UnresolvedTypeKind::Error.with_span(expr.span),
                             kind: UnresolvedExpressionKind::error(&self.compiler),
                         };
                     }
                 };
 
-                let mut ty = engine::UnresolvedType::Named(
+                let mut ty = engine::UnresolvedTypeKind::Named(
                     id,
                     params
                         .into_iter()
-                        .map(engine::UnresolvedType::Parameter)
+                        .map(|param| engine::UnresolvedTypeKind::Parameter(param).with_span(None))
                         .collect(),
                     engine::TypeStructure::Structure(structure_field_tys.clone()),
-                );
+                )
+                .with_span(expr.span);
 
                 let mut substitutions = engine::GenericSubstitutions::new();
                 self.add_substitutions(&mut ty, &mut substitutions);
@@ -2211,7 +2242,7 @@ impl Typechecker {
                         return UnresolvedExpression {
                             id: expr.id,
                             span: expr.span,
-                            ty: engine::UnresolvedType::Error,
+                            ty: engine::UnresolvedTypeKind::Error.with_span(expr.span),
                             kind: UnresolvedExpressionKind::error(&self.compiler),
                         };
                     }
@@ -2237,20 +2268,21 @@ impl Typechecker {
                         return UnresolvedExpression {
                             id: expr.id,
                             span: expr.span,
-                            ty: engine::UnresolvedType::Error,
+                            ty: engine::UnresolvedTypeKind::Error.with_span(expr.span),
                             kind: UnresolvedExpressionKind::error(&self.compiler),
                         };
                     }
                 };
 
-                let mut ty = engine::UnresolvedType::Named(
+                let mut ty = engine::UnresolvedTypeKind::Named(
                     id,
                     params
                         .into_iter()
-                        .map(engine::UnresolvedType::Parameter)
+                        .map(|param| engine::UnresolvedTypeKind::Parameter(param).with_span(None))
                         .collect(),
                     engine::TypeStructure::Enumeration(variants_tys.clone()),
-                );
+                )
+                .with_span(expr.span);
 
                 let mut substitutions = engine::GenericSubstitutions::new();
                 self.add_substitutions(&mut ty, &mut substitutions);
@@ -2292,9 +2324,10 @@ impl Typechecker {
                     .map(|expr| self.convert_expr(expr, info))
                     .collect::<Vec<_>>();
 
-                let ty = engine::UnresolvedType::Tuple(
+                let ty = engine::UnresolvedTypeKind::Tuple(
                     exprs.iter().map(|expr| expr.ty.clone()).collect(),
-                );
+                )
+                .with_span(expr.span);
 
                 UnresolvedExpression {
                     id: expr.id,
@@ -2319,7 +2352,7 @@ impl Typechecker {
                         return UnresolvedExpression {
                             id: expr.id,
                             span: expr.span,
-                            ty: engine::UnresolvedType::Error,
+                            ty: engine::UnresolvedTypeKind::Error.with_span(expr.span),
                             kind: UnresolvedExpressionKind::error(&self.compiler),
                         };
                     }
@@ -2332,7 +2365,8 @@ impl Typechecker {
                     .map(|(text, expr)| {
                         let expr = self.convert_expr(expr, info);
 
-                        let ty = engine::UnresolvedType::Variable(self.ctx.new_variable(None));
+                        let ty = engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None))
+                            .with_span(expr.span);
 
                         let expr = UnresolvedExpression {
                             id: expr.id,
@@ -2342,10 +2376,11 @@ impl Typechecker {
                                 Box::new(UnresolvedExpression {
                                     id: expr.id,
                                     span: expr.span,
-                                    ty: engine::UnresolvedType::Function(
+                                    ty: engine::UnresolvedTypeKind::Function(
                                         Box::new(expr.ty.clone()),
                                         Box::new(ty),
-                                    ),
+                                    )
+                                    .with_span(expr.span),
                                     kind: UnresolvedExpressionKind::Trait(show_trait),
                                 }),
                                 Box::new(expr),
@@ -2360,7 +2395,8 @@ impl Typechecker {
                 UnresolvedExpression {
                     id: expr.id,
                     span: expr.span,
-                    ty: engine::UnresolvedType::Builtin(engine::BuiltinType::Text),
+                    ty: engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Text)
+                        .with_span(expr.span),
                     kind: UnresolvedExpressionKind::Format(segments, trailing_segment),
                 }
             }
@@ -2372,7 +2408,7 @@ impl Typechecker {
                         .with_constant_decl(id, |constant| {
                             engine::UnresolvedType::from(constant.ty.clone())
                         })
-                        .unwrap_or(engine::UnresolvedType::Error);
+                        .unwrap_or(engine::UnresolvedTypeKind::Error.with_span(None));
 
                     self.instantiate_generics(&mut ty);
 
@@ -2404,18 +2440,18 @@ impl Typechecker {
                 UnresolvedExpression {
                     id: expr.id,
                     span: expr.span,
-                    ty: engine::UnresolvedType::Variable(
-                        self.ctx
-                            .new_variable(Some(engine::UnresolvedType::Tuple(Vec::new()))),
-                    ),
+                    ty: engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(Some(
+                        engine::UnresolvedTypeKind::Tuple(Vec::new()).with_span(expr.span),
+                    )))
+                    .with_span(expr.span),
                     kind: UnresolvedExpressionKind::End(Box::new(value)),
                 }
             }
             lower::ExpressionKind::Extend(value, fields) => {
                 let value = self.convert_expr(*value, info);
 
-                let (id, structure_field_tys) = match &value.ty {
-                    engine::UnresolvedType::Named(
+                let (id, structure_field_tys) = match &value.ty.kind {
+                    engine::UnresolvedTypeKind::Named(
                         id,
                         _,
                         engine::TypeStructure::Structure(fields),
@@ -2430,7 +2466,7 @@ impl Typechecker {
                         return UnresolvedExpression {
                             id: expr.id,
                             span: expr.span,
-                            ty: engine::UnresolvedType::Error,
+                            ty: engine::UnresolvedTypeKind::Error.with_span(expr.span),
                             kind: UnresolvedExpressionKind::error(&self.compiler),
                         };
                     }
@@ -2451,7 +2487,7 @@ impl Typechecker {
                         return UnresolvedExpression {
                             id: expr.id,
                             span: expr.span,
-                            ty: engine::UnresolvedType::Error,
+                            ty: engine::UnresolvedTypeKind::Error.with_span(expr.span),
                             kind: UnresolvedExpressionKind::error(&self.compiler),
                         };
                     }
@@ -2534,7 +2570,8 @@ impl Typechecker {
                 lower::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
                 lower::PatternKind::Number(number) => {
                     let numeric_ty =
-                        engine::UnresolvedType::NumericVariable(self.ctx.new_variable(None));
+                        engine::UnresolvedTypeKind::NumericVariable(self.ctx.new_variable(None))
+                            .with_span(pattern.span);
 
                     if let Err(error) = self.unify(None, pattern.span, ty, numeric_ty) {
                         self.add_error(error);
@@ -2547,7 +2584,8 @@ impl Typechecker {
                         None,
                         pattern.span,
                         ty,
-                        engine::UnresolvedType::Builtin(engine::BuiltinType::Text),
+                        engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Text)
+                            .with_span(pattern.span),
                     ) {
                         self.add_error(error);
                     }
@@ -2563,7 +2601,10 @@ impl Typechecker {
                     fields
                         .into_iter()
                         .map(|(name, pattern)| {
-                            let ty = engine::UnresolvedType::Variable(self.ctx.new_variable(None));
+                            let ty =
+                                engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None))
+                                    .with_span(pattern.span);
+
                             (
                                 name,
                                 (
@@ -2620,12 +2661,13 @@ impl Typechecker {
                         .map(|(_, ty)| engine::UnresolvedType::from(ty))
                         .collect::<Vec<_>>();
 
-                    let enumeration_ty = engine::UnresolvedType::Named(
+                    let enumeration_ty = engine::UnresolvedTypeKind::Named(
                         id,
                         params
                             .into_iter()
                             .map(|param| {
-                                let mut ty = engine::UnresolvedType::Parameter(param);
+                                let mut ty =
+                                    engine::UnresolvedTypeKind::Parameter(param).with_span(None);
                                 self.add_substitutions(&mut ty, &mut substitutions);
                                 ty
                             })
@@ -2644,7 +2686,8 @@ impl Typechecker {
                                 })
                                 .collect(),
                         ),
-                    );
+                    )
+                    .with_span(pattern.span);
 
                     if let Err(error) = self.unify(None, pattern.span, ty, enumeration_ty) {
                         self.add_error(error);
@@ -2683,14 +2726,18 @@ impl Typechecker {
                 lower::PatternKind::Tuple(patterns) => {
                     let tuple_tys = patterns
                         .iter()
-                        .map(|_| engine::UnresolvedType::Variable(self.ctx.new_variable(None)))
+                        .map(|pattern| {
+                            engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None))
+                                .with_span(pattern.span)
+                        })
                         .collect::<Vec<_>>();
 
                     if let Err(error) = self.unify(
                         None,
                         pattern.span,
                         ty,
-                        engine::UnresolvedType::Tuple(tuple_tys.clone()),
+                        engine::UnresolvedTypeKind::Tuple(tuple_tys.clone())
+                            .with_span(pattern.span),
                     ) {
                         self.add_error(error);
                     }
@@ -2809,14 +2856,17 @@ impl Typechecker {
                     MonomorphizedExpressionKind::Call(Box::new(func), Box::new(input), first)
                 }
                 MonomorphizedExpressionKind::Function(pattern, body, captures) => {
-                    let pattern = match expr.ty {
-                        engine::UnresolvedType::Function(input_ty, _) => {
+                    let pattern = match expr.ty.kind {
+                        engine::UnresolvedTypeKind::Function(input_ty, _) => {
                             let mut input_ty = *input_ty;
                             input_ty.apply(&self.ctx);
 
                             self.monomorphize_pattern(pattern, input_ty.clone())
                         }
-                        _ => self.monomorphize_pattern(pattern, engine::UnresolvedType::Error),
+                        _ => self.monomorphize_pattern(
+                            pattern,
+                            engine::UnresolvedTypeKind::Error.with_span(expr.span),
+                        ),
                     };
 
                     let body = self.monomorphize_expr(*body, info);
@@ -3005,13 +3055,14 @@ impl Typechecker {
                         guard.id,
                         guard.span,
                         guard.ty.clone(),
-                        engine::UnresolvedType::Named(
+                        engine::UnresolvedTypeKind::Named(
                             boolean_ty,
                             Vec::new(),
                             // HACK: Optimization because unification doesn't take structure into
                             // account -- the structure can be applied during finalization
                             engine::TypeStructure::Marker,
-                        ),
+                        )
+                        .with_span(guard.span),
                     ) {
                         self.add_error(error);
                     }
@@ -3037,7 +3088,7 @@ impl Typechecker {
         pattern: impl Into<MonomorphizedPattern>,
         mut ty: engine::UnresolvedType,
     ) -> MonomorphizedPattern {
-        let pattern = pattern.into();
+        let pattern: MonomorphizedPattern = pattern.into();
 
         ty.apply(&self.ctx);
 
@@ -3045,7 +3096,8 @@ impl Typechecker {
             MonomorphizedPatternKind::Error(trace) => MonomorphizedPatternKind::Error(trace),
             MonomorphizedPatternKind::Number(number) => {
                 let numeric_ty =
-                    engine::UnresolvedType::NumericVariable(self.ctx.new_variable(None));
+                    engine::UnresolvedTypeKind::NumericVariable(self.ctx.new_variable(None))
+                        .with_span(pattern.span);
 
                 if let Err(error) = self.unify(None, pattern.span, ty, numeric_ty) {
                     self.add_error(error);
@@ -3058,7 +3110,8 @@ impl Typechecker {
                     None,
                     pattern.span,
                     ty,
-                    engine::UnresolvedType::Builtin(engine::BuiltinType::Text),
+                    engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Text)
+                        .with_span(pattern.span),
                 ) {
                     self.add_error(error);
                 }
@@ -3075,9 +3128,9 @@ impl Typechecker {
 
                 ty.apply(&self.ctx);
 
-                let (id, params) = match ty.clone() {
-                    engine::UnresolvedType::Named(id, params, _) => (id, params),
-                    engine::UnresolvedType::Variable(_) => {
+                let (id, params) = match ty.kind.clone() {
+                    engine::UnresolvedTypeKind::Named(id, params, _) => (id, params),
+                    engine::UnresolvedTypeKind::Variable(_) => {
                         return MonomorphizedPatternKind::UnresolvedDestructure(
                             structure_ty,
                             fields,
@@ -3159,8 +3212,8 @@ impl Typechecker {
                 MonomorphizedPatternKind::Destructure(id, fields)
             }
             MonomorphizedPatternKind::UnresolvedVariant(variant_ty, variant, values) => {
-                let (id, params) = match &ty {
-                    engine::UnresolvedType::Named(id, params, _) => (*id, params),
+                let (id, params) = match &ty.kind {
+                    engine::UnresolvedTypeKind::Named(id, params, _) => (*id, params),
                     _ => return MonomorphizedPatternKind::error(&self.compiler),
                 };
 
@@ -3200,7 +3253,7 @@ impl Typechecker {
                     None,
                     pattern.span,
                     ty.clone(),
-                    engine::UnresolvedType::Named(
+                    engine::UnresolvedTypeKind::Named(
                         variant_ty,
                         enumeration
                             .params
@@ -3210,7 +3263,8 @@ impl Typechecker {
                         // HACK: Optimization because unification doesn't take structure into
                         // account -- the structure can be applied during finalization
                         engine::TypeStructure::Marker,
-                    ),
+                    )
+                    .with_span(pattern.span),
                 ) {
                     self.add_error(error);
                 }
@@ -3233,14 +3287,17 @@ impl Typechecker {
             MonomorphizedPatternKind::Tuple(patterns) => {
                 let tys = patterns
                     .iter()
-                    .map(|_| engine::UnresolvedType::Variable(self.ctx.new_variable(None)))
+                    .map(|_| {
+                        engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None))
+                            .with_span(None)
+                    })
                     .collect::<Vec<_>>();
 
                 if let Err(error) = self.unify(
                     None,
                     pattern.span,
                     ty.clone(),
-                    engine::UnresolvedType::Tuple(tys.clone()),
+                    engine::UnresolvedTypeKind::Tuple(tys.clone()).with_span(pattern.span),
                 ) {
                     self.add_error(error);
                 }
@@ -3298,10 +3355,11 @@ impl Typechecker {
             .map(|&param| {
                 (
                     param,
-                    engine::UnresolvedType::Parameter(
+                    engine::UnresolvedTypeKind::Parameter(
                         self.compiler
                             .new_type_parameter_id_in(use_span.first().path),
-                    ),
+                    )
+                    .with_span(None),
                 )
             })
             .collect::<engine::GenericSubstitutions>();
@@ -3533,8 +3591,10 @@ impl Typechecker {
 
                             let mut param_substitutions = info.param_substitutions.clone();
                             for &param in &inferred_params {
-                                param_substitutions
-                                    .insert(param, engine::UnresolvedType::Parameter(param));
+                                param_substitutions.insert(
+                                    param,
+                                    engine::UnresolvedTypeKind::Parameter(param).with_span(None),
+                                );
                             }
 
                             let mut trait_ty = engine::UnresolvedType::from(
@@ -3747,7 +3807,8 @@ impl Typechecker {
                     .unwrap_or(false);
 
                 let ty = params.get(&param).cloned().unwrap_or_else(|| {
-                    engine::UnresolvedType::Variable(self.ctx.new_variable(None))
+                    engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None))
+                        .with_span(None)
                 });
 
                 (ty, (param, inferred))
@@ -3784,21 +3845,26 @@ impl Typechecker {
             MonomorphizedExpressionKind::Variable(var) => ExpressionKind::Variable(var),
             MonomorphizedExpressionKind::Text(text) => ExpressionKind::Text(text),
             MonomorphizedExpressionKind::Number(number) => {
-                match parse_number!(number, ExpressionKind, &ty, Type) {
+                match parse_number!(number, ExpressionKind, &ty, TypeKind) {
                     Some(Ok(number)) => number,
                     Some(Err(error)) => {
                         self.add_error(self.error(error, expr.id, expr.span));
                         ExpressionKind::error(&self.compiler)
                     }
                     None => {
-                        self.add_error(self.error(
-                            engine::TypeError::Mismatch(
-                                engine::UnresolvedType::Builtin(engine::BuiltinType::Number),
-                                expr.ty,
+                        self.add_error(
+                            self.error(
+                                engine::TypeError::Mismatch(
+                                    engine::UnresolvedTypeKind::Builtin(
+                                        engine::BuiltinType::Number,
+                                    )
+                                    .with_span(expr.span),
+                                    expr.ty,
+                                ),
+                                expr.id,
+                                expr.span,
                             ),
-                            expr.id,
-                            expr.span,
-                        ));
+                        );
 
                         ExpressionKind::error(&self.compiler)
                     }
@@ -3817,8 +3883,8 @@ impl Typechecker {
                 first,
             ),
             MonomorphizedExpressionKind::Function(pattern, body, captures) => {
-                let input_ty = match &ty {
-                    engine::Type::Function(input, _) => input.clone(),
+                let input_ty = match &ty.kind {
+                    engine::TypeKind::Function(input, _) => input.clone(),
                     _ => return ExpressionKind::error(&self.compiler),
                 };
 
@@ -3946,21 +4012,26 @@ impl Typechecker {
                 MonomorphizedPatternKind::Error(trace) => PatternKind::Error(trace),
                 MonomorphizedPatternKind::Wildcard => PatternKind::Wildcard,
                 MonomorphizedPatternKind::Number(number) => {
-                    match parse_number!(number, PatternKind, input_ty, Type) {
+                    match parse_number!(number, PatternKind, input_ty, TypeKind) {
                         Some(Ok(number)) => number,
                         Some(Err(error)) => {
                             self.add_error(self.error(error, None, pattern.span));
                             PatternKind::error(&self.compiler)
                         }
                         None => {
-                            self.add_error(self.error(
-                                engine::TypeError::Mismatch(
-                                    engine::UnresolvedType::Builtin(engine::BuiltinType::Number),
-                                    input_ty.clone().into(),
+                            self.add_error(
+                                self.error(
+                                    engine::TypeError::Mismatch(
+                                        engine::UnresolvedTypeKind::Builtin(
+                                            engine::BuiltinType::Number,
+                                        )
+                                        .with_span(pattern.span),
+                                        input_ty.clone().into(),
+                                    ),
+                                    None,
+                                    pattern.span,
                                 ),
-                                None,
-                                pattern.span,
-                            ));
+                            );
 
                             PatternKind::error(&self.compiler)
                         }
@@ -3973,11 +4044,11 @@ impl Typechecker {
                 }
                 MonomorphizedPatternKind::UnresolvedDestructure(_, _) => unreachable!(),
                 MonomorphizedPatternKind::Destructure(id, fields) => {
-                    let input_tys = match input_ty {
-                        engine::Type::Named(_, _, engine::TypeStructure::Structure(fields)) => {
+                    let input_tys = match &input_ty.kind {
+                        engine::TypeKind::Named(_, _, engine::TypeStructure::Structure(fields)) => {
                             fields.clone()
                         }
-                        engine::Type::Named(_, _, engine::TypeStructure::Recursive(id)) => {
+                        engine::TypeKind::Named(_, _, engine::TypeStructure::Recursive(id)) => {
                             match self
                                 .with_type_decl(*id, |decl| match &decl.kind {
                                     TypeDeclKind::Structure { fields, .. } => {
@@ -4005,11 +4076,13 @@ impl Typechecker {
                 }
                 MonomorphizedPatternKind::UnresolvedVariant(_, _, _) => unreachable!(),
                 MonomorphizedPatternKind::Variant(id, index, values) => {
-                    let input_tys = match input_ty {
-                        engine::Type::Named(_, _, engine::TypeStructure::Enumeration(variants)) => {
-                            variants[index.into_inner()].clone()
-                        }
-                        engine::Type::Named(_, _, engine::TypeStructure::Recursive(id)) => {
+                    let input_tys = match &input_ty.kind {
+                        engine::TypeKind::Named(
+                            _,
+                            _,
+                            engine::TypeStructure::Enumeration(variants),
+                        ) => variants[index.into_inner()].clone(),
+                        engine::TypeKind::Named(_, _, engine::TypeStructure::Recursive(id)) => {
                             match self
                                 .with_type_decl(*id, |decl| match &decl.kind {
                                     TypeDeclKind::Enumeration { variants, .. } => Some(
@@ -4044,8 +4117,8 @@ impl Typechecker {
                     Box::new(self.finalize_pattern(*rhs, input_ty)),
                 ),
                 MonomorphizedPatternKind::Tuple(patterns) => {
-                    let input_tys = match input_ty {
-                        engine::Type::Tuple(tys) => tys,
+                    let input_tys = match &input_ty.kind {
+                        engine::TypeKind::Tuple(tys) => tys,
                         _ => return PatternKind::error(&self.compiler),
                     };
 
@@ -4381,7 +4454,7 @@ impl Typechecker {
             let name = match self.with_type_parameter_decl(*param, |decl| decl.name) {
                 Some(name) => name,
                 None => {
-                    params.push((engine::Type::Error, None));
+                    params.push((engine::TypeKind::Error.with_span(None), None));
                     continue;
                 }
             };
@@ -4398,7 +4471,7 @@ impl Typechecker {
                 "syntax-error",
             );
 
-            params.push((engine::Type::Error, None));
+            params.push((engine::TypeKind::Error.with_span(None), None));
         }
 
         let has_bounds = !decl.value.bounds.is_empty();
@@ -4697,7 +4770,8 @@ impl Typechecker {
         for param in ty.params() {
             if !substitutions.contains_key(&param) {
                 let default = self.get_default_for_param(param, Some(substitutions));
-                let ty = engine::UnresolvedType::Variable(self.ctx.new_variable(default));
+                let ty = engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(default))
+                    .with_span(None);
                 substitutions.insert(param, ty);
             }
         }
@@ -4719,10 +4793,11 @@ impl Typechecker {
                     .unwrap_or(false);
 
                 let ty = if inferred {
-                    engine::UnresolvedType::Parameter(param)
+                    engine::UnresolvedTypeKind::Parameter(param).with_span(None)
                 } else {
                     let default = self.get_default_for_param(param, Some(substitutions));
-                    engine::UnresolvedType::Variable(self.ctx.new_variable(default))
+                    engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(default))
+                        .with_span(None)
                 };
 
                 substitutions.insert(param, ty);
@@ -4739,10 +4814,11 @@ impl Typechecker {
     fn convert_type_annotation(&self, annotation: TypeAnnotation) -> engine::UnresolvedType {
         self.convert_type_annotation_inner(
             annotation,
-            &|typechecker, _| {
-                Some(engine::UnresolvedType::Variable(
-                    typechecker.ctx.new_variable(None),
-                ))
+            &|typechecker, span| {
+                Some(
+                    engine::UnresolvedTypeKind::Variable(typechecker.ctx.new_variable(None))
+                        .with_span(span),
+                )
             },
             &mut Vec::new(),
         )
@@ -4771,7 +4847,7 @@ impl Typechecker {
                         },
                     );
 
-                Some(engine::UnresolvedType::Parameter(param))
+                Some(engine::UnresolvedTypeKind::Parameter(param).with_span(span))
             },
             &mut Vec::new(),
         );
@@ -4804,7 +4880,9 @@ impl Typechecker {
         stack: &mut Vec<TypeId>,
     ) -> engine::UnresolvedType {
         match annotation.kind {
-            TypeAnnotationKind::Error(_) => engine::UnresolvedType::Error,
+            TypeAnnotationKind::Error(_) => {
+                engine::UnresolvedTypeKind::Error.with_span(annotation.span)
+            }
             TypeAnnotationKind::Placeholder => {
                 if let Some(ty) = convert_placeholder(self, annotation.span) {
                     ty
@@ -4818,7 +4896,7 @@ impl Typechecker {
                         "unexpected-type-placeholder",
                     );
 
-                    engine::UnresolvedType::Error
+                    engine::UnresolvedTypeKind::Error.with_span(annotation.span)
                 }
             }
             TypeAnnotationKind::Named(id, params) => {
@@ -4835,7 +4913,8 @@ impl Typechecker {
                     let name = match self.with_type_parameter_decl(*param, |decl| decl.name) {
                         Some(name) => name,
                         None => {
-                            params.push(engine::UnresolvedType::Error);
+                            params
+                                .push(engine::UnresolvedTypeKind::Error.with_span(annotation.span));
                             continue;
                         }
                     };
@@ -4852,15 +4931,16 @@ impl Typechecker {
                         "syntax-error",
                     );
 
-                    params.push(engine::UnresolvedType::Error);
+                    params.push(engine::UnresolvedTypeKind::Error.with_span(annotation.span));
                 }
 
                 if stack.contains(&id) {
-                    return engine::UnresolvedType::Named(
+                    return engine::UnresolvedTypeKind::Named(
                         id,
                         params,
                         engine::TypeStructure::Recursive(id),
-                    );
+                    )
+                    .with_span(annotation.span);
                 }
 
                 stack.push(id);
@@ -4917,9 +4997,11 @@ impl Typechecker {
 
                 stack.pop();
 
-                engine::UnresolvedType::Named(id, params, structure)
+                engine::UnresolvedTypeKind::Named(id, params, structure).with_span(annotation.span)
             }
-            TypeAnnotationKind::Parameter(id) => engine::UnresolvedType::Parameter(id),
+            TypeAnnotationKind::Parameter(id) => {
+                engine::UnresolvedTypeKind::Parameter(id).with_span(annotation.span)
+            }
             TypeAnnotationKind::Builtin(id, mut parameters) => {
                 let builtin_ty = self
                     .top_level
@@ -4942,7 +5024,8 @@ impl Typechecker {
                             );
                         }
 
-                        engine::UnresolvedType::Builtin(engine::BuiltinType::Number)
+                        engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Number)
+                            .with_span(annotation.span)
                     }
                     lower::BuiltinTypeDeclarationKind::Integer => {
                         if !parameters.is_empty() {
@@ -4956,7 +5039,8 @@ impl Typechecker {
                             );
                         }
 
-                        engine::UnresolvedType::Builtin(engine::BuiltinType::Integer)
+                        engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Integer)
+                            .with_span(annotation.span)
                     }
                     lower::BuiltinTypeDeclarationKind::Natural => {
                         if !parameters.is_empty() {
@@ -4970,7 +5054,8 @@ impl Typechecker {
                             );
                         }
 
-                        engine::UnresolvedType::Builtin(engine::BuiltinType::Natural)
+                        engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Natural)
+                            .with_span(annotation.span)
                     }
                     lower::BuiltinTypeDeclarationKind::Byte => {
                         if !parameters.is_empty() {
@@ -4984,7 +5069,8 @@ impl Typechecker {
                             );
                         }
 
-                        engine::UnresolvedType::Builtin(engine::BuiltinType::Byte)
+                        engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Byte)
+                            .with_span(annotation.span)
                     }
                     lower::BuiltinTypeDeclarationKind::Signed => {
                         if !parameters.is_empty() {
@@ -4998,7 +5084,8 @@ impl Typechecker {
                             );
                         }
 
-                        engine::UnresolvedType::Builtin(engine::BuiltinType::Signed)
+                        engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Signed)
+                            .with_span(annotation.span)
                     }
                     lower::BuiltinTypeDeclarationKind::Unsigned => {
                         if !parameters.is_empty() {
@@ -5012,7 +5099,8 @@ impl Typechecker {
                             );
                         }
 
-                        engine::UnresolvedType::Builtin(engine::BuiltinType::Unsigned)
+                        engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Unsigned)
+                            .with_span(annotation.span)
                     }
                     lower::BuiltinTypeDeclarationKind::Float => {
                         if !parameters.is_empty() {
@@ -5026,7 +5114,8 @@ impl Typechecker {
                             );
                         }
 
-                        engine::UnresolvedType::Builtin(engine::BuiltinType::Float)
+                        engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Float)
+                            .with_span(annotation.span)
                     }
                     lower::BuiltinTypeDeclarationKind::Double => {
                         if !parameters.is_empty() {
@@ -5040,7 +5129,8 @@ impl Typechecker {
                             );
                         }
 
-                        engine::UnresolvedType::Builtin(engine::BuiltinType::Double)
+                        engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Double)
+                            .with_span(annotation.span)
                     }
                     lower::BuiltinTypeDeclarationKind::Text => {
                         if !parameters.is_empty() {
@@ -5054,7 +5144,8 @@ impl Typechecker {
                             );
                         }
 
-                        engine::UnresolvedType::Builtin(engine::BuiltinType::Text)
+                        engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Text)
+                            .with_span(annotation.span)
                     }
                     lower::BuiltinTypeDeclarationKind::List => {
                         if parameters.is_empty() {
@@ -5067,9 +5158,10 @@ impl Typechecker {
                                 "syntax-error",
                             );
 
-                            engine::UnresolvedType::Builtin(engine::BuiltinType::List(Box::new(
-                                engine::UnresolvedType::Error,
-                            )))
+                            engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::List(
+                                Box::new(engine::UnresolvedTypeKind::Error.with_span(None)),
+                            ))
+                            .with_span(annotation.span)
                         } else {
                             if parameters.len() > 1 {
                                 self.compiler.add_error(
@@ -5085,13 +5177,14 @@ impl Typechecker {
                                 );
                             }
 
-                            engine::UnresolvedType::Builtin(engine::BuiltinType::List(Box::new(
-                                self.convert_type_annotation_inner(
+                            engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::List(
+                                Box::new(self.convert_type_annotation_inner(
                                     parameters.pop().unwrap(),
                                     convert_placeholder,
                                     stack,
-                                ),
-                            )))
+                                )),
+                            ))
+                            .with_span(annotation.span)
                         }
                     }
                     lower::BuiltinTypeDeclarationKind::Mutable => {
@@ -5105,9 +5198,10 @@ impl Typechecker {
                                 "syntax-error",
                             );
 
-                            engine::UnresolvedType::Builtin(engine::BuiltinType::Mutable(Box::new(
-                                engine::UnresolvedType::Error,
-                            )))
+                            engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Mutable(
+                                Box::new(engine::UnresolvedTypeKind::Error.with_span(None)),
+                            ))
+                            .with_span(annotation.span)
                         } else {
                             if parameters.len() > 1 {
                                 self.compiler.add_error(
@@ -5123,13 +5217,14 @@ impl Typechecker {
                                 );
                             }
 
-                            engine::UnresolvedType::Builtin(engine::BuiltinType::Mutable(Box::new(
-                                self.convert_type_annotation_inner(
+                            engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Mutable(
+                                Box::new(self.convert_type_annotation_inner(
                                     parameters.pop().unwrap(),
                                     convert_placeholder,
                                     stack,
-                                ),
-                            )))
+                                )),
+                            ))
+                            .with_span(annotation.span)
                         }
                     }
                     lower::BuiltinTypeDeclarationKind::Ui => {
@@ -5144,7 +5239,8 @@ impl Typechecker {
                             );
                         }
 
-                        engine::UnresolvedType::Builtin(engine::BuiltinType::Ui)
+                        engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Ui)
+                            .with_span(annotation.span)
                     }
                     lower::BuiltinTypeDeclarationKind::TaskGroup => {
                         if !parameters.is_empty() {
@@ -5158,19 +5254,22 @@ impl Typechecker {
                             );
                         }
 
-                        engine::UnresolvedType::Builtin(engine::BuiltinType::TaskGroup)
+                        engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::TaskGroup)
+                            .with_span(annotation.span)
                     }
                 }
             }
-            TypeAnnotationKind::Function(input, output) => engine::UnresolvedType::Function(
+            TypeAnnotationKind::Function(input, output) => engine::UnresolvedTypeKind::Function(
                 Box::new(self.convert_type_annotation_inner(*input, convert_placeholder, stack)),
                 Box::new(self.convert_type_annotation_inner(*output, convert_placeholder, stack)),
-            ),
-            TypeAnnotationKind::Tuple(tys) => engine::UnresolvedType::Tuple(
+            )
+            .with_span(annotation.span),
+            TypeAnnotationKind::Tuple(tys) => engine::UnresolvedTypeKind::Tuple(
                 tys.into_iter()
                     .map(|ty| self.convert_type_annotation_inner(ty, convert_placeholder, stack))
                     .collect(),
-            ),
+            )
+            .with_span(annotation.span),
         }
     }
 
@@ -5184,7 +5283,9 @@ impl Typechecker {
             .with_trait_decl(trait_id, |decl| {
                 (
                     decl.span,
-                    decl.ty.clone().unwrap_or(engine::Type::Error),
+                    decl.ty
+                        .clone()
+                        .unwrap_or(engine::TypeKind::Error.with_span(decl.span)),
                     decl.params.clone(),
                 )
             })
@@ -5199,7 +5300,8 @@ impl Typechecker {
                 ],
                 "syntax-error",
             );
-            return engine::UnresolvedType::Error;
+
+            return engine::UnresolvedTypeKind::Error.with_span(span);
         }
 
         let substitutions = trait_params
@@ -5424,9 +5526,13 @@ impl Typechecker {
                 // display the error at the start of the call chain instead of the
                 // function itself
                 loop {
-                    if let engine::UnresolvedType::Function(actual_input, actual_output) = &actual {
-                        if let engine::UnresolvedType::Function(expected_input, expected_output) =
-                            &expected
+                    if let engine::UnresolvedTypeKind::Function(actual_input, actual_output) =
+                        &actual.kind
+                    {
+                        if let engine::UnresolvedTypeKind::Function(
+                            expected_input,
+                            expected_output,
+                        ) = &expected.kind
                         {
                             let actual_input = actual_input.as_ref().clone();
                             let actual_output = actual_output.as_ref().clone();
@@ -5491,7 +5597,9 @@ impl Typechecker {
                                 }
                             }
                             ExpressionKind::Function(_, expr, _) => {
-                                if let engine::UnresolvedType::Function(input, output) = ty {
+                                if let engine::UnresolvedTypeKind::Function(input, output) =
+                                    &ty.kind
+                                {
                                     if !input.contains_vars() && output.contains_vars() {
                                         modified = true;
                                         error.expr = Some(expr.id);
@@ -5562,8 +5670,8 @@ impl Typechecker {
                 actual.apply(&self.ctx);
                 expected.apply(&self.ctx);
 
-                let actual_ty = match &actual {
-                    engine::UnresolvedType::Named(id, params, _) => Some((
+                let actual_ty = match &actual.kind {
+                    engine::UnresolvedTypeKind::Named(id, params, _) => Some((
                         self.declarations.borrow().types.get(id).unwrap().clone(),
                         params.clone(),
                     )),
@@ -5588,7 +5696,7 @@ impl Typechecker {
                 {
                     let mut output = actual.clone();
                     let mut num_inputs = 0usize;
-                    while let engine::UnresolvedType::Function(_, ty) = output {
+                    while let engine::UnresolvedTypeKind::Function(_, ty) = output.kind {
                         output = *ty;
                         num_inputs += 1;
                     }
@@ -5629,16 +5737,19 @@ impl Typechecker {
                     }
                 }
 
-                if let engine::UnresolvedType::Function(expected_input, expected_output) = &expected
+                if let engine::UnresolvedTypeKind::Function(expected_input, expected_output) =
+                    &expected.kind
                 {
-                    if let engine::UnresolvedType::Function(actual_input, actual_output) = &actual {
+                    if let engine::UnresolvedTypeKind::Function(actual_input, actual_output) =
+                        &actual.kind
+                    {
                         let mut actual_output = actual_output.as_ref().clone();
                         let mut expected_output = expected_output.as_ref().clone();
 
                         while let (
-                            engine::UnresolvedType::Function(_, actual_output_inner),
-                            engine::UnresolvedType::Function(_, expected_output_inner),
-                        ) = (&actual_output, &expected_output)
+                            engine::UnresolvedTypeKind::Function(_, actual_output_inner),
+                            engine::UnresolvedTypeKind::Function(_, expected_output_inner),
+                        ) = (&actual_output.kind, &expected_output.kind)
                         {
                             actual_output = actual_output_inner.as_ref().clone();
                             expected_output = expected_output_inner.as_ref().clone();
@@ -5728,7 +5839,7 @@ impl Typechecker {
                     }
                 }
 
-                if let engine::UnresolvedType::Named(id, _, _) = &expected {
+                if let engine::UnresolvedTypeKind::Named(id, _, _) = &expected.kind {
                     let ty = self.declarations.borrow().types.get(id).unwrap().clone();
 
                     if let Some(source_code) =
@@ -5774,7 +5885,7 @@ impl Typechecker {
                             format!(
                                 "all uses of {} must resolve to the same type",
                                 self.format_type(
-                                    engine::UnresolvedType::Variable(var),
+                                    engine::UnresolvedTypeKind::Variable(var).with_span(None),
                                     format::Format {
                                         surround_in_backticks: true,
                                         type_function: format::TypeFunctionFormat::None,
@@ -5821,8 +5932,9 @@ impl Typechecker {
                     }
                 }
 
-                if let engine::UnresolvedType::Builtin(engine::BuiltinType::Text) = actual {
-                    if let engine::UnresolvedType::Function(_, _) = expected {
+                if let engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Text) = actual.kind
+                {
+                    if let engine::UnresolvedTypeKind::Function(_, _) = expected.kind {
                         if let Some(id) = error.expr {
                             if self.start_of_call_chain_for(id).is_some() {
                                 notes.push(Note::secondary(
@@ -5872,9 +5984,8 @@ impl Typechecker {
                             .map(|(text, param)| {
                                 let ty = trait_params.get(param).unwrap().clone();
 
-                                let span: Option<SpanList> = todo!();
-
-                                let code = span
+                                let code = ty
+                                    .span
                                     .and_then(|span| {
                                         self.compiler.source_code_for_span(span.first())
                                     })
@@ -5936,12 +6047,13 @@ impl Typechecker {
                         multi_var_format
                     };
 
-                let note = (!matches!(ty, engine::UnresolvedType::Variable(_))).then(|| {
-                    Note::primary(
-                        error.span,
-                        format!("this has type {}", self.format_type(ty, format)),
-                    )
-                });
+                let note =
+                    (!matches!(ty.kind, engine::UnresolvedTypeKind::Variable(_))).then(|| {
+                        Note::primary(
+                            error.span,
+                            format!("this has type {}", self.format_type(ty, format)),
+                        )
+                    });
 
                 self.compiler.error_with_trace(
                     "could not determine the type of this expression",

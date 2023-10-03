@@ -3,11 +3,32 @@ use serde::Serialize;
 use std::{
     cell::{Cell, RefCell},
     collections::BTreeMap,
+    hash::Hash,
     rc::Rc,
 };
 
+#[derive(Debug, Clone, Serialize)]
+pub struct UnresolvedType {
+    pub span: Option<SpanList>,
+    pub kind: UnresolvedTypeKind,
+}
+
+impl PartialEq for UnresolvedType {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind
+    }
+}
+
+impl Eq for UnresolvedType {}
+
+impl Hash for UnresolvedType {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.kind.hash(state);
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
-pub enum UnresolvedType {
+pub enum UnresolvedTypeKind {
     Variable(TypeVariable),
     Parameter(TypeParameterId),
     NumericVariable(TypeVariable),
@@ -18,14 +39,52 @@ pub enum UnresolvedType {
     Error,
 }
 
+impl UnresolvedTypeKind {
+    pub fn with_span(self, span: impl Into<Option<SpanList>>) -> UnresolvedType {
+        UnresolvedType {
+            span: span.into(),
+            kind: self,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Type {
+    pub span: Option<SpanList>,
+    pub kind: TypeKind,
+}
+
+impl PartialEq for Type {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind
+    }
+}
+
+impl Eq for Type {}
+
+impl Hash for Type {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.kind.hash(state);
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
-pub enum Type {
+pub enum TypeKind {
     Parameter(TypeParameterId),
     Named(TypeId, Vec<Type>, TypeStructure<Type>),
     Function(Box<Type>, Box<Type>),
     Tuple(Vec<Type>),
     Builtin(BuiltinType<Box<Type>>),
     Error,
+}
+
+impl TypeKind {
+    pub fn with_span(self, span: impl Into<Option<SpanList>>) -> Type {
+        Type {
+            span: span.into(),
+            kind: self,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
@@ -38,35 +97,39 @@ pub enum TypeStructure<Ty> {
 
 impl From<Type> for UnresolvedType {
     fn from(ty: Type) -> Self {
-        match ty {
-            Type::Parameter(param) => UnresolvedType::Parameter(param),
-            Type::Named(id, params, structure) => UnresolvedType::Named(
-                id,
-                params.into_iter().map(|param| param.into()).collect(),
-                structure.into(),
-            ),
-            Type::Function(input, output) => {
-                UnresolvedType::Function(Box::new((*input).into()), Box::new((*output).into()))
-            }
-            Type::Tuple(tys) => {
-                UnresolvedType::Tuple(tys.into_iter().map(|ty| ty.into()).collect())
-            }
-            Type::Builtin(builtin) => UnresolvedType::Builtin(match builtin {
-                BuiltinType::Number => BuiltinType::Number,
-                BuiltinType::Integer => BuiltinType::Integer,
-                BuiltinType::Natural => BuiltinType::Natural,
-                BuiltinType::Byte => BuiltinType::Byte,
-                BuiltinType::Signed => BuiltinType::Signed,
-                BuiltinType::Unsigned => BuiltinType::Unsigned,
-                BuiltinType::Float => BuiltinType::Float,
-                BuiltinType::Double => BuiltinType::Double,
-                BuiltinType::Text => BuiltinType::Text,
-                BuiltinType::List(ty) => BuiltinType::List(Box::new((*ty).into())),
-                BuiltinType::Mutable(ty) => BuiltinType::Mutable(Box::new((*ty).into())),
-                BuiltinType::Ui => BuiltinType::Ui,
-                BuiltinType::TaskGroup => BuiltinType::TaskGroup,
-            }),
-            Type::Error => UnresolvedType::Error,
+        UnresolvedType {
+            span: ty.span,
+            kind: match ty.kind {
+                TypeKind::Parameter(param) => UnresolvedTypeKind::Parameter(param),
+                TypeKind::Named(id, params, structure) => UnresolvedTypeKind::Named(
+                    id,
+                    params.into_iter().map(|param| param.into()).collect(),
+                    structure.into(),
+                ),
+                TypeKind::Function(input, output) => UnresolvedTypeKind::Function(
+                    Box::new((*input).into()),
+                    Box::new((*output).into()),
+                ),
+                TypeKind::Tuple(tys) => {
+                    UnresolvedTypeKind::Tuple(tys.into_iter().map(|ty| ty.into()).collect())
+                }
+                TypeKind::Builtin(builtin) => UnresolvedTypeKind::Builtin(match builtin {
+                    BuiltinType::Number => BuiltinType::Number,
+                    BuiltinType::Integer => BuiltinType::Integer,
+                    BuiltinType::Natural => BuiltinType::Natural,
+                    BuiltinType::Byte => BuiltinType::Byte,
+                    BuiltinType::Signed => BuiltinType::Signed,
+                    BuiltinType::Unsigned => BuiltinType::Unsigned,
+                    BuiltinType::Float => BuiltinType::Float,
+                    BuiltinType::Double => BuiltinType::Double,
+                    BuiltinType::Text => BuiltinType::Text,
+                    BuiltinType::List(ty) => BuiltinType::List(Box::new((*ty).into())),
+                    BuiltinType::Mutable(ty) => BuiltinType::Mutable(Box::new((*ty).into())),
+                    BuiltinType::Ui => BuiltinType::Ui,
+                    BuiltinType::TaskGroup => BuiltinType::TaskGroup,
+                }),
+                TypeKind::Error => UnresolvedTypeKind::Error,
+            },
         }
     }
 }
@@ -214,54 +277,25 @@ impl Context {
         expected.apply(self);
 
         if let Some((params, _)) = &params {
-            if let UnresolvedType::Parameter(param) = expected {
+            if let UnresolvedTypeKind::Parameter(param) = expected.kind {
                 params.borrow_mut().insert(param, actual.clone());
             }
         }
 
-        macro_rules! mismatch {
-            ($actual:expr, $expected:expr $(,)?) => {
-                if reverse {
-                    Box::new(TypeError::Mismatch($expected, $actual))
-                } else {
-                    Box::new(TypeError::Mismatch($actual, $expected))
-                }
-            };
-        }
-
-        match (actual, expected) {
-            (
-                UnresolvedType::Parameter(actual_param),
-                UnresolvedType::Parameter(expected_param),
-            ) if generic => {
-                if actual_param == expected_param {
-                    Ok(())
-                } else if params.is_none() {
-                    Err(mismatch!(
-                        UnresolvedType::Parameter(actual_param),
-                        UnresolvedType::Parameter(expected_param),
-                    ))
-                } else {
-                    Ok(())
-                }
+        let mismatch = || {
+            if reverse {
+                Box::new(TypeError::Mismatch(expected.clone(), actual.clone()))
+            } else {
+                Box::new(TypeError::Mismatch(actual.clone(), expected.clone()))
             }
-            (ty, UnresolvedType::Parameter(param)) if !generic => {
-                if let UnresolvedType::Variable(var) = ty {
-                    if let Some((_, default)) = params {
-                        if let Some(ty) = default(param) {
-                            self.defaults.borrow_mut().insert(var, ty);
-                        }
-                    }
-                }
+        };
 
-                Ok(())
-            }
-            // FIXME: Determine if removing this is sound
-            // (UnresolvedType::Parameter(actual), expected) if !generic => {
-            //     Err(mismatch!(UnresolvedType::Parameter(actual), expected))
-            // }
-            (UnresolvedType::Variable(var), ty) | (ty, UnresolvedType::Variable(var)) => {
-                if let UnresolvedType::Variable(other) = ty {
+        macro_rules! unify_var {
+            ($var:ident, $ty:ident) => {{
+                let var = $var;
+                let ty = $ty;
+
+                if let UnresolvedTypeKind::Variable(other) = ty.kind {
                     if var == other {
                         return Ok(());
                     }
@@ -274,7 +308,7 @@ impl Context {
                         Ok(())
                     }
                 } else {
-                    if let UnresolvedType::Variable(other) = ty {
+                    if let UnresolvedTypeKind::Variable(other) = ty.kind {
                         let mut defaults = self.defaults.borrow_mut();
 
                         if let Some(source) = defaults.get(&var).cloned() {
@@ -288,62 +322,96 @@ impl Context {
 
                     Ok(())
                 }
-            }
-            (UnresolvedType::NumericVariable(var), ty) => {
-                match &ty {
-                    UnresolvedType::NumericVariable(other) => {
-                        if var == *other {
-                            return Ok(());
-                        }
-                    }
-                    UnresolvedType::Builtin(ty) if ty.is_numeric() => {}
-                    _ => {
-                        if params.is_none() {
-                            return Err(mismatch!(UnresolvedType::NumericVariable(var), ty));
-                        }
-                    }
-                }
+            }};
+        }
 
-                if ty.contains(&var) {
-                    if params.is_none() {
-                        Err(Box::new(TypeError::Recursive(var)))
-                    } else {
-                        Ok(())
-                    }
+        match (actual.kind.clone(), expected.kind.clone()) {
+            (
+                UnresolvedTypeKind::Parameter(actual_param),
+                UnresolvedTypeKind::Parameter(expected_param),
+            ) if generic => {
+                if actual_param == expected_param {
+                    Ok(())
+                } else if params.is_none() {
+                    Err(mismatch())
                 } else {
-                    self.numeric_substitutions.borrow_mut().insert(var, ty);
                     Ok(())
                 }
             }
-            (ty, UnresolvedType::NumericVariable(var)) => {
-                match &ty {
-                    UnresolvedType::NumericVariable(other) => {
-                        if var == *other {
-                            return Ok(());
-                        }
-                    }
-                    UnresolvedType::Builtin(ty) if ty.is_numeric() => {}
-                    _ => {
-                        if params.is_none() {
-                            return Err(mismatch!(ty, UnresolvedType::NumericVariable(var)));
+            (ty, UnresolvedTypeKind::Parameter(param)) if !generic => {
+                if let UnresolvedTypeKind::Variable(var) = ty {
+                    if let Some((_, default)) = params {
+                        if let Some(ty) = default(param) {
+                            self.defaults.borrow_mut().insert(var, ty);
                         }
                     }
                 }
 
-                if ty.contains(&var) {
+                Ok(())
+            }
+            // FIXME: Determine if removing this is sound
+            // (UnresolvedTypeKind::Parameter(actual), expected) if !generic => {
+            //     Err(mismatch!(UnresolvedTypeKind::Parameter(actual), expected))
+            // }
+            (UnresolvedTypeKind::Variable(var), _) => unify_var!(var, expected),
+            (_, UnresolvedTypeKind::Variable(var)) => unify_var!(var, actual),
+            (UnresolvedTypeKind::NumericVariable(var), expected_kind) => {
+                match expected_kind {
+                    UnresolvedTypeKind::NumericVariable(other) => {
+                        if var == other {
+                            return Ok(());
+                        }
+                    }
+                    UnresolvedTypeKind::Builtin(ty) if ty.is_numeric() => {}
+                    _ => {
+                        if params.is_none() {
+                            return Err(mismatch());
+                        }
+                    }
+                }
+
+                if expected.contains(&var) {
                     if params.is_none() {
                         Err(Box::new(TypeError::Recursive(var)))
                     } else {
                         Ok(())
                     }
                 } else {
-                    self.numeric_substitutions.borrow_mut().insert(var, ty);
+                    self.numeric_substitutions
+                        .borrow_mut()
+                        .insert(var, expected);
+                    Ok(())
+                }
+            }
+            (actual_kind, UnresolvedTypeKind::NumericVariable(var)) => {
+                match actual_kind {
+                    UnresolvedTypeKind::NumericVariable(other) => {
+                        if var == other {
+                            return Ok(());
+                        }
+                    }
+                    UnresolvedTypeKind::Builtin(ty) if ty.is_numeric() => {}
+                    _ => {
+                        if params.is_none() {
+                            return Err(mismatch());
+                        }
+                    }
+                }
+
+                if actual.contains(&var) {
+                    if params.is_none() {
+                        Err(Box::new(TypeError::Recursive(var)))
+                    } else {
+                        Ok(())
+                    }
+                } else {
+                    self.numeric_substitutions.borrow_mut().insert(var, actual);
                     Ok(())
                 }
             }
             (
-                UnresolvedType::Named(actual_id, actual_params, actual_structure),
-                UnresolvedType::Named(expected_id, expected_params, expected_structure),
+                UnresolvedTypeKind::Named(actual_id, actual_params, _),
+                UnresolvedTypeKind::Named(expected_id, expected_params, _),
             ) => {
                 if actual_id == expected_id {
                     let mut error = false;
@@ -364,25 +432,19 @@ impl Context {
                     }
 
                     if error && params.is_none() {
-                        return Err(mismatch!(
-                            UnresolvedType::Named(actual_id, actual_params, actual_structure),
-                            UnresolvedType::Named(expected_id, expected_params, expected_structure),
-                        ));
+                        return Err(mismatch());
                     }
 
                     Ok(())
                 } else if params.is_none() {
-                    Err(mismatch!(
-                        UnresolvedType::Named(actual_id, actual_params, actual_structure),
-                        UnresolvedType::Named(expected_id, expected_params, expected_structure),
-                    ))
+                    Err(mismatch())
                 } else {
                     Ok(())
                 }
             }
             (
-                UnresolvedType::Function(actual_input, actual_output),
-                UnresolvedType::Function(expected_input, expected_output),
+                UnresolvedTypeKind::Function(actual_input, actual_output),
+                UnresolvedTypeKind::Function(expected_input, expected_output),
             ) => {
                 let mut error = false;
 
@@ -415,20 +477,14 @@ impl Context {
                 }
 
                 if error && params.is_none() {
-                    return Err(mismatch!(
-                        UnresolvedType::Function(actual_input, actual_output),
-                        UnresolvedType::Function(expected_input, expected_output),
-                    ));
+                    return Err(mismatch());
                 }
 
                 Ok(())
             }
-            (UnresolvedType::Tuple(actual_tys), UnresolvedType::Tuple(expected_tys)) => {
+            (UnresolvedTypeKind::Tuple(actual_tys), UnresolvedTypeKind::Tuple(expected_tys)) => {
                 if actual_tys.len() != expected_tys.len() && params.is_none() {
-                    return Err(mismatch!(
-                        UnresolvedType::Tuple(actual_tys),
-                        UnresolvedType::Tuple(expected_tys),
-                    ));
+                    return Err(mismatch());
                 }
 
                 let mut error = false;
@@ -449,17 +505,14 @@ impl Context {
                 }
 
                 if error && params.is_none() {
-                    return Err(mismatch!(
-                        UnresolvedType::Tuple(actual_tys),
-                        UnresolvedType::Tuple(expected_tys),
-                    ));
+                    return Err(mismatch());
                 }
 
                 Ok(())
             }
             (
-                UnresolvedType::Builtin(actual_builtin),
-                UnresolvedType::Builtin(expected_builtin),
+                UnresolvedTypeKind::Builtin(actual_builtin),
+                UnresolvedTypeKind::Builtin(expected_builtin),
             ) => match (actual_builtin, expected_builtin) {
                 (BuiltinType::Number, BuiltinType::Number)
                 | (BuiltinType::Integer, BuiltinType::Integer)
@@ -482,10 +535,7 @@ impl Context {
                     ) {
                         if params.is_none() {
                             return Err(if let TypeError::Mismatch(_, _) = *error {
-                                mismatch!(
-                                    UnresolvedType::Builtin(BuiltinType::List(actual_element)),
-                                    UnresolvedType::Builtin(BuiltinType::List(expected_element)),
-                                )
+                                mismatch()
                             } else {
                                 error
                             });
@@ -504,10 +554,7 @@ impl Context {
                     ) {
                         if params.is_none() {
                             return Err(if let TypeError::Mismatch(_, _) = *error {
-                                mismatch!(
-                                    UnresolvedType::Builtin(BuiltinType::Mutable(actual_element)),
-                                    UnresolvedType::Builtin(BuiltinType::Mutable(expected_element)),
-                                )
+                                mismatch()
                             } else {
                                 error
                             });
@@ -516,21 +563,18 @@ impl Context {
 
                     Ok(())
                 }
-                (actual_builtin, expected_builtin) => {
+                _ => {
                     if params.is_none() {
-                        Err(mismatch!(
-                            UnresolvedType::Builtin(actual_builtin),
-                            UnresolvedType::Builtin(expected_builtin),
-                        ))
+                        Err(mismatch())
                     } else {
                         Ok(())
                     }
                 }
             },
-            (_, UnresolvedType::Error) | (UnresolvedType::Error, _) => Ok(()),
-            (actual, expected) => {
+            (_, UnresolvedTypeKind::Error) | (UnresolvedTypeKind::Error, _) => Ok(()),
+            _ => {
                 if params.is_none() {
-                    Err(mismatch!(actual, expected))
+                    Err(mismatch())
                 } else {
                     Ok(())
                 }
@@ -541,19 +585,23 @@ impl Context {
 
 impl UnresolvedType {
     pub fn id(&self) -> Option<TypeId> {
-        match self {
-            UnresolvedType::Named(id, _, _) => Some(*id),
+        match &self.kind {
+            UnresolvedTypeKind::Named(id, _, _) => Some(*id),
             _ => None,
         }
     }
 
     pub fn contains(&self, var: &TypeVariable) -> bool {
-        match self {
-            UnresolvedType::Variable(v) | UnresolvedType::NumericVariable(v) => v == var,
-            UnresolvedType::Function(input, output) => input.contains(var) || output.contains(var),
-            UnresolvedType::Named(_, params, _) => params.iter().any(|param| param.contains(var)),
-            UnresolvedType::Tuple(tys) => tys.iter().any(|ty| ty.contains(var)),
-            UnresolvedType::Builtin(ty) => match ty {
+        match &self.kind {
+            UnresolvedTypeKind::Variable(v) | UnresolvedTypeKind::NumericVariable(v) => v == var,
+            UnresolvedTypeKind::Function(input, output) => {
+                input.contains(var) || output.contains(var)
+            }
+            UnresolvedTypeKind::Named(_, params, _) => {
+                params.iter().any(|param| param.contains(var))
+            }
+            UnresolvedTypeKind::Tuple(tys) => tys.iter().any(|ty| ty.contains(var)),
+            UnresolvedTypeKind::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.contains(var),
                 _ => false,
             },
@@ -562,16 +610,16 @@ impl UnresolvedType {
     }
 
     pub fn contains_error(&self) -> bool {
-        match self {
-            UnresolvedType::Function(input, output) => {
+        match &self.kind {
+            UnresolvedTypeKind::Function(input, output) => {
                 input.contains_error() || output.contains_error()
             }
-            UnresolvedType::Error => true,
-            UnresolvedType::Named(_, params, _) => {
+            UnresolvedTypeKind::Error => true,
+            UnresolvedTypeKind::Named(_, params, _) => {
                 params.iter().any(|param| param.contains_error())
             }
-            UnresolvedType::Tuple(tys) => tys.iter().any(|ty| ty.contains_error()),
-            UnresolvedType::Builtin(ty) => match ty {
+            UnresolvedTypeKind::Tuple(tys) => tys.iter().any(|ty| ty.contains_error()),
+            UnresolvedTypeKind::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.contains_error(),
                 _ => false,
             },
@@ -580,14 +628,16 @@ impl UnresolvedType {
     }
 
     pub fn contains_vars(&self) -> bool {
-        match self {
-            UnresolvedType::Variable(_) => true,
-            UnresolvedType::Function(input, output) => {
+        match &self.kind {
+            UnresolvedTypeKind::Variable(_) => true,
+            UnresolvedTypeKind::Function(input, output) => {
                 input.contains_vars() || output.contains_vars()
             }
-            UnresolvedType::Named(_, params, _) => params.iter().any(|param| param.contains_vars()),
-            UnresolvedType::Tuple(tys) => tys.iter().any(|ty| ty.contains_vars()),
-            UnresolvedType::Builtin(ty) => match ty {
+            UnresolvedTypeKind::Named(_, params, _) => {
+                params.iter().any(|param| param.contains_vars())
+            }
+            UnresolvedTypeKind::Tuple(tys) => tys.iter().any(|ty| ty.contains_vars()),
+            UnresolvedTypeKind::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.contains_vars(),
                 _ => false,
             },
@@ -596,36 +646,36 @@ impl UnresolvedType {
     }
 
     pub fn apply(&mut self, ctx: &Context) {
-        match self {
-            UnresolvedType::Variable(var) => {
+        match &mut self.kind {
+            UnresolvedTypeKind::Variable(var) => {
                 if let Some(ty) = ctx.substitutions.borrow().get(var).cloned() {
                     *self = ty;
                     self.apply(ctx);
                 }
             }
-            UnresolvedType::NumericVariable(var) => {
+            UnresolvedTypeKind::NumericVariable(var) => {
                 if let Some(ty) = ctx.numeric_substitutions.borrow().get(var).cloned() {
                     *self = ty;
                     self.apply(ctx);
                 }
             }
-            UnresolvedType::Function(input, output) => {
+            UnresolvedTypeKind::Function(input, output) => {
                 input.apply(ctx);
                 output.apply(ctx);
             }
-            UnresolvedType::Named(_, params, structure) => {
+            UnresolvedTypeKind::Named(_, params, structure) => {
                 for param in params {
                     param.apply(ctx);
                 }
 
                 structure.apply(ctx);
             }
-            UnresolvedType::Tuple(tys) => {
+            UnresolvedTypeKind::Tuple(tys) => {
                 for ty in tys {
                     ty.apply(ctx);
                 }
             }
-            UnresolvedType::Builtin(ty) => match ty {
+            UnresolvedTypeKind::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.apply(ctx),
                 _ => {}
             },
@@ -636,31 +686,31 @@ impl UnresolvedType {
     pub fn instantiate_with(&mut self, ctx: &Context, substitutions: &GenericSubstitutions) {
         self.apply(ctx);
 
-        match self {
-            UnresolvedType::Parameter(param) => {
+        match &mut self.kind {
+            UnresolvedTypeKind::Parameter(param) => {
                 *self = substitutions.get(param).cloned().unwrap_or_else(|| {
                     // HACK: If the typechecker behaves erratically, try panicking here instead
                     // of returning a new type variable to get to the root cause earlier.
-                    UnresolvedType::Variable(ctx.new_variable(None))
+                    UnresolvedTypeKind::Variable(ctx.new_variable(None)).with_span(self.span)
                 });
             }
-            UnresolvedType::Function(input, output) => {
+            UnresolvedTypeKind::Function(input, output) => {
                 input.instantiate_with(ctx, substitutions);
                 output.instantiate_with(ctx, substitutions);
             }
-            UnresolvedType::Named(_, params, structure) => {
+            UnresolvedTypeKind::Named(_, params, structure) => {
                 for param in params {
                     param.instantiate_with(ctx, substitutions);
                 }
 
                 structure.instantiate_with(ctx, substitutions);
             }
-            UnresolvedType::Tuple(tys) => {
+            UnresolvedTypeKind::Tuple(tys) => {
                 for ty in tys {
                     ty.instantiate_with(ctx, substitutions);
                 }
             }
-            UnresolvedType::Builtin(ty) => match ty {
+            UnresolvedTypeKind::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
                     ty.instantiate_with(ctx, substitutions);
                 }
@@ -671,20 +721,20 @@ impl UnresolvedType {
     }
 
     pub fn vars(&self) -> Vec<TypeVariable> {
-        match self {
-            UnresolvedType::Variable(var) => vec![*var],
-            UnresolvedType::Function(input, output) => {
+        match &self.kind {
+            UnresolvedTypeKind::Variable(var) => vec![*var],
+            UnresolvedTypeKind::Function(input, output) => {
                 let mut vars = input.vars();
                 vars.extend(output.vars());
                 vars
             }
-            UnresolvedType::Named(_, params, structure) => params
+            UnresolvedTypeKind::Named(_, params, structure) => params
                 .iter()
                 .flat_map(|ty| ty.vars())
                 .chain(structure.vars())
                 .collect(),
-            UnresolvedType::Tuple(tys) => tys.iter().flat_map(|ty| ty.vars()).collect(),
-            UnresolvedType::Builtin(ty) => match ty {
+            UnresolvedTypeKind::Tuple(tys) => tys.iter().flat_map(|ty| ty.vars()).collect(),
+            UnresolvedTypeKind::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.vars(),
                 _ => Vec::new(),
             },
@@ -693,18 +743,18 @@ impl UnresolvedType {
     }
 
     pub fn visible_vars(&self) -> Vec<TypeVariable> {
-        match self {
-            UnresolvedType::Variable(var) => vec![*var],
-            UnresolvedType::Function(input, output) => {
+        match &self.kind {
+            UnresolvedTypeKind::Variable(var) => vec![*var],
+            UnresolvedTypeKind::Function(input, output) => {
                 let mut vars = input.visible_vars();
                 vars.extend(output.visible_vars());
                 vars
             }
-            UnresolvedType::Named(_, params, _) => {
+            UnresolvedTypeKind::Named(_, params, _) => {
                 params.iter().flat_map(|ty| ty.visible_vars()).collect()
             }
-            UnresolvedType::Tuple(tys) => tys.iter().flat_map(|ty| ty.visible_vars()).collect(),
-            UnresolvedType::Builtin(ty) => match ty {
+            UnresolvedTypeKind::Tuple(tys) => tys.iter().flat_map(|ty| ty.visible_vars()).collect(),
+            UnresolvedTypeKind::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.visible_vars(),
                 _ => Vec::new(),
             },
@@ -713,20 +763,22 @@ impl UnresolvedType {
     }
 
     pub fn all_vars(&self) -> Vec<TypeVariable> {
-        match self {
-            UnresolvedType::Variable(var) | UnresolvedType::NumericVariable(var) => vec![*var],
-            UnresolvedType::Function(input, output) => {
+        match &self.kind {
+            UnresolvedTypeKind::Variable(var) | UnresolvedTypeKind::NumericVariable(var) => {
+                vec![*var]
+            }
+            UnresolvedTypeKind::Function(input, output) => {
                 let mut vars = input.all_vars();
                 vars.extend(output.all_vars());
                 vars
             }
-            UnresolvedType::Named(_, params, structure) => params
+            UnresolvedTypeKind::Named(_, params, structure) => params
                 .iter()
                 .flat_map(|ty| ty.all_vars())
                 .chain(structure.all_vars())
                 .collect(),
-            UnresolvedType::Tuple(tys) => tys.iter().flat_map(|ty| ty.all_vars()).collect(),
-            UnresolvedType::Builtin(ty) => match ty {
+            UnresolvedTypeKind::Tuple(tys) => tys.iter().flat_map(|ty| ty.all_vars()).collect(),
+            UnresolvedTypeKind::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.all_vars(),
                 _ => Vec::new(),
             },
@@ -735,20 +787,20 @@ impl UnresolvedType {
     }
 
     pub fn params(&self) -> Vec<TypeParameterId> {
-        match self {
-            UnresolvedType::Parameter(param) => vec![*param],
-            UnresolvedType::Function(input, output) => {
+        match &self.kind {
+            UnresolvedTypeKind::Parameter(param) => vec![*param],
+            UnresolvedTypeKind::Function(input, output) => {
                 let mut params = input.params();
                 params.extend(output.params());
                 params
             }
-            UnresolvedType::Named(_, params, structure) => params
+            UnresolvedTypeKind::Named(_, params, structure) => params
                 .iter()
                 .flat_map(|ty| ty.params())
                 .chain(structure.params())
                 .collect(),
-            UnresolvedType::Tuple(tys) => tys.iter().flat_map(|ty| ty.params()).collect(),
-            UnresolvedType::Builtin(ty) => match ty {
+            UnresolvedTypeKind::Tuple(tys) => tys.iter().flat_map(|ty| ty.params()).collect(),
+            UnresolvedTypeKind::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.params(),
                 _ => Vec::new(),
             },
@@ -759,30 +811,30 @@ impl UnresolvedType {
     pub fn substitute_defaults(&mut self, ctx: &Context) {
         self.apply(ctx);
 
-        match self {
-            UnresolvedType::Variable(var) => {
+        match &mut self.kind {
+            UnresolvedTypeKind::Variable(var) => {
                 if let Some(default) = ctx.defaults.borrow().get(var).cloned() {
                     ctx.substitutions.borrow_mut().insert(*var, default.clone());
                     self.substitute_defaults(ctx);
                 }
             }
-            UnresolvedType::Function(input, output) => {
+            UnresolvedTypeKind::Function(input, output) => {
                 input.substitute_defaults(ctx);
                 output.substitute_defaults(ctx);
             }
-            UnresolvedType::Named(_, params, structure) => {
+            UnresolvedTypeKind::Named(_, params, structure) => {
                 for param in params {
                     param.substitute_defaults(ctx);
                 }
 
                 structure.finalize_defaults(ctx);
             }
-            UnresolvedType::Tuple(tys) => {
+            UnresolvedTypeKind::Tuple(tys) => {
                 for ty in tys {
                     ty.substitute_defaults(ctx);
                 }
             }
-            UnresolvedType::Builtin(ty) => match ty {
+            UnresolvedTypeKind::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
                     ty.substitute_defaults(ctx);
                 }
@@ -795,32 +847,32 @@ impl UnresolvedType {
     pub fn finalize_numeric_variables(&mut self, ctx: &Context) {
         self.apply(ctx);
 
-        match self {
-            UnresolvedType::NumericVariable(var) => {
+        match &mut self.kind {
+            UnresolvedTypeKind::NumericVariable(var) => {
                 if let Some(ty) = ctx.numeric_substitutions.borrow().get(var).cloned() {
                     *self = ty;
                     self.finalize_numeric_variables(ctx);
                 } else {
-                    *self = UnresolvedType::Builtin(BuiltinType::Number);
+                    self.kind = UnresolvedTypeKind::Builtin(BuiltinType::Number);
                 }
             }
-            UnresolvedType::Function(input, output) => {
+            UnresolvedTypeKind::Function(input, output) => {
                 input.finalize_numeric_variables(ctx);
                 output.finalize_numeric_variables(ctx);
             }
-            UnresolvedType::Named(_, params, structure) => {
+            UnresolvedTypeKind::Named(_, params, structure) => {
                 for param in params {
                     param.finalize_numeric_variables(ctx);
                 }
 
                 structure.finalize_numeric_variables(ctx);
             }
-            UnresolvedType::Tuple(tys) => {
+            UnresolvedTypeKind::Tuple(tys) => {
                 for ty in tys {
                     ty.finalize_numeric_variables(ctx);
                 }
             }
-            UnresolvedType::Builtin(ty) => match ty {
+            UnresolvedTypeKind::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
                     ty.finalize_numeric_variables(ctx)
                 }
@@ -842,50 +894,53 @@ impl UnresolvedType {
         ty.substitute_defaults(ctx);
         ty.finalize_numeric_variables(ctx);
 
-        match ty.clone() {
-            UnresolvedType::Variable(_) => {
-                *resolved = false;
-                Type::Error
-            }
-            UnresolvedType::Parameter(param) => Type::Parameter(param),
-            UnresolvedType::NumericVariable(_) => unreachable!(),
-            UnresolvedType::Named(id, params, structure) => Type::Named(
-                id,
-                params
-                    .into_iter()
-                    .map(|param| param.finalize_inner(ctx, resolved))
-                    .collect(),
-                structure.finalize_inner(ctx, resolved),
-            ),
-            UnresolvedType::Function(input, output) => Type::Function(
-                Box::new(input.finalize_inner(ctx, resolved)),
-                Box::new(output.finalize_inner(ctx, resolved)),
-            ),
-            UnresolvedType::Tuple(tys) => Type::Tuple(
-                tys.into_iter()
-                    .map(|ty| ty.finalize_inner(ctx, resolved))
-                    .collect(),
-            ),
-            UnresolvedType::Builtin(builtin) => Type::Builtin(match builtin {
-                BuiltinType::Number => BuiltinType::Number,
-                BuiltinType::Integer => BuiltinType::Integer,
-                BuiltinType::Natural => BuiltinType::Natural,
-                BuiltinType::Byte => BuiltinType::Byte,
-                BuiltinType::Signed => BuiltinType::Signed,
-                BuiltinType::Unsigned => BuiltinType::Unsigned,
-                BuiltinType::Float => BuiltinType::Float,
-                BuiltinType::Double => BuiltinType::Double,
-                BuiltinType::Text => BuiltinType::Text,
-                BuiltinType::List(ty) => {
-                    BuiltinType::List(Box::new(ty.finalize_inner(ctx, resolved)))
+        Type {
+            span: ty.span,
+            kind: match ty.kind.clone() {
+                UnresolvedTypeKind::Variable(_) => {
+                    *resolved = false;
+                    TypeKind::Error
                 }
-                BuiltinType::Mutable(ty) => {
-                    BuiltinType::Mutable(Box::new(ty.finalize_inner(ctx, resolved)))
-                }
-                BuiltinType::Ui => BuiltinType::Ui,
-                BuiltinType::TaskGroup => BuiltinType::TaskGroup,
-            }),
-            UnresolvedType::Error => Type::Error,
+                UnresolvedTypeKind::Parameter(param) => TypeKind::Parameter(param),
+                UnresolvedTypeKind::NumericVariable(_) => unreachable!(),
+                UnresolvedTypeKind::Named(id, params, structure) => TypeKind::Named(
+                    id,
+                    params
+                        .into_iter()
+                        .map(|param| param.finalize_inner(ctx, resolved))
+                        .collect(),
+                    structure.finalize_inner(ctx, resolved),
+                ),
+                UnresolvedTypeKind::Function(input, output) => TypeKind::Function(
+                    Box::new(input.finalize_inner(ctx, resolved)),
+                    Box::new(output.finalize_inner(ctx, resolved)),
+                ),
+                UnresolvedTypeKind::Tuple(tys) => TypeKind::Tuple(
+                    tys.into_iter()
+                        .map(|ty| ty.finalize_inner(ctx, resolved))
+                        .collect(),
+                ),
+                UnresolvedTypeKind::Builtin(builtin) => TypeKind::Builtin(match builtin {
+                    BuiltinType::Number => BuiltinType::Number,
+                    BuiltinType::Integer => BuiltinType::Integer,
+                    BuiltinType::Natural => BuiltinType::Natural,
+                    BuiltinType::Byte => BuiltinType::Byte,
+                    BuiltinType::Signed => BuiltinType::Signed,
+                    BuiltinType::Unsigned => BuiltinType::Unsigned,
+                    BuiltinType::Float => BuiltinType::Float,
+                    BuiltinType::Double => BuiltinType::Double,
+                    BuiltinType::Text => BuiltinType::Text,
+                    BuiltinType::List(ty) => {
+                        BuiltinType::List(Box::new(ty.finalize_inner(ctx, resolved)))
+                    }
+                    BuiltinType::Mutable(ty) => {
+                        BuiltinType::Mutable(Box::new(ty.finalize_inner(ctx, resolved)))
+                    }
+                    BuiltinType::Ui => BuiltinType::Ui,
+                    BuiltinType::TaskGroup => BuiltinType::TaskGroup,
+                }),
+                UnresolvedTypeKind::Error => TypeKind::Error,
+            },
         }
     }
 }
@@ -1052,20 +1107,20 @@ impl TypeStructure<Type> {
 
 impl Type {
     pub fn params(&self) -> Vec<TypeParameterId> {
-        match self {
-            Type::Parameter(param) => vec![*param],
-            Type::Function(input, output) => {
+        match &self.kind {
+            TypeKind::Parameter(param) => vec![*param],
+            TypeKind::Function(input, output) => {
                 let mut params = input.params();
                 params.extend(output.params());
                 params
             }
-            Type::Named(_, params, structure) => params
+            TypeKind::Named(_, params, structure) => params
                 .iter()
                 .flat_map(|ty| ty.params())
                 .chain(structure.params())
                 .collect(),
-            Type::Tuple(tys) => tys.iter().flat_map(|ty| ty.params()).collect(),
-            Type::Builtin(ty) => match ty {
+            TypeKind::Tuple(tys) => tys.iter().flat_map(|ty| ty.params()).collect(),
+            TypeKind::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.params(),
                 _ => Vec::new(),
             },
@@ -1074,29 +1129,29 @@ impl Type {
     }
 
     pub fn instantiate_with(&mut self, substitutions: &FinalizedGenericSubstitutions) {
-        match self {
-            Type::Parameter(param) => {
+        match &mut self.kind {
+            TypeKind::Parameter(param) => {
                 if let Some(ty) = substitutions.get(param).cloned() {
                     *self = ty;
                 }
             }
-            Type::Function(input, output) => {
+            TypeKind::Function(input, output) => {
                 input.instantiate_with(substitutions);
                 output.instantiate_with(substitutions);
             }
-            Type::Named(_, params, structure) => {
+            TypeKind::Named(_, params, structure) => {
                 for param in params {
                     param.instantiate_with(substitutions);
                 }
 
                 structure.instantiate_with(substitutions);
             }
-            Type::Tuple(tys) => {
+            TypeKind::Tuple(tys) => {
                 for ty in tys {
                     ty.instantiate_with(substitutions);
                 }
             }
-            Type::Builtin(ty) => match ty {
+            TypeKind::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
                     ty.instantiate_with(substitutions)
                 }

@@ -394,9 +394,9 @@ impl Converter<'_> {
     }
 
     fn convert_type(&mut self, ty: &analysis::Type) -> Type {
-        match ty {
-            analysis::Type::Parameter(_) => panic!("unexpected type parameter"),
-            analysis::Type::Named(id, _, structure) => match structure {
+        match &ty.kind {
+            analysis::TypeKind::Parameter(_) => panic!("unexpected type parameter"),
+            analysis::TypeKind::Named(id, _, structure) => match structure {
                 analysis::TypeStructure::Marker => Type::Marker,
                 analysis::TypeStructure::Structure(tys) => {
                     let structure_id = self.compiler.new_structure_id();
@@ -436,14 +436,14 @@ impl Converter<'_> {
                     }
                 }
             },
-            analysis::Type::Function(input, output) => Type::FunctionReference(
+            analysis::TypeKind::Function(input, output) => Type::FunctionReference(
                 Box::new(self.convert_type(input)),
                 Box::new(self.convert_type(output)),
             ),
-            analysis::Type::Tuple(tys) => {
+            analysis::TypeKind::Tuple(tys) => {
                 Type::Tuple(tys.iter().map(|ty| self.convert_type(ty)).collect())
             }
-            analysis::Type::Builtin(ty) => match ty {
+            analysis::TypeKind::Builtin(ty) => match ty {
                 analysis::typecheck::BuiltinType::Number => Type::Number,
                 analysis::typecheck::BuiltinType::Integer => Type::Integer,
                 analysis::typecheck::BuiltinType::Natural => Type::Natural,
@@ -462,7 +462,7 @@ impl Converter<'_> {
                 analysis::typecheck::BuiltinType::Ui => Type::Ui,
                 analysis::typecheck::BuiltinType::TaskGroup => Type::TaskGroup,
             },
-            analysis::Type::Error => unreachable!(),
+            analysis::TypeKind::Error => unreachable!(),
         }
     }
 }
