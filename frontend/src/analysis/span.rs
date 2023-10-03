@@ -8,7 +8,11 @@ use std::{hash::Hash, ops::Range};
 pub struct Span {
     pub path: FilePath,
     pub primary: (usize, usize),
-    pub expanded_from_operator: Option<(InternedString, Option<SpanList>, Option<SpanList>)>,
+    pub expanded_from_operator: Option<(
+        InternedString,
+        Option<Intern<(SpanList, Vec<SpanList>)>>,
+        Option<Intern<(SpanList, Vec<SpanList>)>>,
+    )>,
     pub caller: Option<(usize, usize)>,
 }
 
@@ -27,7 +31,10 @@ impl Span {
     }
 
     pub fn join(left: Span, right: Span) -> Self {
-        let primary = if right.primary_start() > left.primary_end() {
+        let primary = if left.is_subspan_of(right)
+            || right.is_subspan_of(left)
+            || right.primary_start() > left.primary_end()
+        {
             (left.primary_start(), right.primary_end())
         } else {
             left.primary
@@ -123,11 +130,11 @@ impl SpanList {
     pub fn set_expanded_from_operator(
         &mut self,
         name: InternedString,
-        left: Option<SpanList>,
-        right: Option<SpanList>,
+        left: Option<(SpanList, Vec<SpanList>)>,
+        right: Option<(SpanList, Vec<SpanList>)>,
     ) {
         let mut first = *self.first;
-        first.expanded_from_operator = Some((name, left, right));
+        first.expanded_from_operator = Some((name, left.map(Intern::new), right.map(Intern::new)));
         self.first = Intern::new(first);
     }
 

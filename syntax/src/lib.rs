@@ -107,8 +107,8 @@ pub trait Span: Sized + Debug {
     fn set_expanded_from_operator(
         &mut self,
         name: Self::InternedString,
-        left: Option<Self>,
-        right: Option<Self>,
+        left: Option<(Self, Vec<Self>)>,
+        right: Option<(Self, Vec<Self>)>,
     );
 
     fn set_caller(&mut self, caller: Self);
@@ -261,8 +261,8 @@ impl Span for () {
     fn set_expanded_from_operator(
         &mut self,
         _name: Self::InternedString,
-        _left: Option<Self>,
-        _right: Option<Self>,
+        _left: Option<(Self, Vec<Self>)>,
+        _right: Option<(Self, Vec<Self>)>,
     ) {
         // do nothing
     }

@@ -5635,16 +5635,44 @@ impl Typechecker {
                         )
                         .use_caller_if_available()
                     )
-                    .chain(left.map(|span| Note::secondary(
-                        span,
+                    .chain(left.as_deref().map(|(span, _)| Note::secondary(
+                        *span,
                         format!("this is parsed as one single input to `{name}`"),
                     )))
-                    .chain(right.map(|span| Note::secondary(
-                        span,
+                    .chain(right.as_deref().map(|(span, _)| Note::secondary(
+                        *span,
                         format!("this is parsed as one single input to `{name}`"),
                     )))
                     .collect::<Vec<_>>()
                 })
+        };
+
+        let operator_fix = |typechecker: &Self| {
+            let (_, left, right) = error.span.first().expanded_from_operator?;
+
+            match (left.as_deref(), right.as_deref()) {
+                (None, None) | (Some(_), Some(_)) => None,
+                (Some((_, left)), None) => {
+                    let span = SpanList::join(*left.last().unwrap(), error.span).first();
+                    let code = typechecker.compiler.source_code_for_span(span)?;
+
+                    Some(Fix::new(
+                        format!("add parentheses around `{code}`"),
+                        FixRange::replace(span),
+                        format!("({code})"),
+                    ))
+                }
+                (None, Some((_, right))) => {
+                    let span = SpanList::join(error.span, *right.first().unwrap()).first();
+                    let code = typechecker.compiler.source_code_for_span(span)?;
+
+                    Some(Fix::new(
+                        format!("add parentheses around `{code}`"),
+                        FixRange::replace(span),
+                        format!("({code})"),
+                    ))
+                }
+            }
         };
 
         let mut diagnostic = match *error.error {
@@ -5894,6 +5922,10 @@ impl Typechecker {
                     notes.extend(operator_notes);
                 }
 
+                if let Some(operator_fix) = operator_fix(self) {
+                    fix = Some(operator_fix);
+                }
+
                 if let Some(id) = error.expr {
                     if let Some((func, _)) = self.start_of_call_chain_for(id) {
                         let mut constant_id = None;
@@ -6050,12 +6082,9 @@ impl Typechecker {
                 }))
                 .collect::<Vec<_>>();
 
-                self.compiler.error_with_trace(
-                    error_message,
-                    notes,
-                    "missing-instance",
-                    error.trace,
-                )
+                self.compiler
+                    .error_with_trace(error_message, notes, "missing-instance", error.trace)
+                    .fix(operator_fix(self))
             }
             engine::TypeError::UnresolvedType(mut ty) => {
                 ty.apply(&self.ctx);

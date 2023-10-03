@@ -478,8 +478,8 @@ impl wipple_syntax::Span for SpanList {
     fn set_expanded_from_operator(
         &mut self,
         name: InternedString,
-        left: Option<Self>,
-        right: Option<Self>,
+        left: Option<(Self, Vec<Self>)>,
+        right: Option<(Self, Vec<Self>)>,
     ) {
         self.set_expanded_from_operator(name, left, right);
     }

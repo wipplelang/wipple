@@ -455,6 +455,8 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                     let mut lhs = exprs;
                     let operator = lhs.pop().unwrap();
 
+                    let lhs_spans = lhs.iter().map(|expr| expr.span).collect::<Vec<_>>();
+
                     let lhs_count = lhs.len();
 
                     let lhs_span = lhs
@@ -463,6 +465,8 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                         .map(|(first, last)| Span::join(first.span, last.span));
 
                     let lhs = lhs_span.map(|span| parse::Expr::list_or_expr(span, lhs));
+
+                    let rhs_spans = rhs.iter().map(|expr| expr.span).collect::<Vec<_>>();
 
                     let rhs_count = rhs.len();
 
@@ -483,8 +487,12 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                     if lhs_count > 1 || rhs_count > 1 {
                         list_span.set_expanded_from_operator(
                             max_name,
-                            (lhs_count > 1).then_some(lhs_span).flatten(),
-                            (rhs_count > 1).then_some(rhs_span).flatten(),
+                            (lhs_count > 1)
+                                .then(|| Some((lhs_span?, lhs_spans)))
+                                .flatten(),
+                            (rhs_count > 1)
+                                .then(|| Some((rhs_span?, rhs_spans)))
+                                .flatten(),
                         );
                     }
 
