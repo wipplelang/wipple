@@ -5959,6 +5959,20 @@ impl Typechecker {
                     .attributes
                     .clone();
 
+                let format = if params
+                    .iter()
+                    .map(|ty| ty.visible_vars().len())
+                    .sum::<usize>()
+                    == params
+                        .iter()
+                        .map(|ty| ty.visible_vars().into_iter().unique().count())
+                        .sum()
+                {
+                    single_var_format
+                } else {
+                    multi_var_format
+                };
+
                 let error_message = trait_attributes.on_unimplemented.map_or_else(
                     || String::from("missing instance"),
                     |(segments, trailing_segment)| {
@@ -5989,7 +6003,7 @@ impl Typechecker {
 
                                         Some(format!("`{code}`"))
                                     })
-                                    .unwrap_or_else(|| self.format_type(ty, Default::default()));
+                                    .unwrap_or_else(|| self.format_type(ty, format));
 
                                 text.to_string() + &code
                             })
@@ -5997,20 +6011,6 @@ impl Typechecker {
                             .collect()
                     },
                 );
-
-                let format = if params
-                    .iter()
-                    .map(|ty| ty.visible_vars().len())
-                    .sum::<usize>()
-                    == params
-                        .iter()
-                        .map(|ty| ty.visible_vars().into_iter().unique().count())
-                        .sum()
-                {
-                    single_var_format
-                } else {
-                    multi_var_format
-                };
 
                 let note_message = format!(
                     "could not find instance {}",
