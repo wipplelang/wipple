@@ -9,6 +9,7 @@ definitions! {
     mod help;
     mod help_group;
     mod help_playground;
+    mod help_show_code;
     mod help_template;
     mod keyword;
     mod language_item;
@@ -47,6 +48,7 @@ syntax_group! {
             Help,
             HelpGroup,
             HelpPlayground,
+            HelpShowCode,
             HelpTemplate,
             Keyword,
             LanguageItem,

@@ -86,8 +86,8 @@ impl Typechecker {
                             return ControlFlow::Continue(());
                         }
 
-                        let input_ty = match &expr.ty {
-                            analysis::Type::Function(input, _) => input.as_ref(),
+                        let input_ty = match &expr.ty.kind {
+                            analysis::TypeKind::Function(input, _) => input.as_ref(),
                             _ => unreachable!(),
                         };
 
@@ -292,72 +292,85 @@ impl Typechecker {
                 Pattern::Constructor(Constructor::Structure(*id), patterns)
             }
             analysis::PatternKind::Text(_) => Pattern::Constructor(
-                Constructor::Unbounded(analysis::Type::Builtin(
-                    analysis::typecheck::BuiltinType::Text,
-                )),
+                Constructor::Unbounded(
+                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Text)
+                        .with_span(None),
+                ),
                 Vec::new(),
             ),
             analysis::PatternKind::Number(_) => Pattern::Constructor(
-                Constructor::Unbounded(analysis::Type::Builtin(
-                    analysis::typecheck::BuiltinType::Number,
-                )),
+                Constructor::Unbounded(
+                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Number)
+                        .with_span(None),
+                ),
                 Vec::new(),
             ),
             analysis::PatternKind::Integer(_) => Pattern::Constructor(
-                Constructor::Unbounded(analysis::Type::Builtin(
-                    analysis::typecheck::BuiltinType::Integer,
-                )),
+                Constructor::Unbounded(
+                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Integer)
+                        .with_span(None),
+                ),
                 Vec::new(),
             ),
             analysis::PatternKind::Natural(_) => Pattern::Constructor(
-                Constructor::Unbounded(analysis::Type::Builtin(
-                    analysis::typecheck::BuiltinType::Natural,
-                )),
+                Constructor::Unbounded(
+                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Natural)
+                        .with_span(None),
+                ),
                 Vec::new(),
             ),
             analysis::PatternKind::Byte(_) => Pattern::Constructor(
-                Constructor::Unbounded(analysis::Type::Builtin(
-                    analysis::typecheck::BuiltinType::Byte,
-                )),
+                Constructor::Unbounded(
+                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Byte)
+                        .with_span(None),
+                ),
                 Vec::new(),
             ),
             analysis::PatternKind::Signed(_) => Pattern::Constructor(
-                Constructor::Unbounded(analysis::Type::Builtin(
-                    analysis::typecheck::BuiltinType::Signed,
-                )),
+                Constructor::Unbounded(
+                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Signed)
+                        .with_span(None),
+                ),
                 Vec::new(),
             ),
             analysis::PatternKind::Unsigned(_) => Pattern::Constructor(
-                Constructor::Unbounded(analysis::Type::Builtin(
-                    analysis::typecheck::BuiltinType::Unsigned,
-                )),
+                Constructor::Unbounded(
+                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Unsigned)
+                        .with_span(None),
+                ),
                 Vec::new(),
             ),
             analysis::PatternKind::Float(_) => Pattern::Constructor(
-                Constructor::Unbounded(analysis::Type::Builtin(
-                    analysis::typecheck::BuiltinType::Float,
-                )),
+                Constructor::Unbounded(
+                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Float)
+                        .with_span(None),
+                ),
                 Vec::new(),
             ),
             analysis::PatternKind::Double(_) => Pattern::Constructor(
-                Constructor::Unbounded(analysis::Type::Builtin(
-                    analysis::typecheck::BuiltinType::Double,
-                )),
+                Constructor::Unbounded(
+                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Double)
+                        .with_span(None),
+                ),
                 Vec::new(),
             ),
         }
     }
 
     fn convert_ty(&self, ty: &analysis::Type) -> Type {
-        match ty {
-            analysis::Type::Named(id, _, analysis::TypeStructure::Marker) => Type::Marker(*id),
-            analysis::Type::Named(id, _, analysis::TypeStructure::Enumeration(variants)) => {
+        match &ty.kind {
+            analysis::TypeKind::Named(id, _, analysis::TypeStructure::Marker) => Type::Marker(*id),
+            analysis::TypeKind::Named(id, _, analysis::TypeStructure::Enumeration(variants)) => {
                 Type::Enumeration(*id, variants.clone())
             }
-            analysis::Type::Named(id, _, analysis::TypeStructure::Structure(fields)) => {
+            analysis::TypeKind::Named(id, _, analysis::TypeStructure::Structure(fields)) => {
                 Type::Structure(*id, fields.clone())
             }
-            analysis::Type::Named(_, params, analysis::TypeStructure::Recursive(recursive_id)) => {
+            analysis::TypeKind::Named(
+                _,
+                params,
+                analysis::TypeStructure::Recursive(recursive_id),
+            ) => {
                 let decl = self
                     .declarations
                     .borrow()
@@ -404,7 +417,7 @@ impl Typechecker {
                     analysis::typecheck::TypeDeclKind::Alias(ty) => self.convert_ty(&ty),
                 }
             }
-            analysis::Type::Tuple(tys) => Type::Tuple(tys.clone()),
+            analysis::TypeKind::Tuple(tys) => Type::Tuple(tys.clone()),
             _ => Type::Unmatchable(ty.clone()),
         }
     }

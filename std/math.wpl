@@ -6,7 +6,8 @@ use "logic"
 
 [help "Implements the `+` operator."]
 [help-group "Math"]
-[on-unimplemented "cannot add `_` to `_`" Left Right]
+[help-show-code]
+[on-unimplemented "cannot add _ to _" Left Right]
 Add : (Left : Number) (Right : Number) (infer Sum) => trait (Right -> Left -> Sum)
 
 [help "Add two values together, returning the sum."]
@@ -33,7 +34,8 @@ instance (Add Double Double Double) : b a -> semantics "pure" (intrinsic "add-do
 
 [help "Implements the `-` operator."]
 [help-group "Math"]
-[on-unimplemented "cannot subtract `_` from `_`" Right Left]
+[help-show-code]
+[on-unimplemented "cannot subtract _ from _" Right Left]
 Subtract : (Left : Number) (Right : Number) (infer Difference) => trait (Right -> Left -> Difference)
 
 [help "Subtract the right side from the left side, returning the difference."]
@@ -60,7 +62,8 @@ instance (Subtract Double Double Double) : b a -> semantics "pure" (intrinsic "s
 
 [help "Implements the `*` operator."]
 [help-group "Math"]
-[on-unimplemented "cannot multiply `_` by `_`" Left Right]
+[help-show-code]
+[on-unimplemented "cannot multiply _ by _" Left Right]
 Multiply : (Left : Number) (Right : Number) (infer Product) => trait (Right -> Left -> Product)
 
 [help "Multiply two values together, returning the product."]
@@ -87,7 +90,8 @@ instance (Multiply Double Double Double) : b a -> semantics "pure" (intrinsic "m
 
 [help "Implements the `/` operator."]
 [help-group "Math"]
-[on-unimplemented "cannot divide `_` by `_`" Left Right]
+[help-show-code]
+[on-unimplemented "cannot divide _ by _" Left Right]
 Divide : (Left : Number) (Right : Number) (infer Quotient) => trait (Right -> Left -> Quotient)
 
 [help "Divide the left side by the right side, returning the quotient."]
@@ -114,7 +118,8 @@ instance (Divide Double Double Double) : b a -> semantics "pure" (intrinsic "div
 
 [help "Implements the `mod` operator."]
 [help-group "Math"]
-[on-unimplemented "cannot divide `_` by `_`" Left Right]
+[help-show-code]
+[on-unimplemented "cannot divide _ by _" Left Right]
 Modulo : (Left : Number) (Right : Number) (infer Remainder) => trait (Right -> Left -> Remainder)
 
 [help "Divide the left side by the right side, returning the remainder."]
@@ -141,7 +146,8 @@ instance (Modulo Double Double Double) : b a -> semantics "pure" (intrinsic "mod
 
 [help "Implements the `^` operator."]
 [help-group "Math"]
-[on-unimplemented "cannot raise `_` to the power of `_`" Left Right]
+[help-show-code]
+[on-unimplemented "cannot raise _ to the power of _" Left Right]
 Power : (Left : Number) (Right : Number) (infer Power) => trait (Right -> Left -> Power)
 
 [help "Raise the left side to the power of the right side."]

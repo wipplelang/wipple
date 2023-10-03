@@ -1,16 +1,17 @@
-error: cannot add `()` to `Number`
+error: cannot add `show 1` to `2`
    ┌─ test:1:8
    │
  1 │ show 1 + 2
-   │ ------ ^
-   │ │      │
+   │ ------ ^ - this has type `Number`
+   │ │      │  
    │ │      could not find instance `Add () Number _`
    │ │      `+` consumes all expressions on either side; you may be missing parentheses
+   │ this has type `()`
    │ this is parsed as one single input to `+`
    │
-   ┌─ <dir>/std/math.wpl:16:14
+   ┌─ <dir>/std/math.wpl:17:14
    │
-16 │   'a + 'b -> Add 'b 'a
+17 │   'a + 'b -> Add 'b 'a
    │              --- actual error occurred here
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
@@ -23,6 +24,7 @@ error: missing instance
    │ │         │
    │ │         could not find instance `Or () Boolean _`
    │ │         `or` consumes all expressions on either side; you may be missing parentheses
+   │ this has type `()`
    │ this is parsed as one single input to `or`
    │
    ┌─ <dir>/std/logic.wpl:54:15
@@ -32,15 +34,18 @@ error: missing instance
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
 
-error: cannot add `Number` to `Text`
+error: cannot add `1` to `"hi"`
    ┌─ test:3:9
    │
  3 │ show (1 + "hi")
-   │         ^ could not find instance `Add Number Text _`
+   │       - ^ ---- this has type `Text`
+   │       │ │  
+   │       │ could not find instance `Add Number Text _`
+   │       this has type `Number`
    │
-   ┌─ <dir>/std/math.wpl:16:14
+   ┌─ <dir>/std/math.wpl:17:14
    │
-16 │   'a + 'b -> Add 'b 'a
+17 │   'a + 'b -> Add 'b 'a
    │              --- actual error occurred here
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance

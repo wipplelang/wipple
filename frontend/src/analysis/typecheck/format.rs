@@ -1,4 +1,4 @@
-use super::engine::{BuiltinType, Type, TypeVariable, UnresolvedType};
+use super::engine::{BuiltinType, Type, TypeVariable, UnresolvedType, UnresolvedTypeKind};
 use crate::{analysis::Bound, TraitId, TypeId, TypeParameterId};
 use itertools::Itertools;
 use std::{collections::BTreeMap, mem};
@@ -121,15 +121,15 @@ impl FormattableType {
             FormattableTypeKind::Type(ty) => ty
                 .params()
                 .into_iter()
-                .map(UnresolvedType::Parameter)
+                .map(|param| UnresolvedTypeKind::Parameter(param).with_span(None))
                 .collect(),
             FormattableTypeKind::Trait(_, params) => params.clone(),
         };
 
         params
             .into_iter()
-            .unique_by(|ty| match ty {
-                UnresolvedType::Parameter(param) => Some(*param),
+            .unique_by(|ty| match &ty.kind {
+                UnresolvedTypeKind::Parameter(param) => Some(*param),
                 _ => None,
             })
             .collect()
@@ -216,83 +216,70 @@ fn format_type_with(
         }
 
         let formatted = match ty.kind {
-            FormattableTypeKind::Type(UnresolvedType::Variable(var)) => var_names(var),
-            FormattableTypeKind::Type(UnresolvedType::NumericVariable(_)) => {
-                format_named_type!("Number", Vec::new())
-            }
-            FormattableTypeKind::Type(UnresolvedType::Parameter(param)) => {
-                param_names(param).unwrap_or_else(|| String::from("_"))
-            }
-            FormattableTypeKind::Type(UnresolvedType::Error) => String::from("_"),
-            FormattableTypeKind::Type(UnresolvedType::Named(id, params, _)) => {
-                format_named_type!(type_names(id), params)
-            }
-            FormattableTypeKind::Type(UnresolvedType::Builtin(ty)) => match ty {
-                BuiltinType::Number => format_named_type!("Number", Vec::new()),
-                BuiltinType::Integer => format_named_type!("Integer", Vec::new()),
-                BuiltinType::Natural => format_named_type!("Natural", Vec::new()),
-                BuiltinType::Byte => format_named_type!("Byte", Vec::new()),
-                BuiltinType::Signed => format_named_type!("Signed", Vec::new()),
-                BuiltinType::Unsigned => format_named_type!("Unsigned", Vec::new()),
-                BuiltinType::Float => format_named_type!("Float", Vec::new()),
-                BuiltinType::Double => format_named_type!("Double", Vec::new()),
-                BuiltinType::Text => format_named_type!("Text", Vec::new()),
-                BuiltinType::List(ty) => format_named_type!("List", vec![*ty]),
-                BuiltinType::Mutable(ty) => format_named_type!("Mutable", vec![*ty]),
-                BuiltinType::Ui => format_named_type!("UI", Vec::new()),
-                BuiltinType::TaskGroup => format_named_type!("Task-Group", Vec::new()),
-            },
-            FormattableTypeKind::Type(UnresolvedType::Function(input, output)) => {
-                let input = format_type_inner(
-                    (*input).into(),
-                    type_names,
-                    trait_names,
-                    param_names,
-                    var_names,
-                    is_top_level,
-                    false,
-                    false,
-                );
-
-                let output = format_type_inner(
-                    (*output).into(),
-                    type_names,
-                    trait_names,
-                    param_names,
-                    var_names,
-                    is_top_level,
-                    true,
-                    false,
-                );
-
-                if is_top_level && is_return {
-                    format!("{input} -> {output}")
-                } else {
-                    format!("({input} -> {output})")
+            FormattableTypeKind::Type(ty) => match ty.kind {
+                UnresolvedTypeKind::Variable(var) => var_names(var),
+                UnresolvedTypeKind::NumericVariable(_) => {
+                    format_named_type!("Number", Vec::new())
                 }
-            }
-            FormattableTypeKind::Type(UnresolvedType::Tuple(mut tys)) => {
-                let is_empty = tys.is_empty();
+                UnresolvedTypeKind::Parameter(param) => {
+                    param_names(param).unwrap_or_else(|| String::from("_"))
+                }
+                UnresolvedTypeKind::Error => String::from("_"),
+                UnresolvedTypeKind::Named(id, params, _) => {
+                    format_named_type!(type_names(id), params)
+                }
+                UnresolvedTypeKind::Builtin(ty) => match ty {
+                    BuiltinType::Number => format_named_type!("Number", Vec::new()),
+                    BuiltinType::Integer => format_named_type!("Integer", Vec::new()),
+                    BuiltinType::Natural => format_named_type!("Natural", Vec::new()),
+                    BuiltinType::Byte => format_named_type!("Byte", Vec::new()),
+                    BuiltinType::Signed => format_named_type!("Signed", Vec::new()),
+                    BuiltinType::Unsigned => format_named_type!("Unsigned", Vec::new()),
+                    BuiltinType::Float => format_named_type!("Float", Vec::new()),
+                    BuiltinType::Double => format_named_type!("Double", Vec::new()),
+                    BuiltinType::Text => format_named_type!("Text", Vec::new()),
+                    BuiltinType::List(ty) => format_named_type!("List", vec![*ty]),
+                    BuiltinType::Mutable(ty) => format_named_type!("Mutable", vec![*ty]),
+                    BuiltinType::Ui => format_named_type!("UI", Vec::new()),
+                    BuiltinType::TaskGroup => format_named_type!("Task-Group", Vec::new()),
+                },
+                UnresolvedTypeKind::Function(input, output) => {
+                    let input = format_type_inner(
+                        (*input).into(),
+                        type_names,
+                        trait_names,
+                        param_names,
+                        var_names,
+                        is_top_level,
+                        false,
+                        false,
+                    );
 
-                let ty = match tys.len() {
-                    0 => String::from("()"),
-                    1 => {
-                        format_type_inner(
-                            tys.pop().unwrap().into(),
-                            type_names,
-                            trait_names,
-                            param_names,
-                            var_names,
-                            is_top_level,
-                            is_return,
-                            false,
-                        ) + " ,"
+                    let output = format_type_inner(
+                        (*output).into(),
+                        type_names,
+                        trait_names,
+                        param_names,
+                        var_names,
+                        is_top_level,
+                        true,
+                        false,
+                    );
+
+                    if is_top_level && is_return {
+                        format!("{input} -> {output}")
+                    } else {
+                        format!("({input} -> {output})")
                     }
-                    _ => tys
-                        .into_iter()
-                        .map(|ty| {
+                }
+                UnresolvedTypeKind::Tuple(mut tys) => {
+                    let is_empty = tys.is_empty();
+
+                    let ty = match tys.len() {
+                        0 => String::from("()"),
+                        1 => {
                             format_type_inner(
-                                ty.into(),
+                                tys.pop().unwrap().into(),
                                 type_names,
                                 trait_names,
                                 param_names,
@@ -300,17 +287,32 @@ fn format_type_with(
                                 is_top_level,
                                 is_return,
                                 false,
-                            )
-                        })
-                        .join(" , "),
-                };
+                            ) + " ,"
+                        }
+                        _ => tys
+                            .into_iter()
+                            .map(|ty| {
+                                format_type_inner(
+                                    ty.into(),
+                                    type_names,
+                                    trait_names,
+                                    param_names,
+                                    var_names,
+                                    is_top_level,
+                                    is_return,
+                                    false,
+                                )
+                            })
+                            .join(" , "),
+                    };
 
-                if is_top_level || is_empty {
-                    ty
-                } else {
-                    format!("({ty})")
+                    if is_top_level || is_empty {
+                        ty
+                    } else {
+                        format!("({ty})")
+                    }
                 }
-            }
+            },
             FormattableTypeKind::Trait(tr, params) => {
                 format_named_type!(trait_names(tr), params)
             }
