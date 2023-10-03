@@ -12,9 +12,9 @@ warning: this expression doesn't do anything
  2 │ 1 + 2
    │ ^^^^^ did you mean to use the result, eg. `show` it?
    │
-   ┌─ <dir>/std/math.wpl:16:14
+   ┌─ <dir>/std/math.wpl:17:14
    │
-16 │   'a + 'b -> Add 'b 'a
+17 │   'a + 'b -> Add 'b 'a
    │              --- actual warning occurred here
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/useless-expression

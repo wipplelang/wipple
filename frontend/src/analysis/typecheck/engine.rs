@@ -649,13 +649,13 @@ impl UnresolvedType {
         match &mut self.kind {
             UnresolvedTypeKind::Variable(var) => {
                 if let Some(ty) = ctx.substitutions.borrow().get(var).cloned() {
-                    *self = ty;
+                    self.kind = ty.kind;
                     self.apply(ctx);
                 }
             }
             UnresolvedTypeKind::NumericVariable(var) => {
                 if let Some(ty) = ctx.numeric_substitutions.borrow().get(var).cloned() {
-                    *self = ty;
+                    self.kind = ty.kind;
                     self.apply(ctx);
                 }
             }
@@ -688,11 +688,14 @@ impl UnresolvedType {
 
         match &mut self.kind {
             UnresolvedTypeKind::Parameter(param) => {
-                *self = substitutions.get(param).cloned().unwrap_or_else(|| {
-                    // HACK: If the typechecker behaves erratically, try panicking here instead
-                    // of returning a new type variable to get to the root cause earlier.
-                    UnresolvedTypeKind::Variable(ctx.new_variable(None)).with_span(self.span)
-                });
+                self.kind = substitutions
+                    .get(param)
+                    .map(|ty| ty.kind.clone())
+                    .unwrap_or_else(|| {
+                        // HACK: If the typechecker behaves erratically, try panicking here instead
+                        // of returning a new type variable to get to the root cause earlier.
+                        UnresolvedTypeKind::Variable(ctx.new_variable(None))
+                    });
             }
             UnresolvedTypeKind::Function(input, output) => {
                 input.instantiate_with(ctx, substitutions);
@@ -850,7 +853,7 @@ impl UnresolvedType {
         match &mut self.kind {
             UnresolvedTypeKind::NumericVariable(var) => {
                 if let Some(ty) = ctx.numeric_substitutions.borrow().get(var).cloned() {
-                    *self = ty;
+                    self.kind = ty.kind;
                     self.finalize_numeric_variables(ctx);
                 } else {
                     self.kind = UnresolvedTypeKind::Builtin(BuiltinType::Number);
@@ -1132,7 +1135,7 @@ impl Type {
         match &mut self.kind {
             TypeKind::Parameter(param) => {
                 if let Some(ty) = substitutions.get(param).cloned() {
-                    *self = ty;
+                    self.kind = ty.kind;
                 }
             }
             TypeKind::Function(input, output) => {

@@ -662,4 +662,9 @@ impl Compiler {
                 .to_string(),
         )
     }
+
+    fn single_line_source_code_for_span(&self, span: Span) -> Option<String> {
+        self.source_code_for_span(span)
+            .filter(|code| !code.contains('\n'))
+    }
 }

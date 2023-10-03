@@ -5620,13 +5620,12 @@ impl Typechecker {
             _ => {}
         }
 
-        let operator_note = |typechecker: &Self| {
+        let operator_notes = || {
             error
                 .span
                 .first()
                 .expanded_from_operator
-                .into_iter()
-                .flat_map(|(name, left, right)| {
+                .map(|(name, left, right)| {
                     std::iter::once(
                         Note::secondary(
                             error.span,
@@ -5636,24 +5635,14 @@ impl Typechecker {
                     )
                     .chain(left.map(|span| Note::secondary(
                         span,
-                        format!(
-                            "{} is parsed as one single input to `{name}`",
-                            typechecker.compiler
-                                .source_code_for_span(span.first())
-                                .map_or_else(|| String::from("this"), |code| format!("`{code}`")),
-                        ),
+                        format!("this is parsed as one single input to `{name}`"),
                     )))
                     .chain(right.map(|span| Note::secondary(
                         span,
-                        format!(
-                            "{} is parsed as one single input to `{name}`",
-                            typechecker.compiler
-                                .source_code_for_span(span.first())
-                                .map_or_else(|| String::from("this"), |code| format!("`{code}`")),
-                        ),
+                        format!("this is parsed as one single input to `{name}`"),
                     )))
+                    .collect::<Vec<_>>()
                 })
-                .collect::<Vec<_>>()
         };
 
         let mut diagnostic = match *error.error {
@@ -5707,8 +5696,9 @@ impl Typechecker {
                             "try providing an input to this function",
                         ));
 
-                        if let Some(source_code) =
-                            self.compiler.source_code_for_span(error.span.first())
+                        if let Some(source_code) = self
+                            .compiler
+                            .single_line_source_code_for_span(error.span.first())
                         {
                             let (description, replacement) = if num_inputs == 1 {
                                 (
@@ -5842,8 +5832,9 @@ impl Typechecker {
                 if let engine::UnresolvedTypeKind::Named(id, _, _) = &expected.kind {
                     let ty = self.declarations.borrow().types.get(id).unwrap().clone();
 
-                    if let Some(source_code) =
-                        self.compiler.source_code_for_span(error.span.first())
+                    if let Some(source_code) = self
+                        .compiler
+                        .single_line_source_code_for_span(error.span.first())
                     {
                         if let Some(replacement) =
                             ty.convert_from.iter().find_map(|(ty, replacement)| {
@@ -5897,7 +5888,9 @@ impl Typechecker {
                     }
                 }
 
-                notes.extend(operator_note(self));
+                if let Some(operator_notes) = operator_notes() {
+                    notes.extend(operator_notes);
+                }
 
                 if let Some(id) = error.expr {
                     if let Some((func, _)) = self.start_of_call_chain_for(id) {
@@ -5986,8 +5979,9 @@ impl Typechecker {
 
                                 let code = ty
                                     .span
+                                    .filter(|_| trait_attributes.decl_attributes.help_show_code)
                                     .and_then(|span| {
-                                        self.compiler.source_code_for_span(span.first())
+                                        self.compiler.single_line_source_code_for_span(span.first())
                                     })
                                     .unwrap_or_else(|| self.format_type(ty, Default::default()));
 
@@ -6014,25 +6008,45 @@ impl Typechecker {
 
                 let note_message = format!(
                     "could not find instance {}",
-                    self.format_type(format::FormattableType::r#trait(id, params), format)
+                    self.format_type(format::FormattableType::r#trait(id, params.clone()), format)
                 );
+
+                let notes = std::iter::once(
+                    Note::primary(error.span, note_message).use_caller_if_available(),
+                )
+                .chain(
+                    params
+                        .into_iter()
+                        .filter_map(|param| {
+                            let span = param.span?;
+
+                            if span == error.span
+                                || !span.first().is_subspan_of(error.span.first())
+                                || param.contains_vars()
+                            {
+                                return None;
+                            }
+
+                            Some(Note::secondary(
+                                span,
+                                format!("this has type {}", self.format_type(param, format)),
+                            ))
+                        })
+                        .collect::<Vec<_>>(),
+                )
+                .chain(operator_notes().into_iter().flatten())
+                .chain(bound_span.map(|span| Note::secondary(span, "required by this bound here")))
+                .chain(error_candidates.into_iter().map(|span| {
+                    Note::secondary(
+                        span,
+                        "this instance could apply, but its bounds weren't satisfied",
+                    )
+                }))
+                .collect::<Vec<_>>();
 
                 self.compiler.error_with_trace(
                     error_message,
-                    std::iter::once(
-                        Note::primary(error.span, note_message).use_caller_if_available(),
-                    )
-                    .chain(
-                        bound_span.map(|span| Note::secondary(span, "required by this bound here")),
-                    )
-                    .chain(error_candidates.into_iter().map(|span| {
-                        Note::secondary(
-                            span,
-                            "this instance could apply, but its bounds weren't satisfied",
-                        )
-                    }))
-                    .chain(operator_note(self))
-                    .collect(),
+                    notes,
                     "missing-instance",
                     error.trace,
                 )
@@ -6078,7 +6092,7 @@ impl Typechecker {
                 let message = format!(
                     "{} does not fit into a {}",
                     self.compiler
-                        .source_code_for_span(error.span.first())
+                        .single_line_source_code_for_span(error.span.first())
                         .map_or_else(|| String::from("number"), |code| format!("`{code}`")),
                     self.format_type(ty, format)
                 );
