@@ -1870,10 +1870,12 @@ impl Typechecker {
                 }
             }
             lower::ExpressionKind::Variable(var) => {
-                let ty = info.variables.get(&var).cloned().unwrap_or_else(|| {
+                let mut ty = info.variables.get(&var).cloned().unwrap_or_else(|| {
                     engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None))
-                        .with_span(expr.span)
+                        .with_span(None)
                 });
+
+                ty.span = Some(expr.span);
 
                 UnresolvedExpression {
                     id: expr.id,
@@ -5981,11 +5983,15 @@ impl Typechecker {
                                     .span
                                     .filter(|_| trait_attributes.decl_attributes.help_show_code)
                                     .and_then(|span| {
-                                        self.compiler.single_line_source_code_for_span(span.first())
+                                        let code = self
+                                            .compiler
+                                            .single_line_source_code_for_span(span.first())?;
+
+                                        Some(format!("`{code}`"))
                                     })
                                     .unwrap_or_else(|| self.format_type(ty, Default::default()));
 
-                                text.to_string() + &format!("`{code}`")
+                                text.to_string() + &code
                             })
                             .chain(trailing_segment.map(|text| text.to_string()))
                             .collect()
