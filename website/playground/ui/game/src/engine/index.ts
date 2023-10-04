@@ -1,8 +1,6 @@
 export * as inputs from "./inputs";
 export * as backends from "./backends";
 
-import { Mutex } from "async-mutex";
-
 export type Scene = (
     ctx: GameContext,
     commit: (flags: { shouldContinue: boolean }) => Promise<void>
@@ -40,7 +38,6 @@ export class Music {
 }
 
 export class GameContext {
-    private lock: Mutex;
     private input: GameInput;
     private backend: GameBackend;
     private renderedGame: RenderedGame;
@@ -49,10 +46,8 @@ export class GameContext {
     private y: number;
     private fgColor: string;
     private bgColor: string;
-    private stopFlag: boolean;
 
     public constructor(scene: Scene, input: GameInput, backend: GameBackend) {
-        this.lock = new Mutex();
         this.input = input;
         this.backend = backend;
         this.renderedGame = {
@@ -64,11 +59,6 @@ export class GameContext {
         this.y = 0;
         this.fgColor = "white";
         this.bgColor = "black";
-        this.stopFlag = false;
-    }
-
-    public async waitForNextFrame() {
-        await this.lock.acquire();
     }
 
     public setScene(scene: Scene) {
@@ -168,8 +158,6 @@ export class GameContext {
 
     public async run() {
         const run = async () => {
-            if (this.stopFlag) return;
-
             this.x = 0;
             this.y = 0;
             this.fgColor = "white";

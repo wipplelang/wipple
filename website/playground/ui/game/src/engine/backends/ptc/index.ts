@@ -5,20 +5,20 @@ import font from "./assets/font.png";
 export const width = 32;
 export const height = 24;
 
-const palette = new fastiles.Palette();
-const cache: Record<string, number> = {};
-
-const color = (color: string) => {
-    if (cache[color] != null) {
-        return cache[color];
-    }
-
-    const index = palette.add(color);
-    cache[color] = index;
-    return index;
-};
-
 export const run = async (scene: Scene, input: GameInput, element: HTMLElement) => {
+    const palette = new fastiles.Palette();
+    const cache: Record<string, number> = {};
+
+    const color = (color: string) => {
+        if (cache[color] != null) {
+            return cache[color];
+        }
+
+        const index = palette.add(color);
+        cache[color] = index;
+        return index;
+    };
+
     const fontImage = await new Promise<HTMLImageElement>((resolve, reject) => {
         const image = new Image();
         image.onload = () => resolve(image);
