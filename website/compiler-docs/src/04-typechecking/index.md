@@ -64,8 +64,6 @@ What if the types are incompatible? Let's try unifying `{1} -> Text` with `Text 
 3.  Unify the input types of both sides:
     1.  Unify `Number` and `Text`; the two types aren't equal, so stop and produce an error.
 
-One important thing here is that we don't care about the actual expressions at all, only their types. In Wipple, types do not contain span information or anything that relates them to a particular expression. That's because the whole point of typechecking is to determine if _two or more_ expressions are compatible with each other.
-
 One more example — function calling. For function calling, we split the work into two steps:
 
 1.  Determine the type of the function expression, and unify this type with the type `{0} -> {1}`, where `{0}` and `{1}` are fresh type variables.
@@ -96,13 +94,13 @@ During the monomorphization phase, the typechecker also performs exhaustiveness 
 
 Finally, the typechecker does one last pass over all expressions to ensure they don't contain any unresolved type variables. If one does, the `could not determine the type of this expression` error is produced. Internally, the AST made of `MonomorphizedExpression` values (whose types may contain type variables) is converted into an AST made of `Expression` values (whose types may not contain type variables). The program entrypoint is also considered to be a monomorphized implementation whose ID is exposed by the `entrypoint` field.
 
-For the purpose of diagnostics and IDE support, finalized expressions may contain type parameters. That way, you can get type information while editing the body of a generic constant or instance. The IR generator only processes monomorphized expressions, though, and will crash if it encounters a type parameter (indicating a compiler bug).
+For the purpose of diagnostics and IDE support, finalized expressions may contain type parameters. That way, you can get type information while editing the body of a generic constant or instance. The IR generator will crash if it encounters a type parameter, though, indicating a compiler bug.
 
 ## Other things the typechecker does
 
 -   **Instance collision checking:** Whenever a new instance is processed, the typechecker loops over all previous instances to see if they overlap. During this check, type parameters are treated like type variables and unify with everything. No instance may unify with any other instance, even if the bounds are different. You can disable this behavior on a per-trait basis using `[allow-overlapping-instances]`; then, the first instance that matches is chosen immediately without evaluating any further instances. To keep things determinstic, if `[allow-overlapping-instances]` is enabled for a trait, all of the trait's instances must appear in the same file.
 
--   **Numeric type variables and default types:** Numeric literals are assigned a type variable that only unifies with the builtin number types like `Number` and `Natural`. If a better type cannot be inferred, the variable defaults to `Number`. After this, the numeric literal is parsed to ensure it fits within the type (eg. `1.5 :: Natural` causes an error). Default types for type parameters (eg. `prompt :: (Output : Text) where (Read Output) => Text -> Output`) are resolved similarly.
+-   **Numeric type variables and default types:** Numeric literals are assigned a type variable that only unifies with the builtin number types like `Number` and `Natural`. If a better type cannot be inferred, the variable defaults to `Number`. After this, the numeric literal is parsed to ensure it fits within the type (eg. `1.5 :: Natural` causes an error). Default types for type parameters (eg. `Show : (A : Text) => trait (A -> Text)`) are resolved similarly.
 
 -   **Inferred parameters:** You can prefix a type parameter with `infer` to change the order of bounds checking. Usually, the type checker determines the types of type parameters from the type of the expression provided at the use site, and then checks to make sure any bounds are satisfied. `infer` reverses this process — it determines the type of the type parameter marked `infer` from any bounds, and then checks to make sure this type matches the type at the use site. `infer` doesn't change the behavior of valid code, but it can produce better error messages for invalid code.
 
