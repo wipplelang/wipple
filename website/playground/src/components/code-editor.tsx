@@ -123,12 +123,12 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
     const [hoverPos, setHoverPos] = useRefState<[number, number] | undefined>(undefined);
 
-    const hover = hoverTooltip(async (view, pos, side) => {
+    const hover = hoverTooltip(async (view, pos) => {
         if (outputRef.current!.isRunning()) {
             return null;
         }
 
-        const { from, to } = syntaxTree(view.state).cursorAt(pos, side);
+        const { from, to } = syntaxTree(view.state).cursorAt(pos, 0);
 
         let hoverDiagnostic: Hover["diagnostic"];
         outer: for (const diagnostic of analysis.current?.diagnostics ?? []) {
