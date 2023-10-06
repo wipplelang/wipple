@@ -25,48 +25,42 @@ export const Picker = (props: PickerProps) => {
 
             <div className="grid grid-cols-2 md:grid-cols-4 auto-rows-max gap-4">
                 <PickerItem
-                    icon={ArticleRounded}
-                    iconClassName="text-blue-500"
+                    setup={undefined}
                     name="Blank"
                     description="Create a new program from scratch."
                     onSelect={() => props.onSelect({ type: "code", setup: undefined })}
                 />
 
                 <PickerItem
-                    icon={turtleIcon}
-                    iconClassName="w-[31px] p-[2px] aspect-square"
+                    setup="turtle"
                     name="Turtle"
                     description="Draw graphics on the screen."
                     onSelect={() => props.onSelect({ type: "code", setup: "turtle" })}
                 />
 
                 <PickerItem
-                    icon={MusicNoteRounded}
-                    iconClassName="text-orange-500"
+                    setup="music"
                     name="Music"
                     description="Make a musical composition."
                     onSelect={() => props.onSelect({ type: "code", setup: "music" })}
                 />
 
                 <PickerItem
-                    icon={CalculateRounded}
-                    iconClassName="text-green-500"
+                    setup="graphing"
                     name="Math"
                     description="Plot mathematical functions."
                     onSelect={() => props.onSelect({ type: "code", setup: "graphing" })}
                 />
 
                 <PickerItem
-                    icon={SportsEsportsRounded}
-                    iconClassName="text-purple-500"
+                    setup="game"
                     name="Game"
                     description="Create a video game."
                     onSelect={() => props.onSelect({ type: "code", setup: "game" })}
                 />
 
                 <PickerItem
-                    icon={EditNoteRounded}
-                    iconClassName="text-gray-500"
+                    setup="text"
                     name="Text"
                     description="Write text alongside your code."
                     onSelect={() => props.onSelect({ type: "text" })}
@@ -77,8 +71,7 @@ export const Picker = (props: PickerProps) => {
 };
 
 const PickerItem = (props: {
-    icon: string | typeof CloseRounded;
-    iconClassName: string;
+    setup: string | undefined;
     name: string;
     description: string;
     onSelect: () => void;
@@ -92,15 +85,7 @@ const PickerItem = (props: {
         >
             <div className="flex flex-col items-start gap-2 w-full h-full">
                 <div className="group-hover:scale-110 transition-transform">
-                    {typeof props.icon === "string" ? (
-                        <img src={props.icon} className={props.iconClassName} />
-                    ) : (
-                        <props.icon
-                            className={props.iconClassName}
-                            fontSize="large"
-                            color="inherit"
-                        />
-                    )}
+                    <SetupIcon setup={props.setup} size="large" />
                 </div>
 
                 <div className="flex flex-col normal-case text-left ui-font tracking-normal">
@@ -111,3 +96,55 @@ const PickerItem = (props: {
         </Button>
     </div>
 );
+
+export const SetupIcon = (props: { setup: string | undefined; size: "medium" | "large" }) => {
+    switch (props.setup) {
+        case undefined:
+            return (
+                <ArticleRounded fontSize={props.size} color="inherit" className="text-blue-500" />
+            );
+        case "turtle":
+            return (
+                <img
+                    src={turtleIcon}
+                    className={`${
+                        props.size === "large" ? "w-[31px]" : "w-[24px]"
+                    } p-[2px] aspect-square`}
+                />
+            );
+        case "music":
+            return (
+                <MusicNoteRounded
+                    fontSize={props.size}
+                    color="inherit"
+                    className="text-orange-500 pb-0.5"
+                />
+            );
+        case "graphing":
+            return (
+                <CalculateRounded
+                    fontSize={props.size}
+                    color="inherit"
+                    className="text-green-500 pb-0.5"
+                />
+            );
+        case "game":
+            return (
+                <SportsEsportsRounded
+                    fontSize={props.size}
+                    color="inherit"
+                    className="text-purple-500 pb-0.5"
+                />
+            );
+        case "text":
+            return (
+                <EditNoteRounded
+                    fontSize={props.size}
+                    color="inherit"
+                    className="text-gray-500 pb-0.5"
+                />
+            );
+        default:
+            return null;
+    }
+};

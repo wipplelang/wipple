@@ -71,6 +71,7 @@ import emojiRegex from "emoji-regex";
 import emojiData from "@emoji-mart/data";
 import EmojiPicker from "@emoji-mart/react";
 import graphemeSplit from "graphemesplit";
+import { SetupIcon } from "./picker";
 
 export interface CodeEditorProps {
     id: string;
@@ -852,11 +853,17 @@ export const CodeEditor = (props: CodeEditorProps) => {
             <div className="relative -mt-3.5">
                 <div className="flex flex-row justify-end w-full pr-4 -mb-3.5">
                     <div
-                        className="code-editor-outlined rounded-md shadow-lg shadow-gray-100 dark:shadow-gray-900 h-7 text-gray-500 text-opacity-50 z-10"
+                        className="flex code-editor-outlined rounded-md shadow-lg shadow-gray-100 dark:shadow-gray-900 h-7 text-gray-500 text-opacity-50 z-10"
                         style={collaborationStyles}
                     >
+                        {props.setup ? (
+                            <div className="code-editor-outlined -my-0.5 -ml-0.5 px-0.5">
+                                <SetupIcon setup={props.setup} size="medium" />
+                            </div>
+                        ) : null}
+
                         {collaborationMode.current && (
-                            <div className="inline-block code-editor-outlined -my-0.5 -ml-0.5 px-2">
+                            <div className="code-editor-outlined -my-0.5 -ml-0.5 px-2">
                                 <PeopleAltRounded
                                     fontSize="small"
                                     sx={{ marginRight: "6px", marginTop: "-2px" }}
