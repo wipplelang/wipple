@@ -857,9 +857,15 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         style={collaborationStyles}
                     >
                         {props.setup ? (
-                            <div className="code-editor-outlined -my-0.5 -ml-0.5 px-0.5">
-                                <SetupIcon setup={props.setup} size="medium" />
-                            </div>
+                            <Tooltip title="Documentation">
+                                <a
+                                    target="_blank"
+                                    href={`/doc/${props.setup}.html`}
+                                    className="code-editor-button -my-0.5 -ml-0.5 px-0.5"
+                                >
+                                    <SetupIcon setup={props.setup} size="medium" />
+                                </a>
+                            </Tooltip>
                         ) : null}
 
                         {collaborationMode.current && (
