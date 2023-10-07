@@ -6,6 +6,7 @@ import MusicNoteRounded from "@mui/icons-material/MusicNoteRounded";
 import CalculateRounded from "@mui/icons-material/CalculateRounded";
 import SportsEsportsRounded from "@mui/icons-material/SportsEsportsRounded";
 import EditNoteRounded from "@mui/icons-material/EditNoteRounded";
+import arduinoIcon from "../../ui/arduino/src/assets/arduino.png";
 
 export interface PickerProps {
     onSelect: (section: { type: "code"; setup?: string } | { type: "text" }) => void;
@@ -57,6 +58,13 @@ export const Picker = (props: PickerProps) => {
                     name="Game"
                     description="Create a video game."
                     onSelect={() => props.onSelect({ type: "code", setup: "game" })}
+                />
+
+                <PickerItem
+                    setup="arduino"
+                    name="Arduino"
+                    description="Control an Arduino."
+                    onSelect={() => props.onSelect({ type: "code", setup: "arduino" })}
                 />
 
                 <PickerItem
@@ -134,6 +142,15 @@ export const SetupIcon = (props: { setup: string | undefined; size: "medium" | "
                     fontSize={props.size}
                     color="inherit"
                     className="text-purple-500 pb-0.5"
+                />
+            );
+        case "arduino":
+            return (
+                <img
+                    src={arduinoIcon}
+                    className={`${
+                        props.size === "large" ? "w-[31px]" : "w-[24px]"
+                    } p-[2px] aspect-square`}
                 />
             );
         case "text":

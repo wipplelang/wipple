@@ -99,6 +99,8 @@ tasks:
             - website-playground-app
             - website-playground-public
             - task: website-playground-ui
+              vars: { NAME: arduino }
+            - task: website-playground-ui
               vars: { NAME: game }
             - task: website-playground-ui
               vars: { NAME: graphing }
