@@ -26,7 +26,9 @@ pub use typecheck::Intrinsic;
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Program {
-    pub labels: Vec<(LabelKind, usize, Vec<BasicBlock>)>,
+    pub globals: Vec<Type>,
+
+    pub labels: Vec<(LabelKind, Vec<Type>, Vec<BasicBlock>)>,
 
     #[serde_as(as = "Vec<(_, _)>")]
     pub structures: BTreeMap<StructureId, Vec<Type>>,
@@ -39,7 +41,7 @@ pub struct Program {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LabelKind {
-    Entrypoint,
+    Entrypoint(Type),
     Constant(Type),
     Function(Type, Type),
     Closure(CaptureList, Type, Type),
@@ -59,17 +61,17 @@ pub enum Statement {
     Initialize(usize),
     Free(usize),
     WithContext(usize),
-    ResetContext,
+    ResetContext(usize),
     Unpack(CaptureList),
     Expression(Type, Expression),
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Terminator {
     Unreachable,
     Return,
     Jump(usize),
-    If(VariantIndex, usize, usize),
+    If(VariantIndex, usize, usize, (Type, usize)),
     TailCall,
 }
 
@@ -98,7 +100,7 @@ pub enum Expression {
     Variant(VariantIndex, usize),
     TupleElement(usize),
     StructureElement(FieldIndex),
-    VariantElement(VariantIndex, usize),
+    VariantElement((VariantIndex, Vec<Type>), usize),
     Reference,
     Dereference,
     Context(usize),
@@ -118,6 +120,7 @@ impl Compiler {
 
         let program = self.convert_to_ssa(program);
 
+        let variables = program.variables.clone();
         let contexts = program.contexts.clone();
         let structures = program.structures.clone();
         let mut enumerations = program.enumerations.clone();
@@ -138,7 +141,7 @@ impl Compiler {
         for (id, item) in &program.items {
             let label = gen.new_label(|_, _| {
                 if program.entrypoint_wrapper.is_none() && *id == program.entrypoint {
-                    LabelKind::Entrypoint
+                    LabelKind::Entrypoint(item.ty.clone())
                 } else {
                     LabelKind::Constant(item.ty.clone())
                 }
@@ -177,10 +180,22 @@ impl Compiler {
             .unwrap();
 
         Program {
+            globals: gen.contexts.into_values().map(|(ty, _)| ty).collect(),
             labels: gen
                 .labels
                 .into_iter()
-                .map(|(kind, vars, blocks)| (kind.unwrap(), vars.len(), blocks))
+                .map(|(kind, vars, blocks)| {
+                    let mut var_tys = vec![None; vars.len()];
+                    for (var, index) in vars {
+                        var_tys[index] = Some(variables.get(&var).unwrap().clone());
+                    }
+
+                    (
+                        kind.unwrap(),
+                        var_tys.into_iter().map(Option::unwrap).collect(),
+                        blocks,
+                    )
+                })
                 .collect(),
             structures: gen.structures,
             enumerations: gen.enumerations,
@@ -197,7 +212,7 @@ struct IrGen {
         Vec<BasicBlock>,
     )>,
     scopes: Vec<Vec<VariableId>>,
-    contexts: BTreeMap<ConstantId, ItemId>,
+    contexts: BTreeMap<ConstantId, (Type, ItemId)>,
     structures: BTreeMap<StructureId, Vec<Type>>,
     enumerations: BTreeMap<EnumerationId, Vec<Vec<Type>>>,
     bool_type: EnumerationId,
@@ -429,8 +444,10 @@ impl IrGen {
                     self.gen_pattern(
                         pattern,
                         input_ty,
+                        output_ty,
                         body_pos,
                         function_label,
+                        function_pos,
                         &mut function_pos,
                     );
                     self.gen_expr(*body, function_label, &mut body_pos);
@@ -459,7 +476,7 @@ impl IrGen {
             ssa::ExpressionKind::When(input, arms) => {
                 let ty = input.ty.clone();
                 self.gen_expr(*input, label, pos);
-                self.gen_when(arms, &ty, label, pos);
+                self.gen_when(arms, &ty, &expr.ty, label, pos);
             }
             ssa::ExpressionKind::External(lib, identifier, exprs) => {
                 let count = exprs.len();
@@ -543,10 +560,10 @@ impl IrGen {
             ssa::ExpressionKind::With((id, value), body) => {
                 self.gen_expr(*value, label, pos);
 
-                if let Some(&id) = self.contexts.get(&id) {
+                if let Some((_, id)) = self.contexts.get(&id) {
                     let id = *self
                         .items
-                        .get(&id)
+                        .get(id)
                         .unwrap_or_else(|| panic!("cannot find {id:?}"));
 
                     self.statements_for(label, *pos)
@@ -555,7 +572,7 @@ impl IrGen {
                     self.gen_expr(*body, label, pos);
 
                     self.statements_for(label, *pos)
-                        .push(Statement::ResetContext);
+                        .push(Statement::ResetContext(id));
                 } else {
                     // This branch occurs when the constant is never actually used anywhere in the
                     // program, so we can just generate the body without worrying about setting the
@@ -565,7 +582,7 @@ impl IrGen {
                 }
             }
             ssa::ExpressionKind::ContextualConstant(id) => {
-                let id = *self
+                let (_, id) = *self
                     .contexts
                     .get(&id)
                     .unwrap_or_else(|| panic!("cannot find {id:?}"));
@@ -612,6 +629,7 @@ impl IrGen {
         &mut self,
         mut arms: Vec<ssa::Arm>,
         input_ty: &Type,
+        output_ty: &Type,
         label: usize,
         pos: &mut usize,
     ) {
@@ -655,17 +673,37 @@ impl IrGen {
                 let condition_pos = self.new_basic_block(label, "`when` arm condition");
                 let else_pos = self.new_basic_block(label, "`when` arm condition not satisfied");
 
-                self.gen_pattern(arm.pattern, input_ty, condition_pos, label, pos);
+                self.gen_pattern(
+                    arm.pattern,
+                    input_ty,
+                    output_ty,
+                    condition_pos,
+                    label,
+                    continue_pos,
+                    pos,
+                );
                 *self.terminator_for(label, *pos) = Some(Terminator::Jump(else_pos));
 
                 *pos = condition_pos;
                 self.gen_expr(guard, label, pos);
-                *self.terminator_for(label, *pos) =
-                    Some(Terminator::If(VariantIndex::new(1), body_pos, else_pos));
+                *self.terminator_for(label, *pos) = Some(Terminator::If(
+                    VariantIndex::new(1),
+                    body_pos,
+                    else_pos,
+                    (output_ty.clone(), else_pos),
+                ));
 
                 *pos = else_pos;
             } else {
-                self.gen_pattern(arm.pattern, input_ty, body_pos, label, pos);
+                self.gen_pattern(
+                    arm.pattern,
+                    input_ty,
+                    output_ty,
+                    body_pos,
+                    label,
+                    continue_pos,
+                    pos,
+                );
             }
 
             *self.terminator_for(label, *pos) = Some(Terminator::Unreachable);
@@ -673,7 +711,7 @@ impl IrGen {
             self.statements_for(label, body_pos).push(Statement::Drop);
             self.gen_expr(arm.body, label, &mut body_pos);
 
-            let free_pos = self.new_basic_block(label, "end of `when` expression");
+            let free_pos = self.new_basic_block(label, "end of `when` arm");
 
             *self.terminator_for(label, body_pos) = Some(Terminator::Jump(free_pos));
 
@@ -693,8 +731,10 @@ impl IrGen {
         &mut self,
         pattern: ssa::Pattern,
         input_ty: &Type,
+        output_ty: &Type,
         body_pos: usize,
         label: usize,
+        end_pos: usize,
         pos: &mut usize,
     ) {
         macro_rules! match_number {
@@ -710,8 +750,12 @@ impl IrGen {
                 ));
 
                 let else_pos = self.new_basic_block(label, "following numeric pattern");
-                *self.terminator_for(label, *pos) =
-                    Some(Terminator::If(VariantIndex::new(1), body_pos, else_pos));
+                *self.terminator_for(label, *pos) = Some(Terminator::If(
+                    VariantIndex::new(1),
+                    body_pos,
+                    else_pos,
+                    (output_ty.clone(), end_pos),
+                ));
                 *pos = else_pos;
             }};
         }
@@ -760,8 +804,12 @@ impl IrGen {
                 ));
 
                 let else_pos = self.new_basic_block(label, "following text pattern");
-                *self.terminator_for(label, *pos) =
-                    Some(Terminator::If(VariantIndex::new(1), body_pos, else_pos));
+                *self.terminator_for(label, *pos) = Some(Terminator::If(
+                    VariantIndex::new(1),
+                    body_pos,
+                    else_pos,
+                    (output_ty.clone(), else_pos),
+                ));
                 *pos = else_pos;
             }
             ssa::PatternKind::Variable(var) => {
@@ -776,13 +824,21 @@ impl IrGen {
                 let continue_pos = self.new_basic_block(label, "`or` pattern satisfied");
 
                 self.statements_for(label, *pos).push(Statement::Copy);
-                self.gen_pattern(*left, input_ty, continue_pos, label, pos);
+                self.gen_pattern(
+                    *left,
+                    input_ty,
+                    output_ty,
+                    continue_pos,
+                    label,
+                    end_pos,
+                    pos,
+                );
 
                 self.statements_for(label, continue_pos)
                     .push(Statement::Drop);
                 *self.terminator_for(label, continue_pos) = Some(Terminator::Jump(body_pos));
 
-                self.gen_pattern(*right, input_ty, body_pos, label, pos);
+                self.gen_pattern(*right, input_ty, output_ty, body_pos, label, end_pos, pos);
             }
             ssa::PatternKind::Tuple(patterns) => {
                 let tuple_tys = match input_ty {
@@ -804,7 +860,9 @@ impl IrGen {
                         Expression::TupleElement(index),
                     ));
 
-                    self.gen_pattern(pattern, element_ty, next_pos, label, pos);
+                    self.gen_pattern(
+                        pattern, element_ty, output_ty, next_pos, label, end_pos, pos,
+                    );
 
                     *self.terminator_for(label, *pos) = Some(Terminator::Jump(else_pos));
 
@@ -848,7 +906,7 @@ impl IrGen {
                         Expression::StructureElement(index),
                     ));
 
-                    self.gen_pattern(field, field_ty, next_pos, label, pos);
+                    self.gen_pattern(field, field_ty, output_ty, next_pos, label, end_pos, pos);
 
                     *self.terminator_for(label, *pos) = Some(Terminator::Jump(else_pos));
 
@@ -882,8 +940,12 @@ impl IrGen {
                 if patterns.is_empty() {
                     let else_pos = self.new_basic_block(label, "variant pattern not satisfied");
 
-                    *self.terminator_for(label, *pos) =
-                        Some(Terminator::If(discriminant, body_pos, else_pos));
+                    *self.terminator_for(label, *pos) = Some(Terminator::If(
+                        discriminant,
+                        body_pos,
+                        else_pos,
+                        (output_ty.clone(), end_pos),
+                    ));
 
                     *pos = else_pos;
                 } else {
@@ -892,8 +954,12 @@ impl IrGen {
 
                     self.statements_for(label, *pos).push(Statement::Copy);
 
-                    *self.terminator_for(label, *pos) =
-                        Some(Terminator::If(discriminant, element_pos, else_pos));
+                    *self.terminator_for(label, *pos) = Some(Terminator::If(
+                        discriminant,
+                        element_pos,
+                        else_pos,
+                        (output_ty.clone(), end_pos),
+                    ));
 
                     *pos = element_pos;
 
@@ -906,10 +972,12 @@ impl IrGen {
 
                         self.statements_for(label, *pos).push(Statement::Expression(
                             element_ty.clone(),
-                            Expression::VariantElement(discriminant, index),
+                            Expression::VariantElement((discriminant, variant_tys.clone()), index),
                         ));
 
-                        self.gen_pattern(pattern, element_ty, next_pos, label, pos);
+                        self.gen_pattern(
+                            pattern, element_ty, output_ty, next_pos, label, end_pos, pos,
+                        );
 
                         *self.terminator_for(label, *pos) = Some(Terminator::Jump(else_pos));
 

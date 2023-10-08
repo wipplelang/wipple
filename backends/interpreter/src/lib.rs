@@ -292,7 +292,7 @@ impl Interpreter {
         self.lock().labels = program
             .labels
             .iter()
-            .map(|(_, vars, blocks)| (*vars, blocks.clone()))
+            .map(|(_, vars, blocks)| (vars.len(), blocks.clone()))
             .collect();
 
         self.lock().initialized_constants = BTreeMap::new();
@@ -400,7 +400,7 @@ impl Interpreter {
                     ir::Statement::WithContext(ctx) => {
                         context.with(*ctx, stack.pop());
                     }
-                    ir::Statement::ResetContext => {
+                    ir::Statement::ResetContext(_) => {
                         context.reset();
                     }
                     ir::Statement::Unpack(_) => {
@@ -546,17 +546,17 @@ impl Interpreter {
 
             log!(
                 "\nRUN {} {:#?} (bb{index})",
-                blocks[index].terminator.unwrap(),
+                blocks[index].terminator.as_ref().unwrap(),
                 stack.current_frame()
             );
 
-            match &blocks[index].terminator.unwrap() {
+            match blocks[index].terminator.as_ref().unwrap() {
                 ir::Terminator::Unreachable => unreachable!(),
                 ir::Terminator::Return => return Ok(()),
                 ir::Terminator::Jump(jump_index) => {
                     index = *jump_index;
                 }
-                ir::Terminator::If(matching_discriminant, then_index, else_index) => {
+                ir::Terminator::If(matching_discriminant, then_index, else_index, _) => {
                     let discriminant = match stack.pop() {
                         Value::Variant(discriminant, _) => discriminant,
                         _ => unreachable!("{:#?}", stack.current_frame()),

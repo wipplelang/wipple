@@ -1053,6 +1053,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2873,7 +2882,7 @@ dependencies = [
  "futures",
  "handlebars",
  "indicatif",
- "itertools",
+ "itertools 0.10.5",
  "line-col",
  "mktemp",
  "ouroboros",
@@ -2888,6 +2897,7 @@ dependencies = [
  "which",
  "wipple-default-loader",
  "wipple-frontend",
+ "wipple-go-backend",
  "wipple-interpreter-backend",
  "wipple-syntax",
 ]
@@ -2925,7 +2935,7 @@ dependencies = [
  "im",
  "indexmap",
  "internment",
- "itertools",
+ "itertools 0.10.5",
  "lazy_static",
  "parking_lot",
  "paste",
@@ -2943,6 +2953,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "wipple-go-backend"
+version = "0.0.0"
+dependencies = [
+ "itertools 0.11.0",
+ "wipple-frontend",
+]
+
+[[package]]
 name = "wipple-interpreter-backend"
 version = "0.0.0"
 dependencies = [
@@ -2950,7 +2968,7 @@ dependencies = [
  "futures",
  "getrandom",
  "im",
- "itertools",
+ "itertools 0.10.5",
  "num-traits",
  "parking_lot",
  "rand",
@@ -2968,7 +2986,7 @@ dependencies = [
  "console_error_panic_hook",
  "force-send-sync",
  "futures",
- "itertools",
+ "itertools 0.10.5",
  "js-sys",
  "lazy_static",
  "nonoverlapping_interval_tree",

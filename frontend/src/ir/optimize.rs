@@ -61,13 +61,13 @@ pub mod propagate {
 
             let mut functions = BTreeMap::new();
             for (label, (kind, vars, blocks)) in self.labels.iter_mut().enumerate() {
-                if matches!(kind, LabelKind::Constant(_)) && *vars == 0 && blocks.len() == 1 {
+                if matches!(kind, LabelKind::Constant(_)) && vars.is_empty() && blocks.len() == 1 {
                     let block = blocks.first().unwrap();
                     if block.statements.len() == 1 {
                         if let Statement::Expression(_, Expression::Function(func)) =
                             block.statements.first().unwrap()
                         {
-                            if matches!(block.terminator.unwrap(), Terminator::Return) {
+                            if matches!(block.terminator.as_ref().unwrap(), Terminator::Return) {
                                 functions.insert(label, *func);
                             }
                         }
@@ -125,30 +125,34 @@ pub mod reorder {
 
                         let mut block = blocks.get_mut(block_index).unwrap().take().unwrap();
 
-                        *block.terminator.as_mut().unwrap() = match block.terminator.unwrap() {
-                            Terminator::Unreachable => return None,
-                            Terminator::Return => Terminator::Return,
-                            Terminator::Jump(jump_index) => {
-                                let jump_index = gen(jump_index, blocks, reordered, indices)?;
-                                Terminator::Jump(jump_index)
-                            }
-                            Terminator::If(variant, then_index, else_index) => {
-                                let then_index = gen(then_index, blocks, reordered, indices);
-                                let else_index = gen(else_index, blocks, reordered, indices);
-
-                                match (then_index, else_index) {
-                                    (Some(then_index), Some(else_index)) => {
-                                        Terminator::If(variant, then_index, else_index)
-                                    }
-                                    (Some(jump_index), None) | (None, Some(jump_index)) => {
-                                        block.statements.push(Statement::Drop);
-                                        Terminator::Jump(jump_index)
-                                    }
-                                    (None, None) => return None,
+                        *block.terminator.as_mut().unwrap() =
+                            match *block.terminator.as_ref().unwrap() {
+                                Terminator::Unreachable => return None,
+                                Terminator::Return => Terminator::Return,
+                                Terminator::Jump(jump_index) => {
+                                    let jump_index = gen(jump_index, blocks, reordered, indices)?;
+                                    Terminator::Jump(jump_index)
                                 }
-                            }
-                            Terminator::TailCall => Terminator::TailCall,
-                        };
+                                Terminator::If(variant, then_index, else_index, ref output_ty) => {
+                                    let then_index = gen(then_index, blocks, reordered, indices);
+                                    let else_index = gen(else_index, blocks, reordered, indices);
+
+                                    match (then_index, else_index) {
+                                        (Some(then_index), Some(else_index)) => Terminator::If(
+                                            variant,
+                                            then_index,
+                                            else_index,
+                                            output_ty.clone(),
+                                        ),
+                                        (Some(jump_index), None) | (None, Some(jump_index)) => {
+                                            block.statements.push(Statement::Drop);
+                                            Terminator::Jump(jump_index)
+                                        }
+                                        (None, None) => return None,
+                                    }
+                                }
+                                Terminator::TailCall => Terminator::TailCall,
+                            };
 
                         let index = indices.len();
                         indices.insert(block_index, index);
@@ -181,17 +185,21 @@ pub mod reorder {
                         let index = indices.len();
                         indices.insert(block_index, index);
 
-                        *block.terminator.as_mut().unwrap() = match block.terminator.unwrap() {
+                        *block.terminator.as_mut().unwrap() = match *block
+                            .terminator
+                            .as_ref()
+                            .unwrap()
+                        {
                             Terminator::Unreachable => unreachable!(),
                             Terminator::Return => Terminator::Return,
                             Terminator::Jump(jump_index) => {
                                 let jump_index = sort(jump_index, blocks, sorted, indices);
                                 Terminator::Jump(jump_index)
                             }
-                            Terminator::If(variant, then_index, else_index) => {
+                            Terminator::If(variant, then_index, else_index, ref output_ty) => {
                                 let then_index = sort(then_index, blocks, sorted, indices);
                                 let else_index = sort(else_index, blocks, sorted, indices);
-                                Terminator::If(variant, then_index, else_index)
+                                Terminator::If(variant, then_index, else_index, output_ty.clone())
                             }
                             Terminator::TailCall => Terminator::TailCall,
                         };

@@ -31,5 +31,6 @@ tower-lsp = "0.17"
 which = "4"
 wipple-default-loader = { path = "../../loaders/default" }
 wipple-frontend = { path = "../../frontend" }
+wipple-go-backend = { path = "../../backends/go" }
 wipple-interpreter-backend = { path = "../../backends/interpreter" }
 wipple-syntax = { path = "../../syntax" }

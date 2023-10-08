@@ -3,7 +3,7 @@ use super::*;
 impl std::fmt::Display for Program {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for (label, (kind, vars, blocks)) in self.labels.iter().enumerate() {
-            writeln!(f, "{kind} #{label} ({vars} vars):")?;
+            writeln!(f, "{kind} #{label} ({} vars):", vars.len())?;
 
             for (index, bb) in blocks.iter().enumerate() {
                 writeln!(f, "  bb{index} ({}):", bb.description)?;
@@ -12,7 +12,7 @@ impl std::fmt::Display for Program {
                     writeln!(f, "    {statement}")?;
                 }
 
-                if let Some(terminator) = bb.terminator {
+                if let Some(terminator) = &bb.terminator {
                     writeln!(f, "    {terminator}")?;
                 } else {
                     writeln!(f, "    <no terminator>")?;
@@ -29,7 +29,7 @@ impl std::fmt::Display for Program {
 impl std::fmt::Display for LabelKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            LabelKind::Entrypoint => write!(f, "entrypoint"),
+            LabelKind::Entrypoint(_) => write!(f, "entrypoint"),
             LabelKind::Constant(_) => write!(f, "constant"),
             LabelKind::Function(_, _) => write!(f, "function"),
             LabelKind::Closure(_, _, _) => write!(f, "closure"),
@@ -47,7 +47,7 @@ impl std::fmt::Display for Statement {
             Statement::Unpack(captures) => write!(f, "unpack {captures}"),
             Statement::Expression(_, expr) => write!(f, "{expr}"),
             Statement::WithContext(id) => write!(f, "with context ctx{id}"),
-            Statement::ResetContext => write!(f, "reset context"),
+            Statement::ResetContext(id) => write!(f, "reset context ctx{id}"),
         }
     }
 }
@@ -57,7 +57,7 @@ impl std::fmt::Display for Terminator {
         match self {
             Terminator::Unreachable => write!(f, "unreachable"),
             Terminator::Return => write!(f, "return"),
-            Terminator::If(variant, then_label, else_label) => {
+            Terminator::If(variant, then_label, else_label, _) => {
                 write!(
                     f,
                     "if {} bb{} bb{}",
@@ -114,7 +114,7 @@ impl std::fmt::Display for Expression {
             Expression::StructureElement(index) => {
                 write!(f, "structure element {}", index.into_inner())
             }
-            Expression::VariantElement(variant, index) => {
+            Expression::VariantElement((variant, _), index) => {
                 write!(f, "variant element {} {}", variant.into_inner(), index)
             }
             Expression::Reference => write!(f, "reference"),

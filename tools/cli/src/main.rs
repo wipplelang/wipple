@@ -100,6 +100,7 @@ struct BuildOptions {
 enum CompileFormat {
     Analysis,
     Ir,
+    Go,
 }
 
 fn main() -> ExitCode {
@@ -322,6 +323,35 @@ async fn run() -> anyhow::Result<()> {
                 })
             };
 
+            let ir = || async {
+                let (ir, progress_bar) = {
+                    let progress_bar = options.progress.then(progress_bar).flatten();
+
+                    let (ir, diagnostics) =
+                        generate_ir(&path, &options, progress_bar.clone()).await;
+
+                    let error = diagnostics.contains_errors();
+                    emit_diagnostics(diagnostics, &options)?;
+
+                    match ir {
+                        Some(ir) if !error => (ir, progress_bar),
+                        _ => {
+                            if let Some(progress_bar) = progress_bar.as_ref() {
+                                progress_bar.finish_and_clear();
+                            }
+
+                            return Err(anyhow::Error::msg(""));
+                        }
+                    }
+                };
+
+                if let Some(progress_bar) = progress_bar.as_ref() {
+                    progress_bar.finish_and_clear();
+                }
+
+                Ok(ir)
+            };
+
             match format {
                 CompileFormat::Analysis => {
                     let progress_bar = options.progress.then(progress_bar).flatten();
@@ -340,33 +370,14 @@ async fn run() -> anyhow::Result<()> {
                     writeln!(output)?;
                 }
                 CompileFormat::Ir => {
-                    let (ir, progress_bar) = {
-                        let progress_bar = options.progress.then(progress_bar).flatten();
-
-                        let (ir, diagnostics) =
-                            generate_ir(&path, &options, progress_bar.clone()).await;
-
-                        let error = diagnostics.contains_errors();
-                        emit_diagnostics(diagnostics, &options)?;
-
-                        match ir {
-                            Some(ir) if !error => (ir, progress_bar),
-                            _ => {
-                                if let Some(progress_bar) = progress_bar.as_ref() {
-                                    progress_bar.finish_and_clear();
-                                }
-
-                                return Err(anyhow::Error::msg(""));
-                            }
-                        }
-                    };
-
-                    if let Some(progress_bar) = progress_bar.as_ref() {
-                        progress_bar.finish_and_clear();
-                    }
-
+                    let ir = ir().await?;
                     let mut output = output()?;
                     output.write_all(ir.to_string().as_bytes())?;
+                }
+                CompileFormat::Go => {
+                    let ir = ir().await?;
+                    let output = output()?;
+                    wipple_go_backend::Codegen::new(&ir).write_to(output)?;
                 }
             }
         }
