@@ -279,13 +279,19 @@ impl wipple_frontend::Loader for Loader {
                     set_extension_if_needed(&mut parsed_path, kind);
 
                     if parsed_path.has_root() {
-                        Ok(FilePath::Path(path))
+                        Ok(FilePath::Path(InternedString::new(
+                            parsed_path.to_string_lossy(),
+                        )))
                     } else {
                         let base = match current {
                             Some(path) => path,
                             None => match *self.base.lock() {
                                 Some(base) => base,
-                                None => return Ok(FilePath::Path(path)),
+                                None => {
+                                    return Ok(FilePath::Path(InternedString::new(
+                                        parsed_path.to_string_lossy(),
+                                    )))
+                                }
                             },
                         };
 

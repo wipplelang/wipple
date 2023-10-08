@@ -401,26 +401,7 @@ async fn run() -> anyhow::Result<()> {
 
                     let (ir, progress_bar) = ir().await?;
 
-                    let compiler_path = match which("go") {
-                        Ok(path) => path,
-                        Err(which::Error::CannotFindBinaryPath) => {
-                            if let Some(progress_bar) = progress_bar.as_ref() {
-                                progress_bar.set_message("Installing Go");
-                            }
-
-                            let status = subprocess::Exec::shell(
-                                "bash <(curl -sL https://git.io/go-installer)",
-                            )
-                            .join()?;
-
-                            if !status.success() {
-                                return Err(anyhow::format_err!("Could not install Go"));
-                            }
-
-                            which("go")?
-                        }
-                        Err(e) => return Err(e.into()),
-                    };
+                    let compiler_path = which("go")?;
 
                     if let Some(progress_bar) = progress_bar.as_ref() {
                         progress_bar.set_message("Generating Go code");
@@ -658,17 +639,12 @@ async fn build_with_passes<P>(
         }
     };
 
-    let base = options
-        .base_path
-        .clone()
-        .unwrap_or_else(|| PathBuf::from(path))
-        .to_string_lossy()
-        .to_string();
-
     let loader = loader::Loader::new(
-        Some(wipple_frontend::FilePath::Path(
-            wipple_frontend::helpers::InternedString::new(base),
-        )),
+        options.base_path.clone().map(|path| {
+            wipple_frontend::FilePath::Path(wipple_frontend::helpers::InternedString::new(
+                path.to_string_lossy(),
+            ))
+        }),
         Some({
             let path = options.std.as_deref();
 
