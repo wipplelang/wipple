@@ -14,6 +14,7 @@ use std::{
     sync::Arc,
     thread,
 };
+use which::which;
 use wipple_default_loader as loader;
 use wipple_frontend::{Compiler, Loader};
 
@@ -33,7 +34,7 @@ enum Args {
     Compile {
         path: String,
 
-        #[clap(short, value_enum, default_value = "ir")]
+        #[clap(short, value_enum, default_value = "executable")]
         format: CompileFormat,
 
         #[clap(short)]
@@ -94,6 +95,12 @@ struct BuildOptions {
 
     #[clap(long)]
     r#use: Vec<String>,
+
+    #[clap(long)]
+    arch: Option<String>,
+
+    #[clap(long)]
+    os: Option<String>,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -101,6 +108,7 @@ enum CompileFormat {
     Analysis,
     Ir,
     Go,
+    Executable,
 }
 
 fn main() -> ExitCode {
@@ -314,42 +322,33 @@ async fn run() -> anyhow::Result<()> {
             path,
             format,
             options,
-            output,
+            output: output_or_none,
         } => {
             let output = || -> std::io::Result<Box<dyn Write>> {
-                Ok(match output {
+                Ok(match output_or_none.as_ref() {
                     Some(output) => Box::new(std::fs::File::create(output)?),
                     None => Box::new(std::io::stdout()),
                 })
             };
 
             let ir = || async {
-                let (ir, progress_bar) = {
-                    let progress_bar = options.progress.then(progress_bar).flatten();
+                let progress_bar = options.progress.then(progress_bar).flatten();
 
-                    let (ir, diagnostics) =
-                        generate_ir(&path, &options, progress_bar.clone()).await;
+                let (ir, diagnostics) = generate_ir(&path, &options, progress_bar.clone()).await;
 
-                    let error = diagnostics.contains_errors();
-                    emit_diagnostics(diagnostics, &options)?;
+                let error = diagnostics.contains_errors();
+                emit_diagnostics(diagnostics, &options)?;
 
-                    match ir {
-                        Some(ir) if !error => (ir, progress_bar),
-                        _ => {
-                            if let Some(progress_bar) = progress_bar.as_ref() {
-                                progress_bar.finish_and_clear();
-                            }
-
-                            return Err(anyhow::Error::msg(""));
+                match ir {
+                    Some(ir) if !error => Ok((ir, progress_bar)),
+                    _ => {
+                        if let Some(progress_bar) = progress_bar.as_ref() {
+                            progress_bar.finish_and_clear();
                         }
+
+                        Err(anyhow::Error::msg(""))
                     }
-                };
-
-                if let Some(progress_bar) = progress_bar.as_ref() {
-                    progress_bar.finish_and_clear();
                 }
-
-                Ok(ir)
             };
 
             match format {
@@ -370,14 +369,90 @@ async fn run() -> anyhow::Result<()> {
                     writeln!(output)?;
                 }
                 CompileFormat::Ir => {
-                    let ir = ir().await?;
+                    let (ir, progress_bar) = ir().await?;
+
                     let mut output = output()?;
                     output.write_all(ir.to_string().as_bytes())?;
+
+                    if let Some(progress_bar) = progress_bar.as_ref() {
+                        progress_bar.finish_and_clear();
+                    }
                 }
                 CompileFormat::Go => {
-                    let ir = ir().await?;
+                    let (ir, progress_bar) = ir().await?;
+
+                    if let Some(progress_bar) = progress_bar.as_ref() {
+                        progress_bar.set_message("generating Go code");
+                    }
+
                     let output = output()?;
                     wipple_go_backend::Codegen::new(&ir).write_to(output)?;
+
+                    if let Some(progress_bar) = progress_bar.as_ref() {
+                        progress_bar.finish_and_clear();
+                    }
+                }
+                CompileFormat::Executable => {
+                    let output = output_or_none.ok_or_else(|| {
+                        anyhow::format_err!(
+                            "Output path must be specified when compiling an executable"
+                        )
+                    })?;
+
+                    let (ir, progress_bar) = ir().await?;
+
+                    let compiler_path = match which("go") {
+                        Ok(path) => path,
+                        Err(which::Error::CannotFindBinaryPath) => {
+                            if let Some(progress_bar) = progress_bar.as_ref() {
+                                progress_bar.set_message("Installing Go");
+                            }
+
+                            let status = subprocess::Exec::shell(
+                                "bash <(curl -sL https://git.io/go-installer)",
+                            )
+                            .join()?;
+
+                            if !status.success() {
+                                return Err(anyhow::format_err!("Could not install Go"));
+                            }
+
+                            which("go")?
+                        }
+                        Err(e) => return Err(e.into()),
+                    };
+
+                    if let Some(progress_bar) = progress_bar.as_ref() {
+                        progress_bar.set_message("Generating Go code");
+                    }
+
+                    let tempdir = tempfile::tempdir()?;
+                    let go_file_path = tempdir.path().join("main.go");
+                    let go_file = std::fs::File::create(&go_file_path)?;
+                    wipple_go_backend::Codegen::new(&ir).write_to(go_file)?;
+
+                    let mut compiler = subprocess::Exec::cmd(compiler_path)
+                        .arg("build")
+                        .arg("-o")
+                        .arg(output)
+                        .arg(go_file_path);
+
+                    if let Some(arch) = options.arch {
+                        compiler = compiler.env("GOARCH", arch);
+                    }
+
+                    if let Some(os) = options.os {
+                        compiler = compiler.env("GOOS", os);
+                    }
+
+                    let status = compiler.join()?;
+                    if !status.success() {
+                        return Err(anyhow::format_err!("Could not compile Go program"));
+                    }
+
+                    if let Some(progress_bar) = progress_bar.as_ref() {
+                        progress_bar.finish_and_clear();
+                    }
                 }
             }
         }

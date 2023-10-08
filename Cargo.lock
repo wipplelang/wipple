@@ -1205,15 +1205,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mktemp"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "975de676448231fcde04b9149d2543077e166b78fc29eae5aa219e7928410da2"
-dependencies = [
- "uuid 0.8.2",
-]
-
-[[package]]
 name = "nonoverlapping_interval_tree"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1732,7 +1723,7 @@ dependencies = [
  "rkyv_derive",
  "seahash",
  "tinyvec",
- "uuid 1.4.0",
+ "uuid",
 ]
 
 [[package]]
@@ -2518,15 +2509,6 @@ checksum = "711b9620af191e0cdc7468a8d14e709c3dcdb115b36f838e601583af800a370a"
 
 [[package]]
 name = "uuid"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
-dependencies = [
- "getrandom",
-]
-
-[[package]]
-name = "uuid"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d023da39d1fde5a8a3fe1f3e01ca9632ada0a63e9797de55a879d6e2236277be"
@@ -2884,7 +2866,6 @@ dependencies = [
  "indicatif",
  "itertools 0.10.5",
  "line-col",
- "mktemp",
  "ouroboros",
  "parking_lot",
  "prettyplease",
@@ -2892,6 +2873,7 @@ dependencies = [
  "serde_json",
  "subprocess",
  "syn 1.0.109",
+ "tempfile",
  "tokio",
  "tower-lsp",
  "which",
