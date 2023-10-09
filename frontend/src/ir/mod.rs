@@ -120,7 +120,6 @@ impl Compiler {
 
         let program = self.convert_to_ssa(program);
 
-        let variables = program.variables.clone();
         let contexts = program.contexts.clone();
         let structures = program.structures.clone();
         let mut enumerations = program.enumerations.clone();
@@ -186,8 +185,8 @@ impl Compiler {
                 .into_iter()
                 .map(|(kind, vars, blocks)| {
                     let mut var_tys = vec![None; vars.len()];
-                    for (var, index) in vars {
-                        var_tys[index] = Some(variables.get(&var).unwrap().clone());
+                    for (ty, index) in vars.into_values() {
+                        var_tys[index] = Some(ty);
                     }
 
                     (
@@ -208,10 +207,10 @@ struct IrGen {
     items: BTreeMap<ItemId, usize>,
     labels: Vec<(
         Option<LabelKind>,
-        BTreeMap<VariableId, usize>,
+        BTreeMap<VariableId, (Type, usize)>,
         Vec<BasicBlock>,
     )>,
-    scopes: Vec<Vec<VariableId>>,
+    scopes: Vec<Vec<(Type, VariableId)>>,
     contexts: BTreeMap<ConstantId, (Type, ItemId)>,
     structures: BTreeMap<StructureId, Vec<Type>>,
     enumerations: BTreeMap<EnumerationId, Vec<Vec<Type>>>,
@@ -256,10 +255,10 @@ impl IrGen {
         &mut self.basic_block_for(label, pos).terminator
     }
 
-    fn variable_for(&mut self, label: usize, variable: VariableId) -> usize {
+    fn variable_for(&mut self, label: usize, variable: VariableId, ty: Type) -> usize {
         let vars = &mut self.labels[label].1;
         let next = vars.len();
-        *vars.entry(variable).or_insert(next)
+        vars.entry(variable).or_insert((ty, next)).1
     }
 }
 
@@ -321,7 +320,7 @@ impl IrGen {
                     .push(Statement::Expression(expr.ty, Expression::Marker));
             }
             ssa::ExpressionKind::Variable(var) => {
-                let var = self.variable_for(label, var);
+                let var = self.variable_for(label, var, expr.ty.clone());
                 self.statements_for(label, *pos)
                     .push(Statement::Expression(expr.ty, Expression::Variable(var)));
             }
@@ -414,10 +413,10 @@ impl IrGen {
                         let captures = CaptureList(
                             captures
                                 .into_iter()
-                                .map(|(var, _)| {
+                                .map(|(var, ty)| {
                                     (
-                                        gen.variable_for(label, var),
-                                        gen.variable_for(function_label, var),
+                                        gen.variable_for(label, var, ty.clone()),
+                                        gen.variable_for(function_label, var, ty),
                                     )
                                 })
                                 .unique()
@@ -619,8 +618,8 @@ impl IrGen {
     }
 
     fn gen_end(&mut self, label: usize, pos: &mut usize) {
-        for var in self.scopes.last().unwrap().clone().into_iter().rev() {
-            let var = self.variable_for(label, var);
+        for (ty, var) in self.scopes.last().unwrap().clone().into_iter().rev() {
+            let var = self.variable_for(label, var, ty);
             self.statements_for(label, *pos).push(Statement::Free(var));
         }
     }
@@ -646,7 +645,7 @@ impl IrGen {
 
             if arm.guard.is_none() {
                 if let ssa::PatternKind::Variable(var) = arm.pattern.kind {
-                    let var = self.variable_for(label, var);
+                    let var = self.variable_for(label, var, input_ty.clone());
                     let arm = arms.pop().unwrap();
 
                     self.statements_for(label, *pos)
@@ -715,8 +714,8 @@ impl IrGen {
 
             *self.terminator_for(label, body_pos) = Some(Terminator::Jump(free_pos));
 
-            for var in self.scopes.pop().unwrap().into_iter().rev() {
-                let var = self.variable_for(label, var);
+            for (ty, var) in self.scopes.pop().unwrap().into_iter().rev() {
+                let var = self.variable_for(label, var, ty);
                 self.statements_for(label, free_pos)
                     .push(Statement::Free(var));
             }
@@ -813,8 +812,11 @@ impl IrGen {
                 *pos = else_pos;
             }
             ssa::PatternKind::Variable(var) => {
-                self.scopes.last_mut().unwrap().push(var);
-                let var = self.variable_for(label, var);
+                self.scopes
+                    .last_mut()
+                    .unwrap()
+                    .push((input_ty.clone(), var));
+                let var = self.variable_for(label, var, input_ty.clone());
                 self.statements_for(label, *pos)
                     .push(Statement::Initialize(var));
                 *self.terminator_for(label, *pos) = Some(Terminator::Jump(body_pos));

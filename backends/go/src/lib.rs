@@ -366,11 +366,52 @@ impl<'a> Codegen<'a> {
 
                         let id = intrinsic.to_string().replace('-', "_");
 
-                        write!(w, "__wpl_intrinsic_{id}(")?;
-                        for (_, input) in inputs {
-                            write!(w, "{},", self.use_stack_item(input))?;
+                        if self.write_instrinsic_represented_inline(w, *intrinsic, ty)? {
+                            writeln!(w)?;
+                        } else if self.intrinsic_returns_maybe_represented_as_pointer(*intrinsic) {
+                            let payload_ty = match ty {
+                                ir::Type::Enumeration(id) => {
+                                    let variants = self.program.enumerations.get(id).unwrap();
+                                    &variants[1][0]
+                                }
+                                _ => unreachable!(),
+                            };
+
+                            writeln!(w, "func() __wpl_type_enumeration {{")?;
+
+                            write!(w, "maybe := __wpl_intrinsic_{id}(")?;
+                            for (_, input) in inputs {
+                                write!(w, "{},", self.use_stack_item(input))?;
+                            }
+                            writeln!(w, ")")?;
+
+                            writeln!(w, "if maybe == nil {{")?;
+                            writeln!(w, "return __wpl_type_enumeration{{0,struct{{}}{{}}}}")?;
+                            writeln!(w, "}} else {{")?;
+                            write!(
+                                w,
+                                "return __wpl_type_enumeration{{1,struct{{__wpl_variant_element_0 "
+                            )?;
+                            self.write_type(w, payload_ty)?;
+                            writeln!(w, "}}{{*maybe}}}}")?;
+                            writeln!(w, "}}")?;
+
+                            writeln!(w, "}}()")?;
+                        } else {
+                            write!(w, "__wpl_intrinsic_{id}")?;
+
+                            if self.intrinsic_returns_type_of_expr(*intrinsic) {
+                                write!(w, "[")?;
+                                self.write_type(w, ty)?;
+                                write!(w, "]")?;
+                            }
+
+                            write!(w, "(")?;
+                            for (_, input) in inputs {
+                                write!(w, "{},", self.use_stack_item(input))?;
+                            }
+                            writeln!(w, ")")?;
                         }
-                        writeln!(w, ")")?;
                     }
                     ir::Expression::Tuple(elements) => {
                         let mut elements = (0..*elements)
@@ -635,7 +676,7 @@ impl<'a> Codegen<'a> {
                 write!(w, "string")?;
             }
             ir::Type::ListReference(ty) => {
-                write!(w, "*[]")?;
+                write!(w, "[]")?;
                 self.write_type(w, ty)?;
             }
             ir::Type::MutableReference(ty) => {
@@ -682,6 +723,173 @@ impl<'a> Codegen<'a> {
         match item {
             Ok(n) => format!("__wpl_temp_{n}").into(),
             Err(identifier) => identifier,
+        }
+    }
+
+    fn write_instrinsic_represented_inline(
+        &self,
+        w: &mut impl io::Write,
+        intrinsic: ir::Intrinsic,
+        ty: &ir::Type,
+    ) -> io::Result<bool> {
+        match intrinsic {
+            ir::Intrinsic::MakeEmptyList => {
+                let element_ty = match ty {
+                    ir::Type::ListReference(element_ty) => element_ty.as_ref(),
+                    _ => unreachable!(),
+                };
+
+                write!(w, "[]")?;
+                self.write_type(w, element_ty)?;
+                write!(w, "{{}}")?;
+
+                Ok(true)
+            }
+            _ => Ok(false),
+        }
+    }
+
+    fn intrinsic_returns_type_of_expr(&self, intrinsic: ir::Intrinsic) -> bool {
+        matches!(intrinsic, ir::Intrinsic::Crash)
+    }
+
+    fn intrinsic_returns_maybe_represented_as_pointer(&self, intrinsic: ir::Intrinsic) -> bool {
+        match intrinsic {
+            ir::Intrinsic::ListFirst
+            | ir::Intrinsic::ListLast
+            | ir::Intrinsic::ListInitial
+            | ir::Intrinsic::ListTail
+            | ir::Intrinsic::ListNth => true,
+            ir::Intrinsic::Crash
+            | ir::Intrinsic::Display
+            | ir::Intrinsic::Prompt
+            | ir::Intrinsic::Choice
+            | ir::Intrinsic::WithUi
+            | ir::Intrinsic::MessageUi
+            | ir::Intrinsic::WithContinuation
+            | ir::Intrinsic::WithTaskGroup
+            | ir::Intrinsic::Task
+            | ir::Intrinsic::InBackground
+            | ir::Intrinsic::Delay
+            | ir::Intrinsic::NumberToText
+            | ir::Intrinsic::IntegerToText
+            | ir::Intrinsic::NaturalToText
+            | ir::Intrinsic::ByteToText
+            | ir::Intrinsic::SignedToText
+            | ir::Intrinsic::UnsignedToText
+            | ir::Intrinsic::FloatToText
+            | ir::Intrinsic::DoubleToText
+            | ir::Intrinsic::TextToNumber
+            | ir::Intrinsic::TextToInteger
+            | ir::Intrinsic::TextToNatural
+            | ir::Intrinsic::TextToByte
+            | ir::Intrinsic::TextToSigned
+            | ir::Intrinsic::TextToUnsigned
+            | ir::Intrinsic::TextToFloat
+            | ir::Intrinsic::TextToDouble
+            | ir::Intrinsic::NaturalToNumber
+            | ir::Intrinsic::NumberToNatural
+            | ir::Intrinsic::NaturalToInteger
+            | ir::Intrinsic::IntegerToNatural
+            | ir::Intrinsic::AddNumber
+            | ir::Intrinsic::SubtractNumber
+            | ir::Intrinsic::MultiplyNumber
+            | ir::Intrinsic::DivideNumber
+            | ir::Intrinsic::ModuloNumber
+            | ir::Intrinsic::PowerNumber
+            | ir::Intrinsic::FloorNumber
+            | ir::Intrinsic::CeilNumber
+            | ir::Intrinsic::SqrtNumber
+            | ir::Intrinsic::NegateNumber
+            | ir::Intrinsic::AddInteger
+            | ir::Intrinsic::SubtractInteger
+            | ir::Intrinsic::MultiplyInteger
+            | ir::Intrinsic::DivideInteger
+            | ir::Intrinsic::ModuloInteger
+            | ir::Intrinsic::PowerInteger
+            | ir::Intrinsic::NegateInteger
+            | ir::Intrinsic::AddNatural
+            | ir::Intrinsic::SubtractNatural
+            | ir::Intrinsic::MultiplyNatural
+            | ir::Intrinsic::DivideNatural
+            | ir::Intrinsic::ModuloNatural
+            | ir::Intrinsic::PowerNatural
+            | ir::Intrinsic::AddByte
+            | ir::Intrinsic::SubtractByte
+            | ir::Intrinsic::MultiplyByte
+            | ir::Intrinsic::DivideByte
+            | ir::Intrinsic::ModuloByte
+            | ir::Intrinsic::PowerByte
+            | ir::Intrinsic::AddSigned
+            | ir::Intrinsic::SubtractSigned
+            | ir::Intrinsic::MultiplySigned
+            | ir::Intrinsic::DivideSigned
+            | ir::Intrinsic::ModuloSigned
+            | ir::Intrinsic::PowerSigned
+            | ir::Intrinsic::NegateSigned
+            | ir::Intrinsic::AddUnsigned
+            | ir::Intrinsic::SubtractUnsigned
+            | ir::Intrinsic::MultiplyUnsigned
+            | ir::Intrinsic::DivideUnsigned
+            | ir::Intrinsic::ModuloUnsigned
+            | ir::Intrinsic::PowerUnsigned
+            | ir::Intrinsic::AddFloat
+            | ir::Intrinsic::SubtractFloat
+            | ir::Intrinsic::MultiplyFloat
+            | ir::Intrinsic::DivideFloat
+            | ir::Intrinsic::ModuloFloat
+            | ir::Intrinsic::PowerFloat
+            | ir::Intrinsic::FloorFloat
+            | ir::Intrinsic::CeilFloat
+            | ir::Intrinsic::SqrtFloat
+            | ir::Intrinsic::NegateFloat
+            | ir::Intrinsic::AddDouble
+            | ir::Intrinsic::SubtractDouble
+            | ir::Intrinsic::MultiplyDouble
+            | ir::Intrinsic::DivideDouble
+            | ir::Intrinsic::ModuloDouble
+            | ir::Intrinsic::PowerDouble
+            | ir::Intrinsic::FloorDouble
+            | ir::Intrinsic::CeilDouble
+            | ir::Intrinsic::SqrtDouble
+            | ir::Intrinsic::NegateDouble
+            | ir::Intrinsic::TextEquality
+            | ir::Intrinsic::NumberEquality
+            | ir::Intrinsic::IntegerEquality
+            | ir::Intrinsic::NaturalEquality
+            | ir::Intrinsic::ByteEquality
+            | ir::Intrinsic::SignedEquality
+            | ir::Intrinsic::UnsignedEquality
+            | ir::Intrinsic::FloatEquality
+            | ir::Intrinsic::DoubleEquality
+            | ir::Intrinsic::TextOrdering
+            | ir::Intrinsic::NumberOrdering
+            | ir::Intrinsic::IntegerOrdering
+            | ir::Intrinsic::NaturalOrdering
+            | ir::Intrinsic::ByteOrdering
+            | ir::Intrinsic::SignedOrdering
+            | ir::Intrinsic::UnsignedOrdering
+            | ir::Intrinsic::FloatOrdering
+            | ir::Intrinsic::DoubleOrdering
+            | ir::Intrinsic::MakeMutable
+            | ir::Intrinsic::GetMutable
+            | ir::Intrinsic::SetMutable
+            | ir::Intrinsic::MakeEmptyList
+            | ir::Intrinsic::TextCharacters
+            | ir::Intrinsic::RandomNumber
+            | ir::Intrinsic::RandomInteger
+            | ir::Intrinsic::RandomNatural
+            | ir::Intrinsic::RandomByte
+            | ir::Intrinsic::RandomSigned
+            | ir::Intrinsic::RandomUnsigned
+            | ir::Intrinsic::RandomFloat
+            | ir::Intrinsic::RandomDouble
+            | ir::Intrinsic::ListAppend
+            | ir::Intrinsic::ListPrepend
+            | ir::Intrinsic::ListInsertAt
+            | ir::Intrinsic::ListRemoveAt
+            | ir::Intrinsic::ListCount
+            | ir::Intrinsic::ListSlice => false,
         }
     }
 }
