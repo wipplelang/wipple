@@ -100,7 +100,7 @@ func __wpl_intrinsic_number_to_text(n float64) string {
 	return fmt.Sprintf("%v", n)
 }
 
-func __wpl_intrinsic_integer_to_text(n int) string {
+func __wpl_intrinsic_integer_to_text(n int64) string {
 	return fmt.Sprintf("%v", n)
 }
 
@@ -152,6 +152,10 @@ func __wpl_intrinsic_power_number(a float64, b float64) float64 {
 	return math.Pow(a, b)
 }
 
+func __wpl_intrinsic_negate_number(n float64) float64 {
+	return -n
+}
+
 func __wpl_intrinsic_add_integer(a int64, b int64) int64 {
 	return a + b
 }
@@ -174,6 +178,10 @@ func __wpl_intrinsic_modulo_integer(a int64, b int64) int64 {
 
 func __wpl_intrinsic_power_integer(a int64, b int64) int64 {
 	return int64(math.Pow(float64(a), float64(b)))
+}
+
+func __wpl_intrinsic_negate_integer(n int64) int64 {
+	return -n
 }
 
 func __wpl_intrinsic_add_natural(a uint64, b uint64) uint64 {
@@ -248,6 +256,10 @@ func __wpl_intrinsic_power_signed(a int, b int) int {
 	return int(math.Pow(float64(a), float64(b)))
 }
 
+func __wpl_intrinsic_negate_signed(n int) int {
+	return -n
+}
+
 func __wpl_intrinsic_add_unsigned(a uint, b uint) uint {
 	return a + b
 }
@@ -296,6 +308,10 @@ func __wpl_intrinsic_power_float(a float32, b float32) float32 {
 	return float32(math.Pow(float64(a), float64(b)))
 }
 
+func __wpl_intrinsic_negate_float(n float32) float32 {
+	return -n
+}
+
 func __wpl_intrinsic_add_double(a float64, b float64) float64 {
 	return a + b
 }
@@ -318,6 +334,10 @@ func __wpl_intrinsic_modulo_double(a float64, b float64) float64 {
 
 func __wpl_intrinsic_power_double(a float64, b float64) float64 {
 	return float64(math.Pow(float64(a), float64(b)))
+}
+
+func __wpl_intrinsic_negate_double(n float64) float64 {
+	return -n
 }
 
 func __wpl_intrinsic_number_equality(a float64, b float64) __wpl_type_enumeration {
@@ -351,6 +371,15 @@ func __wpl_intrinsic_text_equality(a string, b string) __wpl_type_enumeration {
 	}
 
 	return __wpl_type_enumeration{discriminant, struct{}{}}
+}
+
+func __wpl_intrinsic_text_characters(s string) []string {
+	chars := []string{}
+	for _, c := range s {
+		chars = append(chars, string(c))
+	}
+
+	return chars
 }
 
 func __wpl_intrinsic_number_ordering(a float64, b float64) __wpl_type_enumeration {

@@ -412,6 +412,10 @@ async fn run() -> anyhow::Result<()> {
                     let go_file = std::fs::File::create(&go_file_path)?;
                     wipple_go_backend::Codegen::new(&ir).write_to(go_file)?;
 
+                    if let Some(progress_bar) = progress_bar.as_ref() {
+                        progress_bar.set_message("Compiling Go code");
+                    }
+
                     let mut compiler = subprocess::Exec::cmd(compiler_path)
                         .arg("build")
                         .arg("-o")

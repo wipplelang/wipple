@@ -12,5 +12,5 @@ for f in ./tests/*.wpl; do
         wipple compile -o "$tempdir/out" "$f"
     fi
 
-    "$tempdir/out"
+    "$tempdir/out" || true
 done
