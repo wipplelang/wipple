@@ -1984,9 +1984,9 @@ impl Typechecker {
                         Box::new(body),
                         captures
                             .into_iter()
-                            .map(|(var, _)| {
-                                let ty = info.variables.get(&var).unwrap().clone();
-                                (var, ty)
+                            .filter_map(|(var, _)| {
+                                let ty = info.variables.get(&var)?.clone();
+                                Some((var, ty))
                             })
                             .collect(),
                     ),
