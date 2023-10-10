@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"sync"
 	"time"
 )
@@ -143,6 +144,14 @@ func __wpl_intrinsic_divide_number(a float64, b float64) float64 {
 	return a / b
 }
 
+func __wpl_intrinsic_modulo_number(a float64, b float64) float64 {
+	return math.Mod(a, b)
+}
+
+func __wpl_intrinsic_power_number(a float64, b float64) float64 {
+	return math.Pow(a, b)
+}
+
 func __wpl_intrinsic_add_integer(a int64, b int64) int64 {
 	return a + b
 }
@@ -157,6 +166,14 @@ func __wpl_intrinsic_multiply_integer(a int64, b int64) int64 {
 
 func __wpl_intrinsic_divide_integer(a int64, b int64) int64 {
 	return a / b
+}
+
+func __wpl_intrinsic_modulo_integer(a int64, b int64) int64 {
+	return a % b
+}
+
+func __wpl_intrinsic_power_integer(a int64, b int64) int64 {
+	return int64(math.Pow(float64(a), float64(b)))
 }
 
 func __wpl_intrinsic_add_natural(a uint64, b uint64) uint64 {
@@ -175,6 +192,14 @@ func __wpl_intrinsic_divide_natural(a uint64, b uint64) uint64 {
 	return a / b
 }
 
+func __wpl_intrinsic_modulo_natural(a uint64, b uint64) uint64 {
+	return a % b
+}
+
+func __wpl_intrinsic_power_natural(a uint64, b uint64) uint64 {
+	return uint64(math.Pow(float64(a), float64(b)))
+}
+
 func __wpl_intrinsic_add_byte(a uint8, b uint8) uint8 {
 	return a + b
 }
@@ -189,6 +214,14 @@ func __wpl_intrinsic_multiply_byte(a uint8, b uint8) uint8 {
 
 func __wpl_intrinsic_divide_byte(a uint8, b uint8) uint8 {
 	return a / b
+}
+
+func __wpl_intrinsic_modulo_byte(a uint8, b uint8) uint8 {
+	return a % b
+}
+
+func __wpl_intrinsic_power_byte(a uint8, b uint8) uint8 {
+	return uint8(math.Pow(float64(a), float64(b)))
 }
 
 func __wpl_intrinsic_add_signed(a int, b int) int {
@@ -207,6 +240,14 @@ func __wpl_intrinsic_divide_signed(a int, b int) int {
 	return a / b
 }
 
+func __wpl_intrinsic_modulo_signed(a int, b int) int {
+	return a % b
+}
+
+func __wpl_intrinsic_power_signed(a int, b int) int {
+	return int(math.Pow(float64(a), float64(b)))
+}
+
 func __wpl_intrinsic_add_unsigned(a uint, b uint) uint {
 	return a + b
 }
@@ -221,6 +262,14 @@ func __wpl_intrinsic_multiply_unsigned(a uint, b uint) uint {
 
 func __wpl_intrinsic_divide_unsigned(a uint, b uint) uint {
 	return a / b
+}
+
+func __wpl_intrinsic_modulo_unsigned(a uint, b uint) uint {
+	return a % b
+}
+
+func __wpl_intrinsic_power_unsigned(a uint, b uint) uint {
+	return uint(math.Pow(float64(a), float64(b)))
 }
 
 func __wpl_intrinsic_add_float(a float32, b float32) float32 {
@@ -239,6 +288,14 @@ func __wpl_intrinsic_divide_float(a float32, b float32) float32 {
 	return a / b
 }
 
+func __wpl_intrinsic_modulo_float(a float32, b float32) float32 {
+	return float32(math.Mod(float64(a), float64(b)))
+}
+
+func __wpl_intrinsic_power_float(a float32, b float32) float32 {
+	return float32(math.Pow(float64(a), float64(b)))
+}
+
 func __wpl_intrinsic_add_double(a float64, b float64) float64 {
 	return a + b
 }
@@ -253,6 +310,14 @@ func __wpl_intrinsic_multiply_double(a float64, b float64) float64 {
 
 func __wpl_intrinsic_divide_double(a float64, b float64) float64 {
 	return a / b
+}
+
+func __wpl_intrinsic_modulo_double(a float64, b float64) float64 {
+	return math.Mod(a, b)
+}
+
+func __wpl_intrinsic_power_double(a float64, b float64) float64 {
+	return float64(math.Pow(float64(a), float64(b)))
 }
 
 func __wpl_intrinsic_number_equality(a float64, b float64) __wpl_type_enumeration {

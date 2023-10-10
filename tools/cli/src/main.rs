@@ -382,7 +382,7 @@ async fn run() -> anyhow::Result<()> {
                     let (ir, progress_bar) = ir().await?;
 
                     if let Some(progress_bar) = progress_bar.as_ref() {
-                        progress_bar.set_message("generating Go code");
+                        progress_bar.set_message("Generating Go code");
                     }
 
                     let output = output()?;
@@ -426,13 +426,15 @@ async fn run() -> anyhow::Result<()> {
                         compiler = compiler.env("GOOS", os);
                     }
 
-                    let status = compiler.join()?;
-                    if !status.success() {
-                        return Err(anyhow::format_err!("Could not compile Go program"));
-                    }
+                    let result = compiler.capture()?;
 
                     if let Some(progress_bar) = progress_bar.as_ref() {
                         progress_bar.finish_and_clear();
+                    }
+
+                    if !result.success() {
+                        io::stderr().write_all(&result.stderr)?;
+                        return Err(anyhow::format_err!("Could not compile Go program"));
                     }
                 }
             }
