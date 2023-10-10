@@ -51,7 +51,19 @@ impl<'a> Codegen<'a> {
                 write!(w, "var ")?;
                 self.write_thunk(&mut w, index)?;
                 write!(w, " *")?;
-                self.write_type(&mut w, ty)?;
+
+                if self.program.wrapped_entrypoint == Some(index) {
+                    self.write_type(
+                        &mut w,
+                        &ir::Type::FunctionReference(
+                            Box::new(ir::Type::Tuple(Vec::new())),
+                            Box::new(ty.clone()),
+                        ),
+                    )?;
+                } else {
+                    self.write_type(&mut w, ty)?;
+                }
+
                 writeln!(w, " = nil")?;
             }
 
@@ -67,12 +79,25 @@ impl<'a> Codegen<'a> {
 
             write!(w, ") ")?;
 
-            if let ir::LabelKind::Entrypoint(ty)
-            | ir::LabelKind::Constant(ty)
-            | ir::LabelKind::Function(_, ty) = kind
-            {
-                self.write_type(&mut w, ty)?;
-                write!(w, " ")?;
+            match kind {
+                ir::LabelKind::Constant(ty) if self.program.wrapped_entrypoint == Some(index) => {
+                    self.write_type(
+                        &mut w,
+                        &ir::Type::FunctionReference(
+                            Box::new(ir::Type::Tuple(Vec::new())),
+                            Box::new(ty.clone()),
+                        ),
+                    )?;
+
+                    write!(w, " ")?;
+                }
+                ir::LabelKind::Entrypoint(ty)
+                | ir::LabelKind::Constant(ty)
+                | ir::LabelKind::Function(_, ty) => {
+                    self.write_type(&mut w, ty)?;
+                    write!(w, " ")?;
+                }
+                _ => {}
             }
 
             writeln!(w, "{{")?;
@@ -85,7 +110,17 @@ impl<'a> Codegen<'a> {
                 self.write_thunk(&mut w, index)?;
                 writeln!(w, "}}")?;
                 write!(w, "__wpl_constant_value := func() ")?;
-                self.write_type(&mut w, ty)?;
+                if self.program.wrapped_entrypoint == Some(index) {
+                    self.write_type(
+                        &mut w,
+                        &ir::Type::FunctionReference(
+                            Box::new(ir::Type::Tuple(Vec::new())),
+                            Box::new(ty.clone()),
+                        ),
+                    )?;
+                } else {
+                    self.write_type(&mut w, ty)?;
+                }
                 writeln!(w, " {{")?;
             }
 

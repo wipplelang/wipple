@@ -37,6 +37,8 @@ pub struct Program {
     pub enumerations: BTreeMap<EnumerationId, Vec<Vec<Type>>>,
 
     pub entrypoint: usize,
+
+    pub wrapped_entrypoint: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -141,6 +143,9 @@ impl Compiler {
             let label = gen.new_label(|_, _| {
                 if program.entrypoint_wrapper.is_none() && *id == program.entrypoint {
                     LabelKind::Entrypoint(item.ty.clone())
+                } else if program.entrypoint_wrapper == Some(*id) {
+                    let entrypoint_ty = program.items.get(&program.entrypoint).unwrap().ty.clone();
+                    LabelKind::Entrypoint(entrypoint_ty)
                 } else {
                     LabelKind::Constant(item.ty.clone())
                 }
@@ -199,6 +204,9 @@ impl Compiler {
             structures: gen.structures,
             enumerations: gen.enumerations,
             entrypoint,
+            wrapped_entrypoint: program
+                .entrypoint_wrapper
+                .map(|_| *gen.items.get(&program.entrypoint).unwrap()),
         }
     }
 }
