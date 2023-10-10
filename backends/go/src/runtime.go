@@ -131,6 +131,130 @@ func __wpl_intrinsic_add_number(a float64, b float64) float64 {
 	return a + b
 }
 
+func __wpl_intrinsic_subtract_number(a float64, b float64) float64 {
+	return a - b
+}
+
+func __wpl_intrinsic_multiply_number(a float64, b float64) float64 {
+	return a * b
+}
+
+func __wpl_intrinsic_divide_number(a float64, b float64) float64 {
+	return a / b
+}
+
+func __wpl_intrinsic_add_integer(a int64, b int64) int64 {
+	return a + b
+}
+
+func __wpl_intrinsic_subtract_integer(a int64, b int64) int64 {
+	return a - b
+}
+
+func __wpl_intrinsic_multiply_integer(a int64, b int64) int64 {
+	return a * b
+}
+
+func __wpl_intrinsic_divide_integer(a int64, b int64) int64 {
+	return a / b
+}
+
+func __wpl_intrinsic_add_natural(a uint64, b uint64) uint64 {
+	return a + b
+}
+
+func __wpl_intrinsic_subtract_natural(a uint64, b uint64) uint64 {
+	return a - b
+}
+
+func __wpl_intrinsic_multiply_natural(a uint64, b uint64) uint64 {
+	return a * b
+}
+
+func __wpl_intrinsic_divide_natural(a uint64, b uint64) uint64 {
+	return a / b
+}
+
+func __wpl_intrinsic_add_byte(a uint8, b uint8) uint8 {
+	return a + b
+}
+
+func __wpl_intrinsic_subtract_byte(a uint8, b uint8) uint8 {
+	return a - b
+}
+
+func __wpl_intrinsic_multiply_byte(a uint8, b uint8) uint8 {
+	return a * b
+}
+
+func __wpl_intrinsic_divide_byte(a uint8, b uint8) uint8 {
+	return a / b
+}
+
+func __wpl_intrinsic_add_signed(a int, b int) int {
+	return a + b
+}
+
+func __wpl_intrinsic_subtract_signed(a int, b int) int {
+	return a - b
+}
+
+func __wpl_intrinsic_multiply_signed(a int, b int) int {
+	return a * b
+}
+
+func __wpl_intrinsic_divide_signed(a int, b int) int {
+	return a / b
+}
+
+func __wpl_intrinsic_add_unsigned(a uint, b uint) uint {
+	return a + b
+}
+
+func __wpl_intrinsic_subtract_unsigned(a uint, b uint) uint {
+	return a - b
+}
+
+func __wpl_intrinsic_multiply_unsigned(a uint, b uint) uint {
+	return a * b
+}
+
+func __wpl_intrinsic_divide_unsigned(a uint, b uint) uint {
+	return a / b
+}
+
+func __wpl_intrinsic_add_float(a float32, b float32) float32 {
+	return a + b
+}
+
+func __wpl_intrinsic_subtract_float(a float32, b float32) float32 {
+	return a - b
+}
+
+func __wpl_intrinsic_multiply_float(a float32, b float32) float32 {
+	return a * b
+}
+
+func __wpl_intrinsic_divide_float(a float32, b float32) float32 {
+	return a / b
+}
+
+func __wpl_intrinsic_add_double(a float64, b float64) float64 {
+	return a + b
+}
+
+func __wpl_intrinsic_subtract_double(a float64, b float64) float64 {
+	return a - b
+}
+
+func __wpl_intrinsic_multiply_double(a float64, b float64) float64 {
+	return a * b
+}
+
+func __wpl_intrinsic_divide_double(a float64, b float64) float64 {
+	return a / b
+}
+
 func __wpl_intrinsic_number_equality(a float64, b float64) __wpl_type_enumeration {
 	var discriminant uint
 	if a == b {
@@ -143,6 +267,17 @@ func __wpl_intrinsic_number_equality(a float64, b float64) __wpl_type_enumeratio
 }
 
 func __wpl_intrinsic_natural_equality(a uint64, b uint64) __wpl_type_enumeration {
+	var discriminant uint
+	if a == b {
+		discriminant = 1
+	} else {
+		discriminant = 0
+	}
+
+	return __wpl_type_enumeration{discriminant, struct{}{}}
+}
+
+func __wpl_intrinsic_text_equality(a string, b string) __wpl_type_enumeration {
 	var discriminant uint
 	if a == b {
 		discriminant = 1
@@ -179,12 +314,8 @@ func __wpl_intrinsic_natural_ordering(a uint64, b uint64) __wpl_type_enumeration
 	return __wpl_type_enumeration{discriminant, struct{}{}}
 }
 
-func __wpl_intrinsic_add_natural(a uint64, b uint64) uint64 {
-	return a + b
-}
-
-func __wpl_intrinsic_subtract_natural(a uint64, b uint64) uint64 {
-	return a - b
+func __wpl_intrinsic_natural_to_number(a uint64) float64 {
+	return float64(a)
 }
 
 func __wpl_intrinsic_make_mutable[T any](x T) *T {
