@@ -102,8 +102,8 @@ struct BuildOptions {
     #[clap(long)]
     os: Option<String>,
 
-    #[clap(long)]
-    compiler_arg: Vec<String>,
+    #[clap(last = true)]
+    compiler_args: Vec<String>,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -453,11 +453,11 @@ async fn run() -> anyhow::Result<()> {
 
                     let mut compiler = subprocess::Exec::cmd(tinygo_path)
                         .arg("build")
-                        .arg("-no-debug")
                         .arg("-o")
                         .arg(&output)
+                        .arg("-no-debug")
+                        .args(&options.compiler_args)
                         .arg(go_file_name)
-                        .args(&options.compiler_arg)
                         .cwd(tempdir.path());
 
                     if let Some(arch) = options.arch {
