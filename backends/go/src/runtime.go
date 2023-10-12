@@ -454,15 +454,32 @@ func __wpl_intrinsic_natural_to_number(n uint64) __wpl_type_number {
 }
 
 func __wpl_intrinsic_random_natural(from uint64, to uint64) uint64 {
+	if from == to {
+		return from
+	}
+
 	return uint64(rand.Int63n(int64(to-from)) + int64(from))
 }
 
 func __wpl_intrinsic_random_integer(from int64, to int64) int64 {
+	if from == to {
+		return from
+	}
+
 	return int64(rand.Intn(int(to-from)) + int(from))
 }
 
 func __wpl_intrinsic_random_number(from __wpl_type_number, to __wpl_type_number) __wpl_type_number {
-	panic("TODO")
+	if from.Equals(to) {
+		return from
+	}
+
+	from, to = decimal.RescalePair(from, to)
+	exp := from.Exponent()
+	fc := from.CoefficientInt64()
+	tc := to.CoefficientInt64()
+	c := int64(rand.Intn(int(tc-fc))) + fc
+	return decimal.NewFromInt(c).Mul(decimal.NewFromInt(10).Pow(decimal.NewFromInt32(exp)))
 }
 
 func __wpl_intrinsic_make_mutable[T any](x T) *T {
