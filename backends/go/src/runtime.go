@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/manifoldco/promptui"
 	"github.com/shopspring/decimal"
 )
 
@@ -35,40 +34,19 @@ func __wpl_intrinsic_display(s string) struct{} {
 }
 
 func __wpl_intrinsic_prompt[T any](prompt string, parse func(input string) __wpl_type_enumeration) (value T) {
-	config := promptui.Prompt{
-		Label: prompt,
-		Validate: func(input string) error {
-			parsed := parse(input)
-
-			if parsed.__wpl_enumeration_discriminant == 0 {
-				return fmt.Errorf("invalid input")
-			} else {
-				value = parsed.__wpl_enumeration_payload.(struct{ __wpl_variant_element_0 T }).__wpl_variant_element_0
-
-				return nil
-			}
-		},
-	}
-
-	_, err := config.Run()
-
-	if err != nil {
-		panic(fmt.Sprintf("error: %v", err))
-	}
-
-	return value
+	panic("error: prompt is only supported in the playground")
 }
 
 func __wpl_intrinsic_choice(prompt string, descriptions []string) uint64 {
-	panic("choice is not yet supported")
+	panic("error: choice is only supported in the playground")
 }
 
 func __wpl_intrinsic_with_ui[T any](url string, callback func(handle __wpl_type_ui) T) T {
-	panic("with-ui is only supported in the playground")
+	panic("error: with-ui is only supported in the playground")
 }
 
 func __wpl_intrinsic_message_ui[T any, U any](handle __wpl_type_ui, message string, value T) U {
-	panic("message-ui is only supported in the playground")
+	panic("error: message-ui is only supported in the playground")
 }
 
 func __wpl_intrinsic_with_continuation[T any](f func(func(result T) struct{}) struct{}) T {

@@ -101,6 +101,9 @@ struct BuildOptions {
 
     #[clap(long)]
     os: Option<String>,
+
+    #[clap(long)]
+    compiler_arg: Vec<String>,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -404,7 +407,9 @@ async fn run() -> anyhow::Result<()> {
 
                     let (ir, progress_bar) = ir().await?;
 
-                    let compiler_path = which("go")?;
+                    let go_path = which("go")?;
+                    let tinygo_path = which("tinygo")?;
+                    let strip_path = which("strip")?;
 
                     if let Some(progress_bar) = progress_bar.as_ref() {
                         progress_bar.set_message("Generating Go code");
@@ -423,9 +428,7 @@ async fn run() -> anyhow::Result<()> {
 
                     macro_rules! cmd {
                         ($cmd:expr) => {{
-                            // FIXME: Display stderr when something goes wrong
-                            let result = $cmd.stderr(subprocess::NullFile).capture()?;
-
+                            let result = $cmd.capture()?;
                             if !result.success() {
                                 if let Some(progress_bar) = progress_bar.as_ref() {
                                     progress_bar.finish_and_clear();
@@ -437,23 +440,24 @@ async fn run() -> anyhow::Result<()> {
                         }};
                     }
 
-                    cmd!(subprocess::Exec::cmd(&compiler_path)
+                    cmd!(subprocess::Exec::cmd(&go_path)
                         .arg("mod")
                         .arg("init")
                         .arg("wipple")
                         .cwd(tempdir.path()));
 
-                    cmd!(subprocess::Exec::cmd(&compiler_path)
+                    cmd!(subprocess::Exec::cmd(&go_path)
                         .arg("mod")
                         .arg("tidy")
                         .cwd(tempdir.path()));
 
-                    let mut compiler = subprocess::Exec::cmd(&compiler_path)
+                    let mut compiler = subprocess::Exec::cmd(tinygo_path)
                         .arg("build")
+                        .arg("-no-debug")
                         .arg("-o")
-                        .arg(output)
-                        .arg("-trimpath")
+                        .arg(&output)
                         .arg(go_file_name)
+                        .args(&options.compiler_arg)
                         .cwd(tempdir.path());
 
                     if let Some(arch) = options.arch {
@@ -464,15 +468,14 @@ async fn run() -> anyhow::Result<()> {
                         compiler = compiler.env("GOOS", os);
                     }
 
-                    let result = compiler.capture()?;
+                    cmd!(compiler);
+
+                    cmd!(subprocess::Exec::cmd(strip_path)
+                        .arg(&output)
+                        .cwd(tempdir.path()));
 
                     if let Some(progress_bar) = progress_bar.as_ref() {
                         progress_bar.finish_and_clear();
-                    }
-
-                    if !result.success() {
-                        io::stderr().write_all(&result.stderr)?;
-                        return Err(anyhow::format_err!("Could not compile Go program"));
                     }
                 }
             }
