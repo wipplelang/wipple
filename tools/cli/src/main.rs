@@ -393,11 +393,14 @@ async fn run() -> anyhow::Result<()> {
                     }
                 }
                 CompileFormat::Executable => {
-                    let output = output_or_none.ok_or_else(|| {
+                    let mut output = output_or_none.ok_or_else(|| {
                         anyhow::format_err!(
                             "Output path must be specified when compiling an executable"
                         )
                     })?;
+
+                    let cwd = std::env::current_dir()?;
+                    output = cwd.join(output);
 
                     let (ir, progress_bar) = ir().await?;
 
@@ -408,19 +411,50 @@ async fn run() -> anyhow::Result<()> {
                     }
 
                     let tempdir = tempfile::tempdir()?;
-                    let go_file_path = tempdir.path().join("main.go");
-                    let go_file = std::fs::File::create(&go_file_path)?;
+                    let go_file_name = "wipple.go";
+
+                    let go_file_path = tempdir.path().join(go_file_name);
+                    let go_file = std::fs::File::create(go_file_path)?;
                     wipple_go_backend::Codegen::new(&ir).write_to(go_file)?;
 
                     if let Some(progress_bar) = progress_bar.as_ref() {
                         progress_bar.set_message("Compiling Go code");
                     }
 
-                    let mut compiler = subprocess::Exec::cmd(compiler_path)
+                    macro_rules! cmd {
+                        ($cmd:expr) => {{
+                            // FIXME: Display stderr when something goes wrong
+                            let result = $cmd.stderr(subprocess::NullFile).capture()?;
+
+                            if !result.success() {
+                                if let Some(progress_bar) = progress_bar.as_ref() {
+                                    progress_bar.finish_and_clear();
+                                }
+
+                                io::stderr().write_all(&result.stderr)?;
+                                return Err(anyhow::format_err!("Could not compile Go program"));
+                            }
+                        }};
+                    }
+
+                    cmd!(subprocess::Exec::cmd(&compiler_path)
+                        .arg("mod")
+                        .arg("init")
+                        .arg("wipple")
+                        .cwd(tempdir.path()));
+
+                    cmd!(subprocess::Exec::cmd(&compiler_path)
+                        .arg("mod")
+                        .arg("tidy")
+                        .cwd(tempdir.path()));
+
+                    let mut compiler = subprocess::Exec::cmd(&compiler_path)
                         .arg("build")
                         .arg("-o")
                         .arg(output)
-                        .arg(go_file_path);
+                        .arg("-trimpath")
+                        .arg(go_file_name)
+                        .cwd(tempdir.path());
 
                     if let Some(arch) = options.arch {
                         compiler = compiler.env("GOARCH", arch);

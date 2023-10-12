@@ -4,13 +4,19 @@ use itertools::Itertools;
 use std::{
     borrow::Cow,
     cell::RefCell,
-    collections::{BTreeMap, VecDeque},
+    collections::VecDeque,
     io::{self, Write},
 };
 use wipple_frontend::ir;
 
-type Stack<'a> = Vec<(&'a ir::Type, Result<usize, Cow<'static, str>>)>;
-type Phi = (usize, usize, usize);
+#[derive(Debug, Clone)]
+enum StackItem {
+    Temporary(usize),
+    Var(usize),
+    Ident(Cow<'static, str>),
+}
+
+type Stack<'a> = Vec<(&'a ir::Type, StackItem)>;
 
 pub struct Codegen<'a> {
     program: &'a ir::Program,
@@ -74,7 +80,7 @@ impl<'a> Codegen<'a> {
             if let ir::LabelKind::Function(input, _) = kind {
                 write!(w, "__wpl_function_input ")?;
                 self.write_type(&mut w, input)?;
-                stack.push((input, Err("__wpl_function_input".into())));
+                stack.push((input, StackItem::Ident("__wpl_function_input".into())));
             }
 
             write!(w, ") ")?;
@@ -194,17 +200,15 @@ impl<'a> Codegen<'a> {
         let mut queue = VecDeque::new();
         queue.push_back((0, stack));
 
-        let mut phis = BTreeMap::new();
-
         while let Some((block, stack)) = queue.pop_front() {
             self.write_block(
                 &mut buf,
                 block,
+                vars,
                 blocks,
                 stack,
                 &mut cache,
                 &mut queue,
-                &mut phis,
                 first_temporary_index,
             )?;
         }
@@ -231,11 +235,11 @@ impl<'a> Codegen<'a> {
         &mut self,
         w: &mut impl io::Write,
         index: usize,
+        vars: &'a [ir::Type],
         blocks: &'a [ir::BasicBlock],
         mut stack: Stack<'a>,
         cache: &mut [bool],
         queue: &mut VecDeque<(usize, Stack<'a>)>,
-        phis: &mut BTreeMap<usize, Phi>,
         first_temporary_index: usize,
     ) -> io::Result<()> {
         if cache[index] {
@@ -251,6 +255,7 @@ impl<'a> Codegen<'a> {
             self.write_statement(w, statement, &mut stack)?;
         }
 
+        // HACK: Work around Go's errors for unused variables
         if let Some(terminator) = &blocks[index].terminator {
             for index in first_temporary_index..self.temporaries.borrow().len() {
                 write!(w, "_ = ")?;
@@ -258,7 +263,13 @@ impl<'a> Codegen<'a> {
                 writeln!(w)?;
             }
 
-            self.write_terminator(w, terminator, stack, queue, phis)?;
+            for (var, _) in vars.iter().enumerate() {
+                write!(w, "_ = ")?;
+                self.write_var(w, var)?;
+                writeln!(w)?;
+            }
+
+            self.write_terminator(w, terminator, stack, queue)?;
         }
 
         Ok(())
@@ -278,7 +289,7 @@ impl<'a> Codegen<'a> {
                 self.write_temporary(w, next)?;
                 writeln!(w, " = {}", self.use_stack_item(top))?;
 
-                stack.push((ty, Ok(next)));
+                stack.push((ty, StackItem::Temporary(next)));
             }
             ir::Statement::Drop => {
                 let (_, top) = stack.pop().unwrap();
@@ -300,6 +311,12 @@ impl<'a> Codegen<'a> {
                 // Closures are defined inline in Go, so we don't need to do
                 // anything (see below)
             }
+            ir::Statement::Phi(phi) => {
+                let (ty, top) = stack.pop().unwrap();
+                self.write_var(w, *phi)?;
+                writeln!(w, " = {} // phi", self.use_stack_item(top))?;
+                stack.push((ty, StackItem::Var(*phi)));
+            }
             ir::Statement::Expression(ty, expr) => {
                 let next = self.next_temporary(ty);
 
@@ -315,9 +332,7 @@ impl<'a> Codegen<'a> {
                         writeln!(w, "{:?}", s)?;
                     }
                     ir::Expression::Number(n) => {
-                        let n = f64::try_from(*n).expect("number cannot be represented in Go");
-                        self.write_type(w, ty)?;
-                        writeln!(w, "({n})")?;
+                        writeln!(w, "decimal.RequireFromString({:?})", n.to_string())?;
                     }
                     ir::Expression::Integer(n) => {
                         self.write_type(w, ty)?;
@@ -375,7 +390,7 @@ impl<'a> Codegen<'a> {
                         self.write_type(w, output)?;
                         writeln!(w, " {{")?;
 
-                        let stack = vec![(input, Err("__wpl_function_input".into()))];
+                        let stack = vec![(input, StackItem::Ident("__wpl_function_input".into()))];
                         self.write_body(w, vars, Some(captures), blocks, stack)?;
 
                         writeln!(w, "}}")?;
@@ -470,12 +485,22 @@ impl<'a> Codegen<'a> {
 
                         inputs.reverse();
 
-                        for (segment, (_, input)) in segments.iter().zip(inputs) {
+                        for (index, (segment, (_, input))) in
+                            segments.iter().zip(inputs).enumerate()
+                        {
+                            if index > 0 {
+                                write!(w, " + ")?;
+                            }
+
                             write!(w, "{:?} + {}", segment, self.use_stack_item(input))?;
                         }
 
                         if let Some(end) = end {
-                            write!(w, " + {:?}", end)?;
+                            if !segments.is_empty() {
+                                write!(w, " + ")?;
+                            }
+
+                            write!(w, "{:?}", end)?;
                         }
 
                         writeln!(w)?;
@@ -565,7 +590,7 @@ impl<'a> Codegen<'a> {
                     ir::Expression::Extend(_) => todo!(),
                 }
 
-                stack.push((ty, Ok(next)));
+                stack.push((ty, StackItem::Temporary(next)));
             }
         }
 
@@ -578,7 +603,6 @@ impl<'a> Codegen<'a> {
         terminator: &'a ir::Terminator,
         mut stack: Stack<'a>,
         queue: &mut VecDeque<(usize, Stack<'a>)>,
-        phis: &mut BTreeMap<usize, Phi>,
     ) -> io::Result<()> {
         match terminator {
             ir::Terminator::Unreachable => {
@@ -590,27 +614,13 @@ impl<'a> Codegen<'a> {
                 writeln!(w, "return {}", self.use_stack_item(top))?;
             }
             ir::Terminator::Jump(block) => {
-                if let Some((then_block, else_block, phi)) = phis.get(block).cloned() {
-                    let (ty, top) = stack.pop().unwrap();
-
-                    self.write_temporary(w, phi)?;
-                    write!(w, " = ")?;
-                    write!(w, "{} // reconcile ", self.use_stack_item(top))?;
-                    self.write_block_label(w, then_block)?;
-                    write!(w, " and ")?;
-                    self.write_block_label(w, else_block)?;
-                    writeln!(w)?;
-
-                    stack.push((ty, Ok(phi)));
-                }
-
                 write!(w, "goto ")?;
                 self.write_block_label(w, *block)?;
                 writeln!(w)?;
 
                 queue.push_back((*block, stack));
             }
-            ir::Terminator::If(variant, then_block, else_block, (ty, end_pos)) => {
+            ir::Terminator::If(variant, then_block, else_block) => {
                 let (_, input) = stack.pop().unwrap();
 
                 writeln!(
@@ -632,8 +642,6 @@ impl<'a> Codegen<'a> {
 
                 writeln!(w, "}}")?;
 
-                let phi = self.next_temporary(ty);
-                phis.insert(*end_pos, (*then_block, *else_block, phi));
                 queue.push_back((*then_block, stack.clone()));
                 queue.push_back((*else_block, stack));
             }
@@ -666,10 +674,35 @@ impl<'a> Codegen<'a> {
         write!(w, "__wpl_var_{n}")
     }
 
+    fn write_thunk(&self, w: &mut impl io::Write, n: usize) -> io::Result<()> {
+        write!(w, "__wpl_constant_{n}_thunk")
+    }
+
+    fn write_temporary(&self, w: &mut impl io::Write, n: usize) -> io::Result<()> {
+        write!(w, "__wpl_temp_{n}")
+    }
+
+    fn next_temporary(&self, ty: &'a ir::Type) -> usize {
+        let mut temporaries = self.temporaries.borrow_mut();
+        let n = temporaries.len();
+        temporaries.push(ty);
+        n
+    }
+
+    // This is its own function so that we can track whether stack items are
+    // used, if needed in the future
+    fn use_stack_item(&self, item: StackItem) -> Cow<'static, str> {
+        match item {
+            StackItem::Temporary(n) => format!("__wpl_temp_{n}").into(),
+            StackItem::Var(n) => format!("__wpl_var_{n}").into(),
+            StackItem::Ident(identifier) => identifier,
+        }
+    }
+
     fn write_type(&self, w: &mut impl io::Write, ty: &ir::Type) -> io::Result<()> {
         match ty {
             ir::Type::Marker => write!(w, "struct{{}}")?,
-            ir::Type::Number => write!(w, "float64")?, // FIXME: Use decimal representation
+            ir::Type::Number => write!(w, "__wpl_type_number")?,
             ir::Type::Integer => write!(w, "int64")?,
             ir::Type::Natural => write!(w, "uint64")?,
             ir::Type::Byte => write!(w, "uint8")?,
@@ -737,30 +770,6 @@ impl<'a> Codegen<'a> {
         Ok(())
     }
 
-    fn write_thunk(&self, w: &mut impl io::Write, n: usize) -> io::Result<()> {
-        write!(w, "__wpl_constant_{n}_thunk")
-    }
-
-    fn write_temporary(&self, w: &mut impl io::Write, n: usize) -> io::Result<()> {
-        write!(w, "__wpl_temp_{n}")
-    }
-
-    fn next_temporary(&self, ty: &'a ir::Type) -> usize {
-        let mut temporaries = self.temporaries.borrow_mut();
-        let n = temporaries.len();
-        temporaries.push(ty);
-        n
-    }
-
-    // This is its own function so that we can track whether stack items are
-    // used, if needed in the future
-    fn use_stack_item(&self, item: Result<usize, Cow<'static, str>>) -> Cow<'static, str> {
-        match item {
-            Ok(n) => format!("__wpl_temp_{n}").into(),
-            Err(identifier) => identifier,
-        }
-    }
-
     fn write_instrinsic_represented_inline(
         &self,
         w: &mut impl io::Write,
@@ -785,7 +794,7 @@ impl<'a> Codegen<'a> {
     }
 
     fn intrinsic_returns_type_of_expr(&self, intrinsic: ir::Intrinsic) -> bool {
-        matches!(intrinsic, ir::Intrinsic::Crash)
+        matches!(intrinsic, ir::Intrinsic::Crash | ir::Intrinsic::Prompt)
     }
 
     fn intrinsic_returns_maybe_represented_as_pointer(&self, intrinsic: ir::Intrinsic) -> bool {
@@ -794,7 +803,15 @@ impl<'a> Codegen<'a> {
             | ir::Intrinsic::ListLast
             | ir::Intrinsic::ListInitial
             | ir::Intrinsic::ListTail
-            | ir::Intrinsic::ListNth => true,
+            | ir::Intrinsic::ListNth
+            | ir::Intrinsic::TextToNumber
+            | ir::Intrinsic::TextToInteger
+            | ir::Intrinsic::TextToNatural
+            | ir::Intrinsic::TextToByte
+            | ir::Intrinsic::TextToSigned
+            | ir::Intrinsic::TextToUnsigned
+            | ir::Intrinsic::TextToFloat
+            | ir::Intrinsic::TextToDouble => true,
             ir::Intrinsic::Crash
             | ir::Intrinsic::Display
             | ir::Intrinsic::Prompt
@@ -814,14 +831,6 @@ impl<'a> Codegen<'a> {
             | ir::Intrinsic::UnsignedToText
             | ir::Intrinsic::FloatToText
             | ir::Intrinsic::DoubleToText
-            | ir::Intrinsic::TextToNumber
-            | ir::Intrinsic::TextToInteger
-            | ir::Intrinsic::TextToNatural
-            | ir::Intrinsic::TextToByte
-            | ir::Intrinsic::TextToSigned
-            | ir::Intrinsic::TextToUnsigned
-            | ir::Intrinsic::TextToFloat
-            | ir::Intrinsic::TextToDouble
             | ir::Intrinsic::NaturalToNumber
             | ir::Intrinsic::NumberToNatural
             | ir::Intrinsic::NaturalToInteger

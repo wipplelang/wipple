@@ -406,6 +406,9 @@ impl Interpreter {
                     ir::Statement::Unpack(_) => {
                         // The interpreter provides the captured scope while calling the functions
                     }
+                    ir::Statement::Phi(_) => {
+                        // The interpreter doesn't need phis because the stack is dynamically typed
+                    }
                     ir::Statement::Expression(_, expr) => match expr {
                         ir::Expression::Marker => stack.push(Value::Marker),
                         ir::Expression::Text(text) => {
@@ -556,7 +559,7 @@ impl Interpreter {
                 ir::Terminator::Jump(jump_index) => {
                     index = *jump_index;
                 }
-                ir::Terminator::If(matching_discriminant, then_index, else_index, _) => {
+                ir::Terminator::If(matching_discriminant, then_index, else_index) => {
                     let discriminant = match stack.pop() {
                         Value::Variant(discriminant, _) => discriminant,
                         _ => unreachable!("{:#?}", stack.current_frame()),

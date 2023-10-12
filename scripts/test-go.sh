@@ -9,7 +9,7 @@ for f in ./tests/*.wpl; do
     echo -e "\033[1mTesting $f\033[0m"
 
     if (wipple compile -f go "$f" > "$tempdir/main.go" 2>"$tempdir/main.stderr"); then
-        wipple compile -o "$tempdir/out" "$f"
+        wipple compile -o "$tempdir/out" "$f" 2>"$tempdir/main.stderr"
     fi
 
     "$tempdir/out" || true

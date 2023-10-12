@@ -48,6 +48,7 @@ impl std::fmt::Display for Statement {
             Statement::Expression(_, expr) => write!(f, "{expr}"),
             Statement::WithContext(id) => write!(f, "with context ctx{id}"),
             Statement::ResetContext(id) => write!(f, "reset context ctx{id}"),
+            Statement::Phi(phi) => write!(f, "phi ${phi}"),
         }
     }
 }
@@ -57,7 +58,7 @@ impl std::fmt::Display for Terminator {
         match self {
             Terminator::Unreachable => write!(f, "unreachable"),
             Terminator::Return => write!(f, "return"),
-            Terminator::If(variant, then_label, else_label, _) => {
+            Terminator::If(variant, then_label, else_label) => {
                 write!(
                     f,
                     "if {} bb{} bb{}",

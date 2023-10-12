@@ -3,9 +3,15 @@ package main
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/manifoldco/promptui"
+	"github.com/shopspring/decimal"
 )
+
+type __wpl_type_number = decimal.Decimal
 
 type __wpl_type_enumeration struct {
 	__wpl_enumeration_discriminant uint
@@ -28,8 +34,29 @@ func __wpl_intrinsic_display(s string) struct{} {
 	return struct{}{}
 }
 
-func __wpl_intrinsic_prompt[T any](prompt string, parse func(string) __wpl_type_enumeration) T {
-	panic("prompt is not yet supported")
+func __wpl_intrinsic_prompt[T any](prompt string, parse func(input string) __wpl_type_enumeration) (value T) {
+	config := promptui.Prompt{
+		Label: prompt,
+		Validate: func(input string) error {
+			parsed := parse(input)
+
+			if parsed.__wpl_enumeration_discriminant == 0 {
+				return fmt.Errorf("invalid input")
+			} else {
+				value = parsed.__wpl_enumeration_payload.(struct{ __wpl_variant_element_0 T }).__wpl_variant_element_0
+
+				return nil
+			}
+		},
+	}
+
+	_, err := config.Run()
+
+	if err != nil {
+		panic(fmt.Sprintf("error: %v", err))
+	}
+
+	return value
 }
 
 func __wpl_intrinsic_choice(prompt string, descriptions []string) uint64 {
@@ -37,11 +64,11 @@ func __wpl_intrinsic_choice(prompt string, descriptions []string) uint64 {
 }
 
 func __wpl_intrinsic_with_ui[T any](url string, callback func(handle __wpl_type_ui) T) T {
-	panic("with-ui is not yet supported")
+	panic("with-ui is only supported in the playground")
 }
 
 func __wpl_intrinsic_message_ui[T any, U any](handle __wpl_type_ui, message string, value T) U {
-	panic("message-ui is not yet supported")
+	panic("message-ui is only supported in the playground")
 }
 
 func __wpl_intrinsic_with_continuation[T any](f func(func(result T) struct{}) struct{}) T {
@@ -96,7 +123,7 @@ func __wpl_intrinsic_delay(ms uint64) struct{} {
 	return struct{}{}
 }
 
-func __wpl_intrinsic_number_to_text(n float64) string {
+func __wpl_intrinsic_number_to_text(n __wpl_type_number) string {
 	return fmt.Sprintf("%v", n)
 }
 
@@ -128,32 +155,41 @@ func __wpl_intrinsic_double_to_text(n float64) string {
 	return fmt.Sprintf("%v", n)
 }
 
-func __wpl_intrinsic_add_number(a float64, b float64) float64 {
-	return a + b
+func __wpl_intrinsic_text_to_number(s string) *__wpl_type_number {
+	d, err := decimal.NewFromString(s)
+	if err != nil {
+		return nil
+	}
+
+	return &d
 }
 
-func __wpl_intrinsic_subtract_number(a float64, b float64) float64 {
-	return a - b
+func __wpl_intrinsic_add_number(a __wpl_type_number, b __wpl_type_number) __wpl_type_number {
+	return a.Add(b)
 }
 
-func __wpl_intrinsic_multiply_number(a float64, b float64) float64 {
-	return a * b
+func __wpl_intrinsic_subtract_number(a __wpl_type_number, b __wpl_type_number) __wpl_type_number {
+	return a.Sub(b)
 }
 
-func __wpl_intrinsic_divide_number(a float64, b float64) float64 {
-	return a / b
+func __wpl_intrinsic_multiply_number(a __wpl_type_number, b __wpl_type_number) __wpl_type_number {
+	return a.Mul(b)
 }
 
-func __wpl_intrinsic_modulo_number(a float64, b float64) float64 {
-	return math.Mod(a, b)
+func __wpl_intrinsic_divide_number(a __wpl_type_number, b __wpl_type_number) __wpl_type_number {
+	return a.Div(b)
 }
 
-func __wpl_intrinsic_power_number(a float64, b float64) float64 {
-	return math.Pow(a, b)
+func __wpl_intrinsic_modulo_number(a __wpl_type_number, b __wpl_type_number) __wpl_type_number {
+	return a.Mod(b)
 }
 
-func __wpl_intrinsic_negate_number(n float64) float64 {
-	return -n
+func __wpl_intrinsic_power_number(a __wpl_type_number, b __wpl_type_number) __wpl_type_number {
+	return a.Pow(b)
+}
+
+func __wpl_intrinsic_negate_number(n __wpl_type_number) __wpl_type_number {
+	return n.Neg()
 }
 
 func __wpl_intrinsic_add_integer(a int64, b int64) int64 {
@@ -340,9 +376,9 @@ func __wpl_intrinsic_negate_double(n float64) float64 {
 	return -n
 }
 
-func __wpl_intrinsic_number_equality(a float64, b float64) __wpl_type_enumeration {
+func __wpl_intrinsic_number_equality(a __wpl_type_number, b __wpl_type_number) __wpl_type_enumeration {
 	var discriminant uint
-	if a == b {
+	if a.Equal(b) {
 		discriminant = 1
 	} else {
 		discriminant = 0
@@ -382,7 +418,12 @@ func __wpl_intrinsic_text_characters(s string) []string {
 	return chars
 }
 
-func __wpl_intrinsic_number_ordering(a float64, b float64) __wpl_type_enumeration {
+func __wpl_intrinsic_number_ordering(a __wpl_type_number, b __wpl_type_number) __wpl_type_enumeration {
+	discriminant := uint(a.Cmp(b) + 1)
+	return __wpl_type_enumeration{discriminant, struct{}{}}
+}
+
+func __wpl_intrinsic_integer_ordering(a int64, b int64) __wpl_type_enumeration {
 	var discriminant uint
 	if a < b {
 		discriminant = 0
@@ -408,8 +449,20 @@ func __wpl_intrinsic_natural_ordering(a uint64, b uint64) __wpl_type_enumeration
 	return __wpl_type_enumeration{discriminant, struct{}{}}
 }
 
-func __wpl_intrinsic_natural_to_number(a uint64) float64 {
-	return float64(a)
+func __wpl_intrinsic_natural_to_number(n uint64) __wpl_type_number {
+	return decimal.NewFromInt(int64(n))
+}
+
+func __wpl_intrinsic_random_natural(from uint64, to uint64) uint64 {
+	return uint64(rand.Int63n(int64(to-from)) + int64(from))
+}
+
+func __wpl_intrinsic_random_integer(from int64, to int64) int64 {
+	return int64(rand.Intn(int(to-from)) + int(from))
+}
+
+func __wpl_intrinsic_random_number(from __wpl_type_number, to __wpl_type_number) __wpl_type_number {
+	panic("TODO")
 }
 
 func __wpl_intrinsic_make_mutable[T any](x T) *T {

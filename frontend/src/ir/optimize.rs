@@ -133,17 +133,14 @@ pub mod reorder {
                                     let jump_index = gen(jump_index, blocks, reordered, indices)?;
                                     Terminator::Jump(jump_index)
                                 }
-                                Terminator::If(variant, then_index, else_index, ref output_ty) => {
+                                Terminator::If(variant, then_index, else_index) => {
                                     let then_index = gen(then_index, blocks, reordered, indices);
                                     let else_index = gen(else_index, blocks, reordered, indices);
 
                                     match (then_index, else_index) {
-                                        (Some(then_index), Some(else_index)) => Terminator::If(
-                                            variant,
-                                            then_index,
-                                            else_index,
-                                            output_ty.clone(),
-                                        ),
+                                        (Some(then_index), Some(else_index)) => {
+                                            Terminator::If(variant, then_index, else_index)
+                                        }
                                         (Some(jump_index), None) | (None, Some(jump_index)) => {
                                             block.statements.push(Statement::Drop);
                                             Terminator::Jump(jump_index)
@@ -185,24 +182,21 @@ pub mod reorder {
                         let index = indices.len();
                         indices.insert(block_index, index);
 
-                        *block.terminator.as_mut().unwrap() = match *block
-                            .terminator
-                            .as_ref()
-                            .unwrap()
-                        {
-                            Terminator::Unreachable => unreachable!(),
-                            Terminator::Return => Terminator::Return,
-                            Terminator::Jump(jump_index) => {
-                                let jump_index = sort(jump_index, blocks, sorted, indices);
-                                Terminator::Jump(jump_index)
-                            }
-                            Terminator::If(variant, then_index, else_index, ref output_ty) => {
-                                let then_index = sort(then_index, blocks, sorted, indices);
-                                let else_index = sort(else_index, blocks, sorted, indices);
-                                Terminator::If(variant, then_index, else_index, output_ty.clone())
-                            }
-                            Terminator::TailCall => Terminator::TailCall,
-                        };
+                        *block.terminator.as_mut().unwrap() =
+                            match *block.terminator.as_ref().unwrap() {
+                                Terminator::Unreachable => unreachable!(),
+                                Terminator::Return => Terminator::Return,
+                                Terminator::Jump(jump_index) => {
+                                    let jump_index = sort(jump_index, blocks, sorted, indices);
+                                    Terminator::Jump(jump_index)
+                                }
+                                Terminator::If(variant, then_index, else_index) => {
+                                    let then_index = sort(then_index, blocks, sorted, indices);
+                                    let else_index = sort(else_index, blocks, sorted, indices);
+                                    Terminator::If(variant, then_index, else_index)
+                                }
+                                Terminator::TailCall => Terminator::TailCall,
+                            };
 
                         sorted.insert(index, block);
 
