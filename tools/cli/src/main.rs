@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_closure_call)]
 #![warn(clippy::dbg_macro, clippy::todo)]
 
 mod doc;

@@ -1,3 +1,5 @@
+#![allow(clippy::redundant_closure_call)]
+
 use crate::{Context, Error, Interpreter, IoRequest, Stack, TaskGroup, UiHandle, Value};
 use futures::channel::oneshot;
 use itertools::Itertools;
