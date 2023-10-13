@@ -5,7 +5,7 @@ use regex::Regex;
 pub fn math(name: &str) -> Option<(&str, &str, &str)> {
     lazy_static! {
         static ref MATH: Regex =
-            Regex::new(r#"^([0-9](?:\.[0-9])?)([+\-*/])([0-9](?:\.[0-9])?)$"#).unwrap();
+            Regex::new(r"^([0-9](?:\.[0-9])?)([+\-*/])([0-9](?:\.[0-9])?)$").unwrap();
     }
 
     let captures = MATH.captures(name)?;
