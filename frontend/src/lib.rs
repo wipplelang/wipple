@@ -250,6 +250,12 @@ macro_rules! ids {
                 pub struct [<$id:camel Id>] {
                     pub counter: usize,
                 }
+
+                impl [<$id:camel Id>] {
+                    pub fn into_inner(self) -> usize {
+                        self.counter
+                    }
+                }
             )*
 
             impl Ids {
@@ -274,7 +280,7 @@ macro_rules! ids {
     };
 }
 
-ids!(enumeration, structure, reachable_marker);
+ids!(enumeration, structure, reachable_marker, phi);
 
 macro_rules! indexes {
     ($($(#[$meta:meta])* $id:ident),* $(,)?) => {
