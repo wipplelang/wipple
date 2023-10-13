@@ -225,7 +225,7 @@ macro_rules! expr {
                 Text(InternedString),
                 Block(Vec<[<$prefix Expression>]>, bool),
                 Call(Box<[<$prefix Expression>]>, Box<[<$prefix Expression>]>, bool),
-                Function([<$prefix Pattern>], Box<[<$prefix Expression>]>, lower::CaptureList),
+                Function([<$prefix Pattern>], Box<[<$prefix Expression>]>, Vec<(VariableId, $type)>),
                 When(Box<[<$prefix Expression>]>, Vec<[<$prefix Arm>]>),
                 External(InternedString, InternedString, Vec<[<$prefix Expression>]>),
                 Intrinsic(Intrinsic, Vec<[<$prefix Expression>]>),
@@ -1979,7 +1979,17 @@ impl Typechecker {
                         Box::new(body.ty.clone()),
                     )
                     .with_span(expr.span),
-                    kind: UnresolvedExpressionKind::Function(pattern, Box::new(body), captures),
+                    kind: UnresolvedExpressionKind::Function(
+                        pattern,
+                        Box::new(body),
+                        captures
+                            .into_iter()
+                            .filter_map(|(var, _)| {
+                                let ty = info.variables.get(&var)?.clone();
+                                Some((var, ty))
+                            })
+                            .collect(),
+                    ),
                 }
             }
             lower::ExpressionKind::When(input, arms) => {
@@ -3893,7 +3903,15 @@ impl Typechecker {
                 ExpressionKind::Function(
                     self.finalize_pattern(pattern, &input_ty),
                     Box::new(self.finalize_expr(*body)),
-                    captures,
+                    captures
+                        .into_iter()
+                        .map(|(var, ty)| {
+                            // We don't care about raising an error here because
+                            // it will be raised during the variable's definition.
+                            let (ty, _) = ty.finalize(&self.ctx);
+                            (var, ty)
+                        })
+                        .collect(),
                 )
             }
             MonomorphizedExpressionKind::When(input, arms) => {
@@ -4694,9 +4712,9 @@ impl Typechecker {
         ty: engine::Type,
         f: impl FnOnce(&VariableDecl) -> T,
     ) -> Option<T> {
-        if let Some(decl) = self.declarations.borrow().variables.get(&id) {
-            return Some(f(decl));
-        }
+        // HACK: We do not retrieve the cached value because `ty` changes
+        // depending on the expression currently being monomorphized, and we
+        // always want the most up-to-date type.
 
         let decl = self.top_level.declarations.variables.get(&id)?.clone();
 

@@ -10,7 +10,7 @@ mod ssa;
 
 use crate::{
     analysis::typecheck, helpers::InternedString, Compiler, ConstantId, EnumerationId, FieldIndex,
-    ItemId, StructureId, VariableId, VariantIndex,
+    ItemId, PhiId, StructureId, VariableId, VariantIndex,
 };
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -26,7 +26,9 @@ pub use typecheck::Intrinsic;
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Program {
-    pub labels: Vec<(LabelKind, usize, Vec<BasicBlock>)>,
+    pub globals: Vec<Type>,
+
+    pub labels: Vec<(LabelKind, Vec<Type>, Vec<BasicBlock>)>,
 
     #[serde_as(as = "Vec<(_, _)>")]
     pub structures: BTreeMap<StructureId, Vec<Type>>,
@@ -35,11 +37,13 @@ pub struct Program {
     pub enumerations: BTreeMap<EnumerationId, Vec<Vec<Type>>>,
 
     pub entrypoint: usize,
+
+    pub wrapped_entrypoint: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LabelKind {
-    Entrypoint,
+    Entrypoint(Type),
     Constant(Type),
     Function(Type, Type),
     Closure(CaptureList, Type, Type),
@@ -59,8 +63,9 @@ pub enum Statement {
     Initialize(usize),
     Free(usize),
     WithContext(usize),
-    ResetContext,
+    ResetContext(usize),
     Unpack(CaptureList),
+    Phi(usize),
     Expression(Type, Expression),
 }
 
@@ -98,7 +103,7 @@ pub enum Expression {
     Variant(VariantIndex, usize),
     TupleElement(usize),
     StructureElement(FieldIndex),
-    VariantElement(VariantIndex, usize),
+    VariantElement((VariantIndex, Vec<Type>), usize),
     Reference,
     Dereference,
     Context(usize),
@@ -126,6 +131,7 @@ impl Compiler {
         enumerations.insert(bool_type, vec![Vec::new(), Vec::new()]);
 
         let mut gen = IrGen {
+            compiler: self,
             items: Default::default(),
             labels: Default::default(),
             scopes: Default::default(),
@@ -138,7 +144,10 @@ impl Compiler {
         for (id, item) in &program.items {
             let label = gen.new_label(|_, _| {
                 if program.entrypoint_wrapper.is_none() && *id == program.entrypoint {
-                    LabelKind::Entrypoint
+                    LabelKind::Entrypoint(item.ty.clone())
+                } else if program.entrypoint_wrapper == Some(*id) {
+                    let entrypoint_ty = program.items.get(&program.entrypoint).unwrap().ty.clone();
+                    LabelKind::Entrypoint(entrypoint_ty)
                 } else {
                     LabelKind::Constant(item.ty.clone())
                 }
@@ -177,33 +186,49 @@ impl Compiler {
             .unwrap();
 
         Program {
+            globals: gen.contexts.into_values().map(|(ty, _)| ty).collect(),
             labels: gen
                 .labels
                 .into_iter()
-                .map(|(kind, vars, blocks)| (kind.unwrap(), vars.len(), blocks))
+                .map(|(kind, vars, blocks)| {
+                    let mut var_tys = vec![None; vars.len()];
+                    for (ty, index) in vars.into_values() {
+                        var_tys[index] = Some(ty);
+                    }
+
+                    (
+                        kind.unwrap(),
+                        var_tys.into_iter().map(Option::unwrap).collect(),
+                        blocks,
+                    )
+                })
                 .collect(),
             structures: gen.structures,
             enumerations: gen.enumerations,
             entrypoint,
+            wrapped_entrypoint: program
+                .entrypoint_wrapper
+                .map(|_| *gen.items.get(&program.entrypoint).unwrap()),
         }
     }
 }
 
-struct IrGen {
+struct IrGen<'a> {
+    compiler: &'a Compiler,
     items: BTreeMap<ItemId, usize>,
     labels: Vec<(
         Option<LabelKind>,
-        BTreeMap<VariableId, usize>,
+        BTreeMap<Result<VariableId, PhiId>, (Type, usize)>,
         Vec<BasicBlock>,
     )>,
-    scopes: Vec<Vec<VariableId>>,
-    contexts: BTreeMap<ConstantId, ItemId>,
+    scopes: Vec<Vec<(Type, VariableId)>>,
+    contexts: BTreeMap<ConstantId, (Type, ItemId)>,
     structures: BTreeMap<StructureId, Vec<Type>>,
     enumerations: BTreeMap<EnumerationId, Vec<Vec<Type>>>,
     bool_type: EnumerationId,
 }
 
-impl IrGen {
+impl<'a> IrGen<'a> {
     fn new_label(&mut self, kind: impl FnOnce(&mut Self, usize) -> LabelKind) -> usize {
         let label = self.labels.len();
         self.labels.insert(label, Default::default());
@@ -241,14 +266,21 @@ impl IrGen {
         &mut self.basic_block_for(label, pos).terminator
     }
 
-    fn variable_for(&mut self, label: usize, variable: VariableId) -> usize {
+    fn variable_for(&mut self, label: usize, variable: VariableId, ty: Type) -> usize {
         let vars = &mut self.labels[label].1;
         let next = vars.len();
-        *vars.entry(variable).or_insert(next)
+        vars.entry(Ok(variable)).or_insert((ty, next)).1
+    }
+
+    fn add_phi_for(&mut self, label: usize, ty: Type) -> usize {
+        let phi = self.compiler.new_phi_id();
+        let vars = &mut self.labels[label].1;
+        let next = vars.len();
+        vars.entry(Err(phi)).or_insert((ty, next)).1
     }
 }
 
-impl IrGen {
+impl<'a> IrGen<'a> {
     fn gen_entrypoint_wrapper(
         &mut self,
         expr: ssa::Expression,
@@ -306,7 +338,7 @@ impl IrGen {
                     .push(Statement::Expression(expr.ty, Expression::Marker));
             }
             ssa::ExpressionKind::Variable(var) => {
-                let var = self.variable_for(label, var);
+                let var = self.variable_for(label, var, expr.ty.clone());
                 self.statements_for(label, *pos)
                     .push(Statement::Expression(expr.ty, Expression::Variable(var)));
             }
@@ -399,10 +431,10 @@ impl IrGen {
                         let captures = CaptureList(
                             captures
                                 .into_iter()
-                                .map(|(var, _)| {
+                                .map(|(var, ty)| {
                                     (
-                                        gen.variable_for(label, var),
-                                        gen.variable_for(function_label, var),
+                                        gen.variable_for(label, var, ty.clone()),
+                                        gen.variable_for(function_label, var, ty),
                                     )
                                 })
                                 .unique()
@@ -459,7 +491,9 @@ impl IrGen {
             ssa::ExpressionKind::When(input, arms) => {
                 let ty = input.ty.clone();
                 self.gen_expr(*input, label, pos);
-                self.gen_when(arms, &ty, label, pos);
+
+                let phi = self.add_phi_for(label, expr.ty);
+                self.gen_when(phi, arms, &ty, label, pos);
             }
             ssa::ExpressionKind::External(lib, identifier, exprs) => {
                 let count = exprs.len();
@@ -543,10 +577,10 @@ impl IrGen {
             ssa::ExpressionKind::With((id, value), body) => {
                 self.gen_expr(*value, label, pos);
 
-                if let Some(&id) = self.contexts.get(&id) {
+                if let Some((_, id)) = self.contexts.get(&id) {
                     let id = *self
                         .items
-                        .get(&id)
+                        .get(id)
                         .unwrap_or_else(|| panic!("cannot find {id:?}"));
 
                     self.statements_for(label, *pos)
@@ -555,7 +589,7 @@ impl IrGen {
                     self.gen_expr(*body, label, pos);
 
                     self.statements_for(label, *pos)
-                        .push(Statement::ResetContext);
+                        .push(Statement::ResetContext(id));
                 } else {
                     // This branch occurs when the constant is never actually used anywhere in the
                     // program, so we can just generate the body without worrying about setting the
@@ -565,7 +599,7 @@ impl IrGen {
                 }
             }
             ssa::ExpressionKind::ContextualConstant(id) => {
-                let id = *self
+                let (_, id) = *self
                     .contexts
                     .get(&id)
                     .unwrap_or_else(|| panic!("cannot find {id:?}"));
@@ -602,14 +636,15 @@ impl IrGen {
     }
 
     fn gen_end(&mut self, label: usize, pos: &mut usize) {
-        for var in self.scopes.last().unwrap().clone().into_iter().rev() {
-            let var = self.variable_for(label, var);
+        for (ty, var) in self.scopes.last().unwrap().clone().into_iter().rev() {
+            let var = self.variable_for(label, var, ty);
             self.statements_for(label, *pos).push(Statement::Free(var));
         }
     }
 
     fn gen_when(
         &mut self,
+        phi: usize,
         mut arms: Vec<ssa::Arm>,
         input_ty: &Type,
         label: usize,
@@ -628,7 +663,7 @@ impl IrGen {
 
             if arm.guard.is_none() {
                 if let ssa::PatternKind::Variable(var) = arm.pattern.kind {
-                    let var = self.variable_for(label, var);
+                    let var = self.variable_for(label, var, input_ty.clone());
                     let arm = arms.pop().unwrap();
 
                     self.statements_for(label, *pos)
@@ -656,6 +691,7 @@ impl IrGen {
                 let else_pos = self.new_basic_block(label, "`when` arm condition not satisfied");
 
                 self.gen_pattern(arm.pattern, input_ty, condition_pos, label, pos);
+
                 *self.terminator_for(label, *pos) = Some(Terminator::Jump(else_pos));
 
                 *pos = condition_pos;
@@ -672,13 +708,15 @@ impl IrGen {
 
             self.statements_for(label, body_pos).push(Statement::Drop);
             self.gen_expr(arm.body, label, &mut body_pos);
+            self.statements_for(label, body_pos)
+                .push(Statement::Phi(phi));
 
-            let free_pos = self.new_basic_block(label, "end of `when` expression");
+            let free_pos = self.new_basic_block(label, "end of `when` arm");
 
             *self.terminator_for(label, body_pos) = Some(Terminator::Jump(free_pos));
 
-            for var in self.scopes.pop().unwrap().into_iter().rev() {
-                let var = self.variable_for(label, var);
+            for (ty, var) in self.scopes.pop().unwrap().into_iter().rev() {
+                let var = self.variable_for(label, var, ty);
                 self.statements_for(label, free_pos)
                     .push(Statement::Free(var));
             }
@@ -765,8 +803,11 @@ impl IrGen {
                 *pos = else_pos;
             }
             ssa::PatternKind::Variable(var) => {
-                self.scopes.last_mut().unwrap().push(var);
-                let var = self.variable_for(label, var);
+                self.scopes
+                    .last_mut()
+                    .unwrap()
+                    .push((input_ty.clone(), var));
+                let var = self.variable_for(label, var, input_ty.clone());
                 self.statements_for(label, *pos)
                     .push(Statement::Initialize(var));
                 *self.terminator_for(label, *pos) = Some(Terminator::Jump(body_pos));
@@ -906,7 +947,7 @@ impl IrGen {
 
                         self.statements_for(label, *pos).push(Statement::Expression(
                             element_ty.clone(),
-                            Expression::VariantElement(discriminant, index),
+                            Expression::VariantElement((discriminant, variant_tys.clone()), index),
                         ));
 
                         self.gen_pattern(pattern, element_ty, next_pos, label, pos);

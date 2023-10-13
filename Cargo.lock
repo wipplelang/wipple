@@ -1053,6 +1053,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1193,15 +1202,6 @@ dependencies = [
  "libc",
  "wasi",
  "windows-sys 0.48.0",
-]
-
-[[package]]
-name = "mktemp"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "975de676448231fcde04b9149d2543077e166b78fc29eae5aa219e7928410da2"
-dependencies = [
- "uuid 0.8.2",
 ]
 
 [[package]]
@@ -1723,7 +1723,7 @@ dependencies = [
  "rkyv_derive",
  "seahash",
  "tinyvec",
- "uuid 1.4.0",
+ "uuid",
 ]
 
 [[package]]
@@ -2509,15 +2509,6 @@ checksum = "711b9620af191e0cdc7468a8d14e709c3dcdb115b36f838e601583af800a370a"
 
 [[package]]
 name = "uuid"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
-dependencies = [
- "getrandom",
-]
-
-[[package]]
-name = "uuid"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d023da39d1fde5a8a3fe1f3e01ca9632ada0a63e9797de55a879d6e2236277be"
@@ -2873,9 +2864,8 @@ dependencies = [
  "futures",
  "handlebars",
  "indicatif",
- "itertools",
+ "itertools 0.10.5",
  "line-col",
- "mktemp",
  "ouroboros",
  "parking_lot",
  "prettyplease",
@@ -2883,11 +2873,13 @@ dependencies = [
  "serde_json",
  "subprocess",
  "syn 1.0.109",
+ "tempfile",
  "tokio",
  "tower-lsp",
  "which",
  "wipple-default-loader",
  "wipple-frontend",
+ "wipple-go-backend",
  "wipple-interpreter-backend",
  "wipple-syntax",
 ]
@@ -2925,7 +2917,7 @@ dependencies = [
  "im",
  "indexmap",
  "internment",
- "itertools",
+ "itertools 0.10.5",
  "lazy_static",
  "parking_lot",
  "paste",
@@ -2943,6 +2935,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "wipple-go-backend"
+version = "0.0.0"
+dependencies = [
+ "itertools 0.11.0",
+ "paste",
+ "wipple-frontend",
+]
+
+[[package]]
 name = "wipple-interpreter-backend"
 version = "0.0.0"
 dependencies = [
@@ -2950,7 +2951,7 @@ dependencies = [
  "futures",
  "getrandom",
  "im",
- "itertools",
+ "itertools 0.10.5",
  "num-traits",
  "parking_lot",
  "rand",
@@ -2968,7 +2969,7 @@ dependencies = [
  "console_error_panic_hook",
  "force-send-sync",
  "futures",
- "itertools",
+ "itertools 0.10.5",
  "js-sys",
  "lazy_static",
  "nonoverlapping_interval_tree",

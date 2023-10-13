@@ -13,7 +13,8 @@ pub use crate::analysis::Intrinsic;
 #[derive(Debug, Clone)]
 pub struct Program {
     pub items: BTreeMap<ItemId, Expression>,
-    pub contexts: BTreeMap<ConstantId, ItemId>,
+    pub contexts: BTreeMap<ConstantId, (Type, ItemId)>,
+    pub variables: BTreeMap<VariableId, Type>,
     pub structures: BTreeMap<StructureId, Vec<Type>>,
     pub enumerations: BTreeMap<EnumerationId, Vec<Vec<Type>>>,
     pub entrypoint: ItemId,
@@ -59,7 +60,7 @@ pub enum ExpressionKind {
     Text(InternedString),
     Block(Vec<Expression>),
     Call(Box<Expression>, Box<Expression>),
-    Function(Pattern, Box<Expression>, analysis::lower::CaptureList),
+    Function(Pattern, Box<Expression>, Vec<(VariableId, Type)>),
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
     Intrinsic(Intrinsic, Vec<Expression>),
@@ -145,7 +146,26 @@ impl Compiler {
                     )
                 })
                 .collect(),
-            contexts: program.contexts.clone(),
+            contexts: program
+                .contexts
+                .iter()
+                .map(|(id, item)| {
+                    let decl = program.declarations.constants.get(id).unwrap();
+                    (*id, (converter.convert_type(&decl.ty), *item))
+                })
+                .collect(),
+            variables: program
+                .declarations
+                .variables
+                .iter()
+                .filter_map(|(var, decl)| {
+                    if !decl.ty.params().is_empty() {
+                        return None;
+                    }
+
+                    Some((*var, converter.convert_type(&decl.ty)))
+                })
+                .collect(),
             structures: converter.structures,
             enumerations: converter.enumerations,
             entrypoint: program.top_level.expect("no entrypoint provided"),
@@ -190,7 +210,10 @@ impl Converter<'_> {
                     ExpressionKind::Function(
                         self.convert_pattern(pattern),
                         Box::new(self.convert_expr(body, captures.is_empty())),
-                        captures.clone(),
+                        captures
+                            .iter()
+                            .map(|(var, ty)| (*var, self.convert_type(ty)))
+                            .collect(),
                     )
                 }
                 analysis::ExpressionKind::When(input, arms) => ExpressionKind::When(
