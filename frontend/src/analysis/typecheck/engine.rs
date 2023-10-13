@@ -7,10 +7,33 @@ use std::{
     rc::Rc,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+pub enum TypeReason {
+    Pattern(SpanList),
+    Annotation(SpanList),
+    TypeAlias(SpanList),
+    Trait(SpanList),
+    Instance(SpanList),
+    StructureField(SpanList),
+    VariantElement(SpanList),
+    FunctionInput(SpanList),
+    FunctionOutput(SpanList),
+    Bound(SpanList),
+    DefaultType(SpanList),
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct UnresolvedType {
     pub span: Option<SpanList>,
+    pub reason: Option<TypeReason>,
     pub kind: UnresolvedTypeKind,
+}
+
+impl UnresolvedType {
+    pub fn with_reason(mut self, reason: Option<TypeReason>) -> Self {
+        self.reason = reason;
+        self
+    }
 }
 
 impl PartialEq for UnresolvedType {
@@ -43,6 +66,7 @@ impl UnresolvedTypeKind {
     pub fn with_span(self, span: impl Into<Option<SpanList>>) -> UnresolvedType {
         UnresolvedType {
             span: span.into(),
+            reason: None,
             kind: self,
         }
     }
@@ -51,7 +75,15 @@ impl UnresolvedTypeKind {
 #[derive(Debug, Clone, Serialize)]
 pub struct Type {
     pub span: Option<SpanList>,
+    pub reason: Option<TypeReason>,
     pub kind: TypeKind,
+}
+
+impl Type {
+    pub fn with_reason(mut self, reason: Option<TypeReason>) -> Self {
+        self.reason = reason;
+        self
+    }
 }
 
 impl PartialEq for Type {
@@ -82,6 +114,7 @@ impl TypeKind {
     pub fn with_span(self, span: impl Into<Option<SpanList>>) -> Type {
         Type {
             span: span.into(),
+            reason: None,
             kind: self,
         }
     }
@@ -99,6 +132,7 @@ impl From<Type> for UnresolvedType {
     fn from(ty: Type) -> Self {
         UnresolvedType {
             span: ty.span,
+            reason: ty.reason,
             kind: match ty.kind {
                 TypeKind::Parameter(param) => UnresolvedTypeKind::Parameter(param),
                 TypeKind::Named(id, params, structure) => UnresolvedTypeKind::Named(
@@ -899,6 +933,7 @@ impl UnresolvedType {
 
         Type {
             span: ty.span,
+            reason: ty.reason,
             kind: match ty.kind.clone() {
                 UnresolvedTypeKind::Variable(_) => {
                     *resolved = false;

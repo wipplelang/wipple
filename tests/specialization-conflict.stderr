@@ -1,6 +1,9 @@
 error: mismatched types
    ┌─ test:16:1
    │
+ 3 │ greet :: A where (Greet A) => A -> Text
+   │ ----- expected because the type was annotated here
+   ·
 16 │ greet :: Bar -> Number
    │ ^^^^^
    │ │

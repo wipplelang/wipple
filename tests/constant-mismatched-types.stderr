@@ -1,6 +1,8 @@
 error: mismatched types
   ┌─ test:2:5
   │
+1 │ x :: Number
+  │ - expected because the type was annotated here
 2 │ x : "42"
   │     ^^^^ expected `Number`, but found `Text`
   │

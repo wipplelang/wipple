@@ -1,22 +1,32 @@
 error: mismatched types
-  ┌─ test:1:18
-  │
-1 │ my-list : list 1 "hi" ()
-  │                  ^^^^
-  │                  │
-  │                  expected `Number`, but found `Text`
-  │                  this element must have the same type as the other elements
-  │
-  = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types
+   ┌─ test:1:18
+   │
+ 1 │ my-list : list 1 "hi" ()
+   │                  ^^^^
+   │                  │
+   │                  expected `Number`, but found `Text`
+   │                  this element must have the same type as the other elements
+   │
+   ┌─ <dir>/std/list.wpl:12:41
+   │
+12 │ build-list! :: A => Mutable (List A) -> A -> ()
+   │                                         - expected because the input to the function has type `Number`
+   │
+   = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types
 
 error: mismatched types
-  ┌─ test:1:23
-  │
-1 │ my-list : list 1 "hi" ()
-  │                       ^^
-  │                       │
-  │                       expected `Number`, but found `()`
-  │                       this element must have the same type as the other elements
-  │
-  = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types
+   ┌─ test:1:23
+   │
+ 1 │ my-list : list 1 "hi" ()
+   │                       ^^
+   │                       │
+   │                       expected `Number`, but found `()`
+   │                       this element must have the same type as the other elements
+   │
+   ┌─ <dir>/std/list.wpl:12:41
+   │
+12 │ build-list! :: A => Mutable (List A) -> A -> ()
+   │                                         - expected because the input to the function has type `Number`
+   │
+   = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types
 

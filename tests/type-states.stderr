@@ -1,6 +1,9 @@
 error: mismatched types
    ┌─ test:17:5
    │
+12 │ land :: Drone Hovering -> Drone Idle
+   │         -------------- expected because the input to the function has type `Drone Hovering`
+   ·
 17 │ _ : my-drone . land -- cannot land because drone is already idle
    │     ^^^^^^^^ expected `Drone Hovering`, but found `Drone Idle`
    │

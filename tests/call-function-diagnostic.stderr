@@ -1,6 +1,9 @@
 error: mismatched types
   ┌─ test:4:15
   │
+2 │ displays-text : (text :: Text) -> show text
+  │                 -------------- expected because the input to the function has type `Text`
+3 │ 
 4 │ displays-text produces-text
   │               ^^^^^^^^^^^^^
   │               │

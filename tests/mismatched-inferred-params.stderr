@@ -1,11 +1,16 @@
 error: mismatched types
-  ┌─ test:1:24
-  │
-1 │ list 1 2 3 . transform ((_ :: Text) -> ())
-  │                        ^^^^^^^^^^^^^^^^^^^
-  │                        │
-  │                        expected `Number -> ()`, but found `Text -> ()`
-  │                        this function accepts `Text`, but it should accept `Number`
-  │
-  = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types
+   ┌─ test:1:24
+   │
+ 1 │ list 1 2 3 . transform ((_ :: Text) -> ())
+   │                        ^^^^^^^^^^^^^^^^^^^
+   │                        │
+   │                        expected `Number -> ()`, but found `Text -> ()`
+   │                        this function accepts `Text`, but it should accept `Number`
+   │
+   ┌─ <dir>/std/sequence.wpl:38:88
+   │
+38 │ transform :: Container (infer Element) Result where (As-Sequence Container Element) => (Element -> Result) -> Container -> Sequence Result
+   │                                                                                        ------------------- expected because the input to the function has type `Number -> ()`
+   │
+   = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types
 

@@ -1923,7 +1923,8 @@ impl Typechecker {
                 let function = self.convert_expr(*function, info);
 
                 let output_ty = engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None))
-                    .with_span(expr.span);
+                    .with_span(expr.span)
+                    .with_reason(Some(engine::TypeReason::FunctionOutput(function.span)));
 
                 if let Err(error) = self.unify(
                     function.id,
@@ -1975,8 +1976,15 @@ impl Typechecker {
                     id: expr.id,
                     span: expr.span,
                     ty: engine::UnresolvedTypeKind::Function(
-                        Box::new(input_ty),
-                        Box::new(body.ty.clone()),
+                        Box::new(
+                            input_ty
+                                .with_reason(Some(engine::TypeReason::FunctionInput(pattern.span))),
+                        ),
+                        Box::new(
+                            body.ty
+                                .clone()
+                                .with_reason(Some(engine::TypeReason::FunctionOutput(body.span))),
+                        ),
                     )
                     .with_span(expr.span),
                     kind: UnresolvedExpressionKind::Function(
@@ -2070,7 +2078,9 @@ impl Typechecker {
                 }
             }
             lower::ExpressionKind::Annotate(value, ty) => {
-                let ty = self.convert_type_annotation(ty);
+                let ty =
+                    self.convert_type_annotation(Some(engine::TypeReason::Annotation(ty.span)), ty);
+
                 let value = self.convert_expr(*value, info);
 
                 if let Err(error) = self.unify(value.id, value.span, value.ty, ty.clone()) {
@@ -2722,7 +2732,10 @@ impl Typechecker {
                     )
                 }
                 lower::PatternKind::Annotate(inner, target_ty) => {
-                    let target_ty = self.convert_type_annotation(target_ty);
+                    let target_ty = self.convert_type_annotation(
+                        Some(engine::TypeReason::Annotation(target_ty.span)),
+                        target_ty,
+                    );
 
                     if let Err(error) = self.unify(None, pattern.span, ty, target_ty.clone()) {
                         self.add_error(error);
@@ -4255,7 +4268,10 @@ impl Typechecker {
                             .map(|field| {
                                 (
                                     field.ty.clone(),
-                                    self.convert_finalized_type_annotation(field.ty),
+                                    self.convert_finalized_type_annotation(
+                                        Some(engine::TypeReason::StructureField(field.ty.span)),
+                                        field.ty,
+                                    ),
                                 )
                             })
                             .collect(),
@@ -4271,7 +4287,13 @@ impl Typechecker {
                                     .tys
                                     .into_iter()
                                     .map(|ty| {
-                                        (ty.clone(), self.convert_finalized_type_annotation(ty))
+                                        (
+                                            ty.clone(),
+                                            self.convert_finalized_type_annotation(
+                                                Some(engine::TypeReason::VariantElement(ty.span)),
+                                                ty,
+                                            ),
+                                        )
                                     })
                                     .collect()
                             })
@@ -4280,7 +4302,10 @@ impl Typechecker {
                     }
                 }
                 lower::TypeDeclarationKind::Alias(ty) => {
-                    TypeDeclKind::Alias(self.convert_finalized_type_annotation(ty))
+                    TypeDeclKind::Alias(self.convert_finalized_type_annotation(
+                        Some(engine::TypeReason::TypeAlias(ty.span)),
+                        ty,
+                    ))
                 }
             },
             convert_from: decl
@@ -4291,7 +4316,7 @@ impl Typechecker {
                 .cloned()
                 .map(|(annotation, replacement)| {
                     (
-                        self.convert_finalized_type_annotation(annotation),
+                        self.convert_finalized_type_annotation(None, annotation),
                         replacement,
                     )
                 })
@@ -4322,10 +4347,9 @@ impl Typechecker {
             span: decl.span,
             params: decl.value.parameters,
             ty_annotation: decl.value.ty.clone(),
-            ty: decl
-                .value
-                .ty
-                .map(|ty| self.convert_finalized_type_annotation(ty)),
+            ty: decl.value.ty.map(|ty| {
+                self.convert_finalized_type_annotation(Some(engine::TypeReason::Trait(ty.span)), ty)
+            }),
             attributes: decl.value.attributes,
             uses: decl.uses.into_iter().collect(),
         };
@@ -4351,7 +4375,10 @@ impl Typechecker {
 
         self.generic_constants.insert(id, (false, decl.value.value));
 
-        let ty = self.convert_generic_type_annotation(decl.value.ty.clone());
+        let ty = self.convert_generic_type_annotation(
+            Some(engine::TypeReason::Annotation(decl.span)),
+            decl.value.ty.clone(),
+        );
 
         if let Some(no_reuse_message) = self.no_reuse_message(&ty) {
             self.compiler.add_error(
@@ -4378,7 +4405,13 @@ impl Typechecker {
                 params: bound
                     .parameters
                     .into_iter()
-                    .map(|ty| self.convert_generic_type_annotation(ty).into())
+                    .map(|ty| {
+                        self.convert_generic_type_annotation(
+                            Some(engine::TypeReason::Bound(ty.span)),
+                            ty,
+                        )
+                        .into()
+                    })
                     .collect(),
             })
             .collect::<Vec<_>>();
@@ -4463,7 +4496,12 @@ impl Typechecker {
             .tr_parameters
             .clone()
             .into_iter()
-            .map(|ty| self.convert_generic_type_annotation(ty))
+            .map(|ty| {
+                self.convert_generic_type_annotation(
+                    Some(engine::TypeReason::Instance(ty.span)),
+                    ty,
+                )
+            })
             .zip(tr.params.iter().map(|&param| {
                 self.with_type_parameter_decl(param, |param| param.infer.then_some(param.span))
                     .flatten()
@@ -4507,7 +4545,13 @@ impl Typechecker {
                 params: bound
                     .parameters
                     .into_iter()
-                    .map(|ty| self.convert_generic_type_annotation(ty).into())
+                    .map(|ty| {
+                        self.convert_generic_type_annotation(
+                            Some(engine::TypeReason::Bound(ty.span)),
+                            ty,
+                        )
+                        .into()
+                    })
                     .collect(),
             })
             .collect::<Vec<_>>();
@@ -4690,10 +4734,12 @@ impl Typechecker {
         let decl = TypeParameterDecl {
             name: decl.name,
             span: decl.span,
-            default: decl
-                .value
-                .default
-                .map(|ty| self.convert_generic_type_annotation(ty)),
+            default: decl.value.default.map(|ty| {
+                self.convert_generic_type_annotation(
+                    Some(engine::TypeReason::DefaultType(ty.span)),
+                    ty,
+                )
+            }),
             infer: decl.value.infer,
             uses: decl.uses.into_iter().collect(),
         };
@@ -4831,8 +4877,13 @@ impl Typechecker {
         self.add_substitutions(ty, &mut GenericSubstitutions::new());
     }
 
-    fn convert_type_annotation(&self, annotation: TypeAnnotation) -> engine::UnresolvedType {
+    fn convert_type_annotation(
+        &self,
+        reason: Option<engine::TypeReason>,
+        annotation: TypeAnnotation,
+    ) -> engine::UnresolvedType {
         self.convert_type_annotation_inner(
+            reason,
             annotation,
             &|typechecker, span| {
                 Some(
@@ -4844,10 +4895,15 @@ impl Typechecker {
         )
     }
 
-    fn convert_generic_type_annotation(&self, annotation: TypeAnnotation) -> engine::Type {
+    fn convert_generic_type_annotation(
+        &self,
+        reason: Option<engine::TypeReason>,
+        annotation: TypeAnnotation,
+    ) -> engine::Type {
         let span = annotation.span;
 
         let ty = self.convert_type_annotation_inner(
+            reason,
             annotation,
             &|typechecker, span| {
                 let param = typechecker.compiler.new_type_parameter_id();
@@ -4880,10 +4936,15 @@ impl Typechecker {
         finalized_ty
     }
 
-    fn convert_finalized_type_annotation(&self, annotation: TypeAnnotation) -> engine::Type {
+    fn convert_finalized_type_annotation(
+        &self,
+        reason: Option<engine::TypeReason>,
+        annotation: TypeAnnotation,
+    ) -> engine::Type {
         let span = annotation.span;
 
-        let ty = self.convert_type_annotation_inner(annotation, &|_, _| None, &mut Vec::new());
+        let ty =
+            self.convert_type_annotation_inner(reason, annotation, &|_, _| None, &mut Vec::new());
 
         let (finalized_ty, resolved) = ty.finalize(&self.ctx);
         if !resolved {
@@ -4895,11 +4956,12 @@ impl Typechecker {
 
     fn convert_type_annotation_inner(
         &self,
+        reason: Option<engine::TypeReason>,
         annotation: TypeAnnotation,
         convert_placeholder: &impl Fn(&Self, SpanList) -> Option<engine::UnresolvedType>,
         stack: &mut Vec<TypeId>,
     ) -> engine::UnresolvedType {
-        match annotation.kind {
+        let ty = (|| match annotation.kind {
             TypeAnnotationKind::Error(_) => {
                 engine::UnresolvedTypeKind::Error.with_span(annotation.span)
             }
@@ -4923,7 +4985,7 @@ impl Typechecker {
                 let mut params = params
                     .into_iter()
                     .map(|param| {
-                        self.convert_type_annotation_inner(param, convert_placeholder, stack)
+                        self.convert_type_annotation_inner(None, param, convert_placeholder, stack)
                     })
                     .collect::<Vec<_>>();
 
@@ -4975,8 +5037,12 @@ impl Typechecker {
 
                 macro_rules! convert_and_instantiate {
                     ($ty:expr) => {{
-                        let mut ty =
-                            self.convert_type_annotation_inner($ty, convert_placeholder, stack);
+                        let mut ty = self.convert_type_annotation_inner(
+                            None,
+                            $ty,
+                            convert_placeholder,
+                            stack,
+                        );
 
                         ty.instantiate_with(&self.ctx, &substitutions);
 
@@ -5199,6 +5265,7 @@ impl Typechecker {
 
                             engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::List(
                                 Box::new(self.convert_type_annotation_inner(
+                                    None,
                                     parameters.pop().unwrap(),
                                     convert_placeholder,
                                     stack,
@@ -5239,6 +5306,7 @@ impl Typechecker {
 
                             engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Mutable(
                                 Box::new(self.convert_type_annotation_inner(
+                                    None,
                                     parameters.pop().unwrap(),
                                     convert_placeholder,
                                     stack,
@@ -5280,17 +5348,31 @@ impl Typechecker {
                 }
             }
             TypeAnnotationKind::Function(input, output) => engine::UnresolvedTypeKind::Function(
-                Box::new(self.convert_type_annotation_inner(*input, convert_placeholder, stack)),
-                Box::new(self.convert_type_annotation_inner(*output, convert_placeholder, stack)),
+                Box::new(self.convert_type_annotation_inner(
+                    Some(engine::TypeReason::FunctionInput(input.span)),
+                    *input,
+                    convert_placeholder,
+                    stack,
+                )),
+                Box::new(self.convert_type_annotation_inner(
+                    Some(engine::TypeReason::FunctionInput(output.span)),
+                    *output,
+                    convert_placeholder,
+                    stack,
+                )),
             )
             .with_span(annotation.span),
             TypeAnnotationKind::Tuple(tys) => engine::UnresolvedTypeKind::Tuple(
                 tys.into_iter()
-                    .map(|ty| self.convert_type_annotation_inner(ty, convert_placeholder, stack))
+                    .map(|ty| {
+                        self.convert_type_annotation_inner(None, ty, convert_placeholder, stack)
+                    })
                     .collect(),
             )
             .with_span(annotation.span),
-        }
+        })();
+
+        ty.with_reason(reason)
     }
 
     fn substitute_trait_params(
@@ -5729,6 +5811,86 @@ impl Typechecker {
 
                 let mut notes = vec![Note::primary(error.span, message)];
                 let mut fix = None;
+
+                if let Some(reason) = expected.reason {
+                    let note = match reason {
+                        engine::TypeReason::Pattern(span) => Note::secondary(
+                            span,
+                            format!(
+                                "expected because this pattern has type {}",
+                                self.format_type(expected.clone(), format)
+                            ),
+                        ),
+                        engine::TypeReason::Annotation(span) => {
+                            Note::secondary(span, "expected because the type was annotated here")
+                        }
+                        engine::TypeReason::TypeAlias(span) => Note::secondary(
+                            span,
+                            format!(
+                                "expected because the type was defined to be {} here",
+                                self.format_type(expected.clone(), format)
+                            ),
+                        ),
+                        engine::TypeReason::Trait(span) => Note::secondary(
+                            span,
+                            format!(
+                                "expected because the trait was defined to be a value of type {}",
+                                self.format_type(expected.clone(), format)
+                            ),
+                        ),
+                        engine::TypeReason::Instance(span) => Note::secondary(
+                            span,
+                            format!(
+                                "expected because this type in the instance is {}",
+                                self.format_type(expected.clone(), format)
+                            ),
+                        ),
+                        engine::TypeReason::StructureField(span) => Note::secondary(
+                            span,
+                            format!(
+                                "expected because this field in the structure has type {}",
+                                self.format_type(expected.clone(), format)
+                            ),
+                        ),
+                        engine::TypeReason::VariantElement(span) => Note::secondary(
+                            span,
+                            format!(
+                                "expected because this element of the variant has type {}",
+                                self.format_type(expected.clone(), format)
+                            ),
+                        ),
+                        engine::TypeReason::FunctionInput(span) => Note::secondary(
+                            span,
+                            format!(
+                                "expected because the input to the function has type {}",
+                                self.format_type(expected.clone(), format)
+                            ),
+                        ),
+                        engine::TypeReason::FunctionOutput(span) => Note::secondary(
+                            span,
+                            format!(
+                                "expected because the output of the function has type {}",
+                                self.format_type(expected.clone(), format)
+                            ),
+                        ),
+                        engine::TypeReason::Bound(span) => Note::secondary(
+                            span,
+                            format!(
+                                "expected because this type in the bound is {}",
+                                self.format_type(expected.clone(), format)
+                            ),
+                        ),
+                        engine::TypeReason::DefaultType(span) => Note::secondary(
+                            span,
+                            format!(
+                                "expected because the type defaults to {}",
+                                self.format_type(expected.clone(), format)
+                            ),
+                        ),
+                    };
+
+                    notes.push(note);
+                }
 
                 {
                     let mut output = actual.clone();

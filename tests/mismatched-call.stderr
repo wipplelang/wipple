@@ -2,7 +2,10 @@ error: mismatched types
    ┌─ test:6:15
    │
  6 │ accepts-text (1 + 2)
-   │               ^^^^^ expected `Text`, but found `Number`
+   │               ^^^^^
+   │               │
+   │               expected `Text`, but found `Number`
+   │               expected because the output of the function has type `Text`
    │
    ┌─ <dir>/std/math.wpl:17:14
    │
