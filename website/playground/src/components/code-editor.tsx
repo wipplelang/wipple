@@ -43,7 +43,7 @@ import PopupState, {
 } from "material-ui-popup-state";
 import { minimalSetup } from "codemirror";
 import { EditorView, placeholder, Decoration, ViewPlugin, DecorationSet } from "@codemirror/view";
-import { Compartment, EditorState, Range } from "@codemirror/state";
+import { Compartment, EditorState, Prec, Range } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { keymap, hoverTooltip, ViewUpdate, closeHoverTooltips, WidgetType } from "@codemirror/view";
@@ -54,7 +54,7 @@ import { parser } from "../languages/wipple.grammar";
 import { Settings } from "../App";
 import { Popover } from "@mui/material";
 import { SwatchesPicker } from "react-color";
-import { closeBrackets } from "@codemirror/autocomplete";
+import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import {
     RemoteCursor,
     remoteCursors,
@@ -770,7 +770,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 extensions: [
                     minimalSetup,
                     wippleLanguage,
-                    keymap.of([...defaultKeymap, indentWithTab]),
                     EditorView.lineWrapping,
                     EditorView.baseTheme({
                         "&.cm-editor": {
@@ -801,6 +800,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     placeholder("Write your code here!"),
                     hover,
                     highlight,
+                    keymap.of([...defaultKeymap, indentWithTab]),
+                    Prec.high(keymap.of(closeBracketsKeymap)),
                     closeBrackets(),
                     peerExtension,
                     remoteCursorsTheme,
