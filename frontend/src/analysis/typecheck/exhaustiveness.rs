@@ -292,66 +292,66 @@ impl Typechecker {
                 Pattern::Constructor(Constructor::Structure(*id), patterns)
             }
             analysis::PatternKind::Text(_) => Pattern::Constructor(
-                Constructor::Unbounded(
-                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Text)
-                        .with_span(None),
-                ),
+                Constructor::Unbounded(analysis::typecheck::engine::Type::new(
+                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Text),
+                    None,
+                )),
                 Vec::new(),
             ),
             analysis::PatternKind::Number(_) => Pattern::Constructor(
-                Constructor::Unbounded(
-                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Number)
-                        .with_span(None),
-                ),
+                Constructor::Unbounded(analysis::typecheck::engine::Type::new(
+                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Number),
+                    None,
+                )),
                 Vec::new(),
             ),
             analysis::PatternKind::Integer(_) => Pattern::Constructor(
-                Constructor::Unbounded(
-                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Integer)
-                        .with_span(None),
-                ),
+                Constructor::Unbounded(analysis::typecheck::engine::Type::new(
+                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Integer),
+                    None,
+                )),
                 Vec::new(),
             ),
             analysis::PatternKind::Natural(_) => Pattern::Constructor(
-                Constructor::Unbounded(
-                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Natural)
-                        .with_span(None),
-                ),
+                Constructor::Unbounded(analysis::typecheck::engine::Type::new(
+                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Natural),
+                    None,
+                )),
                 Vec::new(),
             ),
             analysis::PatternKind::Byte(_) => Pattern::Constructor(
-                Constructor::Unbounded(
-                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Byte)
-                        .with_span(None),
-                ),
+                Constructor::Unbounded(analysis::typecheck::engine::Type::new(
+                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Byte),
+                    None,
+                )),
                 Vec::new(),
             ),
             analysis::PatternKind::Signed(_) => Pattern::Constructor(
-                Constructor::Unbounded(
-                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Signed)
-                        .with_span(None),
-                ),
+                Constructor::Unbounded(analysis::typecheck::engine::Type::new(
+                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Signed),
+                    None,
+                )),
                 Vec::new(),
             ),
             analysis::PatternKind::Unsigned(_) => Pattern::Constructor(
-                Constructor::Unbounded(
-                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Unsigned)
-                        .with_span(None),
-                ),
+                Constructor::Unbounded(analysis::typecheck::engine::Type::new(
+                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Unsigned),
+                    None,
+                )),
                 Vec::new(),
             ),
             analysis::PatternKind::Float(_) => Pattern::Constructor(
-                Constructor::Unbounded(
-                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Float)
-                        .with_span(None),
-                ),
+                Constructor::Unbounded(analysis::typecheck::engine::Type::new(
+                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Float),
+                    None,
+                )),
                 Vec::new(),
             ),
             analysis::PatternKind::Double(_) => Pattern::Constructor(
-                Constructor::Unbounded(
-                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Double)
-                        .with_span(None),
-                ),
+                Constructor::Unbounded(analysis::typecheck::engine::Type::new(
+                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Double),
+                    None,
+                )),
                 Vec::new(),
             ),
         }

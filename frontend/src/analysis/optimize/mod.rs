@@ -1,6 +1,9 @@
 use crate::{
-    analysis::{Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, Semantics},
-    Compiler, ItemId, Optimize, VariableId,
+    analysis::{
+        Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, Semantics, SpanList, Type,
+        TypeKind,
+    },
+    Compiler, ConstantId, ItemId, Optimize, VariableId,
 };
 use parking_lot::RwLock;
 use std::{
@@ -64,10 +67,6 @@ impl Optimize for Program {
 
 pub mod ssa {
     use super::*;
-    use crate::{
-        analysis::{SpanList, TypeKind},
-        ConstantId,
-    };
 
     #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
     pub struct Options {}
@@ -109,8 +108,10 @@ pub mod ssa {
                                                             .last()
                                                             .map(|expr| expr.ty.clone())
                                                             .unwrap_or_else(|| {
-                                                                TypeKind::Tuple(Vec::new())
-                                                                    .with_span(expr.span)
+                                                                Type::new(
+                                                                    TypeKind::Tuple(Vec::new()),
+                                                                    expr.span,
+                                                                )
                                                             }),
                                                         span,
                                                         kind: ExpressionKind::Block(
@@ -499,8 +500,6 @@ pub mod inline {
 }
 
 pub mod unused {
-    use std::collections::BTreeSet;
-
     use super::*;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]

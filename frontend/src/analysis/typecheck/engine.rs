@@ -62,12 +62,12 @@ pub enum UnresolvedTypeKind {
     Error,
 }
 
-impl UnresolvedTypeKind {
-    pub fn with_span(self, span: impl Into<Option<SpanList>>) -> UnresolvedType {
+impl UnresolvedType {
+    pub fn new(kind: UnresolvedTypeKind, span: impl Into<Option<SpanList>>) -> Self {
         UnresolvedType {
             span: span.into(),
             reason: None,
-            kind: self,
+            kind,
         }
     }
 }
@@ -110,12 +110,12 @@ pub enum TypeKind {
     Error,
 }
 
-impl TypeKind {
-    pub fn with_span(self, span: impl Into<Option<SpanList>>) -> Type {
+impl Type {
+    pub fn new(kind: TypeKind, span: impl Into<Option<SpanList>>) -> Self {
         Type {
             span: span.into(),
             reason: None,
-            kind: self,
+            kind,
         }
     }
 }

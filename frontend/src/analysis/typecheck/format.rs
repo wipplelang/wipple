@@ -121,7 +121,7 @@ impl FormattableType {
             FormattableTypeKind::Type(ty) => ty
                 .params()
                 .into_iter()
-                .map(|param| UnresolvedTypeKind::Parameter(param).with_span(None))
+                .map(|param| UnresolvedType::new(UnresolvedTypeKind::Parameter(param), None))
                 .collect(),
             FormattableTypeKind::Trait(_, params) => params.clone(),
         };
