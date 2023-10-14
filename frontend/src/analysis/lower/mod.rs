@@ -468,12 +468,14 @@ impl DiagnosticItems {
 #[derive(Debug, Clone, Default)]
 #[non_exhaustive]
 pub struct DiagnosticAliases {
-    pub aliases: BTreeMap<InternedString, InternedString>,
+    pub aliases: BTreeMap<InternedString, Vec<InternedString>>,
 }
 
 impl DiagnosticAliases {
     fn merge(&mut self, other: DiagnosticAliases) {
-        self.aliases.extend(other.aliases);
+        for (name, aliases) in other.aliases {
+            self.aliases.entry(name).or_default().extend(aliases);
+        }
     }
 }
 
@@ -2040,7 +2042,9 @@ impl Lowerer {
                             self.file_info
                                 .diagnostic_aliases
                                 .aliases
-                                .insert(attr.diagnostic_alias, name);
+                                .entry(attr.diagnostic_alias)
+                                .or_default()
+                                .push(name);
                         }
                     }
                 }
@@ -5249,6 +5253,8 @@ impl Lowerer {
                     .diagnostic_aliases
                     .aliases
                     .get(&name)
+                    .into_iter()
+                    .flatten()
                     .map(|alias| (
                         Note::secondary(span, format!("did you mean `{alias}`?")),
                         Fix::new(format!("replace with `{alias}`"), FixRange::replace(span.first()), alias),
