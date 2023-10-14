@@ -100,16 +100,19 @@ backward : { px } -> handle of turtle . message "backward" px
 
 [help "Turn the turtle left by the specified angle."]
 [help-group "Turtle Graphics"]
+[diagnostic-alias "turn"]
 left :: Angle -> ()
 left : { deg } -> handle of turtle . message "left" deg
 
 [help "Turn the turtle right by the specified angle."]
 [help-group "Turtle Graphics"]
+[diagnostic-alias "turn"]
 right :: Angle -> ()
 right : { deg } -> handle of turtle . message "right" deg
 
 [help "Rotate the turtle to the specified angle."]
 [help-group "Turtle Graphics"]
+[diagnostic-alias "turn"]
 rotate :: Angle -> ()
 rotate : { deg } -> handle of turtle . message "rotate" deg
 

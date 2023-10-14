@@ -481,6 +481,8 @@ expr!(pub, "", engine::Type, {
     Double(f64),
     Constant(ItemId),
     ExpandedConstant(ItemId),
+    UnresolvedConstant(ConstantId),
+    UnresolvedTrait(TraitId),
 });
 
 impl Expression {
@@ -3994,15 +3996,23 @@ impl Typechecker {
         let kind = (|| match expr.kind {
             MonomorphizedExpressionKind::Error(trace) => ExpressionKind::Error(trace),
             MonomorphizedExpressionKind::Marker => ExpressionKind::Marker,
-            MonomorphizedExpressionKind::UnresolvedTrait(_)
-            | MonomorphizedExpressionKind::UnresolvedConstant(_) => {
+            MonomorphizedExpressionKind::UnresolvedTrait(id) => {
                 self.add_error(self.error(
                     engine::TypeError::UnresolvedType(expr.ty),
                     expr.id,
                     expr.span,
                 ));
 
-                ExpressionKind::error(&self.compiler)
+                ExpressionKind::UnresolvedTrait(id)
+            }
+            MonomorphizedExpressionKind::UnresolvedConstant(id) => {
+                self.add_error(self.error(
+                    engine::TypeError::UnresolvedType(expr.ty),
+                    expr.id,
+                    expr.span,
+                ));
+
+                ExpressionKind::UnresolvedConstant(id)
             }
             MonomorphizedExpressionKind::Constant(id) => ExpressionKind::Constant(id),
             MonomorphizedExpressionKind::Variable(var) => ExpressionKind::Variable(var),
@@ -5971,6 +5981,37 @@ impl Typechecker {
             }
         };
 
+        let message_from_segments = |typechecker: &mut Self,
+                                     (segments, trailing_segment): (
+            Vec<(InternedString, TypeParameterId)>,
+            Option<InternedString>,
+        ),
+                                     params: engine::GenericSubstitutions,
+                                     show_code: bool,
+                                     format: format::Format| {
+            segments
+                .iter()
+                .map(|(text, param)| {
+                    let ty = params.get(param).unwrap().clone();
+
+                    let code = ty
+                        .span
+                        .filter(|_| show_code)
+                        .and_then(|span| {
+                            let code = typechecker
+                                .compiler
+                                .single_line_source_code_for_span(span.first())?;
+
+                            Some(format!("`{code}`"))
+                        })
+                        .unwrap_or_else(|| typechecker.format_type(ty, format));
+
+                    text.to_string() + &code
+                })
+                .chain(trailing_segment.map(|text| text.to_string()))
+                .collect()
+        };
+
         let mut diagnostic = match *error.error {
             engine::TypeError::ErrorExpression => return,
             engine::TypeError::Recursive(_) => self.compiler.error(
@@ -6396,33 +6437,17 @@ impl Typechecker {
                 let error_message = trait_attributes.on_unimplemented.map_or_else(
                     || String::from("missing instance"),
                     |(segments, trailing_segment)| {
-                        let trait_params = trait_params
-                            .clone()
-                            .into_iter()
-                            .zip(params.clone())
-                            .collect::<BTreeMap<_, _>>();
-
-                        segments
-                            .iter()
-                            .map(|(text, param)| {
-                                let ty = trait_params.get(param).unwrap().clone();
-
-                                let code = ty
-                                    .span
-                                    .filter(|_| trait_attributes.decl_attributes.help_show_code)
-                                    .and_then(|span| {
-                                        let code = self
-                                            .compiler
-                                            .single_line_source_code_for_span(span.first())?;
-
-                                        Some(format!("`{code}`"))
-                                    })
-                                    .unwrap_or_else(|| self.format_type(ty, format));
-
-                                text.to_string() + &code
-                            })
-                            .chain(trailing_segment.map(|text| text.to_string()))
-                            .collect()
+                        message_from_segments(
+                            self,
+                            (segments, trailing_segment),
+                            trait_params
+                                .clone()
+                                .into_iter()
+                                .zip(params.clone())
+                                .collect(),
+                            trait_attributes.decl_attributes.help_show_code,
+                            format,
+                        )
                     },
                 );
 
@@ -6490,17 +6515,85 @@ impl Typechecker {
                         )
                     });
 
-                self.compiler.error_with_trace(
-                    "could not determine the type of this expression",
-                    std::iter::once(Note::primary(
-                        error.span,
-                        "try annotating the type with `::`",
-                    ))
-                    .chain(note)
-                    .collect(),
-                    "unknown-type",
-                    error.trace,
-                )
+                let (error_message, fix) = error
+                    .expr
+                    .and_then(|id| self.expr_for(id))
+                    .and_then(|expr| {
+                        let constant = match expr.kind {
+                            ExpressionKind::Constant(item) => {
+                                let (_, constant) = self.items.get(&item).unwrap().0?;
+                                constant
+                            }
+                            ExpressionKind::UnresolvedConstant(id) => id,
+                            _ => return None,
+                        };
+
+                        let decl = self.with_constant_decl(constant, |decl| decl.clone())?;
+
+                        let (segments, trailing_segment) = decl.attributes.on_unresolved?;
+
+                        let params =
+                            self.ctx
+                                .clone()
+                                .unify_params(expr.ty.into(), decl.ty, |param| {
+                                    self.get_default_for_param(param, None)
+                                });
+
+                        let mut fix = None;
+
+                        if let Some(source_code) = self
+                            .compiler
+                            .single_line_source_code_for_span(error.span.first())
+                        {
+                            if let Some((message, mut replacement)) = decl.attributes.resolve {
+                                wipple_syntax::parse::substitute(
+                                    &mut replacement,
+                                    InternedString::new("value"),
+                                    wipple_syntax::parse::Expr::new(
+                                        error.span,
+                                        wipple_syntax::parse::ExprKind::SourceCode(source_code),
+                                    ),
+                                );
+
+                                fix = Some(Fix::new(
+                                    message,
+                                    FixRange::replace(error.span.first()),
+                                    replacement,
+                                ));
+                            }
+                        }
+
+                        Some((
+                            message_from_segments(
+                                self,
+                                (segments, trailing_segment),
+                                params,
+                                decl.attributes.decl_attributes.help_show_code,
+                                format,
+                            ),
+                            fix,
+                        ))
+                    })
+                    .unwrap_or_else(|| {
+                        (
+                            String::from("could not determine the type of this expression"),
+                            None,
+                        )
+                    });
+
+                self.compiler
+                    .error_with_trace(
+                        error_message,
+                        std::iter::once(Note::primary(
+                            error.span,
+                            "try annotating the type with `::`",
+                        ))
+                        .chain(note)
+                        .collect(),
+                        "unknown-type",
+                        error.trace,
+                    )
+                    .fix(fix)
             }
             engine::TypeError::InvalidNumericLiteral(ty) => {
                 let format =

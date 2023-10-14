@@ -74,6 +74,12 @@ impl Expression {
     fn display_with(&self, f: &mut impl fmt::Write, file: &Program, indent: usize) -> fmt::Result {
         match &self.kind {
             ExpressionKind::Error(_) => write!(f, "<error expression>")?,
+            ExpressionKind::UnresolvedConstant(id) => {
+                write!(f, "<unresolved constant #{}>", id.counter)?
+            }
+            ExpressionKind::UnresolvedTrait(id) => {
+                write!(f, "<unresolved trait #{}>", id.counter)?
+            }
             ExpressionKind::Marker => {
                 let id = match self.ty.kind {
                     TypeKind::Named(id, _, _) => id,

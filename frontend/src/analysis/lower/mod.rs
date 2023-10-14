@@ -341,6 +341,11 @@ impl Resolve<ConstantDeclaration> for UnresolvedConstantDeclaration {
 #[non_exhaustive]
 pub struct ConstantAttributes {
     pub decl_attributes: DeclarationAttributes,
+    pub on_unresolved: Option<(
+        Vec<(InternedString, TypeParameterId)>,
+        Option<InternedString>,
+    )>,
+    pub resolve: Option<(InternedString, wipple_syntax::parse::Expr<Analysis>)>,
     pub is_specialization: bool,
     pub is_contextual: bool,
 }
@@ -1726,7 +1731,7 @@ impl Lowerer {
                 StatementDeclarationKind::Constant(id, (scope, (parameters, bounds)), ty) => {
                     let ty = self.lower_type(ty, ctx, None);
 
-                    let attributes = self.lower_constant_attributes(decl.attributes, ctx);
+                    let attributes = self.lower_constant_attributes(decl.attributes, ctx, &scope);
 
                     self.declarations.constants.get_mut(&id).unwrap().value =
                         Some(UnresolvedConstantDeclaration {
@@ -4767,85 +4772,16 @@ impl Lowerer {
         TraitAttributes {
             decl_attributes: self.lower_decl_attributes(attributes),
             on_unimplemented: attributes.on_unimplemented.as_ref().and_then(|attribute| {
-                Some((
+                self.lower_on_unimplemented_attribute(
                     attribute
                         .segments
                         .iter()
                         .cloned()
-                        .map(|segment| {
-                            let (param_span, param_name) = segment.param.ok()?;
-
-                            let param = match self.get(
-                                param_name,
-                                param_span,
-                                AnyDeclaration::as_type_parameter,
-                                scope,
-                            ) {
-                                Ok(Some(id)) => id,
-                                Ok(None) => {
-                                    let (notes, fix) = self.diagnostic_notes_for_unresolved_name(
-                                        param_span,
-                                        param_name,
-                                        ctx,
-                                        AnyDeclaration::as_type_parameter,
-                                        scope,
-                                    );
-
-                                    self.compiler.add_diagnostic(
-                                        self.compiler
-                                            .error(
-                                                format!(
-                                                    "cannot find type parameter `{param_name}`"
-                                                ),
-                                                std::iter::once(Note::primary(
-                                                    param_span,
-                                                    "no such type parameter",
-                                                ))
-                                                .chain(notes)
-                                                .collect(),
-                                                "undefined-name",
-                                            )
-                                            .fix(fix),
-                                    );
-
-                                    return None;
-                                }
-                                Err(candidates) => {
-                                    self.compiler.add_error(
-                                        format!(
-                                            "multiple definitions of type parameter `{param_name}`",
-                                        ),
-                                        std::iter::once(Note::primary(
-                                            param_span,
-                                            format!("`{param_name}` could refer to..."),
-                                        ))
-                                        .chain(
-                                            self.diagnostic_notes_for_ambiguous_name(
-                                                candidates
-                                                    .into_iter()
-                                                    .map(|candidate| {
-                                                        self.declarations
-                                                            .type_parameters
-                                                            .get(&candidate)
-                                                            .unwrap()
-                                                            .span
-                                                    })
-                                                    .collect(),
-                                            ),
-                                        )
-                                        .collect(),
-                                        "",
-                                    );
-
-                                    return None;
-                                }
-                            };
-
-                            Some((segment.string, param))
-                        })
-                        .collect::<Option<_>>()?,
+                        .map(|segment| (segment.string, segment.param)),
                     attribute.trailing_segment,
-                ))
+                    ctx,
+                    scope,
+                )
             }),
             sealed: attributes.sealed.is_some(),
             allow_overlapping_instances: attributes.allow_overlapping_instances.is_some(),
@@ -4859,15 +4795,123 @@ impl Lowerer {
     fn lower_constant_attributes(
         &mut self,
         attributes: &ast::StatementAttributes<Analysis>,
-        _ctx: &Context,
+        ctx: &Context,
+        scope: &ScopeSet,
     ) -> ConstantAttributes {
         // TODO: Raise errors for misused attributes
 
         ConstantAttributes {
             decl_attributes: self.lower_decl_attributes(attributes),
+            on_unresolved: attributes.on_unresolved.as_ref().and_then(|attribute| {
+                self.lower_on_unimplemented_attribute(
+                    attribute
+                        .segments
+                        .iter()
+                        .cloned()
+                        .map(|segment| (segment.string, segment.param)),
+                    attribute.trailing_segment,
+                    ctx,
+                    scope,
+                )
+            }),
+            resolve: attributes.resolve.as_ref().and_then(|attribute| {
+                Some((
+                    attribute.message.as_ref().copied().ok()?,
+                    attribute.replacement.clone(),
+                ))
+            }),
             is_contextual: attributes.contextual.is_some(),
             is_specialization: attributes.specialize.is_some(),
         }
+    }
+
+    fn lower_on_unimplemented_attribute(
+        &mut self,
+        segments: impl Iterator<
+            Item = (
+                InternedString,
+                Result<(SpanList, InternedString), ast::SyntaxError<Analysis>>,
+            ),
+        >,
+        trailing_segment: Option<InternedString>,
+        ctx: &Context,
+        scope: &ScopeSet,
+    ) -> Option<(
+        Vec<(InternedString, TypeParameterId)>,
+        Option<InternedString>,
+    )> {
+        Some((
+            segments
+                .map(|(string, result)| {
+                    let (param_span, param_name) = result.ok()?;
+
+                    let param = match self.get(
+                        param_name,
+                        param_span,
+                        AnyDeclaration::as_type_parameter,
+                        scope,
+                    ) {
+                        Ok(Some(id)) => id,
+                        Ok(None) => {
+                            let (notes, fix) = self.diagnostic_notes_for_unresolved_name(
+                                param_span,
+                                param_name,
+                                ctx,
+                                AnyDeclaration::as_type_parameter,
+                                scope,
+                            );
+
+                            self.compiler.add_diagnostic(
+                                self.compiler
+                                    .error(
+                                        format!("cannot find type parameter `{param_name}`"),
+                                        std::iter::once(Note::primary(
+                                            param_span,
+                                            "no such type parameter",
+                                        ))
+                                        .chain(notes)
+                                        .collect(),
+                                        "undefined-name",
+                                    )
+                                    .fix(fix),
+                            );
+
+                            return None;
+                        }
+                        Err(candidates) => {
+                            self.compiler.add_error(
+                                format!("multiple definitions of type parameter `{param_name}`",),
+                                std::iter::once(Note::primary(
+                                    param_span,
+                                    format!("`{param_name}` could refer to..."),
+                                ))
+                                .chain(
+                                    self.diagnostic_notes_for_ambiguous_name(
+                                        candidates
+                                            .into_iter()
+                                            .map(|candidate| {
+                                                self.declarations
+                                                    .type_parameters
+                                                    .get(&candidate)
+                                                    .unwrap()
+                                                    .span
+                                            })
+                                            .collect(),
+                                    ),
+                                )
+                                .collect(),
+                                "",
+                            );
+
+                            return None;
+                        }
+                    };
+
+                    Some((string, param))
+                })
+                .collect::<Option<_>>()?,
+            trailing_segment,
+        ))
     }
 
     fn get_name_from_assignment<'a>(

@@ -16,8 +16,10 @@ definitions! {
     mod no_reuse;
     mod on_mismatch;
     mod on_unimplemented;
+    mod on_unresolved;
     mod operator_precedence;
     mod private;
+    mod resolve;
     mod sealed;
     mod specialize;
 }
@@ -55,8 +57,10 @@ syntax_group! {
             NoReuse,
             OnMismatch,
             OnUnimplemented,
+            OnUnresolved,
             OperatorPrecedence,
             Private,
+            Resolve,
             Sealed,
             Specialize,
         },

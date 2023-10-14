@@ -196,6 +196,10 @@ impl Converter<'_> {
                         trace.clone().into_inner()
                     )
                 }
+                analysis::ExpressionKind::UnresolvedConstant(_)
+                | analysis::ExpressionKind::UnresolvedTrait(_) => {
+                    panic!("found unresolved constant or trait in program")
+                }
                 analysis::ExpressionKind::Marker => ExpressionKind::Marker,
                 analysis::ExpressionKind::Variable(var) => ExpressionKind::Variable(*var),
                 analysis::ExpressionKind::Text(text) => ExpressionKind::Text(*text),

@@ -7,8 +7,9 @@ use crate::{
         HelpShowCodeStatementAttribute, HelpStatementAttribute, HelpTemplateStatementAttribute,
         HelpUrlFileAttribute, KeywordStatementAttribute, LanguageItemStatementAttribute,
         NoImplicitUseFileAttribute, NoReuseStatementAttribute, OnMismatchStatementAttribute,
-        OnUnimplementedStatementAttribute, OperatorPrecedenceStatementAttribute,
-        PrivateStatementAttribute, RecursionLimitFileAttribute, SealedStatementAttribute,
+        OnUnimplementedStatementAttribute, OnUnresolvedStatementAttribute,
+        OperatorPrecedenceStatementAttribute, PrivateStatementAttribute,
+        RecursionLimitFileAttribute, ResolveStatementAttribute, SealedStatementAttribute,
         SpecializeStatementAttribute, SyntaxError,
     },
     parse, Driver,
@@ -76,6 +77,8 @@ pub struct StatementAttributes<D: Driver> {
     pub no_reuse: Option<NoReuseStatementAttribute<D>>,
     pub entrypoint: Option<EntrypointStatementAttribute<D>>,
     pub help_show_code: Option<HelpShowCodeStatementAttribute<D>>,
+    pub on_unresolved: Option<OnUnresolvedStatementAttribute<D>>,
+    pub resolve: Option<ResolveStatementAttribute<D>>,
 }
 
 impl<D: Driver> Default for StatementAttributes<D> {
@@ -103,6 +106,8 @@ impl<D: Driver> Default for StatementAttributes<D> {
             no_reuse: Default::default(),
             entrypoint: Default::default(),
             help_show_code: Default::default(),
+            on_unresolved: Default::default(),
+            resolve: Default::default(),
         }
     }
 }

@@ -586,7 +586,9 @@ mod util {
 
         fn is_pure_inner(&self, program: &Program, info: &mut Info) -> bool {
             match &self.kind {
-                ExpressionKind::Error(_) => false,
+                ExpressionKind::Error(_)
+                | ExpressionKind::UnresolvedConstant(_)
+                | ExpressionKind::UnresolvedTrait(_) => false,
                 ExpressionKind::Marker
                 | ExpressionKind::Text(_)
                 | ExpressionKind::Number(_)
