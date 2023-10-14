@@ -1,12 +1,12 @@
-error: missing instance
+error: cannot display `A` on the screen
    ┌─ test:2:1
    │
  2 │ show Foo
    │ ^^^^ could not find instance `Show Foo`
    │
-   ┌─ <dir>/std/io.wpl:22:17
+   ┌─ <dir>/std/io.wpl:26:17
    │
-22 │ show :: A where (Show A) => A -> ()
+26 │ show :: A where (Show A) => A -> ()
    │                 -------- required by this bound here
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
