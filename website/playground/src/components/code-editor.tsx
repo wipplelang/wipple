@@ -815,10 +815,10 @@ export const CodeEditor = (props: CodeEditorProps) => {
     useEffect(() => {
         view.current?.dispatch({
             effects: inlineCompletionConfig.reconfigure(
-                settings.current!.beginner ?? true ? [] : inlineCompletions
+                settings.current!.autocomplete ?? false ? inlineCompletions : []
             ),
         });
-    }, [settings.current!.beginner]);
+    }, [settings.current!.autocomplete]);
 
     useEffect(() => {
         view.current = new EditorView({
@@ -867,7 +867,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     EditorView.updateListener.of(onChange),
                     editableConfig.of(EditorView.editable.of(true)),
                     inlineCompletionConfig.of(
-                        settings.current!.beginner ?? true ? [] : inlineCompletions
+                        settings.current!.autocomplete ?? false ? inlineCompletions : []
                     ),
                 ],
             }),

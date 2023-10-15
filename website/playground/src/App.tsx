@@ -57,6 +57,7 @@ interface PageLink {
 
 export interface Settings {
     beginner?: boolean;
+    autocomplete?: boolean;
     name?: string;
     analytics?: boolean;
 }
@@ -316,8 +317,8 @@ const App = () => {
                                             <div className="flex flex-col flex-1">
                                                 <p className="font-semibold">Beginner mode</p>
                                                 <p className="opacity-50">
-                                                    Highlight code blocks and hide errors to make it
-                                                    easier to focus.
+                                                    Simplify the code editor, highlight blocks, and
+                                                    hide errors.
                                                 </p>
                                             </div>
 
@@ -327,6 +328,27 @@ const App = () => {
                                                     setSettings(
                                                         produce((settings) => {
                                                             settings.beginner = checked;
+                                                        })
+                                                    );
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div className="flex flex-row gap-2">
+                                            <div className="flex flex-col flex-1">
+                                                <p className="font-semibold">Autocomplete</p>
+                                                <p className="opacity-50">
+                                                    Suggest what to type next in the code editor.
+                                                    Press Tab to insert the suggestion.
+                                                </p>
+                                            </div>
+
+                                            <Checkbox
+                                                checked={settings.autocomplete ?? false}
+                                                onChange={(_e, checked) => {
+                                                    setSettings(
+                                                        produce((settings) => {
+                                                            settings.autocomplete = checked;
                                                         })
                                                     );
                                                 }}
