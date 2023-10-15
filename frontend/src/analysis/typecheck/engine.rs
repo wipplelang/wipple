@@ -722,14 +722,11 @@ impl UnresolvedType {
 
         match &mut self.kind {
             UnresolvedTypeKind::Parameter(param) => {
-                self.kind = substitutions
-                    .get(param)
-                    .map(|ty| ty.kind.clone())
-                    .unwrap_or_else(|| {
-                        // HACK: If the typechecker behaves erratically, try panicking here instead
-                        // of returning a new type variable to get to the root cause earlier.
-                        UnresolvedTypeKind::Variable(ctx.new_variable(None))
-                    });
+                *self = substitutions.get(param).cloned().unwrap_or_else(|| {
+                    // HACK: If the typechecker behaves erratically, try panicking here instead
+                    // of returning a new type variable to get to the root cause earlier.
+                    UnresolvedType::new(UnresolvedTypeKind::Variable(ctx.new_variable(None)), None)
+                });
             }
             UnresolvedTypeKind::Function(input, output) => {
                 input.instantiate_with(ctx, substitutions);
