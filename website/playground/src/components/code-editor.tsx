@@ -72,6 +72,7 @@ import emojiData from "@emoji-mart/data";
 import EmojiPicker from "@emoji-mart/react";
 import graphemeSplit from "graphemesplit";
 import { SetupIcon } from "./picker";
+import { inlineSuggestion } from "./codemirror-extension-inline-suggestion";
 
 export interface CodeEditorProps {
     id: string;
@@ -363,7 +364,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
         }
     );
 
-    const [completions, setCompletions] = useState<AnalysisOutputCompletions>();
+    const [completions, setCompletions] = useRefState<AnalysisOutputCompletions | null>(null);
 
     const canCollapse = props.code.length > 0 && output?.isEmpty;
 
@@ -569,7 +570,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
             await collaboration.sendToHost({
                 cursor: range
                     ? {
-                          name: props.settings.name || "Anonymous",
+                          name: settings.current!.name || "Anonymous",
                           from: range.from,
                           to: range.to,
                           anchor: range.anchor,
@@ -590,7 +591,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
             await collaboration.sendToPeer(user, {
                 cursor: range
                     ? {
-                          name: props.settings.name || "Anonymous",
+                          name: settings.current!.name || "Anonymous",
                           from: range.from,
                           to: range.to,
                           anchor: range.anchor,
@@ -612,7 +613,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 {
                     cursor: range
                         ? {
-                              name: props.settings.name || "Anonymous",
+                              name: settings.current!.name || "Anonymous",
                               from: range.from,
                               to: range.to,
                               anchor: range.anchor,
@@ -763,6 +764,62 @@ export const CodeEditor = (props: CodeEditorProps) => {
         []
     );
 
+    const inlineCompletions = useMemo(
+        () =>
+            inlineSuggestion({
+                fetchFn: async (update) => {
+                    if (
+                        !update.docChanged ||
+                        update.state.doc.length === 0 ||
+                        !completions.current
+                    ) {
+                        return "";
+                    }
+
+                    const node = syntaxTree(update.state).cursorAt(
+                        update.state.selection.main.to,
+                        -1
+                    );
+
+                    if (
+                        node.to !== update.state.selection.main.to ||
+                        node.node.firstChild != null ||
+                        !["Name", "Type"].includes(node.type.name)
+                    ) {
+                        return "";
+                    }
+
+                    const text = update.state.sliceDoc(node.from, node.to);
+
+                    const includeCompletion = (completion: Completion) =>
+                        completion.name.startsWith(text);
+
+                    const completion =
+                        completions.current.language.find(includeCompletion) ??
+                        completions.current.variables.find(includeCompletion) ??
+                        completions.current.groupedConstants
+                            .flatMap(([_group, completions]) => completions)
+                            .find(includeCompletion) ??
+                        completions.current.ungroupedConstants.find(includeCompletion);
+
+                    if (!completion) return "";
+
+                    return completion.name.slice(text.length) + " ";
+                },
+            }),
+        []
+    );
+
+    const inlineCompletionConfig = useMemo(() => new Compartment(), []);
+
+    useEffect(() => {
+        view.current?.dispatch({
+            effects: inlineCompletionConfig.reconfigure(
+                settings.current!.beginner ?? true ? [] : inlineCompletions
+            ),
+        });
+    }, [settings.current!.beginner]);
+
     useEffect(() => {
         view.current = new EditorView({
             state: EditorState.create({
@@ -802,12 +859,16 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     highlight,
                     keymap.of([...defaultKeymap, indentWithTab]),
                     Prec.high(keymap.of(closeBracketsKeymap)),
+                    // Prec.low(keymap.of([indentWithTab])),
                     closeBrackets(),
                     peerExtension,
                     remoteCursorsTheme,
                     remoteCursors(() => cursors.current),
                     EditorView.updateListener.of(onChange),
                     editableConfig.of(EditorView.editable.of(true)),
+                    inlineCompletionConfig.of(
+                        settings.current!.beginner ?? true ? [] : inlineCompletions
+                    ),
                 ],
             }),
             parent: editor.current!,
@@ -1121,31 +1182,33 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
                                 const languageSection = [
                                     ...builtinCompletions,
-                                    ...completions.language,
+                                    ...(completions.current?.language ?? []),
                                 ]
                                     .filter(includeCompletion)
                                     .map(renderCompletionItem);
 
-                                const variablesSection = completions.variables
+                                const variablesSection = (completions.current?.variables ?? [])
                                     .filter(includeCompletion)
                                     .map(renderCompletionItem);
 
-                                const groupedConstantsSection = completions.groupedConstants.map(
-                                    ([group, completions], index) => {
-                                        const filtered = completions.filter(includeCompletion);
+                                const groupedConstantsSection = (
+                                    completions.current?.groupedConstants ?? []
+                                ).map(([group, completions], index) => {
+                                    const filtered = completions.filter(includeCompletion);
 
-                                        return filtered.length ? (
-                                            <div key={index}>
-                                                <Divider />
-                                                <ListSubheader>{group}</ListSubheader>
-                                                <Divider />
-                                                {...filtered.map(renderCompletionItem)}
-                                            </div>
-                                        ) : null;
-                                    }
-                                );
+                                    return filtered.length ? (
+                                        <div key={index}>
+                                            <Divider />
+                                            <ListSubheader>{group}</ListSubheader>
+                                            <Divider />
+                                            {...filtered.map(renderCompletionItem)}
+                                        </div>
+                                    ) : null;
+                                });
 
-                                const ungroupedConstantsSection = completions.ungroupedConstants
+                                const ungroupedConstantsSection = (
+                                    completions.current?.ungroupedConstants ?? []
+                                )
                                     .filter(includeCompletion)
                                     .map(renderCompletionItem);
 

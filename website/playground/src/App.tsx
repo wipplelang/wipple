@@ -16,7 +16,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import AddIcon from "@mui/icons-material/AddRounded";
-import TextIcon from "@mui/icons-material/TextFormatRounded";
 import DeleteIcon from "@mui/icons-material/DeleteOutlineRounded";
 import LockIcon from "@mui/icons-material/Lock";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
@@ -184,7 +183,7 @@ const App = () => {
     }, [query.current, sections]);
 
     const updateHistory = useMemo(
-        () => debounce((queryURL: string) => window.history.replaceState(null, "", queryURL), 500),
+        () => debounce((queryURL: string) => window.history.replaceState(null, "", queryURL), 250),
         []
     );
 

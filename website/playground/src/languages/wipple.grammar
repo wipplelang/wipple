@@ -9,11 +9,9 @@ FileAttribute { "[[" expression* "]]" }
 Attribute { "[" expression* "]" }
 Block { "{" expression* "}" }
 
-Keyword { @specialize<NamePrefix, "_" | "use" | "when" | "type" | "trait" | "instance" | "where" | "external" | "syntax" | "format" | "with"> }
+Keyword { @specialize<Name, "_" | "use" | "when" | "type" | "trait" | "instance" | "where" | "external" | "syntax" | "format" | "with"> }
 
 Operator { @specialize<OperatorName, ":" | "::" | "->" | "=>" | "."> }
-
-Name { NamePrefix NameSuffix? }
 
 @tokens {
   "[[" "]]"
@@ -33,10 +31,9 @@ Name { NamePrefix NameSuffix? }
   Asset { '`' (![`\\] | "\\" _)* '`' }
   Type { $[A-Z] ![\r\n\t \(\)\[\]\{\}'"/]* }
   OperatorName { $[~`!@#$%^&*\-+=\\\|:;<,>.?/]+ }
-  NamePrefix { $[A-Za-z0-9\-_]+ }
-  NameSuffix { $[!?'] }
+  Name { $[A-Za-z0-9\-_!?']+ }
 
-  @precedence { Space, LineContinue, Comment, Placeholder, Text, Number, Asset, QuoteName, RepeatName, Type, OperatorName, NamePrefix, NameSuffix }
+  @precedence { Space, LineContinue, Comment, Placeholder, Text, Number, Asset, QuoteName, RepeatName, Type, OperatorName, Name }
 }
 
 @skip { Space | LineContinue }
