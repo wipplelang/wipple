@@ -1,4 +1,4 @@
-error: cannot display `A` on the screen
+error: cannot display `Foo` on the screen
    ┌─ test:2:1
    │
  2 │ show Foo
