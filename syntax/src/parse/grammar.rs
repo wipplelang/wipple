@@ -1,5 +1,4 @@
-use crate::ScopeSet;
-use crate::{parse::Token, Driver, Span};
+use crate::{parse::Token, Driver, Fix, FixRange, ScopeSet, Span};
 use lazy_static::lazy_static;
 use logos::SpannedIter;
 use regex::Regex;
@@ -278,7 +277,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
 
         if let (span, Some(token)) = self.consume() {
             self.driver
-                .syntax_error(span, format!("expected end of file, found {token}"));
+                .syntax_error(span, format!("unexpected {token}"));
         }
 
         FileContents {
@@ -309,7 +308,8 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
             self.consume();
         }
 
-        let (lines, end_span) = self.parse_list_contents(Token::RightFileBracket);
+        let (lines, end_span) =
+            self.parse_list_contents(Token::LeftFileBracket, Token::RightFileBracket);
 
         let mut comment = None;
         if let (_, Some(Token::Comment(c))) = self.peek() {
@@ -401,7 +401,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                     let span = self.eof_span();
 
                     self.driver
-                        .syntax_error(span, format!("expected {end_token}, found end of file"));
+                        .syntax_error(span, format!("expected {end_token}"));
                 }
             }
 
@@ -436,7 +436,8 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
             self.consume();
         }
 
-        let (lines, end_span) = self.parse_list_contents(Token::RightAttrBracket);
+        let (lines, end_span) =
+            self.parse_list_contents(Token::LeftAttrBracket, Token::RightAttrBracket);
 
         let mut comment = None;
         if let (_, Some(Token::Comment(c))) = self.peek() {
@@ -462,7 +463,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                         let span = self.eof_span();
 
                         self.driver
-                            .syntax_error(span, "expected expression, found end of file");
+                            .syntax_error(span, "expected expression");
 
                         None
                     }
@@ -473,13 +474,10 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
 
                 self.driver.syntax_error(
                     span,
-                    format!(
-                        "expected expression, found {}",
-                        token
-                            .map(|t| t.to_string())
-                            .as_deref()
-                            .unwrap_or("end of file")
-                    ),
+                    token
+                        .map(|token| format!("expected expression, found {}", token))
+                        .as_deref()
+                        .unwrap_or("expected expression"),
                 );
 
                 None
@@ -677,7 +675,8 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                     self.consume();
                 }
 
-                let (lines, end_span) = self.parse_list_contents(Token::RightParenthesis);
+                let (lines, end_span) =
+                    self.parse_list_contents(Token::LeftParenthesis, Token::RightParenthesis);
 
                 Ok(Expr::new(Span::join(span, end_span), ExprKind::List(lines)))
             }
@@ -697,7 +696,8 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                     self.consume();
                 }
 
-                let (lines, end_span) = self.parse_list_contents(Token::RightParenthesis);
+                let (lines, end_span) =
+                    self.parse_list_contents(Token::RepeatLeftBrace, Token::RightParenthesis);
 
                 Ok(Expr::new(
                     Span::join(span, end_span),
@@ -709,7 +709,11 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
         }
     }
 
-    pub fn parse_list_contents(&mut self, end_token: Token) -> (Vec<ListLine<D>>, D::Span) {
+    pub fn parse_list_contents(
+        &mut self,
+        start_token: Token,
+        end_token: Token,
+    ) -> (Vec<ListLine<D>>, D::Span) {
         let mut lines = Vec::<ListLine<D>>::new();
         let mut error = false;
 
@@ -774,8 +778,14 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
         if parsed_end_token.is_none() {
             let span = self.eof_span();
 
-            self.driver
-                .syntax_error(span, format!("expected {end_token}, found end of file"));
+            self.driver.syntax_error_with(
+                vec![(span, format!("expected {end_token} to match {start_token}"))],
+                Some(Fix::new(
+                    format!("insert {end_token}"),
+                    FixRange::after(span),
+                    end_token.as_bracket_str(),
+                )),
+            );
         }
 
         (lines, end_span)
@@ -811,7 +821,8 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                     self.consume();
                 }
 
-                let (lines, end_span) = self.parse_list_contents(Token::RightBrace);
+                let (lines, end_span) =
+                    self.parse_list_contents(Token::RepeatLeftBrace, Token::RightBrace);
 
                 Ok(Expr::new(
                     Span::join(span, end_span),
@@ -845,7 +856,8 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
     }
 
     pub fn eof_span(&mut self) -> D::Span {
-        self.offset(self.len..self.len)
+        let pos = self.len.saturating_sub(1);
+        self.offset(pos..pos)
     }
 
     pub fn file_span(&mut self) -> D::Span {

@@ -79,6 +79,26 @@ pub enum Token<'src> {
     Error,
 }
 
+impl<'src> Token<'src> {
+    pub fn as_bracket_str(&self) -> &'static str {
+        match self {
+            Token::LeftFileBracket => "[[",
+            Token::RightFileBracket => "]]",
+            Token::LeftAttrBracket => "[",
+            Token::RightAttrBracket => "]",
+            Token::LeftParenthesis => "(",
+            Token::QuoteLeftParenthesis => "'(",
+            Token::RepeatLeftParenthesis => "...(",
+            Token::RightParenthesis => ")",
+            Token::LeftBrace => "{",
+            Token::QuoteLeftBrace => "'{",
+            Token::RepeatLeftBrace => "...{",
+            Token::RightBrace => "}",
+            _ => panic!("not a bracket"),
+        }
+    }
+}
+
 impl<'src> fmt::Display for Token<'src> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
