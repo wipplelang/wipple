@@ -7,6 +7,7 @@ error: cannot find `print`
   │ this name is not defined
   │ did you mean `show`?
   │
+  = replace with `show`: `show`
   = for more information, see https://wipple.dev/playground/?lesson=errors/undefined-name
 
 error: cannot find `hello`
@@ -18,6 +19,7 @@ error: cannot find `hello`
   │      this name is not defined
   │      if you meant to provide text here, try using quotes: `"hello"`
   │
+  = surround with quotes: `"hello"`
   = for more information, see https://wipple.dev/playground/?lesson=errors/undefined-name
 
 error: cannot find `//`
@@ -29,6 +31,7 @@ error: cannot find `//`
   │             this name is not defined
   │             comments in Wipple begin with `--`
   │
+  = replace with `--`: `--`
   = for more information, see https://wipple.dev/playground/?lesson=errors/undefined-name
 
 error: cannot find `comment`

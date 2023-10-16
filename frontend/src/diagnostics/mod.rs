@@ -349,11 +349,14 @@ impl FinalizedDiagnostics {
         codespan_reporting::files::SimpleFiles<FilePath, Arc<str>>,
         Vec<codespan_reporting::diagnostic::Diagnostic<usize>>,
     ) {
-        use codespan_reporting::diagnostic::{Label, LabelStyle};
+        use codespan_reporting::{
+            diagnostic::{Diagnostic, Label, LabelStyle},
+            files::SimpleFiles,
+        };
 
         let diagnostics = self.diagnostics.into_iter().unique().collect::<Vec<_>>();
 
-        let mut files = codespan_reporting::files::SimpleFiles::new();
+        let mut files = SimpleFiles::new();
         let mut console_diagnostics = Vec::new();
 
         let mut tracked_files = HashMap::<FilePath, usize>::new();
@@ -427,30 +430,33 @@ impl FinalizedDiagnostics {
                 }))
                 .collect::<Vec<_>>();
 
-            let notes = if diagnostic.example.is_empty() {
-                Vec::new()
-            } else {
-                vec![format!(
+            let mut notes = Vec::from_iter(
+                diagnostic
+                    .fix
+                    .map(|fix| format!("{}: `{}`", fix.description, fix.replacement)),
+            );
+
+            if !diagnostic.example.is_empty() {
+                notes.push(format!(
                     "for more information, see {}",
                     make_link(&diagnostic.example)
-                )]
-            };
+                ));
+            }
 
-            let diagnostic =
-                codespan_reporting::diagnostic::Diagnostic::new(diagnostic.level.into())
-                    .with_message((|| {
-                        #[cfg(debug_assertions)]
-                        if include_trace {
-                            if let Some(trace) = diagnostic.trace.into_inner() {
-                                return diagnostic.message
-                                    + &format!("\nat span {primary_span:#?}\n{trace:#?}");
-                            }
+            let diagnostic = Diagnostic::new(diagnostic.level.into())
+                .with_message((|| {
+                    #[cfg(debug_assertions)]
+                    if include_trace {
+                        if let Some(trace) = diagnostic.trace.into_inner() {
+                            return diagnostic.message
+                                + &format!("\nat span {primary_span:#?}\n{trace:#?}");
                         }
+                    }
 
-                        diagnostic.message
-                    })())
-                    .with_labels(labels)
-                    .with_notes(notes);
+                    diagnostic.message
+                })())
+                .with_labels(labels)
+                .with_notes(notes);
 
             console_diagnostics.push(diagnostic);
         }

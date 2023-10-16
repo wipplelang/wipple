@@ -14,6 +14,7 @@ error: cannot add `show 1` to `2`
 17 │   'a + 'b -> Add 'b 'a
    │              --- actual error occurred here
    │
+   = add parentheses around `1 + 2`: `(1 + 2)`
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
 
 error: missing instance
@@ -32,6 +33,7 @@ error: missing instance
 54 │   'a or 'b -> Or (() -> 'b) 'a
    │               -- actual error occurred here
    │
+   = add parentheses around `True or False`: `(True or False)`
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
 
 error: cannot add `1` to `"hi"`
