@@ -2,7 +2,7 @@ use crate::{
     ast::{
         format::Format,
         statement_attribute::StatementAttributeSyntaxContext,
-        syntax::{Syntax, SyntaxRule, SyntaxRules},
+        syntax::{parse_interpolated_text, Syntax, SyntaxRule, SyntaxRules},
         SyntaxError,
     },
     parse, Driver,
@@ -20,7 +20,7 @@ pub struct OnUnimplementedStatementAttribute<D: Driver> {
 #[derive(Debug, Clone)]
 pub struct OnUnimplementedSegment<D: Driver> {
     pub string: D::InternedString,
-    pub param: Result<(D::Span, D::InternedString), SyntaxError<D>>,
+    pub param: (D::Span, D::InternedString),
 }
 
 impl<D: Driver> OnUnimplementedStatementAttribute<D> {
@@ -44,36 +44,19 @@ impl<D: Driver> Syntax<D> for OnUnimplementedStatementAttributeSyntax {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
             "on-unimplemented",
             |context, span, on_unimplemented_span, exprs, _scope_set| async move {
-                if exprs.is_empty() {
+                if exprs.len() != 1 {
                     context
                         .ast_builder
                         .driver
-                        .syntax_error(span, "`on-unimplemented` accepts at least 1 input");
+                        .syntax_error(span, "`on-unimplemented` accepts 1 input");
                 }
 
                 let mut exprs = exprs.into_iter();
 
                 let expr = exprs.next().unwrap();
-                let message = match expr.kind {
-                    parse::ExprKind::Text(text) => text.ignoring_escaped_underscores(),
-                    _ => {
-                        context
-                            .ast_builder
-                            .driver
-                            .syntax_error(expr.span, "expected text");
-
-                        return Err(context.ast_builder.syntax_error(span));
-                    }
-                };
-
-                let mut segments = message
-                    .as_ref()
-                    .split('_')
-                    .map(|segment| context.ast_builder.driver.intern(segment))
-                    .collect::<Vec<_>>();
-
-                let inputs = exprs
-                    .map(|expr| match expr.kind {
+                let message_span = expr.span;
+                let (segments, trailing_segment) =
+                    parse_interpolated_text(&context.ast_builder, expr, |expr| match expr.kind {
                         parse::ExprKind::Name(name, _) => Ok((expr.span, name)),
                         _ => {
                             context
@@ -83,35 +66,17 @@ impl<D: Driver> Syntax<D> for OnUnimplementedStatementAttributeSyntax {
 
                             Err(context.ast_builder.syntax_error(expr.span))
                         }
-                    })
-                    .collect::<Vec<_>>();
-
-                let trailing_segment =
-                    (segments.len() > inputs.len()).then(|| segments.pop().unwrap());
-
-                if segments.len() != inputs.len() {
-                    context.ast_builder.driver.syntax_error(
-                        span,
-                        format!(
-                            "format string contains {} placeholders, but {} inputs were provided",
-                            segments.len(),
-                            inputs.len()
-                        ),
-                    );
-
-                    return Err(context.ast_builder.syntax_error(span));
-                }
+                    })?;
 
                 let segments = segments
                     .into_iter()
-                    .zip(inputs)
-                    .map(|(string, ty)| OnUnimplementedSegment { string, param: ty })
+                    .map(|(string, param)| OnUnimplementedSegment { string, param })
                     .collect();
 
                 let attribute = OnUnimplementedStatementAttribute {
                     span,
                     on_unimplemented_span,
-                    message_span: expr.span,
+                    message_span,
                     segments,
                     trailing_segment,
                 };

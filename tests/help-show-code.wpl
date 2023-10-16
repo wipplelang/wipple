@@ -1,5 +1,5 @@
 [help-show-code]
-[on-unimplemented "_ is not compatible with _" Left Right]
+[on-unimplemented ("_ is not compatible with _" Left Right)]
 Compatible : Left Right => trait (Left -> Right -> ())
 
 Foo : type

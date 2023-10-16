@@ -50,7 +50,7 @@ Omnivore : type
 Animals : type
 Plants : type
 
-[on-unimplemented "`_` does not eat `_`" Animal Food]
+[on-unimplemented ("_ does not eat _" Animal Food)]
 Eat : Animal Food => trait (Animal , Food)
 
 instance (Eat Carnivore Animals) : ...

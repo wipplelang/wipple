@@ -4772,7 +4772,7 @@ impl Lowerer {
         TraitAttributes {
             decl_attributes: self.lower_decl_attributes(attributes),
             on_unimplemented: attributes.on_unimplemented.as_ref().and_then(|attribute| {
-                self.lower_on_unimplemented_attribute(
+                self.lower_interpolated_attribute_message(
                     attribute
                         .segments
                         .iter()
@@ -4803,7 +4803,7 @@ impl Lowerer {
         ConstantAttributes {
             decl_attributes: self.lower_decl_attributes(attributes),
             on_unresolved: attributes.on_unresolved.as_ref().and_then(|attribute| {
-                self.lower_on_unimplemented_attribute(
+                self.lower_interpolated_attribute_message(
                     attribute
                         .segments
                         .iter()
@@ -4825,14 +4825,9 @@ impl Lowerer {
         }
     }
 
-    fn lower_on_unimplemented_attribute(
+    fn lower_interpolated_attribute_message(
         &mut self,
-        segments: impl Iterator<
-            Item = (
-                InternedString,
-                Result<(SpanList, InternedString), ast::SyntaxError<Analysis>>,
-            ),
-        >,
+        segments: impl Iterator<Item = (InternedString, (SpanList, InternedString))>,
         trailing_segment: Option<InternedString>,
         ctx: &Context,
         scope: &ScopeSet,
@@ -4842,9 +4837,7 @@ impl Lowerer {
     )> {
         Some((
             segments
-                .map(|(string, result)| {
-                    let (param_span, param_name) = result.ok()?;
-
+                .map(|(string, (param_span, param_name))| {
                     let param = match self.get(
                         param_name,
                         param_span,

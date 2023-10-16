@@ -775,3 +775,62 @@ impl<D: Driver> SyntaxContext<D> for ErrorSyntaxContext<D> {
         Err(self.ast_builder.syntax_error(expr.span))
     }
 }
+
+pub(crate) fn parse_interpolated_text<D: Driver, T>(
+    ast_builder: &AstBuilder<D>,
+    expr: parse::Expr<D>,
+    mut parse_segment: impl FnMut(parse::Expr<D>) -> Result<T, SyntaxError<D>>,
+) -> Result<(Vec<(D::InternedString, T)>, Option<D::InternedString>), SyntaxError<D>> {
+    match expr.try_into_list_exprs() {
+        Ok((span, mut exprs)) => {
+            let expr = exprs.next().unwrap();
+            let message = match expr.kind {
+                parse::ExprKind::Text(text) => text.ignoring_escaped_underscores(),
+                _ => {
+                    ast_builder.driver.syntax_error(expr.span, "expected text");
+                    return Err(ast_builder.syntax_error(span));
+                }
+            };
+
+            let mut segments = message
+                .as_ref()
+                .split('_')
+                .map(|segment| ast_builder.driver.intern(segment))
+                .collect::<Vec<_>>();
+
+            let inputs = exprs.collect::<Vec<_>>();
+
+            let trailing_segment = (segments.len() > inputs.len()).then(|| segments.pop().unwrap());
+
+            if segments.len() != inputs.len() {
+                ast_builder.driver.syntax_error(
+                    span,
+                    format!(
+                        "format string contains {} placeholders, but {} inputs were provided",
+                        segments.len(),
+                        inputs.len()
+                    ),
+                );
+
+                return Err(ast_builder.syntax_error(span));
+            }
+
+            let segments = segments
+                .into_iter()
+                .zip(inputs)
+                .map(|(string, expr)| Ok((string, parse_segment(expr)?)))
+                .collect::<Result<Vec<_>, _>>()?;
+
+            Ok((segments, trailing_segment))
+        }
+        Err(expr) => match expr.kind {
+            parse::ExprKind::Text(text) => {
+                Ok((Vec::new(), Some(text.ignoring_escaped_underscores())))
+            }
+            _ => {
+                ast_builder.driver.syntax_error(expr.span, "expected text");
+                Err(ast_builder.syntax_error(expr.span))
+            }
+        },
+    }
+}

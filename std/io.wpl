@@ -10,7 +10,7 @@ use "sequence"
 [help "Implement this trait to enable `show`ing values of your type."]
 [help-group "Input and Output"]
 [help-show-code]
-[on-unimplemented "cannot display _ on the screen" A]
+[on-unimplemented ("cannot display _ on the screen" A)]
 Show : (A : Text) => trait (A -> Text)
 
 [help "Display a value on the screen."]

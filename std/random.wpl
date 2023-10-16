@@ -7,7 +7,7 @@ use "sequence"
 
 [help "Implements the `random` function."]
 [help-group "Random"]
-[on-unimplemented "cannot produce a random _ from a _" Value Range]
+[on-unimplemented ("cannot produce a random _ from a _" Value Range)]
 Random : Range Value => trait (Range -> Value)
 
 random :: Range Value where (Random Range Value) => Range -> Value
