@@ -7,7 +7,20 @@ use std::{
     rc::Rc,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct TypeInfo {
+    pub span: Option<SpanList>,
+    pub reason: Option<TypeReason>,
+}
+
+impl TypeInfo {
+    pub fn merge(&mut self, other: Self) {
+        self.span = self.span.or(other.span);
+        // Don't merge reasons
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
 pub enum TypeReason {
     Pattern(SpanList),
     Annotation(SpanList),
@@ -24,14 +37,13 @@ pub enum TypeReason {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct UnresolvedType {
-    pub span: Option<SpanList>,
-    pub reason: Option<TypeReason>,
     pub kind: UnresolvedTypeKind,
+    pub info: TypeInfo,
 }
 
 impl UnresolvedType {
     pub fn with_reason(mut self, reason: Option<TypeReason>) -> Self {
-        self.reason = reason;
+        self.info.reason = reason;
         self
     }
 }
@@ -64,24 +76,29 @@ pub enum UnresolvedTypeKind {
 
 impl UnresolvedType {
     pub fn new(kind: UnresolvedTypeKind, span: impl Into<Option<SpanList>>) -> Self {
-        UnresolvedType {
-            span: span.into(),
-            reason: None,
+        UnresolvedType::from_parts(
             kind,
-        }
+            TypeInfo {
+                span: span.into(),
+                reason: None,
+            },
+        )
+    }
+
+    pub fn from_parts(kind: UnresolvedTypeKind, info: TypeInfo) -> Self {
+        UnresolvedType { kind, info }
     }
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Type {
-    pub span: Option<SpanList>,
-    pub reason: Option<TypeReason>,
     pub kind: TypeKind,
+    pub info: TypeInfo,
 }
 
 impl Type {
     pub fn with_reason(mut self, reason: Option<TypeReason>) -> Self {
-        self.reason = reason;
+        self.info.reason = reason;
         self
     }
 }
@@ -112,11 +129,17 @@ pub enum TypeKind {
 
 impl Type {
     pub fn new(kind: TypeKind, span: impl Into<Option<SpanList>>) -> Self {
-        Type {
-            span: span.into(),
-            reason: None,
+        Type::from_parts(
             kind,
-        }
+            TypeInfo {
+                span: span.into(),
+                reason: None,
+            },
+        )
+    }
+
+    pub fn from_parts(kind: TypeKind, info: TypeInfo) -> Self {
+        Type { kind, info }
     }
 }
 
@@ -131,8 +154,7 @@ pub enum TypeStructure<Ty> {
 impl From<Type> for UnresolvedType {
     fn from(ty: Type) -> Self {
         UnresolvedType {
-            span: ty.span,
-            reason: ty.reason,
+            info: ty.info,
             kind: match ty.kind {
                 TypeKind::Parameter(param) => UnresolvedTypeKind::Parameter(param),
                 TypeKind::Named(id, params, structure) => UnresolvedTypeKind::Named(
@@ -684,12 +706,14 @@ impl UnresolvedType {
             UnresolvedTypeKind::Variable(var) => {
                 if let Some(ty) = ctx.substitutions.borrow().get(var).cloned() {
                     self.kind = ty.kind;
+                    self.info.merge(ty.info);
                     self.apply(ctx);
                 }
             }
             UnresolvedTypeKind::NumericVariable(var) => {
                 if let Some(ty) = ctx.numeric_substitutions.borrow().get(var).cloned() {
                     self.kind = ty.kind;
+                    self.info.merge(ty.info);
                     self.apply(ctx);
                 }
             }
@@ -929,8 +953,7 @@ impl UnresolvedType {
         ty.finalize_numeric_variables(ctx);
 
         Type {
-            span: ty.span,
-            reason: ty.reason,
+            info: ty.info,
             kind: match ty.kind.clone() {
                 UnresolvedTypeKind::Variable(_) => {
                     *resolved = false;

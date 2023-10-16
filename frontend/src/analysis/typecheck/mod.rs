@@ -1905,7 +1905,7 @@ impl Typechecker {
                     )
                 });
 
-                ty.span = Some(expr.span);
+                ty.info.span = Some(expr.span);
 
                 UnresolvedExpression {
                     id: expr.id,
@@ -5995,9 +5995,13 @@ impl Typechecker {
                     let ty = params.get(param).unwrap().clone();
 
                     let code = ty
+                        .info
                         .span
-                        .filter(|_| show_code)
                         .and_then(|span| {
+                            if !show_code {
+                                return None;
+                            }
+
                             let code = typechecker
                                 .compiler
                                 .single_line_source_code_for_span(span.first())?;
@@ -6049,7 +6053,7 @@ impl Typechecker {
                 let mut notes = vec![Note::primary(error.span, message)];
                 let mut fix = None;
 
-                if let Some(reason) = expected.reason {
+                if let Some(reason) = expected.info.reason {
                     let note = match reason {
                         engine::TypeReason::Pattern(span) => Note::secondary(
                             span,
@@ -6464,7 +6468,7 @@ impl Typechecker {
                         .into_iter()
                         .zip(params)
                         .filter_map(|(param, ty)| {
-                            let span = ty.span?;
+                            let span = ty.info.span?;
 
                             if span == error.span
                                 || !span.first().is_subspan_of(error.span.first())
