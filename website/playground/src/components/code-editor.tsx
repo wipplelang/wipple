@@ -810,13 +810,19 @@ export const CodeEditor = (props: CodeEditorProps) => {
         []
     );
 
-    const inlineCompletionConfig = useMemo(() => new Compartment(), []);
+    const autocompleteExtensions = useCallback(
+        () =>
+            settings.current!.autocomplete ?? false
+                ? [Prec.high(keymap.of(closeBracketsKeymap)), closeBrackets(), inlineCompletions]
+                : [],
+        []
+    );
+
+    const autocompleteConfig = useMemo(() => new Compartment(), []);
 
     useEffect(() => {
         view.current?.dispatch({
-            effects: inlineCompletionConfig.reconfigure(
-                settings.current!.autocomplete ?? false ? inlineCompletions : []
-            ),
+            effects: autocompleteConfig.reconfigure(autocompleteExtensions()),
         });
     }, [settings.current!.autocomplete]);
 
@@ -858,17 +864,12 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     hover,
                     highlight,
                     keymap.of([...defaultKeymap, indentWithTab]),
-                    Prec.high(keymap.of(closeBracketsKeymap)),
-                    // Prec.low(keymap.of([indentWithTab])),
-                    closeBrackets(),
                     peerExtension,
                     remoteCursorsTheme,
                     remoteCursors(() => cursors.current),
                     EditorView.updateListener.of(onChange),
                     editableConfig.of(EditorView.editable.of(true)),
-                    inlineCompletionConfig.of(
-                        settings.current!.autocomplete ?? false ? inlineCompletions : []
-                    ),
+                    autocompleteConfig.of(autocompleteExtensions()),
                 ],
             }),
             parent: editor.current!,

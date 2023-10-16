@@ -338,8 +338,9 @@ const App = () => {
                                             <div className="flex flex-col flex-1">
                                                 <p className="font-semibold">Autocomplete</p>
                                                 <p className="opacity-50">
-                                                    Suggest what to type next in the code editor.
-                                                    Press Tab to insert the suggestion.
+                                                    Automatically insert closing brackets and
+                                                    suggest what to type next in the code editor.
+                                                    Press Tab to complete the suggestion.
                                                 </p>
                                             </div>
 
