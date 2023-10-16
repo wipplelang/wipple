@@ -309,7 +309,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
         }
 
         let (lines, end_span) =
-            self.parse_list_contents(Token::LeftFileBracket, Token::RightFileBracket);
+            self.parse_list_contents(Token::LeftFileBracket, span, Token::RightFileBracket);
 
         let mut comment = None;
         if let (_, Some(Token::Comment(c))) = self.peek() {
@@ -437,7 +437,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
         }
 
         let (lines, end_span) =
-            self.parse_list_contents(Token::LeftAttrBracket, Token::RightAttrBracket);
+            self.parse_list_contents(Token::LeftAttrBracket, span, Token::RightAttrBracket);
 
         let mut comment = None;
         if let (_, Some(Token::Comment(c))) = self.peek() {
@@ -676,7 +676,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                 }
 
                 let (lines, end_span) =
-                    self.parse_list_contents(Token::LeftParenthesis, Token::RightParenthesis);
+                    self.parse_list_contents(Token::LeftParenthesis, span, Token::RightParenthesis);
 
                 Ok(Expr::new(Span::join(span, end_span), ExprKind::List(lines)))
             }
@@ -697,7 +697,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                 }
 
                 let (lines, end_span) =
-                    self.parse_list_contents(Token::RepeatLeftBrace, Token::RightParenthesis);
+                    self.parse_list_contents(Token::RepeatLeftBrace, span, Token::RightParenthesis);
 
                 Ok(Expr::new(
                     Span::join(span, end_span),
@@ -712,6 +712,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
     pub fn parse_list_contents(
         &mut self,
         start_token: Token,
+        start_token_span: D::Span,
         end_token: Token,
     ) -> (Vec<ListLine<D>>, D::Span) {
         let mut lines = Vec::<ListLine<D>>::new();
@@ -776,7 +777,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
         };
 
         if parsed_end_token.is_none() {
-            let span = self.eof_span();
+            let span = <D::Span as Span>::join(start_token_span, end_span);
 
             self.driver.syntax_error_with(
                 vec![(span, format!("expected {end_token} to match {start_token}"))],
@@ -822,7 +823,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                 }
 
                 let (lines, end_span) =
-                    self.parse_list_contents(Token::RepeatLeftBrace, Token::RightBrace);
+                    self.parse_list_contents(Token::RepeatLeftBrace, span, Token::RightBrace);
 
                 Ok(Expr::new(
                     Span::join(span, end_span),
