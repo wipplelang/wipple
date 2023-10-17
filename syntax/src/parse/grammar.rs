@@ -777,7 +777,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
         };
 
         if parsed_end_token.is_none() {
-            let span = <D::Span as Span>::join(start_token_span, end_span);
+            let span = <D::Span as Span>::join(start_token_span, self.eof_span());
 
             self.driver.syntax_error_with(
                 vec![(span, format!("expected {end_token} to match {start_token}"))],
@@ -857,8 +857,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
     }
 
     pub fn eof_span(&mut self) -> D::Span {
-        let pos = self.len.saturating_sub(1);
-        self.offset(pos..pos)
+        self.offset(self.len..self.len)
     }
 
     pub fn file_span(&mut self) -> D::Span {

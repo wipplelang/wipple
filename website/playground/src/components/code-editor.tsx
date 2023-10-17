@@ -26,7 +26,6 @@ import {
     AnalysisOutput,
     Output,
 } from "shared";
-import AddRounded from "@mui/icons-material/AddRounded";
 import SubjectRounded from "@mui/icons-material/SubjectRounded";
 import PlayArrowRounded from "@mui/icons-material/PlayArrowRounded";
 import PauseRounded from "@mui/icons-material/PauseRounded";
@@ -203,6 +202,12 @@ export const CodeEditor = (props: CodeEditorProps) => {
             },
         });
 
+    const insertButtonDecoration = (from: number, to: number) =>
+        Decoration.widget({
+            widget: new InsertButtonDecoration(from, to, () => showInsertMenu(to)),
+            side: 1,
+        });
+
     const placeholderDecoration = (placeholder: string, from: number, to: number) =>
         Decoration.replace({
             atomic: true,
@@ -224,7 +229,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
             }),
         });
 
-    const getDecorations = (view: EditorView) => {
+    const getHighlightDecorations = (view: EditorView) => {
         const tree = syntaxTree(view.state);
 
         const items = [...syntaxHighlighting.current!];
@@ -341,11 +346,11 @@ export const CodeEditor = (props: CodeEditorProps) => {
             public decorations: DecorationSet;
 
             constructor(view: EditorView) {
-                this.decorations = getDecorations(view);
+                this.decorations = getHighlightDecorations(view);
             }
 
             update(update: ViewUpdate) {
-                this.decorations = getDecorations(update.view);
+                this.decorations = getHighlightDecorations(update.view);
             }
         },
         {
@@ -361,6 +366,67 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         filter: (_from, _to, decoration) => decoration.spec.atomic,
                     });
                 }),
+        }
+    );
+
+    const getInsertButtonDecorations = (view: EditorView) => {
+        if (!view.hasFocus || view.state.selection.ranges.length !== 1) {
+            return Decoration.none;
+        }
+
+        let pos: number | undefined;
+        syntaxTree(view.state).iterate({
+            enter: (node) => {
+                if (node.node.firstChild != null) {
+                    return true;
+                }
+
+                const { from, to } = node;
+
+                // Decorations may not be empty
+                if (from === to) {
+                    return;
+                }
+
+                const nodeText = view.state.sliceDoc(from, to);
+
+                // Decorations may not span multiple lines
+                if (nodeText.includes("\n")) {
+                    return;
+                }
+
+                if (
+                    pos == null &&
+                    view.state.selection.main.from >= from &&
+                    view.state.selection.main.to <= to
+                ) {
+                    pos = node.to;
+                    return false;
+                }
+
+                return false;
+            },
+        });
+
+        pos = pos ?? view.state.selection.main.to;
+
+        return Decoration.set(insertButtonDecoration(pos, pos).range(pos, pos));
+    };
+
+    const insertButton = ViewPlugin.fromClass(
+        class {
+            public decorations: DecorationSet;
+
+            constructor(view: EditorView) {
+                this.decorations = getInsertButtonDecorations(view);
+            }
+
+            update(update: ViewUpdate) {
+                this.decorations = getInsertButtonDecorations(update.view);
+            }
+        },
+        {
+            decorations: (v) => v.decorations,
         }
     );
 
@@ -425,8 +491,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
     const [contextMenuAnchor, setContextMenuAnchor] = useState<HTMLElement>();
     const [contextMenuSearch, setContextMenuSearch] = useState("");
 
-    const showContextMenu = () => {
-        const caretPosition = view.current!.coordsAtPos(view.current!.state.selection.main.from);
+    const showInsertMenu = (pos: number) => {
+        const caretPosition = view.current!.coordsAtPos(pos);
 
         if (!caretPosition) {
             console.error("attempt to show context menu without caret position");
@@ -460,24 +526,27 @@ export const CodeEditor = (props: CodeEditorProps) => {
     const insertCompletion = (completion: Completion | SpecialCompletion) => {
         const code = props.code;
 
-        const selection = view.current!.state.selection.main;
+        const selection = syntaxTree(view.current!.state).cursorAt(
+            view.current!.state.selection.main.to,
+            1
+        ).to;
 
-        const before = code.slice(0, selection.to);
+        const before = code.slice(0, selection);
         const padBefore = (before[before.length - 1] ?? " ").match(/\s/) ? "" : " ";
 
-        const after = code.slice(selection.from);
+        const after = code.slice(selection);
         const padAfter = (after[0] ?? " ").match(/\s/) ? "" : " ";
 
         const text = padBefore + completion.template + padAfter;
 
         view.current!.dispatch({
             changes: {
-                from: selection.from,
-                to: selection.to,
+                from: selection,
+                to: selection,
                 insert: text,
             },
             selection: {
-                anchor: selection.to + text.length,
+                anchor: selection + text.length,
             },
         });
 
@@ -778,7 +847,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
                     const node = syntaxTree(update.state).cursorAt(
                         update.state.selection.main.to,
-                        -1
+                        1
                     );
 
                     if (
@@ -863,6 +932,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     placeholder("Write your code here!"),
                     hover,
                     highlight,
+                    insertButton,
                     keymap.of([...defaultKeymap, indentWithTab]),
                     peerExtension,
                     remoteCursorsTheme,
@@ -931,30 +1001,128 @@ export const CodeEditor = (props: CodeEditorProps) => {
                             </Tooltip>
                         ) : null}
 
-                        {collaborationMode.current && (
-                            <div className="code-editor-outlined -my-0.5 -ml-0.5 px-2">
-                                <PeopleAltRounded
-                                    fontSize="small"
-                                    sx={{ marginRight: "6px", marginTop: "-2px" }}
-                                />
+                        {collaborationMode.current ? (
+                            <PopupState variant="popover">
+                                {(popupState) => (
+                                    <>
+                                        <Tooltip title="Collaborate">
+                                            <button
+                                                {...bindTrigger(popupState)}
+                                                className="code-editor-button -ml-0.5 px-2"
+                                            >
+                                                <PeopleAltRounded
+                                                    fontSize="small"
+                                                    sx={{ marginRight: "6px", marginTop: "-2px" }}
+                                                />
 
-                                {collaborationMode.current === "host"
-                                    ? userId.current!
-                                    : "Connected"}
-                            </div>
+                                                {collaborationMode.current === "host"
+                                                    ? userId.current!
+                                                    : joinedHostUserId.current!}
+                                            </button>
+                                        </Tooltip>
+
+                                        <Menu {...bindMenu(popupState)}>
+                                            <MenuItem
+                                                onClick={() => {
+                                                    popupState.close();
+
+                                                    navigator.clipboard.writeText(userId.current!);
+                                                }}
+                                            >
+                                                Copy Join Code
+                                            </MenuItem>
+
+                                            <MenuItem
+                                                onClick={() => {
+                                                    // This button doesn't actually do anything
+                                                    // except take focus away from the code editor
+                                                    // so that other people can edit
+                                                    popupState.close();
+                                                }}
+                                            >
+                                                Done Editing
+                                            </MenuItem>
+
+                                            <MenuItem
+                                                onClick={() => {
+                                                    popupState.close();
+
+                                                    let message =
+                                                        "Do you want to stop collaborating?";
+                                                    if (collaborationMode.current === "host") {
+                                                        message +=
+                                                            " This will disconnect everyone from the session.";
+                                                    }
+
+                                                    const confirmed = confirm(message);
+
+                                                    if (!confirmed) return;
+
+                                                    stopCollaborating();
+                                                }}
+                                            >
+                                                Stop Collaborating
+                                            </MenuItem>
+                                        </Menu>
+                                    </>
+                                )}
+                            </PopupState>
+                        ) : (
+                            <PopupState variant="popover">
+                                {(popupState) => (
+                                    <>
+                                        <Tooltip title="Collaborate">
+                                            <button
+                                                {...bindTrigger(popupState)}
+                                                className="code-editor-button -ml-0.5"
+                                            >
+                                                <PeopleAltRounded
+                                                    fontSize="small"
+                                                    sx={buttonIconStyles}
+                                                />
+                                            </button>
+                                        </Tooltip>
+
+                                        <Menu {...bindMenu(popupState)}>
+                                            <MenuItem
+                                                onClick={async () => {
+                                                    popupState.close();
+                                                    await startCollaborating("host");
+                                                }}
+                                            >
+                                                <PeopleAltRounded />
+                                                Collaborate
+                                            </MenuItem>
+
+                                            <MenuItem
+                                                onClick={async () => {
+                                                    popupState.close();
+
+                                                    if (props.code.length > 0) {
+                                                        const confirmed = confirm(
+                                                            "Joining someone else's coding session will clear your existing code. Are you sure you want to join?"
+                                                        );
+                                                        if (!confirmed) return;
+                                                    }
+
+                                                    const hostUserId = prompt(
+                                                        "Please enter the ID of the session you want to join:"
+                                                    );
+
+                                                    if (!hostUserId) return;
+
+                                                    await startCollaborating("join");
+                                                    await joinHost(hostUserId);
+                                                }}
+                                            >
+                                                <GroupAddRounded />
+                                                Join
+                                            </MenuItem>
+                                        </Menu>
+                                    </>
+                                )}
+                            </PopupState>
                         )}
-
-                        <Tooltip title="Insert">
-                            <button
-                                className="code-editor-button -ml-0.5"
-                                onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    showContextMenu();
-                                }}
-                            >
-                                <AddRounded sx={buttonIconStyles} />
-                            </button>
-                        </Tooltip>
 
                         <Tooltip title="Format">
                             <button
@@ -990,51 +1158,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                     </Tooltip>
 
                                     <Menu {...bindMenu(popupState)}>
-                                        {collaborationMode.current ? (
-                                            <MenuItem
-                                                onClick={async () => {
-                                                    popupState.close();
-                                                    await stopCollaborating();
-                                                }}
-                                            >
-                                                <PeopleAltRounded />
-                                                Stop Collaborating
-                                            </MenuItem>
-                                        ) : (
-                                            [
-                                                <MenuItem
-                                                    key="host"
-                                                    onClick={async () => {
-                                                        popupState.close();
-                                                        await startCollaborating("host");
-                                                    }}
-                                                >
-                                                    <PeopleAltRounded />
-                                                    Collaborate
-                                                </MenuItem>,
-
-                                                <MenuItem
-                                                    key="join"
-                                                    disabled={props.code.length > 0}
-                                                    onClick={async () => {
-                                                        popupState.close();
-
-                                                        const hostUserId = prompt(
-                                                            "Please enter the ID of the session you want to join:"
-                                                        );
-
-                                                        if (!hostUserId) return;
-
-                                                        await startCollaborating("join");
-                                                        await joinHost(hostUserId);
-                                                    }}
-                                                >
-                                                    <GroupAddRounded />
-                                                    Join
-                                                </MenuItem>,
-                                            ]
-                                        )}
-
                                         <MenuItem
                                             onClick={async () => {
                                                 popupState.close();
@@ -1342,6 +1465,54 @@ const Hover = (props: {
                     </a>
                 </div>
             ) : null}
+        </div>
+    );
+};
+
+class InsertButtonDecoration extends WidgetType {
+    constructor(private from: number, private to: number, private onClick: () => void) {
+        super();
+    }
+
+    eq(widget: this): boolean {
+        return this.from === widget.from && this.to === widget.to;
+    }
+
+    toDOM() {
+        const container = document.createElement("span");
+        ReactDOM.createRoot(container).render(<InsertButton onClick={this.onClick} />);
+
+        return container;
+    }
+}
+
+const InsertButton = (props: { onClick: () => void }) => {
+    const [showButton, setShowButton] = useState(false);
+
+    useEffect(() => {
+        const showButton = setTimeout(() => setShowButton(true), 500);
+
+        return () => {
+            clearTimeout(showButton);
+        };
+    }, []);
+
+    return (
+        <div className="inline-block w-0 relative">
+            <div
+                className={`absolute ${
+                    showButton ? "opacity-100" : "opacity-0"
+                } transition-opacity`}
+            >
+                <Tooltip title="Insert" disableHoverListener={!showButton} hidden={!showButton}>
+                    <div
+                        className="flex items-center justify-center bg-blue-500 ml-1 mt-[-12pt] w-5 h-5 rounded-md text-white cursor-pointer"
+                        onClick={props.onClick}
+                    >
+                        <p>+</p>
+                    </div>
+                </Tooltip>
+            </div>
         </div>
     );
 };
