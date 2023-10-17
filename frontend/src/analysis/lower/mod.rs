@@ -5297,6 +5297,17 @@ impl Lowerer {
                         Fix::new(format!("replace with `{alias}`"), FixRange::replace(span.first()), alias),
                     )),
             )
+            .chain(did_you_mean::number_with_units(&name).map(|(number, units)| (
+                Note::secondary(
+                    span,
+                    format!("did you mean `({number} {units})`?"),
+                ),
+                Fix::new(
+                    format!("replace with `({number} {units})`"),
+                    FixRange::replace(span.first()),
+                    format!("({number} {units})"),
+                ),
+            )))
             .chain(ctx.caller_accepts_text.then(|| (
                 Note::secondary(
                     span,

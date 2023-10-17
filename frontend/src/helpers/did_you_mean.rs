@@ -17,6 +17,20 @@ pub fn math(name: &str) -> Option<(&str, &str, &str)> {
     ))
 }
 
+pub fn number_with_units(name: &str) -> Option<(&str, &str)> {
+    lazy_static! {
+        static ref NUMBER_WITH_UNITS: Regex =
+            Regex::new(r"^(-?[0-9]+(?:\.[0-9]+)?)([A-Za-z0-9\-_]+[!?']?)$").unwrap();
+    }
+
+    let captures = NUMBER_WITH_UNITS.captures(name)?;
+
+    Some((
+        captures.get(1).unwrap().as_str(),
+        captures.get(2).unwrap().as_str(),
+    ))
+}
+
 pub fn comment(name: &str) -> Option<()> {
     (name == "//" || name == "#" || name == "/*" || name == "*/").then_some(())
 }
