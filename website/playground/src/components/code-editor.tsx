@@ -526,10 +526,10 @@ export const CodeEditor = (props: CodeEditorProps) => {
     const insertCompletion = (completion: Completion | SpecialCompletion) => {
         const code = props.code;
 
-        const selection = syntaxTree(view.current!.state).cursorAt(
-            view.current!.state.selection.main.to,
-            1
-        ).to;
+        const selection = Math.min(
+            syntaxTree(view.current!.state).cursorAt(view.current!.state.selection.main.to, 1).to,
+            view.current!.state.doc.lineAt(view.current!.state.selection.main.to).to
+        );
 
         const before = code.slice(0, selection);
         const padBefore = (before[before.length - 1] ?? " ").match(/\s/) ? "" : " ";
