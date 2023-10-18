@@ -39,6 +39,8 @@ import DataObjectIcon from "@mui/icons-material/DataObject";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import NoteAddOutlinedIcon from "@mui/icons-material/NoteAddOutlined";
 import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
+import VerticalAlignTopIcon from "@mui/icons-material/VerticalAlignTop";
+import VerticalAlignBottomIcon from "@mui/icons-material/VerticalAlignBottom";
 import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
 import RedoRoundedIcon from "@mui/icons-material/RedoRounded";
 import ContentCutRoundedIcon from "@mui/icons-material/ContentCutRounded";
@@ -78,6 +80,8 @@ interface LessonInfo {
 }
 
 export interface EditCommands {
+    jumpToBeginning?: () => void;
+    jumpToEnd?: () => void;
     undo?: () => void;
     redo?: () => void;
     cut?: () => string | undefined;
@@ -351,6 +355,30 @@ const App = () => {
                                     sx={{ marginTop: 1 }}
                                     disableAutoFocus
                                 >
+                                    <MenuItem
+                                        disabled={activeEditor?.jumpToBeginning == null}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            activeEditor?.jumpToBeginning?.();
+                                            popupState.close();
+                                        }}
+                                    >
+                                        <VerticalAlignTopIcon sx={{ marginRight: 1 }} />
+                                        Jump to Beginning
+                                    </MenuItem>
+
+                                    <MenuItem
+                                        disabled={activeEditor?.jumpToEnd == null}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            activeEditor?.jumpToEnd?.();
+                                            popupState.close();
+                                        }}
+                                    >
+                                        <VerticalAlignBottomIcon sx={{ marginRight: 1 }} />
+                                        Jump to End
+                                    </MenuItem>
+
                                     <MenuItem
                                         disabled={activeEditor?.undo == null}
                                         onClick={(e) => {

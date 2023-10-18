@@ -10,7 +10,6 @@ definitions! {
     mod help_group;
     mod help_playground;
     mod help_show_code;
-    mod help_template;
     mod keyword;
     mod language_item;
     mod no_reuse;
@@ -51,7 +50,6 @@ syntax_group! {
             HelpGroup,
             HelpPlayground,
             HelpShowCode,
-            HelpTemplate,
             Keyword,
             LanguageItem,
             NoReuse,

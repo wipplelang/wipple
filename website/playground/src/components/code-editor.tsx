@@ -1,14 +1,11 @@
 import ReactDOM from "react-dom/client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SimpleCodeEditor from "./react-simple-code-editor";
 import * as prism from "prismjs";
-import Divider from "@mui/material/Divider";
 import ListItemText from "@mui/material/ListItemText";
-import ListSubheader from "@mui/material/ListSubheader";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import MenuList from "@mui/material/MenuList";
-import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useSpring, animated } from "react-spring";
@@ -17,8 +14,8 @@ import {
     AnalysisOutputDiagnostic,
     AnalysisOutputSyntaxHighlightingItem,
     HoverOutput,
-    AnalysisOutputCompletions,
-    Completion,
+    AnalysisOutputSnippets,
+    Snippet,
     AnalysisConsoleDiagnosticFix,
     useRefState,
     Markdown,
@@ -51,7 +48,7 @@ import { styleTags, tags as t } from "@lezer/highlight";
 import { LRLanguage, LanguageSupport } from "@codemirror/language";
 import { parser } from "../languages/wipple.grammar";
 import { EditCommands, Settings } from "../App";
-import { Popover } from "@mui/material";
+import { ListItemIcon, Popover } from "@mui/material";
 import { SwatchesPicker } from "react-color";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import {
@@ -73,6 +70,9 @@ import graphemeSplit from "graphemesplit";
 import { SetupIcon } from "./picker";
 import { inlineSuggestion } from "./codemirror-extension-inline-suggestion";
 import * as commands from "@codemirror/commands";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import CodeIcon from "@mui/icons-material/Code";
+import KeyboardReturnIcon from "@mui/icons-material/KeyboardReturn";
 
 export interface CodeEditorProps {
     id: string;
@@ -97,10 +97,11 @@ interface Hover {
         | undefined;
 }
 
-interface SpecialCompletion {
-    element: () => JSX.Element;
-    help: string;
-    template: string;
+interface SpecialSnippet {
+    element: () => React.ReactNode;
+    name: string;
+    code: string;
+    formatAfter: boolean;
 }
 
 export const CodeEditor = (props: CodeEditorProps) => {
@@ -163,7 +164,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 ReactDOM.createRoot(dom).render(
                     <Hover
                         hover={{ diagnostic: hoverDiagnostic, output: hoverOutput }}
-                        onApplyFix={(fix) => {
+                        onApplyFix={async (fix) => {
                             view.dispatch({
                                 changes: {
                                     from: fix.start,
@@ -171,6 +172,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                     insert: fix.replacement,
                                 },
                             });
+
+                            await formatCode(view.state.doc.toString());
 
                             setHoverPos(undefined);
 
@@ -205,9 +208,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
             },
         });
 
-    const insertButtonDecoration = (from: number, to: number) =>
+    const insertButtonDecoration = (from: number, to: number, hasSelection: boolean) =>
         Decoration.widget({
-            widget: new InsertButtonDecoration(from, to, () => showInsertMenu(to)),
+            widget: new InsertButtonDecoration(from, to, hasSelection, () => showInsertMenu(to)),
             side: 1,
         });
 
@@ -413,7 +416,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
         pos = pos ?? view.state.selection.main.to;
 
-        return Decoration.set(insertButtonDecoration(pos, pos).range(pos, pos));
+        return Decoration.set(
+            insertButtonDecoration(pos, pos, !view.state.selection.main.empty).range(pos, pos)
+        );
     };
 
     const insertButton = ViewPlugin.fromClass(
@@ -433,7 +438,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
         }
     );
 
-    const [completions, setCompletions] = useRefState<AnalysisOutputCompletions | null>(null);
+    const [snippets, setSnippets] = useRefState<AnalysisOutputSnippets | null>(null);
 
     const canCollapse = props.code.length > 0 && output?.isEmpty;
 
@@ -470,6 +475,12 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
     const handleFocusIn = (_e: FocusEvent, view: EditorView) => {
         props.onFocus({
+            jumpToBeginning: () => {
+                commands.cursorDocStart(view);
+            },
+            jumpToEnd: () => {
+                commands.cursorDocEnd(view);
+            },
             undo: () => {
                 commands.undo(view);
             },
@@ -511,10 +522,10 @@ export const CodeEditor = (props: CodeEditorProps) => {
         (analysis: AnalysisOutput) => {
             setAnalysis(analysis);
             setSyntaxHighlighting(analysis.syntaxHighlighting);
-            setCompletions(analysis.completions);
+            setSnippets(analysis.snippets);
             view.current!.dispatch();
         },
-        [setSyntaxHighlighting, setCompletions]
+        [setSyntaxHighlighting, setSnippets]
     );
 
     const onError = useCallback((error: any) => {
@@ -525,7 +536,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
     }, []);
 
     const [contextMenuAnchor, setContextMenuAnchor] = useState<HTMLElement>();
-    const [contextMenuSearch, setContextMenuSearch] = useState("");
 
     const showInsertMenu = (pos: number) => {
         const caretPosition = view.current!.coordsAtPos(pos);
@@ -550,7 +560,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
         contextMenuAnchor.remove();
         setContextMenuAnchor(undefined);
-        setContextMenuSearch("");
     };
 
     const buttonIconStyles = {
@@ -559,34 +568,58 @@ export const CodeEditor = (props: CodeEditorProps) => {
         marginTop: "-0.125rem",
     };
 
-    const insertCompletion = (completion: Completion | SpecialCompletion) => {
+    const insertSnippet = async (snippet: Snippet | SpecialSnippet, wrap: boolean) => {
         const code = props.code;
 
-        const selection = Math.min(
-            syntaxTree(view.current!.state).cursorAt(view.current!.state.selection.main.to, 1).to,
-            view.current!.state.doc.lineAt(view.current!.state.selection.main.to).to
-        );
+        const format = "formatAfter" in snippet ? snippet.formatAfter : true;
 
-        const before = code.slice(0, selection);
-        const padBefore = (before[before.length - 1] ?? " ").match(/\s/) ? "" : " ";
+        const selection = format
+            ? Math.min(
+                  syntaxTree(view.current!.state).cursorAt(view.current!.state.selection.main.to, 1)
+                      .to,
+                  view.current!.state.doc.lineAt(view.current!.state.selection.main.to).to
+              )
+            : view.current!.state.selection.main.head;
 
-        const after = code.slice(selection);
-        const padAfter = (after[0] ?? " ").match(/\s/) ? "" : " ";
+        const beforeSelection = code.slice(0, selection);
+        const padBefore =
+            !format || (beforeSelection[beforeSelection.length - 1] ?? " ").match(/\s/) ? "" : " ";
 
-        const text = padBefore + completion.template + padAfter;
+        const afterSelection = code.slice(selection);
+        const padAfter = !format || (afterSelection[0] ?? " ").match(/\s/) ? "" : " ";
 
-        view.current!.dispatch({
-            changes: {
-                from: selection,
-                to: selection,
-                insert: text,
-            },
-            selection: {
-                anchor: selection + text.length,
-            },
-        });
+        let newCode: string;
+        if ("code" in snippet) {
+            newCode = beforeSelection + padBefore + snippet.code + padAfter + afterSelection;
+        } else {
+            const { from, to } = view.current!.state.selection.main;
 
-        props.onChange(before + padBefore + completion.template + padAfter + after);
+            const before = view.current!.state.sliceDoc(0, from);
+            const after = view.current!.state.sliceDoc(to);
+            const code = wrap ? view.current!.state.sliceDoc(from, to) : null;
+
+            const expanded = await outputRef.current!.expandSnippet(snippet.id, code);
+            if (expanded == null) {
+                return;
+            }
+
+            newCode = wrap ? before + expanded + after : padBefore + expanded + padAfter;
+        }
+
+        if (format) {
+            formatCode(newCode);
+        } else {
+            view.current!.dispatch({
+                changes: {
+                    from: 0,
+                    to: view.current!.state.doc.length,
+                    insert: newCode,
+                },
+                selection: {
+                    anchor: Math.min(view.current!.state.selection.main.head, newCode.length),
+                },
+            });
+        }
     };
 
     const download = async () => {
@@ -873,11 +906,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
         () =>
             inlineSuggestion({
                 fetchFn: async (update) => {
-                    if (
-                        !update.docChanged ||
-                        update.state.doc.length === 0 ||
-                        !completions.current
-                    ) {
+                    if (!update.docChanged || update.state.doc.length === 0 || !snippets.current) {
                         return "";
                     }
 
@@ -894,22 +923,13 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         return "";
                     }
 
-                    const text = update.state.sliceDoc(node.from, node.to);
+                    // const text = update.state.sliceDoc(node.from, node.to);
+                    // const completion = null;
+                    // if (!completion) return "";
+                    // return completion.name.slice(text.length) + " ";
 
-                    const includeCompletion = (completion: Completion) =>
-                        completion.name.startsWith(text);
-
-                    const completion =
-                        completions.current.language.find(includeCompletion) ??
-                        completions.current.variables.find(includeCompletion) ??
-                        completions.current.groupedConstants
-                            .flatMap(([_group, completions]) => completions)
-                            .find(includeCompletion) ??
-                        completions.current.ungroupedConstants.find(includeCompletion);
-
-                    if (!completion) return "";
-
-                    return completion.name.slice(text.length) + " ";
+                    // TODO: Add back inline completions
+                    return "";
                 },
             }),
         []
@@ -1021,6 +1041,25 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
     const [collaborationStyles, setCollaborationStyles] = useState(getCollaborationStyles);
     const updateCollaborationStyles = () => setCollaborationStyles(getCollaborationStyles());
+
+    const formatCode = async (code: string) => {
+        const formatted = await outputRef.current!.format(code);
+        if (formatted != null) {
+            view.current!.dispatch({
+                changes: {
+                    from: 0,
+                    to: view.current!.state.doc.length,
+                    insert: formatted.trimEnd(),
+                },
+                selection: {
+                    anchor: Math.min(
+                        view.current!.state.selection.main.head,
+                        formatted.trimEnd().length
+                    ),
+                },
+            });
+        }
+    };
 
     return (
         <div id={containerID}>
@@ -1169,18 +1208,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                             <button
                                 className="code-editor-button -mx-0.5"
                                 disabled={props.code.length === 0}
-                                onMouseDown={async (e) => {
-                                    const formatted = await outputRef.current!.format();
-                                    if (formatted != null) {
-                                        view.current!.dispatch({
-                                            changes: {
-                                                from: 0,
-                                                to: view.current!.state.doc.length,
-                                                insert: formatted.trimEnd(),
-                                            },
-                                        });
-                                    }
-                                }}
+                                onMouseDown={() => formatCode(props.code)}
                             >
                                 <SubjectRounded sx={buttonIconStyles} />
                             </button>
@@ -1288,110 +1316,57 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     />
                 </div>
 
-                {completions && (
+                {snippets.current && (
                     <Menu
                         open={contextMenuAnchor != null}
                         anchorEl={contextMenuAnchor}
                         onClose={hideContextMenu}
                         style={{ maxHeight: 500 }}
                     >
-                        <TextField
-                            inputMode="search"
-                            value={contextMenuSearch}
-                            onChange={(e) => setContextMenuSearch(e.target.value)}
-                            placeholder="Search"
-                            fullWidth
-                        />
-
                         <MenuList disablePadding>
                             {(() => {
-                                const includeCompletion = (
-                                    completion: Completion | SpecialCompletion
-                                ) =>
-                                    !contextMenuSearch ||
-                                    ("kind" in completion
-                                        ? contextMenuSearch.includes(completion.name) ||
-                                          completion.name.includes(contextMenuSearch)
-                                        : false);
+                                if (!view.current || !snippets.current) {
+                                    return null;
+                                }
 
-                                const renderCompletionItem = (
-                                    completion: Completion | SpecialCompletion,
-                                    index: number
-                                ) =>
-                                    completion.help ? (
-                                        <MenuItem
-                                            key={index}
-                                            onClick={() => {
-                                                insertCompletion(completion);
-                                                hideContextMenu();
-                                            }}
-                                            style={{ maxWidth: 400, whiteSpace: "normal" }}
-                                        >
-                                            <ListItemText>
-                                                <pre className="language-wipple">
-                                                    {"kind" in completion ? (
-                                                        <span
-                                                            className={`token ${completion.kind}`}
-                                                        >
-                                                            {completion.name}
-                                                        </span>
+                                const hasSelection = !view.current.state.selection.main.empty;
+
+                                const renderSnippetItem =
+                                    (wrap: boolean) =>
+                                    (snippet: Snippet | SpecialSnippet, index: number) =>
+                                        (
+                                            <MenuItem
+                                                key={index}
+                                                onClick={() => {
+                                                    insertSnippet(snippet, wrap);
+                                                    hideContextMenu();
+                                                }}
+                                                style={{ maxWidth: 400, whiteSpace: "normal" }}
+                                            >
+                                                <ListItemIcon>
+                                                    {"element" in snippet ? (
+                                                        <snippet.element />
                                                     ) : (
-                                                        <completion.element />
+                                                        <CodeIcon />
                                                     )}
-                                                </pre>
+                                                </ListItemIcon>
 
-                                                <Markdown>{completion.help}</Markdown>
-                                            </ListItemText>
-                                        </MenuItem>
-                                    ) : null;
+                                                <ListItemText>
+                                                    <Markdown>{snippet.name}</Markdown>
+                                                </ListItemText>
+                                            </MenuItem>
+                                        );
 
-                                const languageSection = [
-                                    ...builtinCompletions,
-                                    ...(completions.current?.language ?? []),
-                                ]
-                                    .filter(includeCompletion)
-                                    .map(renderCompletionItem);
-
-                                const variablesSection = (completions.current?.variables ?? [])
-                                    .filter(includeCompletion)
-                                    .map(renderCompletionItem);
-
-                                const groupedConstantsSection = (
-                                    completions.current?.groupedConstants ?? []
-                                ).map(([group, completions], index) => {
-                                    const filtered = completions.filter(includeCompletion);
-
-                                    return filtered.length ? (
-                                        <div key={index}>
-                                            <Divider />
-                                            <ListSubheader>{group}</ListSubheader>
-                                            <Divider />
-                                            {...filtered.map(renderCompletionItem)}
-                                        </div>
-                                    ) : null;
-                                });
-
-                                const ungroupedConstantsSection = (
-                                    completions.current?.ungroupedConstants ?? []
-                                )
-                                    .filter(includeCompletion)
-                                    .map(renderCompletionItem);
-
-                                return [
-                                    languageSection,
-                                    languageSection.length ? (
-                                        <Divider key="languageDivider" />
-                                    ) : null,
-                                    variablesSection,
-                                    variablesSection.length ? (
-                                        <Divider key="variablesDivider" />
-                                    ) : null,
-                                    groupedConstantsSection,
-                                    ungroupedConstantsSection.length ? (
-                                        <Divider key="ungroupedConstantsDivider" />
-                                    ) : null,
-                                    ungroupedConstantsSection,
-                                ];
+                                if (hasSelection) {
+                                    return snippets.current.wrapping.map(renderSnippetItem(true));
+                                } else {
+                                    return [
+                                        ...builtinSnippets.map(renderSnippetItem(false)),
+                                        ...snippets.current.nonwrapping.map(
+                                            renderSnippetItem(false)
+                                        ),
+                                    ];
+                                }
                             })()}
                         </MenuList>
                     </Menu>
@@ -1511,23 +1486,34 @@ const Hover = (props: {
 };
 
 class InsertButtonDecoration extends WidgetType {
-    constructor(private from: number, private to: number, private onClick: () => void) {
+    constructor(
+        private from: number,
+        private to: number,
+        private hasSelection: boolean,
+        private onClick: () => void
+    ) {
         super();
     }
 
     eq(widget: this): boolean {
-        return this.from === widget.from && this.to === widget.to;
+        return (
+            this.from === widget.from &&
+            this.to === widget.to &&
+            this.hasSelection === widget.hasSelection
+        );
     }
 
     toDOM() {
         const container = document.createElement("span");
-        ReactDOM.createRoot(container).render(<InsertButton onClick={this.onClick} />);
+        ReactDOM.createRoot(container).render(
+            <InsertButton hasSelection={this.hasSelection} onClick={this.onClick} />
+        );
 
         return container;
     }
 }
 
-const InsertButton = (props: { onClick: () => void }) => {
+const InsertButton = (props: { hasSelection: boolean; onClick: () => void }) => {
     const [showButton, setShowButton] = useState(false);
 
     useEffect(() => {
@@ -1550,7 +1536,7 @@ const InsertButton = (props: { onClick: () => void }) => {
                         className="flex items-center justify-center bg-blue-500 ml-1 mt-[-12pt] w-5 h-5 rounded-md text-white cursor-pointer"
                         onClick={props.onClick}
                     >
-                        <p>+</p>
+                        {props.hasSelection ? <CodeIcon /> : <AddRoundedIcon />}
                     </div>
                 </Tooltip>
             </div>
@@ -1891,20 +1877,29 @@ const bracketPairColors: string[] = [
     "bg-yellow-500 bg-opacity-20",
 ];
 
-const builtinCompletions: SpecialCompletion[] = [
+const builtinSnippets: SpecialSnippet[] = [
+    {
+        element: () => <KeyboardReturnIcon />,
+        name: "Insert empty line",
+        code: "\n",
+        formatAfter: false,
+    },
     {
         element: () => <Asset asset="#007aff" disabled />,
-        help: "Insert a color.",
-        template: "`#007aff`",
+        name: "Insert color",
+        code: "`#007aff`",
+        formatAfter: true,
     },
     {
         element: () => <Asset asset="😀" disabled />,
-        help: "Insert an emoji.",
-        template: "`😀`",
+        name: "Insert emoji",
+        code: "`😀`",
+        formatAfter: true,
     },
     {
         element: () => <Asset asset="C4" disabled />,
-        help: "Insert a note.",
-        template: "`C4`",
+        name: "Insert note",
+        code: "`C4`",
+        formatAfter: true,
     },
 ];

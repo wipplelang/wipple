@@ -15,7 +15,6 @@ Show : (A : Text) => trait (A -> Text)
 
 [help "Display a value on the screen."]
 [help-group "Input and Output"]
-[help-template "show {%text%}"]
 [help-playground "https://wipple.dev/std/examples/show.txt"]
 [diagnostic "accepts-text"]
 [diagnostic-alias "print"]
@@ -25,6 +24,8 @@ Show : (A : Text) => trait (A -> Text)
 [resolve "insert a value to display" (show {%value%})]
 show :: A where (Show A) => A -> ()
 show : x -> intrinsic "display" (Show x)
+
+snippet "Show" : show 'value
 
 instance (Show Text) : it
 instance (Show Number) : n -> semantics "pure" (intrinsic "number-to-text" n)

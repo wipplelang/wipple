@@ -147,10 +147,16 @@ onmessage = async (event) => {
                 postMessage(hover);
                 break;
             }
-            case "completions": {
+            case "snippets": {
                 const { position } = event.data;
-                const completions = runner.completions(position);
-                postMessage(completions);
+                const snippets = runner.snippets(position);
+                postMessage(snippets);
+                break;
+            }
+            case "expandSnippet": {
+                const { snippet, wrappedCode } = event.data;
+                const code = runner.expandSnippet(snippet, wrappedCode);
+                postMessage(code);
                 break;
             }
             case "format": {

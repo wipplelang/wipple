@@ -18,7 +18,7 @@ pub type ScopeSet = wipple_syntax::ScopeSet<ScopeId>;
 use crate::{
     diagnostics::*,
     helpers::{InternedString, Shared},
-    BuiltinSyntaxId, Compiler, FileKind, FilePath, ScopeId, SyntaxId,
+    BuiltinSyntaxId, Compiler, FileKind, FilePath, ScopeId, SnippetId, SyntaxId,
 };
 use async_trait::async_trait;
 use futures::future::BoxFuture;
@@ -207,7 +207,7 @@ pub struct Analysis {
     compiler: Compiler,
     options: Options,
     entrypoint: FilePath,
-    cache: Shared<indexmap::IndexMap<FilePath, Arc<wipple_syntax::ast::File<Self>>>>,
+    cache: Shared<indexmap::IndexMap<FilePath, Arc<ast::File<Self>>>>,
     count: Arc<AtomicUsize>,
     stack: Shared<Vec<FilePath>>,
 }
@@ -289,6 +289,16 @@ impl wipple_syntax::Driver for Analysis {
                 );
             }
 
+            let dependency_snippets = file.file.snippets.lock().clone();
+            for (name, dependency_snippets) in dependency_snippets {
+                source_file
+                    .snippets
+                    .lock()
+                    .entry(name)
+                    .or_default()
+                    .extend(dependency_snippets);
+            }
+
             source_file.dependencies.lock().push(file.clone());
         }
 
@@ -329,8 +339,8 @@ impl wipple_syntax::Driver for Analysis {
 
         if let Some(cached) = self.compiler.loader.cache().lock().get(&resolved_path) {
             fn insert(
-                file: Arc<wipple_syntax::ast::File<Analysis>>,
-                files: &mut indexmap::IndexMap<FilePath, Arc<wipple_syntax::ast::File<Analysis>>>,
+                file: Arc<ast::File<Analysis>>,
+                files: &mut indexmap::IndexMap<FilePath, Arc<ast::File<Analysis>>>,
             ) {
                 for dependency in &*file.file.dependencies.lock() {
                     insert(dependency.clone(), files);
@@ -406,6 +416,8 @@ impl wipple_syntax::Driver for Analysis {
             syntaxes: Default::default(),
             builtin_syntax_uses: Default::default(),
             constants: Default::default(),
+            snippet_declarations: Default::default(),
+            snippets: Default::default(),
         };
 
         self.stack.lock().pop();
@@ -499,21 +511,22 @@ pub struct File {
     path: FilePath,
     is_entrypoint: bool,
     code: Arc<str>,
-    dependencies: Shared<Vec<Arc<wipple_syntax::ast::File<Analysis>>>>,
-    syntax_declarations:
-        Shared<BTreeMap<SyntaxId, wipple_syntax::ast::SyntaxAssignmentValue<Analysis>>>,
+    dependencies: Shared<Vec<Arc<ast::File<Analysis>>>>,
+    syntax_declarations: Shared<BTreeMap<SyntaxId, ast::SyntaxAssignmentValue<Analysis>>>,
     syntaxes: Shared<HashMap<InternedString, Vec<(ScopeSet, SyntaxId)>>>,
     builtin_syntax_uses: Shared<
         HashMap<
             &'static str,
             (
                 BuiltinSyntaxId,
-                wipple_syntax::ast::BuiltinSyntaxDefinition,
+                ast::BuiltinSyntaxDefinition,
                 im::HashSet<SpanList>,
             ),
         >,
     >,
     constants: Shared<HashMap<InternedString, Vec<(ScopeSet, ScopeSet)>>>,
+    snippet_declarations: Shared<HashMap<SnippetId, ast::SnippetAssignmentValue<Analysis>>>,
+    snippets: Shared<HashMap<InternedString, Vec<SnippetId>>>,
 }
 
 impl wipple_syntax::File<Analysis> for File {
@@ -533,7 +546,7 @@ impl wipple_syntax::File<Analysis> for File {
         &self,
         name: InternedString,
         scope_set: ScopeSet,
-        value: wipple_syntax::ast::SyntaxAssignmentValue<Analysis>,
+        value: ast::SyntaxAssignmentValue<Analysis>,
     ) {
         let id = self.compiler.new_syntax_id_in(self.path);
 
@@ -551,7 +564,7 @@ impl wipple_syntax::File<Analysis> for File {
         span: SpanList,
         name: InternedString,
         scope_set: ScopeSet,
-    ) -> Result<wipple_syntax::ast::SyntaxAssignmentValue<Analysis>, ResolveSyntaxError> {
+    ) -> Result<ast::SyntaxAssignmentValue<Analysis>, ResolveSyntaxError> {
         let syntaxes = self.syntaxes.lock();
 
         let mut candidates = syntaxes
@@ -648,6 +661,12 @@ impl wipple_syntax::File<Analysis> for File {
             }
             _ => Err(ResolveSyntaxError::Ambiguous),
         }
+    }
+
+    fn define_snippet(&self, name: InternedString, value: ast::SnippetAssignmentValue<Analysis>) {
+        let id = self.compiler.new_snippet_id_in(self.path);
+        self.snippet_declarations.lock().insert(id, value);
+        self.snippets.lock().entry(name).or_default().push(id);
     }
 }
 

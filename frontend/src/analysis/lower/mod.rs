@@ -5,7 +5,7 @@ use crate::{
     diagnostics::{Fix, FixRange, Note},
     helpers::{did_you_mean, Backtrace, InternedString, Shared},
     BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, ExpressionId, FieldIndex, FilePath,
-    ScopeId, SyntaxId, TraitId, TypeId, TypeParameterId, VariableId, VariantIndex,
+    ScopeId, SnippetId, SyntaxId, TraitId, TypeId, TypeParameterId, VariableId, VariantIndex,
 };
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -47,6 +47,7 @@ pub struct Declarations {
     pub instances: im::OrdMap<ConstantId, Declaration<InstanceDeclaration>>,
     pub variables: im::OrdMap<VariableId, Declaration<VariableDeclaration>>,
     pub builtin_syntaxes: im::OrdMap<BuiltinSyntaxId, Declaration<BuiltinSyntaxDeclaration>>,
+    pub snippets: im::OrdMap<SnippetId, Declaration<SnippetDeclaration>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -60,6 +61,7 @@ struct UnresolvedDeclarations {
     instances: im::OrdMap<ConstantId, Declaration<Option<UnresolvedInstanceDeclaration>>>,
     variables: im::OrdMap<VariableId, Declaration<VariableDeclaration>>,
     builtin_syntaxes: im::OrdMap<BuiltinSyntaxId, Declaration<BuiltinSyntaxDeclaration>>,
+    snippets: im::OrdMap<SnippetId, Declaration<SnippetDeclaration>>,
 }
 
 impl UnresolvedDeclarations {
@@ -94,6 +96,7 @@ impl UnresolvedDeclarations {
                 .collect(),
             variables: self.variables,
             builtin_syntaxes: self.builtin_syntaxes,
+            snippets: self.snippets,
         }
     }
 }
@@ -179,7 +182,6 @@ pub struct DeclarationAttributes {
     pub help_group: Option<InternedString>,
     pub help_playground: Option<InternedString>,
     pub help_show_code: bool,
-    pub help_template: Option<InternedString>,
     pub private: bool,
 }
 
@@ -407,7 +409,13 @@ pub struct VariableDeclaration;
 
 #[derive(Debug, Clone)]
 pub struct BuiltinSyntaxDeclaration {
-    pub definition: wipple_syntax::ast::BuiltinSyntaxDefinition,
+    pub definition: ast::BuiltinSyntaxDefinition,
+}
+
+#[derive(Debug, Clone)]
+pub struct SnippetDeclaration {
+    pub expr: parse::Expr<Analysis>,
+    pub wrap: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -1026,6 +1034,23 @@ impl Compiler {
             }
         }
 
+        for (id, value) in &*file.file.snippet_declarations.lock() {
+            if !lowerer.declarations.snippets.contains_key(id) {
+                let decl = Declaration {
+                    name: value.name,
+                    span: value.span(),
+                    uses: Default::default(),
+                    value: SnippetDeclaration {
+                        expr: value.expression.clone(),
+                        wrap: value.wrap,
+                    },
+                    imported: false,
+                };
+
+                lowerer.declarations.snippets.insert(*id, decl);
+            }
+        }
+
         let mut file_attributes = BTreeMap::new();
 
         for dependency in dependencies {
@@ -1068,6 +1093,7 @@ impl Compiler {
                 constants(Declaration::make_unresolved),
                 instances(Declaration::make_unresolved),
                 variables,
+                snippets,
             );
 
             lowerer.file_info.merge(dependency.info.clone());
@@ -2366,6 +2392,7 @@ impl Lowerer {
                     })
                 }
                 ast::AssignmentValue::Syntax(_) => None,
+                ast::AssignmentValue::Snippet(_) => None,
                 ast::AssignmentValue::TypeFunction(value) => match value.value.as_deref().ok()? {
                     ast::AssignmentValue::Trait(trait_value) => {
                         let (span, name, scope) =
@@ -2514,6 +2541,15 @@ impl Lowerer {
                                     None
                                 }
                             }
+                        }
+                        _ => {
+                            self.compiler.add_error(
+                                "syntax error",
+                                vec![Note::primary(value.span(), "expected an expression here")],
+                                "syntax-error",
+                            );
+
+                            None
                         }
                     }
                 }
@@ -4632,10 +4668,6 @@ impl Lowerer {
                 .as_ref()
                 .map(|attribute| attribute.help_playground_text),
             help_show_code: statement_attributes.help_show_code.is_some(),
-            help_template: statement_attributes
-                .help_template
-                .as_ref()
-                .map(|attribute| attribute.help_template_text),
             private: statement_attributes.private.is_some(),
         }
     }

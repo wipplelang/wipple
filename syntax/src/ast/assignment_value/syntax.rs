@@ -86,8 +86,6 @@ impl<D: Driver> Syntax<D> for SyntaxAssignmentValueSyntax {
                         assigned_name.scope_set,
                         value.clone(),
                     );
-
-                    *assigned_name.did_create_syntax.lock() = true;
                 }
 
                 Ok(value.into())

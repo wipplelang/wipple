@@ -10,9 +10,7 @@ use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
 use send_wrapper::SendWrapper;
 use serde::Serialize;
 use std::{
-    collections::HashMap,
     future::Future,
-    mem,
     ops::ControlFlow,
     pin::Pin,
     sync::{atomic::AtomicBool, Arc},
@@ -21,14 +19,14 @@ use url::Url;
 use wasm_bindgen::{prelude::*, JsCast};
 use wasm_bindgen_futures::JsFuture;
 use wipple_default_loader as loader;
-use wipple_frontend::Loader;
+use wipple_frontend::{Loader, SnippetId};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AnalysisOutput {
     diagnostics: Vec<AnalysisOutputDiagnostic>,
     syntax_highlighting: Vec<AnalysisOutputSyntaxHighlightingItem>,
-    completions: AnalysisOutputCompletions,
+    snippets: AnalysisOutputSnippets,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
@@ -90,20 +88,16 @@ struct HoverOutput {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct AnalysisOutputCompletions {
-    language: Vec<Completion>,
-    grouped_constants: Vec<(String, Vec<Completion>)>,
-    ungrouped_constants: Vec<Completion>,
-    variables: Vec<Completion>,
+struct AnalysisOutputSnippets {
+    wrapping: Vec<Snippet>,
+    nonwrapping: Vec<Snippet>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct Completion {
-    kind: Option<&'static str>,
+struct Snippet {
+    id: SnippetId,
     name: String,
-    help: String,
-    template: String,
 }
 
 // SAFETY: This is safe because Wasm is single-threaded
@@ -497,14 +491,14 @@ pub fn analyze(
             .collect();
 
         let syntax_highlighting = get_syntax_highlighting(&program);
-        let completions = get_completions(&program);
+        let snippets = get_snippets(&program);
 
         save_analysis(Analysis { program, success });
 
         let output = AnalysisOutput {
             diagnostics,
             syntax_highlighting,
-            completions,
+            snippets,
         };
 
         let output = serde_wasm_bindgen::to_value(&output).unwrap();
@@ -665,110 +659,64 @@ fn get_syntax_highlighting(
         .collect()
 }
 
-fn get_completions(program: &wipple_frontend::analysis::Program) -> AnalysisOutputCompletions {
-    let mut language = Vec::new();
-    for decl in wipple_syntax::ast::builtin_syntax_definitions() {
-        let completion = Completion {
-            kind: Some(if decl.operator { "operator" } else { "keyword" }),
-            name: decl.name.to_string(),
-            help: decl.help.to_string(),
-            template: decl.template.to_string(),
-        };
+fn get_snippets(program: &wipple_frontend::analysis::Program) -> AnalysisOutputSnippets {
+    let (wrapping, nonwrapping) =
+        program
+            .declarations
+            .snippets
+            .iter()
+            .partition_map(|(id, decl)| {
+                use itertools::Either::*;
 
-        language.push(completion);
+                let snippet = Snippet {
+                    id: *id,
+                    name: decl.name.to_string(),
+                };
+
+                if decl.wrap {
+                    Left(snippet)
+                } else {
+                    Right(snippet)
+                }
+            });
+
+    AnalysisOutputSnippets {
+        wrapping,
+        nonwrapping,
     }
+}
 
-    let mut grouped_constants = HashMap::<String, Vec<Completion>>::new();
-    let mut ungrouped_constants = Vec::new();
+#[wasm_bindgen(js_name = "expandSnippet")]
+pub fn expand_snippet(id: JsValue, mut wrapped_code: Option<String>) -> JsValue {
+    let analysis = match get_analysis() {
+        Some(analysis) => analysis,
+        None => return JsValue::NULL,
+    };
 
-    macro_rules! add {
-        ($group:expr, $completion:ident) => {{
-            if let Some(group) = $group {
-                grouped_constants
-                    .entry(group.to_string())
-                    .or_default()
-                    .push($completion);
-            } else {
-                ungrouped_constants.push($completion);
+    let Analysis { program, .. } = &*analysis;
+
+    let id = serde_wasm_bindgen::from_value(id).expect("invalid snippet ID");
+
+    let snippet = match program.declarations.snippets.get(&id) {
+        Some(decl) => decl,
+        None => return JsValue::NULL,
+    };
+
+    let mut expr = snippet.expr.clone();
+    expr.traverse_mut(|expr| {
+        if let wipple_syntax::parse::ExprKind::QuoteName(_) = expr.kind {
+            if let Some(mut code) = wrapped_code.take() {
+                // HACK: Until we support selection at the expression level
+                if code.contains(' ') && !code.contains('\n') {
+                    code = format!("({code})");
+                }
+
+                expr.kind = wipple_syntax::parse::ExprKind::SourceCode(code);
             }
-        }};
-    }
+        }
+    });
 
-    for decl in program.declarations.constants.values() {
-        let completion = Completion {
-            kind: matches!(
-                decl.ty.kind,
-                wipple_frontend::analysis::TypeKind::Function(_, _)
-            )
-            .then_some("function"),
-            name: decl.name.to_string(),
-            help: decl.attributes.decl_attributes.help.iter().join("\n"),
-            template: decl
-                .attributes
-                .decl_attributes
-                .help_template
-                .map(|template| template.to_string())
-                .unwrap_or_else(|| decl.name.to_string()),
-        };
-
-        add!(decl.attributes.decl_attributes.help_group, completion);
-    }
-
-    for decl in program.declarations.syntaxes.values() {
-        let completion = Completion {
-            kind: Some("syntax"),
-            name: decl.name.to_string(),
-            help: decl.attributes.decl_attributes.help.iter().join("\n"),
-            template: decl
-                .attributes
-                .decl_attributes
-                .help_template
-                .map(|template| template.to_string())
-                .unwrap_or_else(|| decl.name.to_string()),
-        };
-
-        add!(decl.attributes.decl_attributes.help_group, completion);
-    }
-
-    let mut variables = Vec::new();
-    for decl in program.declarations.variables.values() {
-        let name = match decl.name {
-            Some(name) => name.to_string(),
-            None => continue,
-        };
-
-        variables.push(Completion {
-            kind: matches!(
-                decl.ty.kind,
-                wipple_frontend::analysis::TypeKind::Function(_, _)
-            )
-            .then_some("function"),
-            name: name.clone(),
-            help: String::new(),
-            template: name,
-        });
-    }
-
-    for completions in std::iter::once(&mut language)
-        .chain(grouped_constants.values_mut())
-        .chain(std::iter::once(&mut ungrouped_constants))
-        .chain(std::iter::once(&mut variables))
-    {
-        *completions = mem::take(completions).into_iter().unique().collect();
-        completions.sort_by(|a, b| a.name.cmp(&b.name));
-    }
-
-    let grouped_constants = grouped_constants
-        .into_iter()
-        .sorted_by(|(a, _), (b, _)| a.cmp(b))
-        .collect::<Vec<_>>();
-
-    AnalysisOutputCompletions {
-        language,
-        grouped_constants,
-        ungrouped_constants,
-        variables,
-    }
+    JsValue::from_str(&expr.to_string())
 }
 
 #[wasm_bindgen]

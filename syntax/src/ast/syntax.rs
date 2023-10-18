@@ -27,6 +27,10 @@ pub(crate) trait SyntaxContext<D: Driver>: Clone + Send + Sync {
 
     fn with_statement_attributes(self, attributes: Shared<StatementAttributes<D>>) -> Self;
 
+    fn block_is_terminal(&self) -> bool {
+        false
+    }
+
     async fn build_block(
         self,
         span: D::Span,

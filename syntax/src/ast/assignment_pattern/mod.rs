@@ -1,6 +1,7 @@
 definitions! {
     mod instance;
     mod pattern;
+    mod snippet;
     mod type_function;
 }
 
@@ -21,6 +22,7 @@ syntax_group! {
         non_terminal: {
             Instance,
             TypeFunction,
+            Snippet,
             Pattern,
         },
         terminal: {},

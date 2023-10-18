@@ -17,11 +17,11 @@ pub use engine::{
 pub use lower::{Intrinsic, Semantics, TypeAnnotation, TypeAnnotationKind};
 
 use crate::{
-    analysis::{lower, SpanList},
+    analysis::{lower, Analysis, SpanList},
     diagnostics::{Fix, FixRange, Note},
     helpers::{Backtrace, InternedString},
     BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, ExpressionId, FieldIndex, FileKind,
-    FilePath, ItemId, PatternId, SyntaxId, TraitId, TypeId, TypeParameterId, VariableId,
+    FilePath, ItemId, PatternId, SnippetId, SyntaxId, TraitId, TypeId, TypeParameterId, VariableId,
     VariantIndex,
 };
 use async_trait::async_trait;
@@ -67,6 +67,7 @@ macro_rules! declarations {
             /// NOTE: Not all variables will be listed here, only ones that passed typechecking
             pub variables: $($container)::+<VariableId, VariableDecl>,
             pub builtin_syntaxes: $($container)::+<BuiltinSyntaxId, BuiltinSyntaxDecl>,
+            pub snippets: $($container)::+<SnippetId, SnippetDecl>,
         }
     };
 }
@@ -86,6 +87,7 @@ impl From<DeclarationsInner> for Declarations {
             type_parameters: decls.type_parameters.into_iter().collect(),
             variables: decls.variables.into_iter().collect(),
             builtin_syntaxes: decls.builtin_syntaxes.into_iter().collect(),
+            snippets: decls.snippets.into_iter().collect(),
         }
     }
 }
@@ -204,6 +206,14 @@ pub struct BuiltinSyntaxDecl {
     pub span: SpanList,
     pub definition: wipple_syntax::ast::BuiltinSyntaxDefinition,
     pub uses: HashSet<SpanList>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SnippetDecl {
+    pub name: InternedString,
+    pub span: SpanList,
+    pub expr: wipple_syntax::parse::Expr<Analysis>,
+    pub wrap: bool,
 }
 
 macro_rules! expr {
@@ -1195,6 +1205,7 @@ impl Typechecker {
             type_parameter,
             // variables are handled inside `finalize_pattern`
             builtin_syntax as builtin_syntaxes,
+            snippet,
         );
     }
 
@@ -4956,6 +4967,30 @@ impl Typechecker {
             .declarations
             .borrow_mut()
             .builtin_syntaxes
+            .entry(id)
+            .or_insert(decl)))
+    }
+
+    fn with_snippet_decl<T>(&self, id: SnippetId, f: impl FnOnce(&SnippetDecl) -> T) -> Option<T> {
+        if let Some(decl) = self.declarations.borrow().snippets.get(&id) {
+            return Some(f(decl));
+        }
+
+        let decl = self.top_level.declarations.snippets.get(&id)?.clone();
+
+        let decl = SnippetDecl {
+            name: decl
+                .name
+                .unwrap_or_else(|| InternedString::new("<unknown>")),
+            span: decl.span,
+            expr: decl.value.expr,
+            wrap: decl.value.wrap,
+        };
+
+        Some(f(self
+            .declarations
+            .borrow_mut()
+            .snippets
             .entry(id)
             .or_insert(decl)))
     }

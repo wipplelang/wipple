@@ -386,7 +386,7 @@ impl<D: Driver> AstBuilder<D> {
     ) -> SyncFuture<BoxFuture<Result<<S::Context as SyntaxContext<D>>::Body, SyntaxError<D>>>> {
         SyncFuture::new(Box::pin(async move {
             match expr.kind {
-                parse::ExprKind::Block(statements) => {
+                parse::ExprKind::Block(statements) if !context.block_is_terminal() => {
                     let mut scope_set = scope_set.clone();
 
                     if S::Context::BLOCK_CREATES_SCOPE {

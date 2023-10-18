@@ -6,7 +6,8 @@ use crate::{
         },
         AssignmentPattern, AssignmentPatternSyntax, AssignmentPatternSyntaxContext,
         AssignmentValue, AssignmentValueSyntax, AssignmentValueSyntaxContext, NamePattern, Pattern,
-        PatternAssignmentPattern, StatementAttributes, StatementSyntaxContext,
+        PatternAssignmentPattern, SnippetAssignmentPatternSyntax, StatementAttributes,
+        StatementSyntaxContext,
     },
     parse, Driver, File,
 };
@@ -60,13 +61,9 @@ impl<D: Driver> Syntax<D> for AssignStatementSyntax {
                             context.statement_attributes.as_ref().unwrap().clone(),
                         );
 
-                let did_create_syntax = Shared::new(false);
                 if let parse::ExprKind::Name(name, _) = &lhs.kind {
-                    value_context = value_context.with_assigned_name(
-                        name.clone(),
-                        scope_set.clone(),
-                        did_create_syntax.clone(),
-                    );
+                    value_context =
+                        value_context.with_assigned_name(name.clone(), scope_set.clone());
                 }
 
                 let constant_scope = match &lhs.kind {
@@ -102,6 +99,33 @@ impl<D: Driver> Syntax<D> for AssignStatementSyntax {
                     scope_set
                         .lock()
                         .insert(context.ast_builder.file.make_scope());
+                } else if context
+                    .ast_builder
+                    .list_matches_syntax::<SnippetAssignmentPatternSyntax>(lhs_exprs.clone())
+                {
+                    let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
+
+                    let pattern = context
+                        .ast_builder
+                        .build_expr::<SnippetAssignmentPatternSyntax>(
+                            AssignmentPatternSyntaxContext::new(context.ast_builder.clone())
+                                .with_statement_attributes(
+                                    context.statement_attributes.as_ref().unwrap().clone(),
+                                ),
+                            lhs,
+                            scope_set.clone(),
+                        )
+                        .await
+                        .map(|pattern| match pattern {
+                            AssignmentPattern::Snippet(pattern) => pattern,
+                            _ => panic!(
+                                "lhs matches snippet pattern syntax but was parsed as a different pattern"
+                            ),
+                        })
+                        .expect("lhs matches snippet pattern syntax but failed to parse");
+
+                    value_context = value_context
+                        .with_assigned_snippet(pattern.name.clone(), );
                 }
 
                 let rhs = parse::Expr::list_or_expr(rhs_span, rhs_exprs);

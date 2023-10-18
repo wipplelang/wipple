@@ -4,9 +4,9 @@ definitions! {
     mod r#trait;
     mod r#type;
     mod type_function;
+    mod snippet;
 }
 
-use crate::ScopeSet;
 use crate::{
     ast::{
         macros::{definitions, syntax_group},
@@ -15,6 +15,7 @@ use crate::{
     },
     parse, Driver,
 };
+use crate::{File, ScopeSet};
 use async_trait::async_trait;
 use wipple_util::Shared;
 
@@ -26,6 +27,7 @@ syntax_group! {
             Syntax,
             TypeFunction,
             Expression,
+            Snippet,
         },
         terminal: {},
     }
@@ -36,13 +38,18 @@ pub struct AssignmentValueSyntaxContext<D: Driver> {
     pub(super) ast_builder: AstBuilder<D>,
     statement_attributes: Option<Shared<StatementAttributes<D>>>,
     assigned_name: Option<AssignedName<D>>,
+    assigned_snippet: Option<AssignedSnippet<D>>,
 }
 
 #[derive(Clone)]
 struct AssignedName<D: Driver> {
     name: D::InternedString,
     scope_set: ScopeSet<D::Scope>,
-    did_create_syntax: Shared<bool>,
+}
+
+#[derive(Clone)]
+struct AssignedSnippet<D: Driver> {
+    name: D::InternedString,
 }
 
 impl<D: Driver> AssignmentValueSyntaxContext<D> {
@@ -50,14 +57,17 @@ impl<D: Driver> AssignmentValueSyntaxContext<D> {
         mut self,
         name: D::InternedString,
         scope_set: Shared<ScopeSet<D::Scope>>,
-        did_create_syntax: Shared<bool>,
     ) -> Self {
         self.assigned_name = Some(AssignedName {
             name,
             scope_set: scope_set.lock().clone(),
-            did_create_syntax,
         });
 
+        self
+    }
+
+    pub(super) fn with_assigned_snippet(mut self, name: D::InternedString) -> Self {
+        self.assigned_snippet = Some(AssignedSnippet { name });
         self
     }
 }
@@ -72,12 +82,17 @@ impl<D: Driver> SyntaxContext<D> for AssignmentValueSyntaxContext<D> {
             ast_builder,
             statement_attributes: None,
             assigned_name: None,
+            assigned_snippet: None,
         }
     }
 
     fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes<D>>) -> Self {
         self.statement_attributes = Some(attributes);
         self
+    }
+
+    fn block_is_terminal(&self) -> bool {
+        self.assigned_snippet.is_some()
     }
 
     async fn build_block(
@@ -102,17 +117,34 @@ impl<D: Driver> SyntaxContext<D> for AssignmentValueSyntaxContext<D> {
 
     async fn build_terminal(
         self,
-        expr: parse::Expr<D>,
+        mut expr: parse::Expr<D>,
         scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
-        let context = ExpressionSyntaxContext::new(self.ast_builder)
-            .with_statement_attributes(self.statement_attributes.unwrap());
+        if let Some(assigned_snippet) = self.assigned_snippet {
+            let mut wrap = false;
+            expr.traverse_mut(|expr| wrap |= matches!(expr.kind, parse::ExprKind::QuoteName(_)));
 
-        let expr = parse::Expr::list(expr.span, vec![expr]);
+            let value = SnippetAssignmentValue {
+                name: Some(assigned_snippet.name.clone()),
+                expression: expr,
+                wrap,
+            };
 
-        context
-            .build_terminal(expr, scope_set)
-            .await
-            .map(|expression| ExpressionAssignmentValue { expression }.into())
+            self.ast_builder
+                .file
+                .define_snippet(assigned_snippet.name, value.clone());
+
+            Ok(value.into())
+        } else {
+            let context = ExpressionSyntaxContext::new(self.ast_builder)
+                .with_statement_attributes(self.statement_attributes.unwrap());
+
+            let expr = parse::Expr::list(expr.span, vec![expr]);
+
+            context
+                .build_terminal(expr, scope_set)
+                .await
+                .map(|expression| ExpressionAssignmentValue { expression }.into())
+        }
     }
 }

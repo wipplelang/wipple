@@ -4,7 +4,7 @@ import Runner from "./worker?worker&inline";
 export interface AnalysisOutput {
     diagnostics: AnalysisOutputDiagnostic[];
     syntaxHighlighting: AnalysisOutputSyntaxHighlightingItem[];
-    completions: AnalysisOutputCompletions;
+    snippets: AnalysisOutputSnippets;
 }
 
 export interface AnalysisOutputDiagnostic {
@@ -42,18 +42,14 @@ export interface HoverOutput {
     url?: string;
 }
 
-export interface AnalysisOutputCompletions {
-    language: Completion[];
-    groupedConstants: [string, Completion[]][];
-    ungroupedConstants: Completion[];
-    variables: Completion[];
+export interface AnalysisOutputSnippets {
+    wrapping: Snippet[];
+    nonwrapping: Snippet[];
 }
 
-export interface Completion {
-    kind: string;
+export interface Snippet {
+    id: number;
     name: string;
-    help: string;
-    template: string;
 }
 
 export type AnalysisConsoleRequest =
@@ -347,8 +343,8 @@ export const useRunner = (context: any) => {
 
                 runner.current!.postMessage({ operation: "hover", start, end, context });
             }),
-        completions: (position: number) =>
-            new Promise<AnalysisOutputCompletions>(async (resolve, reject) => {
+        snippets: (position: number) =>
+            new Promise<AnalysisOutputSnippets>(async (resolve, reject) => {
                 const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = (event) => {
                     resolve(event.data);
@@ -360,7 +356,22 @@ export const useRunner = (context: any) => {
                     reset();
                 };
 
-                runner.current!.postMessage({ operation: "completions", position, context });
+                runner.current!.postMessage({ operation: "snippets", position, context });
+            }),
+        expandSnippet: (snippet: number, wrappedCode: string | null) =>
+            new Promise<string | null>(async (resolve, reject) => {
+                const prevonmessage = runner.current!.onmessage;
+                runner.current!.onmessage = (event) => {
+                    resolve(event.data);
+                    runner.current!.onmessage = prevonmessage;
+                };
+
+                runner.current!.onerror = (event) => {
+                    reject(event.error);
+                    reset();
+                };
+
+                runner.current!.postMessage({ operation: "expandSnippet", snippet, wrappedCode });
             }),
         format: (code: string) =>
             new Promise<string | undefined>(async (resolve, reject) => {

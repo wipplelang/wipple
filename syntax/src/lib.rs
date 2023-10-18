@@ -95,6 +95,8 @@ pub trait File<D: Driver> {
     ) -> Result<ScopeSet<D::Scope>, ResolveSyntaxError>;
 
     fn use_builtin_syntax(&self, span: D::Span, name: &'static str);
+
+    fn define_snippet(&self, name: D::InternedString, value: ast::SnippetAssignmentValue<D>);
 }
 
 pub trait Span: Sized + Debug {
@@ -245,6 +247,10 @@ impl<D: Driver<Span = (), File = SingleFile, Scope = ()>> File<D> for SingleFile
     }
 
     fn use_builtin_syntax(&self, _span: D::Span, _name: &'static str) {
+        // do nothing
+    }
+
+    fn define_snippet(&self, _name: D::InternedString, _value: ast::SnippetAssignmentValue<D>) {
         // do nothing
     }
 }

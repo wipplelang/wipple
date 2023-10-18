@@ -188,6 +188,7 @@ file_ids!(
     r#type,
     type_parameter,
     builtin_syntax,
+    snippet,
 );
 
 macro_rules! node_ids {

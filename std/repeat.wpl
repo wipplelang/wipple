@@ -19,9 +19,9 @@ repeat' : body -> when (body ()) {
 Repeat-Predicate : A (infer Result) => trait (A -> () -> Control-Flow Result)
 
 [private]
-repeat-with-predicate' :: P (infer Result) where (Repeat-Predicate P Result) => P -> (() -> ()) -> Result
+repeat-with-predicate' :: P (infer Result) where (Repeat-Predicate P Result) => P -> (() -> Result) -> Result
 repeat-with-predicate' : predicate -> {
-  looper :: Result => ((() -> Control-Flow Result) , (() -> ())) -> Result
+  looper :: Result => ((() -> Control-Flow Result) , (() -> Result)) -> Result
   looper : (next , body) -> when (next ()) {
     Continue -> {
       body ()
@@ -51,12 +51,10 @@ instance (Repeat-Predicate While ()) : { continue? } () -> \
 
 [help "Used in `repeat` to repeat until the provided condition is `False`."]
 [help-group "Control Flow"]
-[help-template "(while {%condition%})"]
 while : syntax { while 'p -> While { continue? : () -> 'p } }
 
 [help "Used in `repeat` to repeat until the provided condition is `True`."]
 [help-group "Control Flow"]
-[help-template "(until {%condition%})"]
 until : syntax { until 'p -> while (not 'p) }
 
 Times : type { count :: Natural }
@@ -72,14 +70,14 @@ instance (Repeat-Predicate Times ()) : { count } -> {
 
 [help "Used in `repeat` to repeat a specified number of times."]
 [help-group "Control Flow"]
-[help-template "({%number%} times)"]
 times : syntax { 'n times -> Times { count : 'n } }
 
 [help "Execute code repeatedly."]
 [help-group "Control Flow"]
-[help-template "repeat {%predicate%} { {%body%} }"]
 [keyword]
 repeat : syntax {
   repeat 'predicate 'body -> repeat-with-predicate' 'predicate (() -> 'body)
   repeat 'body -> repeat' (() -> 'body)
 }
+
+snippet "Repeat" : repeat (1 times) { 'value }
