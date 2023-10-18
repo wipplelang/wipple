@@ -37,6 +37,14 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import LinkIcon from "@mui/icons-material/Link";
 import DataObjectIcon from "@mui/icons-material/DataObject";
 import ListAltIcon from "@mui/icons-material/ListAlt";
+import NoteAddOutlinedIcon from "@mui/icons-material/NoteAddOutlined";
+import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
+import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
+import RedoRoundedIcon from "@mui/icons-material/RedoRounded";
+import ContentCutRoundedIcon from "@mui/icons-material/ContentCutRounded";
+import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
+import ContentPasteRoundedIcon from "@mui/icons-material/ContentPasteRounded";
+import SelectAllRoundedIcon from "@mui/icons-material/SelectAllRounded";
 import { nanoid } from "nanoid";
 import { CodeEditor, Picker, TextEditor } from "./components";
 import { convertLesson } from "./helpers";
@@ -67,6 +75,15 @@ interface LessonInfo {
     subtitle?: string;
     image?: string;
     certificate?: boolean;
+}
+
+export interface EditCommands {
+    undo?: () => void;
+    redo?: () => void;
+    cut?: () => string | undefined;
+    copy?: () => string | undefined;
+    paste?: (text: string) => void;
+    selectAll?: () => void;
 }
 
 const App = () => {
@@ -232,26 +249,48 @@ const App = () => {
         });
     }, [settings.analytics]);
 
+    const [activeEditor, setActiveEditor] = useState<EditCommands>();
+
+    const handleFocus = setActiveEditor;
+    const handleBlur = () => setActiveEditor(undefined);
+
     return (
         <div>
-            <div className="fixed top-0 left-0 right-0 z-50">
+            <div
+                className="fixed top-0 left-0 right-0 z-50"
+                onMouseDown={(e) => e.preventDefault()}
+            >
                 <div className="flex items-center gap-4 p-4 flex-shrink-0 overflow-x-scroll text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75 backdrop-blur-lg disable-scrollbars">
                     <a href="/" target="_blank" className="flex-shrink-0">
                         <img src="./images/logo.svg" alt="Wipple" className="w-6 h-6" />
                     </a>
 
-                    <a href="/playground" target="_blank">
-                        New
-                    </a>
-
-                    <a href="?lesson=toc">Learn</a>
-
-                    <PopupState variant="popover">
+                    <PopupState variant="popover" disableAutoFocus>
                         {(popupState) => (
                             <>
-                                <button {...bindTrigger(popupState)}>Share</button>
+                                <button {...bindTrigger(popupState)}>File</button>
 
                                 <Menu {...bindMenu(popupState)} sx={{ marginTop: 1 }}>
+                                    <MenuItem
+                                        component="a"
+                                        href="/playground"
+                                        target="_blank"
+                                        onClick={popupState.close}
+                                    >
+                                        <NoteAddOutlinedIcon sx={{ marginRight: 1 }} />
+                                        New
+                                    </MenuItem>
+
+                                    <MenuItem
+                                        component="a"
+                                        href="?lesson=toc"
+                                        target="_blank"
+                                        onClick={popupState.close}
+                                    >
+                                        <SchoolOutlinedIcon sx={{ marginRight: 1 }} />
+                                        Learn
+                                    </MenuItem>
+
                                     <MenuItem
                                         onClick={async () => {
                                             await navigator.clipboard.writeText(
@@ -296,6 +335,99 @@ const App = () => {
                                         }}
                                     >
                                         <ListAltIcon sx={{ marginRight: 1 }} /> Copy text
+                                    </MenuItem>
+                                </Menu>
+                            </>
+                        )}
+                    </PopupState>
+
+                    <PopupState variant="popover" disableAutoFocus>
+                        {(popupState) => (
+                            <>
+                                <button {...bindTrigger(popupState)}>Edit</button>
+
+                                <Menu
+                                    {...bindMenu(popupState)}
+                                    sx={{ marginTop: 1 }}
+                                    disableAutoFocus
+                                >
+                                    <MenuItem
+                                        disabled={activeEditor?.undo == null}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            activeEditor?.undo?.();
+                                            popupState.close();
+                                        }}
+                                    >
+                                        <UndoRoundedIcon sx={{ marginRight: 1 }} /> Undo
+                                    </MenuItem>
+
+                                    <MenuItem
+                                        disabled={activeEditor?.redo == null}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            activeEditor?.redo?.();
+                                            popupState.close();
+                                        }}
+                                    >
+                                        <RedoRoundedIcon sx={{ marginRight: 1 }} /> Redo
+                                    </MenuItem>
+
+                                    <MenuItem
+                                        disabled={activeEditor?.cut == null}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+
+                                            const text = activeEditor?.cut?.();
+                                            if (text != null) {
+                                                navigator.clipboard.writeText(text);
+                                            }
+
+                                            popupState.close();
+                                        }}
+                                    >
+                                        <ContentCutRoundedIcon sx={{ marginRight: 1 }} /> Cut
+                                    </MenuItem>
+
+                                    <MenuItem
+                                        disabled={activeEditor?.copy == null}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+
+                                            const text = activeEditor?.copy?.();
+                                            if (text != null) {
+                                                navigator.clipboard.writeText(text);
+                                            }
+
+                                            popupState.close();
+                                        }}
+                                    >
+                                        <ContentCopyRoundedIcon sx={{ marginRight: 1 }} /> Copy
+                                    </MenuItem>
+
+                                    <MenuItem
+                                        disabled={activeEditor?.paste == null}
+                                        onClick={async (e) => {
+                                            e.preventDefault();
+
+                                            const text = await navigator.clipboard.readText();
+                                            activeEditor?.paste?.(text);
+
+                                            popupState.close();
+                                        }}
+                                    >
+                                        <ContentPasteRoundedIcon sx={{ marginRight: 1 }} /> Paste
+                                    </MenuItem>
+
+                                    <MenuItem
+                                        disabled={activeEditor?.selectAll == null}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            activeEditor?.selectAll?.();
+                                            popupState.close();
+                                        }}
+                                    >
+                                        <SelectAllRoundedIcon sx={{ marginRight: 1 }} /> Select All
                                     </MenuItem>
                                 </Menu>
                             </>
@@ -614,6 +746,8 @@ const App = () => {
                                                     );
                                                 }}
                                                 onDelete={deleteSection}
+                                                onFocus={handleFocus}
+                                                onBlur={handleBlur}
                                             />
                                         </SortableItem>
                                     );
@@ -631,6 +765,8 @@ const App = () => {
                                             settings={settings}
                                             onChange={() => {}}
                                             onDelete={() => {}}
+                                            onFocus={() => {}}
+                                            onBlur={() => {}}
                                         />
                                     </div>
                                 )}
@@ -836,6 +972,8 @@ const SectionContainer = (props: {
     settings: Settings;
     onChange: (newSection: (section: Draft<Section>) => void) => void;
     onDelete: () => void;
+    onFocus: (commands: EditCommands) => void;
+    onBlur: (e: FocusEvent) => void;
 }) => {
     let content: JSX.Element;
     switch (props.section.type) {
@@ -904,6 +1042,8 @@ const SectionContainer = (props: {
                             section.value = code;
                         });
                     }}
+                    onFocus={props.onFocus}
+                    onBlur={props.onBlur}
                 />
             );
             break;
@@ -923,6 +1063,8 @@ const SectionContainer = (props: {
                         });
                     }}
                     isLocked={props.section.locked ?? false}
+                    onFocus={props.onFocus}
+                    onBlur={props.onBlur}
                 />
             );
             break;

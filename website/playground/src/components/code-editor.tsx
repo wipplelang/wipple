@@ -50,7 +50,7 @@ import { githubLightInit, githubDarkInit } from "@uiw/codemirror-theme-github";
 import { styleTags, tags as t } from "@lezer/highlight";
 import { LRLanguage, LanguageSupport } from "@codemirror/language";
 import { parser } from "../languages/wipple.grammar";
-import { Settings } from "../App";
+import { EditCommands, Settings } from "../App";
 import { Popover } from "@mui/material";
 import { SwatchesPicker } from "react-color";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
@@ -72,6 +72,7 @@ import EmojiPicker from "@emoji-mart/react";
 import graphemeSplit from "graphemesplit";
 import { SetupIcon } from "./picker";
 import { inlineSuggestion } from "./codemirror-extension-inline-suggestion";
+import * as commands from "@codemirror/commands";
 
 export interface CodeEditorProps {
     id: string;
@@ -85,6 +86,8 @@ export interface CodeEditorProps {
     settings: Settings;
     autoFocus: boolean;
     onChange: (code: string) => void;
+    onFocus: (commands: EditCommands) => void;
+    onBlur: (e: FocusEvent) => void;
 }
 
 interface Hover {
@@ -463,6 +466,39 @@ export const CodeEditor = (props: CodeEditorProps) => {
         });
 
         setContainsTemplates(containsTemplates);
+    };
+
+    const handleFocusIn = (_e: FocusEvent, view: EditorView) => {
+        props.onFocus({
+            undo: () => {
+                commands.undo(view);
+            },
+            redo: () => {
+                commands.redo(view);
+            },
+            cut: () => {
+                const { from, to } = view.state.selection.main;
+                const text = view.state.sliceDoc(from, to);
+                view.dispatch({ changes: { from, to, insert: "" } });
+                return text;
+            },
+            copy: () => {
+                const { from, to } = view.state.selection.main;
+                return view.state.sliceDoc(from, to);
+            },
+            paste: (text) => {
+                const { from, to } = view.state.selection.main;
+                view.dispatch({ changes: { from, to, insert: text } });
+                return text;
+            },
+            selectAll: () => {
+                commands.selectAll(view);
+            },
+        });
+    };
+
+    const handleFocusOut = (e: FocusEvent) => {
+        props.onBlur(e);
     };
 
     const onReset = useCallback(() => {
@@ -938,8 +974,13 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     remoteCursorsTheme,
                     remoteCursors(() => cursors.current),
                     EditorView.updateListener.of(onChange),
+                    EditorView.domEventHandlers({
+                        focusin: handleFocusIn,
+                        focusout: handleFocusOut,
+                    }),
                     editableConfig.of(EditorView.editable.of(true)),
                     autocompleteConfig.of(autocompleteExtensions()),
+                    EditorState.allowMultipleSelections.of(false),
                 ],
             }),
             parent: editor.current!,
