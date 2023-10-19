@@ -4,9 +4,9 @@ error: cannot display `my-variable` on the screen
  4 │ show my-variable
    │ ^^^^ could not find instance `Show Cannot-Be-Shown`
    │
-   ┌─ <dir>/std/io.wpl:26:17
+   ┌─ <dir>/std/io.wpl:25:17
    │
-26 │ show :: A where (Show A) => A -> ()
+25 │ show :: A where (Show A) => A -> ()
    │                 -------- required by this bound here
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
