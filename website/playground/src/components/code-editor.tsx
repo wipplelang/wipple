@@ -208,9 +208,14 @@ export const CodeEditor = (props: CodeEditorProps) => {
             },
         });
 
-    const insertButtonDecoration = (from: number, to: number, hasSelection: boolean) =>
+    const insertButtonDecoration = (
+        from: number,
+        to: number,
+        head: number,
+        hasSelection: boolean
+    ) =>
         Decoration.widget({
-            widget: new InsertButtonDecoration(from, to, hasSelection, () => showInsertMenu(to)),
+            widget: new InsertButtonDecoration(from, to, hasSelection, () => showInsertMenu(head)),
             side: 1,
         });
 
@@ -416,8 +421,13 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
         pos = pos ?? view.state.selection.main.to;
 
+        const head = view.state.doc.lineAt(view.state.selection.main.to).to;
+
         return Decoration.set(
-            insertButtonDecoration(pos, pos, !view.state.selection.main.empty).range(pos, pos)
+            insertButtonDecoration(head, head, pos, !view.state.selection.main.empty).range(
+                head,
+                head
+            )
         );
     };
 
