@@ -101,7 +101,7 @@ interface SpecialSnippet {
     element: () => React.ReactNode;
     name: string;
     code: string;
-    formatAfter: boolean;
+    lineMode: "before" | "after" | null;
 }
 
 export const CodeEditor = (props: CodeEditorProps) => {
@@ -581,22 +581,50 @@ export const CodeEditor = (props: CodeEditorProps) => {
     const insertSnippet = async (snippet: Snippet | SpecialSnippet, wrap: boolean) => {
         const code = props.code;
 
-        const format = "formatAfter" in snippet ? snippet.formatAfter : true;
+        if ("lineMode" in snippet && snippet.lineMode != null) {
+            const line = view.current!.state.doc.lineAt(view.current!.state.selection.main.head);
 
-        const selection = format
-            ? Math.min(
-                  syntaxTree(view.current!.state).cursorAt(view.current!.state.selection.main.to, 1)
-                      .to,
-                  view.current!.state.doc.lineAt(view.current!.state.selection.main.to).to
-              )
-            : view.current!.state.selection.main.head;
+            let pos: number;
+            let newPos: number;
+            switch (snippet.lineMode) {
+                case "before": {
+                    pos = line.from;
+                    newPos = pos;
+                    break;
+                }
+                case "after": {
+                    pos = line.to;
+                    newPos = pos + 1;
+                    break;
+                }
+            }
+
+            view.current!.dispatch({
+                changes: {
+                    from: pos,
+                    to: pos,
+                    insert: snippet.code,
+                },
+                selection: {
+                    anchor: newPos,
+                },
+            });
+
+            return;
+        }
+
+        const selection = Math.min(
+            syntaxTree(view.current!.state).cursorAt(view.current!.state.selection.main.to, 1).to,
+            view.current!.state.doc.lineAt(view.current!.state.selection.main.to).to
+        );
 
         const beforeSelection = code.slice(0, selection);
-        const padBefore =
-            !format || (beforeSelection[beforeSelection.length - 1] ?? " ").match(/\s/) ? "" : " ";
+        const padBefore = (beforeSelection[beforeSelection.length - 1] ?? " ").match(/\s/)
+            ? ""
+            : " ";
 
         const afterSelection = code.slice(selection);
-        const padAfter = !format || (afterSelection[0] ?? " ").match(/\s/) ? "" : " ";
+        const padAfter = (afterSelection[0] ?? " ").match(/\s/) ? "" : " ";
 
         let newCode: string;
         if ("code" in snippet) {
@@ -616,20 +644,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
             newCode = wrap ? before + expanded + after : padBefore + expanded + padAfter;
         }
 
-        if (format) {
-            formatCode(newCode);
-        } else {
-            view.current!.dispatch({
-                changes: {
-                    from: 0,
-                    to: view.current!.state.doc.length,
-                    insert: newCode,
-                },
-                selection: {
-                    anchor: Math.min(view.current!.state.selection.main.head, newCode.length),
-                },
-            });
-        }
+        formatCode(newCode);
     };
 
     const download = async () => {
@@ -981,7 +996,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                             fontVariantLigatures: "none",
                         },
                         ".cm-content": {
-                            padding: 0,
+                            padding: "1rem",
                         },
                         ".cm-line": {
                             padding: 0,
@@ -1304,7 +1319,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     style={collaborationStyles}
                 >
                     <animated.div style={firstLayout ? undefined : animatedCodeEditorStyle}>
-                        <div ref={codeEditorContainerRef} className="p-4">
+                        <div ref={codeEditorContainerRef}>
                             <div className="language-wipple" ref={editor} />
                         </div>
                     </animated.div>
@@ -1890,26 +1905,32 @@ const bracketPairColors: string[] = [
 const builtinSnippets: SpecialSnippet[] = [
     {
         element: () => <KeyboardReturnIcon />,
-        name: "Insert empty line",
+        name: "Insert line before",
         code: "\n",
-        formatAfter: false,
+        lineMode: "before",
+    },
+    {
+        element: () => <KeyboardReturnIcon />,
+        name: "Insert line after",
+        code: "\n",
+        lineMode: "after",
     },
     {
         element: () => <Asset asset="#007aff" disabled />,
         name: "Insert color",
         code: "`#007aff`",
-        formatAfter: true,
+        lineMode: null,
     },
     {
         element: () => <Asset asset="😀" disabled />,
         name: "Insert emoji",
         code: "`😀`",
-        formatAfter: true,
+        lineMode: null,
     },
     {
         element: () => <Asset asset="C4" disabled />,
         name: "Insert note",
         code: "`C4`",
-        formatAfter: true,
+        lineMode: null,
     },
 ];
