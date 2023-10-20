@@ -147,7 +147,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
             }
         }
 
-        const hoverOutput = await outputRef.current!.hover(from, to);
+        // Disable hovering in beginner mode, except for diagnostics
+        const hoverOutput =
+            settings.current!.beginner ?? true ? null : await outputRef.current!.hover(from, to);
 
         if (!hoverDiagnostic && !hoverOutput) {
             setHoverPos(undefined);
