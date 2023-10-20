@@ -125,7 +125,7 @@ impl<D: Driver> Syntax<D> for AssignStatementSyntax {
                         .expect("lhs matches snippet pattern syntax but failed to parse");
 
                     value_context = value_context
-                        .with_assigned_snippet(pattern.name.clone(), );
+                        .with_assigned_snippet(pattern.name.clone());
                 }
 
                 let rhs = parse::Expr::list_or_expr(rhs_span, rhs_exprs);

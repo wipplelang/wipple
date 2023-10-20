@@ -643,7 +643,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 return;
             }
 
-            newCode = wrap ? before + expanded + after : padBefore + expanded + padAfter;
+            newCode = wrap
+                ? before + expanded + after
+                : beforeSelection + padBefore + expanded + padAfter + afterSelection;
         }
 
         formatCode(newCode);

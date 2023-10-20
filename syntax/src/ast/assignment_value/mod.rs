@@ -121,30 +121,48 @@ impl<D: Driver> SyntaxContext<D> for AssignmentValueSyntaxContext<D> {
         scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Self::Body, SyntaxError<D>> {
         if let Some(assigned_snippet) = self.assigned_snippet {
-            let mut wrap = false;
-            expr.traverse_mut(|expr| wrap |= matches!(expr.kind, parse::ExprKind::QuoteName(_)));
+            let mut wrap = Some(false);
 
-            let value = SnippetAssignmentValue {
-                name: Some(assigned_snippet.name.clone()),
-                expression: expr,
-                wrap,
-            };
+            expr.traverse_mut(|expr| {
+                let wrap = match wrap.as_mut() {
+                    Some(wrap) => wrap,
+                    None => return,
+                };
 
-            self.ast_builder
-                .file
-                .define_snippet(assigned_snippet.name, value.clone());
+                if let parse::ExprKind::QuoteName(_) = &expr.kind {
+                    if *wrap {
+                        self.ast_builder
+                            .driver
+                            .syntax_error(expr.span, "snippets cannot have multiple placeholders");
+                    }
 
-            Ok(value.into())
-        } else {
-            let context = ExpressionSyntaxContext::new(self.ast_builder)
-                .with_statement_attributes(self.statement_attributes.unwrap());
+                    *wrap = true;
+                }
+            });
 
-            let expr = parse::Expr::list(expr.span, vec![expr]);
+            if let Some(wrap) = wrap {
+                let value = SnippetAssignmentValue {
+                    name: Some(assigned_snippet.name.clone()),
+                    expression: expr,
+                    wrap,
+                };
 
-            context
-                .build_terminal(expr, scope_set)
-                .await
-                .map(|expression| ExpressionAssignmentValue { expression }.into())
+                self.ast_builder
+                    .file
+                    .define_snippet(assigned_snippet.name, value.clone());
+
+                return Ok(value.into());
+            }
         }
+
+        let context = ExpressionSyntaxContext::new(self.ast_builder)
+            .with_statement_attributes(self.statement_attributes.unwrap());
+
+        let expr = parse::Expr::list(expr.span, vec![expr]);
+
+        context
+            .build_terminal(expr, scope_set)
+            .await
+            .map(|expression| ExpressionAssignmentValue { expression }.into())
     }
 }

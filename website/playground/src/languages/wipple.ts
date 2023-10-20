@@ -4,7 +4,7 @@ export const register = () => {
     prism.languages.wipple = {
         keyword: {
             pattern:
-                /\b(?:_|use|when|type|trait|instance|where|external|syntax|format|with|intrinsic|semantics)\b/,
+                /\b(?:_|use|when|type|trait|instance|where|external|syntax|format|with|intrinsic|semantics|snippet)\b/,
             greedy: true,
         },
         operator: { pattern: /:|::|->|=>|\.|\|/, greedy: true },

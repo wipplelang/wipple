@@ -21,7 +21,7 @@
         },
         {
             "name": "keyword",
-            "match": "_|use|when|type|trait|instance|where|external|syntax|format|with|intrinsic|semantics"
+            "match": "_|use|when|type|trait|instance|where|external|syntax|format|with|intrinsic|semantics|snippet"
         },
         {
             "name": "keyword.operator",
