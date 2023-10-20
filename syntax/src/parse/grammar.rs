@@ -248,6 +248,8 @@ impl<'src, D: Driver> LexerIter<'src, D> {
         LexerIter {
             _driver: PhantomData,
             lexer,
+
+            #[cfg(feature = "utf16")]
             utf16_offset: 0,
         }
     }
