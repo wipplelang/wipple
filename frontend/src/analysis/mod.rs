@@ -27,7 +27,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     sync::{atomic::AtomicUsize, Arc},
 };
-use wipple_syntax::{ast::builtin_syntax_definitions, DriverExt, ResolveSyntaxError};
+use wipple_syntax::{ast::builtin_syntax_definitions, CharIndex, DriverExt, ResolveSyntaxError};
 use wipple_util::Backtrace;
 
 #[derive(Clone)]
@@ -35,6 +35,7 @@ pub struct Options {
     progress: Option<Shared<Box<dyn Fn(Progress) + Send + Sync>>>,
     lint: bool,
     implicit_imports: Vec<FilePath>,
+    parse: parse::Options,
 }
 
 impl Options {
@@ -43,6 +44,7 @@ impl Options {
             progress: None,
             lint: true,
             implicit_imports: Vec::new(),
+            parse: Default::default(),
         }
     }
 
@@ -61,6 +63,11 @@ impl Options {
 
     pub fn with_implicit_imports(mut self, imports: impl IntoIterator<Item = FilePath>) -> Self {
         self.implicit_imports = Vec::from_iter(imports);
+        self
+    }
+
+    pub fn with_parse_options(mut self, options: parse::Options) -> Self {
+        self.parse = options;
         self
     }
 }
@@ -134,7 +141,9 @@ impl Compiler {
         };
 
         let cache = driver.cache.clone();
-        driver.syntax_of(None, None, entrypoint).await;
+        driver
+            .syntax_of(None, None, entrypoint, options.parse)
+            .await;
 
         cache.into_unique()
     }
@@ -228,7 +237,7 @@ impl wipple_syntax::Driver for Analysis {
         Some(FilePath::Path(path))
     }
 
-    fn make_span(&self, path: Self::Path, range: std::ops::Range<usize>) -> Self::Span {
+    fn make_span(&self, path: Self::Path, range: std::ops::Range<CharIndex>) -> Self::Span {
         SpanList::from(Span::new(path, range))
     }
 
@@ -314,7 +323,7 @@ impl wipple_syntax::Driver for Analysis {
 
                         if spans.is_empty() {
                             spans.push(Note::primary(
-                                Span::new(path, 0..0),
+                                Span::new(path, CharIndex::ZERO..CharIndex::ZERO),
                                 "error while loading this file",
                             ));
                         }
@@ -500,7 +509,7 @@ impl wipple_syntax::Span for SpanList {
         self.set_caller(caller);
     }
 
-    fn range(&self) -> std::ops::Range<usize> {
+    fn range(&self) -> std::ops::Range<CharIndex> {
         self.first().primary_range()
     }
 }
@@ -677,7 +686,7 @@ impl Compiler {
                 .source_map()
                 .lock()
                 .get(&span.path)?
-                .get(span.primary_range())?
+                .get(span.primary_range().start.utf8..span.primary_range().end.utf8)?
                 .to_string(),
         )
     }

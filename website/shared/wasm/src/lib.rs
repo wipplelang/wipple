@@ -415,8 +415,8 @@ pub fn analyze(
                             } else {
                                 Some(span.path.to_string())
                             },
-                            start: range.start,
-                            end: range.end,
+                            start: range.start.utf16,
+                            end: range.end.utf16,
                         }
                     };
 
@@ -479,8 +479,8 @@ pub fn analyze(
                     },
                     fix: diagnostic.fix.map(|fix| AnalysisOutputDiagnosticFix {
                         description: fix.description,
-                        start: fix.range.range().start,
-                        end: fix.range.range().end,
+                        start: fix.range.range().start.utf16,
+                        end: fix.range.range().end.utf16,
                         replacement: fix.replacement,
                     }),
                     example: (!diagnostic.example.is_empty()).then_some(diagnostic.example),
@@ -529,12 +529,14 @@ fn get_syntax_highlighting(
                             .span
                             .original()
                             .caller_start()
-                            .unwrap_or_else(|| decl.span.original().primary_start()),
+                            .unwrap_or_else(|| decl.span.original().primary_start())
+                            .utf16,
                         end: decl
                             .span
                             .original()
                             .caller_end()
-                            .unwrap_or_else(|| decl.span.original().primary_end()),
+                            .unwrap_or_else(|| decl.span.original().primary_end())
+                            .utf16,
                         kind: $token(id, decl),
                     });
                 }
@@ -545,11 +547,13 @@ fn get_syntax_highlighting(
                             start: span
                                 .original()
                                 .caller_start()
-                                .unwrap_or_else(|| span.original().primary_start()),
+                                .unwrap_or_else(|| span.original().primary_start())
+                                .utf16,
                             end: span
                                 .original()
                                 .caller_end()
-                                .unwrap_or_else(|| span.original().primary_end()),
+                                .unwrap_or_else(|| span.original().primary_end())
+                                .utf16,
                             kind: $token(id, decl),
                         });
                     }
@@ -601,14 +605,14 @@ fn get_syntax_highlighting(
             wipple_frontend::analysis::TypeKind::Function(_, _)
         ) {
             items.push(AnalysisOutputSyntaxHighlightingItem {
-                start: expr.span.original().primary_start(),
-                end: expr.span.original().primary_end(),
+                start: expr.span.original().primary_start().utf16,
+                end: expr.span.original().primary_end().utf16,
                 kind: "function",
             });
         } else if let Some(literal_kind) = expr.literal_kind() {
             items.push(AnalysisOutputSyntaxHighlightingItem {
-                start: expr.span.original().primary_start(),
-                end: expr.span.original().primary_end(),
+                start: expr.span.original().primary_start().utf16,
+                end: expr.span.original().primary_end().utf16,
                 kind: match literal_kind {
                     wipple_frontend::analysis::LiteralKind::Number => "number",
                     wipple_frontend::analysis::LiteralKind::Text => "text",
@@ -1076,8 +1080,8 @@ pub fn hover(start: usize, end: usize) -> JsValue {
 
     let within_hover = |span: Span| {
         span.path == FilePath::Virtual(*PLAYGROUND_PATH)
-            && start == span.primary_start()
-            && end == span.primary_end()
+            && start == span.primary_start().utf16
+            && end == span.primary_end().utf16
     };
 
     macro_rules! getter {
@@ -1354,7 +1358,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
 
     let hover = hovers
         .into_iter()
-        .min_by_key(|(span, _)| span.primary_end() - span.primary_start())
+        .min_by_key(|(span, _)| span.primary_end().utf16 - span.primary_start().utf16)
         .map(|(_, hover)| hover);
 
     serde_wasm_bindgen::to_value(&hover).unwrap()

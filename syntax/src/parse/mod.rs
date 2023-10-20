@@ -6,10 +6,14 @@ pub use format::*;
 pub use grammar::*;
 pub use lexer::*;
 
-use crate::Driver;
+use crate::{CharIndex, Driver};
 use logos::Lexer;
 
-pub fn parse<D: Driver>(driver: &D, path: D::Path, code: &str) -> File<D> {
+#[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
+pub struct Options {}
+
+pub fn parse<D: Driver>(driver: &D, path: D::Path, code: &str, Options {}: Options) -> File<D> {
     let code = code.replace("\r\n", "\n");
 
     let (shebang, code) = match grammar::parse_shebang(&code) {
@@ -21,8 +25,16 @@ pub fn parse<D: Driver>(driver: &D, path: D::Path, code: &str) -> File<D> {
         driver,
         path,
         lexer: LexerIter::new(Lexer::new(code).spanned()).peekable(),
-        len: code.len(),
-        offset: shebang.map(|s| "#!".len() + s.len()).unwrap_or(0),
+        len: CharIndex {
+            utf8: code.len(),
+            utf16: code.encode_utf16().count(),
+        },
+        offset: shebang
+            .map(|s| CharIndex {
+                utf8: "#!".len() + s.len(),
+                utf16: "#!".encode_utf16().count() + s.encode_utf16().count(),
+            })
+            .unwrap_or(CharIndex::ZERO),
     };
 
     let FileContents {

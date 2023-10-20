@@ -75,6 +75,7 @@ impl<D: Driver> Syntax<D> for UseStatementSyntax {
                                     )),
                                     Some(span),
                                     path,
+                                    context.ast_builder.options,
                                 )
                                 .await;
                         }

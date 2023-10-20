@@ -5,9 +5,31 @@ pub mod parse;
 
 use async_trait::async_trait;
 use futures::future::BoxFuture;
+use serde::{Deserialize, Serialize};
 use std::{fmt::Debug, hash::Hash, ops::Range, sync::Arc};
 use sync_wrapper::SyncFuture;
 use wipple_util::Backtrace;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct CharIndex {
+    pub utf8: usize,
+    pub utf16: usize,
+}
+
+impl CharIndex {
+    pub const ZERO: CharIndex = CharIndex { utf8: 0, utf16: 0 };
+}
+
+impl std::ops::Add for CharIndex {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        CharIndex {
+            utf8: self.utf8 + rhs.utf8,
+            utf16: self.utf16 + rhs.utf16,
+        }
+    }
+}
 
 pub type ScopeSet<S> = im::OrdSet<S>;
 
@@ -21,7 +43,7 @@ pub trait Driver: Debug + Clone + Send + Sync + 'static {
 
     fn intern(&self, s: impl AsRef<str>) -> Self::InternedString;
     fn make_path(&self, path: Self::InternedString) -> Option<Self::Path>;
-    fn make_span(&self, path: Self::Path, range: std::ops::Range<usize>) -> Self::Span;
+    fn make_span(&self, path: Self::Path, range: std::ops::Range<CharIndex>) -> Self::Span;
 
     fn implicit_entrypoint_imports(&self) -> Vec<Self::Path>;
     fn implicit_dependency_imports(&self) -> Vec<Self::Path>;
@@ -115,7 +137,7 @@ pub trait Span: Sized + Debug {
 
     fn set_caller(&mut self, caller: Self);
 
-    fn range(&self) -> Range<usize>;
+    fn range(&self) -> Range<CharIndex>;
 
     fn merged_with(mut self, other: Self) -> Self
     where
@@ -132,6 +154,7 @@ pub trait DriverExt: Driver {
         source_file: Option<(Self::Path, Self::File)>,
         source_span: Option<Self::Span>,
         path: Self::Path,
+        options: parse::Options,
     ) -> SyncFuture<BoxFuture<'static, Option<Arc<ast::File<Self>>>>>;
 }
 
@@ -141,6 +164,7 @@ impl<D: Driver> DriverExt for D {
         source_file: Option<(Self::Path, Self::File)>,
         source_span: Option<Self::Span>,
         path: Self::Path,
+        options: parse::Options,
     ) -> SyncFuture<BoxFuture<'static, Option<Arc<ast::File<Self>>>>> {
         SyncFuture::new(Box::pin(async move {
             self.expand_file(source_file, source_span, path, {
@@ -148,8 +172,13 @@ impl<D: Driver> DriverExt for D {
 
                 move |resolved_path, driver_file| {
                     Box::pin(async move {
-                        let parse_file = parse::parse(&driver, resolved_path, driver_file.code());
-                        let file = ast::build(driver, resolved_path, driver_file, parse_file).await;
+                        let parse_file =
+                            parse::parse(&driver, resolved_path, driver_file.code(), options);
+
+                        let file =
+                            ast::build(driver, resolved_path, driver_file, parse_file, options)
+                                .await;
+
                         Arc::new(file)
                     })
                 }
@@ -177,7 +206,7 @@ impl Fix {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FixRange(Range<usize>);
+pub struct FixRange(Range<CharIndex>);
 
 impl FixRange {
     pub fn replace(span: impl Span) -> FixRange {
@@ -192,7 +221,7 @@ impl FixRange {
         FixRange(span.range().end..span.range().end)
     }
 
-    pub fn range(&self) -> Range<usize> {
+    pub fn range(&self) -> Range<CharIndex> {
         self.0.clone()
     }
 }
@@ -277,7 +306,7 @@ impl Span for () {
         // do nothing
     }
 
-    fn range(&self) -> Range<usize> {
-        0..0
+    fn range(&self) -> Range<CharIndex> {
+        CharIndex::ZERO..CharIndex::ZERO
     }
 }

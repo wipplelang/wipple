@@ -19,6 +19,7 @@ use wipple_frontend::{
     helpers::InternedString,
     Compiler, FilePath,
 };
+use wipple_syntax::CharIndex;
 
 pub async fn run() {
     let stdin = tokio::io::stdin();
@@ -292,13 +293,15 @@ impl LanguageServer for Backend {
                 let (line, start_col) = line_col_lookup.get(
                     span.original()
                         .caller_start()
-                        .unwrap_or_else(|| span.original().primary_start()),
+                        .unwrap_or_else(|| span.original().primary_start())
+                        .utf8,
                 )?;
 
                 let (_, end_col) = line_col_lookup.get(
                     span.original()
                         .caller_end()
                         .unwrap_or_else(|| span.original().primary_end())
+                        .utf8
                         - 1,
                 )?;
 
@@ -347,6 +350,10 @@ impl LanguageServer for Backend {
 
         let position = params.text_document_position_params.position;
         let position = offset_lookup.get(position.line as usize, position.character as usize);
+        let position = CharIndex {
+            utf8: position,
+            utf16: position,
+        };
         let hover_span = Span::new(document.path, position..position);
 
         let within_hover = |mut span: Span| {
@@ -357,8 +364,8 @@ impl LanguageServer for Backend {
         };
 
         let range_from = |span: Span| {
-            let (start_line, start_col) = line_col_lookup.get(span.primary_start())?;
-            let (end_line, end_col) = line_col_lookup.get(span.primary_end())?;
+            let (start_line, start_col) = line_col_lookup.get(span.primary_start().utf8)?;
+            let (end_line, end_col) = line_col_lookup.get(span.primary_end().utf8)?;
 
             Some(Range::new(
                 Position::new(start_line as u32 - 1, start_col as u32 - 1),
@@ -592,7 +599,9 @@ impl LanguageServer for Backend {
 
         Ok(hovers
             .into_iter()
-            .min_by_key(|(span, _)| span.original().primary_end() - span.original().primary_start())
+            .min_by_key(|(span, _)| {
+                span.original().primary_end().utf8 - span.original().primary_start().utf8
+            })
             .map(|(_, hover)| hover))
     }
 
@@ -774,8 +783,8 @@ impl LanguageServer for Backend {
 
         let line_col_lookup = document.line_col_lookup();
         let range_from = |span: Span| {
-            let (start_line, start_col) = line_col_lookup.get(span.primary_start())?;
-            let (end_line, end_col) = line_col_lookup.get(span.primary_end())?;
+            let (start_line, start_col) = line_col_lookup.get(span.primary_start().utf8)?;
+            let (end_line, end_col) = line_col_lookup.get(span.primary_end().utf8)?;
 
             Some(Range::new(
                 Position::new(start_line as u32 - 1, start_col as u32 - 1),
@@ -813,8 +822,8 @@ impl LanguageServer for Backend {
 
         let line_col_lookup = document.line_col_lookup();
         let range_from = |span: Span| {
-            let (start_line, start_col) = line_col_lookup.get(span.primary_start())?;
-            let (end_line, end_col) = line_col_lookup.get(span.primary_end())?;
+            let (start_line, start_col) = line_col_lookup.get(span.primary_start().utf8)?;
+            let (end_line, end_col) = line_col_lookup.get(span.primary_end().utf8)?;
 
             Some(Range::new(
                 Position::new(start_line as u32 - 1, start_col as u32 - 1),
@@ -854,8 +863,8 @@ impl LanguageServer for Backend {
 
         let line_col_lookup = document.line_col_lookup();
         let range_from = |span: Span| {
-            let (start_line, start_col) = line_col_lookup.get(span.primary_start())?;
-            let (end_line, end_col) = line_col_lookup.get(span.primary_end())?;
+            let (start_line, start_col) = line_col_lookup.get(span.primary_start().utf8)?;
+            let (end_line, end_col) = line_col_lookup.get(span.primary_end().utf8)?;
 
             Some(Range::new(
                 Position::new(start_line as u32 - 1, start_col as u32 - 1),
@@ -979,8 +988,8 @@ impl Backend {
                     .flatten()
                     .unwrap_or_else(|| span.primary_range());
 
-                let (start_line, start_col) = line_col_lookup.get(range.start)?;
-                let (end_line, end_col) = line_col_lookup.get(range.end)?;
+                let (start_line, start_col) = line_col_lookup.get(range.start.utf8)?;
+                let (end_line, end_col) = line_col_lookup.get(range.end.utf8)?;
 
                 Some(Range::new(
                     Position::new(start_line as u32 - 1, start_col as u32 - 1),
@@ -1055,6 +1064,10 @@ impl Backend {
         let offset_lookup = document.offset_lookup();
 
         let position = offset_lookup.get(cursor.0, cursor.1);
+        let position = CharIndex {
+            utf8: position,
+            utf16: position,
+        };
         let cursor_span = Span::new(document.path, position..position);
 
         let within_cursor = |mut span: Span| {

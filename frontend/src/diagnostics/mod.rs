@@ -10,6 +10,7 @@ use std::{
     ops::Range,
     sync::Arc,
 };
+use wipple_syntax::CharIndex;
 
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
@@ -99,7 +100,7 @@ impl Fix {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FixRange(pub Range<usize>);
+pub struct FixRange(pub Range<CharIndex>);
 
 impl FixRange {
     pub fn replace(span: Span) -> FixRange {
@@ -114,7 +115,7 @@ impl FixRange {
         FixRange(span.primary_end()..span.primary_end())
     }
 
-    pub fn range(&self) -> Range<usize> {
+    pub fn range(&self) -> Range<CharIndex> {
         self.0.clone()
     }
 }
@@ -378,7 +379,7 @@ impl FinalizedDiagnostics {
                         span.primary_range()
                     };
 
-                    Label::new(style, file, range).with_message(message)
+                    Label::new(style, file, range.start.utf8..range.end.utf8).with_message(message)
                 })
             };
 

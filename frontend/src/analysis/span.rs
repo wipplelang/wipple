@@ -3,21 +3,22 @@ use internment::Intern;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::{hash::Hash, ops::Range};
+use wipple_syntax::CharIndex;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Span {
     pub path: FilePath,
-    pub primary: (usize, usize),
+    pub primary: (CharIndex, CharIndex),
     pub expanded_from_operator: Option<(
         InternedString,
         Option<Intern<(SpanList, Vec<SpanList>)>>,
         Option<Intern<(SpanList, Vec<SpanList>)>>,
     )>,
-    pub caller: Option<(usize, usize)>,
+    pub caller: Option<(CharIndex, CharIndex)>,
 }
 
 impl Span {
-    pub fn new(path: FilePath, range: Range<usize>) -> Self {
+    pub fn new(path: FilePath, range: Range<CharIndex>) -> Self {
         Span {
             path,
             primary: (range.start, range.end),
@@ -27,12 +28,15 @@ impl Span {
     }
 
     pub fn builtin() -> Self {
-        Span::new(FilePath::Builtin, 0..0)
+        Span::new(FilePath::Builtin, CharIndex::ZERO..CharIndex::ZERO)
     }
 
     pub fn join(left: Span, right: Span) -> Self {
-        let primary = if right.primary_end().saturating_sub(left.primary_start())
-            > (left.primary_end() - left.primary_start())
+        let primary = if right
+            .primary_end()
+            .utf8
+            .saturating_sub(left.primary_start().utf8)
+            > (left.primary_end().utf8 - left.primary_start().utf8)
         {
             (left.primary_start(), right.primary_end())
         } else {
@@ -47,34 +51,34 @@ impl Span {
         }
     }
 
-    pub fn primary_start(self) -> usize {
+    pub fn primary_start(self) -> CharIndex {
         self.primary.0
     }
 
-    pub fn primary_end(self) -> usize {
+    pub fn primary_end(self) -> CharIndex {
         self.primary.1
     }
 
-    pub fn primary_range(self) -> Range<usize> {
+    pub fn primary_range(self) -> Range<CharIndex> {
         self.primary_start()..self.primary_end()
     }
 
-    pub fn caller_start(self) -> Option<usize> {
+    pub fn caller_start(self) -> Option<CharIndex> {
         self.caller.map(|(start, _)| start)
     }
 
-    pub fn caller_end(self) -> Option<usize> {
+    pub fn caller_end(self) -> Option<CharIndex> {
         self.caller.map(|(_, end)| end)
     }
 
-    pub fn caller_range(self) -> Option<Range<usize>> {
+    pub fn caller_range(self) -> Option<Range<CharIndex>> {
         Some(self.caller_start()?..self.caller_end()?)
     }
 
     pub fn is_subspan_of(self, other: Span) -> bool {
         self.path == other.path
-            && self.primary_start() >= other.primary_start()
-            && self.primary_end() <= other.primary_end()
+            && self.primary_start().utf8 >= other.primary_start().utf8
+            && self.primary_end().utf8 <= other.primary_end().utf8
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::{parse::Token, Driver, Fix, FixRange, ScopeSet, Span};
+use crate::{parse::Token, CharIndex, Driver, Fix, FixRange, ScopeSet, Span};
 use lazy_static::lazy_static;
 use logos::SpannedIter;
 use regex::Regex;
@@ -230,16 +230,13 @@ pub(crate) struct Parser<'src, 'a, D: Driver> {
     pub driver: &'a D,
     pub path: D::Path,
     pub lexer: Peekable<LexerIter<'src, D>>,
-    pub len: usize,
-    pub offset: usize,
+    pub len: CharIndex,
+    pub offset: CharIndex,
 }
 
 pub(crate) struct LexerIter<'src, D: Driver> {
     _driver: PhantomData<D>,
-
     lexer: SpannedIter<'src, Token<'src>>,
-
-    #[cfg(feature = "utf16")]
     utf16_offset: usize,
 }
 
@@ -248,33 +245,35 @@ impl<'src, D: Driver> LexerIter<'src, D> {
         LexerIter {
             _driver: PhantomData,
             lexer,
-
-            #[cfg(feature = "utf16")]
             utf16_offset: 0,
         }
     }
 }
 
 impl<'src, D: Driver> Iterator for LexerIter<'src, D> {
-    type Item = (Token<'src>, Range<usize>);
+    type Item = (Token<'src>, Range<CharIndex>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let (token, span) = self.lexer.next()?;
+        let (token, utf8_range) = self.lexer.next()?;
 
-        #[cfg(feature = "utf16")]
-        let span = {
-            let start = span.start - self.utf16_offset;
+        let utf16_start = utf8_range.start - self.utf16_offset;
 
-            self.utf16_offset += token
-                .raw_str()
-                .map_or(0, |s| span.len() - s.encode_utf16().count());
+        self.utf16_offset += token
+            .raw_str()
+            .map_or(0, |s| utf8_range.len() - s.encode_utf16().count());
 
-            let end = span.end - self.utf16_offset;
+        let utf16_end = utf8_range.end - self.utf16_offset;
 
-            start..end
-        };
-
-        Some((token, span))
+        Some((
+            token,
+            CharIndex {
+                utf8: utf8_range.start,
+                utf16: utf16_start,
+            }..CharIndex {
+                utf8: utf8_range.end,
+                utf16: utf16_end,
+            },
+        ))
     }
 }
 
@@ -648,9 +647,18 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                     Err(e) => {
                         error = true;
 
-                        let span = self.offset(
-                            (range.start + span.range().start)..(range.end + span.range().end),
-                        );
+                        let start = CharIndex {
+                            utf8: range.start,
+                            utf16: range.start,
+                        };
+
+                        let end = CharIndex {
+                            utf8: range.end,
+                            utf16: range.end,
+                        };
+
+                        let span =
+                            self.offset((start + span.range().start)..(end + span.range().end));
 
                         self.driver.syntax_error(
                             span,
@@ -893,7 +901,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
         }
     }
 
-    pub fn offset(&mut self, range: Range<usize>) -> D::Span {
+    pub fn offset(&mut self, range: Range<CharIndex>) -> D::Span {
         self.driver.make_span(
             self.path,
             (range.start + self.offset)..(range.end + self.offset),
@@ -905,7 +913,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
     }
 
     pub fn file_span(&mut self) -> D::Span {
-        self.offset(0..self.len)
+        self.offset(CharIndex::ZERO..self.len)
     }
 }
 

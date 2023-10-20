@@ -250,6 +250,7 @@ pub(crate) async fn build<D: Driver>(
     path: D::Path,
     driver_file: D::File,
     parse_file: parse::File<D>,
+    options: parse::Options,
 ) -> File<D> {
     let mut root_scope = ScopeSet::new();
     root_scope.insert(driver_file.make_scope());
@@ -261,6 +262,7 @@ pub(crate) async fn build<D: Driver>(
         file: driver_file,
         path,
         attributes: Default::default(),
+        options,
     };
 
     for attribute in parse_file.attributes {
@@ -338,7 +340,12 @@ pub(crate) async fn build<D: Driver>(
             ast_builder
                 .driver
                 .clone()
-                .syntax_of(Some((path, ast_builder.file.clone())), None, implicit_path)
+                .syntax_of(
+                    Some((path, ast_builder.file.clone())),
+                    None,
+                    implicit_path,
+                    options,
+                )
                 .await;
         }
     }
@@ -375,6 +382,7 @@ pub(crate) struct AstBuilder<D: Driver> {
     path: D::Path,
     file: D::File,
     attributes: Shared<FileAttributes<D>>,
+    options: parse::Options,
 }
 
 impl<D: Driver> AstBuilder<D> {

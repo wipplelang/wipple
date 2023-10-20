@@ -1,7 +1,7 @@
 use crate::{
     ast,
     parse::{self, Attribute, Expr, ExprKind, File, ListLine},
-    Driver, Fix, SingleFile,
+    CharIndex, Driver, Fix, SingleFile,
 };
 use async_trait::async_trait;
 use std::{
@@ -32,7 +32,7 @@ pub fn format(code: &str) -> Option<String> {
             Some(())
         }
 
-        fn make_span(&self, _path: Self::Path, _range: std::ops::Range<usize>) -> Self::Span {}
+        fn make_span(&self, _path: Self::Path, _range: std::ops::Range<CharIndex>) -> Self::Span {}
 
         fn implicit_entrypoint_imports(&self) -> Vec<Self::Path> {
             unimplemented!()
@@ -80,7 +80,7 @@ pub fn format(code: &str) -> Option<String> {
         valid: Arc::new(AtomicBool::new(true)),
     };
 
-    let file = parse::parse(&driver, (), code);
+    let file = parse::parse(&driver, (), code, parse::Options::default());
 
     let valid = Arc::try_unwrap(driver.valid).unwrap().into_inner();
 
