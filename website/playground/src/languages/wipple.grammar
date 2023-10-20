@@ -9,7 +9,7 @@ FileAttribute { "[[" expression* "]]" }
 Attribute { "[" expression* "]" }
 Block { "{" expression* "}" }
 
-Keyword { @specialize<Name, "_" | "use" | "when" | "type" | "trait" | "instance" | "where" | "external" | "syntax" | "format" | "with"> }
+Keyword { @specialize<Name, "_" | "use" | "when" | "type" | "trait" | "instance" | "where" | "external" | "syntax" | "format" | "with" | "intrinsic" | "semantics" | "snippet"> }
 
 Operator { @specialize<OperatorName, ":" | "::" | "->" | "=>" | "."> }
 
