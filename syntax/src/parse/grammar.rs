@@ -2,7 +2,7 @@ use crate::{parse::Token, Driver, Fix, FixRange, ScopeSet, Span};
 use lazy_static::lazy_static;
 use logos::SpannedIter;
 use regex::Regex;
-use std::{iter::Peekable, ops::Range};
+use std::{iter::Peekable, marker::PhantomData, ops::Range};
 
 #[derive(Debug, Clone)]
 pub struct File<D: Driver> {
@@ -229,9 +229,51 @@ impl<D: Driver> Expr<D> {
 pub(crate) struct Parser<'src, 'a, D: Driver> {
     pub driver: &'a D,
     pub path: D::Path,
-    pub lexer: Peekable<SpannedIter<'src, Token<'src>>>,
+    pub lexer: Peekable<LexerIter<'src, D>>,
     pub len: usize,
     pub offset: usize,
+}
+
+pub(crate) struct LexerIter<'src, D: Driver> {
+    _driver: PhantomData<D>,
+
+    lexer: SpannedIter<'src, Token<'src>>,
+
+    #[cfg(feature = "utf16")]
+    utf16_offset: usize,
+}
+
+impl<'src, D: Driver> LexerIter<'src, D> {
+    pub fn new(lexer: SpannedIter<'src, Token<'src>>) -> Self {
+        LexerIter {
+            _driver: PhantomData,
+            lexer,
+            utf16_offset: 0,
+        }
+    }
+}
+
+impl<'src, D: Driver> Iterator for LexerIter<'src, D> {
+    type Item = (Token<'src>, Range<usize>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (token, span) = self.lexer.next()?;
+
+        #[cfg(feature = "utf16")]
+        let span = {
+            let start = span.start - self.utf16_offset;
+
+            self.utf16_offset += token
+                .raw_str()
+                .map_or(0, |s| span.len() - s.encode_utf16().count());
+
+            let end = span.end - self.utf16_offset;
+
+            start..end
+        };
+
+        Some((token, span))
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -784,7 +826,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                 Some(Fix::new(
                     format!("insert {end_token}"),
                     FixRange::after(span),
-                    end_token.as_bracket_str(),
+                    end_token.raw_str().unwrap(),
                 )),
             );
         }

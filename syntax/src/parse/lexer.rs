@@ -1,5 +1,5 @@
 use logos::Logos;
-use std::fmt;
+use std::{borrow::Cow, fmt};
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Token<'src> {
@@ -80,21 +80,33 @@ pub enum Token<'src> {
 }
 
 impl<'src> Token<'src> {
-    pub fn as_bracket_str(&self) -> &'static str {
+    pub fn raw_str(&self) -> Option<Cow<'src, str>> {
         match self {
-            Token::LeftFileBracket => "[[",
-            Token::RightFileBracket => "]]",
-            Token::LeftAttrBracket => "[",
-            Token::RightAttrBracket => "]",
-            Token::LeftParenthesis => "(",
-            Token::QuoteLeftParenthesis => "'(",
-            Token::RepeatLeftParenthesis => "...(",
-            Token::RightParenthesis => ")",
-            Token::LeftBrace => "{",
-            Token::QuoteLeftBrace => "'{",
-            Token::RepeatLeftBrace => "...{",
-            Token::RightBrace => "}",
-            _ => panic!("not a bracket"),
+            Token::LeftFileBracket => Some(Cow::Borrowed("[[")),
+            Token::RightFileBracket => Some(Cow::Borrowed("]]")),
+            Token::LeftAttrBracket => Some(Cow::Borrowed("[")),
+            Token::RightAttrBracket => Some(Cow::Borrowed("]")),
+            Token::LeftParenthesis => Some(Cow::Borrowed("(")),
+            Token::QuoteLeftParenthesis => Some(Cow::Borrowed("'(")),
+            Token::RepeatLeftParenthesis => Some(Cow::Borrowed("...(")),
+            Token::RightParenthesis => Some(Cow::Borrowed(")")),
+            Token::LeftBrace => Some(Cow::Borrowed("{")),
+            Token::QuoteLeftBrace => Some(Cow::Borrowed("'{")),
+            Token::RepeatLeftBrace => Some(Cow::Borrowed("...{")),
+            Token::RightBrace => Some(Cow::Borrowed("}")),
+            Token::Underscore => Some(Cow::Borrowed("_")),
+            Token::LineBreak => Some(Cow::Borrowed("\n")),
+            Token::LineContinue => Some(Cow::Borrowed("\\")),
+            Token::Space => None,
+            Token::Placeholder(s) => Some(Cow::Owned(format!("{{%{s}%}}"))),
+            Token::Comment(s) => Some(Cow::Owned(format!("--{s}"))),
+            Token::QuoteName(s) => Some(Cow::Owned(format!("'{s}"))),
+            Token::RepeatName(s) => Some(Cow::Owned(format!("...{s}"))),
+            Token::Name(s) => Some(Cow::Borrowed(s)),
+            Token::Text(s) => Some(Cow::Owned(format!("\"{s}\""))),
+            Token::Number(s) => Some(Cow::Borrowed(s)),
+            Token::Asset(s) => Some(Cow::Owned(format!("`{s}`"))),
+            Token::Error => None,
         }
     }
 }

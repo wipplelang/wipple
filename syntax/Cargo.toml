@@ -3,6 +3,9 @@ name = "wipple-syntax"
 version = "0.0.0"
 edition = "2021"
 
+[features]
+utf16 = []
+
 [dependencies]
 async-recursion = "1"
 async-trait = "0.1"

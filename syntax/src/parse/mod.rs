@@ -20,7 +20,7 @@ pub fn parse<D: Driver>(driver: &D, path: D::Path, code: &str) -> File<D> {
     let mut parser = Parser {
         driver,
         path,
-        lexer: Lexer::new(code).spanned().peekable(),
+        lexer: LexerIter::new(Lexer::new(code).spanned()).peekable(),
         len: code.len(),
         offset: shebang.map(|s| "#!".len() + s.len()).unwrap_or(0),
     };
