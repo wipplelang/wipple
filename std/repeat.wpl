@@ -80,4 +80,6 @@ repeat : syntax {
   repeat 'body -> repeat' (() -> 'body)
 }
 
-snippet "Repeat" : repeat (1 times) { 'value }
+snippet "Repeat" : repeat (1 times) {
+  'value
+}
