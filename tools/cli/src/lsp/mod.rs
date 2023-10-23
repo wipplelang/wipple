@@ -639,6 +639,19 @@ impl LanguageServer for Backend {
                     let mut format = Format::default();
 
                     match value {
+                        AnyDeclaration::Syntax(id) => {
+                            let decl = document.program.declarations.syntaxes.get(id).unwrap();
+
+                            kind = Some(if decl.operator {
+                                CompletionItemKind::OPERATOR
+                            } else if decl.keyword {
+                                CompletionItemKind::KEYWORD
+                            } else {
+                                CompletionItemKind::FUNCTION
+                            });
+
+                            help = decl.attributes.decl_attributes.help.clone();
+                        }
                         AnyDeclaration::Type(id) => {
                             kind = Some(
                                 match document.program.declarations.types.get(id).unwrap().kind {

@@ -912,6 +912,7 @@ pub enum Semantics {
 
 #[derive(Debug, Clone, Copy)]
 pub enum AnyDeclaration {
+    Syntax(SyntaxId),
     Type(TypeId),
     BuiltinType(BuiltinTypeId),
     Trait(TraitId),
@@ -1029,6 +1030,14 @@ impl Compiler {
                     },
                     imported: false,
                 };
+
+                if let Some(name) = decl.name {
+                    lowerer.scopes.entry(name).or_default().push((
+                        Default::default(),
+                        AnyDeclaration::Syntax(*id),
+                        decl.value.attributes.decl_attributes.private,
+                    ));
+                }
 
                 lowerer.declarations.syntaxes.insert(*id, decl);
             }
@@ -5230,6 +5239,7 @@ impl Lowerer {
 
     fn span_of(&self, decl: AnyDeclaration) -> SpanList {
         match decl {
+            AnyDeclaration::Syntax(id) => self.declarations.syntaxes.get(&id).unwrap().span,
             AnyDeclaration::Type(id) => self.declarations.types.get(&id).unwrap().span,
             AnyDeclaration::BuiltinType(id) => {
                 self.declarations.builtin_types.get(&id).unwrap().span
@@ -5245,6 +5255,15 @@ impl Lowerer {
 
     fn attributes_of(&self, decl: AnyDeclaration) -> DeclarationAttributes {
         match decl {
+            AnyDeclaration::Syntax(id) => self
+                .declarations
+                .syntaxes
+                .get(&id)
+                .unwrap()
+                .value
+                .attributes
+                .decl_attributes
+                .clone(),
             AnyDeclaration::Type(id) => self
                 .declarations
                 .types
