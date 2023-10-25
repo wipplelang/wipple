@@ -1,4 +1,4 @@
-use crate::{analysis::SpanList, TraitId, TypeId, TypeParameterId};
+use crate::{analysis::SpanList, Compiler, TraitId, TypeId, TypeParameterId};
 use serde::Serialize;
 use std::{
     cell::{Cell, RefCell},
@@ -6,11 +6,15 @@ use std::{
     hash::Hash,
     rc::Rc,
 };
+use wipple_util::Backtrace;
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TypeInfo {
     pub span: Option<SpanList>,
     pub reason: Option<TypeReason>,
+
+    #[serde(skip)]
+    pub trace: Backtrace,
 }
 
 impl TypeInfo {
@@ -75,18 +79,25 @@ pub enum UnresolvedTypeKind {
 }
 
 impl UnresolvedType {
-    pub fn new(kind: UnresolvedTypeKind, span: impl Into<Option<SpanList>>) -> Self {
+    pub fn from_parts(kind: UnresolvedTypeKind, info: TypeInfo) -> Self {
+        UnresolvedType { kind, info }
+    }
+}
+
+impl Compiler {
+    pub fn new_unresolved_ty(
+        &self,
+        kind: UnresolvedTypeKind,
+        span: impl Into<Option<SpanList>>,
+    ) -> UnresolvedType {
         UnresolvedType::from_parts(
             kind,
             TypeInfo {
                 span: span.into(),
                 reason: None,
+                trace: self.backtrace(),
             },
         )
-    }
-
-    pub fn from_parts(kind: UnresolvedTypeKind, info: TypeInfo) -> Self {
-        UnresolvedType { kind, info }
     }
 }
 
@@ -127,17 +138,20 @@ pub enum TypeKind {
     Error,
 }
 
-impl Type {
-    pub fn new(kind: TypeKind, span: impl Into<Option<SpanList>>) -> Self {
+impl Compiler {
+    pub fn new_ty(&self, kind: TypeKind, span: impl Into<Option<SpanList>>) -> Type {
         Type::from_parts(
             kind,
             TypeInfo {
                 span: span.into(),
                 reason: None,
+                trace: self.backtrace(),
             },
         )
     }
+}
 
+impl Type {
     pub fn from_parts(kind: TypeKind, info: TypeInfo) -> Self {
         Type { kind, info }
     }
@@ -749,7 +763,10 @@ impl UnresolvedType {
                 *self = substitutions.get(param).cloned().unwrap_or_else(|| {
                     // HACK: If the typechecker behaves erratically, try panicking here instead
                     // of returning a new type variable to get to the root cause earlier.
-                    UnresolvedType::new(UnresolvedTypeKind::Variable(ctx.new_variable(None)), None)
+                    UnresolvedType::from_parts(
+                        UnresolvedTypeKind::Variable(ctx.new_variable(None)),
+                        self.info.clone(),
+                    )
                 });
             }
             UnresolvedTypeKind::Function(input, output) => {

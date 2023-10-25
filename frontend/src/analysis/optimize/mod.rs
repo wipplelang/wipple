@@ -1,6 +1,6 @@
 use crate::{
     analysis::{
-        Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, Semantics, SpanList, Type,
+        Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, Semantics, SpanList,
         TypeKind,
     },
     Compiler, ConstantId, ItemId, Optimize, VariableId,
@@ -108,7 +108,7 @@ pub mod ssa {
                                                             .last()
                                                             .map(|expr| expr.ty.clone())
                                                             .unwrap_or_else(|| {
-                                                                Type::new(
+                                                                compiler.new_ty(
                                                                     TypeKind::Tuple(Vec::new()),
                                                                     expr.span,
                                                                 )
