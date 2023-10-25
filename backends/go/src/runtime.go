@@ -585,3 +585,7 @@ func __wpl_intrinsic_list_remove_at[T any](list []T, target uint64) *T {
 func __wpl_intrinsic_list_count[T any](list []T) uint64 {
 	return uint64(len(list))
 }
+
+func __wpl_intrinsic_undefined_number() __wpl_type_number {
+	panic("error: undefined is only supported in the playground")
+}

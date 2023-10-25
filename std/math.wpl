@@ -4,6 +4,10 @@ use "fp"
 use "util"
 use "logic"
 
+[help "The number returned from calculations whose result is undefined (eg. dividing by zero)."]
+undefined :: Number
+undefined : semantics "pure" (intrinsic "undefined-number")
+
 [help "Implements the `+` operator."]
 [help-group "Math"]
 [help-show-code]

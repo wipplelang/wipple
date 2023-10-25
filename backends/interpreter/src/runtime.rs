@@ -1,6 +1,6 @@
 #![allow(clippy::redundant_closure_call)]
 
-use crate::{Context, Error, Interpreter, IoRequest, Stack, TaskGroup, UiHandle, Value};
+use crate::{Context, Error, Interpreter, IoRequest, Number, Stack, TaskGroup, UiHandle, Value};
 use futures::channel::oneshot;
 use itertools::Itertools;
 use num_traits::{pow::Pow, FromPrimitive, ToPrimitive};
@@ -60,6 +60,10 @@ impl Interpreter {
         #![allow(unreachable_patterns)]
 
         macro_rules! runtime_fn {
+            (() => $result:expr) => {{
+                assert!(inputs.is_empty(), "wrong number of inputs to builtin function");
+                $result.await
+            }};
             (($($input:pat),*) => $result:expr) => {
                 match inputs
                     .into_iter()
@@ -417,7 +421,10 @@ impl Interpreter {
                 }),
                 ir::Intrinsic::NumberToText => {
                     runtime_text_fn!((Value::Number(n)) => async {
-                        n.normalize().to_string()
+                        match n {
+                            Number::Undefined => String::from("undefined"),
+                            Number::Decimal(n) => n.normalize().to_string(),
+                        }
                     })
                 }
                 ir::Intrinsic::IntegerToText => runtime_text_fn!(Value::Integer),
@@ -427,7 +434,9 @@ impl Interpreter {
                 ir::Intrinsic::UnsignedToText => runtime_text_fn!(Value::Unsigned),
                 ir::Intrinsic::FloatToText => runtime_text_fn!(Value::Float),
                 ir::Intrinsic::DoubleToText => runtime_text_fn!(Value::Double),
-                ir::Intrinsic::TextToNumber => runtime_parse_fn!(Value::Number),
+                ir::Intrinsic::TextToNumber => runtime_fn!((Value::Text(text)) => async {
+                    Ok(maybe(text.parse().ok().map(Number::Decimal).map(Value::Number)))
+                }),
                 ir::Intrinsic::TextToInteger => runtime_parse_fn!(Value::Integer),
                 ir::Intrinsic::TextToNatural => runtime_parse_fn!(Value::Natural),
                 ir::Intrinsic::TextToByte => runtime_parse_fn!(Value::Byte),
@@ -436,13 +445,14 @@ impl Interpreter {
                 ir::Intrinsic::TextToFloat => runtime_parse_fn!(Value::Float),
                 ir::Intrinsic::TextToDouble => runtime_parse_fn!(Value::Double),
                 ir::Intrinsic::NaturalToNumber => runtime_fn!((Value::Natural(n)) => async {
-                    Ok(Value::Number(Decimal::from_u64(n).expect("overflow")))
+                    Ok(Value::Number(Decimal::from_u64(n).map_or(Number::Undefined, Number::Decimal)))
                 }),
                 ir::Intrinsic::NumberToNatural => runtime_fn!((Value::Number(n)) => async {
-                    if n >= Decimal::ZERO && n.is_integer() {
-                        Ok(some(Value::Natural(n.to_u64().unwrap())))
-                    } else {
-                        Ok(none())
+                    match n {
+                        Number::Decimal(n) if n >= Decimal::ZERO && n.is_integer() => {
+                            Ok(some(Value::Natural(n.to_u64().unwrap())))
+                        }
+                        _ => Ok(none()),
                     }
                 }),
                 ir::Intrinsic::NaturalToInteger => runtime_fn!((Value::Natural(n)) => async {
@@ -457,46 +467,96 @@ impl Interpreter {
                 }),
                 ir::Intrinsic::AddNumber => {
                     runtime_math_fn!(Value::Number, (lhs, rhs) => async {
-                        Ok(lhs + rhs)
+                        Ok(match (lhs, rhs) {
+                            (Number::Decimal(lhs), Number::Decimal(rhs)) => {
+                                lhs.checked_add(rhs).map_or(Number::Undefined, Number::Decimal)
+                            }
+                            _ => Number::Undefined,
+                        })
                     })
                 }
                 ir::Intrinsic::SubtractNumber => {
                     runtime_math_fn!(Value::Number, (lhs, rhs) => async {
-                        Ok(lhs - rhs)
+                        Ok(match (lhs, rhs) {
+                            (Number::Decimal(lhs), Number::Decimal(rhs)) => {
+                                lhs.checked_sub(rhs).map_or(Number::Undefined, Number::Decimal)
+                            }
+                            _ => Number::Undefined,
+                        })
                     })
                 }
                 ir::Intrinsic::MultiplyNumber => {
                     runtime_math_fn!(Value::Number, (lhs, rhs) => async {
-                        Ok(lhs * rhs)
+                        Ok(match (lhs, rhs) {
+                            (Number::Decimal(lhs), Number::Decimal(rhs)) => {
+                                lhs.checked_mul(rhs).map_or(Number::Undefined, Number::Decimal)
+                            }
+                            _ => Number::Undefined,
+                        })
                     })
                 }
-                ir::Intrinsic::DivideNumber => runtime_div_fn!(Value::Number, Decimal::ZERO),
-                ir::Intrinsic::ModuloNumber => runtime_mod_fn!(Value::Number, Decimal::ZERO),
+                ir::Intrinsic::DivideNumber => {
+                    runtime_math_fn!(Value::Number, (lhs, rhs) => async {
+                        Ok(match (lhs, rhs) {
+                            (Number::Decimal(lhs), Number::Decimal(rhs)) => {
+                                lhs.checked_div(rhs).map_or(Number::Undefined, Number::Decimal)
+                            }
+                            _ => Number::Undefined,
+                        })
+                    })
+                }
+                ir::Intrinsic::ModuloNumber => {
+                    runtime_math_fn!(Value::Number, (lhs, rhs) => async {
+                        Ok(match (lhs, rhs) {
+                            (Number::Decimal(lhs), Number::Decimal(rhs)) => {
+                                lhs.checked_rem(rhs).map_or(Number::Undefined, Number::Decimal)
+                            }
+                            _ => Number::Undefined,
+                        })
+                    })
+                }
                 ir::Intrinsic::PowerNumber => {
                     runtime_math_fn!(Value::Number, (lhs, rhs) => async {
-                        if lhs == Decimal::ZERO && rhs == Decimal::ZERO {
-                            Err(Error::from("cannot raise zero to the power of zero"))
-                        } else {
-                            Ok(lhs.pow(rhs))
-                        }
+                        Ok(match (lhs, rhs) {
+                            (Number::Decimal(lhs), Number::Decimal(rhs)) => {
+                                lhs.checked_powd(rhs).map_or(Number::Undefined, Number::Decimal)
+                            }
+                            _ => Number::Undefined,
+                        })
                     })
                 }
                 ir::Intrinsic::FloorNumber => {
                     runtime_math_fn!(Value::Number, (n) => async {
-                        Ok(n.floor())
+                        Ok(match n {
+                            Number::Decimal(n) => Number::Decimal(n.floor()),
+                            Number::Undefined => Number::Undefined,
+                        })
                     })
                 }
                 ir::Intrinsic::CeilNumber => {
                     runtime_math_fn!(Value::Number, (n) => async {
-                        Ok(n.ceil())
+                        Ok(match n {
+                            Number::Decimal(n) => Number::Decimal(n.ceil()),
+                            Number::Undefined => Number::Undefined,
+                        })
                     })
                 }
                 ir::Intrinsic::SqrtNumber => {
                     runtime_math_fn!(Value::Number, (n) => async {
-                        Ok(n.sqrt().unwrap())
+                        Ok(match n {
+                            Number::Decimal(n) => n.sqrt().map_or(Number::Undefined, Number::Decimal),
+                            Number::Undefined => Number::Undefined,
+                        })
                     })
                 }
-                ir::Intrinsic::NegateNumber => runtime_negate_fn!(Value::Number),
+                ir::Intrinsic::NegateNumber => {
+                    runtime_math_fn!(Value::Number, (n) => async {
+                        Ok(match n {
+                            Number::Decimal(n) => Number::Decimal(-n),
+                            Number::Undefined => Number::Undefined,
+                        })
+                    })
+                }
                 ir::Intrinsic::AddInteger => {
                     runtime_math_fn!(Value::Integer, (lhs, rhs) => async {
                         Ok(lhs + rhs)
@@ -729,7 +789,11 @@ impl Interpreter {
                 ir::Intrinsic::FloatEquality => runtime_eq_fn!(Value::Float),
                 ir::Intrinsic::DoubleEquality => runtime_eq_fn!(Value::Double),
                 ir::Intrinsic::TextOrdering => runtime_cmp_fn!(Value::Text),
-                ir::Intrinsic::NumberOrdering => runtime_cmp_fn!(Value::Number),
+                ir::Intrinsic::NumberOrdering => {
+                    runtime_cmp_fn!((Value::Number(lhs), Value::Number(rhs)) => async {
+                        lhs.cmp(&rhs)
+                    })
+                },
                 ir::Intrinsic::IntegerOrdering => runtime_cmp_fn!(Value::Integer),
                 ir::Intrinsic::NaturalOrdering => runtime_cmp_fn!(Value::Natural),
                 ir::Intrinsic::ByteOrdering => runtime_cmp_fn!(Value::Byte),
@@ -737,12 +801,12 @@ impl Interpreter {
                 ir::Intrinsic::UnsignedOrdering => runtime_cmp_fn!(Value::Unsigned),
                 ir::Intrinsic::FloatOrdering => {
                     runtime_cmp_fn!((Value::Float(lhs), Value::Float(rhs)) => async {
-                        lhs.partial_cmp(&rhs).expect("unexpected NaN")
+                        lhs.partial_cmp(&rhs).unwrap_or(std::cmp::Ordering::Equal)
                     })
                 }
                 ir::Intrinsic::DoubleOrdering => {
                     runtime_cmp_fn!((Value::Double(lhs), Value::Double(rhs)) => async {
-                        lhs.partial_cmp(&rhs).expect("unexpected NaN")
+                        lhs.partial_cmp(&rhs).unwrap_or(std::cmp::Ordering::Equal)
                     })
                 }
                 ir::Intrinsic::MakeMutable => runtime_fn!((value) => async {
@@ -858,7 +922,24 @@ impl Interpreter {
                         ))
                     })
                 }
-                ir::Intrinsic::RandomNumber => runtime_rand_fn!(Value::Number),
+                ir::Intrinsic::RandomNumber => {
+                    runtime_fn!((Value::Number(min), Value::Number(max)) => async {
+                        let (min, max) = match (min, max) {
+                            (Number::Decimal(min), Number::Decimal(max)) => (min, max),
+                            _ => return Ok(Value::Number(Number::Undefined)),
+                        };
+
+                        if min == max {
+                            return Ok(Value::Number(Number::Decimal(min)));
+                        }
+
+                        let mut seed = [0; 32];
+                        getrandom::getrandom(&mut seed).expect("failed to seed random number generator");
+                        let mut rng = rand::rngs::StdRng::from_seed(seed);
+
+                        Ok(Value::Number(Number::Decimal(rng.gen_range(min..max))))
+                    })
+                }
                 ir::Intrinsic::RandomInteger => runtime_rand_fn!(Value::Integer),
                 ir::Intrinsic::RandomNatural => runtime_rand_fn!(Value::Natural),
                 ir::Intrinsic::RandomByte => runtime_rand_fn!(Value::Byte),
@@ -866,6 +947,9 @@ impl Interpreter {
                 ir::Intrinsic::RandomUnsigned => runtime_rand_fn!(Value::Unsigned),
                 ir::Intrinsic::RandomFloat => runtime_rand_fn!(Value::Float),
                 ir::Intrinsic::RandomDouble => runtime_rand_fn!(Value::Double),
+                ir::Intrinsic::UndefinedNumber => runtime_fn!(() => async {
+                    Ok(Value::Number(Number::Undefined))
+                }),
             }
         })().await?;
 

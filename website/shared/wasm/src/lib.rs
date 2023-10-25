@@ -1378,9 +1378,12 @@ fn wipple_to_js(
         wipple_interpreter_backend::Value::Marker => {
             panic!("marker values may not be sent to JavaScript")
         }
-        wipple_interpreter_backend::Value::Number(n) => {
-            JsValue::from_f64(n.try_into().expect("number out of bounds"))
-        }
+        wipple_interpreter_backend::Value::Number(n) => match n {
+            wipple_interpreter_backend::Number::Undefined => JsValue::from_f64(f64::NAN),
+            wipple_interpreter_backend::Number::Decimal(n) => {
+                JsValue::from_f64(n.try_into().expect("number out of bounds"))
+            }
+        },
         wipple_interpreter_backend::Value::Integer(_)
         | wipple_interpreter_backend::Value::Natural(_)
         | wipple_interpreter_backend::Value::Byte(_)
@@ -1477,7 +1480,14 @@ fn js_to_wipple(
     if value.is_null() | value.is_undefined() {
         wipple_interpreter_backend::Value::Tuple(Vec::new())
     } else if let Some(n) = value.as_f64() {
-        wipple_interpreter_backend::Value::Number(n.try_into().expect("number out of bounds"))
+        if n.is_nan() {
+            wipple_interpreter_backend::Value::Number(wipple_interpreter_backend::Number::Undefined)
+        } else {
+            wipple_interpreter_backend::Value::Number(n.try_into().map_or(
+                wipple_interpreter_backend::Number::Undefined,
+                wipple_interpreter_backend::Number::Decimal,
+            ))
+        }
     } else if let Some(s) = value.as_string() {
         wipple_interpreter_backend::Value::Text(Arc::from(s))
     } else if let Some(f) = value.dyn_ref::<js_sys::Function>() {

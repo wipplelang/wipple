@@ -121,10 +121,28 @@ impl Interpreter {
     }
 }
 
+#[derive(Debug, Clone, PartialOrd, Ord)]
+pub enum Number {
+    Undefined,
+    Decimal(rust_decimal::Decimal),
+}
+
+impl PartialEq for Number {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Number::Undefined, Number::Undefined) => false,
+            (Number::Decimal(lhs), Number::Decimal(rhs)) => lhs == rhs,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Number {}
+
 #[derive(Clone)]
 pub enum Value {
     Marker,
-    Number(rust_decimal::Decimal),
+    Number(Number),
     Integer(i64),
     Natural(u64),
     Byte(u8),
@@ -414,7 +432,9 @@ impl Interpreter {
                         ir::Expression::Text(text) => {
                             stack.push(Value::Text(Arc::from(text.as_str())))
                         }
-                        ir::Expression::Number(number) => stack.push(Value::Number(*number)),
+                        ir::Expression::Number(number) => {
+                            stack.push(Value::Number(Number::Decimal(*number)))
+                        }
                         ir::Expression::Integer(integer) => stack.push(Value::Integer(*integer)),
                         ir::Expression::Natural(natural) => stack.push(Value::Natural(*natural)),
                         ir::Expression::Byte(byte) => stack.push(Value::Byte(*byte)),
