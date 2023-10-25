@@ -8,6 +8,10 @@ use "logic"
 undefined :: Number
 undefined : semantics "pure" (intrinsic "undefined-number")
 
+[help "Check if a number is `undefined`. `undefined` is not equal to any number (including itself), so use this function instead of `=`."]
+undefined? :: Number -> Boolean
+undefined? : n -> semantics "pure" (intrinsic "number-is-undefined" n)
+
 [help "Implements the `+` operator."]
 [help-group "Math"]
 [help-show-code]

@@ -934,7 +934,8 @@ impl<'a> Codegen<'a> {
             | ir::Intrinsic::ListRemoveAt
             | ir::Intrinsic::ListCount
             | ir::Intrinsic::ListSlice
-            | ir::Intrinsic::UndefinedNumber => false,
+            | ir::Intrinsic::UndefinedNumber
+            | ir::Intrinsic::NumberIsUndefined => false,
         }
     }
 }

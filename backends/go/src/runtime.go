@@ -589,3 +589,7 @@ func __wpl_intrinsic_list_count[T any](list []T) uint64 {
 func __wpl_intrinsic_undefined_number() __wpl_type_number {
 	panic("error: undefined is only supported in the playground")
 }
+
+func __wpl_intrinsic_number_is_undefined() bool {
+	panic("error: number-is-undefined is only supported in the playground")
+}

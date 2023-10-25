@@ -9,9 +9,9 @@ error: cannot add `show 1` to `2`
    │ this has type `()`
    │ this is parsed as one single input to `+`
    │
-   ┌─ <dir>/std/math.wpl:21:14
+   ┌─ <dir>/std/math.wpl:25:14
    │
-21 │   'a + 'b -> Add 'b 'a
+25 │   'a + 'b -> Add 'b 'a
    │              --- actual error occurred here
    │
    = add parentheses around `1 + 2`: `(1 + 2)`
@@ -45,9 +45,9 @@ error: cannot add `1` to `"hi"`
    │       │ could not find instance `Add Number Text _`
    │       this has type `Number`
    │
-   ┌─ <dir>/std/math.wpl:21:14
+   ┌─ <dir>/std/math.wpl:25:14
    │
-21 │   'a + 'b -> Add 'b 'a
+25 │   'a + 'b -> Add 'b 'a
    │              --- actual error occurred here
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance

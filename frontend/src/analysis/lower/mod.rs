@@ -890,6 +890,7 @@ pub enum Intrinsic {
     RandomFloat,
     RandomDouble,
     UndefinedNumber,
+    NumberIsUndefined,
 }
 
 #[derive(

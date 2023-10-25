@@ -7,9 +7,9 @@ error: mismatched types
    │               expected `Text`, but found `Number`
    │               expected because the output of the function has type `Text`
    │
-   ┌─ <dir>/std/math.wpl:21:14
+   ┌─ <dir>/std/math.wpl:25:14
    │
-21 │   'a + 'b -> Add 'b 'a
+25 │   'a + 'b -> Add 'b 'a
    │              --- actual error occurred here
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types
