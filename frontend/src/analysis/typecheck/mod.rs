@@ -1855,6 +1855,8 @@ impl Typechecker {
 
                 self.instantiate_generics(&mut ty);
 
+                ty.info.span = Some(expr.span);
+
                 UnresolvedExpression {
                     id: expr.id,
                     span: expr.span,
@@ -1876,6 +1878,8 @@ impl Typechecker {
                     ));
 
                 self.instantiate_generics(&mut ty);
+
+                ty.info.span = Some(expr.span);
 
                 UnresolvedExpression {
                     id: expr.id,
