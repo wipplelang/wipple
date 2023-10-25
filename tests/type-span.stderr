@@ -1,0 +1,32 @@
+error: cannot add `show` to `1`
+   ┌─ test:1:6
+   │
+ 1 │ show + 1
+   │ ---- ^ - this has type `Number`
+   │ │    │  
+   │ │    could not find instance `Add (_ -> ()) Number _`
+   │ this has type `_ -> ()`
+   │
+   ┌─ <dir>/std/math.wpl:21:14
+   │
+21 │   'a + 'b -> Add 'b 'a
+   │              --- actual error occurred here
+   │
+   = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
+
+error: cannot add `Show` to `1`
+   ┌─ test:2:6
+   │
+ 2 │ Show + 1
+   │ ---- ^ - this has type `Number`
+   │ │    │  
+   │ │    could not find instance `Add (Text -> Text) Number _`
+   │ this has type `Text -> Text`
+   │
+   ┌─ <dir>/std/math.wpl:21:14
+   │
+21 │   'a + 'b -> Add 'b 'a
+   │              --- actual error occurred here
+   │
+   = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
+
