@@ -169,8 +169,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         onApplyFix={async (fix) => {
                             view.dispatch({
                                 changes: {
-                                    from: from,
-                                    to: to,
+                                    from: fix.start,
+                                    to: fix.end,
                                     insert: fix.replacement,
                                 },
                             });
