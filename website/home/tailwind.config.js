@@ -1,7 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
     content: ["./**/*.{html,md}"],
-    plugins: [require("@tailwindcss/typography")],
+    plugins: [require("@tailwindcss/typography"), require("tailwindcss-animate")],
     darkMode: "media",
     theme: {
         extend: {

@@ -1,0 +1,10 @@
+---
+layout: page
+tags: posts
+---
+
+{% import "blog.html" as blog %}
+
+<main>
+    {{ blog.post(null, title, date, content) }}
+</main>

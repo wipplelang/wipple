@@ -17,7 +17,7 @@ main {
     @apply max-w-4xl mx-auto px-4;
 }
 
-a {
+a:not(.no-underline) {
     @apply underline underline-offset-1 decoration-2 decoration-sky-500;
 }
 
@@ -38,7 +38,7 @@ pre code {
 }
 
 .btn {
-    @apply font-bold py-2 px-4 rounded;
+    @apply font-bold py-2 px-4 rounded-md;
     text-decoration: none;
 }
 
@@ -63,13 +63,29 @@ pre code {
 }
 
 .example .example-code {
-    @apply md:w-3/5;
+    @apply md:w-3/5 mt-8 md:mt-0 md:ml-8 border-2 border-gray-100 dark:border-gray-800 rounded-lg shadow-lg;
 }
 
-.example .example-code {
-    @apply mt-8 md:mt-0 md:ml-8 border-2 border-gray-100 dark:border-gray-800 rounded-lg shadow-lg;
+.prose pre {
+    @apply text-lg border-2 border-gray-100 dark:border-gray-800 rounded-lg shadow-lg;
 }
 
-.example .example-code pre {
+.example .example-code pre,
+.prose pre {
     @apply bg-transparent;
+}
+
+.prose code {
+    @apply mx-0 my-1;
+}
+
+.disable-scrollbars::-webkit-scrollbar {
+    background: transparent; /* Chrome/Safari/Webkit */
+    width: 0px;
+    height: 0px;
+}
+
+.disable-scrollbars {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE 10+ */
 }

@@ -1,7 +1,7 @@
 {
     "private": true,
     "scripts": {
-        "dev": "concurrently 'eleventy --serve' 'watch \"npm run tailwind:process\" .'",
+        "dev": "concurrently 'npx @11ty/eleventy --serve' 'watch \"npm run tailwind:process\" .'",
         "build": "eleventy && npm run tailwind:process",
         "tailwind:process": "npx postcss ./styles/global.css -o ./_site/styles/global.css"
     },
@@ -17,7 +17,11 @@
         "watch": "^1.0.2"
     },
     "dependencies": {
+        "@jamshop/eleventy-plugin-typography": "^1.0.0",
+        "date-fns-tz": "^2.0.0",
+        "node-html-parser": "^6.1.11",
         "react-error-boundary": "^4.0.3",
+        "tailwindcss-animate": "^1.0.7",
         "uuid": "^9.0.0"
     }
 }
