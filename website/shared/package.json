@@ -13,6 +13,7 @@
         "react": "^18.2.0"
     },
     "dependencies": {
+        "immer": "^10.0.3",
         "line-column": "^1.0.2",
         "react-markdown": "^8.0.5",
         "react-spring": "^9.7.0",

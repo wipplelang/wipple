@@ -48,7 +48,7 @@ export interface AnalysisOutputSnippets {
 }
 
 export interface Snippet {
-    id: number;
+    id: { file: any; counter: number };
     name: string;
 }
 
@@ -358,7 +358,7 @@ export const useRunner = (context: any) => {
 
                 runner.current!.postMessage({ operation: "snippets", position, context });
             }),
-        expandSnippet: (snippet: number, wrappedCode: string | null) =>
+        expandSnippet: (snippet: { file: any; counter: number }, wrappedCode: string | null) =>
             new Promise<string | null>(async (resolve, reject) => {
                 const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = (event) => {

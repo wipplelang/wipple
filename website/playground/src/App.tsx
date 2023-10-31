@@ -477,8 +477,7 @@ const App = () => {
                                             <div className="flex flex-col flex-1">
                                                 <p className="font-semibold">Beginner mode</p>
                                                 <p className="opacity-50">
-                                                    Simplify the code editor, highlight blocks, and
-                                                    hide errors.
+                                                    Simplify the code editor and highlight blocks.
                                                 </p>
                                             </div>
 

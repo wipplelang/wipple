@@ -106,11 +106,11 @@
 }
 
 .language-wipple .token.diagnostic {
-    @apply underline underline-offset-4;
+    @apply underline decoration-wavy underline-offset-2;
 }
 
 .language-wipple .token.diagnostic-error {
-    @apply text-red-600 bg-red-100 dark:text-red-500 dark:bg-red-900 dark:bg-opacity-20;
+    @apply text-sky-600 bg-sky-100 dark:text-sky-500 dark:bg-sky-900 dark:bg-opacity-20;
 }
 
 .language-wipple .token.diagnostic-error * {
@@ -126,7 +126,7 @@
 }
 
 .language-wipple .token.diagnostic-note {
-    @apply text-sky-600 bg-sky-100 dark:text-sky-500 dark:bg-sky-900 dark:bg-opacity-20;
+    @apply text-gray-600 bg-gray-100 dark:text-gray-500 dark:bg-gray-900 dark:bg-opacity-20;
 }
 
 .language-wipple .token.diagnostic-note * {

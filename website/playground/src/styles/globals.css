@@ -47,7 +47,7 @@ code {
 }
 
 .diagnostic-errors {
-    @apply bg-red-50 dark:bg-red-900 dark:bg-opacity-40;
+    @apply bg-sky-50 dark:bg-sky-900 dark:bg-opacity-40;
 }
 
 .diagnostic-warnings {

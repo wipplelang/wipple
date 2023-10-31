@@ -90,13 +90,6 @@ export interface CodeEditorProps {
     onBlur: (e: FocusEvent) => void;
 }
 
-interface Hover {
-    output: HoverOutput | null;
-    diagnostic:
-        | [AnalysisOutputDiagnostic, boolean, AnalysisOutputDiagnostic["notes"][number]]
-        | undefined;
-}
-
 interface SpecialSnippet {
     element: () => React.ReactNode;
     name: string;
@@ -135,23 +128,11 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
         const { from, to } = syntaxTree(view.state).cursorAt(pos, side);
 
-        let hoverDiagnostic: Hover["diagnostic"];
-        outer: for (const diagnostic of analysis.current?.diagnostics ?? []) {
-            for (let noteIndex = 0; noteIndex < diagnostic.notes.length; noteIndex++) {
-                const note = diagnostic.notes[noteIndex];
-
-                if (from >= note.span.start && to <= note.span.end) {
-                    hoverDiagnostic = [diagnostic, noteIndex === 0, note];
-                    break outer;
-                }
-            }
-        }
-
         // Disable hovering in beginner mode, except for diagnostics
         const hoverOutput =
             settings.current!.beginner ?? true ? null : await outputRef.current!.hover(from, to);
 
-        if (!hoverDiagnostic && !hoverOutput) {
+        if (!hoverOutput) {
             setHoverPos(undefined);
             return null;
         }
@@ -163,26 +144,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
             end: to,
             create: () => {
                 const dom = document.createElement("div");
-                ReactDOM.createRoot(dom).render(
-                    <Hover
-                        hover={{ diagnostic: hoverDiagnostic, output: hoverOutput }}
-                        onApplyFix={async (fix) => {
-                            view.dispatch({
-                                changes: {
-                                    from: fix.start,
-                                    to: fix.end,
-                                    insert: fix.replacement,
-                                },
-                            });
-
-                            await formatCode(view.state.doc.toString());
-
-                            setHoverPos(undefined);
-
-                            view.dispatch({ effects: closeHoverTooltips });
-                        }}
-                    />
-                );
+                ReactDOM.createRoot(dom).render(<Hover hover={hoverOutput} />);
 
                 return {
                     dom,
@@ -1341,6 +1303,21 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         onReset={onReset}
                         onAnalyze={onAnalyze}
                         onChangeOutput={setOutput}
+                        onApplyFix={async (fix) => {
+                            view.current!.dispatch({
+                                changes: {
+                                    from: fix.start,
+                                    to: fix.end,
+                                    insert: fix.replacement,
+                                },
+                            });
+
+                            await formatCode(view.current!.state.doc.toString());
+
+                            setHoverPos(undefined);
+
+                            view.current!.dispatch({ effects: closeHoverTooltips });
+                        }}
                         onError={onError}
                     />
                 </div>
@@ -1405,114 +1382,42 @@ export const CodeEditor = (props: CodeEditorProps) => {
     );
 };
 
-const Hover = (props: {
-    hover: Hover;
-    onApplyFix: (fix: AnalysisConsoleDiagnosticFix) => void;
-}) => {
-    return (
-        <div className="mt-2 p-2 overflow-clip bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-lg text-black dark:text-white">
-            {props.hover.diagnostic ? (
-                <div className="flex flex-col">
-                    <div
-                        className={`font-bold ${
-                            props.hover.diagnostic[0].level === "error"
-                                ? "text-red-600 dark:text-red-500"
-                                : "text-yellow-600 dark:text-yellow-500"
-                        }`}
-                    >
-                        <Markdown>
-                            {`${props.hover.diagnostic[0].level}: ${props.hover.diagnostic[0].message}`}
-                        </Markdown>
-                    </div>
+const Hover = (props: { hover: HoverOutput }) => (
+    <div className="mt-2 p-2 overflow-clip bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-lg text-black dark:text-white">
+        {props.hover.code ? (
+            <div className="pointer-events-none">
+                <SimpleCodeEditor
+                    className="code-editor dark:caret-white"
+                    textareaClassName="outline-0"
+                    preClassName="language-wipple"
+                    style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontVariantLigatures: "none",
+                        wordWrap: "break-word",
+                    }}
+                    value={props.hover.code}
+                    highlight={(code) => prism.highlight(code, prism.languages.wipple, "wipple")}
+                    onValueChange={() => {}}
+                    contentEditable={false}
+                />
 
-                    <div className="flex flex-col">
-                        {props.hover.diagnostic[2].messages.map((message, messageIndex) => (
-                            <div
-                                key={messageIndex}
-                                className={
-                                    messageIndex === 0 && props.hover.diagnostic![1]
-                                        ? props.hover.diagnostic![0].level === "error"
-                                            ? "text-red-600 dark:text-red-500"
-                                            : "text-yellow-600 dark:text-yellow-500"
-                                        : "opacity-75"
-                                }
-                            >
-                                <Markdown>{message}</Markdown>
-                            </div>
-                        ))}
-                    </div>
+                {props.hover.help ? <Markdown>{props.hover.help}</Markdown> : null}
+            </div>
+        ) : null}
 
-                    {props.hover.diagnostic[0].example ? (
-                        <div>
-                            <span className="opacity-75">for more information, see </span>
-                            <a
-                                target="_blank"
-                                className="text-sky-500"
-                                href={`/playground/?lesson=errors/${props.hover.diagnostic[0].example}`}
-                            >
-                                this guide
-                            </a>
-                        </div>
-                    ) : null}
-
-                    {props.hover.diagnostic[0].fix && (
-                        <div className="flex">
-                            <button
-                                className="mt-1.5 px-1.5 py-0.5 rounded-md bg-blue-500 text-white"
-                                onClick={() => {
-                                    props.onApplyFix(props.hover.diagnostic![0].fix!);
-                                }}
-                            >
-                                <Markdown>{props.hover.diagnostic[0].fix.description}</Markdown>
-                            </button>
-                        </div>
-                    )}
-
-                    {props.hover.output && (
-                        <div className="h-0.5 my-2 bg-gray-100 dark:bg-gray-700"></div>
-                    )}
-                </div>
-            ) : null}
-
-            {props.hover.output?.code ? (
-                <div className="pointer-events-none">
-                    <SimpleCodeEditor
-                        className="code-editor dark:caret-white"
-                        textareaClassName="outline-0"
-                        preClassName="language-wipple"
-                        style={{
-                            fontFamily: "'JetBrains Mono', monospace",
-                            fontVariantLigatures: "none",
-                            wordWrap: "break-word",
-                        }}
-                        value={props.hover.output.code}
-                        highlight={(code) =>
-                            prism.highlight(code, prism.languages.wipple, "wipple")
-                        }
-                        onValueChange={() => {}}
-                        contentEditable={false}
-                    />
-
-                    {props.hover.output.help ? (
-                        <Markdown>{props.hover.output.help}</Markdown>
-                    ) : null}
-                </div>
-            ) : null}
-
-            {props.hover.output?.url ? (
-                <div className="mt-1.5">
-                    <a
-                        href={props.hover.output.url}
-                        target="_blank"
-                        className="px-1.5 py-0.5 rounded-md bg-blue-500 text-white"
-                    >
-                        Documentation
-                    </a>
-                </div>
-            ) : null}
-        </div>
-    );
-};
+        {props.hover.url ? (
+            <div className="mt-1.5">
+                <a
+                    href={props.hover.url}
+                    target="_blank"
+                    className="px-1.5 py-0.5 rounded-md bg-blue-500 text-white"
+                >
+                    Documentation
+                </a>
+            </div>
+        ) : null}
+    </div>
+);
 
 class InsertButtonDecoration extends WidgetType {
     constructor(
