@@ -11,12 +11,10 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { useSpring, animated } from "react-spring";
 import useMeasure from "react-use-measure";
 import {
-    AnalysisOutputDiagnostic,
     AnalysisOutputSyntaxHighlightingItem,
     HoverOutput,
     AnalysisOutputSnippets,
     Snippet,
-    AnalysisConsoleDiagnosticFix,
     useRefState,
     Markdown,
     PlaygroundRunner,
