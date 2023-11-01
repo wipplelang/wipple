@@ -7,9 +7,9 @@ error:
 16 │ greet :: Bar -> Number
    │ ^^^^^
    │ │
-   │ expected `A -> Text` for any type `A`, but found `Bar -> Number`
+   │ function returns `Number`, but it should return `Text`
    │ this constant must have a more specific type than the original constant
-   │ this function returns `Number`, but it should return `Text`
+   │ expected `A -> Text` for any type `A`, but found `Bar -> Number`
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types
 

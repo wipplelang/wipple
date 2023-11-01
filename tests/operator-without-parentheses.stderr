@@ -6,6 +6,7 @@ error:
    │ │      │  
    │ │      cannot add `show 1` to `2`
    │ │      `+` consumes all expressions on either side; you may be missing parentheses
+   │ │      could not find instance `Add () Number _`
    │ this has type `()`
    │ this is parsed as one single input to `+`
    │
@@ -43,6 +44,7 @@ error:
    │       - ^ ---- this has type `Text`
    │       │ │  
    │       │ cannot add `1` to `"hi"`
+   │       │ could not find instance `Add Number Text _`
    │       this has type `Number`
    │
    ┌─ <dir>/std/math.wpl:25:14

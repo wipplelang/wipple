@@ -4,8 +4,8 @@ error:
  1 │ list 1 2 3 . transform ((_ :: Text) -> ())
    │                        ^^^^^^^^^^^^^^^^^^^
    │                        │
+   │                        function accepts `Text`, but it should accept `Number`
    │                        expected `Number -> ()`, but found `Text -> ()`
-   │                        this function accepts `Text`, but it should accept `Number`
    │
    ┌─ <dir>/std/sequence.wpl:38:88
    │

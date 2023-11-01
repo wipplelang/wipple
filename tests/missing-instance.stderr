@@ -2,7 +2,10 @@ error:
    ┌─ test:2:1
    │
  2 │ show Foo
-   │ ^^^^ cannot display `Foo` on the screen
+   │ ^^^^
+   │ │
+   │ cannot display `Foo` on the screen
+   │ could not find instance `Show Foo`
    │
    ┌─ <dir>/std/io.wpl:25:17
    │

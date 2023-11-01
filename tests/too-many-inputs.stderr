@@ -4,8 +4,8 @@ error:
 1 │ show 1 2 3
   │ ^^^^^^
   │ │
+  │ too many inputs provided to function
   │ expected `Number -> Number -> _`, but found `()`
-  │ too many inputs provided to this function
   │
   = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types
 

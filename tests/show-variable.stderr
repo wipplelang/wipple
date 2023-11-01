@@ -2,7 +2,10 @@ error:
    ┌─ test:4:1
    │
  4 │ show my-variable
-   │ ^^^^ cannot display `my-variable` on the screen
+   │ ^^^^
+   │ │
+   │ cannot display `my-variable` on the screen
+   │ could not find instance `Show Cannot-Be-Shown`
    │
    ┌─ <dir>/std/io.wpl:25:17
    │
