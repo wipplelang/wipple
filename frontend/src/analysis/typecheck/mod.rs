@@ -6084,11 +6084,7 @@ impl Typechecker {
                     multi_var_format
                 };
 
-                let message = format!(
-                    "expected {}, but found {}",
-                    self.format_type(expected.clone(), format),
-                    self.format_type(actual.clone(), format)
-                );
+                let mut message = None;
 
                 let mut notes = Vec::new();
                 let mut fix = None;
@@ -6251,13 +6247,10 @@ impl Typechecker {
                             .unify(actual_output.clone(), expected_output.clone())
                             .is_err()
                         {
-                            notes.push(Note::secondary(
-                                error.span,
-                                format!(
-                                    "this function returns {}, but it should return {}",
-                                    self.format_type(actual_output, format),
-                                    self.format_type(expected_output, format)
-                                ),
+                            message = Some(format!(
+                                "function returns {}, but it should return {}",
+                                self.format_type(actual_output, format),
+                                self.format_type(expected_output, format)
                             ));
                         } else if self
                             .ctx
@@ -6268,25 +6261,22 @@ impl Typechecker {
                             )
                             .is_err()
                         {
-                            notes.push(Note::secondary(
-                                error.span,
-                                format!(
-                                    "this function accepts {}, but it should accept {}",
-                                    self.format_type(actual_input.as_ref().clone(), format),
-                                    self.format_type(expected_input.as_ref().clone(), format)
-                                ),
+                            message = Some(format!(
+                                "function accepts {}, but it should accept {}",
+                                self.format_type(actual_input.as_ref().clone(), format),
+                                self.format_type(expected_input.as_ref().clone(), format)
                             ));
                         }
                     } else if let Some(id) = error.expr {
                         if let Some(root) = self.root_for(id.owner) {
                             if let Some(expr) = root.as_root_query(id) {
                                 if matches!(expr.kind, ExpressionKind::Call(..)) {
-                                    notes.push(Note::secondary(
-                                        error.span,
-                                        "too many inputs provided to this function",
-                                    ));
+                                    message = Some(String::from("too many inputs provided to function"));
                                 } else {
-                                    notes.push(Note::secondary(error.span, "not a function"));
+                                    message = Some(format!(
+                                        "cannot call {} value because it is not a function",
+                                        self.format_type(actual.clone(), format),
+                                    ));
                                 }
                             }
                         }
@@ -6428,14 +6418,25 @@ impl Typechecker {
                     if let engine::UnresolvedTypeKind::Function(_, _) = expected.kind {
                         if let Some(id) = error.expr {
                             if self.start_of_call_chain_for(id).is_some() {
-                                notes.push(Note::secondary(
-                                    error.span,
-                                    "formatting only works on text literals",
-                                ));
+                                message = Some(String::from("formatting only works on text literals"));
                             }
                         }
                     }
                 }
+
+                let default_message = format!(
+                    "expected {}, but found {}",
+                    self.format_type(expected.clone(), format),
+                    self.format_type(actual.clone(), format)
+                );
+
+                let message = match message {
+                    Some(message) => {
+                        notes.push(Note::secondary(error.span, default_message));
+                        message
+                    }
+                    None => default_message,
+                };
 
                 let mut error = self.compiler
                     .error_with_trace(error.span, message,  "mismatched-types", error.trace)
@@ -6482,31 +6483,10 @@ impl Typechecker {
                     multi_var_format
                 };
 
-                let default_error_message = format!(
-                    "could not find instance {}",
-                    self.format_type(format::FormattableType::r#trait(id, params.clone()), format)
-                );
-
-                let error_message = trait_attributes.on_unimplemented.map_or(
-                    default_error_message,
-                    |(segments, trailing_segment)| {
-                        message_from_segments(
-                            self,
-                            (segments, trailing_segment),
-                            trait_params
-                                .clone()
-                                .into_iter()
-                                .zip(params.clone())
-                                .collect(),
-                            trait_attributes.decl_attributes.help_show_code,
-                            format,
-                        )
-                    },
-                );
-
-                let notes = trait_params
+                let mut notes = trait_params
+                    .clone()
                     .into_iter()
-                    .zip(params)
+                    .zip(params.clone())
                     .filter_map(|(param, ty)| {
                         let span = ty.info.span?;
 
@@ -6536,6 +6516,29 @@ impl Typechecker {
                         )
                     }))
                     .collect::<Vec<_>>();
+
+                let default_error_message = format!(
+                    "could not find instance {}",
+                    self.format_type(format::FormattableType::r#trait(id, params.clone()), format)
+                );
+
+                let error_message = match trait_attributes.on_unimplemented {
+                    Some((segments, trailing_segment)) =>  {
+                        notes.push(Note::secondary(DiagnosticLocation::from(error.span).use_caller_if_available(), default_error_message));
+
+                        message_from_segments(
+                            self,
+                            (segments, trailing_segment),
+                            trait_params
+                                .into_iter()
+                                .zip(params)
+                                .collect(),
+                            trait_attributes.decl_attributes.help_show_code,
+                            format,
+                        )
+                    }
+                    None => default_error_message,
+                };
 
                 let mut error = self.compiler
                     .error_with_trace(DiagnosticLocation::from(error.span).use_caller_if_available(), error_message, "missing-instance", error.trace)
@@ -6612,39 +6615,41 @@ impl Typechecker {
                         }
 
                         Some((
-                            message_from_segments(
+                            Some(message_from_segments(
                                 self,
                                 (segments, trailing_segment),
                                 params,
                                 decl.attributes.decl_attributes.help_show_code,
                                 format,
-                            ),
+                            )),
                             fix,
                         ))
                     })
-                    .unwrap_or_else(|| {
-                        (
-                            String::from("could not determine the type of this expression"),
-                            None,
-                        )
-                    });
+                    .unwrap_or_default();
 
-                let mut error = self.compiler
+                let mut notes = note.into_iter().collect::<Vec<_>>();
+
+                let default_error_message = String::from("could not determine the type of this expression");
+
+                let error_message = match error_message {
+                    Some(message) => {
+                        notes.push(Note::secondary(error.span, default_error_message));
+                        message
+                    }
+                    None => default_error_message,
+                };
+
+                self.compiler
                     .error_with_trace(
                         error.span,
                         error_message,
                         "unknown-type",
                         error.trace,
                     )
+                    .notes(notes)
                     .fix(fix.unwrap_or_else(|| {
                         Fix::new("annotate the type with `::`", FixRange::after(error.span.first()), ":: {%type%}")
-                    }));
-
-                if let Some(note) = note {
-                    error = error.note(note);
-                }
-
-                error
+                    }))
             }
             engine::TypeError::InvalidNumericLiteral(ty) => {
                 let format =
