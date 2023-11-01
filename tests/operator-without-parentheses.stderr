@@ -1,10 +1,10 @@
-error: cannot add `show 1` to `2`
+error: 
    ┌─ test:1:8
    │
  1 │ show 1 + 2
    │ ------ ^ - this has type `Number`
    │ │      │  
-   │ │      could not find instance `Add () Number _`
+   │ │      cannot add `show 1` to `2`
    │ │      `+` consumes all expressions on either side; you may be missing parentheses
    │ this has type `()`
    │ this is parsed as one single input to `+`
@@ -17,7 +17,7 @@ error: cannot add `show 1` to `2`
    = add parentheses around `1 + 2`: `(1 + 2)`
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
 
-error: missing instance
+error: 
    ┌─ test:2:11
    │
  2 │ show True or False
@@ -36,13 +36,13 @@ error: missing instance
    = add parentheses around `True or False`: `(True or False)`
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
 
-error: cannot add `1` to `"hi"`
+error: 
    ┌─ test:3:9
    │
  3 │ show (1 + "hi")
    │       - ^ ---- this has type `Text`
    │       │ │  
-   │       │ could not find instance `Add Number Text _`
+   │       │ cannot add `1` to `"hi"`
    │       this has type `Number`
    │
    ┌─ <dir>/std/math.wpl:25:14

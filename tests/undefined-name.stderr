@@ -1,8 +1,8 @@
-error: cannot find `foo`
+error: 
   ┌─ test:1:1
   │
 1 │ foo
-  │ ^^^ this name is not defined
+  │ ^^^ cannot find `foo`
   │
   = for more information, see https://wipple.dev/playground/?lesson=errors/undefined-name
 

@@ -1,8 +1,8 @@
-error: `foo` is not compatible with `bar`
+error: 
    ┌─ test:11:1
    │
 11 │ Compatible foo bar
-   │ ^^^^^^^^^^ could not find instance `Compatible Foo Bar`
+   │ ^^^^^^^^^^ `foo` is not compatible with `bar`
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
 

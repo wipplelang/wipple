@@ -1,8 +1,8 @@
-error: cannot display `Foo` on the screen
+error: 
    ┌─ test:2:1
    │
  2 │ show Foo
-   │ ^^^^ could not find instance `Show Foo`
+   │ ^^^^ cannot display `Foo` on the screen
    │
    ┌─ <dir>/std/io.wpl:25:17
    │

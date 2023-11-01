@@ -1,4 +1,4 @@
-error: mismatched types
+error: 
   ┌─ test:4:15
   │
 2 │ displays-text : (text :: Text) -> show text

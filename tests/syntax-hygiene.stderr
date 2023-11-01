@@ -1,4 +1,4 @@
-warning: unused variable
+warning: 
   ┌─ test:9:7
   │
 3 │     x : "Inner"

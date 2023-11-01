@@ -1,44 +1,35 @@
-error: cannot find `print`
+error: 
   ┌─ test:1:1
   │
 1 │ print "hello"
-  │ ^^^^^
-  │ │
-  │ this name is not defined
-  │ did you mean `show`?
+  │ ^^^^^ cannot find `print`
   │
-  = replace with `show`: `show`
+  = did you mean `show`?: `show`
   = for more information, see https://wipple.dev/playground/?lesson=errors/undefined-name
 
-error: cannot find `hello`
+error: 
   ┌─ test:2:6
   │
 2 │ show hello
-  │      ^^^^^
-  │      │
-  │      this name is not defined
-  │      if you meant to provide text here, try using quotes: `"hello"`
+  │      ^^^^^ cannot find `hello`
   │
-  = surround with quotes: `"hello"`
+  = if you meant to provide text here, try using quotes: `"hello"`: `"hello"`
   = for more information, see https://wipple.dev/playground/?lesson=errors/undefined-name
 
-error: cannot find `//`
+error: 
   ┌─ test:3:13
   │
 3 │ sum : 1 + 2 // comment
-  │             ^^
-  │             │
-  │             this name is not defined
-  │             comments in Wipple begin with `--`
+  │             ^^ cannot find `//`
   │
-  = replace with `--`: `--`
+  = comments in Wipple begin with `--`: `--`
   = for more information, see https://wipple.dev/playground/?lesson=errors/undefined-name
 
-error: cannot find `comment`
+error: 
   ┌─ test:3:16
   │
 3 │ sum : 1 + 2 // comment
-  │                ^^^^^^^ this name is not defined
+  │                ^^^^^^^ cannot find `comment`
   │
   = for more information, see https://wipple.dev/playground/?lesson=errors/undefined-name
 

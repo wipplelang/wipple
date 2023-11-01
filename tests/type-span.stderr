@@ -1,10 +1,10 @@
-error: cannot add `show` to `1`
+error: 
    ┌─ test:1:6
    │
  1 │ show + 1
    │ ---- ^ - this has type `Number`
    │ │    │  
-   │ │    could not find instance `Add (_ -> ()) Number _`
+   │ │    cannot add `show` to `1`
    │ this has type `_ -> ()`
    │
    ┌─ <dir>/std/math.wpl:25:14
@@ -14,13 +14,13 @@ error: cannot add `show` to `1`
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
 
-error: cannot add `Show` to `1`
+error: 
    ┌─ test:2:6
    │
  2 │ Show + 1
    │ ---- ^ - this has type `Number`
    │ │    │  
-   │ │    could not find instance `Add (Text -> Text) Number _`
+   │ │    cannot add `Show` to `1`
    │ this has type `Text -> Text`
    │
    ┌─ <dir>/std/math.wpl:25:14

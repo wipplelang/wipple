@@ -1,33 +1,36 @@
-error: could not determine the type of this expression
+error: 
    ┌─ test:17:5
    │
 17 │ _ : _ -> a
    │     ^^^^^^
    │     │
-   │     try annotating the type with `::`
+   │     could not determine the type of this expression
    │     this has type `_ -> False`
    │
+   = annotate the type with `::`: `:: {%type%}`
    = for more information, see https://wipple.dev/playground/?lesson=errors/unknown-type
 
-error: could not determine the type of this expression
+error: 
    ┌─ test:21:5
    │
 21 │ _ : _ -> b
    │     ^^^^^^
    │     │
-   │     try annotating the type with `::`
+   │     could not determine the type of this expression
    │     this has type `_ -> False`
    │
+   = annotate the type with `::`: `:: {%type%}`
    = for more information, see https://wipple.dev/playground/?lesson=errors/unknown-type
 
-error: could not determine the type of this expression
+error: 
    ┌─ test:25:5
    │
 25 │ _ : _ -> c
    │     ^^^^^^
    │     │
-   │     try annotating the type with `::`
+   │     could not determine the type of this expression
    │     this has type `_ -> True`
    │
+   = annotate the type with `::`: `:: {%type%}`
    = for more information, see https://wipple.dev/playground/?lesson=errors/unknown-type
 

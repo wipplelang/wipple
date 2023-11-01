@@ -1,4 +1,4 @@
-error: mismatched types
+error: 
   ┌─ test:3:12
   │
 3 │   False -> "hi"

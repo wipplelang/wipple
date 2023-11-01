@@ -1,8 +1,8 @@
-error: cannot display `my-variable` on the screen
+error: 
    ┌─ test:4:1
    │
  4 │ show my-variable
-   │ ^^^^ could not find instance `Show Cannot-Be-Shown`
+   │ ^^^^ cannot display `my-variable` on the screen
    │
    ┌─ <dir>/std/io.wpl:25:17
    │
