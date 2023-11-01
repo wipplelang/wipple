@@ -19,10 +19,17 @@ impl Compiler {
     fn check_useless_bounds(&self, bounds: &[analysis::Bound]) {
         for bound in bounds {
             if bound.params.iter().all(|ty| ty.params().is_empty()) {
-                self.add_warning(
-                    "this bound doesn't refer to any type parameters",
-                    vec![Note::primary(bound.span, "try removing this bound")],
-                    "useless-bound",
+                self.add_diagnostic(
+                    self.warning(
+                        bound.span,
+                        "this bound doesn't refer to any type parameters",
+                        "useless-bound",
+                    )
+                    .fix_with(
+                        "remove the bound",
+                        FixRange::replace(bound.span.first()),
+                        String::new(),
+                    ),
                 );
             }
         }

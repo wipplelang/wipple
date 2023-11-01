@@ -15,6 +15,7 @@ use wipple_syntax::CharIndex;
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
     pub level: DiagnosticLevel,
+    pub location: DiagnosticLocation,
     pub message: String,
     pub notes: Vec<Note>,
     pub fix: Option<Fix>,
@@ -59,12 +60,39 @@ impl From<DiagnosticLevel> for codespan_reporting::diagnostic::Severity {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct DiagnosticLocation {
+    pub span: SpanList,
+    pub use_caller_if_available: bool,
+}
+
+impl From<SpanList> for DiagnosticLocation {
+    fn from(span: SpanList) -> Self {
+        DiagnosticLocation {
+            span,
+            use_caller_if_available: false,
+        }
+    }
+}
+
+impl From<Span> for DiagnosticLocation {
+    fn from(span: Span) -> Self {
+        DiagnosticLocation::from(SpanList::from(span))
+    }
+}
+
+impl DiagnosticLocation {
+    pub fn use_caller_if_available(mut self) -> Self {
+        self.use_caller_if_available = true;
+        self
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Note {
     pub level: NoteLevel,
-    pub span: SpanList,
+    pub location: DiagnosticLocation,
     pub message: String,
-    pub use_caller_if_available: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -121,6 +149,16 @@ impl FixRange {
 }
 
 impl Diagnostic {
+    pub fn note(mut self, note: Note) -> Self {
+        self.notes.push(note);
+        self
+    }
+
+    pub fn notes(mut self, notes: impl IntoIterator<Item = Note>) -> Self {
+        self.notes.extend(notes);
+        self
+    }
+
     pub fn fix(mut self, fix: impl Into<Option<Fix>>) -> Self {
         self.fix = fix.into();
         self
@@ -142,26 +180,27 @@ impl Compiler {
     pub(crate) fn diagnostic(
         &self,
         level: DiagnosticLevel,
+        location: impl Into<DiagnosticLocation>,
         message: impl ToString,
-        notes: Vec<Note>,
         example: impl ToString,
     ) -> Diagnostic {
-        self.diagnostic_with_trace(level, message, notes, example, self.backtrace())
+        self.diagnostic_with_trace(level, location, message, example, self.backtrace())
     }
 
     #[must_use]
     pub(crate) fn diagnostic_with_trace(
         &self,
         level: DiagnosticLevel,
+        location: impl Into<DiagnosticLocation>,
         message: impl ToString,
-        notes: Vec<Note>,
         example: impl ToString,
         trace: Backtrace,
     ) -> Diagnostic {
         Diagnostic {
             level,
+            location: location.into(),
             message: message.to_string(),
-            notes,
+            notes: Vec::new(),
             fix: None,
             example: example.to_string(),
             trace,
@@ -171,43 +210,43 @@ impl Compiler {
     #[must_use]
     pub(crate) fn warning(
         &self,
+        location: impl Into<DiagnosticLocation>,
         message: impl ToString,
-        notes: Vec<Note>,
         example: impl ToString,
     ) -> Diagnostic {
-        self.diagnostic(DiagnosticLevel::Warning, message, notes, example)
+        self.diagnostic(DiagnosticLevel::Warning, location, message, example)
     }
 
     #[must_use]
     pub(crate) fn error(
         &self,
+        location: impl Into<DiagnosticLocation>,
         message: impl ToString,
-        notes: Vec<Note>,
         example: impl ToString,
     ) -> Diagnostic {
-        self.diagnostic(DiagnosticLevel::Error, message, notes, example)
+        self.diagnostic(DiagnosticLevel::Error, location, message, example)
     }
 
     #[must_use]
     pub(crate) fn warning_with_trace(
         &self,
+        location: impl Into<DiagnosticLocation>,
         message: impl ToString,
-        notes: Vec<Note>,
         example: impl ToString,
         trace: Backtrace,
     ) -> Diagnostic {
-        self.diagnostic_with_trace(DiagnosticLevel::Warning, message, notes, example, trace)
+        self.diagnostic_with_trace(DiagnosticLevel::Warning, location, message, example, trace)
     }
 
     #[must_use]
     pub(crate) fn error_with_trace(
         &self,
+        location: impl Into<DiagnosticLocation>,
         message: impl ToString,
-        notes: Vec<Note>,
         example: impl ToString,
         trace: Backtrace,
     ) -> Diagnostic {
-        self.diagnostic_with_trace(DiagnosticLevel::Error, message, notes, example, trace)
+        self.diagnostic_with_trace(DiagnosticLevel::Error, location, message, example, trace)
     }
 
     pub(crate) fn add_diagnostic(&self, diagnostic: Diagnostic) {
@@ -217,84 +256,82 @@ impl Compiler {
     pub(crate) fn add_diagnostic_with(
         &self,
         level: DiagnosticLevel,
+        location: impl Into<DiagnosticLocation>,
         message: impl ToString,
-        notes: Vec<Note>,
         example: impl ToString,
     ) {
-        self.add_diagnostic_with_trace(level, message, notes, example, self.backtrace());
+        self.add_diagnostic_with_trace(level, location, message, example, self.backtrace());
     }
 
     pub(crate) fn add_diagnostic_with_trace(
         &self,
         level: DiagnosticLevel,
+        location: impl Into<DiagnosticLocation>,
         message: impl ToString,
-        notes: Vec<Note>,
         example: impl ToString,
         trace: Backtrace,
     ) {
-        self.add_diagnostic(self.diagnostic_with_trace(level, message, notes, example, trace));
+        self.add_diagnostic(self.diagnostic_with_trace(level, location, message, example, trace));
     }
 
     pub(crate) fn add_warning(
         &self,
+        location: impl Into<DiagnosticLocation>,
         message: impl ToString,
-        notes: Vec<Note>,
         example: impl ToString,
     ) {
-        self.add_diagnostic_with(DiagnosticLevel::Warning, message, notes, example);
+        self.add_diagnostic_with(DiagnosticLevel::Warning, location, message, example);
     }
 
     pub(crate) fn add_error(
         &self,
+        location: impl Into<DiagnosticLocation>,
         message: impl ToString,
-        notes: Vec<Note>,
         example: impl ToString,
     ) {
-        self.add_diagnostic_with(DiagnosticLevel::Error, message, notes, example);
+        self.add_diagnostic_with(DiagnosticLevel::Error, location, message, example);
     }
 
     pub(crate) fn add_warning_with_trace(
         &self,
+        location: impl Into<DiagnosticLocation>,
         message: impl ToString,
-        notes: Vec<Note>,
         example: impl ToString,
         trace: Backtrace,
     ) {
-        self.add_diagnostic_with_trace(DiagnosticLevel::Warning, message, notes, example, trace);
+        self.add_diagnostic_with_trace(DiagnosticLevel::Warning, location, message, example, trace);
     }
 
     pub(crate) fn add_error_with_trace(
         &self,
+        location: impl Into<DiagnosticLocation>,
         message: impl ToString,
-        notes: Vec<Note>,
         example: impl ToString,
         trace: Backtrace,
     ) {
-        self.add_diagnostic_with_trace(DiagnosticLevel::Error, message, notes, example, trace);
+        self.add_diagnostic_with_trace(DiagnosticLevel::Error, location, message, example, trace);
     }
 }
 
 impl Note {
-    pub fn new(level: NoteLevel, span: impl Into<SpanList>, message: impl ToString) -> Self {
+    pub fn new(
+        level: NoteLevel,
+        location: impl Into<DiagnosticLocation>,
+        message: impl ToString,
+    ) -> Self {
         Note {
             level,
-            span: span.into(),
+            location: location.into(),
             message: message.to_string(),
-            use_caller_if_available: false,
         }
     }
 
-    pub fn primary(span: impl Into<SpanList>, message: impl ToString) -> Self {
-        Note::new(NoteLevel::Primary, span, message)
+    pub fn primary(location: impl Into<DiagnosticLocation>, message: impl ToString) -> Self {
+        Note::new(NoteLevel::Primary, location, message)
     }
 
-    pub fn secondary(span: impl Into<SpanList>, message: impl ToString) -> Self {
-        Note::new(NoteLevel::Secondary, span, message)
-    }
-
-    pub fn use_caller_if_available(mut self) -> Self {
-        self.use_caller_if_available = true;
-        self
+    pub fn secondary(location: impl Into<DiagnosticLocation>, message: impl ToString) -> Self {
+        Note::new(NoteLevel::Secondary, location, message)
     }
 }
 
@@ -383,53 +420,48 @@ impl FinalizedDiagnostics {
                 })
             };
 
-            let primary_span = diagnostic
-                .notes
-                .first()
-                .unwrap_or_else(|| {
-                    panic!(
-                        "diagnostic contains no notes, source: {:?}",
-                        diagnostic.trace
-                    )
-                })
-                .span;
+            let primary_location = diagnostic.location;
 
-            let (_, rest) = primary_span.split_iter();
+            let (first, rest) = primary_location.span.split_iter();
             let rest: Box<dyn Iterator<Item = Span>> = if show_expansion_history {
                 Box::new(rest)
             } else {
                 Box::new(rest.last().into_iter())
             };
 
-            let labels = diagnostic
-                .notes
-                .into_iter()
-                .flat_map(|note| {
-                    let (first, _) = note.span.split_iter();
-                    make_note(
-                        note.level.into(),
-                        first,
-                        &note.message,
-                        note.use_caller_if_available,
-                    )
-                })
-                .collect::<Vec<_>>()
-                .into_iter()
-                .chain(rest.flat_map(|span| {
-                    make_note(
-                        LabelStyle::Secondary,
-                        span,
-                        &format!(
-                            "actual {} occurred here",
-                            match diagnostic.level {
-                                DiagnosticLevel::Error => "error",
-                                DiagnosticLevel::Warning => "warning",
-                            }
-                        ),
-                        false,
-                    )
-                }))
-                .collect::<Vec<_>>();
+            let labels = make_note(
+                LabelStyle::Primary,
+                first,
+                &diagnostic.message,
+                diagnostic.location.use_caller_if_available,
+            )
+            .into_iter()
+            .chain(diagnostic.notes.into_iter().flat_map(|note| {
+                let (first, _) = note.location.span.split_iter();
+                make_note(
+                    note.level.into(),
+                    first,
+                    &note.message,
+                    note.location.use_caller_if_available,
+                )
+            }))
+            .collect::<Vec<_>>()
+            .into_iter()
+            .chain(rest.flat_map(|span| {
+                make_note(
+                    LabelStyle::Secondary,
+                    span,
+                    &format!(
+                        "actual {} occurred here",
+                        match diagnostic.level {
+                            DiagnosticLevel::Error => "error",
+                            DiagnosticLevel::Warning => "warning",
+                        }
+                    ),
+                    false,
+                )
+            }))
+            .collect::<Vec<_>>();
 
             let mut notes = Vec::from_iter(
                 diagnostic
@@ -450,11 +482,11 @@ impl FinalizedDiagnostics {
                     if include_trace {
                         if let Some(trace) = diagnostic.trace.into_inner() {
                             return diagnostic.message
-                                + &format!("\nat span {primary_span:#?}\n{trace:#?}");
+                                + &format!("\nat span {:#?}\n{:#?}", primary_location.span, trace);
                         }
                     }
 
-                    diagnostic.message
+                    String::new()
                 })())
                 .with_labels(labels)
                 .with_notes(notes);

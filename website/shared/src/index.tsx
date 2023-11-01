@@ -140,6 +140,8 @@ export const PlaygroundRunner = forwardRef<
                         diagnostics,
                     });
 
+                    setOpenOutputs(new Array(analysis.diagnostics.length).fill(false));
+
                     for (const el of uiElements.current) {
                         await el.cleanup();
                     }
@@ -349,16 +351,14 @@ export const PlaygroundRunner = forwardRef<
                                             />
 
                                             <div key={index} className="flex flex-col gap-2.5">
-                                                <div
-                                                    className={`flex flex-col items-start gap-1 ${
-                                                        diagnostic.level === "error"
-                                                            ? "text-sky-500"
-                                                            : "text-yellow-500"
-                                                    }`}
-                                                >
-                                                    <Markdown className="font-bold">
-                                                        {diagnostic.message}
-                                                    </Markdown>
+                                                <div className="flex flex-col items-start gap-1">
+                                                    <DiagnosticLine
+                                                        primary
+                                                        level={diagnostic.level}
+                                                        span={diagnostic.span}
+                                                        code={diagnostic.code}
+                                                        messages={[diagnostic.message]}
+                                                    />
 
                                                     <div className="flex gap-2">
                                                         {diagnostic.fix && (
@@ -378,153 +378,61 @@ export const PlaygroundRunner = forwardRef<
                                                             </div>
                                                         )}
 
-                                                        <button
-                                                            className={`flex gap-1 pl-2 pr-1 py-1 rounded-lg bg-opacity-10 ${
-                                                                diagnostic.level === "error"
-                                                                    ? "bg-sky-500 text-sky-500"
-                                                                    : "bg-yellow-500 text-yellow-500"
-                                                            }`}
-                                                            onClick={() => {
-                                                                setOpenOutputs(
-                                                                    produce((openOutputs) => {
-                                                                        openOutputs[index] =
-                                                                            !openOutputs[index];
-                                                                    })
-                                                                );
-                                                            }}
-                                                        >
-                                                            {openOutputs[index] ? (
-                                                                <>
-                                                                    Show less
-                                                                    <ExpandLessIcon />
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    Show more <ExpandMoreIcon />
-                                                                </>
-                                                            )}
-                                                        </button>
+                                                        {diagnostic.example && (
+                                                            <a
+                                                                target="_blank"
+                                                                href={`/playground/?lesson=errors/${diagnostic.example}`}
+                                                                className={`flex gap-1 px-2 py-1 rounded-lg bg-opacity-10 ${
+                                                                    diagnostic.level === "error"
+                                                                        ? "bg-sky-500 text-sky-500"
+                                                                        : "bg-yellow-500 text-yellow-500"
+                                                                }`}
+                                                            >
+                                                                Help
+                                                            </a>
+                                                        )}
+
+                                                        {diagnostic.notes.length > 0 ? (
+                                                            <button
+                                                                className={`flex gap-1 pl-2 pr-1 py-1 rounded-lg bg-opacity-10 ${
+                                                                    diagnostic.level === "error"
+                                                                        ? "bg-sky-500 text-sky-500"
+                                                                        : "bg-yellow-500 text-yellow-500"
+                                                                }`}
+                                                                onClick={() => {
+                                                                    setOpenOutputs(
+                                                                        produce((openOutputs) => {
+                                                                            openOutputs[index] =
+                                                                                !openOutputs[index];
+                                                                        })
+                                                                    );
+                                                                }}
+                                                            >
+                                                                {openOutputs[index] ? (
+                                                                    <>
+                                                                        Show less
+                                                                        <ExpandLessIcon />
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        Show more <ExpandMoreIcon />
+                                                                    </>
+                                                                )}
+                                                            </button>
+                                                        ) : null}
                                                     </div>
                                                 </div>
 
                                                 {openOutputs[index]
-                                                    ? diagnostic.notes.map((note, noteIndex) => {
-                                                          const lookup = lineColumn(
-                                                              note.code + "\n\n"
-                                                          );
-
-                                                          let result = lookup.fromIndex(
-                                                              note.span.start
-                                                          );
-
-                                                          if (!result) {
-                                                              return null;
-                                                          }
-
-                                                          const { line, col } = result;
-
-                                                          const start = lookup.toIndex(line, 1);
-
-                                                          const end = lookup.toIndex(line + 1, 1);
-
-                                                          return (
-                                                              <div
-                                                                  className="flex flex-col"
-                                                                  key={noteIndex}
-                                                              >
-                                                                  <div>
-                                                                      <p className="semibold text-xs opacity-50">
-                                                                          {note.span.file
-                                                                              ? `${note.span.file}, `
-                                                                              : ""}
-                                                                          line {line}
-                                                                      </p>
-
-                                                                      <pre>
-                                                                          <span>
-                                                                              {note.code.slice(
-                                                                                  start,
-                                                                                  note.span.start
-                                                                              )}
-                                                                          </span>
-
-                                                                          <span
-                                                                              className={`rounded-sm underline decoration-wavy underline-offset-4 ${
-                                                                                  diagnostic.level ===
-                                                                                  "error"
-                                                                                      ? "decoration-sky-500"
-                                                                                      : "decoration-yellow-500"
-                                                                              }`}
-                                                                          >
-                                                                              {note.code.slice(
-                                                                                  note.span.start,
-                                                                                  note.span.end
-                                                                              )}
-                                                                          </span>
-
-                                                                          <span>
-                                                                              {note.code.slice(
-                                                                                  note.span.end,
-                                                                                  end
-                                                                              )}
-                                                                          </span>
-                                                                      </pre>
-                                                                  </div>
-
-                                                                  {note.messages.map(
-                                                                      (message, messageIndex) => (
-                                                                          <div
-                                                                              key={messageIndex}
-                                                                              className={`flex ${
-                                                                                  noteIndex === 0 &&
-                                                                                  messageIndex === 0
-                                                                                      ? diagnostic.level ===
-                                                                                        "error"
-                                                                                          ? "text-sky-500"
-                                                                                          : "text-yellow-500"
-                                                                                      : "opacity-75"
-                                                                              }`}
-                                                                          >
-                                                                              <pre>
-                                                                                  {new Array(
-                                                                                      col - 1
-                                                                                  )
-                                                                                      .fill(" ")
-                                                                                      .join("")}
-                                                                              </pre>
-
-                                                                              <Markdown>
-                                                                                  {message}
-                                                                              </Markdown>
-                                                                          </div>
-                                                                      )
-                                                                  )}
-
-                                                                  {noteIndex === 0 &&
-                                                                  diagnostic.example ? (
-                                                                      <div className="flex">
-                                                                          <pre>
-                                                                              {new Array(col - 1)
-                                                                                  .fill(" ")
-                                                                                  .join("")}
-                                                                          </pre>
-                                                                          <span className="opacity-75">
-                                                                              for more information,
-                                                                              see
-                                                                              {"\u00A0"}
-                                                                          </span>
-                                                                          <a
-                                                                              target="_blank"
-                                                                              className="text-sky-500"
-                                                                              href={`/playground/?lesson=errors/${diagnostic.example}`}
-                                                                          >
-                                                                              this guide
-                                                                          </a>
-                                                                      </div>
-                                                                  ) : null}
-                                                              </div>
-                                                          );
-                                                      })
+                                                    ? diagnostic.notes.map((note, noteIndex) => (
+                                                          <DiagnosticLine
+                                                              key={noteIndex}
+                                                              level={diagnostic.level}
+                                                              span={note.span}
+                                                              code={note.code}
+                                                              messages={note.messages}
+                                                          />
+                                                      ))
                                                     : null}
                                             </div>
                                         </div>
@@ -604,6 +512,70 @@ export const PlaygroundRunner = forwardRef<
         </animated.div>
     );
 });
+
+const DiagnosticLine = (props: {
+    primary?: true;
+    level: "warning" | "error";
+    span: AnalysisOutputDiagnostic["span"];
+    code: string;
+    messages: string[];
+}) => {
+    const lookup = lineColumn(props.code + "\n\n");
+
+    let result = lookup.fromIndex(props.span.start);
+
+    if (!result) {
+        return null;
+    }
+
+    const { line, col } = result;
+
+    const start = lookup.toIndex(line, 1);
+
+    const end = lookup.toIndex(line + 1, 1);
+
+    return (
+        <div className="flex flex-col">
+            <div>
+                <p className="semibold text-xs opacity-50">
+                    {props.span.file ? `${props.span.file}, ` : ""}
+                    line {line}
+                </p>
+
+                <pre>
+                    <span>{props.code.slice(start, props.span.start)}</span>
+
+                    <span
+                        className={`rounded-sm underline decoration-wavy underline-offset-4 ${
+                            props.level === "error" ? "decoration-sky-500" : "decoration-yellow-500"
+                        }`}
+                    >
+                        {props.code.slice(props.span.start, props.span.end)}
+                    </span>
+
+                    <span>{props.code.slice(props.span.end, end)}</span>
+                </pre>
+            </div>
+
+            {props.messages.map((message, messageIndex) => (
+                <div
+                    key={messageIndex}
+                    className={`flex ${
+                        props.primary && messageIndex === 0
+                            ? props.level === "error"
+                                ? "text-sky-500"
+                                : "text-yellow-500"
+                            : "opacity-75"
+                    }`}
+                >
+                    <pre>{new Array(col - 1).fill(" ").join("")}</pre>
+
+                    <Markdown>{message}</Markdown>
+                </div>
+            ))}
+        </div>
+    );
+};
 
 const InputField = (props: {
     index: number;

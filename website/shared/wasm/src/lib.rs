@@ -33,6 +33,8 @@ struct AnalysisOutput {
 #[serde(rename_all = "camelCase")]
 struct AnalysisOutputDiagnostic {
     level: AnalysisOutputDiagnosticLevel,
+    span: AnalysisOutputDiagnosticSpan,
+    code: String,
     message: String,
     notes: Vec<AnalysisOutputDiagnosticNote>,
     fix: Option<AnalysisOutputDiagnosticFix>,
@@ -399,30 +401,29 @@ pub fn analyze(
                     AnalysisOutputDiagnosticNote,
                 )>::new();
 
+                let convert_location = |span: wipple_frontend::analysis::Span, use_caller: bool| {
+                    let range = use_caller
+                        .then(|| span.caller_range())
+                        .flatten()
+                        .unwrap_or_else(|| span.primary_range());
+
+                    AnalysisOutputDiagnosticSpan {
+                        file: if span.path == wipple_frontend::FilePath::Virtual(*PLAYGROUND_PATH) {
+                            None
+                        } else {
+                            Some(span.path.to_string())
+                        },
+                        start: range.start.utf16,
+                        end: range.end.utf16,
+                    }
+                };
+
+                let get_code = |path: wipple_frontend::FilePath| {
+                    LOADER.source_map().lock().get(&path).unwrap().to_string()
+                };
+
                 for note in diagnostic.notes {
-                    let (first, rest) = note.span.split_iter();
-                    let convert_span = |span: wipple_frontend::analysis::Span, use_caller: bool| {
-                        let range = use_caller
-                            .then(|| span.caller_range())
-                            .flatten()
-                            .unwrap_or_else(|| span.primary_range());
-
-                        AnalysisOutputDiagnosticSpan {
-                            file: if span.path
-                                == wipple_frontend::FilePath::Virtual(*PLAYGROUND_PATH)
-                            {
-                                None
-                            } else {
-                                Some(span.path.to_string())
-                            },
-                            start: range.start.utf16,
-                            end: range.end.utf16,
-                        }
-                    };
-
-                    let get_code = |path: wipple_frontend::FilePath| {
-                        LOADER.source_map().lock().get(&path).unwrap().to_string()
-                    };
+                    let (first, rest) = note.location.span.split_iter();
 
                     for (span, message) in
                         std::iter::once((first, note.message)).chain(rest.map(|span| {
@@ -449,7 +450,10 @@ pub fn analyze(
                                 span,
                                 AnalysisOutputDiagnosticNote {
                                     code: get_code(span.path),
-                                    span: convert_span(span, note.use_caller_if_available),
+                                    span: convert_location(
+                                        span,
+                                        note.location.use_caller_if_available,
+                                    ),
                                     messages: vec![message],
                                 },
                             ));
@@ -467,16 +471,17 @@ pub fn analyze(
                         }
                     },
                     message: diagnostic.message,
-                    notes: {
-                        let mut notes = notes.into_iter().map(|(_, note)| note);
-
-                        // Sort the notes, keeping the first note in place
-                        notes
-                            .next()
-                            .into_iter()
-                            .chain(notes.sorted().dedup())
-                            .collect()
-                    },
+                    span: convert_location(
+                        diagnostic.location.span.first(),
+                        diagnostic.location.use_caller_if_available,
+                    ),
+                    code: get_code(diagnostic.location.span.first().path),
+                    notes: notes
+                        .into_iter()
+                        .map(|(_, note)| note)
+                        .sorted()
+                        .dedup()
+                        .collect(),
                     fix: diagnostic.fix.map(|fix| AnalysisOutputDiagnosticFix {
                         description: fix.description,
                         start: fix.range.range().start.utf16,

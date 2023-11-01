@@ -10,6 +10,12 @@ export interface AnalysisOutput {
 export interface AnalysisOutputDiagnostic {
     level: "warning" | "error";
     message: string;
+    code: string;
+    span: {
+        file?: string;
+        start: number;
+        end: number;
+    };
     fix?: AnalysisConsoleDiagnosticFix;
     example?: string;
     notes: {

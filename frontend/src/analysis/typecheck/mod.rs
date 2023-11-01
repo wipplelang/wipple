@@ -18,7 +18,7 @@ pub use lower::{Intrinsic, Semantics, TypeAnnotation, TypeAnnotationKind};
 
 use crate::{
     analysis::{lower, Analysis, SpanList},
-    diagnostics::{Fix, FixRange, Note},
+    diagnostics::{DiagnosticLocation, Fix, FixRange, Note},
     helpers::{Backtrace, InternedString},
     BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, ExpressionId, FieldIndex, FileKind,
     FilePath, ItemId, PatternId, SnippetId, SyntaxId, TraitId, TypeId, TypeParameterId, VariableId,
@@ -806,22 +806,16 @@ impl Typechecker {
                     )
                 {
                     self.compiler.add_error(
-                        "wrong type for entrypoint",
-                        vec![Note::primary(
-                            decl.span,
-                            "this should have a type of `Entrypoint`",
-                        )],
+                        decl.span,
+                        "entrypoint must have type `Entrypoint`",
                         "",
                     );
                 }
 
                 if !decl.params.is_empty() || !decl.bounds.is_empty() {
                     self.compiler.add_error(
-                        "entrypoint may not be generic",
-                        vec![Note::primary(
-                            decl.span,
-                            "this should have no type parameters or bounds",
-                        )],
+                        decl.span,
+                        "entrypoint may not have type parameters or bounds",
                         "",
                     );
                 }
@@ -1085,8 +1079,8 @@ impl Typechecker {
         loop {
             if info.recursion_count > recursion_limit {
                 self.compiler.add_error(
-                    "recursion limit reached",
-                    vec![Note::primary(expr.span, "while computing this")],
+                    expr.span,
+                    "recursion limit reached while computing the type of this expression",
                     "recursion-limit",
                 );
 
@@ -1294,8 +1288,8 @@ impl Typechecker {
 
         if contextual && has_type_params {
             self.compiler.add_error(
+                span,
                 "contextual constant may not take type parameters",
-                vec![Note::primary(span, "try removing these type parameters")],
                 "syntax-error",
             );
         }
@@ -1896,16 +1890,13 @@ impl Typechecker {
                 if let Some((span, false)) =
                     self.with_trait_decl(id, |decl| (decl.span, decl.ty.is_some()))
                 {
-                    self.compiler.add_error(
-                        "cannot use this trait as a value",
-                        vec![
-                            Note::primary(
-                                expr.span,
-                                "this trait does not store a value and may only be used at the type level"
-                            ),
-                            Note::secondary(span, "trait defined here"),
-                        ],
-                        "trait-does-not-contain-value",
+                    self.compiler.add_diagnostic(
+                        self.compiler.error(
+                            expr.span,
+                            "this trait does not store a value and may only be used at the type level",
+                            "trait-does-not-contain-value",
+                        )
+                        .note(Note::secondary(span, "trait defined here")),
                     );
 
                     UnresolvedExpression {
@@ -2023,7 +2014,7 @@ impl Typechecker {
                     engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None)),
                     pattern.span,
                 );
-                let pattern = self.convert_pattern(pattern, input_ty.clone(), None, info);
+                let pattern = self.convert_pattern(pattern, input_ty.clone(), info);
 
                 let prev_function_end_value = info.function_end_value.take();
 
@@ -2076,7 +2067,7 @@ impl Typechecker {
 
                 let arms = arms
                     .into_iter()
-                    .map(|arm| self.convert_arm(arm, input.ty.clone(), input.span, info))
+                    .map(|arm| self.convert_arm(arm, input.ty.clone(), info))
                     .collect::<Vec<_>>();
 
                 let ty = {
@@ -2175,8 +2166,7 @@ impl Typechecker {
             }
             lower::ExpressionKind::Initialize(pattern, value) => {
                 let value = self.convert_expr(*value, info);
-                let pattern =
-                    self.convert_pattern(pattern, value.ty.clone(), Some(value.span), info);
+                let pattern = self.convert_pattern(pattern, value.ty.clone(), info);
 
                 UnresolvedExpression {
                     id: expr.id,
@@ -2213,11 +2203,22 @@ impl Typechecker {
                         field_names,
                     ),
                     _ => {
-                        self.compiler.add_error(
-                            "cannot instantiate this type as a structure",
-                            vec![Note::primary(expr.span, "this is not a structure type")],
-                            "syntax-error",
-                        );
+                        if let Some(code) = self
+                            .compiler
+                            .single_line_source_code_for_span(expr.span.first())
+                        {
+                            self.compiler.add_error(
+                                expr.span,
+                                format!("`{code}` is not a structure type"),
+                                "syntax-error",
+                            );
+                        } else {
+                            self.compiler.add_error(
+                                expr.span,
+                                "expected a structure type",
+                                "syntax-error",
+                            );
+                        }
 
                         return UnresolvedExpression {
                             id: expr.id,
@@ -2261,13 +2262,13 @@ impl Typechecker {
                 let mut unpopulated_fields = vec![None; fields_by_index.len()];
                 let mut extra_fields = Vec::new();
 
-                for ((_, name), expr) in fields {
+                for ((span, name), expr) in fields {
                     let (index, ty) = match structure_field_names.get(&name) {
                         Some(index) if index.into_inner() < fields_by_index.len() => {
                             (*index, structure_field_tys[index.into_inner()].clone())
                         }
                         _ => {
-                            extra_fields.push(name);
+                            extra_fields.push((span, name));
                             continue;
                         }
                     };
@@ -2285,21 +2286,19 @@ impl Typechecker {
                     unpopulated_fields[index.into_inner()] = Some(value);
                 }
 
-                if !extra_fields.is_empty() {
-                    self.compiler.add_error(
-                        "extra fields",
-                        vec![Note::primary(
-                            expr.span,
-                            format!(
-                                "try removing {}",
-                                extra_fields
-                                    .into_iter()
-                                    .map(|field| format!("`{field}`"))
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
+                for (span, name) in extra_fields {
+                    self.compiler.add_diagnostic(
+                        self.compiler
+                            .error(
+                                span,
+                                format!("extra field `{name}`"),
+                                "extra-missing-fields",
+                            )
+                            .fix_with(
+                                "remove the extra field",
+                                FixRange::replace(span.first()),
+                                "",
                             ),
-                        )],
-                        "extra-missing-fields",
                     );
                 }
 
@@ -2319,18 +2318,23 @@ impl Typechecker {
 
                 if !missing_fields.is_empty() {
                     self.compiler.add_error(
-                        "missing fields",
-                        vec![Note::primary(
-                            expr.span,
-                            format!(
-                                "try adding {}",
-                                missing_fields
-                                    .into_iter()
-                                    .map(|field| format!("`{field}`"))
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            ),
-                        )],
+                        expr.span,
+                        match missing_fields.len() {
+                            0 => unreachable!(),
+                            1 => format!("missing field `{}`", missing_fields.pop().unwrap()),
+                            _ => {
+                                let last_missing_field = missing_fields.pop().unwrap();
+
+                                format!(
+                                    "missing fields {} and `{}`",
+                                    missing_fields
+                                        .into_iter()
+                                        .map(|name| format!("`{name}`, "))
+                                        .collect::<String>(),
+                                    last_missing_field
+                                )
+                            }
+                        },
                         "extra-missing-fields",
                     );
                 }
@@ -2368,11 +2372,22 @@ impl Typechecker {
                         })
                         .collect::<Vec<_>>(),
                     _ => {
-                        self.compiler.add_error(
-                            "cannot instantiate this type as an enumeration",
-                            vec![Note::primary(expr.span, "this is not an enumeration type")],
-                            "syntax-error",
-                        );
+                        if let Some(code) = self
+                            .compiler
+                            .single_line_source_code_for_span(expr.span.first())
+                        {
+                            self.compiler.add_error(
+                                expr.span,
+                                format!("`{code}` is not an enumeration type"),
+                                "syntax-error",
+                            );
+                        } else {
+                            self.compiler.add_error(
+                                expr.span,
+                                "expected an enumeration type",
+                                "syntax-error",
+                            );
+                        }
 
                         return UnresolvedExpression {
                             id: expr.id,
@@ -2459,11 +2474,8 @@ impl Typechecker {
                     Some(show_trait) => show_trait,
                     None => {
                         self.compiler.add_error(
-                            "cannot find `show` language item",
-                            vec![Note::primary(
-                                expr.span,
-                                "using placeholder text requires the `show` language item",
-                            )],
+                            expr.span,
+                            "using placeholder text requires the `show` language item",
                             "",
                         );
 
@@ -2586,11 +2598,22 @@ impl Typechecker {
                         engine::TypeStructure::Structure(fields),
                     ) => (*id, fields.clone()),
                     _ => {
-                        self.compiler.add_error(
-                            "cannot extend this value with structure fields",
-                            vec![Note::primary(expr.span, "this is not a structure type")],
-                            "syntax-error",
-                        );
+                        if let Some(code) = self
+                            .compiler
+                            .single_line_source_code_for_span(expr.span.first())
+                        {
+                            self.compiler.add_error(
+                                expr.span,
+                                format!("`{code}` is not a structure type"),
+                                "syntax-error",
+                            );
+                        } else {
+                            self.compiler.add_error(
+                                expr.span,
+                                "expected a structure type",
+                                "syntax-error",
+                            );
+                        }
 
                         return UnresolvedExpression {
                             id: expr.id,
@@ -2607,11 +2630,22 @@ impl Typechecker {
                 {
                     TypeDeclKind::Structure { field_names, .. } => field_names,
                     _ => {
-                        self.compiler.add_error(
-                            "cannot extend this value with structure fields",
-                            vec![Note::primary(expr.span, "this is not a structure type")],
-                            "syntax-error",
-                        );
+                        if let Some(code) = self
+                            .compiler
+                            .single_line_source_code_for_span(expr.span.first())
+                        {
+                            self.compiler.add_error(
+                                expr.span,
+                                format!("`{code}` is not a structure type"),
+                                "syntax-error",
+                            );
+                        } else {
+                            self.compiler.add_error(
+                                expr.span,
+                                "expected a structure type",
+                                "syntax-error",
+                            );
+                        }
 
                         return UnresolvedExpression {
                             id: expr.id,
@@ -2673,12 +2707,11 @@ impl Typechecker {
         &mut self,
         arm: lower::Arm,
         input_ty: engine::UnresolvedType,
-        input_span: SpanList,
         info: &mut ConvertInfo,
     ) -> UnresolvedArm {
         UnresolvedArm {
             span: arm.span,
-            pattern: self.convert_pattern(arm.pattern, input_ty, Some(input_span), info),
+            pattern: self.convert_pattern(arm.pattern, input_ty, info),
             guard: arm.guard.map(|expr| self.convert_expr(expr, info)),
             body: self.convert_expr(arm.body, info),
         }
@@ -2688,7 +2721,6 @@ impl Typechecker {
         &mut self,
         pattern: lower::Pattern,
         ty: engine::UnresolvedType,
-        input_span: Option<SpanList>,
         info: &mut ConvertInfo,
     ) -> UnresolvedPattern {
         UnresolvedPattern {
@@ -2738,19 +2770,14 @@ impl Typechecker {
                                 pattern.span,
                             );
 
-                            (
-                                name,
-                                (
-                                    self.convert_pattern(pattern, ty.clone(), input_span, info),
-                                    ty,
-                                ),
-                            )
+                            (name, (self.convert_pattern(pattern, ty.clone(), info), ty))
                         })
                         .collect(),
                 ),
                 lower::PatternKind::Variant(id, variant, values) => {
-                    let (params, variants_tys) = match self.with_type_decl(id, |decl| {
+                    let (name, params, variants_tys) = match self.with_type_decl(id, |decl| {
                         (
+                            decl.name,
                             decl.params.clone(),
                             match &decl.kind {
                                 TypeDeclKind::Enumeration { variants, .. } => {
@@ -2760,7 +2787,7 @@ impl Typechecker {
                             },
                         )
                     }) {
-                        Some((params, variants_tys)) => (params, variants_tys),
+                        Some((name, params, variants_tys)) => (name, params, variants_tys),
                         None => return UnresolvedPatternKind::error(&self.compiler),
                     };
 
@@ -2768,17 +2795,8 @@ impl Typechecker {
                         Some(tys) => tys,
                         None => {
                             self.compiler.add_error(
-                                "cannot use variant pattern here",
-                                match input_span {
-                                    Some(span) => vec![
-                                        Note::primary(pattern.span, "incorrect pattern"),
-                                        Note::secondary(span, "this is not a variant"),
-                                    ],
-                                    None => vec![Note::primary(
-                                        pattern.span,
-                                        "the input to this function is not a variant",
-                                    )],
-                                },
+                                pattern.span,
+                                format!("pattern must match a variant of `{name}`"),
                                 "syntax-error",
                             );
 
@@ -2840,9 +2858,7 @@ impl Typechecker {
                         values
                             .into_iter()
                             .zip(variant_tys)
-                            .map(|(pattern, ty)| {
-                                self.convert_pattern(pattern, ty, input_span, info)
-                            })
+                            .map(|(pattern, ty)| self.convert_pattern(pattern, ty, info))
                             .collect(),
                     )
                 }
@@ -2856,12 +2872,11 @@ impl Typechecker {
                         self.add_error(error);
                     }
 
-                    self.convert_pattern(*inner, target_ty, input_span, info)
-                        .kind
+                    self.convert_pattern(*inner, target_ty, info).kind
                 }
                 lower::PatternKind::Or(lhs, rhs) => UnresolvedPatternKind::Or(
-                    Box::new(self.convert_pattern(*lhs, ty.clone(), input_span, info)),
-                    Box::new(self.convert_pattern(*rhs, ty, input_span, info)),
+                    Box::new(self.convert_pattern(*lhs, ty.clone(), info)),
+                    Box::new(self.convert_pattern(*rhs, ty, info)),
                 ),
                 lower::PatternKind::Tuple(patterns) => {
                     let tuple_tys = patterns
@@ -2890,9 +2905,7 @@ impl Typechecker {
                         patterns
                             .into_iter()
                             .zip(tuple_tys)
-                            .map(|(pattern, ty)| {
-                                self.convert_pattern(pattern, ty, input_span, info)
-                            })
+                            .map(|(pattern, ty)| self.convert_pattern(pattern, ty, info))
                             .collect(),
                     )
                 }
@@ -3214,11 +3227,8 @@ impl Typechecker {
                     }
                 } else {
                     self.compiler.add_error(
-                        "cannot find `boolean` language item",
-                        vec![Note::primary(
-                            guard.span,
-                            "typechecking this condition requires the `boolean` language item",
-                        )],
+                        guard.span,
+                        "typechecking this condition requires the `boolean` language item",
                         "",
                     )
                 }
@@ -3286,11 +3296,30 @@ impl Typechecker {
                         );
                     }
                     _ => {
-                        self.compiler.add_error(
-                            "cannot destructure this value",
-                            vec![Note::primary(pattern.span, "value is not a structure")],
-                            "syntax-error",
+                        let ty = self.format_type(
+                            ty,
+                            format::Format {
+                                surround_in_backticks: true,
+                                ..Default::default()
+                            },
                         );
+
+                        if let Some(code) = self
+                            .compiler
+                            .single_line_source_code_for_span(pattern.span.first())
+                        {
+                            self.compiler.add_error(
+                                pattern.span,
+                                format!("`{code}` cannot match {ty} values"),
+                                "syntax-error",
+                            );
+                        } else {
+                            self.compiler.add_error(
+                                pattern.span,
+                                format!("pattern cannot match {ty} values"),
+                                "syntax-error",
+                            );
+                        }
 
                         return MonomorphizedPatternKind::error(&self.compiler);
                     }
@@ -3306,11 +3335,30 @@ impl Typechecker {
                         field_names,
                     } => (fields.clone(), field_names.clone()),
                     _ => {
-                        self.compiler.add_error(
-                            "cannot destructure this value",
-                            vec![Note::primary(pattern.span, "value is not a structure")],
-                            "syntax-error",
+                        let ty = self.format_type(
+                            ty,
+                            format::Format {
+                                surround_in_backticks: true,
+                                ..Default::default()
+                            },
                         );
+
+                        if let Some(code) = self
+                            .compiler
+                            .single_line_source_code_for_span(pattern.span.first())
+                        {
+                            self.compiler.add_error(
+                                pattern.span,
+                                format!("`{code}` cannot match {ty} values"),
+                                "syntax-error",
+                            );
+                        } else {
+                            self.compiler.add_error(
+                                pattern.span,
+                                format!("pattern cannot match {ty} values"),
+                                "syntax-error",
+                            );
+                        }
 
                         return MonomorphizedPatternKind::error(&self.compiler);
                     }
@@ -3329,9 +3377,17 @@ impl Typechecker {
                         let index = match structure_field_names.get(&name) {
                             Some(index) => *index,
                             None => {
+                                let ty = self.format_type(
+                                    ty,
+                                    format::Format {
+                                        surround_in_backticks: true,
+                                        ..Default::default()
+                                    },
+                                );
+
                                 self.compiler.add_error(
-                                    format!("value has no member named '{name}'"),
-                                    vec![Note::primary(pattern.span, "no such member")],
+                                    pattern.span,
+                                    format!("{ty} has no field `{name}`"),
                                     "undefined-name",
                                 );
 
@@ -3377,11 +3433,30 @@ impl Typechecker {
                         .map(|(_, ty)| engine::UnresolvedType::from(ty))
                         .collect::<Vec<_>>(),
                     _ => {
-                        self.compiler.add_error(
-                            "cannot match a variant on this value",
-                            vec![Note::primary(pattern.span, "value is not an enumeration")],
-                            "syntax-error",
+                        let ty = self.format_type(
+                            ty,
+                            format::Format {
+                                surround_in_backticks: true,
+                                ..Default::default()
+                            },
                         );
+
+                        if let Some(code) = self
+                            .compiler
+                            .single_line_source_code_for_span(pattern.span.first())
+                        {
+                            self.compiler.add_error(
+                                pattern.span,
+                                format!("`{code}` cannot match {ty} values"),
+                                "syntax-error",
+                            );
+                        } else {
+                            self.compiler.add_error(
+                                pattern.span,
+                                format!("pattern cannot match {ty} values"),
+                                "syntax-error",
+                            );
+                        }
 
                         return MonomorphizedPatternKind::error(&self.compiler);
                     }
@@ -3596,8 +3671,8 @@ impl Typechecker {
 
         if info.recursion_count > recursion_limit {
             self.compiler.add_error(
-                "recursion limit reached",
-                vec![Note::primary(use_span, "while computing this")],
+                use_span,
+                "recursion limit reached while computing the type of this expression",
                 "recursion-limit",
             );
 
@@ -4527,16 +4602,16 @@ impl Typechecker {
         );
 
         if let Some(no_reuse_message) = self.no_reuse_message(&ty) {
-            self.compiler.add_error(
-                no_reuse_message,
-                vec![
-                    Note::primary(
-                        decl.span,
-                        "constant value may not contain type marked with `[no-reuse]`",
-                    ),
-                    Note::secondary(decl.span, "constants are implicitly copied when used, but `[no-reuse]` types may not be copied"),
-                ],
-                "reused-variable",
+            self.compiler.add_diagnostic(
+                self.compiler.error(
+                    decl.span,
+                    no_reuse_message,
+                    "reused-variable",
+                )
+                .note(Note::secondary(
+                    decl.span,
+                    "constants are implicitly copied when used, but values of types marked with `[no-reuse]` may not be copied"
+                )),
             );
         }
 
@@ -4663,16 +4738,17 @@ impl Typechecker {
                 }
             };
 
-            self.compiler.add_error(
-                format!(
-                    "missing type for trait parameter `{}`",
-                    name.as_deref().unwrap_or("_")
-                ),
-                vec![Note::primary(
-                    decl.span,
-                    "try adding another type after the trait provided to `instance`",
-                )],
-                "syntax-error",
+            self.compiler.add_diagnostic(
+                self.compiler
+                    .error(
+                        decl.span,
+                        format!(
+                            "missing type for trait parameter `{}`",
+                            name.as_deref().unwrap_or("_")
+                        ),
+                        "syntax-error",
+                    )
+                    .fix_with("add a type", FixRange::after(decl.span.first()), "{%type%}"),
             );
 
             params.push((self.ty(engine::TypeKind::Error, None), None));
@@ -4750,28 +4826,31 @@ impl Typechecker {
                 .collect::<Vec<_>>();
 
             if !colliding_instances.is_empty() {
-                self.compiler.add_error(
+                let mut error = self.compiler.error(
+                    decl.span,
                     format!(
-                        "this instance collides with {} other instances",
+                        "this instance overlaps with {} other instances",
                         colliding_instances.len()
                     ),
-                    std::iter::once(Note::primary(
-                        decl.span,
-                        if has_bounds {
-                            "this instance may have different bounds than the others, but one type could satisfy the bounds on more than one of these instances simultaneously"
-                        } else {
-                            "try making this instance more specific"
-                        },
-                    ))
-                    .chain(params.iter().filter_map(|(_, infer_span)| *infer_span).map(|infer_span| {
-                        Note::secondary(infer_span, "this type parameter is inferred and cannot be different across instances with otherwise the same types")
-                    }))
-                    .chain(colliding_instances.into_iter().map(|span| {
-                        Note::secondary(span, "this instance could apply to the same type(s)")
-                    }))
-                    .collect(),
                     "colliding-instances",
                 );
+
+                if has_bounds {
+                    error = error.note(Note::secondary(decl.span, "this instance may have different bounds than the others, but one type could satisfy the bounds on more than one of these instances simultaneously"));
+                }
+
+                for (_, infer_span) in &params {
+                    if let Some(infer_span) = *infer_span {
+                        error = error.note(Note::secondary(infer_span, "this type parameter is inferred and cannot be different across instances with otherwise the same types"));
+                    }
+                }
+
+                for span in colliding_instances {
+                    error = error.note(Note::secondary(
+                        span,
+                        "this instance could apply to the same type(s)",
+                    ));
+                }
             }
         }
 
@@ -4793,16 +4872,16 @@ impl Typechecker {
             .finalize(&self.ctx);
 
         if let Some(no_reuse_message) = self.no_reuse_message(&ty) {
-            self.compiler.add_error(
-                no_reuse_message,
-                vec![
-                    Note::primary(
-                        decl.span,
-                        "instance value may not contain type marked with `[no-reuse]`",
-                    ),
-                    Note::secondary(decl.span, "instances are implicitly copied when used, but `[no-reuse]` types may not be copied"),
-                ],
-                "reused-variable",
+            self.compiler.add_diagnostic(
+                self.compiler.error(
+                    decl.span,
+                    no_reuse_message,
+                    "reused-variable",
+                )
+                .note(Note::secondary(
+                    decl.span,
+                    "instances are implicitly copied when used, but values of types marked with `[no-reuse]` may not be copied"
+                )),
             );
         }
 
@@ -5143,13 +5222,18 @@ impl Typechecker {
                 if let Some(ty) = convert_placeholder(self, annotation.span) {
                     ty
                 } else {
-                    self.compiler.add_error(
-                        "type placeholder is not allowed here",
-                        vec![Note::primary(
-                            annotation.span,
-                            "try providing an actual type in place of `_`",
-                        )],
-                        "unexpected-type-placeholder",
+                    self.compiler.add_diagnostic(
+                        self.compiler
+                            .error(
+                                annotation.span,
+                                "type placeholder is not allowed here",
+                                "unexpected-type-placeholder",
+                            )
+                            .fix_with(
+                                "provide a type in place of the placeholder",
+                                FixRange::replace(annotation.span.first()),
+                                "{%type%}",
+                            ),
                     );
 
                     self.unresolved_ty(engine::UnresolvedTypeKind::Error, annotation.span)
@@ -5179,14 +5263,11 @@ impl Typechecker {
                         };
 
                     self.compiler.add_error(
+                        annotation.span,
                         format!(
                             "missing type for type parameter `{}`",
                             name.as_deref().unwrap_or("<unknown>")
                         ),
-                        vec![Note::primary(
-                            annotation.span,
-                            "try adding another type after this",
-                        )],
                         "syntax-error",
                     );
 
@@ -5285,11 +5366,8 @@ impl Typechecker {
                     lower::BuiltinTypeDeclarationKind::Number => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
+                                annotation.span,
                                 "`Number` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
                                 "syntax-error",
                             );
                         }
@@ -5302,11 +5380,8 @@ impl Typechecker {
                     lower::BuiltinTypeDeclarationKind::Integer => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
+                                annotation.span,
                                 "`Integer` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
                                 "syntax-error",
                             );
                         }
@@ -5319,15 +5394,11 @@ impl Typechecker {
                     lower::BuiltinTypeDeclarationKind::Natural => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
+                                annotation.span,
                                 "`Natural` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
                                 "syntax-error",
                             );
                         }
-
                         self.unresolved_ty(
                             engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Natural),
                             annotation.span,
@@ -5336,11 +5407,8 @@ impl Typechecker {
                     lower::BuiltinTypeDeclarationKind::Byte => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
+                                annotation.span,
                                 "`Byte` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
                                 "syntax-error",
                             );
                         }
@@ -5353,11 +5421,8 @@ impl Typechecker {
                     lower::BuiltinTypeDeclarationKind::Signed => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
+                                annotation.span,
                                 "`Signed` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
                                 "syntax-error",
                             );
                         }
@@ -5370,11 +5435,8 @@ impl Typechecker {
                     lower::BuiltinTypeDeclarationKind::Unsigned => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
+                                annotation.span,
                                 "`Unsigned` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
                                 "syntax-error",
                             );
                         }
@@ -5387,11 +5449,8 @@ impl Typechecker {
                     lower::BuiltinTypeDeclarationKind::Float => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
+                                annotation.span,
                                 "`Float` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
                                 "syntax-error",
                             );
                         }
@@ -5404,11 +5463,8 @@ impl Typechecker {
                     lower::BuiltinTypeDeclarationKind::Double => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
+                                annotation.span,
                                 "`Double` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
                                 "syntax-error",
                             );
                         }
@@ -5421,11 +5477,8 @@ impl Typechecker {
                     lower::BuiltinTypeDeclarationKind::Text => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
+                                annotation.span,
                                 "`Text` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
                                 "syntax-error",
                             );
                         }
@@ -5438,11 +5491,8 @@ impl Typechecker {
                     lower::BuiltinTypeDeclarationKind::List => {
                         if parameters.is_empty() {
                             self.compiler.add_error(
+                                annotation.span,
                                 "`List` accepts 1 parameter, but none were provided",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try adding `_` here to infer the type of `Element`",
-                                )],
                                 "syntax-error",
                             );
 
@@ -5457,14 +5507,11 @@ impl Typechecker {
                         } else {
                             if parameters.len() > 1 {
                                 self.compiler.add_error(
+                                    annotation.span,
                                     format!(
                                         "`List` accepts 1 parameter, but {} were provided",
                                         parameters.len()
                                     ),
-                                    vec![Note::primary(
-                                        annotation.span,
-                                        "try removing some of these",
-                                    )],
                                     "syntax-error",
                                 );
                             }
@@ -5485,11 +5532,8 @@ impl Typechecker {
                     lower::BuiltinTypeDeclarationKind::Mutable => {
                         if parameters.is_empty() {
                             self.compiler.add_error(
+                                annotation.span,
                                 "`Mutable` accepts 1 parameter, but none were provided",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try adding `_` here to infer the type of `Value`",
-                                )],
                                 "syntax-error",
                             );
 
@@ -5504,14 +5548,11 @@ impl Typechecker {
                         } else {
                             if parameters.len() > 1 {
                                 self.compiler.add_error(
+                                    annotation.span,
                                     format!(
                                         "`Mutable` accepts 1 parameter, but {} were provided",
                                         parameters.len()
                                     ),
-                                    vec![Note::primary(
-                                        annotation.span,
-                                        "try removing some of these",
-                                    )],
                                     "syntax-error",
                                 );
                             }
@@ -5532,11 +5573,8 @@ impl Typechecker {
                     lower::BuiltinTypeDeclarationKind::Ui => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
+                                annotation.span,
                                 "`UI` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
                                 "syntax-error",
                             );
                         }
@@ -5549,11 +5587,8 @@ impl Typechecker {
                     lower::BuiltinTypeDeclarationKind::TaskGroup => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
+                                annotation.span,
                                 "`Task-Group` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
                                 "syntax-error",
                             );
                         }
@@ -5603,10 +5638,9 @@ impl Typechecker {
         params: Vec<engine::UnresolvedType>,
         span: SpanList,
     ) -> engine::UnresolvedType {
-        let (trait_span, trait_ty, trait_params) = self
+        let (trait_ty, trait_params) = self
             .with_trait_decl(trait_id, |decl| {
                 (
-                    decl.span,
                     decl.ty
                         .clone()
                         .unwrap_or(self.ty(engine::TypeKind::Error, decl.span)),
@@ -5617,11 +5651,8 @@ impl Typechecker {
 
         if trait_params.len() != params.len() {
             self.compiler.add_error(
+                span,
                 "wrong number of parameters provided to trait",
-                vec![
-                    Note::primary(span, "try providing the correct number of parameters here"),
-                    Note::secondary(trait_span, "trait defined here"),
-                ],
                 "syntax-error",
             );
 
@@ -5684,8 +5715,8 @@ impl Typechecker {
             Ok(path) => path,
             Err(error) => {
                 self.compiler.add_error(
+                    span,
                     format!("cannot load file `{}`: {}", path, error),
-                    vec![Note::primary(span, "while resolving this plugin")],
                     "missing-file",
                 );
 
@@ -5716,11 +5747,8 @@ impl Typechecker {
         match output {
             Ok(output) => output.expr,
             Err(error) => {
-                self.compiler.add_error(
-                    format!("error while resolving plugin: {error}"),
-                    vec![Note::primary(span, "see plugin documentation for details")],
-                    "",
-                );
+                self.compiler
+                    .add_error(span, format!("error while resolving plugin: {error}"), "");
 
                 lower::Expression {
                     id,
@@ -5952,10 +5980,9 @@ impl Typechecker {
                 .map(|(name, left, right)| {
                     std::iter::once(
                         Note::secondary(
-                            error.span,
+                            DiagnosticLocation::from(error.span).use_caller_if_available(),
                             format!("`{name}` consumes all expressions on either side; you may be missing parentheses"),
                         )
-                        .use_caller_if_available()
                     )
                     .chain(left.as_deref().map(|(span, _)| Note::secondary(
                         *span,
@@ -6035,11 +6062,8 @@ impl Typechecker {
         let mut diagnostic = match *error.error {
             engine::TypeError::ErrorExpression => return,
             engine::TypeError::Recursive(_) => self.compiler.error(
-                "recursive type",
-                vec![Note::primary(
-                    error.span,
-                    "the type of this references itself",
-                )],
+                error.span,
+                "could not determine the type of this expression because it references itself recursively",
                 "recursive-type",
             ),
             engine::TypeError::Mismatch(mut actual, mut expected) => {
@@ -6066,7 +6090,7 @@ impl Typechecker {
                     self.format_type(actual.clone(), format)
                 );
 
-                let mut notes = vec![Note::primary(error.span, message)];
+                let mut notes = Vec::new();
                 let mut fix = None;
 
                 if let Some(reason) = expected.info.reason {
@@ -6413,9 +6437,13 @@ impl Typechecker {
                     }
                 }
 
-                self.compiler
-                    .error_with_trace("mismatched types", notes, "mismatched-types", error.trace)
-                    .fix(fix)
+                let mut error = self.compiler
+                    .error_with_trace(error.span, message,  "mismatched-types", error.trace)
+                    .fix(fix);
+
+                error.notes = notes;
+
+                error
             }
             engine::TypeError::MissingInstance(id, mut params, bound_span, error_candidates) => {
                 for param in &mut params {
@@ -6454,8 +6482,13 @@ impl Typechecker {
                     multi_var_format
                 };
 
-                let error_message = trait_attributes.on_unimplemented.map_or_else(
-                    || String::from("missing instance"),
+                let default_error_message = format!(
+                    "could not find instance {}",
+                    self.format_type(format::FormattableType::r#trait(id, params.clone()), format)
+                );
+
+                let error_message = trait_attributes.on_unimplemented.map_or(
+                    default_error_message,
                     |(segments, trailing_segment)| {
                         message_from_segments(
                             self,
@@ -6471,51 +6504,46 @@ impl Typechecker {
                     },
                 );
 
-                let note_message = format!(
-                    "could not find instance {}",
-                    self.format_type(format::FormattableType::r#trait(id, params.clone()), format)
-                );
+                let notes = trait_params
+                    .into_iter()
+                    .zip(params)
+                    .filter_map(|(param, ty)| {
+                        let span = ty.info.span?;
 
-                let notes = std::iter::once(
-                    Note::primary(error.span, note_message).use_caller_if_available(),
-                )
-                .chain(
-                    trait_params
-                        .into_iter()
-                        .zip(params)
-                        .filter_map(|(param, ty)| {
-                            let span = ty.info.span?;
+                        if span == error.span
+                            || !span.first().is_subspan_of(error.span.first())
+                            || matches!(ty.kind, engine::UnresolvedTypeKind::Variable(_))
+                            || self
+                                .with_type_parameter_decl(param, |decl| decl.infer)
+                                .unwrap_or(false)
+                        {
+                            return None;
+                        }
 
-                            if span == error.span
-                                || !span.first().is_subspan_of(error.span.first())
-                                || matches!(ty.kind, engine::UnresolvedTypeKind::Variable(_))
-                                || self
-                                    .with_type_parameter_decl(param, |decl| decl.infer)
-                                    .unwrap_or(false)
-                            {
-                                return None;
-                            }
+                        Some(Note::secondary(
+                            span,
+                            format!("this has type {}", self.format_type(ty, format)),
+                        ))
+                    })
+                    .collect::<Vec<_>>()
+                    .into_iter()
+                    .chain(operator_notes().into_iter().flatten())
+                    .chain(bound_span.map(|span| Note::secondary(span, "required by this bound here")))
+                    .chain(error_candidates.into_iter().map(|span| {
+                        Note::secondary(
+                            span,
+                            "this instance could apply, but its bounds weren't satisfied",
+                        )
+                    }))
+                    .collect::<Vec<_>>();
 
-                            Some(Note::secondary(
-                                span,
-                                format!("this has type {}", self.format_type(ty, format)),
-                            ))
-                        })
-                        .collect::<Vec<_>>(),
-                )
-                .chain(operator_notes().into_iter().flatten())
-                .chain(bound_span.map(|span| Note::secondary(span, "required by this bound here")))
-                .chain(error_candidates.into_iter().map(|span| {
-                    Note::secondary(
-                        span,
-                        "this instance could apply, but its bounds weren't satisfied",
-                    )
-                }))
-                .collect::<Vec<_>>();
+                let mut error = self.compiler
+                    .error_with_trace(DiagnosticLocation::from(error.span).use_caller_if_available(), error_message, "missing-instance", error.trace)
+                    .fix(operator_fix(self));
 
-                self.compiler
-                    .error_with_trace(error_message, notes, "missing-instance", error.trace)
-                    .fix(operator_fix(self))
+                error.notes = notes;
+
+                error
             }
             engine::TypeError::UnresolvedType(mut ty) => {
                 ty.apply(&self.ctx);
@@ -6601,19 +6629,22 @@ impl Typechecker {
                         )
                     });
 
-                self.compiler
+                let mut error = self.compiler
                     .error_with_trace(
+                        error.span,
                         error_message,
-                        std::iter::once(Note::primary(
-                            error.span,
-                            "try annotating the type with `::`",
-                        ))
-                        .chain(note)
-                        .collect(),
                         "unknown-type",
                         error.trace,
                     )
-                    .fix(fix)
+                    .fix(fix.unwrap_or_else(|| {
+                        Fix::new("annotate the type with `::`", FixRange::after(error.span.first()), ":: {%type%}")
+                    }));
+
+                if let Some(note) = note {
+                    error = error.note(note);
+                }
+
+                error
             }
             engine::TypeError::InvalidNumericLiteral(ty) => {
                 let format =
@@ -6632,8 +6663,8 @@ impl Typechecker {
                 );
 
                 self.compiler.error_with_trace(
+                    error.span,
                     message,
-                    vec![Note::primary(error.span, "invalid number")],
                     "invalid-number",
                     error.trace,
                 )

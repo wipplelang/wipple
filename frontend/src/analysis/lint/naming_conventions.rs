@@ -36,11 +36,8 @@ impl Compiler {
             if name != correct {
                 self.add_diagnostic(
                     self.warning(
-                        "type should be written in title case with dashes",
-                        vec![Note::primary(
-                            ty.span,
-                            format!("try writing the type like this: `{correct}`"),
-                        )],
+                        ty.span,
+                        format!("type should be written as `{correct}`"),
                         "naming-conventions",
                     )
                     .fix(Fix::new(
@@ -59,11 +56,8 @@ impl Compiler {
             if name != correct {
                 self.add_diagnostic(
                     self.warning(
-                        "trait should be written in title case with dashes",
-                        vec![Note::primary(
-                            tr.span,
-                            format!("try writing the trait like this: `{correct}`"),
-                        )],
+                        tr.span,
+                        format!("trait should be written as `{correct}`"),
                         "naming-conventions",
                     )
                     .fix(Fix::new(
@@ -84,11 +78,8 @@ impl Compiler {
                 if name != correct {
                     self.add_diagnostic(
                         self.warning(
-                            "pattern should be written in title case with dashes",
-                            vec![Note::primary(
-                                constant.span,
-                                format!("try writing the pattern like this: `{correct}`"),
-                            )],
+                            constant.span,
+                            format!("pattern should be written as `{correct}`"),
                             "naming-conventions",
                         )
                         .fix(Fix::new(
@@ -104,11 +95,8 @@ impl Compiler {
                 if name != correct {
                     self.add_diagnostic(
                         self.warning(
-                            "constant should be written in lowercase with dashes",
-                            vec![Note::primary(
-                                constant.span,
-                                format!("try writing the constant like this: `{correct}`"),
-                            )],
+                            constant.span,
+                            format!("constant should be written as `{correct}`"),
                             "naming-conventions",
                         )
                         .fix(Fix::new(
@@ -129,11 +117,8 @@ impl Compiler {
                 if name != correct {
                     self.add_diagnostic(
                         self.warning(
-                            "type parameter should be written in title case with dashes",
-                            vec![Note::primary(
-                                param.span,
-                                format!("try writing the type parameter like this: `{correct}`"),
-                            )],
+                            param.span,
+                            format!("type parameter should be written as `{correct}`"),
                             "naming-conventions",
                         )
                         .fix(Fix::new(
@@ -154,11 +139,8 @@ impl Compiler {
                 if name != correct {
                     self.add_diagnostic(
                         self.warning(
-                            "variable should be written in lowercase with dashes",
-                            vec![Note::primary(
-                                variable.span,
-                                format!("try writing the variable like this: `{correct}`"),
-                            )],
+                            variable.span,
+                            format!("variable should be written as `{correct}`"),
                             "naming-conventions",
                         )
                         .fix(Fix::new(

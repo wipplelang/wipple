@@ -1016,7 +1016,7 @@ impl Backend {
                 let mut notes = diagnostic.notes.into_iter();
 
                 let primary_note = notes.next().unwrap();
-                if primary_note.span.first().path.as_str() != document.path.as_str() {
+                if primary_note.location.span.first().path.as_str() != document.path.as_str() {
                     continue;
                 }
 
@@ -1026,8 +1026,8 @@ impl Backend {
                 };
 
                 let range = match range_from(
-                    primary_note.span.first(),
-                    primary_note.use_caller_if_available,
+                    primary_note.location.span.first(),
+                    primary_note.location.use_caller_if_available,
                 ) {
                     Some(range) => range,
                     None => continue,
@@ -1042,11 +1042,14 @@ impl Backend {
                 });
 
                 for note in notes {
-                    if note.span.first().path.as_str() != document.path.as_str() {
+                    if note.location.span.first().path.as_str() != document.path.as_str() {
                         continue;
                     }
 
-                    let range = match range_from(note.span.first(), note.use_caller_if_available) {
+                    let range = match range_from(
+                        note.location.span.first(),
+                        note.location.use_caller_if_available,
+                    ) {
                         Some(range) => range,
                         None => continue,
                     };

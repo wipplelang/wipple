@@ -316,21 +316,13 @@ impl wipple_syntax::Driver for Analysis {
                 match $expr {
                     Ok(x) => x,
                     Err(error) => {
-                        let mut spans = source_span
-                            .map(|span| Note::primary(span, "try fixing this import"))
-                            .into_iter()
-                            .collect::<Vec<_>>();
-
-                        if spans.is_empty() {
-                            spans.push(Note::primary(
-                                Span::new(path, CharIndex::ZERO..CharIndex::ZERO),
-                                "error while loading this file",
-                            ));
-                        }
+                        let span = source_span.unwrap_or_else(|| {
+                            Span::new(path, CharIndex::ZERO..CharIndex::ZERO).into()
+                        });
 
                         self.compiler.add_error(
+                            span,
                             format!("cannot load file `{}`: {}", path, error),
-                            spans,
                             "missing-file",
                         );
 
@@ -393,11 +385,8 @@ impl wipple_syntax::Driver for Analysis {
                     .join(", which imports ");
 
                 self.compiler.add_error(
-                    "import cycle detected",
-                    vec![Note::primary(
-                        source_span.unwrap(),
-                        format!("this imports {stack}"),
-                    )],
+                    source_span.unwrap(),
+                    format!("import cycle detected: this imports {stack}"),
                     "",
                 );
 
@@ -459,16 +448,15 @@ impl wipple_syntax::Driver for Analysis {
         fix: Option<wipple_syntax::Fix>,
     ) {
         let mut msgs = msgs.into_iter();
-        let mut notes = Vec::with_capacity(msgs.size_hint().0);
 
         let (primary_span, primary_msg) = msgs.next().expect("must provide at least one message");
-        notes.push(Note::primary(primary_span, primary_msg));
 
-        for (span, msg) in msgs {
-            notes.push(Note::secondary(span, msg));
-        }
+        let mut error = self
+            .compiler
+            .error(primary_span, primary_msg, "syntax-error");
 
-        let mut error = self.compiler.error("syntax error", notes, "syntax-error");
+        error.notes = msgs.map(|(span, msg)| Note::secondary(span, msg)).collect();
+
         if let Some(fix) = fix {
             error = error.fix_with(
                 fix.description,

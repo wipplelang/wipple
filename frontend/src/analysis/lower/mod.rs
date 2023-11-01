@@ -11,7 +11,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
-    collections::{BTreeMap, BTreeSet, HashMap, VecDeque},
+    collections::{BTreeMap, BTreeSet, HashMap},
     hash::Hash,
     mem,
     sync::Arc,
@@ -1156,14 +1156,11 @@ impl Compiler {
                 .lock()
                 .get_or_insert_with(|| {
                     self.add_error(
-                        "uninitialized constant",
-                        vec![Note::primary(
-                            constant.span,
-                            format!(
-                                "`{}` is never initialized with a value",
-                                constant.name.unwrap()
-                            ),
-                        )],
+                        constant.span,
+                        format!(
+                            "`{}` is never initialized with a value",
+                            constant.name.unwrap()
+                        ),
                         "uninitialized-constant",
                     );
 
@@ -1187,19 +1184,16 @@ impl Compiler {
 
             if attributes.sealed && instance.span.first().path != tr_decl.span.first().path {
                 self.add_error(
+                    instance.span,
                     "instance of sealed trait must be in the same file in which the trait is defined",
-                    vec![Note::primary(instance.span, "instance disallowed here")],
                     "",
                 );
             }
 
             if attributes.allow_overlapping_instances && !attributes.sealed {
                 self.add_error(
+                    tr_decl.span,
                     "trait that allows overlapping instances must be `sealed`",
-                    vec![Note::primary(
-                        tr_decl.span,
-                        "add `[sealed]` to this trait declaration",
-                    )],
                     "",
                 );
             }
@@ -1210,19 +1204,12 @@ impl Compiler {
             match (trait_has_value, instance_value) {
                 (true, instance_value @ None) => {
                     self.add_diagnostic(
-                        self.error(
-                            "expected instance to have value",
-                            vec![Note::primary(
-                                instance.span,
-                                "try adding `:` after the instance declaration to give it a value",
-                            )],
-                            "",
-                        )
-                        .fix_with(
-                            "give this instance a value",
-                            FixRange::after(instance.span.first()),
-                            " : {%value%}",
-                        ),
+                        self.error(instance.span, "expected instance to have value", "")
+                            .fix_with(
+                                "give this instance a value",
+                                FixRange::after(instance.span.first()),
+                                " : {%value%}",
+                            ),
                     );
 
                     *instance_value = Some(InstanceValue {
@@ -1237,11 +1224,8 @@ impl Compiler {
                 (false, Some(instance_value)) => {
                     self.add_diagnostic(
                         self.error(
+                            instance.span,
                             "instance has value, but the trait doesn't store a value",
-                            vec![Note::primary(
-                                instance.span,
-                                "try removing this instance's value",
-                            )],
                             "",
                         )
                         .fix_with(
@@ -1519,8 +1503,8 @@ impl Lowerer {
 
                     if let Some(bound) = bounds.first() {
                         self.compiler.add_error(
+                            bound.span,
                             "`type` declarations may not have bounds",
-                            vec![Note::primary(bound.span, "try removing this")],
                             "syntax-error",
                         );
                     }
@@ -1656,11 +1640,8 @@ impl Lowerer {
 
                                     if !fields.is_empty() && !variants.is_empty() {
                                         self.compiler.add_error(
+                                            ty.span,
                                             "cannot mix fields and variants in a single `type` declaration",
-                                            vec![Note::primary(
-                                                ty.span,
-                                                "type must contain all fields or all variants",
-                                            )],
                                             "mixed-type"
                                         );
 
@@ -1697,14 +1678,17 @@ impl Lowerer {
 
                                         TypeDeclarationKind::Enumeration(variants, variant_names)
                                     } else {
-                                        self.compiler.add_error(
-                                            "`type` must contain at least one field or variant",
-                                            vec![Note::primary(
+                                        self.compiler
+                                            .error(
                                                 ty.span,
+                                                "`type` must contain at least one field or variant",
+                                                "empty-type",
+                                            )
+                                            .fix_with(
                                                 "to create a marker type, remove the `{}`",
-                                            )],
-                                            "empty-type",
-                                        );
+                                                FixRange::replace(body.span().first()),
+                                                "",
+                                            );
 
                                         TypeDeclarationKind::Marker
                                     }
@@ -1736,10 +1720,18 @@ impl Lowerer {
                     let (parameters, bounds) = ty_pattern.unwrap_or_default();
 
                     if let Some(bound) = bounds.first() {
-                        self.compiler.add_error(
-                            "`trait` declarations may not have bounds",
-                            vec![Note::primary(bound.span, "try removing this")],
-                            "syntax-error",
+                        self.compiler.add_diagnostic(
+                            self.compiler
+                                .error(
+                                    bound.span,
+                                    "`trait` declarations may not have bounds",
+                                    "syntax-error",
+                                )
+                                .fix_with(
+                                    "remove the bound",
+                                    FixRange::replace(bound.span.first()),
+                                    "",
+                                ),
                         );
                     }
 
@@ -1809,7 +1801,7 @@ impl Lowerer {
                             tr
                         }
                         Ok(None) => {
-                            let (notes, fix) = self.diagnostic_notes_for_unresolved_name(
+                            let fix = self.diagnostic_fix_for_unresolved_name(
                                 trait_span,
                                 trait_name,
                                 ctx,
@@ -1820,10 +1812,8 @@ impl Lowerer {
                             self.compiler.add_diagnostic(
                                 self.compiler
                                     .error(
+                                        trait_span,
                                         format!("cannot find trait `{trait_name}`"),
-                                        std::iter::once(Note::primary(trait_span, "no such trait"))
-                                            .chain(notes)
-                                            .collect(),
                                         "undefined-name",
                                     )
                                     .fix(fix),
@@ -1833,24 +1823,12 @@ impl Lowerer {
                             continue;
                         }
                         Err(candidates) => {
-                            self.compiler.add_error(
-                                format!("multiple definitions of trait `{trait_name}`"),
-                                std::iter::once(Note::primary(
-                                    trait_span,
-                                    format!("`{trait_name}` could refer to..."),
-                                ))
-                                .chain(
-                                    self.diagnostic_notes_for_ambiguous_name(
-                                        candidates
-                                            .into_iter()
-                                            .map(|id| {
-                                                self.declarations.traits.get(&id).unwrap().span
-                                            })
-                                            .collect(),
-                                    ),
-                                )
-                                .collect(),
-                                "",
+                            self.add_diagnostic_for_ambiguous_name(
+                                trait_span,
+                                &trait_name,
+                                candidates
+                                    .into_iter()
+                                    .map(|id| self.declarations.traits.get(&id).unwrap().span),
                             );
 
                             self.declarations.instances.remove(&id);
@@ -1915,11 +1893,8 @@ impl Lowerer {
                                 Some(AnyDeclaration::Type(id)) => id,
                                 _ => {
                                     self.compiler.add_error(
+                                        decl.span,
                                         "`boolean` language item expects a type",
-                                        vec![Note::primary(
-                                            decl.span,
-                                            "expected type declaration here",
-                                        )],
                                         "",
                                     );
 
@@ -1929,11 +1904,8 @@ impl Lowerer {
 
                             if self.file_info.language_items.boolean.is_some() {
                                 self.compiler.add_error(
+                                    decl.span,
                                     "`language` item may only be defined once",
-                                    vec![Note::primary(
-                                        decl.span,
-                                        "`language` item already defined elsewhere",
-                                    )],
                                     "",
                                 );
 
@@ -1947,11 +1919,8 @@ impl Lowerer {
                                 Some(AnyDeclaration::Trait(id)) => id,
                                 _ => {
                                     self.compiler.add_error(
+                                        decl.span,
                                         "`show` language item expects a trait",
-                                        vec![Note::primary(
-                                            decl.span,
-                                            "expected trait declaration here",
-                                        )],
                                         "",
                                     );
 
@@ -1961,11 +1930,8 @@ impl Lowerer {
 
                             if self.file_info.language_items.show.is_some() {
                                 self.compiler.add_error(
+                                    decl.span,
                                     "`language` item may only be defined once",
-                                    vec![Note::primary(
-                                        decl.span,
-                                        "`language` item already defined elsewhere",
-                                    )],
                                     "",
                                 );
 
@@ -1982,11 +1948,8 @@ impl Lowerer {
                 if decl.attributes.entrypoint.is_some() {
                     if self.file_info.entrypoint.is_some() {
                         self.compiler.add_error(
+                            decl.span,
                             "`entrypoint` may only be defined once",
-                            vec![Note::primary(
-                                decl.span,
-                                "`entrypoint` already defined elsewhere",
-                            )],
                             "",
                         );
 
@@ -1997,11 +1960,8 @@ impl Lowerer {
                         Some(AnyDeclaration::Constant(id, _)) => id,
                         _ => {
                             self.compiler.add_error(
+                                decl.span,
                                 "`entrypoint` expects a constant",
-                                vec![Note::primary(
-                                    decl.span,
-                                    "expected constant declaration here",
-                                )],
                                 "",
                             );
 
@@ -2021,11 +1981,8 @@ impl Lowerer {
                                 Some(AnyDeclaration::Constant(id, _)) => id,
                                 _ => {
                                     self.compiler.add_error(
+                                        decl.span,
                                         "`accepts-text` diagnostic item expects a constant",
-                                        vec![Note::primary(
-                                            decl.span,
-                                            "expected constant declaration here",
-                                        )],
                                         "",
                                     );
 
@@ -2040,11 +1997,8 @@ impl Lowerer {
                                 Some(AnyDeclaration::Constant(id, _)) => id,
                                 _ => {
                                     self.compiler.add_error(
-                                        "`unique-elements` diagnostic item expects a constant",
-                                        vec![Note::primary(
-                                            decl.span,
-                                            "expected constant declaration here",
-                                        )],
+                                        decl.span,
+                                        "`collection-elements` diagnostic item expects a constant",
                                         "",
                                     );
 
@@ -2067,11 +2021,8 @@ impl Lowerer {
                         Some(AnyDeclaration::Constant(id, _)) => id,
                         _ => {
                             self.compiler.add_error(
+                                decl.span,
                                 "`diagnostic-alias` expects a constant",
-                                vec![Note::primary(
-                                    decl.span,
-                                    "expected constant declaration here",
-                                )],
                                 "",
                             );
 
@@ -2134,22 +2085,20 @@ impl Lowerer {
                                     if id == prev_constant_id
                                         && associated_constant.lock().is_some()
                                     {
-                                        self.compiler.add_error(
-                                            format!(
-                                                "constant `{}` already exists in this file",
-                                                pattern.name
-                                            ),
-                                            vec![
-                                                Note::primary(
+                                        self.compiler.add_diagnostic(
+                                            self.compiler
+                                                .error(
                                                     pattern.span,
-                                                    "try giving this constant a unique name",
-                                                ),
-                                                Note::secondary(
+                                                    format!(
+                                                        "constant `{}` already exists in this file",
+                                                        pattern.name
+                                                    ),
+                                                    "duplicate-constant",
+                                                )
+                                                .note(Note::secondary(
                                                     decl.span,
                                                     "other constant declared here",
-                                                ),
-                                            ],
-                                            "duplicate-constant",
+                                                )),
                                         );
 
                                         return assign_pattern!();
@@ -2182,15 +2131,18 @@ impl Lowerer {
                                 let used_variables =
                                     self.generate_capture_list(None, &mut value);
 
-                                if !used_variables.is_empty() {
+                                for (var, span) in used_variables {
+                                    let var_name = self.declarations
+                                        .variables
+                                        .get(&var)
+                                        .unwrap()
+                                        .name
+                                        .as_deref()
+                                        .unwrap_or("<unknown>");
+
                                     self.compiler.add_error(
-                                        "constant cannot capture outside variables",
-                                        used_variables
-                                            .into_iter()
-                                            .map(|(_, span)| {
-                                                Note::primary(span, "captured variable")
-                                            })
-                                            .collect(),
+                                        span,
+                                        format!("constant cannot refer to outside variable `{var_name}`"),
                                         "constant-captured-variables",
                                     );
                                 }
@@ -2214,8 +2166,8 @@ impl Lowerer {
                             .span;
 
                         self.compiler.add_error(
+                            span,
                             "constant must be initialized immediately following its type annotation",
-                            vec![Note::primary(span, "try initializing the constant below this")],
                             "uninitialized-constant"
                         );
                     }
@@ -2249,8 +2201,8 @@ impl Lowerer {
                                     };
 
                                     self.compiler.add_error(
+                                        pattern_span,
                                         "type functions may only be used when declaring a constant",
-                                        vec![Note::primary(pattern_span, "try removing this")],
                                         "syntax-error",
                                     );
 
@@ -2294,8 +2246,8 @@ impl Lowerer {
                             ast::ConstantTypeAnnotation::Type(annotation) => annotation,
                             ast::ConstantTypeAnnotation::TypeFunction(annotation) => {
                                 self.compiler.add_error(
+                                    annotation.span,
                                     "type annotation may not contain multiple type functions",
-                                    vec![Note::primary(annotation.span(), "try removing this")],
                                     "syntax-error",
                                 );
 
@@ -2313,8 +2265,8 @@ impl Lowerer {
                     if statement.attributes.specialize.is_some() {
                         if variant_info.is_some() {
                             self.compiler.add_error(
+                                span,
                                 "cannot specialize a `type` variant",
-                                vec![Note::primary(span, "cannot specialize this")],
                                 "syntax-error",
                             );
 
@@ -2323,8 +2275,8 @@ impl Lowerer {
 
                         if self.specializations.contains_key(&existing_id) {
                             self.compiler.add_error(
+                                span,
                                 "cannot specialize constant which is a specialization of another constant",
-                                vec![Note::primary(span, "cannot specialize this")],
                                 "syntax-error",
                             );
 
@@ -2336,13 +2288,17 @@ impl Lowerer {
                         let existing_span =
                             self.declarations.constants.get(&existing_id).unwrap().span;
 
-                        self.compiler.add_error(
-                            format!("constant `{name}` already exists in this file"),
-                            vec![
-                                Note::primary(span, "try giving this constant a different name"),
-                                Note::primary(existing_span, "original constant declared here"),
-                            ],
-                            "duplicate-constant",
+                        self.compiler.add_diagnostic(
+                            self.compiler
+                                .error(
+                                    span,
+                                    format!("constant `{name}` already exists in this file"),
+                                    "duplicate-constant",
+                                )
+                                .note(Note::secondary(
+                                    existing_span,
+                                    "original constant declared here",
+                                )),
                         );
 
                         return None;
@@ -2464,11 +2420,8 @@ impl Lowerer {
                         };
 
                         self.compiler.add_error(
-                            "syntax error",
-                            vec![Note::primary(
-                                value_span,
-                                "expected a `type` or `trait` definition",
-                            )],
+                            value_span,
+                            "expected a `type` or `trait` definition",
                             "syntax-error",
                         );
 
@@ -2541,11 +2494,8 @@ impl Lowerer {
                                 }
                                 pattern => {
                                     self.compiler.add_error(
-                                        "syntax error",
-                                        vec![Note::primary(
-                                            pattern.span(),
-                                            "expected an `instance` definition",
-                                        )],
+                                        pattern.span(),
+                                        "expected an `instance` definition",
                                         "syntax-error",
                                     );
 
@@ -2555,8 +2505,8 @@ impl Lowerer {
                         }
                         _ => {
                             self.compiler.add_error(
-                                "syntax error",
-                                vec![Note::primary(value.span(), "expected an expression here")],
+                                value.span(),
+                                "expected an expression here",
                                 "syntax-error",
                             );
 
@@ -2618,11 +2568,8 @@ impl Lowerer {
                     }
                     statement => {
                         self.compiler.add_error(
-                            "syntax error",
-                            vec![Note::primary(
-                                statement.span(),
-                                "expected an `instance` declaration",
-                            )],
+                            statement.span(),
+                            "expected an `instance` declaration",
                             "syntax-error",
                         );
 
@@ -2707,7 +2654,7 @@ impl Lowerer {
                         kind: value,
                     },
                     Ok(None) => {
-                        let (notes, fix) = self.diagnostic_notes_for_unresolved_name(
+                        let fix = self.diagnostic_fix_for_unresolved_name(
                             expr.span,
                             expr.name,
                             ctx,
@@ -2718,13 +2665,8 @@ impl Lowerer {
                         self.compiler.add_diagnostic(
                             self.compiler
                                 .error(
+                                    expr.span,
                                     format!("cannot find `{}`", expr.name),
-                                    std::iter::once(Note::primary(
-                                        expr.span,
-                                        "this name is not defined",
-                                    ))
-                                    .chain(notes)
-                                    .collect(),
                                     "undefined-name",
                                 )
                                 .fix(fix),
@@ -2737,16 +2679,7 @@ impl Lowerer {
                         }
                     }
                     Err(candidates) => {
-                        self.compiler.add_error(
-                            format!("multiple definitions of `{}`", expr.name),
-                            std::iter::once(Note::primary(
-                                expr.span,
-                                format!("`{}` could refer to...", expr.name),
-                            ))
-                            .chain(self.diagnostic_notes_for_ambiguous_name(candidates))
-                            .collect(),
-                            "",
-                        );
+                        self.add_diagnostic_for_ambiguous_name(expr.span, &expr.name, candidates);
 
                         Expression {
                             id: self.compiler.new_expression_id(ctx.owner),
@@ -2796,15 +2729,12 @@ impl Lowerer {
 
                         if segments.len() != inputs.len() {
                             self.compiler.add_error(
-                                "wrong number of inputs to placeholder text",
-                                vec![Note::primary(
-                                    function.span(),
-                                    format!(
-                                        "text contains {} placeholders, but {} inputs were provided",
-                                        segments.len(),
-                                        inputs.len()
-                                    ),
-                                )],
+                                function.span(),
+                                format!(
+                                    "text contains {} placeholders, but {} inputs were provided",
+                                    segments.len(),
+                                    inputs.len()
+                                ),
                                 "",
                             );
 
@@ -2833,11 +2763,8 @@ impl Lowerer {
                             Some(input) => input,
                             None => {
                                 self.compiler.add_error(
+                                    function.span(),
                                     "function received no input",
-                                    vec![Note::primary(
-                                        function.span(),
-                                        "try providing an input to this function",
-                                    )],
                                     "",
                                 );
 
@@ -2879,11 +2806,8 @@ impl Lowerer {
                                 ast::Expression::Block(block) => {
                                     if expr.inputs.len() > 1 {
                                         self.compiler.add_error(
-                                            "too many inputs in structure instantiation",
-                                            vec![Note::primary(
-                                                expr.span,
-                                                "this structure requires a single block containing its fields",
-                                            )],
+                                            expr.span,
+                                            "this structure requires a single block containing its fields",
                                             "syntax-error",
                                         );
                                     }
@@ -2902,8 +2826,8 @@ impl Lowerer {
 
                                     if !matches!(ty.kind, TypeDeclarationKind::Structure(_, _)) {
                                         self.compiler.add_error(
+                                            function.span(),
                                             "only structures may be instantiated like this",
-                                            vec![Note::primary(function.span(), "not a structure")],
                                             "syntax-error",
                                         );
 
@@ -2930,11 +2854,8 @@ impl Lowerer {
                                             }
                                             _ => {
                                                 self.compiler.add_error(
+                                                function.span(),
                                                 "only enumerations may be instantiated like this",
-                                                vec![Note::primary(
-                                                    function.span(),
-                                                    "not an enumeration",
-                                                )],
                                                 "syntax-error",
                                             );
 
@@ -2950,12 +2871,12 @@ impl Lowerer {
                                         Some(index) => *index,
                                         None => {
                                             self.compiler.add_error(
+                                                name.span,
                                                 format!(
                                                     "enumeration `{}` does not declare a variant named `{}`",
                                                     ty_name.name,
                                                     name.name
                                                 ),
-                                                vec![Note::primary(name.span, "no such variant")],
                                                 "undefined-name",
                                             );
 
@@ -2996,11 +2917,8 @@ impl Lowerer {
                                 .insert(function.span());
 
                             self.compiler.add_error(
-                                "cannot instantiate type parameter",
-                                vec![Note::primary(
-                                    function.span(),
-                                    "the actual type this represents is not known here",
-                                )],
+                                function.span(),
+                                "cannot instantiate type parameter because the actual type it represents is not known here",
                                 "instantiate-type-parameter",
                             );
 
@@ -3023,11 +2941,8 @@ impl Lowerer {
                                 .insert(function.span());
 
                             self.compiler.add_error(
-                                "cannot instantiate built-in type",
-                                vec![Note::primary(
-                                    function.span(),
-                                    "try using a literal or built-in function instead",
-                                )],
+                                function.span(),
+                                "cannot instantiate built-in type; try using a literal or built-in function instead",
                                 "instantiate-builtin",
                             );
 
@@ -3047,22 +2962,12 @@ impl Lowerer {
                             },
                             &ty_name_scope,
                         ) {
-                            self.compiler.add_error(
-                                format!("multiple definitions of `{}`", ty_name.name),
-                                std::iter::once(Note::primary(
-                                    function.span(),
-                                    format!("`{}` could refer to...", ty_name.name),
-                                ))
-                                .chain(
-                                    self.diagnostic_notes_for_ambiguous_name(
-                                        candidates
-                                            .into_iter()
-                                            .map(|candidate| self.span_of(candidate))
-                                            .collect(),
-                                    ),
-                                )
-                                .collect(),
-                                "",
+                            self.add_diagnostic_for_ambiguous_name(
+                                function.span(),
+                                &ty_name.name,
+                                candidates
+                                    .into_iter()
+                                    .map(|candidate| self.span_of(candidate)),
                             );
 
                             return Expression {
@@ -3217,11 +3122,8 @@ impl Lowerer {
                     Ok(func) => func,
                     Err(_) => {
                         self.compiler.add_error(
-                            "unknown runtime function",
-                            vec![Note::primary(
-                                expr.span(),
-                                "check the Wipple source code for the latest list of runtime functions"
-                            )],
+                            expr.span(),
+                            "unknown runtime function; check the Wipple source code for the latest list of runtime functions",
                             "",
                         );
 
@@ -3326,25 +3228,19 @@ impl Lowerer {
                                 match self.get(name, span, AnyDeclaration::as_constant, scope) {
                                     Ok(Some((id, _))) => Some(id),
                                     Ok(_) => {
-                                        let (notes, fix) = self
-                                            .diagnostic_notes_for_unresolved_name(
-                                                span,
-                                                name,
-                                                ctx,
-                                                AnyDeclaration::as_constant,
-                                                scope,
-                                            );
+                                        let fix = self.diagnostic_fix_for_unresolved_name(
+                                            span,
+                                            name,
+                                            ctx,
+                                            AnyDeclaration::as_constant,
+                                            scope,
+                                        );
 
                                         self.compiler.add_diagnostic(
                                             self.compiler
                                                 .error(
+                                                    span,
                                                     format!("cannot find constant `{name}`"),
-                                                    std::iter::once(Note::primary(
-                                                        span,
-                                                        "no such constant",
-                                                    ))
-                                                    .chain(notes)
-                                                    .collect(),
                                                     "undefined-name",
                                                 )
                                                 .fix(fix),
@@ -3353,28 +3249,16 @@ impl Lowerer {
                                         None
                                     }
                                     Err(candidates) => {
-                                        self.compiler.add_error(
-                                            format!("multiple definitions of constant `{}`", name),
-                                            std::iter::once(Note::primary(
-                                                span,
-                                                format!("`{}` could refer to...", name),
-                                            ))
-                                            .chain(
-                                                self.diagnostic_notes_for_ambiguous_name(
-                                                    candidates
-                                                        .into_iter()
-                                                        .map(|(candidate, _)| {
-                                                            self.declarations
-                                                                .constants
-                                                                .get(&candidate)
-                                                                .unwrap()
-                                                                .span
-                                                        })
-                                                        .collect(),
-                                                ),
-                                            )
-                                            .collect(),
-                                            "",
+                                        self.add_diagnostic_for_ambiguous_name(
+                                            span,
+                                            &name,
+                                            candidates.into_iter().map(|(candidate, _)| {
+                                                self.declarations
+                                                    .constants
+                                                    .get(&candidate)
+                                                    .unwrap()
+                                                    .span
+                                            }),
                                         );
 
                                         None
@@ -3432,8 +3316,8 @@ impl Lowerer {
 
                 if !ctx.in_function {
                     self.compiler.add_error(
+                        expr.span(),
                         "cannot use `end` outside a function",
-                        vec![Note::primary(expr.span(), "not allowed here")],
                         "end-outside-function",
                     );
 
@@ -3466,8 +3350,8 @@ impl Lowerer {
                     }
                     Ok(fields) => {
                         self.compiler.add_error(
+                            fields.span(),
                             "`where` expects a block",
-                            vec![Note::primary(fields.span(), "expected a block here")],
                             "syntax-error",
                         );
 
@@ -3498,11 +3382,8 @@ impl Lowerer {
                     Ok(func) => func,
                     Err(_) => {
                         self.compiler.add_error(
-                            "unknown semantics",
-                            vec![Note::primary(
-                                expr.span(),
-                                "check the Wipple source code for the latest list of semantics",
-                            )],
+                            expr.span(),
+                            "unknown semantics; check the Wipple source code for the latest list of semantics",
                             "",
                         );
 
@@ -3583,8 +3464,8 @@ impl Lowerer {
                                 ast::AssignmentValue::Expression(value) => &value.expression,
                                 value => {
                                     self.compiler.add_error(
-                                        "syntax error",
-                                        vec![Note::primary(value.span(), "expected expression")],
+                                        value.span(),
+                                        "expected expression",
                                         "syntax-error",
                                     );
 
@@ -3596,11 +3477,8 @@ impl Lowerer {
                         }
                         pattern => {
                             self.compiler.add_error(
-                                "structure instantiation may not contain complex patterns",
-                                vec![Note::primary(
-                                    pattern.span(),
-                                    "try splitting this pattern into multiple names",
-                                )],
+                                pattern.span(),
+                                "structure instantiation may not contain complex patterns; try splitting this pattern into multiple names",
                                 "syntax-error",
                             );
 
@@ -3614,8 +3492,8 @@ impl Lowerer {
                     // TODO: 'use' inside instantiation
                     _ => {
                         self.compiler.add_error(
+                            block.span,
                             "structure instantiation may not contain executable statements",
-                            vec![Note::primary(block.span, "try removing this")],
                             "syntax-error",
                         );
 
@@ -3680,28 +3558,12 @@ impl Lowerer {
                         }
                     }
                     Err(candidates) => {
-                        self.compiler.add_error(
-                            format!("multiple definitions of variant `{}`", pattern.name),
-                            std::iter::once(Note::primary(
-                                pattern.span,
-                                format!("`{}` could refer to...", pattern.name),
-                            ))
-                            .chain(
-                                self.diagnostic_notes_for_ambiguous_name(
-                                    candidates
-                                        .into_iter()
-                                        .map(|(candidate, _)| {
-                                            self.declarations
-                                                .constants
-                                                .get(&candidate)
-                                                .unwrap()
-                                                .span
-                                        })
-                                        .collect(),
-                                ),
-                            )
-                            .collect(),
-                            "",
+                        self.add_diagnostic_for_ambiguous_name(
+                            pattern.span,
+                            &pattern.name,
+                            candidates.into_iter().map(|(candidate, _)| {
+                                self.declarations.constants.get(&candidate).unwrap().span
+                            }),
                         );
 
                         Pattern {
@@ -3795,11 +3657,8 @@ impl Lowerer {
                         TypeDeclarationKind::Enumeration(_, variants) => variants,
                         _ => {
                             self.compiler.add_error(
-                                format!("cannot use `{}` in pattern", pattern.name),
-                                vec![Note::primary(
-                                    pattern.name_span,
-                                    "only enumeration types may be used in patterns",
-                                )],
+                                pattern.name_span,
+                                format!("cannot use `{}` in pattern; only enumeration types may be used here", pattern.name),
                                 "syntax-error",
                             );
 
@@ -3822,11 +3681,8 @@ impl Lowerer {
                         },
                         None => {
                             self.compiler.add_error(
-                                "incomplete pattern",
-                                vec![Note::primary(
-                                    pattern.name_span,
-                                    "expected a variant name after this",
-                                )],
+                                pattern.name_span,
+                                "incomplete pattern; expected a variant name after this",
                                 "syntax-error",
                             );
 
@@ -3841,8 +3697,8 @@ impl Lowerer {
                         ast::Pattern::Name(pattern) => pattern.name,
                         _ => {
                             self.compiler.add_error(
-                                "invalid pattern",
-                                vec![Note::primary(second.span(), "expected a variant name here")],
+                                second.span(),
+                                "expected a variant name here",
                                 "syntax-error",
                             );
 
@@ -3857,11 +3713,11 @@ impl Lowerer {
                         Some(variant) => *variant,
                         None => {
                             self.compiler.add_error(
+                                second.span(),
                                 format!(
                                     "enumeration `{}` does not declare a variant named `{}`",
                                     pattern.name, variant_name
                                 ),
-                                vec![Note::primary(second.span(), "no such variant")],
                                 "undefined-name",
                             );
 
@@ -3918,7 +3774,7 @@ impl Lowerer {
                         ),
                     }
                 } else {
-                    let (notes, fix) = self.diagnostic_notes_for_unresolved_name_with(
+                    let fix = self.diagnostic_fix_for_unresolved_name_with(
                         pattern.name_span,
                         pattern.name,
                         ctx,
@@ -3933,13 +3789,8 @@ impl Lowerer {
                     self.compiler.add_diagnostic(
                         self.compiler
                             .error(
+                                pattern.span,
                                 format!("cannot find pattern `{}`", pattern.name),
-                                std::iter::once(Note::primary(
-                                    pattern.span,
-                                    "no such type or variant",
-                                ))
-                                .chain(notes)
-                                .collect(),
                                 "undefined-name",
                             )
                             .fix(fix),
@@ -4130,13 +3981,9 @@ impl Lowerer {
                         .insert(ty.span);
 
                     if !parameters.is_empty() {
-                        // TODO: Higher-kinded types
                         self.compiler.add_error(
-                            "higher-kinded types are not yet supported",
-                            vec![Note::primary(
-                                ty.span,
-                                "try writing this on its own, with no parameters",
-                            )],
+                            ty.span,
+                            "type parameter cannot have generic parameters",
                             "syntax-error",
                         );
                     }
@@ -4173,22 +4020,12 @@ impl Lowerer {
                     },
                     &ty.name_scope_set,
                 ) {
-                    self.compiler.add_error(
-                        format!("multiple definitions of `{}`", ty.name),
-                        std::iter::once(Note::primary(
-                            ty.span,
-                            format!("`{}` could refer to...", ty.name),
-                        ))
-                        .chain(
-                            self.diagnostic_notes_for_ambiguous_name(
-                                candidates
-                                    .into_iter()
-                                    .map(|candidate| self.span_of(candidate))
-                                    .collect(),
-                            ),
-                        )
-                        .collect(),
-                        "",
+                    self.add_diagnostic_for_ambiguous_name(
+                        ty.span,
+                        &ty.name,
+                        candidates
+                            .into_iter()
+                            .map(|candidate| self.span_of(candidate)),
                     );
 
                     return TypeAnnotation {
@@ -4196,7 +4033,7 @@ impl Lowerer {
                         kind: TypeAnnotationKind::error(&self.compiler),
                     };
                 } else {
-                    let (notes, fix) = self.diagnostic_notes_for_unresolved_name(
+                    let fix = self.diagnostic_fix_for_unresolved_name(
                         ty.span,
                         ty.name,
                         ctx,
@@ -4207,10 +4044,8 @@ impl Lowerer {
                     self.compiler.add_diagnostic(
                         self.compiler
                             .error(
+                                ty.span,
                                 format!("cannot find type `{}`", ty.name),
-                                std::iter::once(Note::primary(ty.span, "no such type"))
-                                    .chain(notes)
-                                    .collect(),
                                 "undefined-name",
                             )
                             .fix(fix),
@@ -4371,8 +4206,8 @@ impl Lowerer {
                                     },
                                     ast::TypePattern::List(pattern) => {
                                         self.compiler.add_error(
-                                            "higher-kinded types are not yet supported",
-                                            vec![Note::primary(pattern.span, "try removing this")],
+                                            pattern.span,
+                                            "type parameter cannot have generic parameters",
                                             "syntax-error",
                                         );
 
@@ -4380,11 +4215,8 @@ impl Lowerer {
                                     }
                                     ast::TypePattern::Where(pattern) => {
                                         self.compiler.add_error(
-                                            "syntax error",
-                                            vec![Note::primary(
-                                                pattern.span(),
-                                                "`where` clause is not allowed here",
-                                            )],
+                                            pattern.span(),
+                                            "`where` clause is not allowed here",
                                             "syntax-error",
                                         );
 
@@ -4396,8 +4228,8 @@ impl Lowerer {
                             .collect(),
                         ast::TypePattern::Where(lhs) => {
                             self.compiler.add_error(
+                                lhs.span(),
                                 "type function may not have multiple `where` clauses",
-                                vec![Note::primary(lhs.span(), "try removing this")],
                                 "syntax-error",
                             );
 
@@ -4429,7 +4261,7 @@ impl Lowerer {
                                     tr
                                 }
                                 Ok(None) => {
-                                    let (notes, fix) = self.diagnostic_notes_for_unresolved_name(
+                                    let fix = self.diagnostic_fix_for_unresolved_name(
                                         bound.trait_span,
                                         bound.trait_name,
                                         ctx,
@@ -4440,13 +4272,8 @@ impl Lowerer {
                                     self.compiler.add_diagnostic(
                                         self.compiler
                                             .error(
+                                                bound.trait_span,
                                                 format!("cannot find trait `{}`", bound.trait_name),
-                                                std::iter::once(Note::primary(
-                                                    bound.trait_span,
-                                                    "no such trait",
-                                                ))
-                                                .chain(notes)
-                                                .collect(),
                                                 "undefined-name",
                                             )
                                             .fix(fix),
@@ -4455,31 +4282,12 @@ impl Lowerer {
                                     return None;
                                 }
                                 Err(candidates) => {
-                                    self.compiler.add_error(
-                                        format!(
-                                            "multiple definitions of trait `{}`",
-                                            bound.trait_name
-                                        ),
-                                        std::iter::once(Note::primary(
-                                            bound.trait_span,
-                                            format!("`{}` could refer to...", bound.trait_name),
-                                        ))
-                                        .chain(
-                                            self.diagnostic_notes_for_ambiguous_name(
-                                                candidates
-                                                    .into_iter()
-                                                    .map(|candidate| {
-                                                        self.declarations
-                                                            .traits
-                                                            .get(&candidate)
-                                                            .unwrap()
-                                                            .span
-                                                    })
-                                                    .collect(),
-                                            ),
-                                        )
-                                        .collect(),
-                                        "",
+                                    self.add_diagnostic_for_ambiguous_name(
+                                        bound.trait_span,
+                                        &bound.trait_name,
+                                        candidates.into_iter().map(|candidate| {
+                                            self.declarations.traits.get(&candidate).unwrap().span
+                                        }),
                                     );
 
                                     return None;
@@ -4626,8 +4434,8 @@ impl Lowerer {
                                 },
                                 ast::TypePattern::List(pattern) => {
                                     self.compiler.add_error(
-                                        "higher-kinded types are not yet supported",
-                                        vec![Note::primary(pattern.span, "try removing this")],
+                                        pattern.span,
+                                        "type parameter cannot have generic parameters",
                                         "syntax-error",
                                     );
 
@@ -4635,11 +4443,8 @@ impl Lowerer {
                                 }
                                 ast::TypePattern::Where(pattern) => {
                                     self.compiler.add_error(
-                                        "syntax error",
-                                        vec![Note::primary(
-                                            pattern.where_span,
-                                            "`where` clause is not allowed here",
-                                        )],
+                                        pattern.where_span,
+                                        "`where` clause is not allowed here",
                                         "syntax-error",
                                     );
 
@@ -4722,7 +4527,7 @@ impl Lowerer {
                                     Some(param)
                                 }
                                 Ok(None) => {
-                                    let (notes, fix) = self.diagnostic_notes_for_unresolved_name(
+                                    let fix = self.diagnostic_fix_for_unresolved_name(
                                         span,
                                         name,
                                         ctx,
@@ -4733,13 +4538,8 @@ impl Lowerer {
                                     self.compiler.add_diagnostic(
                                         self.compiler
                                             .error(
+                                                span,
                                                 format!("cannot find type parameter `{name}`"),
-                                                std::iter::once(Note::primary(
-                                                    span,
-                                                    "no such type parameter",
-                                                ))
-                                                .chain(notes)
-                                                .collect(),
                                                 "undefined-name",
                                             )
                                             .fix(fix),
@@ -4748,28 +4548,16 @@ impl Lowerer {
                                     return None;
                                 }
                                 Err(candidates) => {
-                                    self.compiler.add_error(
-                                        format!("multiple definitions of type parameter `{name}`"),
-                                        std::iter::once(Note::primary(
-                                            span,
-                                            format!("`{name}` could refer to..."),
-                                        ))
-                                        .chain(
-                                            self.diagnostic_notes_for_ambiguous_name(
-                                                candidates
-                                                    .into_iter()
-                                                    .map(|candidate| {
-                                                        self.declarations
-                                                            .type_parameters
-                                                            .get(&candidate)
-                                                            .unwrap()
-                                                            .span
-                                                    })
-                                                    .collect(),
-                                            ),
-                                        )
-                                        .collect(),
-                                        "",
+                                    self.add_diagnostic_for_ambiguous_name(
+                                        span,
+                                        &name,
+                                        candidates.into_iter().map(|candidate| {
+                                            self.declarations
+                                                .type_parameters
+                                                .get(&candidate)
+                                                .unwrap()
+                                                .span
+                                        }),
                                     );
 
                                     return None;
@@ -4889,7 +4677,7 @@ impl Lowerer {
                     ) {
                         Ok(Some(id)) => id,
                         Ok(None) => {
-                            let (notes, fix) = self.diagnostic_notes_for_unresolved_name(
+                            let fix = self.diagnostic_fix_for_unresolved_name(
                                 param_span,
                                 param_name,
                                 ctx,
@@ -4900,13 +4688,8 @@ impl Lowerer {
                             self.compiler.add_diagnostic(
                                 self.compiler
                                     .error(
+                                        param_span,
                                         format!("cannot find type parameter `{param_name}`"),
-                                        std::iter::once(Note::primary(
-                                            param_span,
-                                            "no such type parameter",
-                                        ))
-                                        .chain(notes)
-                                        .collect(),
                                         "undefined-name",
                                     )
                                     .fix(fix),
@@ -4915,28 +4698,16 @@ impl Lowerer {
                             return None;
                         }
                         Err(candidates) => {
-                            self.compiler.add_error(
-                                format!("multiple definitions of type parameter `{param_name}`",),
-                                std::iter::once(Note::primary(
-                                    param_span,
-                                    format!("`{param_name}` could refer to..."),
-                                ))
-                                .chain(
-                                    self.diagnostic_notes_for_ambiguous_name(
-                                        candidates
-                                            .into_iter()
-                                            .map(|candidate| {
-                                                self.declarations
-                                                    .type_parameters
-                                                    .get(&candidate)
-                                                    .unwrap()
-                                                    .span
-                                            })
-                                            .collect(),
-                                    ),
-                                )
-                                .collect(),
-                                "",
+                            self.add_diagnostic_for_ambiguous_name(
+                                param_span,
+                                &param_name,
+                                candidates.into_iter().map(|candidate| {
+                                    self.declarations
+                                        .type_parameters
+                                        .get(&candidate)
+                                        .unwrap()
+                                        .span
+                                }),
                             );
 
                             return None;
@@ -4960,11 +4731,8 @@ impl Lowerer {
             }
         }
 
-        self.compiler.add_error(
-            "syntax error",
-            vec![Note::primary(pattern.span(), "expected a name here")],
-            "syntax-error",
-        );
+        self.compiler
+            .add_error(pattern.span(), "expected a name here", "syntax-error");
 
         None
     }
@@ -5037,10 +4805,29 @@ impl Lowerer {
                 .kind
             {
                 TypeDeclarationKind::Marker => Ok(Some(ExpressionKind::Marker(id))),
-                _ => {
+                TypeDeclarationKind::Structure(_, _) => {
                     self.compiler.add_error(
-                        "cannot use type as value",
-                        vec![Note::primary(span, "try instantiating the type")],
+                        span,
+                        "cannot use structure type itself as a value; try specifying the structure's fields",
+                        "type-as-value",
+                    );
+
+                    Ok(Some(ExpressionKind::error(&self.compiler)))
+                }
+                TypeDeclarationKind::Enumeration(_, _) => {
+                    self.compiler.add_error(
+                        span,
+                        "cannot use enumeration type itself as a value; try specifying a variant of the enumeration",
+                        "type-as-value",
+                    );
+
+                    Ok(Some(ExpressionKind::error(&self.compiler)))
+                }
+                // TODO: Support marker aliases
+                TypeDeclarationKind::Alias(_) => {
+                    self.compiler.add_error(
+                        span,
+                        "cannot use type itself as a value",
                         "type-as-value",
                     );
 
@@ -5065,8 +4852,8 @@ impl Lowerer {
                 .insert(span);
 
             self.compiler.add_error(
-                "cannot use builtin type as value",
-                vec![Note::primary(span, "try using a literal instead")],
+                span,
+                "cannot use builtin type as value; try using a literal instead",
                 "type-as-value",
             );
 
@@ -5091,12 +4878,9 @@ impl Lowerer {
                 .insert(span);
 
             self.compiler.add_error(
-                "cannot use type parameter as value",
-                vec![Note::primary(
-                    span,
-                    "type parameters cannot be instantiated because the actual type is not known here",
-                )],
-                "type-as-value",
+                span,
+                "cannot instantiate type parameter because the actual type it represents is not known here",
+                "instantiate-type-parameter",
             );
 
             Ok(Some(ExpressionKind::error(&self.compiler)))
@@ -5305,22 +5089,39 @@ impl Lowerer {
         }
     }
 
-    fn diagnostic_notes_for_ambiguous_name(&self, candidates: Vec<SpanList>) -> Vec<Note> {
+    fn add_diagnostic_for_ambiguous_name(
+        &self,
+        span: SpanList,
+        name: &str,
+        candidates: impl IntoIterator<Item = SpanList>,
+    ) {
+        self.compiler.add_diagnostic(
+            self.compiler
+                .error(span, format!("multiple definitions of `{name}`"), "")
+                .notes(self.diagnostic_notes_for_ambiguous_name(name, candidates)),
+        );
+    }
+
+    fn diagnostic_notes_for_ambiguous_name(
+        &self,
+        name: &str,
+        candidates: impl IntoIterator<Item = SpanList>,
+    ) -> Vec<Note> {
         candidates
             .into_iter()
-            .map(|span| Note::secondary(span, "...this"))
+            .map(|span| Note::secondary(span, format!("`{name} could refer to this")))
             .collect()
     }
 
-    fn diagnostic_notes_for_unresolved_name<T>(
+    fn diagnostic_fix_for_unresolved_name<T>(
         &self,
         span: SpanList,
         name: InternedString,
         ctx: &Context,
         kind: fn(AnyDeclaration) -> Option<T>,
         scope: &ScopeSet,
-    ) -> (Vec<Note>, Option<Fix>) {
-        self.diagnostic_notes_for_unresolved_name_with(
+    ) -> Option<Fix> {
+        self.diagnostic_fix_for_unresolved_name_with(
             span,
             name,
             ctx,
@@ -5329,78 +5130,56 @@ impl Lowerer {
         )
     }
 
-    fn diagnostic_notes_for_unresolved_name_with(
+    fn diagnostic_fix_for_unresolved_name_with(
         &self,
         span: SpanList,
         name: InternedString,
         ctx: &Context,
         kind: impl Fn(AnyDeclaration) -> bool,
         scope: &ScopeSet,
-    ) -> (Vec<Note>, Option<Fix>) {
-        let mut notes = std::iter::empty()
-            .chain(
-                self.file_info
-                    .diagnostic_aliases
-                    .aliases
-                    .get(&name)
-                    .into_iter()
-                    .flatten()
-                    .map(|alias| (
-                        Note::secondary(span, format!("did you mean `{alias}`?")),
-                        Fix::new(format!("replace with `{alias}`"), FixRange::replace(span.first()), alias),
-                    )),
-            )
-            .chain(did_you_mean::number_with_units(&name).map(|(number, units)| (
-                Note::secondary(
-                    span,
-                    format!("did you mean `({number} {units})`?"),
-                ),
-                Fix::new(
-                    format!("replace with `({number} {units})`"),
-                    FixRange::replace(span.first()),
-                    format!("({number} {units})"),
-                ),
-            )))
-            .chain(ctx.caller_accepts_text.then(|| (
-                Note::secondary(
-                    span,
-                    format!("if you meant to provide text here, try using quotes: `\"{name}\"`"),
-                ),
-                Fix::new("surround with quotes", FixRange::replace(span.first()), format!("\"{name}\"")),
-            )))
-            .chain(did_you_mean::math(&name).map(|(lhs, op, rhs)| (
-                Note::secondary(
-                    span,
-                    format!("if you meant to write a mathematical expression, try using whitespace: `{lhs} {op} {rhs}`"),
-                ),
-                Fix::new(format!("add whitespace around `{op}`"), FixRange::replace(span.first()), format!("{lhs} {op} {rhs}")),
-            )))
-            .chain(
-                did_you_mean::comment(&name).map(|()| (
-                    Note::secondary(span, "comments in Wipple begin with `--`"),
-                    Fix::new("replace with `--`", FixRange::replace(span.first()), "--"),
-                )),
-            )
-            .collect::<Vec<_>>();
-
-        if notes.is_empty() {
-            let candidates = self.collect(kind, scope).map(|name| name.as_str());
-
-            if let Some(suggestion) = did_you_mean::name(&name, candidates) {
-                notes.push((
-                    Note::secondary(span, format!("did you mean `{suggestion}`?")),
+    ) -> Option<Fix> {
+        self.file_info
+            .diagnostic_aliases
+            .aliases
+            .get(&name)
+            .and_then(|aliases| {
+                let alias = aliases.first()?;
+                Some(Fix::new(format!("did you mean `{alias}`?"), FixRange::replace(span.first()), alias))
+            })
+            .or_else(|| {
+                did_you_mean::number_with_units(&name).map(|(number, units)| {
                     Fix::new(
-                        format!("replace with `{suggestion}`"),
+                        format!("did you mean `({number} {units})`?"),
+                        FixRange::replace(span.first()),
+                        format!("({number} {units})"),
+                    )
+                })
+            })
+            .or_else(|| {
+                ctx.caller_accepts_text.then(|| {
+                    Fix::new(format!("if you meant to provide text here, try using quotes: `\"{name}\"`"), FixRange::replace(span.first()), format!("\"{name}\""))
+                })
+            })
+            .or_else(|| {
+                did_you_mean::math(&name).map(|(lhs, op, rhs)| {
+                    Fix::new(format!("if you meant to write a mathematical expression, try using whitespace: `{lhs} {op} {rhs}`"), FixRange::replace(span.first()), format!("{lhs} {op} {rhs}"))
+                })
+            })
+            .or_else(|| {
+                did_you_mean::comment(&name).map(|()| {
+                    Fix::new("comments in Wipple begin with `--`", FixRange::replace(span.first()), "--")
+                })
+            })
+            .or_else(|| {
+                let candidates = self.collect(kind, scope).map(|name| name.as_str());
+                did_you_mean::name(&name, candidates).map(|suggestion| {
+                    Fix::new(
+                        format!("did you mean `{suggestion}`?"),
                         FixRange::replace(span.first()),
                         suggestion,
-                    ),
-                ));
-            }
-        }
-
-        let (notes, mut fixes): (Vec<_>, VecDeque<_>) = notes.into_iter().unzip();
-
-        (notes, fixes.pop_front())
+                    )
+                })
+            })
     }
 }
 

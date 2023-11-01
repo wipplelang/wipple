@@ -40,18 +40,22 @@ impl Typechecker {
                     entry.insert(spans);
                 }
                 Entry::Occupied(entry) => {
-                    self.compiler.add_error(
-                        no_reuse_message,
-                        spans
-                            .iter()
-                            .copied()
-                            .map(|span| Note::primary(span, format!("`{var_name}` reused here")))
-                            .chain(entry.get().iter().copied().map(|span| {
-                                Note::secondary(span, format!("`{var_name}` first used here"))
-                            }))
-                            .collect(),
-                        "reused-variable",
-                    );
+                    let first_used_notes = entry
+                        .get()
+                        .iter()
+                        .copied()
+                        .map(|span| Note::secondary(span, format!("`{var_name}` first used here")))
+                        .collect::<Vec<_>>();
+
+                    for &span in &spans {
+                        let mut error =
+                            self.compiler
+                                .error(span, &no_reuse_message, "reused-variable");
+
+                        error.notes = first_used_notes.clone();
+
+                        self.compiler.add_diagnostic(error);
+                    }
                 }
             }
         };

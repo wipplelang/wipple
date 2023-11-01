@@ -38,13 +38,17 @@ impl Compiler {
                         let statement = *entrypoint || exprs.peek().is_some();
 
                         if statement && expr.is_pure(program) {
-                            self.add_warning(
-                                "this expression doesn't do anything",
-                                vec![Note::primary(
+                            self.add_diagnostic(
+                                self.warning(
                                     expr.span,
-                                    "did you mean to use the result, eg. `show` it?",
-                                )],
-                                "useless-expression",
+                                    "result of this code is never used",
+                                    "useless-expression",
+                                )
+                                .fix_with(
+                                    "`show` the result",
+                                    FixRange::before(expr.span.first()),
+                                    "show ",
+                                ),
                             );
                         }
                     }

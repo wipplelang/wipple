@@ -6,7 +6,6 @@ use crate::{
         self,
         typecheck::{format::format_type, Typechecker},
     },
-    diagnostics::Note,
     helpers::InternedString,
     ReachableMarkerId, TypeId, VariableId, VariantIndex,
 };
@@ -49,34 +48,30 @@ impl Typechecker {
                             let mut missing_patterns = result
                                 .missing_patterns()
                                 .into_iter()
-                                .map(|pattern| format!("`{}`", self.format_pattern(&pattern, false)))
+                                .map(|pattern| {
+                                    format!("`{}`", self.format_pattern(&pattern, false))
+                                })
                                 .sorted()
                                 .collect::<Vec<_>>();
 
                             self.compiler.add_error(
-                                "variable assignment not handle all possible values",
-                                vec![
-                                    Note::primary(
-                                        pattern.span,
-                                        match missing_patterns.len() {
-                                            0 => unreachable!(),
-                                            1 => format!(
-                                                "the {} pattern is not handled",
-                                                missing_patterns.pop().unwrap()
-                                            ),
-                                            _ => {
-                                                let last_missing_pattern = missing_patterns.pop().unwrap();
-
-                                                format!(
-                                                    "the {} and {} patterns are not handled",
-                                                    missing_patterns.join(", "),
-                                                    last_missing_pattern
-                                                )
-                                            }
-                                        },
+                                pattern.span,
+                                match missing_patterns.len() {
+                                    0 => unreachable!(),
+                                    1 => format!(
+                                        "variable does not cover {}",
+                                        missing_patterns.pop().unwrap()
                                     ),
-                                    Note::secondary(pattern.span, "try using a `when` expression instead"),
-                                ],
+                                    _ => {
+                                        let last_missing_pattern = missing_patterns.pop().unwrap();
+
+                                        format!(
+                                            "variable does not cover {} and {}",
+                                            missing_patterns.join(", "),
+                                            last_missing_pattern
+                                        )
+                                    }
+                                },
                                 "nonexhaustive-variable",
                             );
                         }
@@ -114,37 +109,30 @@ impl Typechecker {
                             let mut missing_patterns = result
                                 .missing_patterns()
                                 .into_iter()
-                                .map(|pattern| format!("`{}`", self.format_pattern(&pattern, false)))
+                                .map(|pattern| {
+                                    format!("`{}`", self.format_pattern(&pattern, false))
+                                })
                                 .sorted()
                                 .collect::<Vec<_>>();
 
                             self.compiler.add_error(
-                                "function input not handle all possible values",
-                                vec![
-                                    Note::primary(
-                                        pattern.span,
-                                        match missing_patterns.len() {
-                                            0 => unreachable!(),
-                                            1 => format!(
-                                                "the {} pattern is not handled",
-                                                missing_patterns.pop().unwrap()
-                                            ),
-                                            _ => {
-                                                let last_missing_pattern = missing_patterns.pop().unwrap();
+                                pattern.span,
+                                match missing_patterns.len() {
+                                    0 => unreachable!(),
+                                    1 => format!(
+                                        "function input does not cover {}",
+                                        missing_patterns.pop().unwrap()
+                                    ),
+                                    _ => {
+                                        let last_missing_pattern = missing_patterns.pop().unwrap();
 
-                                                format!(
-                                                    "the {} and {} patterns are not handled",
-                                                    missing_patterns.join(", "),
-                                                    last_missing_pattern
-                                                )
-                                            }
-                                        },
-                                    ),
-                                    Note::secondary(
-                                        pattern.span,
-                                        "try using a `when` expression inside the function instead",
-                                    ),
-                                ],
+                                        format!(
+                                            "function input does not cover {} and {}",
+                                            missing_patterns.join(", "),
+                                            last_missing_pattern
+                                        )
+                                    }
+                                },
                                 "nonexhaustive-variable",
                             );
                         }
@@ -188,34 +176,30 @@ impl Typechecker {
                             let mut missing_patterns = result
                                 .missing_patterns()
                                 .into_iter()
-                                .map(|pattern| format!("`{}`", self.format_pattern(&pattern, false)))
+                                .map(|pattern| {
+                                    format!("`{}`", self.format_pattern(&pattern, false))
+                                })
                                 .sorted()
                                 .collect::<Vec<_>>();
 
                             self.compiler.add_error(
-                                format!(
-                                    "`when` expression does not handle all possible values of {}",
-                                    self.format_ty(input.ty.clone())
-                                ),
-                                vec![Note::primary(
-                                    expr.span,
-                                    match missing_patterns.len() {
-                                        0 => unreachable!(),
-                                        1 => format!(
-                                            "try adding a case for the {} pattern",
-                                            missing_patterns.pop().unwrap()
-                                        ),
-                                        _ => {
-                                            let last_missing_pattern = missing_patterns.pop().unwrap();
+                                expr.span,
+                                match missing_patterns.len() {
+                                    0 => unreachable!(),
+                                    1 => format!(
+                                        "`when` does not cover {}",
+                                        missing_patterns.pop().unwrap()
+                                    ),
+                                    _ => {
+                                        let last_missing_pattern = missing_patterns.pop().unwrap();
 
-                                            format!(
-                                                "try adding cases for the {} and {} patterns",
-                                                missing_patterns.join(", "),
-                                                last_missing_pattern
-                                            )
-                                        }
-                                    },
-                                )],
+                                        format!(
+                                            "`when` does not cover {} and {}",
+                                            missing_patterns.join(", "),
+                                            last_missing_pattern
+                                        )
+                                    }
+                                },
                                 "nonexhaustive-when",
                             );
                         }
@@ -224,13 +208,8 @@ impl Typechecker {
                             let span = *row_ids.get(&id).unwrap();
 
                             self.compiler.add_warning(
-                                "redundant case in `when` expression",
-                                vec![
-                                    Note::primary(
-                                        span,
-                                        "this case will never be executed because a different case already handles the same values",
-                                    ),
-                                ],
+                                span,
+                                "redundant case in `when`",
                                 "redundant-case",
                             );
                         }

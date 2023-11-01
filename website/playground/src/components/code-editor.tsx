@@ -284,17 +284,11 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 }
 
                 for (const diagnostic of diagnostics) {
-                    const notes = [...diagnostic.notes];
-                    const primaryNote = notes.shift();
-                    if (!primaryNote) {
+                    if (to > diagnostic.span.end) {
                         continue;
                     }
 
-                    if (to > primaryNote.span.end) {
-                        continue;
-                    }
-
-                    if (from >= primaryNote.span.start && to > from) {
+                    if (from >= diagnostic.span.start && to > from) {
                         decorations.push(
                             highlightDecoration(`diagnostic diagnostic-${diagnostic.level}`).range(
                                 from,
