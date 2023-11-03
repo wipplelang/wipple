@@ -1,14 +1,14 @@
-error: this instance collides with 1 other instances
+error: 
   ┌─ test:5:1
   │
 4 │ instance (T X) : ()
   │ -------------- this instance could apply to the same type(s)
 5 │ instance (T X) : ()
-  │ ^^^^^^^^^^^^^^ try making this instance more specific
+  │ ^^^^^^^^^^^^^^ this instance overlaps with 1 other instances
   │
   = for more information, see https://wipple.dev/playground/?lesson=errors/colliding-instances
 
-error: this instance collides with 2 other instances
+error: 
   ┌─ test:7:1
   │
 4 │ instance (T X) : ()
@@ -17,11 +17,11 @@ error: this instance collides with 2 other instances
   │ -------------- this instance could apply to the same type(s)
 6 │ 
 7 │ instance (T _) : ()
-  │ ^^^^^^^^^^^^^^ try making this instance more specific
+  │ ^^^^^^^^^^^^^^ this instance overlaps with 2 other instances
   │
   = for more information, see https://wipple.dev/playground/?lesson=errors/colliding-instances
 
-error: this instance collides with 3 other instances
+error: 
    ┌─ test:10:18
    │
  4 │ instance (T X) : ()
@@ -33,7 +33,10 @@ error: this instance collides with 3 other instances
    │ -------------- this instance could apply to the same type(s)
    ·
 10 │ A where (U A) => instance (T A) : ()
-   │                  ^^^^^^^^^^^^^^ this instance may have different bounds than the others, but one type could satisfy the bounds on more than one of these instances simultaneously
+   │                  ^^^^^^^^^^^^^^
+   │                  │
+   │                  this instance overlaps with 3 other instances
+   │                  this instance may have different bounds than the others, but one type could satisfy the bounds on more than one of these instances simultaneously
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/colliding-instances
 
