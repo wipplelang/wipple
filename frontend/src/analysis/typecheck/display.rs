@@ -77,9 +77,7 @@ impl Expression {
             ExpressionKind::UnresolvedConstant(id) => {
                 write!(f, "<unresolved constant #{}>", id.counter)?
             }
-            ExpressionKind::UnresolvedTrait(id) => {
-                write!(f, "<unresolved trait #{}>", id.counter)?
-            }
+            ExpressionKind::UnresolvedTrait(id) => write!(f, "<unresolved trait #{}>", id.counter)?,
             ExpressionKind::Marker => {
                 let id = match self.ty.kind {
                     TypeKind::Named(id, _, _) => id,
@@ -429,6 +427,8 @@ impl Pattern {
     ) -> fmt::Result {
         match &self.kind {
             PatternKind::Error(_) => write!(f, "<error pattern>")?,
+            PatternKind::UnresolvedDestructure => write!(f, "<unresolved destructure>")?,
+            PatternKind::UnresolvedVariant => write!(f, "<unresolved variant>")?,
             PatternKind::Wildcard => write!(f, "_")?,
             PatternKind::Text(value) => write!(f, "{value:?}")?,
             PatternKind::Number(value) => write!(f, "{value}")?,

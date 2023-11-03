@@ -382,6 +382,10 @@ impl Converter<'_> {
                 analysis::PatternKind::Error(trace) => {
                     panic!("found error pattern in program: {trace:?}");
                 }
+                analysis::PatternKind::UnresolvedDestructure
+                | analysis::PatternKind::UnresolvedVariant => {
+                    panic!("found unresolved pattern in program")
+                }
                 analysis::PatternKind::Wildcard => PatternKind::Wildcard,
                 analysis::PatternKind::Variable(var) => PatternKind::Variable(*var),
                 analysis::PatternKind::Text(text) => PatternKind::Text(*text),

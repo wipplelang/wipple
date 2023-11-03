@@ -225,7 +225,9 @@ impl Typechecker {
 
     fn convert_match_pattern(&self, pattern: &analysis::Pattern) -> Pattern {
         match &pattern.kind {
-            analysis::PatternKind::Error(_) => unreachable!(),
+            analysis::PatternKind::Error(_)
+            | analysis::PatternKind::UnresolvedDestructure
+            | analysis::PatternKind::UnresolvedVariant => unreachable!(),
             analysis::PatternKind::Wildcard => Pattern::Binding(None),
             analysis::PatternKind::Variable(variable) => Pattern::Binding(Some(Variable {
                 id: *variable,

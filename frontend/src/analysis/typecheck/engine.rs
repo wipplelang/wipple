@@ -20,6 +20,7 @@ pub struct TypeInfo {
 impl TypeInfo {
     pub fn merge(&mut self, other: Self) {
         self.span = self.span.or(other.span);
+        self.trace = other.trace;
         // Don't merge reasons
     }
 }
@@ -268,9 +269,9 @@ pub enum TypeError {
         TraitId,
         Vec<UnresolvedType>,
         Option<SpanList>,
-        Vec<SpanList>,
+        Vec<(SpanList, Vec<(TraitId, Vec<UnresolvedType>)>)>,
     ),
-    UnresolvedType(UnresolvedType),
+    UnresolvedType(UnresolvedType, Option<(Option<SpanList>, Vec<SpanList>)>),
     InvalidNumericLiteral(UnresolvedType),
 }
 
