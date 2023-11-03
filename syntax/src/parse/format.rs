@@ -153,22 +153,17 @@ impl<D: Driver> Expr<D> {
             ExprKind::Number(number) => write!(f, "{}", number.as_ref())?,
             ExprKind::Asset(raw) => write!(f, "`{}`", raw.as_ref())?,
             ExprKind::List(lines) => {
-                // Preserve operators that are wrapped in parentheses
-                // (eg. `f (*)` is not equivalent to `f *`)
-                let is_operator = |expr: &parse::Expr<D>| match &expr.kind {
-                    ExprKind::Name(name, _) => {
-                        // FIXME: Sync with lexer regex
-                        regex::Regex::new(r"^[~`!@#$%^&*\-+=\\\|:;<,>.?/]+$")
-                            .unwrap()
-                            .is_match(name.as_ref())
-                    }
-                    _ => false,
-                };
-
                 let single_expr = lines.len() == 1
                     && (is_single_statement
-                        || (lines.first().unwrap().exprs.len() == 1
-                            && !is_operator(lines.first().unwrap().exprs.first().unwrap())));
+                        || (lines.first().unwrap().exprs.len() == 1 && {
+                            // Preserve operators and syntaxes that are wrapped
+                            // in parentheses (eg. `f (*)` is not equivalent to
+                            // `f *`, and `(list)` is not equivalent to `list`)
+                            !matches!(
+                                lines.first().unwrap().exprs.first().unwrap().kind,
+                                ExprKind::Name(_, _)
+                            )
+                        }));
 
                 if !single_expr {
                     write!(f, "(")?;
