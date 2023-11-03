@@ -1013,10 +1013,7 @@ impl Backend {
             let mut result = Vec::new();
 
             for diagnostic in diagnostics {
-                let mut notes = diagnostic.notes.into_iter();
-
-                let primary_note = notes.next().unwrap();
-                if primary_note.location.span.first().path.as_str() != document.path.as_str() {
+                if diagnostic.location.span.first().path.as_str() != document.path.as_str() {
                     continue;
                 }
 
@@ -1026,8 +1023,8 @@ impl Backend {
                 };
 
                 let range = match range_from(
-                    primary_note.location.span.first(),
-                    primary_note.location.use_caller_if_available,
+                    diagnostic.location.span.first(),
+                    diagnostic.location.use_caller_if_available,
                 ) {
                     Some(range) => range,
                     None => continue,
@@ -1037,11 +1034,11 @@ impl Backend {
                     range,
                     severity: Some(severity),
                     source: Some(String::from("wipple")),
-                    message: format!("{}\n{}", diagnostic.message, primary_note.message),
+                    message: diagnostic.message,
                     ..Default::default()
                 });
 
-                for note in notes {
+                for note in diagnostic.notes {
                     if note.location.span.first().path.as_str() != document.path.as_str() {
                         continue;
                     }

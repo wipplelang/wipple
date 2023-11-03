@@ -704,6 +704,7 @@ impl Match {
         HashSet::<ReachableMarkerId>::from_iter(arms)
             .difference(&HashSet::from_iter(self.info.reachable.iter().copied()))
             .copied()
+            .sorted()
             .collect()
     }
 }

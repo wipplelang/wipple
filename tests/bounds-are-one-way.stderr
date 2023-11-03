@@ -1,0 +1,8 @@
+error: 
+  ┌─ test:4:5
+  │
+4 │ f : T
+  │     ^ could not find instance `T Number`
+  │
+  = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
+

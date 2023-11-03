@@ -1229,13 +1229,14 @@ impl Typechecker {
         instance: bool,
         expr: lower::Expression,
     ) {
-        let (tr, generic_ty, bounds, span, contextual) = if instance {
-            let (tr, trait_params, span, bounds) = self
+        let (tr, generic_ty, params, bounds, span, contextual) = if instance {
+            let (tr, trait_params, span, params, bounds) = self
                 .with_instance_decl(id, |decl| {
                     (
                         decl.trait_id,
                         decl.trait_params.clone(),
                         decl.span,
+                        decl.params.clone(),
                         decl.bounds.clone(),
                     )
                 })
@@ -1270,12 +1271,13 @@ impl Typechecker {
                 .unwrap()
                 .body = Some(expr);
 
-            (Some(tr), finalized_ty, bounds, span, false)
+            (Some(tr), finalized_ty, params, bounds, span, false)
         } else {
             self.with_constant_decl(id, |decl| {
                 (
                     None,
                     decl.ty.clone(),
+                    decl.params.clone(),
                     decl.bounds.clone(),
                     decl.span,
                     decl.attributes.is_contextual,
@@ -1311,7 +1313,7 @@ impl Typechecker {
 
                 let mut generic_ty = engine::UnresolvedType::from(generic_ty);
 
-                let mut substitutions = engine::GenericSubstitutions::new();
+                let mut substitutions = info.param_mask.clone();
                 self.add_substitutions_skipping_inferred(&mut generic_ty, &mut substitutions);
                 for bound in &mut bounds {
                     for param in &mut bound.params {
@@ -1363,6 +1365,13 @@ impl Typechecker {
         }
 
         let mut monomorphize_info = MonomorphizeInfo::default();
+
+        for param in params {
+            monomorphize_info.param_mask.insert(
+                param,
+                self.unresolved_ty(engine::UnresolvedTypeKind::Parameter(param), None),
+            );
+        }
 
         for mut bound in bounds {
             for param in &mut bound.params {
@@ -2916,6 +2925,7 @@ impl Typechecker {
 
 #[derive(Debug, Clone, Default)]
 struct MonomorphizeInfo {
+    param_mask: engine::GenericSubstitutions,
     param_substitutions: engine::GenericSubstitutions,
     cache: HashMap<(ConstantId, engine::UnresolvedType), ItemId>,
     bound_instances: BTreeMap<
@@ -3888,7 +3898,7 @@ impl Typechecker {
         find_instance!(|params: Params| {
             let mut candidates = Vec::new();
             for (mut instance_params, instance_id, span, _) in bound_instances.clone() {
-                let mut substitutions = engine::GenericSubstitutions::new();
+                let mut substitutions = info.param_mask.clone();
                 let prev_ctx = self.ctx.clone();
 
                 for ty in &mut instance_params {
@@ -3914,7 +3924,7 @@ impl Typechecker {
         find_instance!(|params: Params| {
             let mut candidates = Vec::new();
             'check: for id in declared_instances.clone() {
-                let mut substitutions = engine::GenericSubstitutions::new();
+                let mut substitutions = info.param_mask.clone();
                 let prev_ctx = self.ctx.clone();
 
                 let (mut instance_params, instance_span, generic_bounds) = match self
