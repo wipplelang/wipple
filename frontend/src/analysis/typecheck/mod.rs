@@ -3792,14 +3792,14 @@ impl Typechecker {
         }
 
         macro_rules! unify_instance_params {
-            ($candidates:expr, $params:expr, $instance_params:expr, $substitutions:expr, $prev_ctx:expr $(,)?) => {{
+            ($candidates:expr, $unify:ident, $params:expr, $instance_params:expr, $substitutions:expr, $prev_ctx:expr $(,)?) => {{
                 let mut error = None;
                 for ((param_ty, (_, inferred)), instance_param_ty) in
                     $params.clone().into_iter().zip($instance_params.clone())
                 {
                     if self
                         .ctx
-                        .unify_generic(param_ty.clone(), instance_param_ty.clone())
+                        .$unify(param_ty.clone(), instance_param_ty.clone())
                         .is_err()
                     {
                         error = Some(error.unwrap_or(inferred) || inferred);
@@ -3907,6 +3907,7 @@ impl Typechecker {
 
                 unify_instance_params!(
                     candidates,
+                    unify_generic,
                     params,
                     instance_params,
                     substitutions,
@@ -3955,6 +3956,7 @@ impl Typechecker {
 
                 unify_instance_params!(
                     candidates,
+                    unify,
                     params,
                     instance_params,
                     substitutions,
