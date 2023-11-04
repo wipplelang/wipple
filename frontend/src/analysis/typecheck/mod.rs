@@ -1301,68 +1301,76 @@ impl Typechecker {
             );
         }
 
-        // // Check if the constant's generic type can be simplified by applying
-        // // known bounds
-        // let reduced_ty = (tr.is_none() && has_type_params)
-        //     .then(|| {
-        //         let (generic_ty, generic_bounds) = match self
-        //             .with_constant_decl(id, |decl| (decl.ty.clone(), decl.bounds.clone()))
-        //         {
-        //             Some((generic_ty, bounds)) => (generic_ty, bounds),
-        //             None => return None,
-        //         };
+        // Check if the constant's generic type can be simplified by applying
+        // known bounds
+        let reduced_ty = (tr.is_none() && has_type_params)
+            .then(|| {
+                let (generic_ty, generic_bounds) = match self
+                    .with_constant_decl(id, |decl| (decl.ty.clone(), decl.bounds.clone()))
+                {
+                    Some((generic_ty, bounds)) => (generic_ty, bounds),
+                    None => return None,
+                };
 
-        //         let mut bounds = generic_bounds.clone();
+                let mut bounds = generic_bounds.clone();
 
-        //         let mut info = MonomorphizeInfo::default();
+                let mut info = MonomorphizeInfo::default();
 
-        //         let mut generic_ty = engine::UnresolvedType::from(generic_ty);
+                let mut generic_ty = engine::UnresolvedType::from(generic_ty);
 
-        //         let mut substitutions = info.param_mask.clone();
-        //         self.add_substitutions_skipping_inferred(&mut generic_ty, &mut substitutions);
-        //         for bound in &mut bounds {
-        //             for param in &mut bound.params {
-        //                 self.add_substitutions_skipping_inferred(param, &mut substitutions);
-        //             }
-        //         }
+                let mut substitutions = info.param_mask.clone();
+                self.add_substitutions(&mut generic_ty, &mut substitutions);
+                for bound in &mut bounds {
+                    for param in &mut bound.params {
+                        self.add_substitutions(param, &mut substitutions);
+                    }
+                }
 
-        //         info.param_substitutions = substitutions;
+                info.param_substitutions = substitutions;
 
-        //         for (generic_bound, mut bound) in generic_bounds.into_iter().zip(bounds) {
-        //             let instance_id = self
-        //                 .instance_for_params(
-        //                     bound.trait_id,
-        //                     bound.params.clone(),
-        //                     None,
-        //                     expr.span,
-        //                     Some(bound.clone()),
-        //                     // None,
-        //                     // generic_bound.params,
-        //                     &mut info,
-        //                 )
-        //                 .ok()
-        //                 .flatten();
+                let instances = generic_bounds
+                    .into_iter()
+                    .zip(bounds)
+                    .map(|(generic_bound, bound)| {
+                        let instance_id = self
+                            .instance_for_params(
+                                bound.trait_id,
+                                bound.params.clone(),
+                                None,
+                                expr.span,
+                                Some(bound.clone()),
+                                None,
+                                generic_bound.params,
+                                &mut info,
+                            )
+                            .ok()
+                            .flatten();
 
-        //             for param in &mut bound.params {
-        //                 param.apply(&self.ctx);
-        //             }
+                        (instance_id, bound)
+                    })
+                    .collect::<Vec<_>>();
 
-        //             let instances = info.bound_instances.entry(bound.trait_id).or_default();
+                for (instance_id, mut bound) in instances {
+                    for param in &mut bound.params {
+                        param.apply(&self.ctx);
+                    }
 
-        //             if !instances.iter().any(|(params, ..)| params == &bound.params) {
-        //                 instances.push((
-        //                     bound.params,
-        //                     instance_id,
-        //                     bound.span,
-        //                     self.compiler.backtrace(),
-        //                 ));
-        //             }
-        //         }
+                    let instances = info.bound_instances.entry(bound.trait_id).or_default();
 
-        //         let (ty, found_variables) = generic_ty.finalize(&self.ctx);
-        //         found_variables.then_some(ty)
-        //     })
-        //     .flatten();
+                    if !instances.iter().any(|(params, ..)| params == &bound.params) {
+                        instances.push((
+                            bound.params,
+                            instance_id,
+                            bound.span,
+                            self.compiler.backtrace(),
+                        ));
+                    }
+                }
+
+                let (ty, found_variables) = generic_ty.finalize(&self.ctx);
+                found_variables.then_some(ty)
+            })
+            .flatten();
 
         let expr = self.convert_expr(expr, &mut ConvertInfo::new(id));
         if let Err(error) = self.ctx.unify_generic(expr.ty.clone(), generic_ty.clone()) {
@@ -1381,7 +1389,6 @@ impl Typechecker {
         let mut substitutions = monomorphize_info.param_mask.clone();
         for mut bound in bounds {
             for param in &mut bound.params {
-                // param.apply(&self.ctx);
                 self.add_substitutions(param, &mut substitutions);
             }
 
@@ -1417,7 +1424,7 @@ impl Typechecker {
             let decl = decls.constants.get_mut(&id).unwrap();
 
             decl.body = Some(expr);
-            // decl.reduced_ty = reduced_ty;
+            decl.reduced_ty = reduced_ty;
         }
     }
 
@@ -1474,7 +1481,7 @@ impl Typechecker {
 
         let mut instantiated_bounds = generic_bounds.clone();
 
-        let mut substitutions = engine::GenericSubstitutions::new();
+        let mut substitutions = info.param_mask.clone(); // engine::GenericSubstitutions::new();
         for bound in &mut instantiated_bounds {
             for param in &mut bound.params {
                 self.add_substitutions(param, &mut substitutions);
@@ -1559,18 +1566,26 @@ impl Typechecker {
 
         monomorphize_info.param_substitutions = substitutions;
 
-        for (generic_bound, mut bound) in generic_bounds.into_iter().zip(instantiated_bounds) {
-            let instance_id = self.instance_for_params(
-                bound.trait_id,
-                bound.params.clone(),
-                use_id,
-                use_span,
-                Some(bound.clone()),
-                Some((constant_generic_ty.clone(), instantiated_generic_ty.clone())),
-                generic_bound.params,
-                &mut monomorphize_info,
-            )?;
+        let instances = generic_bounds
+            .into_iter()
+            .zip(instantiated_bounds)
+            .map(|(generic_bound, bound)| {
+                let instance_id = self.instance_for_params(
+                    bound.trait_id,
+                    bound.params.clone(),
+                    use_id,
+                    use_span,
+                    Some(bound.clone()),
+                    Some((constant_generic_ty.clone(), instantiated_generic_ty.clone())),
+                    generic_bound.params,
+                    &mut monomorphize_info,
+                )?;
 
+                Ok((instance_id, bound))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        for (instance_id, mut bound) in instances {
             for param in &mut bound.params {
                 param.apply(&self.ctx);
             }
@@ -1635,11 +1650,10 @@ impl Typechecker {
                 None => return,
             };
 
-        let mut generic_constant_decl =
-            match self.with_constant_decl(generic_id, |decl| decl.clone()) {
-                Some(decl) => decl,
-                None => return,
-            };
+        let generic_constant_decl = match self.with_constant_decl(generic_id, |decl| decl.clone()) {
+            Some(decl) => decl,
+            None => return,
+        };
 
         let prev_ctx = self.ctx.clone();
 
@@ -1667,9 +1681,10 @@ impl Typechecker {
 
         let mut monomorphize_info = MonomorphizeInfo::default();
 
-        let generic_bounds = generic_constant_decl.bounds.clone();
+        let generic_bounds = generic_constant_decl.bounds;
+        let mut instantiated_bounds = generic_bounds.clone();
 
-        for bound in &mut generic_constant_decl.bounds {
+        for bound in &mut instantiated_bounds {
             // Any type parameters not unified with the specialized constant
             // won't appear here, so add them in manually
             for ty in &mut bound.params {
@@ -1692,53 +1707,58 @@ impl Typechecker {
 
         monomorphize_info.param_substitutions = substitutions;
 
-        for (generic_bound, mut bound) in generic_bounds
+        let instances = generic_bounds
             .into_iter()
-            .zip(generic_constant_decl.bounds.clone())
-        {
-            let instance_id = match self.instance_for_params(
-                bound.trait_id,
-                bound.params.clone(),
-                None,
-                specialized_constant_decl.span,
-                Some(bound.clone()),
-                Some((
-                    generic_constant_decl.ty.clone(),
-                    specialized_constant_decl.ty.clone().into(),
-                )),
-                generic_bound.params.clone(),
-                &mut monomorphize_info,
-            ) {
-                Ok(id) => id,
-                Err(error) => {
-                    let error = match error {
-                        FindInstanceError::RecursionLimitReached
-                        | FindInstanceError::TraitNotFound => continue,
-                        FindInstanceError::TypeError(error) => error,
-                        FindInstanceError::MultipleCandidates(candidates) => {
-                            let ty = self.substitute_trait_params(
-                                bound.trait_id,
-                                bound.params,
-                                bound.span,
-                            );
+            .zip(instantiated_bounds)
+            .filter_map(|(generic_bound, bound)| {
+                let instance_id = match self.instance_for_params(
+                    bound.trait_id,
+                    bound.params.clone(),
+                    None,
+                    specialized_constant_decl.span,
+                    Some(bound.clone()),
+                    Some((
+                        generic_constant_decl.ty.clone(),
+                        specialized_constant_decl.ty.clone().into(),
+                    )),
+                    generic_bound.params.clone(),
+                    &mut monomorphize_info,
+                ) {
+                    Ok(id) => id,
+                    Err(error) => {
+                        let error = match error {
+                            FindInstanceError::RecursionLimitReached
+                            | FindInstanceError::TraitNotFound => return None,
+                            FindInstanceError::TypeError(error) => error,
+                            FindInstanceError::MultipleCandidates(candidates) => {
+                                let ty = self.substitute_trait_params(
+                                    bound.trait_id,
+                                    bound.params,
+                                    bound.span,
+                                );
 
-                            self.error(
-                                engine::TypeError::UnresolvedType(ty, candidates),
-                                None,
-                                bound.span,
-                            )
-                        }
-                    };
+                                self.error(
+                                    engine::TypeError::UnresolvedType(ty, candidates),
+                                    None,
+                                    bound.span,
+                                )
+                            }
+                        };
 
-                    self.add_error(error.with_note(Note::secondary(
-                        specialized_constant_decl.span,
-                        "this constant must satisfy the bounds of the original constant",
-                    )));
+                        self.add_error(error.with_note(Note::secondary(
+                            specialized_constant_decl.span,
+                            "this constant must satisfy the bounds of the original constant",
+                        )));
 
-                    continue;
-                }
-            };
+                        return None;
+                    }
+                };
 
+                Some((instance_id, bound))
+            })
+            .collect::<Vec<_>>();
+
+        for (instance_id, mut bound) in instances {
             for param in &mut bound.params {
                 param.apply(&self.ctx);
             }
@@ -2939,9 +2959,8 @@ impl Typechecker {
 struct MonomorphizeInfo {
     param_mask: engine::GenericSubstitutions,
     param_substitutions: engine::GenericSubstitutions,
-    // bound_substitutions: engine::GenericSubstitutions,
     cache: HashMap<(ConstantId, engine::UnresolvedType), ItemId>,
-    bound_instances: BTreeMap<
+    bound_instances: im::OrdMap<
         TraitId,
         Vec<(
             Vec<engine::UnresolvedType>,
