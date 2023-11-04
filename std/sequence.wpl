@@ -31,7 +31,12 @@ next : { next } -> next ()
 [help-playground "https://wipple.dev/std/examples/sequence.txt"]
 As-Sequence : Container (infer Element) => trait (Container -> Sequence Element)
 
-Element => instance (As-Sequence (Sequence Element) Element) : it
+(infer Element) => instance (As-Sequence (Sequence Element) Element) : it
+
+(infer Element) => instance (As-Sequence (Maybe Element) Element) : maybe -> {
+  maybe : mutable maybe
+  sequence (take! maybe)
+}
 
 [help "Transform each item in a sequence, producing a new sequence."]
 [help-group "Collections"]
@@ -111,6 +116,23 @@ flatten : outer-container -> {
   }
 }
 
+[help "Find the first item in a sequence that can be transformed into a `Some` value."]
+[help-group "Collections"]
+find-with :: Collection Element Result where (As-Sequence Collection Element) => (Element -> Maybe Result) -> Collection -> Maybe Result
+find-with : f collection -> {
+  seq : As-Sequence collection
+
+  repeat {
+    when (next seq) {
+      Some element -> when (f element) {
+        Some result -> Break (Some result)
+        None -> Continue
+      }
+      None -> Break None
+    }
+  }
+}
+
 [help "Reduce a sequence down to a single item."]
 [help-group "Collections"]
 reduce :: Container Element Result where (As-Sequence Container Element) => Result -> (Element -> Result -> Result) -> Container -> Result
@@ -140,7 +162,7 @@ From-Sequence : (infer Element) Container => trait (Sequence Element -> Containe
 collect :: Input (infer Element) Output where (From-Sequence Element Output) (As-Sequence Input Element) => Input -> Output -- FIXME: bound order shouldn't matter, but putting `As-Sequence` first breaks type inference
 collect : input -> From-Sequence (As-Sequence input)
 
-Element => instance (From-Sequence Element (List Element)) : seq -> {
+(infer Element) => instance (From-Sequence Element (List Element)) : seq -> {
   l : mutable (list)
   repeat {
     when (next seq) {
@@ -155,7 +177,7 @@ Element => instance (From-Sequence Element (List Element)) : seq -> {
   get l
 }
 
-Element => instance (As-Sequence (List Element) Element) : l -> {
+(infer Element) => instance (As-Sequence (List Element) Element) : l -> {
   index : mutable 0
 
   sequence {
@@ -166,13 +188,6 @@ Element => instance (As-Sequence (List Element) Element) : l -> {
       }
       None -> None
     }
-  }
-}
-
-A => instance (As-Sequence (Maybe A) A) : maybe -> {
-  maybe : mutable maybe
-  sequence {
-    take! maybe
   }
 }
 
@@ -331,3 +346,58 @@ any? : condition? collection -> {
 
   any-helper condition? (As-Sequence collection)
 }
+
+[help "Create a sequence that takes values from two sequences at a time."]
+[help-group "Collections"]
+zip :: Left Left-Element Right Right-Element where (As-Sequence Left Left-Element) (As-Sequence Right Right-Element) => Right -> Left -> Sequence (Left-Element , Right-Element)
+zip : right left -> {
+  left : As-Sequence left
+  right : As-Sequence right
+
+  sequence {
+    when (next left , next right) {
+      Some a , Some b -> Some (a , b)
+      _ -> None
+    }
+  }
+}
+
+[help "Implement this trait to enable appending the contents of a sequence to your collection type."]
+[help-group "Collections"]
+Extend : Container (infer Element) => trait (Sequence Element -> Container -> Container)
+
+Element => instance (Extend (List Element) Element) : seq l -> seq . reduce l append
+
+[help "Append the contents of a sequence to a collection."]
+[help-group "Collections"]
+extend :: From Container (infer Element) where (As-Sequence From Element) (Extend Container Element) => From -> Container -> Container
+extend : seq -> Extend (As-Sequence seq)
+
+[help "Append the contents of a sequence to a `Mutable` collection."]
+[help-group "Collections"]
+extend! :: From Container (infer Element) where (As-Sequence From Element) (Extend Container Element) => From -> Mutable Container -> ()
+extend! : seq collection -> collection . set! (get collection . extend seq)
+
+Left (infer Left-Element) Right (infer Right-Element) where (Extend Left Left-Element) (Extend Right Right-Element) => \
+  instance (Extend (Left , Right) (Left-Element , Right-Element)) : seq (left , right) -> {
+    left : mutable left
+    right : mutable right
+
+    repeat {
+      when (next seq) {
+        Some (a , b) -> {
+          left . extend! (Some a)
+          right . extend! (Some b)
+          Continue
+        }
+        None -> Break ()
+      }
+    }
+
+    get left , get right
+  }
+
+[help "Split a sequence that produces two values at a time into two separate collections."]
+[help-group "Collections"]
+unzip :: Collection (infer Left-Element) (infer Right-Element) Left Right where (As-Sequence Collection (Left-Element , Right-Element)) (Default Left) (Extend Left Left-Element) (Default Right) (Extend Right Right-Element) => Collection -> (Left , Right)
+unzip : collection -> extend (As-Sequence collection) (Default , Default)
