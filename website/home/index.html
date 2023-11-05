@@ -57,9 +57,9 @@ layout: page
     </section>
 
     <section class="flex flex-col gap-6">
-        <h2 class="text-2xl font-semibold">Latest news</h2>
+        <h2 class="text-2xl font-semibold">Featured news</h2>
 
-        {% for post in collections.posts | reverse | last3 %}
+        {% for post in collections.featuredPosts | reverse %}
             <a href="{{ post.url }}" class="block w-full no-underline">
                 <div class="flex flex-col w-full gap-6 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-6">
                     <div>
@@ -81,6 +81,8 @@ layout: page
                 </div>
             </a>
         {% endfor %}
+
+        <p><a href="/blog">Read more -></a></p>
     </section>
 </main>
 
@@ -106,13 +108,15 @@ layout: page
                 document.getElementById("hero-text-left").innerText = text;
                 document.getElementById("hero-image").src = image;
 
-                document.getElementById("hero-text").classList.toggle('opacity-0');
-                document.getElementById("hero-image").classList.toggle('opacity-0');
+                setTimeout(() => {
+                    document.getElementById("hero-text").classList.toggle('opacity-0');
+                    document.getElementById("hero-image").classList.toggle('opacity-0');
+                }, 250);
             }, 500);
 
             if (n == 0) {
                 clearInterval(interval);
             }
-        }, 7500);
+        }, 5500);
     })();
 </script>

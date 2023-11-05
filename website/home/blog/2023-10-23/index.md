@@ -3,6 +3,7 @@ layout: blog
 title: Teaching Wipple in elementary school
 date: 2023-10-23
 image: /blog/2023-10-23/images/tes.jpg
+tags: [posts, featuredPosts]
 ---
 
 Last week, I visited Tyngsborough Elementary School in Tyngsborough, Massachusetts to teach Wipple to the 4th and 5th graders in Science and Technology class. Students spent about 30 minutes creating a Turtle drawing using the Wipple Playground. For many students, Wipple was their first text-based programming language, so learning Wipple was also an opportunity to practice typing. As I walked around the classroom, I was amazed by everyone's creativity!

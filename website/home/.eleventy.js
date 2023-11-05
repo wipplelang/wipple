@@ -35,14 +35,6 @@ module.exports = (eleventy) => {
         return node;
     });
 
-    eleventy.addFilter("last3", (array) => {
-        if (array.length <= 3) {
-            return array;
-        } else {
-            return array.slice(array.length - 3);
-        }
-    });
-
     eleventy.setBrowserSyncConfig({ reloadDelay: 1500 });
 
     return {
