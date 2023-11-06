@@ -34,9 +34,9 @@ Maybe : Value => type {
   Some Value
 }
 
-A where (Equal A) => instance (Equal (Maybe A)) : a b -> when (a , b) {
-  Some x , Some y -> x = y
-  None , None -> True
+A where (Equal A) => instance (Equal (Maybe A)) : a b -> when (a ; b) {
+  Some x ; Some y -> x = y
+  None ; None -> True
   _ -> False
 }
 

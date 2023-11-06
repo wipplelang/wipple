@@ -1,11 +1,11 @@
 error: 
   ┌─ test:9:2
   │
-9 │ (f) :: (Number , _) -- `B` should not be inferred to be `Number`
+9 │ (f) :: (Number ; _) -- `B` should not be inferred to be `Number`
   │  ^
   │  │
   │  could not determine the type of this expression
-  │  this has type `Number , _`
+  │  this has type `Number ; _`
   │
   = annotate the type with `::`: `:: {%type%}`
   = for more information, see https://wipple.dev/playground/?lesson=errors/unknown-type

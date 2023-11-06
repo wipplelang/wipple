@@ -308,7 +308,7 @@ fn format_type_with(
                                     false,
                                 )
                             })
-                            .join(" , "),
+                            .join(" ; "),
                     };
 
                     if is_top_level || is_empty {

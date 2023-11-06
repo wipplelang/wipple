@@ -12,7 +12,7 @@ use futures::{stream, StreamExt};
 #[derive(Debug, Clone)]
 pub struct TupleType<D: Driver> {
     pub span: D::Span,
-    pub comma_span: D::Span,
+    pub semicolon_span: D::Span,
     pub tys: Vec<Result<Type<D>, SyntaxError<D>>>,
 }
 impl<D: Driver> TupleType<D> {
@@ -29,7 +29,7 @@ impl<D: Driver> Format<D> for TupleType<D> {
                 .into_iter()
                 .map(|result| result?.format())
                 .collect::<Result<Vec<_>, _>>()?
-                .join(" , ")
+                .join(" ; ")
         ))
     }
 }
@@ -41,25 +41,32 @@ impl<D: Driver> Syntax<D> for TupleTypeSyntax {
 
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::operator(
-            ",",
+            ";",
             OperatorAssociativity::Variadic,
-            |context, span, (_span, exprs), comma_span, (_unused_span, unused_exprs), scope_set| async move {
+            |context,
+             span,
+             (_span, exprs),
+             semicolon_span,
+             (_unused_span, unused_exprs),
+             scope_set| async move {
                 // HACK: All of the expressions are contained in `lhs`. In the
                 // future, handle variadic operators specially.
                 assert!(unused_exprs.is_empty());
 
                 let tys = stream::iter(exprs)
                     .then(|expr| {
-                        context
-                            .ast_builder
-                            .build_expr::<TypeSyntax>(context.clone(), expr, scope_set.clone())
+                        context.ast_builder.build_expr::<TypeSyntax>(
+                            context.clone(),
+                            expr,
+                            scope_set.clone(),
+                        )
                     })
                     .collect()
                     .await;
 
                 Ok(TupleType {
                     span,
-                    comma_span,
+                    semicolon_span,
                     tys,
                 }
                 .into())
@@ -69,5 +76,5 @@ impl<D: Driver> Syntax<D> for TupleTypeSyntax {
 }
 
 pub(crate) fn builtin_syntax_definitions() -> Vec<crate::ast::BuiltinSyntaxDefinition> {
-    vec![crate::ast::BuiltinSyntaxDefinition::COMMA]
+    vec![crate::ast::BuiltinSyntaxDefinition::SEMICOLON]
 }

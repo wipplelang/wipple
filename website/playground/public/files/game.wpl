@@ -36,8 +36,8 @@ height : 24
 
 [help "Move the cursor to a particular x-y location."]
 [help-group "Game Engine"]
-locate :: (Natural , Natural) -> ()
-locate : (x , y) -> handle of game . message "locate" (x as Number , y as Number)
+locate :: (Natural ; Natural) -> ()
+locate : (x ; y) -> handle of game . message "locate" (x as Number ; y as Number)
 
 [help "Set the foreground color."]
 [help-group "Game Engine"]
@@ -106,8 +106,8 @@ render-line-fill :: A where (As A Glyph) => Text -> A -> ()
 render-line-fill : text replacement -> {
   -- This works because JavaScript is dynamically typed
   when (replacement as Glyph) {
-    Character-Glyph c -> handle of game . message "render-line-fill" (text , c)
-    Numeric-Glyph n -> handle of game . message "render-line-fill" (text , (n as Number))
+    Character-Glyph c -> handle of game . message "render-line-fill" (text ; c)
+    Numeric-Glyph n -> handle of game . message "render-line-fill" (text ; (n as Number))
   }
 }
 
@@ -117,8 +117,8 @@ render-fill :: A where (As A Glyph) => Text -> A -> ()
 render-fill : text replacement -> {
   -- This works because JavaScript is dynamically typed
   when (replacement as Glyph) {
-    Character-Glyph c -> handle of game . message "render-fill" (text , c)
-    Numeric-Glyph n -> handle of game . message "render-fill" (text , (n as Number))
+    Character-Glyph c -> handle of game . message "render-fill" (text ; c)
+    Numeric-Glyph n -> handle of game . message "render-fill" (text ; (n as Number))
   }
 }
 
@@ -139,7 +139,7 @@ play : { song loop } -> {
     False -> 0
   }
 
-  handle of game . message "play" (song , loop)
+  handle of game . message "play" (song ; loop)
 }
 
 [help "Pause the music being played."]

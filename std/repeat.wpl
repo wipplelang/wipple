@@ -21,17 +21,17 @@ Repeat-Predicate : A (infer Result) => trait (A -> () -> Control-Flow Result)
 [private]
 repeat-with-predicate' :: P (infer Result) where (Repeat-Predicate P Result) => P -> (() -> Result) -> Result
 repeat-with-predicate' : predicate -> {
-  looper :: Result => ((() -> Control-Flow Result) , (() -> Result)) -> Result
-  looper : (next , body) -> when (next ()) {
+  looper :: Result => ((() -> Control-Flow Result) ; (() -> Result)) -> Result
+  looper : (next ; body) -> when (next ()) {
     Continue -> {
       body ()
-      looper (next , body)
+      looper (next ; body)
     }
     Break value -> value
   }
 
   next : (Repeat-Predicate predicate)
-  body -> looper (next , body)
+  body -> looper (next ; body)
 }
 
 instance (Repeat-Predicate (() -> Boolean) ()) : f () -> \

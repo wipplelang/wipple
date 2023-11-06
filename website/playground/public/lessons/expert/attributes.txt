@@ -51,14 +51,14 @@ Animals : type
 Plants : type
 
 [on-unimplemented ("_ does not eat _" Animal Food)]
-Eat : Animal Food => trait (Animal , Food)
+Eat : Animal Food => trait (Animal ; Food)
 
 instance (Eat Carnivore Animals) : ...
 instance (Eat Herbivore Plants) : ...
 instance (Eat Omnivore Animals) : ...
 instance (Eat Omnivore Plants) : ...
 
-(Eat) :: Carnivore , Plants
+(Eat) :: Carnivore ; Plants
 
 ---
 id: kRSFMDL_

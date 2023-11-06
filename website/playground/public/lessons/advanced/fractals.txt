@@ -44,7 +44,7 @@ triangle : size -> if (size > 5) {
 speed 10
 
 -- Set up
-position (30 pixels , 30 pixels)
+position (30 pixels ; 30 pixels)
 left (30 degrees)
 
 -- Draw the fractal
@@ -79,7 +79,7 @@ tree : size -> if (size > 5) {
 }
 
 speed 10
-position (0 pixels , 50 pixels)
+position (0 pixels ; 50 pixels)
 tree 25
 
 ---

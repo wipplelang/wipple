@@ -70,7 +70,7 @@ One more example — function calling. For function calling, we split the work 
 2.  Determine the type of the input expression, and unify this type with `{0}`.
 3.  The type of the function call expression as a whole is `{1}`.
 
-For expressions that instantiate a type or refer to a trait or constant, we copy the type from the declaration and replace all type parameters with new type variables. So if `make-tuple :: A B => A -> B -> (A , B)`, the _expression_ `make-tuple` will have type `{0} -> {1} -> ({0} , {1})`. This does _not_ happen inside the body of `make-tuple` itself, where `A` and `B` are preserved so that `make-tuple` cannot construct values of type `A` or `B` or assume anything else about them.
+For expressions that instantiate a type or refer to a trait or constant, we copy the type from the declaration and replace all type parameters with new type variables. So if `make-tuple :: A B => A -> B -> (A ; B)`, the _expression_ `make-tuple` will have type `{0} -> {1} -> ({0} ; {1})`. This does _not_ happen inside the body of `make-tuple` itself, where `A` and `B` are preserved so that `make-tuple` cannot construct values of type `A` or `B` or assume anything else about them.
 
 And finally, expressions that resolved to an error during lowering (eg. undefined variables) are assigned the error type, which unifies with every other type. This is so that error expressions don't produce even more errors during typechecking, confusing the user.
 

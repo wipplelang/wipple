@@ -349,14 +349,14 @@ any? : condition? collection -> {
 
 [help "Create a sequence that takes values from two sequences at a time."]
 [help-group "Collections"]
-zip :: Left Left-Element Right Right-Element where (As-Sequence Left Left-Element) (As-Sequence Right Right-Element) => Right -> Left -> Sequence (Left-Element , Right-Element)
+zip :: Left Left-Element Right Right-Element where (As-Sequence Left Left-Element) (As-Sequence Right Right-Element) => Right -> Left -> Sequence (Left-Element ; Right-Element)
 zip : right left -> {
   left : As-Sequence left
   right : As-Sequence right
 
   sequence {
-    when (next left , next right) {
-      Some a , Some b -> Some (a , b)
+    when (next left ; next right) {
+      Some a ; Some b -> Some (a ; b)
       _ -> None
     }
   }
@@ -379,13 +379,13 @@ extend! :: From Container (infer Element) where (As-Sequence From Element) (Exte
 extend! : seq collection -> collection . set! (get collection . extend seq)
 
 Left (infer Left-Element) Right (infer Right-Element) where (Extend Left Left-Element) (Extend Right Right-Element) => \
-  instance (Extend (Left , Right) (Left-Element , Right-Element)) : seq (left , right) -> {
+  instance (Extend (Left ; Right) (Left-Element ; Right-Element)) : seq (left ; right) -> {
     left : mutable left
     right : mutable right
 
     repeat {
       when (next seq) {
-        Some (a , b) -> {
+        Some (a ; b) -> {
           left . extend! (Some a)
           right . extend! (Some b)
           Continue
@@ -394,10 +394,10 @@ Left (infer Left-Element) Right (infer Right-Element) where (Extend Left Left-El
       }
     }
 
-    get left , get right
+    get left ; get right
   }
 
 [help "Split a sequence that produces two values at a time into two separate collections."]
 [help-group "Collections"]
-unzip :: Collection (infer Left-Element) (infer Right-Element) Left Right where (As-Sequence Collection (Left-Element , Right-Element)) (Default Left) (Extend Left Left-Element) (Default Right) (Extend Right Right-Element) => Collection -> (Left , Right)
-unzip : collection -> extend (As-Sequence collection) (Default , Default)
+unzip :: Collection (infer Left-Element) (infer Right-Element) Left Right where (As-Sequence Collection (Left-Element ; Right-Element)) (Default Left) (Extend Left Left-Element) (Default Right) (Extend Right Right-Element) => Collection -> (Left ; Right)
+unzip : collection -> extend (As-Sequence collection) (Default ; Default)

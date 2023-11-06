@@ -301,7 +301,7 @@ impl Expression {
                 write!(f, "(")?;
                 for (index, expr) in exprs.iter().enumerate() {
                     if index != 0 {
-                        write!(f, " , ")?;
+                        write!(f, " ; ")?;
                     }
 
                     expr.display_with(f, file, indent)?;
@@ -547,7 +547,7 @@ impl Pattern {
                 write!(f, "(")?;
                 for ((index, pattern), ty) in patterns.iter().enumerate().zip(value_tys) {
                     if index != 0 {
-                        write!(f, " , ")?;
+                        write!(f, " ; ")?;
                     }
 
                     pattern.display_with(f, ty, file, indent)?;
@@ -618,7 +618,7 @@ impl TypeAnnotation {
                 write!(f, "(")?;
                 for (index, ty) in tys.iter().enumerate() {
                     if index != 0 {
-                        write!(f, " , ")?;
+                        write!(f, " ; ")?;
                     }
 
                     ty.display_with(f, file)?;

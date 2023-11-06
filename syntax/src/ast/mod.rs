@@ -160,11 +160,11 @@ impl BuiltinSyntaxDefinition {
         "infer {%type%}",
     );
 
-    pub(crate) const COMMA: Self = Self::operator(
-        ",",
+    pub(crate) const SEMICOLON: Self = Self::operator(
+        ";",
         "Create a tuple.",
-        "https://wipple.dev/std/examples/comma.txt",
-        "{%left%} , {%right%}",
+        "https://wipple.dev/std/examples/semicolon.txt",
+        "{%left%} ; {%right%}",
     );
 
     pub(crate) const WHEN: Self = Self::function(

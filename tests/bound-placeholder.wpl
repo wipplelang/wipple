@@ -1,4 +1,4 @@
-T : A B => trait (A , B)
+T : A B => trait (A ; B)
 
 foo :: A where (T A _) => A -> ()
 foo : just ()

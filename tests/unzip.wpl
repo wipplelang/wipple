@@ -1,4 +1,4 @@
-left , right : list (1 , "a") (2 , "b") (3 , "c") . unzip :: (List _ , List _)
+left ; right : list (1 ; "a") (2 ; "b") (3 ; "c") . unzip :: (List _ ; List _)
 
 show "Left:"
 left . each show

@@ -15,7 +15,7 @@ locked: true
 
 # Tuples
 
-A **tuple** is a way to group together multiple values without needing to create a whole new type. You can create a tuple using the comma (`,`) operator:
+A **tuple** is a way to group together multiple values without needing to create a whole new type. You can create a tuple using the semicolon (`;`) operator:
 
 ---
 id: aJnBZLMe
@@ -23,7 +23,7 @@ type: code
 lint: false
 ---
 
-point : 3 , 2
+point : 3 ; 2
 
 ---
 id: tue4ufuj
@@ -38,8 +38,8 @@ id: PsaOCQXv
 type: code
 ---
 
-point : 3 , 2
-x , y : point
+point : 3 ; 2
+x ; y : point
 show x
 show y
 
@@ -49,15 +49,15 @@ type: text
 locked: true
 ---
 
-The type of a tuple also uses the comma syntax:
+The type of a tuple also uses the semicolon syntax:
 
 ---
 id: H3x_2qDZ
 type: code
 ---
 
-origin :: Number , Number
-origin : 0 , 0
+origin :: Number ; Number
+origin : 0 ; 0
 
 ---
 id: bL5YRsGG
@@ -72,12 +72,12 @@ id: OpHh28Ss
 type: code
 ---
 
-origin : 0 , 0
+origin : 0 ; 0
 
-translate : (dx , dy) (x , y) -> (x + dx) , (y + dy)
-up : dy -> translate (0 , dy)
+translate : (dx ; dy) (x ; y) -> (x + dx) ; (y + dy)
+up : dy -> translate (0 ; dy)
 
-x , y : origin . up 3
+x ; y : origin . up 3
 
 show ("(_, _)" x y)
 

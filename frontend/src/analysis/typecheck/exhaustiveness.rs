@@ -445,7 +445,7 @@ impl Typechecker {
                     .iter()
                     .map(|pattern| self.format_pattern(pattern, true))
                     .collect::<Vec<_>>()
-                    .join(" , ");
+                    .join(" ; ");
 
                 if parenthesize {
                     format!("({formatted})")

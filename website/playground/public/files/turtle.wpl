@@ -62,8 +62,8 @@ speed : speed -> {
 
 [help "Set the x-y position of the turtle."]
 [help-group "Turtle Graphics"]
-position :: (Pixels , Pixels) -> ()
-position : ({ px : x } , { px : y }) -> {
+position :: (Pixels ; Pixels) -> ()
+position : ({ px : x } ; { px : y }) -> {
   handle of turtle . message "position-x" x
   handle of turtle . message "position-y" y
 }
