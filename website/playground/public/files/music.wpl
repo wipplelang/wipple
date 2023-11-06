@@ -79,7 +79,7 @@ beats : syntax { 'n beats -> beats' 'n }
 [help "Play a note on an instrument. The note name should be in the format `C4` or `Eb5`."]
 [help-group "Music"]
 note :: Text -> Note-Length -> ()
-note : note -> length -> notes (list note) length
+note : note -> length -> notes (note ,) length
 
 [help "Play multiple notes on an instrument at the same time. See `note` for more information."]
 [help-group "Music"]
@@ -99,7 +99,7 @@ notes : notes -> { ms-from-tempo } -> {
 [help "Rest for a period of time."]
 [help-group "Music"]
 rest :: Note-Length -> ()
-rest : length -> notes (list) length
+rest : length -> notes (,) length
 
 [entrypoint]
 entrypoint :: Entrypoint

@@ -163,18 +163,18 @@ collect :: Input (infer Element) Output where (From-Sequence Element Output) (As
 collect : input -> From-Sequence (As-Sequence input)
 
 (infer Element) => instance (From-Sequence Element (List Element)) : seq -> {
-  l : mutable (list)
+  list : mutable Default
   repeat {
     when (next seq) {
       Some x -> {
-        l . append! x
+        list . append! x
         Continue
       }
       None -> Break ()
     }
   }
 
-  get l
+  get list
 }
 
 (infer Element) => instance (As-Sequence (List Element) Element) : l -> {
@@ -211,7 +211,7 @@ each : f container -> container . transform f . collect
 split-by :: Collection (infer Element) where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Sequence (List Element)
 split-by : separator? -> collection -> {
   base : As-Sequence collection
-  group : mutable (Some (list))
+  group : mutable (Some Default)
 
   sequence {
     repeat {
@@ -220,7 +220,7 @@ split-by : separator? -> collection -> {
           if (separator? x) { Break (take! group) } {
             group . set! (Some (when (get group) {
               Some inner -> inner . append x
-              None -> list x
+              None -> (x ,)
             }))
 
             Continue
@@ -260,7 +260,7 @@ count : collection -> {
 [help "Collect two sequences into a single value."]
 [help-group "Collections"]
 join :: A B (infer Element) (C : A) where (As-Sequence A Element) (As-Sequence B Element) (From-Sequence Element C) => B -> A -> C
-join : b a -> collect (flatten (list (As-Sequence a) (As-Sequence b)))
+join : b a -> collect (flatten (As-Sequence a , As-Sequence b))
 
 [specialize]
 count :: Element => List Element -> Natural

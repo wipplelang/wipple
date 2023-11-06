@@ -850,7 +850,7 @@ impl Typechecker {
 
                         let expr = self.repeatedly_monomorphize_expr(item.expr, &mut item.info);
 
-                        let expr = self.finalize_expr(expr);
+                        let expr = self.finalize_expr(expr, item.top_level);
 
                         let expr = self
                             .resolve_plugins(expr, item.generic_id.map(|(_, id)| id), item.info)
@@ -1404,7 +1404,7 @@ impl Typechecker {
 
         let expr = self.repeatedly_monomorphize_expr(expr, &mut monomorphize_info);
 
-        let expr = self.finalize_expr(expr);
+        let expr = self.finalize_expr(expr, true);
 
         let expr = self
             .resolve_plugins(expr, Some(id), monomorphize_info)
@@ -4125,9 +4125,13 @@ impl Typechecker {
 }
 
 impl Typechecker {
-    fn finalize_expr(&mut self, expr: MonomorphizedExpression) -> Expression {
+    fn finalize_expr(
+        &mut self,
+        expr: MonomorphizedExpression,
+        report_error_if_unresolved: bool,
+    ) -> Expression {
         let (ty, resolved) = expr.ty.finalize(&self.ctx);
-        if !resolved {
+        if !resolved && report_error_if_unresolved {
             self.add_error(self.error(
                 engine::TypeError::UnresolvedType(expr.ty.clone(), None),
                 expr.id,
@@ -4188,13 +4192,13 @@ impl Typechecker {
             MonomorphizedExpressionKind::Block(statements, top_level) => ExpressionKind::Block(
                 statements
                     .into_iter()
-                    .map(|expr| self.finalize_expr(expr))
+                    .map(|expr| self.finalize_expr(expr, report_error_if_unresolved))
                     .collect(),
                 top_level,
             ),
             MonomorphizedExpressionKind::Call(func, input, first) => ExpressionKind::Call(
-                Box::new(self.finalize_expr(*func)),
-                Box::new(self.finalize_expr(*input)),
+                Box::new(self.finalize_expr(*func, report_error_if_unresolved)),
+                Box::new(self.finalize_expr(*input, report_error_if_unresolved)),
                 first,
             ),
             MonomorphizedExpressionKind::Function(pattern, body, captures) => {
@@ -4205,7 +4209,7 @@ impl Typechecker {
 
                 ExpressionKind::Function(
                     self.finalize_pattern(pattern, &input_ty),
-                    Box::new(self.finalize_expr(*body)),
+                    Box::new(self.finalize_expr(*body, report_error_if_unresolved)),
                     captures
                         .into_iter()
                         .map(|(var, ty)| {
@@ -4218,15 +4222,17 @@ impl Typechecker {
                 )
             }
             MonomorphizedExpressionKind::When(input, arms) => {
-                let input = self.finalize_expr(*input);
+                let input = self.finalize_expr(*input, report_error_if_unresolved);
 
                 let arms = arms
                     .into_iter()
                     .map(|arm| Arm {
                         span: arm.span,
                         pattern: self.finalize_pattern(arm.pattern, &input.ty),
-                        guard: arm.guard.map(|expr| self.finalize_expr(expr)),
-                        body: self.finalize_expr(arm.body),
+                        guard: arm
+                            .guard
+                            .map(|expr| self.finalize_expr(expr, report_error_if_unresolved)),
+                        body: self.finalize_expr(arm.body, report_error_if_unresolved),
                     })
                     .collect::<Vec<_>>();
 
@@ -4238,7 +4244,7 @@ impl Typechecker {
                     identifier,
                     inputs
                         .into_iter()
-                        .map(|expr| self.finalize_expr(expr))
+                        .map(|expr| self.finalize_expr(expr, report_error_if_unresolved))
                         .collect(),
                 )
             }
@@ -4246,7 +4252,7 @@ impl Typechecker {
                 func,
                 inputs
                     .into_iter()
-                    .map(|expr| self.finalize_expr(expr))
+                    .map(|expr| self.finalize_expr(expr, report_error_if_unresolved))
                     .collect(),
             ),
             MonomorphizedExpressionKind::Plugin(path, name, inputs) => ExpressionKind::Plugin(
@@ -4254,11 +4260,11 @@ impl Typechecker {
                 name,
                 inputs
                     .into_iter()
-                    .map(|expr| self.finalize_expr(expr))
+                    .map(|expr| self.finalize_expr(expr, report_error_if_unresolved))
                     .collect(),
             ),
             MonomorphizedExpressionKind::Initialize(pattern, value) => {
-                let value = self.finalize_expr(*value);
+                let value = self.finalize_expr(*value, report_error_if_unresolved);
 
                 ExpressionKind::Initialize(
                     self.finalize_pattern(pattern, &value.ty),
@@ -4268,51 +4274,59 @@ impl Typechecker {
             MonomorphizedExpressionKind::Structure(fields) => ExpressionKind::Structure(
                 fields
                     .into_iter()
-                    .map(|expr| self.finalize_expr(expr))
+                    .map(|expr| self.finalize_expr(expr, report_error_if_unresolved))
                     .collect(),
             ),
             MonomorphizedExpressionKind::Variant(index, values) => ExpressionKind::Variant(
                 index,
                 values
                     .into_iter()
-                    .map(|expr| self.finalize_expr(expr))
+                    .map(|expr| self.finalize_expr(expr, report_error_if_unresolved))
                     .collect(),
             ),
             MonomorphizedExpressionKind::Tuple(exprs) => ExpressionKind::Tuple(
                 exprs
                     .into_iter()
-                    .map(|expr| self.finalize_expr(expr))
+                    .map(|expr| self.finalize_expr(expr, report_error_if_unresolved))
                     .collect(),
             ),
             MonomorphizedExpressionKind::Format(segments, trailing_segment) => {
                 ExpressionKind::Format(
                     segments
                         .into_iter()
-                        .map(|(text, expr)| (text, self.finalize_expr(expr)))
+                        .map(|(text, expr)| {
+                            (text, self.finalize_expr(expr, report_error_if_unresolved))
+                        })
                         .collect(),
                     trailing_segment,
                 )
             }
             MonomorphizedExpressionKind::With((id, value), body) => ExpressionKind::With(
-                (id, Box::new(self.finalize_expr(*value))),
-                Box::new(self.finalize_expr(*body)),
+                (
+                    id,
+                    Box::new(self.finalize_expr(*value, report_error_if_unresolved)),
+                ),
+                Box::new(self.finalize_expr(*body, report_error_if_unresolved)),
             ),
             MonomorphizedExpressionKind::ContextualConstant(id) => {
                 ExpressionKind::ContextualConstant(id)
             }
-            MonomorphizedExpressionKind::End(value) => {
-                ExpressionKind::End(Box::new(self.finalize_expr(*value)))
-            }
+            MonomorphizedExpressionKind::End(value) => ExpressionKind::End(Box::new(
+                self.finalize_expr(*value, report_error_if_unresolved),
+            )),
             MonomorphizedExpressionKind::Extend(value, fields) => ExpressionKind::Extend(
-                Box::new(self.finalize_expr(*value)),
+                Box::new(self.finalize_expr(*value, report_error_if_unresolved)),
                 fields
                     .into_iter()
-                    .map(|(index, field)| (index, self.finalize_expr(field)))
+                    .map(|(index, field)| {
+                        (index, self.finalize_expr(field, report_error_if_unresolved))
+                    })
                     .collect(),
             ),
-            MonomorphizedExpressionKind::Semantics(semantics, expr) => {
-                ExpressionKind::Semantics(semantics, Box::new(self.finalize_expr(*expr)))
-            }
+            MonomorphizedExpressionKind::Semantics(semantics, expr) => ExpressionKind::Semantics(
+                semantics,
+                Box::new(self.finalize_expr(*expr, report_error_if_unresolved)),
+            ),
         })();
 
         Expression {
@@ -4510,7 +4524,7 @@ impl Typechecker {
                 }
 
                 let expr = self.repeatedly_monomorphize_expr(expr, &mut info);
-                let expr = self.finalize_expr(expr);
+                let expr = self.finalize_expr(expr, true);
 
                 let replaced = final_expr.as_root_replace(id, expr);
                 assert!(replaced);

@@ -1,4 +1,4 @@
-languages : list "C" "Python" "Java" "JavaScript" "Wipple" :: List Text
+languages : "C" , "Python" , "Java" , "JavaScript" , "Wipple"
 
 short-names : languages . filter (name -> count name < 5)
 short-names . each show

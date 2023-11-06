@@ -6,7 +6,7 @@ locked: true
 
 # How to use `collect`
 
-`collect` takes a sequenc and stores each value produced into a container. Usually, `collect` is the last function called in a sequence chain:
+`collect` takes a sequence and stores each value produced into a container. Usually, `collect` is the last function called in a sequence chain:
 
 ---
 id: 1IKjyRPC
@@ -14,7 +14,7 @@ type: code
 lint: false
 ---
 
-numbers : list 1 2 3 . transform (Add 1) . collect :: List _
+numbers : (1 , 2 , 3) . transform (Add 1) . collect :: List _
 
 ---
 id: YzKqY2UQ
@@ -38,5 +38,5 @@ instance (Default Sum) : Sum { sum : 0 }
 
 instance (From-Sequence Number Sum) : reduce Default (next { sum } -> Sum { sum : sum + next })
 
-{ sum } : list 1 2 3 . collect :: Sum
+{ sum } : (1 , 2 , 3) . collect :: Sum
 show sum

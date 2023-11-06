@@ -1,22 +1,22 @@
 error: 
-  ┌─ test:1:18
+  ┌─ test:1:15
   │
-1 │ my-list : list 1 "hi" ()
-  │                  ^^^^
-  │                  │
-  │                  expected `Number`, but found `Text`
-  │                  this element must have the same type as the other elements
+1 │ my-list : 1 , "hi" , ()
+  │               ^^^^
+  │               │
+  │               expected `Number`, but found `Text`
+  │               this element must have the same type as the other elements
   │
   = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types
 
 error: 
-  ┌─ test:1:23
+  ┌─ test:1:22
   │
-1 │ my-list : list 1 "hi" ()
-  │                       ^^
-  │                       │
-  │                       expected `Number`, but found `()`
-  │                       this element must have the same type as the other elements
+1 │ my-list : 1 , "hi" , ()
+  │                      ^^
+  │                      │
+  │                      expected `Number`, but found `()`
+  │                      this element must have the same type as the other elements
   │
   = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types
 

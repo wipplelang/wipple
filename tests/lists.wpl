@@ -1,4 +1,4 @@
-my-list : list 1 2 3
+my-list : 1 , 2 , 3
 
 show (my-list . first)
 show (my-list . last)

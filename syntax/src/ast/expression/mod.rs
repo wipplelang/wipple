@@ -398,6 +398,95 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                         mut max_precedence,
                     ) = operators.front().cloned().unwrap();
 
+                    if let OperatorAssociativity::Variadic = max_precedence.associativity() {
+                        let operator_expr = exprs[max_index].clone();
+
+                        let mut grouped_exprs = vec![(None, Vec::new())];
+                        {
+                            let mut operators = operators.clone();
+
+                            for (index, expr) in exprs.iter().enumerate() {
+                                let operator_index =
+                                    operators.front().map(|(index, _, _, _, _)| *index);
+
+                                if Some(index) == operator_index {
+                                    operators.pop_front();
+                                    grouped_exprs.push((Some(index), Vec::new()));
+                                } else {
+                                    grouped_exprs.last_mut().unwrap().1.push(expr);
+                                }
+                            }
+                        }
+
+                        // Allow trailing operators
+                        if grouped_exprs.last().unwrap().1.is_empty() {
+                            grouped_exprs.pop();
+                        }
+
+                        let exprs = std::iter::once(Ok(operator_expr))
+                            .chain(grouped_exprs.into_iter().map(
+                                |(operator_index, grouped_exprs)| {
+                                    if grouped_exprs.is_empty() {
+                                        if let Some(operator_index) = operator_index {
+                                            let operator_span = exprs[operator_index].span;
+
+                                            self.ast_builder.driver.syntax_error_with(
+                                                [(
+                                                    operator_span,
+                                                    format!(
+                                                        "expected values on right side of `{}`",
+                                                        max_name.as_ref(),
+                                                    ),
+                                                )],
+                                                Some(Fix::new(
+                                                    format!(
+                                                        "insert a value to the right of `{}`",
+                                                        max_name.as_ref(),
+                                                    ),
+                                                    FixRange::after(operator_span),
+                                                    " {%value%}",
+                                                )),
+                                            );
+                                        } else {
+                                            let operator_span = exprs[max_index].span;
+
+                                            self.ast_builder.driver.syntax_error_with(
+                                                [(
+                                                    operator_span,
+                                                    format!(
+                                                        "expected values on left side of `{}`",
+                                                        max_name.as_ref(),
+                                                    ),
+                                                )],
+                                                Some(Fix::new(
+                                                    format!(
+                                                        "insert a value to the left of `{}",
+                                                        max_name.as_ref(),
+                                                    ),
+                                                    FixRange::before(operator_span),
+                                                    "{%value%} ",
+                                                )),
+                                            );
+                                        }
+
+                                        return Err(self.ast_builder.syntax_error(list_span));
+                                    }
+
+                                    Ok(parse::Expr::list_or_expr(
+                                        list_span,
+                                        grouped_exprs.into_iter().cloned().collect(),
+                                    ))
+                                },
+                            ))
+                            .collect::<Result<Vec<_>, _>>()?;
+
+                        debug_assert!(!exprs.is_empty());
+
+                        return self
+                            .expand_syntax(list_span, max_syntax, exprs, scope_set)
+                            .await;
+                    }
+
                     for (index, name, expr, syntax, precedence) in operators.iter().skip(1).cloned()
                     {
                         macro_rules! replace {
@@ -413,41 +502,43 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
                         match precedence.cmp(&max_precedence) {
                             Ordering::Greater => replace!(),
                             Ordering::Less => continue,
-                            Ordering::Equal => {
-                                match precedence.associativity() {
-                                    OperatorAssociativity::Left => {
-                                        if index > max_index {
-                                            replace!();
-                                        }
-                                    }
-                                    OperatorAssociativity::Right => {
-                                        if index < max_index {
-                                            replace!()
-                                        }
-                                    }
-                                    OperatorAssociativity::None => {
-                                        self.ast_builder.driver.syntax_error_with(
-                                            [
-                                                (
-                                                    exprs[index].span,
-                                                    format!("only one of `{}` may be provided at a time", max_name.as_ref()),
-                                                ),
-                                                (
-                                                    exprs[max_index].span,
-                                                    format!("first use of `{}`", max_name.as_ref()),
-                                                ),
-                                            ],
-                                            Some(Fix::new(
-                                                format!("remove this use of `{}`", max_name.as_ref()),
-                                                FixRange::replace(exprs[index].span),
-                                                "",
-                                            )),
-                                        );
-
-                                        return Err(self.ast_builder.syntax_error(list_span));
+                            Ordering::Equal => match precedence.associativity() {
+                                OperatorAssociativity::Variadic => unreachable!("handled above"),
+                                OperatorAssociativity::Left => {
+                                    if index > max_index {
+                                        replace!();
                                     }
                                 }
-                            }
+                                OperatorAssociativity::Right => {
+                                    if index < max_index {
+                                        replace!()
+                                    }
+                                }
+                                OperatorAssociativity::None => {
+                                    self.ast_builder.driver.syntax_error_with(
+                                        [
+                                            (
+                                                exprs[index].span,
+                                                format!(
+                                                    "only one of `{}` may be provided at a time",
+                                                    max_name.as_ref()
+                                                ),
+                                            ),
+                                            (
+                                                exprs[max_index].span,
+                                                format!("first use of `{}`", max_name.as_ref()),
+                                            ),
+                                        ],
+                                        Some(Fix::new(
+                                            format!("remove this use of `{}`", max_name.as_ref()),
+                                            FixRange::replace(exprs[index].span),
+                                            "",
+                                        )),
+                                    );
+
+                                    return Err(self.ast_builder.syntax_error(list_span));
+                                }
+                            },
                         }
                     }
 
@@ -520,7 +611,7 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
         SyntaxAssignmentValue<D>,
         OperatorPrecedenceStatementAttributeKind,
     )> {
-        exprs
+        let mut operators = exprs
             .into_iter()
             .filter_map(move |(index, expr)| {
                 if let parse::ExprKind::Name(name, name_scope) = &expr.kind {
@@ -558,7 +649,11 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
 
                 None
             })
-            .collect()
+            .collect::<Vec<_>>();
+
+        operators.sort_by_key(|(_, _, _, _, precedence)| std::cmp::Reverse(*precedence));
+
+        operators
     }
 
     async fn expand_syntax(

@@ -22,7 +22,7 @@ type: text
 locked: true
 ---
 
-Unlike a `list`, a tuple is fixed in size and each value can be a different type. To get the values back out of a tuple, use the `;` operator on the left-hand side of a variable assignment:
+Unlike a list, a tuple is fixed in size and each value can be a different type. To get the values back out of a tuple, use the `;` operator on the left-hand side of a variable assignment:
 
 ---
 id: eS_1aST2

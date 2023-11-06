@@ -17,7 +17,7 @@ locked: true
 
 Often, you'll be writing programs that deal with a list of items instead of individual variables. Let's learn how to use lists in Wipple!
 
-The easiest way to make a list is to use the `list` function:
+To construct a list, you separate each element with a comma (`,`):
 
 ---
 id: 6P-2w8Bt
@@ -25,7 +25,7 @@ type: code
 lint: false
 ---
 
-my-list : list 1 2 3
+my-list : 1 , 2 , 3
 
 ---
 id: 7JdtiXqa
@@ -46,7 +46,7 @@ Item : type {
     Text-Item Text
 }
 
-my-list : list (Number-Item 1) (Text-Item "hi")
+my-list : Number-Item 1 , Text-Item "hi"
 
 ---
 id: 3MSl65z5
@@ -61,7 +61,7 @@ id: 30ExR_Iz
 type: code
 ---
 
-my-list : list 1 2 3
+my-list : 1 , 2 , 3
 show (my-list . first)
 show (my-list . last)
 
@@ -78,7 +78,7 @@ id: EooHA7AL
 type: code
 ---
 
-my-list : list 1 2 3
+my-list : 1 , 2 , 3
 show (my-list . nth 1)
 
 ---
@@ -98,7 +98,7 @@ id: 3lCsKd0y
 type: code
 ---
 
-my-list : list 1 2 3
+my-list : 1 , 2 , 3
 my-list . each show
 
 ---
@@ -134,7 +134,7 @@ golf : Sport {
   players : 1
 }
 
-sports : list basketball soccer golf
+sports : basketball , soccer , golf
 
 names : sports . transform (sport -> name of sport)
 names . each show
@@ -152,7 +152,7 @@ id: YOP73aZQ
 type: code
 ---
 
-languages : list "C" "Python" "Java" "JavaScript" "Wipple"
+languages : "C" , "Python" , "Java" , "JavaScript" , "Wipple"
 
 short-names : languages . filter (name -> count name < 5)
 short-names . each show

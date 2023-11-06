@@ -1,4 +1,4 @@
-show (list 1 2 3 . all? (> 0))
-show (list 1 -2 3 . all? (> 0))
-show (list 1 -2 3 . any? (> 0))
-show (list -1 -2 -3 . any? (> 0))
+show ((1 , 2 , 3) . all? (> 0))
+show ((1 , -2 , 3) . all? (> 0))
+show ((1 , -2 , 3) . any? (> 0))
+show ((-1 , -2 , -3) . any? (> 0))

@@ -49,30 +49,33 @@ pub enum OperatorPrecedenceStatementAttributeKind {
     Accessor,
     #[strum(serialize = "Composition-Precedence")]
     Composition,
+    #[strum(serialize = "Variadic-Precedence")]
+    Variadic,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum OperatorAssociativity {
     Left,
     Right,
+    Variadic,
     None,
 }
 
 impl OperatorPrecedenceStatementAttributeKind {
     pub fn associativity(&self) -> OperatorAssociativity {
         use OperatorAssociativity::*;
-        use OperatorPrecedenceStatementAttributeKind::*;
 
         match self {
-            Casting => Left,
-            Exponentiation => Right,
-            Multiplication => Left,
-            Addition => Left,
-            Comparison => Left,
-            Conjunction => Left,
-            Disjunction => Left,
-            Accessor => Right,
-            Composition => Left,
+            OperatorPrecedenceStatementAttributeKind::Variadic => Variadic,
+            OperatorPrecedenceStatementAttributeKind::Casting => Left,
+            OperatorPrecedenceStatementAttributeKind::Exponentiation => Right,
+            OperatorPrecedenceStatementAttributeKind::Multiplication => Left,
+            OperatorPrecedenceStatementAttributeKind::Addition => Left,
+            OperatorPrecedenceStatementAttributeKind::Comparison => Left,
+            OperatorPrecedenceStatementAttributeKind::Conjunction => Left,
+            OperatorPrecedenceStatementAttributeKind::Disjunction => Left,
+            OperatorPrecedenceStatementAttributeKind::Accessor => Right,
+            OperatorPrecedenceStatementAttributeKind::Composition => Left,
         }
     }
 }

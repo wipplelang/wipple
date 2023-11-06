@@ -14,16 +14,16 @@ build-list! : l e -> l . append! e
 
 [help "Create a `List` with the specified elements."]
 [help-group "Collections"]
-list : syntax {
-  list -> semantics "pure" (intrinsic "make-empty-list" :: List _)
-  list ...x -> {
-    l : mutable (semantics "pure" (intrinsic "make-empty-list" :: List _))
-    ...{ (semantics "nonconsuming" (build-list! l 'x)) }
-    get l
+[operator Variadic-Precedence]
+, : syntax {
+  , ...x -> {
+    list : mutable (semantics "pure" (intrinsic "make-empty-list") :: List _)
+    ...{ (semantics "nonconsuming" (build-list! list 'x)) }
+    get list
   }
 }
 
-instance (Default (List _)) : list
+instance (Default (List _)) : (,)
 
 [help "Retrieve the first item inside a `List`, if it exists."]
 [help-group "Collections"]
@@ -52,6 +52,7 @@ nth : index l -> semantics "pure" (intrinsic "list-nth" l index)
 
 [help "Add a new item to the end of a `List`."]
 [help-group "Collections"]
+[diagnostic "collection-elements"]
 append :: A => A -> List A -> List A
 append : new l -> semantics "pure" (intrinsic "list-append" l new)
 

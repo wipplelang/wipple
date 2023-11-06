@@ -122,7 +122,7 @@ type: text
 locked: true
 ---
 
-You can use `repeat` to make repeating sections of music, and you can use `notes` to play a `list` of notes at the same time:
+You can use `repeat` to make repeating sections of music, and you can use `notes` to play a list of notes at the same time:
 
 ---
 id: lXkYRH9r
@@ -134,20 +134,20 @@ tempo 140
 
 marimba {
   repeat (4 times) {
-    notes (list `C5` `C4`) ((1 / 4) beats)
+    notes (`C5` , `C4`) ((1 / 4) beats)
     note `Bb4` ((1 / 4) beats)
     note `G4` ((1 / 2) beats)
     note `C5` ((1 / 2) beats)
-    notes (list `F4` `Bb3`) ((1 / 2) beats)
+    notes (`F4` , `Bb3`) ((1 / 2) beats)
     note `C5` ((1 / 2) beats)
     note `Bb4` ((1 / 2) beats)
     note `C5` ((1 / 2) beats)
-    notes (list `F4` `A3`) ((1 / 2) beats)
+    notes (`F4` , `A3`) ((1 / 2) beats)
     rest ((3 / 2) beats)
-    notes (list `G4` `Eb4`) (1 beats)
-    notes (list `G4` `C4`) ((1 / 2) beats)
-    notes (list `Bb4` `Eb4`) ((1 / 2) beats)
-    notes (list `C5` `F4`) ((1 / 2) beats)
+    notes (`G4` , `Eb4`) (1 beats)
+    notes (`G4` , `C4`) ((1 / 2) beats)
+    notes (`Bb4` , `Eb4`) ((1 / 2) beats)
+    notes (`C5` , `F4`) ((1 / 2) beats)
   }
 }
 

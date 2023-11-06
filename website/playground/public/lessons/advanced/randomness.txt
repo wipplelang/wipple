@@ -54,7 +54,7 @@ id: -ZgLpmz6
 type: code
 ---
 
-letters : list "A" "B" "C" "D"
+letters : "A" , "B" , "C" , "D"
 show (random letters . expect "list was empty")
 
 ---
@@ -82,7 +82,7 @@ Command : type {
 instance (Random () Command) : () -> when (random (0 to 3) :: Natural) {
   0 -> Move ((random (5 to 25)) pixels)
   1 -> Turn ((random (0 to 360)) degrees)
-  2 -> Color (random (list `red` `green` `blue`) . unwrap)
+  2 -> Color (random (`red` , `green` , `blue`) . unwrap)
   _ -> error "unreachable"
 }
 

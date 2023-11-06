@@ -261,7 +261,7 @@ impl<D: Driver> Expr<D> {
                     writeln!(f)?;
 
                     for (index, line) in lines.iter().enumerate() {
-                        line.fmt(f, indent + 1, true, index == 0, lines.len() == 1)?;
+                        line.fmt(f, indent + 1, true, index == 0, false)?;
                         writeln!(f)?;
                     }
 
@@ -269,7 +269,7 @@ impl<D: Driver> Expr<D> {
                 } else if let Some(line) = lines.first() {
                     write!(f, " ")?;
 
-                    line.fmt(f, indent, false, false, lines.len() == 1)?;
+                    line.fmt(f, indent, false, false, false)?;
 
                     write!(f, " ")?;
                 }

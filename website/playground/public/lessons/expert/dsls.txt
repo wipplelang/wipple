@@ -15,7 +15,7 @@ locked: true
 
 # Domain-specific languages
 
-It's time to learn how Wipple really works under the hood and harness its power to build your own **domain-specific languages** (DSLs). Many of the "functions" we've discussed, like `when`, `if`, and `list`, are actually defined as custom syntax! But before we learn how to make our own syntax, let's take a look at one more concept: **context**.
+It's time to learn how Wipple really works under the hood and harness its power to build your own **domain-specific languages** (DSLs). Many of the "functions" we've discussed, like `if`, are actually defined as custom syntax! But before we learn how to make our own syntax, let's take a look at one more concept: **context**.
 
 Have you ever wondered why we need `with-turtle`, `with-music`, `with-graph`, and so on? The high-level answer is that Wipple needs to know _which_ turtle or instrument or graph to use. But functions like `forward` and `note` and `plot` don't accept `Turtle` or `Music` or `Graph` values!
 
@@ -226,7 +226,7 @@ type: text
 locked: true
 ---
 
-That's how `list` works, by the way!
+That's how `,` (the list operator) works, by the way!
 
 Alright, let's go back to our robot example, and add in some custom syntax!
 

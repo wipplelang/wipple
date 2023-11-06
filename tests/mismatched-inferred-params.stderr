@@ -1,11 +1,11 @@
 error: 
-   ┌─ test:1:24
+   ┌─ test:1:25
    │
- 1 │ list 1 2 3 . transform ((_ :: Text) -> ())
-   │                        ^^^^^^^^^^^^^^^^^^^
-   │                        │
-   │                        function accepts `Text`, but it should accept `Number`
-   │                        expected `Number -> ()`, but found `Text -> ()`
+ 1 │ (1 , 2 , 3) . transform ((_ :: Text) -> ())
+   │                         ^^^^^^^^^^^^^^^^^^^
+   │                         │
+   │                         function accepts `Text`, but it should accept `Number`
+   │                         expected `Number -> ()`, but found `Text -> ()`
    │
    ┌─ <dir>/std/sequence.wpl:43:88
    │
