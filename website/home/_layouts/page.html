@@ -4,14 +4,18 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-        <title>Wipple</title>
+        {% if title %}
+            <title>{{ title }} — Wipple</title>
+        {% else %}
+            <title>Wipple</title>
 
-        <meta
-            name="description"
-            content="Learn to code with Wipple."
-        />
+            <meta
+                name="description"
+                content="Learn to code with Wipple."
+            />
+        {% endif %}
 
-         <!-- Facebook Meta Tags -->
+        <!-- Facebook Meta Tags -->
         <meta property="og:url" content="https://wipple.dev">
         <meta property="og:type" content="website">
         <meta property="og:title" content="Wipple">
