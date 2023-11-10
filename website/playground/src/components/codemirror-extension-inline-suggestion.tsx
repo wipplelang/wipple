@@ -3,7 +3,6 @@
 import {
     ViewPlugin,
     DecorationSet,
-    EditorView,
     ViewUpdate,
     Decoration,
     WidgetType,
@@ -11,7 +10,6 @@ import {
 } from "@codemirror/view";
 import {
     StateEffect,
-    Text,
     Prec,
     StateField,
     EditorState,
@@ -20,30 +18,24 @@ import {
 } from "@codemirror/state";
 
 // Current state of the autosuggestion
-const InlineSuggestionState = StateField.define<{ suggestion: null | string }>({
+const InlineSuggestionState = StateField.define<{ pos: number; text: string } | null>({
     create() {
-        return { suggestion: null };
+        return null;
     },
-    update(__, tr) {
+    update(prev, tr) {
         const inlineSuggestion = tr.effects.find((e) => e.is(InlineSuggestionEffect));
-        if (tr.state.doc)
-            if (inlineSuggestion && tr.state.doc == inlineSuggestion.value.doc) {
-                return { suggestion: inlineSuggestion.value.text };
-            }
-        return { suggestion: null };
+        if (!inlineSuggestion) return prev;
+
+        return inlineSuggestion.value;
     },
 });
 
-const InlineSuggestionEffect = StateEffect.define<{
-    text: string | null;
-    doc: Text;
-}>();
+const InlineSuggestionEffect = StateEffect.define<{ pos: number; text: string } | null>();
 
 /**
  * Provides a suggestion for the next word
  */
-function inlineSuggestionDecoration(view: EditorView, prefix: string) {
-    const pos = view.state.selection.main.head;
+function inlineSuggestionDecoration(pos: number, prefix: string) {
     const widgets = [];
     const w = Decoration.widget({
         widget: new InlineSuggestionWidget(prefix),
@@ -68,7 +60,7 @@ class InlineSuggestionWidget extends WidgetType {
     }
 }
 
-type InlineFetchFn = (update: ViewUpdate) => Promise<string>;
+type InlineFetchFn = (update: ViewUpdate) => Promise<{ pos: number; text: string } | null>;
 
 export const fetchSuggestion = (fetchFn: InlineFetchFn) =>
     ViewPlugin.fromClass(
@@ -76,11 +68,10 @@ export const fetchSuggestion = (fetchFn: InlineFetchFn) =>
             async update(update: ViewUpdate) {
                 if (!update.docChanged && !update.focusChanged && !update.selectionSet) return;
 
-                const doc = update.state.doc;
                 const result = await fetchFn(update);
                 if (result) {
                     update.view.dispatch({
-                        effects: InlineSuggestionEffect.of({ text: result, doc: doc }),
+                        effects: InlineSuggestionEffect.of(result),
                     });
                 }
             }
@@ -105,11 +96,11 @@ const renderInlineSuggestionPlugin = ViewPlugin.fromClass(
                 return;
             }
 
-            const suggestionText = update.state.field(InlineSuggestionState)?.suggestion;
-            if (suggestionText == null) {
+            const suggestion = update.state.field(InlineSuggestionState);
+            if (!suggestion) {
                 return;
             }
-            this.decorations = inlineSuggestionDecoration(update.view, suggestionText);
+            this.decorations = inlineSuggestionDecoration(suggestion.pos, suggestion.text);
         }
     },
     {
@@ -124,30 +115,21 @@ const inlineSuggestionKeymap = Prec.highest(
         {
             key: "Tab",
             run: (view) => {
-                const suggestionText = view.state.field(InlineSuggestionState)?.suggestion;
+                const suggestion = view.state.field(InlineSuggestionState);
 
                 // If there is no suggestion, do nothing and let the default keymap handle it
-                if (!suggestionText) {
+                if (!suggestion) {
                     return false;
                 }
 
                 view.dispatch({
                     ...insertCompletionText(
                         view.state,
-                        suggestionText,
-                        view.state.selection.main.head,
-                        view.state.selection.main.head
+                        suggestion.text,
+                        suggestion.pos,
+                        suggestion.pos
                     ),
-                });
-
-                return true;
-            },
-        },
-        {
-            key: "Escape",
-            run: (view) => {
-                view.dispatch({
-                    effects: InlineSuggestionEffect.of({ text: "", doc: view.state.doc }),
+                    effects: InlineSuggestionEffect.of(null),
                 });
 
                 return true;
@@ -185,7 +167,7 @@ function insertCompletionText(
 }
 
 type InlineSuggestionOptions = {
-    fetchFn: (update: ViewUpdate) => Promise<string>;
+    fetchFn: InlineFetchFn;
 };
 
 export function inlineSuggestion(options: InlineSuggestionOptions) {

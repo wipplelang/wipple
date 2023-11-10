@@ -901,6 +901,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
         () =>
             inlineSuggestion({
                 fetchFn: async (update) => {
+                    let pos = 0;
                     activeInlineCompletion.current = await (async () => {
                         if (update.state.doc.length === 0 || outputRef.current!.isRunning()) {
                             return "";
@@ -932,6 +933,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
                             return "";
                         }
 
+                        pos = node.to;
+
                         return completion + " ";
                     })();
 
@@ -939,7 +942,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         update.view.dispatch();
                     });
 
-                    return activeInlineCompletion.current;
+                    return activeInlineCompletion.current
+                        ? { pos, text: activeInlineCompletion.current }
+                        : null;
                 },
             }),
         []
