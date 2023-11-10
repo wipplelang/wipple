@@ -934,6 +934,58 @@ export const CodeEditor = (props: CodeEditorProps) => {
         });
     }, [settings.current!.autocomplete]);
 
+    const focusExtension = ViewPlugin.fromClass(
+        class {
+            private fadeDecoration = Decoration.line({ class: "opacity-50" });
+            private focusDecoration = Decoration.line({ class: "bg-blue-500 bg-opacity-10" });
+
+            public decorations = Decoration.none;
+
+            async update(update: ViewUpdate) {
+                if (!update.focusChanged && !update.selectionSet) {
+                    return;
+                }
+
+                // Only focus when the selection is empty
+                if (update.state.selection.main.from !== update.state.selection.main.to) {
+                    return;
+                }
+
+                const pos = update.state.selection.main.from;
+
+                const decorations: Range<Decoration>[] = [];
+                for (let n = 1; n <= update.state.doc.lines; n++) {
+                    const line = update.state.doc.line(n);
+
+                    const decoration =
+                        pos < line.from || pos > line.to
+                            ? this.fadeDecoration
+                            : this.focusDecoration;
+
+                    decorations.push(decoration.range(line.from, line.from));
+                }
+
+                this.decorations = Decoration.set(decorations);
+            }
+        },
+        {
+            decorations: (v) => v.decorations,
+        }
+    );
+
+    const focusExtensions = useCallback(
+        () => (settings.current!.focus ?? false ? [Prec.high(focusExtension)] : []),
+        []
+    );
+
+    const focusConfig = useMemo(() => new Compartment(), []);
+
+    useEffect(() => {
+        view.current?.dispatch({
+            effects: focusConfig.reconfigure(focusExtensions()),
+        });
+    }, [settings.current!.focus]);
+
     useEffect(() => {
         view.current = new EditorView({
             state: EditorState.create({
@@ -983,6 +1035,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     }),
                     editableConfig.of(EditorView.editable.of(true)),
                     autocompleteConfig.of(autocompleteExtensions()),
+                    focusConfig.of(focusExtensions()),
                     EditorState.allowMultipleSelections.of(false),
                 ],
             }),

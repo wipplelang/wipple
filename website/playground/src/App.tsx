@@ -67,6 +67,7 @@ interface PageLink {
 
 export interface Settings {
     beginner?: boolean;
+    focus?: boolean;
     autocomplete?: boolean;
     name?: string;
     analytics?: boolean;
@@ -487,6 +488,26 @@ const App = () => {
                                                     setSettings(
                                                         produce((settings) => {
                                                             settings.beginner = checked;
+                                                        })
+                                                    );
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div className="flex flex-row gap-2">
+                                            <div className="flex flex-col flex-1">
+                                                <p className="font-semibold">Focus mode</p>
+                                                <p className="opacity-50">
+                                                    Focus on one line of code at a time.
+                                                </p>
+                                            </div>
+
+                                            <Checkbox
+                                                checked={settings.focus ?? false}
+                                                onChange={(_e, checked) => {
+                                                    setSettings(
+                                                        produce((settings) => {
+                                                            settings.focus = checked;
                                                         })
                                                     );
                                                 }}
