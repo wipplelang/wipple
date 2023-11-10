@@ -394,5 +394,20 @@ export const useRunner = (context: any) => {
 
                 runner.current!.postMessage({ operation: "format", code, context });
             }),
+        completion: (prefix: string) =>
+            new Promise<string | undefined>(async (resolve, reject) => {
+                const prevonmessage = runner.current!.onmessage;
+                runner.current!.onmessage = (event) => {
+                    resolve(event.data);
+                    runner.current!.onmessage = prevonmessage;
+                };
+
+                runner.current!.onerror = (event) => {
+                    reject(event.error);
+                    reset();
+                };
+
+                runner.current!.postMessage({ operation: "completion", prefix, context });
+            }),
     };
 };

@@ -1374,6 +1374,43 @@ pub fn format(code: &str) -> Option<String> {
     wipple_syntax::parse::format(code)
 }
 
+#[wasm_bindgen]
+pub fn completion(prefix: &str) -> Option<String> {
+    let analysis = match get_analysis() {
+        Some(analysis) => analysis,
+        None => return None,
+    };
+
+    macro_rules! find_completion {
+        ($kind:ident) => {
+            if let Some(name) = analysis
+                .program
+                .declarations
+                .$kind
+                .values()
+                .map(|decl| {
+                    Option::from(decl.name)
+                        .map(|name: wipple_frontend::helpers::InternedString| name.as_str())
+                        .unwrap_or_default()
+                })
+                .find(|name| name.starts_with(prefix))
+            {
+                return Some(String::from(name));
+            }
+        };
+    }
+
+    // find_completion!(variables); // TODO: Check variable is accessible at cursor position
+    find_completion!(constants);
+    find_completion!(syntaxes);
+    find_completion!(types);
+    find_completion!(traits);
+    find_completion!(builtin_types);
+    find_completion!(builtin_syntaxes);
+
+    None
+}
+
 fn wipple_to_js(
     interpreter: &wipple_interpreter_backend::Interpreter,
     context: &wipple_interpreter_backend::Context,

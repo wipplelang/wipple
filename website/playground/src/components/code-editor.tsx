@@ -95,6 +95,8 @@ interface SpecialSnippet {
     lineMode: "before" | "after" | null;
 }
 
+const codeEditorFontSize = "16px";
+
 export const CodeEditor = (props: CodeEditorProps) => {
     const containerID = `code-editor-container-${props.id}`;
 
@@ -174,10 +176,13 @@ export const CodeEditor = (props: CodeEditorProps) => {
         from: number,
         to: number,
         head: number,
-        hasSelection: boolean
+        hasSelection: boolean,
+        leftMargin: number
     ) =>
         Decoration.widget({
-            widget: new InsertButtonDecoration(from, to, hasSelection, () => showInsertMenu(head)),
+            widget: new InsertButtonDecoration(from, to, hasSelection, leftMargin, () =>
+                showInsertMenu(head)
+            ),
             side: 1,
         });
 
@@ -379,11 +384,16 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
         const head = view.state.doc.lineAt(view.state.selection.main.to).to;
 
+        const leftMargin = activeInlineCompletion.current.trimEnd().length;
+
         return Decoration.set(
-            insertButtonDecoration(head, head, pos, !view.state.selection.main.empty).range(
+            insertButtonDecoration(
                 head,
-                head
-            )
+                head,
+                pos,
+                !view.state.selection.main.empty,
+                leftMargin
+            ).range(head, head)
         );
     };
 
@@ -885,34 +895,51 @@ export const CodeEditor = (props: CodeEditorProps) => {
         []
     );
 
+    const activeInlineCompletion = useRef("");
+
     const inlineCompletions = useMemo(
         () =>
             inlineSuggestion({
                 fetchFn: async (update) => {
-                    if (!update.docChanged || update.state.doc.length === 0 || !snippets.current) {
-                        return "";
-                    }
+                    activeInlineCompletion.current = await (async () => {
+                        if (update.state.doc.length === 0 || outputRef.current!.isRunning()) {
+                            return "";
+                        }
 
-                    const node = syntaxTree(update.state).cursorAt(
-                        update.state.selection.main.to,
-                        1
-                    );
+                        const node = syntaxTree(update.state).cursorAt(
+                            update.state.selection.main.to,
+                            -1
+                        );
 
-                    if (
-                        node.to !== update.state.selection.main.to ||
-                        node.node.firstChild != null ||
-                        !["Name", "Type"].includes(node.type.name)
-                    ) {
-                        return "";
-                    }
+                        if (
+                            node.to !== update.state.selection.main.to ||
+                            node.node.firstChild != null ||
+                            !["Name", "Type"].includes(node.type.name)
+                        ) {
+                            return "";
+                        }
 
-                    // const text = update.state.sliceDoc(node.from, node.to);
-                    // const completion = null;
-                    // if (!completion) return "";
-                    // return completion.name.slice(text.length) + " ";
+                        const prefix = update.state.sliceDoc(node.from, node.to);
+                        let completion = await outputRef.current!.completion(prefix);
 
-                    // TODO: Add back inline completions
-                    return "";
+                        if (!completion) {
+                            return "";
+                        }
+
+                        completion = completion.slice(prefix.length);
+
+                        if (!completion) {
+                            return "";
+                        }
+
+                        return completion + " ";
+                    })();
+
+                    requestAnimationFrame(() => {
+                        update.view.dispatch();
+                    });
+
+                    return activeInlineCompletion.current;
                 },
             }),
         []
@@ -1001,7 +1028,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     EditorView.lineWrapping,
                     EditorView.baseTheme({
                         "&.cm-editor": {
-                            fontSize: "16px",
+                            fontSize: codeEditorFontSize,
                         },
                         "&.cm-editor.cm-focused": {
                             outline: "none",
@@ -1474,6 +1501,7 @@ class InsertButtonDecoration extends WidgetType {
         private from: number,
         private to: number,
         private hasSelection: boolean,
+        private leftMargin: number,
         private onClick: () => void
     ) {
         super();
@@ -1483,21 +1511,30 @@ class InsertButtonDecoration extends WidgetType {
         return (
             this.from === widget.from &&
             this.to === widget.to &&
-            this.hasSelection === widget.hasSelection
+            this.hasSelection === widget.hasSelection &&
+            this.leftMargin === widget.leftMargin
         );
     }
 
     toDOM() {
         const container = document.createElement("span");
         ReactDOM.createRoot(container).render(
-            <InsertButton hasSelection={this.hasSelection} onClick={this.onClick} />
+            <InsertButton
+                hasSelection={this.hasSelection}
+                leftMargin={this.leftMargin}
+                onClick={this.onClick}
+            />
         );
 
         return container;
     }
 }
 
-const InsertButton = (props: { hasSelection: boolean; onClick: () => void }) => {
+const InsertButton = (props: {
+    hasSelection: boolean;
+    leftMargin: number;
+    onClick: () => void;
+}) => {
     const [showButton, setShowButton] = useState(false);
 
     useEffect(() => {
@@ -1514,8 +1551,14 @@ const InsertButton = (props: { hasSelection: boolean; onClick: () => void }) => 
                 className={`absolute ${
                     showButton ? "opacity-100" : "opacity-0"
                 } transition-opacity`}
+                style={{ fontSize: codeEditorFontSize, paddingLeft: `${props.leftMargin}ch` }}
             >
-                <Tooltip title="Insert" disableHoverListener={!showButton} hidden={!showButton}>
+                <Tooltip
+                    title="Insert"
+                    disableHoverListener={!showButton}
+                    hidden={!showButton}
+                    className="ml-1"
+                >
                     <div
                         className="flex items-center justify-center bg-blue-500 ml-1 mt-[-12pt] w-5 h-5 rounded-md text-white cursor-pointer"
                         onClick={props.onClick}

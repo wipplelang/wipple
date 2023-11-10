@@ -74,6 +74,8 @@ export const fetchSuggestion = (fetchFn: InlineFetchFn) =>
     ViewPlugin.fromClass(
         class Plugin {
             async update(update: ViewUpdate) {
+                if (!update.docChanged && !update.focusChanged && !update.selectionSet) return;
+
                 const doc = update.state.doc;
                 const result = await fetchFn(update);
                 if (result) {
@@ -94,6 +96,7 @@ const renderInlineSuggestionPlugin = ViewPlugin.fromClass(
         }
         update(update: ViewUpdate) {
             if (
+                !update.view.hasFocus ||
                 update.state.doc.length === 0 ||
                 update.selectionSet ||
                 !update.state.selection.main.empty

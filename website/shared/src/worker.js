@@ -165,6 +165,12 @@ onmessage = async (event) => {
                 postMessage(formatted);
                 break;
             }
+            case "completion": {
+                const { prefix } = event.data;
+                const completion = runner.completion(prefix);
+                postMessage(completion);
+                break;
+            }
             case "pluginSuccessCallback":
                 await responders[event.data.id].resolve(event.data.output);
                 responders[event.data.id] = undefined;

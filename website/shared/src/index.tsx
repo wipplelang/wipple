@@ -60,6 +60,7 @@ interface UiElement {
 export interface PlaygroundRunner {
     isRunning: () => boolean;
     format: (code: string) => Promise<string | undefined>;
+    completion: (prefix: string) => Promise<string | undefined>;
     hover: (start: number, end: number) => Promise<HoverOutput | null>;
     clearOutput: () => void;
     expandSnippet: (
@@ -287,6 +288,7 @@ export const PlaygroundRunner = forwardRef<
     useImperativeHandle(ref, () => ({
         isRunning: () => isRunning.current,
         format: runner.format,
+        completion: runner.completion,
         hover: runner.hover,
         clearOutput: () => setOutput({ code: props.code, items: [], diagnostics: [] }),
         expandSnippet: runner.expandSnippet,
