@@ -851,7 +851,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         }
 
                         if (update.focusChanged || update.selectionSet) {
-                            if ((!isEditable() || !update.selectionSet) && update.view.hasFocus) {
+                            if (!isEditable()) {
                                 return;
                             }
 
@@ -943,6 +943,11 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
             async update(update: ViewUpdate) {
                 if (!update.focusChanged && !update.selectionSet) {
+                    return;
+                }
+
+                if (!update.view.hasFocus) {
+                    this.decorations = Decoration.none;
                     return;
                 }
 
