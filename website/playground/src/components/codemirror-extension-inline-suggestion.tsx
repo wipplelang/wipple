@@ -69,11 +69,9 @@ export const fetchSuggestion = (fetchFn: InlineFetchFn) =>
                 if (!update.docChanged && !update.focusChanged && !update.selectionSet) return;
 
                 const result = await fetchFn(update);
-                if (result) {
-                    update.view.dispatch({
-                        effects: InlineSuggestionEffect.of(result),
-                    });
-                }
+                update.view.dispatch({
+                    effects: InlineSuggestionEffect.of(result),
+                });
             }
         }
     );
@@ -98,8 +96,10 @@ const renderInlineSuggestionPlugin = ViewPlugin.fromClass(
 
             const suggestion = update.state.field(InlineSuggestionState);
             if (!suggestion) {
+                this.decorations = Decoration.none;
                 return;
             }
+
             this.decorations = inlineSuggestionDecoration(suggestion.pos, suggestion.text);
         }
     },
