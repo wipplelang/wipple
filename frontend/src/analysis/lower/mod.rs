@@ -223,6 +223,7 @@ pub struct TypeAttributes {
     pub on_mismatch: Vec<(Option<TypeParameterId>, InternedString)>,
     pub convert_from: Vec<(TypeAnnotation, wipple_syntax::parse::Expr<Analysis>)>,
     pub no_reuse: Option<Option<InternedString>>,
+    pub sealed: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -296,7 +297,7 @@ pub struct ConstantDeclaration {
     pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
     pub value: Expression,
-    pub is_variant: bool,
+    pub enumeration_ty: Option<TypeId>,
     pub attributes: ConstantAttributes,
 }
 
@@ -306,7 +307,7 @@ pub struct UnresolvedConstantDeclaration {
     pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
     pub value: Shared<Option<Expression>>,
-    pub is_variant: bool,
+    pub enumeration_ty: Option<TypeId>,
     pub attributes: ConstantAttributes,
 }
 
@@ -317,7 +318,7 @@ impl From<ConstantDeclaration> for UnresolvedConstantDeclaration {
             bounds: decl.bounds,
             ty: decl.ty,
             value: Shared::new(Some(decl.value)),
-            is_variant: decl.is_variant,
+            enumeration_ty: decl.enumeration_ty,
             attributes: decl.attributes,
         }
     }
@@ -333,7 +334,7 @@ impl Resolve<ConstantDeclaration> for UnresolvedConstantDeclaration {
                 .value
                 .try_into_unique()
                 .expect("uninitialized constant"),
-            is_variant: self.is_variant,
+            enumeration_ty: self.enumeration_ty,
             attributes: self.attributes,
         }
     }
@@ -1768,7 +1769,7 @@ impl Lowerer {
                             bounds,
                             ty,
                             value: Default::default(),
-                            is_variant: false,
+                            enumeration_ty: None,
                             attributes,
                         });
 
@@ -4589,6 +4590,7 @@ impl Lowerer {
                 .no_reuse
                 .as_ref()
                 .map(|attribute| Some(attribute.no_reuse_text?.1)),
+            sealed: attributes.sealed.is_some(),
         }
     }
 
@@ -4980,7 +4982,7 @@ impl Lowerer {
                     bounds: Vec::new(),
                     ty: constructor_ty,
                     value: Shared::new(Some(constructor)),
-                    is_variant: true,
+                    enumeration_ty: Some(id),
                     attributes: Default::default(),
                 },
             )

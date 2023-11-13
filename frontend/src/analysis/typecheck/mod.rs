@@ -3,6 +3,7 @@
 #[macro_use]
 mod number;
 
+mod access;
 pub mod display;
 mod engine;
 mod exhaustiveness;
@@ -149,7 +150,7 @@ pub struct ConstantDecl {
     pub ty: engine::Type,
     pub reduced_ty: Option<engine::Type>,
     pub specializations: Vec<ConstantId>,
-    pub is_variant: bool,
+    pub enumeration_ty: Option<TypeId>,
     pub attributes: lower::ConstantAttributes,
     pub body: Option<Expression>,
     pub uses: HashSet<SpanList>,
@@ -958,6 +959,38 @@ impl Typechecker {
             self.report_errors();
         }
 
+        // Check exhaustiveness, usage and access
+
+        if !self.compiler.has_errors() {
+            for decl in self.declarations.borrow().constants.values() {
+                if let Some(expr) = decl.body.as_ref() {
+                    self.check_exhaustiveness(expr);
+                    self.check_usage(expr);
+                    self.check_access(expr);
+                }
+            }
+
+            for decl in self
+                .declarations
+                .borrow()
+                .instances
+                .values()
+                .flat_map(|instances| instances.values())
+            {
+                if let Some(expr) = decl.body.as_ref() {
+                    self.check_exhaustiveness(expr);
+                    self.check_usage(expr);
+                    self.check_access(expr);
+                }
+            }
+
+            if let Some(expr) = top_level_expr {
+                self.check_exhaustiveness(&expr);
+                self.check_usage(&expr);
+                self.check_access(&expr);
+            }
+        }
+
         // Consolidate constants based on their type
 
         let mut cache = HashMap::new();
@@ -1012,35 +1045,6 @@ impl Typechecker {
         for (generic_id, item_id) in &mut self.contexts {
             if let Some(&id) = generic_id_map.get(generic_id) {
                 *item_id = id;
-            }
-        }
-
-        // Check exhaustiveness and usage
-
-        if !self.compiler.has_errors() {
-            for decl in self.declarations.borrow().constants.values() {
-                if let Some(expr) = decl.body.as_ref() {
-                    self.check_exhaustiveness(expr);
-                    self.check_usage(expr);
-                }
-            }
-
-            for decl in self
-                .declarations
-                .borrow()
-                .instances
-                .values()
-                .flat_map(|instances| instances.values())
-            {
-                if let Some(expr) = decl.body.as_ref() {
-                    self.check_exhaustiveness(expr);
-                    self.check_usage(expr);
-                }
-            }
-
-            if let Some(expr) = top_level_expr {
-                self.check_exhaustiveness(&expr);
-                self.check_usage(&expr);
             }
         }
 
@@ -4758,7 +4762,7 @@ impl Typechecker {
                 .get(&id)
                 .cloned()
                 .unwrap_or_default(),
-            is_variant: decl.value.is_variant,
+            enumeration_ty: decl.value.enumeration_ty,
             attributes: decl.value.attributes,
             body: None,
             uses: decl.uses.into_iter().collect(),

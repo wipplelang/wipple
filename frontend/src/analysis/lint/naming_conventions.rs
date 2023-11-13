@@ -72,7 +72,7 @@ impl Compiler {
         for constant in program.declarations.constants.values() {
             let name = constant.name.as_str();
 
-            if constant.is_variant {
+            if constant.enumeration_ty.is_some() {
                 let correct = convert_case(name, true);
 
                 if name != correct {
