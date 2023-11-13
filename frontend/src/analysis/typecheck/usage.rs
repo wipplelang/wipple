@@ -151,7 +151,7 @@ impl Typechecker {
                 }
             }
             TypeKind::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => self.no_reuse_message(ty),
+                BuiltinType::List(ty) | BuiltinType::Reference(ty) => self.no_reuse_message(ty),
                 BuiltinType::Number
                 | BuiltinType::Integer
                 | BuiltinType::Natural

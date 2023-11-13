@@ -154,7 +154,7 @@ pub enum Value {
     Function(Scope, usize),
     NativeFunction(Arc<dyn Fn(Value) -> BoxFuture<'static, Result<Value, Error>> + Send + Sync>),
     Variant(VariantIndex, Vec<Value>),
-    Mutable(Shared<Value>),
+    Reference(Shared<Value>),
     List(im::Vector<Value>),
     Structure(Vec<Value>),
     Tuple(Vec<Value>),
@@ -180,7 +180,7 @@ impl std::fmt::Debug for Value {
             Self::Variant(index, values) => {
                 f.debug_tuple("Variant").field(index).field(values).finish()
             }
-            Self::Mutable(value) => f.debug_tuple("Mutable").field(value).finish(),
+            Self::Reference(value) => f.debug_tuple("Reference").field(value).finish(),
             Self::List(values) => f.debug_tuple("List").field(values).finish(),
             Self::Structure(values) => f.debug_tuple("Structure").field(values).finish(),
             Self::Tuple(values) => f.debug_tuple("Tuple").field(values).finish(),

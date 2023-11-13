@@ -809,16 +809,16 @@ impl Interpreter {
                         lhs.partial_cmp(&rhs).unwrap_or(std::cmp::Ordering::Equal)
                     })
                 }
-                ir::Intrinsic::MakeMutable => runtime_fn!((value) => async {
-                    Ok(Value::Mutable(Shared::new(value)))
+                ir::Intrinsic::MakeReference => runtime_fn!((value) => async {
+                    Ok(Value::Reference(Shared::new(value)))
                 }),
-                ir::Intrinsic::GetMutable => {
-                    runtime_fn!((Value::Mutable(value)) => async {
+                ir::Intrinsic::GetReference => {
+                    runtime_fn!((Value::Reference(value)) => async {
                         Ok(value.lock().clone())
                     })
                 }
-                ir::Intrinsic::SetMutable => {
-                    runtime_fn!((Value::Mutable(value), new_value) => async {
+                ir::Intrinsic::SetReference => {
+                    runtime_fn!((Value::Reference(value), new_value) => async {
                         *value.lock() = new_value;
                         Ok(Value::Tuple(Vec::new()))
                     })

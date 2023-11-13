@@ -5601,20 +5601,20 @@ impl Typechecker {
                             )
                         }
                     }
-                    lower::BuiltinTypeDeclarationKind::Mutable => {
+                    lower::BuiltinTypeDeclarationKind::Reference => {
                         if parameters.is_empty() {
                             self.compiler.add_error(
                                 annotation.span,
-                                "`Mutable` accepts 1 parameter, but none were provided",
+                                "`Reference` accepts 1 parameter, but none were provided",
                                 "syntax-error",
                             );
 
                             self.unresolved_ty(
-                                engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Mutable(
-                                    Box::new(
+                                engine::UnresolvedTypeKind::Builtin(
+                                    engine::BuiltinType::Reference(Box::new(
                                         self.unresolved_ty(engine::UnresolvedTypeKind::Error, None),
-                                    ),
-                                )),
+                                    )),
+                                ),
                                 annotation.span,
                             )
                         } else {
@@ -5622,7 +5622,7 @@ impl Typechecker {
                                 self.compiler.add_error(
                                     annotation.span,
                                     format!(
-                                        "`Mutable` accepts 1 parameter, but {} were provided",
+                                        "`Reference` accepts 1 parameter, but {} were provided",
                                         parameters.len()
                                     ),
                                     "syntax-error",
@@ -5630,14 +5630,16 @@ impl Typechecker {
                             }
 
                             self.unresolved_ty(
-                                engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Mutable(
-                                    Box::new(self.convert_type_annotation_inner(
-                                        None,
-                                        parameters.pop().unwrap(),
-                                        convert_placeholder,
-                                        stack,
+                                engine::UnresolvedTypeKind::Builtin(
+                                    engine::BuiltinType::Reference(Box::new(
+                                        self.convert_type_annotation_inner(
+                                            None,
+                                            parameters.pop().unwrap(),
+                                            convert_placeholder,
+                                            stack,
+                                        ),
                                     )),
-                                )),
+                                ),
                                 annotation.span,
                             )
                         }

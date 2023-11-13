@@ -487,7 +487,7 @@ impl Converter<'_> {
                 analysis::typecheck::BuiltinType::List(ty) => {
                     Type::ListReference(Box::new(self.convert_type(ty)))
                 }
-                analysis::typecheck::BuiltinType::Mutable(ty) => {
+                analysis::typecheck::BuiltinType::Reference(ty) => {
                     Type::MutableReference(Box::new(self.convert_type(ty)))
                 }
                 analysis::typecheck::BuiltinType::Ui => Type::Ui,

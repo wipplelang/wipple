@@ -3,20 +3,75 @@
 use "fp"
 use "math"
 
+[help "Create a shared reference to a value."]
+[help-group "Utilities"]
+reference :: A => A -> Reference A
+reference : value -> semantics "pure" (intrinsic "make-reference" value)
+
+[help "Retrieve the value inside a `Reference`."]
+[help-group "Utilities"]
+get-reference :: A => Reference A -> A
+get-reference : reference -> intrinsic "get-reference" reference
+
+[help "Update the value contained inside a `Reference`."]
+[help-group "Utilities"]
+set-reference :: A => A -> Reference A -> ()
+set-reference : value reference -> intrinsic "set-reference" reference value
+
+[help "A container for a value that can change."]
+[help-group "Utilities"]
+[sealed]
+Mutable : A => type {
+  Constant A
+  Referred (Reference A)
+  Binding (() -> A) (A -> ())
+}
+
 [help "Create a new `Mutable` value."]
 [help-group "Utilities"]
 mutable :: A => A -> Mutable A
-mutable : x -> semantics "pure" (intrinsic "make-mutable" x)
+mutable : x -> Referred (reference x)
+
+[help "Create a new `Mutable` value that ignores changes."]
+[help-group "Utilities"]
+constant :: A => A -> Mutable A
+constant : Constant
+
+[help "Create a new `Mutable` value that computes its value from a function."]
+[help-group "Utilities"]
+binding :: A => (() -> A) -> (A -> ()) -> Mutable A
+binding : Binding
+
+[help "Project a `Mutable` value to refer to a component of the value."]
+[help-group "Utilities"]
+project :: A B => (A -> B) -> (B -> A) -> Mutable A -> Mutable B
+project : inner outer m -> Binding (() -> inner (get m)) (x -> m . set! (outer x))
+
+[help "Perform an action when a `Mutable` value changes."]
+[help-group "Utilities"]
+inspect :: A => (A -> ()) -> Mutable A -> Mutable A
+inspect : action -> project it (value -> {
+  action value
+  value
+})
 
 [help "Retrieve the value inside a `Mutable`."]
 [help-group "Utilities"]
 get :: A => Mutable A -> A
-get : m -> intrinsic "get-mutable" m
+get : m -> when m {
+  Constant x -> x
+  Referred reference -> get-reference reference
+  Binding get _ -> get ()
+}
 
 [help "Update the value contained inside a `Mutable`."]
 [help-group "Utilities"]
 set! :: A => A -> Mutable A -> ()
-set! : x m -> intrinsic "set-mutable" m x
+set! : x m -> when m {
+  Constant _ -> ()
+  Referred reference -> reference . set-reference x
+  Binding _ set -> set x
+}
 
 [help "Swap the contents of two `Mutable` values."]
 [help-group "Utilities"]

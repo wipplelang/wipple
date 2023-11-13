@@ -1481,8 +1481,8 @@ fn wipple_to_js(
         wipple_interpreter_backend::Value::Variant(_, _) => {
             panic!("enumeration values may not be sent to JavaScript")
         }
-        wipple_interpreter_backend::Value::Mutable(_) => {
-            panic!("`Mutable` values may not be sent to JavaScript")
+        wipple_interpreter_backend::Value::Reference(_) => {
+            panic!("`Reference` values may not be sent to JavaScript")
         }
         wipple_interpreter_backend::Value::List(elements) => JsValue::from(
             elements

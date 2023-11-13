@@ -244,7 +244,7 @@ fn format_type_with(
                     BuiltinType::Double => format_named_type!("Double", Vec::new()),
                     BuiltinType::Text => format_named_type!("Text", Vec::new()),
                     BuiltinType::List(ty) => format_named_type!("List", vec![*ty]),
-                    BuiltinType::Mutable(ty) => format_named_type!("Mutable", vec![*ty]),
+                    BuiltinType::Reference(ty) => format_named_type!("Reference", vec![*ty]),
                     BuiltinType::Ui => format_named_type!("UI", Vec::new()),
                     BuiltinType::TaskGroup => format_named_type!("Task-Group", Vec::new()),
                 },

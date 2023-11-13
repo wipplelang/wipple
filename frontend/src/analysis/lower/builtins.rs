@@ -169,12 +169,12 @@ impl Lowerer {
         add!(
             builtin_type,
             Span::builtin(),
-            "Mutable",
+            "Reference",
             BuiltinTypeDeclaration {
-                kind: BuiltinTypeDeclarationKind::Mutable,
+                kind: BuiltinTypeDeclarationKind::Reference,
                 attributes: DeclarationAttributes {
                     help: vec![InternedString::new(
-                        "A container for a value that can change at runtime. Functions that change a `Mutable` value end in `!`. You should generally use functions that return a new value instead of functions that mutate their input, but `Mutable` is useful for improving performance or storing global state.",
+                        "A shared reference to a value. Changing the value contained in a `Reference` will change it for all holders of the same `Reference`.",
                     )],
                     ..Default::default()
                 }

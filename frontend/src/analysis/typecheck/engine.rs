@@ -195,7 +195,7 @@ impl From<Type> for UnresolvedType {
                     BuiltinType::Double => BuiltinType::Double,
                     BuiltinType::Text => BuiltinType::Text,
                     BuiltinType::List(ty) => BuiltinType::List(Box::new((*ty).into())),
-                    BuiltinType::Mutable(ty) => BuiltinType::Mutable(Box::new((*ty).into())),
+                    BuiltinType::Reference(ty) => BuiltinType::Reference(Box::new((*ty).into())),
                     BuiltinType::Ui => BuiltinType::Ui,
                     BuiltinType::TaskGroup => BuiltinType::TaskGroup,
                 }),
@@ -238,7 +238,7 @@ pub enum BuiltinType<Ty> {
     Double,
     Text,
     List(Ty),
-    Mutable(Ty),
+    Reference(Ty),
     Ui,
     TaskGroup,
 }
@@ -615,7 +615,10 @@ impl Context {
 
                     Ok(())
                 }
-                (BuiltinType::Mutable(actual_element), BuiltinType::Mutable(expected_element)) => {
+                (
+                    BuiltinType::Reference(actual_element),
+                    BuiltinType::Reference(expected_element),
+                ) => {
                     if let Err(error) = self.unify_internal(
                         (*actual_element).clone(),
                         (*expected_element).clone(),
@@ -673,7 +676,7 @@ impl UnresolvedType {
             }
             UnresolvedTypeKind::Tuple(tys) => tys.iter().any(|ty| ty.contains(var)),
             UnresolvedTypeKind::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.contains(var),
+                BuiltinType::List(ty) | BuiltinType::Reference(ty) => ty.contains(var),
                 _ => false,
             },
             _ => false,
@@ -691,7 +694,7 @@ impl UnresolvedType {
             }
             UnresolvedTypeKind::Tuple(tys) => tys.iter().any(|ty| ty.contains_error()),
             UnresolvedTypeKind::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.contains_error(),
+                BuiltinType::List(ty) | BuiltinType::Reference(ty) => ty.contains_error(),
                 _ => false,
             },
             _ => false,
@@ -709,7 +712,7 @@ impl UnresolvedType {
             }
             UnresolvedTypeKind::Tuple(tys) => tys.iter().any(|ty| ty.contains_vars()),
             UnresolvedTypeKind::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.contains_vars(),
+                BuiltinType::List(ty) | BuiltinType::Reference(ty) => ty.contains_vars(),
                 _ => false,
             },
             _ => false,
@@ -749,7 +752,7 @@ impl UnresolvedType {
                 }
             }
             UnresolvedTypeKind::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.apply(ctx),
+                BuiltinType::List(ty) | BuiltinType::Reference(ty) => ty.apply(ctx),
                 _ => {}
             },
             _ => {}
@@ -787,7 +790,7 @@ impl UnresolvedType {
                 }
             }
             UnresolvedTypeKind::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
+                BuiltinType::List(ty) | BuiltinType::Reference(ty) => {
                     ty.instantiate_with(ctx, substitutions);
                 }
                 _ => {}
@@ -811,7 +814,7 @@ impl UnresolvedType {
                 .collect(),
             UnresolvedTypeKind::Tuple(tys) => tys.iter().flat_map(|ty| ty.vars()).collect(),
             UnresolvedTypeKind::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.vars(),
+                BuiltinType::List(ty) | BuiltinType::Reference(ty) => ty.vars(),
                 _ => Vec::new(),
             },
             _ => Vec::new(),
@@ -831,7 +834,7 @@ impl UnresolvedType {
             }
             UnresolvedTypeKind::Tuple(tys) => tys.iter().flat_map(|ty| ty.visible_vars()).collect(),
             UnresolvedTypeKind::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.visible_vars(),
+                BuiltinType::List(ty) | BuiltinType::Reference(ty) => ty.visible_vars(),
                 _ => Vec::new(),
             },
             _ => Vec::new(),
@@ -855,7 +858,7 @@ impl UnresolvedType {
                 .collect(),
             UnresolvedTypeKind::Tuple(tys) => tys.iter().flat_map(|ty| ty.all_vars()).collect(),
             UnresolvedTypeKind::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.all_vars(),
+                BuiltinType::List(ty) | BuiltinType::Reference(ty) => ty.all_vars(),
                 _ => Vec::new(),
             },
             _ => Vec::new(),
@@ -877,7 +880,7 @@ impl UnresolvedType {
                 .collect(),
             UnresolvedTypeKind::Tuple(tys) => tys.iter().flat_map(|ty| ty.params()).collect(),
             UnresolvedTypeKind::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.params(),
+                BuiltinType::List(ty) | BuiltinType::Reference(ty) => ty.params(),
                 _ => Vec::new(),
             },
             _ => Vec::new(),
@@ -911,7 +914,7 @@ impl UnresolvedType {
                 }
             }
             UnresolvedTypeKind::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
+                BuiltinType::List(ty) | BuiltinType::Reference(ty) => {
                     ty.substitute_defaults(ctx);
                 }
                 _ => {}
@@ -949,7 +952,7 @@ impl UnresolvedType {
                 }
             }
             UnresolvedTypeKind::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
+                BuiltinType::List(ty) | BuiltinType::Reference(ty) => {
                     ty.finalize_numeric_variables(ctx)
                 }
                 _ => {}
@@ -1009,8 +1012,8 @@ impl UnresolvedType {
                     BuiltinType::List(ty) => {
                         BuiltinType::List(Box::new(ty.finalize_inner(ctx, resolved)))
                     }
-                    BuiltinType::Mutable(ty) => {
-                        BuiltinType::Mutable(Box::new(ty.finalize_inner(ctx, resolved)))
+                    BuiltinType::Reference(ty) => {
+                        BuiltinType::Reference(Box::new(ty.finalize_inner(ctx, resolved)))
                     }
                     BuiltinType::Ui => BuiltinType::Ui,
                     BuiltinType::TaskGroup => BuiltinType::TaskGroup,
@@ -1197,7 +1200,7 @@ impl Type {
                 .collect(),
             TypeKind::Tuple(tys) => tys.iter().flat_map(|ty| ty.params()).collect(),
             TypeKind::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.params(),
+                BuiltinType::List(ty) | BuiltinType::Reference(ty) => ty.params(),
                 _ => Vec::new(),
             },
             _ => Vec::new(),
@@ -1228,7 +1231,7 @@ impl Type {
                 }
             }
             TypeKind::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
+                BuiltinType::List(ty) | BuiltinType::Reference(ty) => {
                     ty.instantiate_with(substitutions)
                 }
                 _ => {}

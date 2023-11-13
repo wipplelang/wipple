@@ -915,9 +915,9 @@ impl<'a> Codegen<'a> {
             | ir::Intrinsic::UnsignedOrdering
             | ir::Intrinsic::FloatOrdering
             | ir::Intrinsic::DoubleOrdering
-            | ir::Intrinsic::MakeMutable
-            | ir::Intrinsic::GetMutable
-            | ir::Intrinsic::SetMutable
+            | ir::Intrinsic::MakeReference
+            | ir::Intrinsic::GetReference
+            | ir::Intrinsic::SetReference
             | ir::Intrinsic::MakeEmptyList
             | ir::Intrinsic::TextCharacters
             | ir::Intrinsic::RandomNumber
