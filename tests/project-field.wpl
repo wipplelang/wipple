@@ -1,0 +1,10 @@
+Container : type {
+  value :: Natural
+}
+
+container : mutable (Container { value : 42 })
+number : container . project-field value
+
+show ("Before: _" (value of get container))
+increment! number
+show ("After: _" (value of get container))
