@@ -78,6 +78,7 @@ impl Expression {
                 write!(f, "<unresolved constant #{}>", id.counter)?
             }
             ExpressionKind::UnresolvedTrait(id) => write!(f, "<unresolved trait #{}>", id.counter)?,
+            ExpressionKind::UnresolvedExtend => write!(f, "<unresolved extend>")?,
             ExpressionKind::Marker => {
                 let id = match self.ty.kind {
                     TypeKind::Named(id, _, _) => id,

@@ -248,7 +248,6 @@ macro_rules! expr {
                 With((Option<ConstantId>, Box<[<$prefix Expression>]>), Box<[<$prefix Expression>]>),
                 ContextualConstant(ConstantId),
                 End(Box<[<$prefix Expression>]>),
-                Extend(Box<[<$prefix Expression>]>, BTreeMap<FieldIndex, [<$prefix Expression>]>),
                 Semantics(Semantics, Box<[<$prefix Expression>]>),
                 $($kinds)*
             }
@@ -306,6 +305,7 @@ expr!(, "Unresolved", engine::UnresolvedType, {
     Number(InternedString),
     Trait(TraitId),
     Constant(ConstantId),
+    Extend(Box<UnresolvedExpression>, Vec<((SpanList, InternedString), UnresolvedExpression)>),
 });
 
 expr!(, "Monomorphized", engine::UnresolvedType, {
@@ -313,6 +313,8 @@ expr!(, "Monomorphized", engine::UnresolvedType, {
     UnresolvedConstant(ConstantId, Option<(Option<SpanList>, Vec<SpanList>)>),
     UnresolvedTrait(TraitId, Option<(Option<SpanList>, Vec<SpanList>)>),
     Constant(ItemId),
+    UnresolvedExtend(Box<MonomorphizedExpression>, Vec<((SpanList, InternedString), MonomorphizedExpression)>),
+    Extend(Box<MonomorphizedExpression>, BTreeMap<FieldIndex, MonomorphizedExpression>),
 });
 
 impl From<UnresolvedExpression> for MonomorphizedExpression {
@@ -423,11 +425,11 @@ impl From<UnresolvedExpression> for MonomorphizedExpression {
                     MonomorphizedExpressionKind::End(Box::new((*value).into()))
                 }
                 UnresolvedExpressionKind::Extend(value, fields) => {
-                    MonomorphizedExpressionKind::Extend(
+                    MonomorphizedExpressionKind::UnresolvedExtend(
                         Box::new((*value).into()),
                         fields
                             .into_iter()
-                            .map(|(index, expr)| (index, expr.into()))
+                            .map(|(field, expr)| (field, expr.into()))
                             .collect(),
                     )
                 }
@@ -493,6 +495,8 @@ expr!(pub, "", engine::Type, {
     ExpandedConstant(ItemId),
     UnresolvedConstant(ConstantId),
     UnresolvedTrait(TraitId),
+    UnresolvedExtend,
+    Extend(Box<Expression>, BTreeMap<FieldIndex, Expression>),
 });
 
 impl Expression {
@@ -2636,97 +2640,10 @@ impl Typechecker {
             lower::ExpressionKind::Extend(value, fields) => {
                 let value = self.convert_expr(*value, info);
 
-                let (id, structure_field_tys) = match &value.ty.kind {
-                    engine::UnresolvedTypeKind::Named(
-                        id,
-                        _,
-                        engine::TypeStructure::Structure(fields),
-                    ) => (*id, fields.clone()),
-                    _ => {
-                        if let Some(code) = self
-                            .compiler
-                            .single_line_source_code_for_span(expr.span.first())
-                        {
-                            self.compiler.add_error(
-                                expr.span,
-                                format!("`{code}` is not a structure type"),
-                                "syntax-error",
-                            );
-                        } else {
-                            self.compiler.add_error(
-                                expr.span,
-                                "expected a structure type",
-                                "syntax-error",
-                            );
-                        }
-
-                        return UnresolvedExpression {
-                            id: expr.id,
-                            span: expr.span,
-                            ty: self.unresolved_ty(engine::UnresolvedTypeKind::Error, expr.span),
-                            kind: UnresolvedExpressionKind::error(&self.compiler),
-                        };
-                    }
-                };
-
-                let structure_field_names = match self
-                    .with_type_decl(id, |decl| decl.kind.clone())
-                    .expect("type should have already been accessed at least once")
-                {
-                    TypeDeclKind::Structure { field_names, .. } => field_names,
-                    _ => {
-                        if let Some(code) = self
-                            .compiler
-                            .single_line_source_code_for_span(expr.span.first())
-                        {
-                            self.compiler.add_error(
-                                expr.span,
-                                format!("`{code}` is not a structure type"),
-                                "syntax-error",
-                            );
-                        } else {
-                            self.compiler.add_error(
-                                expr.span,
-                                "expected a structure type",
-                                "syntax-error",
-                            );
-                        }
-
-                        return UnresolvedExpression {
-                            id: expr.id,
-                            span: expr.span,
-                            ty: self.unresolved_ty(engine::UnresolvedTypeKind::Error, expr.span),
-                            kind: UnresolvedExpressionKind::error(&self.compiler),
-                        };
-                    }
-                };
-
-                let mut extra_fields = Vec::new();
-
                 let fields = fields
                     .into_iter()
-                    .filter_map(|((span, name), expr)| {
-                        let index = match structure_field_names.get(&name) {
-                            Some(index) => *index,
-                            None => {
-                                extra_fields.push((span, name));
-                                return None;
-                            }
-                        };
-
-                        let mut expr = self.convert_expr(expr, info);
-
-                        let ty = structure_field_tys[index.into_inner()].clone();
-
-                        if let Err(error) = self.unify(value.id, value.span, expr.ty, ty.clone()) {
-                            self.add_error(error);
-                        }
-
-                        expr.ty = ty;
-
-                        Some((index, expr))
-                    })
-                    .collect();
+                    .map(|(field, expr)| (field, self.convert_expr(expr, info)))
+                    .collect::<Vec<_>>();
 
                 UnresolvedExpression {
                     id: expr.id,
@@ -3229,14 +3146,95 @@ impl Typechecker {
                 MonomorphizedExpressionKind::End(value) => {
                     MonomorphizedExpressionKind::End(Box::new(self.monomorphize_expr(*value, info)))
                 }
+                MonomorphizedExpressionKind::UnresolvedExtend(value, fields) => {
+                    let value = self.monomorphize_expr(*value, info);
+
+                    let (id, structure_field_tys) = match &value.ty.kind {
+                        engine::UnresolvedTypeKind::Named(
+                            id,
+                            _,
+                            engine::TypeStructure::Structure(fields),
+                        ) => (*id, fields.clone()),
+                        _ => {
+                            if let Some(code) = self
+                                .compiler
+                                .single_line_source_code_for_span(expr.span.first())
+                            {
+                                self.compiler.add_error(
+                                    expr.span,
+                                    format!("`{code}` is not a structure type"),
+                                    "syntax-error",
+                                );
+                            } else {
+                                self.compiler.add_error(
+                                    expr.span,
+                                    "expected a structure type",
+                                    "syntax-error",
+                                );
+                            }
+
+                            return MonomorphizedExpressionKind::error(&self.compiler);
+                        }
+                    };
+
+                    let structure_field_names = match self
+                        .with_type_decl(id, |decl| decl.kind.clone())
+                        .expect("type should have already been accessed at least once")
+                    {
+                        TypeDeclKind::Structure { field_names, .. } => field_names,
+                        _ => {
+                            if let Some(code) = self
+                                .compiler
+                                .single_line_source_code_for_span(expr.span.first())
+                            {
+                                self.compiler.add_error(
+                                    expr.span,
+                                    format!("`{code}` is not a structure type"),
+                                    "syntax-error",
+                                );
+                            } else {
+                                self.compiler.add_error(
+                                    expr.span,
+                                    "expected a structure type",
+                                    "syntax-error",
+                                );
+                            }
+
+                            return MonomorphizedExpressionKind::error(&self.compiler);
+                        }
+                    };
+
+                    let mut extra_fields = Vec::new();
+
+                    let fields = fields
+                        .into_iter()
+                        .filter_map(|((span, name), mut expr)| {
+                            let index = match structure_field_names.get(&name) {
+                                Some(index) => *index,
+                                None => {
+                                    extra_fields.push((span, name));
+                                    return None;
+                                }
+                            };
+
+                            let ty = structure_field_tys[index.into_inner()].clone();
+
+                            if let Err(error) =
+                                self.unify(value.id, value.span, expr.ty, ty.clone())
+                            {
+                                self.add_error(error);
+                            }
+
+                            expr.ty = ty;
+
+                            Some((index, expr))
+                        })
+                        .collect();
+
+                    MonomorphizedExpressionKind::Extend(Box::new(value), fields)
+                }
                 MonomorphizedExpressionKind::Extend(value, fields) => {
-                    MonomorphizedExpressionKind::Extend(
-                        Box::new(self.monomorphize_expr(*value, info)),
-                        fields
-                            .into_iter()
-                            .map(|(index, field)| (index, self.monomorphize_expr(field, info)))
-                            .collect(),
-                    )
+                    MonomorphizedExpressionKind::Extend(value, fields)
                 }
                 MonomorphizedExpressionKind::Semantics(semantics, expr) => {
                     MonomorphizedExpressionKind::Semantics(
@@ -4318,6 +4316,15 @@ impl Typechecker {
             MonomorphizedExpressionKind::End(value) => ExpressionKind::End(Box::new(
                 self.finalize_expr(*value, report_error_if_unresolved),
             )),
+            MonomorphizedExpressionKind::UnresolvedExtend(_, _) => {
+                self.add_error(self.error(
+                    engine::TypeError::UnresolvedType(expr.ty, None),
+                    expr.id,
+                    expr.span,
+                ));
+
+                ExpressionKind::UnresolvedExtend
+            }
             MonomorphizedExpressionKind::Extend(value, fields) => ExpressionKind::Extend(
                 Box::new(self.finalize_expr(*value, report_error_if_unresolved)),
                 fields

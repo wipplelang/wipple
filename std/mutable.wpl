@@ -44,16 +44,22 @@ binding : Binding
 
 [help "Project a `Mutable` value to refer to a component of the value."]
 [help-group "Utilities"]
-project :: A B => (A -> B) -> (B -> A) -> Mutable A -> Mutable B
-project : inner outer m -> Binding (() -> inner (get m)) (x -> m . set! (outer x))
+project :: A B => (A -> B) -> (B -> A -> A) -> Mutable A -> Mutable B
+project : inner outer m -> Binding (() -> inner (get m)) (x -> m . set! (outer x (get m)))
+
+[help "Project a field of a mutable structure."]
+[help-group "Utilities"]
+project-field : syntax {
+  project-field 'field -> project ({ 'field } -> 'field) (f s -> s where { 'field : f })
+}
 
 [help "Perform an action when a `Mutable` value changes."]
 [help-group "Utilities"]
 inspect :: A => (A -> ()) -> Mutable A -> Mutable A
-inspect : action -> project it (value -> {
+inspect : action -> project it (just (value -> {
   action value
   value
-})
+}))
 
 [help "Retrieve the value inside a `Mutable`."]
 [help-group "Utilities"]

@@ -197,8 +197,9 @@ impl Converter<'_> {
                     )
                 }
                 analysis::ExpressionKind::UnresolvedConstant(_)
-                | analysis::ExpressionKind::UnresolvedTrait(_) => {
-                    panic!("found unresolved constant or trait in program")
+                | analysis::ExpressionKind::UnresolvedTrait(_)
+                | analysis::ExpressionKind::UnresolvedExtend => {
+                    panic!("found unresolved expression in program")
                 }
                 analysis::ExpressionKind::Marker => ExpressionKind::Marker,
                 analysis::ExpressionKind::Variable(var) => ExpressionKind::Variable(*var),

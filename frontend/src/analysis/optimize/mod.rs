@@ -588,7 +588,8 @@ mod util {
             match &self.kind {
                 ExpressionKind::Error(_)
                 | ExpressionKind::UnresolvedConstant(_)
-                | ExpressionKind::UnresolvedTrait(_) => false,
+                | ExpressionKind::UnresolvedTrait(_)
+                | ExpressionKind::UnresolvedExtend => false,
                 ExpressionKind::Marker
                 | ExpressionKind::Text(_)
                 | ExpressionKind::Number(_)
