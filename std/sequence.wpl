@@ -10,7 +10,6 @@ use "repeat"
 [help "A container for a sequence that produces the `next` value on demand."]
 [help-group "Collections"]
 [help-playground "https://wipple.dev/std/examples/sequence.txt"]
-[no-reuse]
 Sequence : Element => type { next :: () -> Maybe Element }
 
 [help "Create a sequence from a function."]

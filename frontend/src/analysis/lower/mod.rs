@@ -222,7 +222,6 @@ pub struct TypeAttributes {
     pub decl_attributes: DeclarationAttributes,
     pub on_mismatch: Vec<(Option<TypeParameterId>, InternedString)>,
     pub convert_from: Vec<(TypeAnnotation, wipple_syntax::parse::Expr<Analysis>)>,
-    pub no_reuse: Option<Option<InternedString>>,
     pub sealed: bool,
 }
 
@@ -4586,10 +4585,6 @@ impl Lowerer {
                     (ty, attribute.replacement.clone())
                 })
                 .collect(),
-            no_reuse: attributes
-                .no_reuse
-                .as_ref()
-                .map(|attribute| Some(attribute.no_reuse_text?.1)),
             sealed: attributes.sealed.is_some(),
         }
     }

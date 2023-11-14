@@ -12,7 +12,6 @@ definitions! {
     mod help_show_code;
     mod keyword;
     mod language_item;
-    mod no_reuse;
     mod on_mismatch;
     mod on_unimplemented;
     mod on_unresolved;
@@ -52,7 +51,6 @@ syntax_group! {
             HelpShowCode,
             Keyword,
             LanguageItem,
-            NoReuse,
             OnMismatch,
             OnUnimplemented,
             OnUnresolved,

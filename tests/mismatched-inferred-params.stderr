@@ -7,9 +7,9 @@ error:
    │                         function accepts `Text`, but it should accept `Number`
    │                         expected `Number -> ()`, but found `Text -> ()`
    │
-   ┌─ <dir>/std/sequence.wpl:43:88
+   ┌─ <dir>/std/sequence.wpl:42:88
    │
-43 │ transform :: Container (infer Element) Result where (As-Sequence Container Element) => (Element -> Result) -> Container -> Sequence Result
+42 │ transform :: Container (infer Element) Result where (As-Sequence Container Element) => (Element -> Result) -> Container -> Sequence Result
    │                                                                                        ------------------- expected because the input to the function has type `Number -> ()`
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types

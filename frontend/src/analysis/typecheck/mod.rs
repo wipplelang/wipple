@@ -10,7 +10,6 @@ mod exhaustiveness;
 pub mod format;
 mod queries;
 pub mod traverse;
-mod usage;
 
 pub use engine::{
     BottomTypeReason, BuiltinType, GenericSubstitutions, Type, TypeKind, TypeStructure,
@@ -673,7 +672,6 @@ struct Typechecker {
     contexts: BTreeMap<ConstantId, ItemId>,
     item_queue: im::Vector<QueuedItem>,
     items: im::OrdMap<ItemId, (Option<(Option<TraitId>, ConstantId)>, Option<Expression>)>,
-    used: RefCell<im::OrdMap<VariableId, Vec<SpanList>>>,
     top_level_expr: Option<UnresolvedExpression>,
     top_level_item: Option<ItemId>,
     errors: RefCell<im::Vector<Error>>,
@@ -758,7 +756,6 @@ impl Typechecker {
             contexts: Default::default(),
             item_queue: Default::default(),
             items: Default::default(),
-            used: Default::default(),
             top_level_expr: Default::default(),
             top_level_item: None,
             errors: Default::default(),
@@ -969,7 +966,6 @@ impl Typechecker {
             for decl in self.declarations.borrow().constants.values() {
                 if let Some(expr) = decl.body.as_ref() {
                     self.check_exhaustiveness(expr);
-                    self.check_usage(expr);
                     self.check_access(expr);
                 }
             }
@@ -983,14 +979,12 @@ impl Typechecker {
             {
                 if let Some(expr) = decl.body.as_ref() {
                     self.check_exhaustiveness(expr);
-                    self.check_usage(expr);
                     self.check_access(expr);
                 }
             }
 
             if let Some(expr) = top_level_expr {
                 self.check_exhaustiveness(&expr);
-                self.check_usage(&expr);
                 self.check_access(&expr);
             }
         }
@@ -2912,10 +2906,23 @@ impl Typechecker {
                 None
                 | Some(
                     FindInstanceError::RecursionLimitReached | FindInstanceError::TraitNotFound,
-                ) => MonomorphizedExpressionKind::error(&typechecker.compiler),
+                ) => match id {
+                    Ok(trait_id) => MonomorphizedExpressionKind::UnresolvedTrait(trait_id, None),
+                    Err(constant_id) => {
+                        MonomorphizedExpressionKind::UnresolvedConstant(constant_id, None)
+                    }
+                },
                 Some(FindInstanceError::TypeError(error)) => {
                     typechecker.add_error(error);
-                    MonomorphizedExpressionKind::error(&typechecker.compiler)
+
+                    match id {
+                        Ok(trait_id) => {
+                            MonomorphizedExpressionKind::UnresolvedTrait(trait_id, None)
+                        }
+                        Err(constant_id) => {
+                            MonomorphizedExpressionKind::UnresolvedConstant(constant_id, None)
+                        }
+                    }
                 }
                 Some(FindInstanceError::MultipleCandidates(candidates)) => match id {
                     Ok(trait_id) => {
@@ -4711,20 +4718,6 @@ impl Typechecker {
             decl.value.ty.clone(),
         );
 
-        if let Some(no_reuse_message) = self.no_reuse_message(&ty) {
-            self.compiler.add_diagnostic(
-                self.compiler.error(
-                    decl.span,
-                    no_reuse_message,
-                    "reused-variable",
-                )
-                .note(Note::secondary(
-                    decl.span,
-                    "constants are implicitly copied when used, but values of types marked with `[no-reuse]` may not be copied"
-                )),
-            );
-        }
-
         let bounds = decl
             .value
             .bounds
@@ -4968,32 +4961,6 @@ impl Typechecker {
             .into_iter()
             .map(|(param, _)| param)
             .collect::<Vec<_>>();
-
-        let (ty, _) = self
-            .substitute_trait_params(
-                trait_id,
-                trait_params
-                    .clone()
-                    .into_iter()
-                    .map(engine::UnresolvedType::from)
-                    .collect(),
-                decl.span,
-            )
-            .finalize(&self.ctx);
-
-        if let Some(no_reuse_message) = self.no_reuse_message(&ty) {
-            self.compiler.add_diagnostic(
-                self.compiler.error(
-                    decl.span,
-                    no_reuse_message,
-                    "reused-variable",
-                )
-                .note(Note::secondary(
-                    decl.span,
-                    "instances are implicitly copied when used, but values of types marked with `[no-reuse]` may not be copied"
-                )),
-            );
-        }
 
         let decl = InstanceDecl {
             span: decl.span,
@@ -6466,7 +6433,7 @@ impl Typechecker {
                         let mut constant_id = None;
                         func.traverse(
                             |expr| {
-                                if let ExpressionKind::Constant(id) = &expr.kind {
+                                if let ExpressionKind::UnresolvedConstant(id) = &expr.kind {
                                     constant_id = Some(id);
                                 }
 
@@ -6476,19 +6443,17 @@ impl Typechecker {
                         );
 
                         if let Some(id) = constant_id {
-                            if let Some((Some((_, constant)), _)) = self.items.get(id) {
-                                if self
-                                    .top_level
-                                    .info
-                                    .diagnostic_items
-                                    .collection_elements
-                                    .contains(constant)
-                                {
-                                    notes.push(Note::secondary(
-                                        error.span,
-                                        "this element must have the same type as the other elements",
-                                    ));
-                                }
+                            if self
+                                .top_level
+                                .info
+                                .diagnostic_items
+                                .collection_elements
+                                .contains(id)
+                            {
+                                notes.push(Note::secondary(
+                                    error.span,
+                                    "this element must have the same type as the other elements",
+                                ));
                             }
                         }
                     }
