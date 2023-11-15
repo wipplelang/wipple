@@ -80,4 +80,4 @@ increment! one
 show (get one) -- 1
 ```
 
-The API for interacting with mutable values (`get` and `set!`) hasn't changed at all — you still use `get` and `set!` as normal, and all the new features work automatically!
+The API for interacting with mutable values hasn't changed at all — you still use `get` and `set!` as normal, and all the new features work automatically!
