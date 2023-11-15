@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
         {% if title %}
-            <title>{{ title }} — Wipple</title>
+            <title>{{ title | striptags }} — Wipple</title>
         {% else %}
             <title>Wipple</title>
 
