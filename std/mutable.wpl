@@ -56,10 +56,10 @@ project-field : syntax {
 [help "Perform an action when a `Mutable` value changes."]
 [help-group "Utilities"]
 inspect :: A => (A -> ()) -> Mutable A -> Mutable A
-inspect : action -> project it (just (value -> {
-  action value
-  value
-}))
+inspect : action -> project it (new _ -> {
+  action new
+  new
+})
 
 [help "Retrieve the value inside a `Mutable`."]
 [help-group "Utilities"]
