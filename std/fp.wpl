@@ -19,3 +19,10 @@ just : x _ -> x
   . 'f -> 'f
   . -> f x -> f x
 }
+
+[operator Composition-Precedence]
+[help "Compose functions."]
+[help-group "Utilities"]
+| : syntax {
+  'f | 'g -> x -> 'g ('f x)
+}
