@@ -198,6 +198,7 @@ impl From<Type> for UnresolvedType {
                     BuiltinType::Reference(ty) => BuiltinType::Reference(Box::new((*ty).into())),
                     BuiltinType::Ui => BuiltinType::Ui,
                     BuiltinType::TaskGroup => BuiltinType::TaskGroup,
+                    BuiltinType::Hasher => BuiltinType::Hasher,
                 }),
                 TypeKind::Error => UnresolvedTypeKind::Error,
             },
@@ -241,6 +242,7 @@ pub enum BuiltinType<Ty> {
     Reference(Ty),
     Ui,
     TaskGroup,
+    Hasher,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -595,7 +597,8 @@ impl Context {
                 | (BuiltinType::Double, BuiltinType::Double)
                 | (BuiltinType::Text, BuiltinType::Text)
                 | (BuiltinType::Ui, BuiltinType::Ui)
-                | (BuiltinType::TaskGroup, BuiltinType::TaskGroup) => Ok(()),
+                | (BuiltinType::TaskGroup, BuiltinType::TaskGroup)
+                | (BuiltinType::Hasher, BuiltinType::Hasher) => Ok(()),
                 (BuiltinType::List(actual_element), BuiltinType::List(expected_element)) => {
                     if let Err(error) = self.unify_internal(
                         (*actual_element).clone(),
@@ -1017,6 +1020,7 @@ impl UnresolvedType {
                     }
                     BuiltinType::Ui => BuiltinType::Ui,
                     BuiltinType::TaskGroup => BuiltinType::TaskGroup,
+                    BuiltinType::Hasher => BuiltinType::Hasher,
                 }),
                 UnresolvedTypeKind::Error => TypeKind::Error,
             },

@@ -91,6 +91,9 @@ pub struct TaskGroup(
     Arc<Mutex<Vec<Box<dyn FnOnce() -> BoxFuture<'static, Result<(), Error>> + Send>>>>,
 );
 
+#[derive(Clone, Default)]
+pub struct Hasher(std::collections::hash_map::DefaultHasher);
+
 #[derive(Clone)]
 pub struct Interpreter {
     inner: Arc<Mutex<InterpreterInner>>,
@@ -121,7 +124,7 @@ impl Interpreter {
     }
 }
 
-#[derive(Debug, Clone, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialOrd, Ord, Hash)]
 pub enum Number {
     Undefined,
     Decimal(rust_decimal::Decimal),
@@ -160,6 +163,7 @@ pub enum Value {
     Tuple(Vec<Value>),
     UiHandle(UiHandle),
     TaskGroup(TaskGroup),
+    Hasher(Hasher),
 }
 
 impl std::fmt::Debug for Value {
@@ -186,6 +190,7 @@ impl std::fmt::Debug for Value {
             Self::Tuple(values) => f.debug_tuple("Tuple").field(values).finish(),
             Self::UiHandle(_) => write!(f, "UiHandle"),
             Self::TaskGroup(_) => write!(f, "TaskGroup"),
+            Self::Hasher(_) => write!(f, "Hasher"),
         }
     }
 }

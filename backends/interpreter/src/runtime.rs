@@ -170,6 +170,34 @@ impl Interpreter {
             };
         }
 
+        macro_rules! runtime_hash_fn {
+            (Value::$ty:ident) => {
+                runtime_fn!((Value::$ty(x)) => async {
+                    use std::hash::{Hash, Hasher};
+
+                    let mut hasher = std::collections::hash_map::DefaultHasher::default();
+                    x.hash(&mut hasher);
+                    let value = hasher.finish();
+
+                    Ok(Value::Natural(value))
+                })
+            };
+        }
+
+        macro_rules! runtime_float_hash_fn {
+            (Value::$ty:ident) => {
+                runtime_fn!((Value::$ty(x)) => async {
+                    use std::hash::{Hash, Hasher};
+
+                    let mut hasher = std::collections::hash_map::DefaultHasher::default();
+                    x.to_ne_bytes().hash(&mut hasher);
+                    let value = hasher.finish();
+
+                    Ok(Value::Natural(value))
+                })
+            };
+        }
+
         let value = (|| async {
             match func {
                 ir::Intrinsic::Crash => {
@@ -952,7 +980,26 @@ impl Interpreter {
                 }),
                 ir::Intrinsic::NumberIsUndefined => runtime_fn!((Value::Number(n)) => async {
                     Ok(if matches!(n, Number::Undefined) { r#true() } else { r#false() })
-                })
+                }),
+                ir::Intrinsic::MakeHasher => runtime_fn!(() => async {
+                    Ok(Value::Hasher(Default::default()))
+                }),
+                ir::Intrinsic::HashIntoHasher => runtime_fn!((Value::Hasher(mut hasher), Value::Natural(new)) => async {
+                    std::hash::Hash::hash(&new, &mut hasher.0);
+                    Ok(Value::Hasher(hasher))
+                }),
+                ir::Intrinsic::ValueOfHasher => runtime_fn!((Value::Hasher(hasher)) => async {
+                    let hash = std::hash::Hasher::finish(&hasher.0);
+                    Ok(Value::Natural(hash))
+                }),
+                ir::Intrinsic::HashNumber => runtime_hash_fn!(Value::Number),
+                ir::Intrinsic::HashInteger => runtime_hash_fn!(Value::Integer),
+                ir::Intrinsic::HashByte => runtime_hash_fn!(Value::Byte),
+                ir::Intrinsic::HashSigned => runtime_hash_fn!(Value::Signed),
+                ir::Intrinsic::HashUnsigned => runtime_hash_fn!(Value::Unsigned),
+                ir::Intrinsic::HashFloat => runtime_float_hash_fn!(Value::Float),
+                ir::Intrinsic::HashDouble => runtime_float_hash_fn!(Value::Double),
+                ir::Intrinsic::HashText => runtime_hash_fn!(Value::Text),
             }
         })().await?;
 

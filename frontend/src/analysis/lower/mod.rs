@@ -288,6 +288,7 @@ pub enum BuiltinTypeDeclarationKind {
     Reference,
     Ui,
     TaskGroup,
+    Hasher,
 }
 
 #[derive(Debug, Clone)]
@@ -891,6 +892,17 @@ pub enum Intrinsic {
     RandomDouble,
     UndefinedNumber,
     NumberIsUndefined,
+    MakeHasher,
+    HashIntoHasher,
+    ValueOfHasher,
+    HashNumber,
+    HashInteger,
+    HashByte,
+    HashSigned,
+    HashUnsigned,
+    HashFloat,
+    HashDouble,
+    HashText,
 }
 
 #[derive(

@@ -42,6 +42,7 @@ pub enum Type {
     Double,
     Ui,
     TaskGroup,
+    Hasher,
     Tuple(Vec<Type>),
     Structure(StructureId),
     Enumeration(EnumerationId),
@@ -493,6 +494,7 @@ impl Converter<'_> {
                 }
                 analysis::typecheck::BuiltinType::Ui => Type::Ui,
                 analysis::typecheck::BuiltinType::TaskGroup => Type::TaskGroup,
+                analysis::typecheck::BuiltinType::Hasher => Type::Hasher,
             },
             analysis::TypeKind::Error => unreachable!(),
         }

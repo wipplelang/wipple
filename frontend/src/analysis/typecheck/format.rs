@@ -247,6 +247,7 @@ fn format_type_with(
                     BuiltinType::Reference(ty) => format_named_type!("Reference", vec![*ty]),
                     BuiltinType::Ui => format_named_type!("UI", Vec::new()),
                     BuiltinType::TaskGroup => format_named_type!("Task-Group", Vec::new()),
+                    BuiltinType::Hasher => format_named_type!("Hasher", Vec::new()),
                 },
                 UnresolvedTypeKind::Function(input, output) => {
                     let input = format_type_inner(

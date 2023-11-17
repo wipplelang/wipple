@@ -208,5 +208,18 @@ impl Lowerer {
                 }
             },
         );
+
+        add!(
+            builtin_type,
+            Span::builtin(),
+            "Hasher",
+            BuiltinTypeDeclaration {
+                kind: BuiltinTypeDeclarationKind::Hasher,
+                attributes: DeclarationAttributes {
+                    help: vec![InternedString::new("Contains the hashed components of a value implementing `Hash`.")],
+                    ..Default::default()
+                }
+            },
+        );
     }
 }

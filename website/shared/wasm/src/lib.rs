@@ -1511,6 +1511,9 @@ fn wipple_to_js(
         wipple_interpreter_backend::Value::TaskGroup(_) => {
             panic!("task groups may not be sent to JavaScript")
         }
+        wipple_interpreter_backend::Value::Hasher(_) => {
+            panic!("hashers may not be sent to JavaScript")
+        }
     }
 }
 

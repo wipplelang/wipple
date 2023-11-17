@@ -5646,6 +5646,20 @@ impl Typechecker {
                             annotation.span,
                         )
                     }
+                    lower::BuiltinTypeDeclarationKind::Hasher => {
+                        if !parameters.is_empty() {
+                            self.compiler.add_error(
+                                annotation.span,
+                                "`Hasher` does not accept parameters",
+                                "syntax-error",
+                            );
+                        }
+
+                        self.unresolved_ty(
+                            engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Hasher),
+                            annotation.span,
+                        )
+                    }
                 }
             }
             TypeAnnotationKind::Function(input, output) => self.unresolved_ty(
