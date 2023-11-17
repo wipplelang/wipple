@@ -29,5 +29,5 @@ build-collection! : c e -> c . Build-Collection e
 }
 
 Element => instance (Build-Collection (List Element) Element) : append!
-Key Value where (Hash Key) => instance (Build-Collection (Dictionary Key Value) (Entry Key Value)) : insert-entry!
+Key Value where (Hash Key) => instance (Build-Collection (Dictionary Key Value) (Key ; Value)) : insert-entry!
 Element where (Hash Element) => instance (Build-Collection (Set Element) Element) : insert!
