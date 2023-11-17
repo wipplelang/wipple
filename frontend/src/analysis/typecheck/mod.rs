@@ -3846,16 +3846,23 @@ impl Typechecker {
         macro_rules! unify_instance_params {
             ($candidates:expr, $unify:ident, $params:expr, $instance_params:expr, $substitutions:expr, $prev_ctx:expr $(,)?) => {{
                 let mut error = None;
+                let mut num_inferred_candidates = 0;
                 for ((param_ty, (_, inferred)), instance_param_ty) in
                     $params.clone().into_iter().zip($instance_params.clone())
                 {
+                    if inferred {
+                        num_inferred_candidates += 1;
+                    }
+
                     if self
                         .ctx
                         .$unify(param_ty.clone(), instance_param_ty.clone())
                         .is_err()
                     {
-                        error = Some(error.unwrap_or(inferred) || inferred);
-                        break;
+                        self.ctx = $prev_ctx.clone();
+                        if error.is_none() {
+                            error = Some(error.unwrap_or(inferred) || inferred);
+                        }
                     }
                 }
 
@@ -3932,9 +3939,13 @@ impl Typechecker {
                                 if $candidates.is_empty() {
                                     self.ctx = $prev_ctx;
 
-                                    return Err(FindInstanceError::TypeError(
-                                        self.error(error, use_id, use_span),
-                                    ));
+                                    if num_inferred_candidates > 1 {
+                                        return Err(FindInstanceError::MultipleCandidates(None));
+                                    } else {
+                                        return Err(FindInstanceError::TypeError(
+                                            self.error(error, use_id, use_span),
+                                        ));
+                                    }
                                 }
                             }
                         }
