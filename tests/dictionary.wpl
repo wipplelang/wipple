@@ -1,4 +1,4 @@
 sports : "Basketball" , "Soccer" , "Golf"
-lengths : sports . reduce (,) (sport -> insert (sport : count sport))
+lengths : sports . reduce (,) (sport -> insert-entry (sport : count sport))
 
 sports . each (sport -> show ("_ has _ letters" sport (lengths . entry sport . unwrap)))

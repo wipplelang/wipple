@@ -402,3 +402,23 @@ Left (infer Left-Element) Right (infer Right-Element) where (Extend Left Left-El
 [help-group "Collections"]
 unzip :: Collection (infer Left-Element) (infer Right-Element) Left Right where (As-Sequence Collection (Left-Element ; Right-Element)) (Default Left) (Extend Left Left-Element) (Default Right) (Extend Right Right-Element) => Collection -> (Left ; Right)
 unzip : collection -> extend (As-Sequence collection) (Default ; Default)
+
+[help "Implemented for collections for which the presence of an element can be checked."]
+[help-group "Collections"]
+Container : Collection Element => trait (Element -> Collection -> Boolean)
+
+[help "Returns `True` if the collection contains the element."]
+[help-group "Collections"]
+contains? :: Collection Element where (Container Collection Element) => Element -> Collection -> Boolean
+contains? : Container
+
+Element where (Equal Element) => instance (Container (List Element) Element) : target list -> {
+  seq : As-Sequence list
+
+  repeat {
+    when (next seq) {
+      Some element -> if (element = target) (Break True) Continue
+      None -> Break False
+    }
+  }
+}
