@@ -41,13 +41,13 @@ pub struct AssignmentValueSyntaxContext<D: Driver> {
     assigned_snippet: Option<AssignedSnippet<D>>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 struct AssignedName<D: Driver> {
     name: D::InternedString,
     scope_set: ScopeSet<D::Scope>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 struct AssignedSnippet<D: Driver> {
     name: D::InternedString,
 }

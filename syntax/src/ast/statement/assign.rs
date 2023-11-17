@@ -61,9 +61,30 @@ impl<D: Driver> Syntax<D> for AssignStatementSyntax {
                             context.statement_attributes.as_ref().unwrap().clone(),
                         );
 
-                if let parse::ExprKind::Name(name, _) = &lhs.kind {
+                let assigned_name = (|| {
+                    match lhs.try_as_list_exprs() {
+                        Ok((_, mut exprs)) => {
+                            if let Some(name) = exprs.next() {
+                                if exprs.next().is_none() {
+                                    if let parse::ExprKind::Name(name, _) = &name.kind {
+                                        return Some(name.clone());
+                                    }
+                                }
+                            }
+                        }
+                        Err(expr) => {
+                            if let parse::ExprKind::Name(name, _) = &expr.kind {
+                                return Some(name.clone());
+                            }
+                        }
+                    }
+
+                    None
+                })();
+
+                if let Some(name) = assigned_name {
                     value_context =
-                        value_context.with_assigned_name(name.clone(), scope_set.clone());
+                        value_context.with_assigned_name(name, scope_set.clone());
                 }
 
                 let constant_scope = match &lhs.kind {
