@@ -49,6 +49,8 @@ pub enum OperatorPrecedenceStatementAttributeKind {
     Accessor,
     #[strum(serialize = "Composition-Precedence")]
     Composition,
+    #[strum(serialize = "Association-Precedence")]
+    Association,
     #[strum(serialize = "Variadic-Precedence")]
     Variadic,
 }
@@ -76,6 +78,7 @@ impl OperatorPrecedenceStatementAttributeKind {
             OperatorPrecedenceStatementAttributeKind::Disjunction => Left,
             OperatorPrecedenceStatementAttributeKind::Accessor => Right,
             OperatorPrecedenceStatementAttributeKind::Composition => Left,
+            OperatorPrecedenceStatementAttributeKind::Association => None,
         }
     }
 }

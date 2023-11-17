@@ -217,10 +217,12 @@ split-by : separator? -> collection -> {
       when (next base) {
         Some x -> {
           if (separator? x) { Break (take! group) } {
-            group . set! (Some (when (get group) {
-              Some inner -> inner . append x
-              None -> (x ,)
-            }))
+            inner : when (get group) {
+              Some inner -> inner
+              None -> Default
+            }
+
+            group . set! (Some (inner . append x))
 
             Continue
           }
@@ -259,7 +261,7 @@ count : collection -> {
 [help "Collect two sequences into a single value."]
 [help-group "Collections"]
 join :: A B (infer Element) (C : A) where (As-Sequence A Element) (As-Sequence B Element) (From-Sequence Element C) => B -> A -> C
-join : b a -> collect (flatten (As-Sequence a , As-Sequence b))
+join : b a -> collect (flatten ((Default :: List _) . append (As-Sequence a) . append (As-Sequence b)))
 
 [specialize]
 count :: Element => List Element -> Natural

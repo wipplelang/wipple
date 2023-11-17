@@ -2,6 +2,8 @@
 [[help-url "https://wipple.dev/doc/std.html"]]
 
 use "async"
+use "collections"
+use "dictionary"
 use "fp"
 use "io"
 use "list"

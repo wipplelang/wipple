@@ -1,0 +1,31 @@
+[[no-implicit-use]]
+
+use "list"
+use "dictionary"
+
+Build-Collection : Collection (infer Element) => trait (Element -> Mutable Collection -> ())
+
+[private]
+initial-collection :: Element (Collection : List Element) where (Default Collection) => Collection
+initial-collection : Default
+
+-- By swapping the order of the inputs, we typecheck the list before
+-- typechecking the elements, so the error message is on the elements that don't
+-- belong rather than on the resultant list.
+[private]
+[diagnostic "collection-elements"]
+build-collection! :: Collection (infer Element) where (Build-Collection Collection Element) => Mutable Collection -> Element -> ()
+build-collection! : c e -> c . Build-Collection e
+
+[help "Create a collection with the specified elements. Defaults to `List` if no other type is specified."]
+[help-group "Collections"]
+[operator Variadic-Precedence]
+, : syntax {
+  , ...x -> {
+    collection : mutable initial-collection
+    ...{ (build-collection! collection 'x) }
+    get collection
+  }
+}
+
+Element => instance (Build-Collection (List Element) Element) : append!

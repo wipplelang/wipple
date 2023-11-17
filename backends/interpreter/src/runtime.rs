@@ -908,7 +908,7 @@ impl Interpreter {
                 ir::Intrinsic::ListInsertAt => {
                     runtime_fn!((Value::List(mut list), Value::Natural(index), value) => async {
                         let index = index as usize;
-                        let index = if (0..list.len()).contains(&index) {
+                        let index = if (0..=list.len()).contains(&index) {
                             index
                         } else {
                             return Ok(none());
@@ -928,7 +928,9 @@ impl Interpreter {
                             return Ok(none());
                         };
 
-                        Ok(some(list.remove(index)))
+                        list.remove(index);
+
+                        Ok(some(Value::List(list)))
                     })
                 }
                 ir::Intrinsic::ListCount => {
