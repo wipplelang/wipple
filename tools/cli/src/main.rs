@@ -15,7 +15,6 @@ use std::{
     sync::Arc,
     thread,
 };
-use which::which;
 use wipple_default_loader as loader;
 use wipple_frontend::{Compiler, Loader};
 
@@ -111,8 +110,6 @@ struct BuildOptions {
 enum CompileFormat {
     Analysis,
     Ir,
-    Go,
-    Executable,
 }
 
 fn main() -> ExitCode {
@@ -377,103 +374,6 @@ async fn run() -> anyhow::Result<()> {
 
                     let mut output = output()?;
                     output.write_all(ir.to_string().as_bytes())?;
-
-                    if let Some(progress_bar) = progress_bar.as_ref() {
-                        progress_bar.finish_and_clear();
-                    }
-                }
-                CompileFormat::Go => {
-                    let (ir, progress_bar) = ir().await?;
-
-                    if let Some(progress_bar) = progress_bar.as_ref() {
-                        progress_bar.set_message("Generating Go code");
-                    }
-
-                    let output = output()?;
-                    wipple_go_backend::Codegen::new(&ir).write_to(output)?;
-
-                    if let Some(progress_bar) = progress_bar.as_ref() {
-                        progress_bar.finish_and_clear();
-                    }
-                }
-                CompileFormat::Executable => {
-                    let mut output = output_or_none.ok_or_else(|| {
-                        anyhow::format_err!(
-                            "Output path must be specified when compiling an executable"
-                        )
-                    })?;
-
-                    let cwd = std::env::current_dir()?;
-                    output = cwd.join(output);
-
-                    let (ir, progress_bar) = ir().await?;
-
-                    let go_path = which("go")?;
-                    let tinygo_path = which("tinygo")?;
-                    let strip_path = which("strip")?;
-
-                    if let Some(progress_bar) = progress_bar.as_ref() {
-                        progress_bar.set_message("Generating Go code");
-                    }
-
-                    let tempdir = tempfile::tempdir()?;
-                    let go_file_name = "wipple.go";
-
-                    let go_file_path = tempdir.path().join(go_file_name);
-                    let go_file = std::fs::File::create(go_file_path)?;
-                    wipple_go_backend::Codegen::new(&ir).write_to(go_file)?;
-
-                    if let Some(progress_bar) = progress_bar.as_ref() {
-                        progress_bar.set_message("Compiling Go code");
-                    }
-
-                    macro_rules! cmd {
-                        ($cmd:expr) => {{
-                            let result = $cmd.capture()?;
-                            if !result.success() {
-                                if let Some(progress_bar) = progress_bar.as_ref() {
-                                    progress_bar.finish_and_clear();
-                                }
-
-                                io::stderr().write_all(&result.stderr)?;
-                                return Err(anyhow::format_err!("Could not compile Go program"));
-                            }
-                        }};
-                    }
-
-                    cmd!(subprocess::Exec::cmd(&go_path)
-                        .arg("mod")
-                        .arg("init")
-                        .arg("wipple")
-                        .cwd(tempdir.path()));
-
-                    cmd!(subprocess::Exec::cmd(&go_path)
-                        .arg("mod")
-                        .arg("tidy")
-                        .cwd(tempdir.path()));
-
-                    let mut compiler = subprocess::Exec::cmd(tinygo_path)
-                        .arg("build")
-                        .arg("-o")
-                        .arg(&output)
-                        .arg("-no-debug")
-                        .args(&options.compiler_args)
-                        .arg(go_file_name)
-                        .cwd(tempdir.path());
-
-                    if let Some(arch) = options.arch {
-                        compiler = compiler.env("GOARCH", arch);
-                    }
-
-                    if let Some(os) = options.os {
-                        compiler = compiler.env("GOOS", os);
-                    }
-
-                    cmd!(compiler);
-
-                    cmd!(subprocess::Exec::cmd(strip_path)
-                        .arg(&output)
-                        .cwd(tempdir.path()));
 
                     if let Some(progress_bar) = progress_bar.as_ref() {
                         progress_bar.finish_and_clear();

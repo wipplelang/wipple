@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
 members = [
-    "backends/go",
     "backends/interpreter",
     "frontend",
     "loaders/default",
