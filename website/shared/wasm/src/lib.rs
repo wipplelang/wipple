@@ -628,19 +628,12 @@ fn get_syntax_highlighting(
         ControlFlow::Continue(())
     };
 
-    for expr in program.declarations.constants.values() {
+    for expr in program.generic_items.values() {
         expr.traverse(&mut traverse_semantic_tokens, |_| ControlFlow::Continue(()));
     }
 
-    for item in program.items.values() {
-        let item = item.read();
-        let (constant, expr) = &*item;
-
-        if constant.is_some() {
-            // Skip monomorphized constant types
-            continue;
-        }
-
+    if let Some(top_level) = program.top_level.and_then(|id| program.items.get(&id)) {
+        let (_, expr) = &*top_level.read();
         expr.traverse(&mut traverse_semantic_tokens, |_| ControlFlow::Continue(()));
     }
 
@@ -1088,7 +1081,9 @@ pub fn hover(start: usize, end: usize) -> JsValue {
     let type_names = getter!(types, |name: InternedString| name.to_string());
     let trait_names = getter!(traits, |name: InternedString| name.to_string());
     let param_names = getter!(type_parameters, |name: Option<_>| {
-        name.as_ref().map(ToString::to_string)
+        name.as_ref()
+            .map(ToString::to_string)
+            .unwrap_or_else(|| String::from("_"))
     });
 
     let format_type =
@@ -1096,15 +1091,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
 
     let mut hovers = Vec::new();
 
-    for item in analysis.program.items.values() {
-        let item = item.read();
-        let (constant, expr) = &*item;
-
-        if constant.is_some() {
-            // Skip monomorphized constant types
-            continue;
-        }
-
+    let mut traverse = |expr: &wipple_frontend::analysis::Expression| {
         expr.traverse(
             |expr| {
                 // Don't show type of entire file
@@ -1143,6 +1130,19 @@ pub fn hover(start: usize, end: usize) -> JsValue {
             },
             |_| ControlFlow::Continue(()),
         )
+    };
+
+    for expr in analysis.program.generic_items.values() {
+        traverse(expr);
+    }
+
+    if let Some(top_level) = analysis
+        .program
+        .top_level
+        .and_then(|id| analysis.program.items.get(&id))
+    {
+        let (_, expr) = &*top_level.read();
+        traverse(expr);
     }
 
     fn find_nearest_help_url(

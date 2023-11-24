@@ -1340,10 +1340,14 @@ impl Typechecker {
                 .with_type_parameter_decl(param, |decl| decl.infer)
                 .unwrap_or(false);
 
-            let default = self
+            let mut default = self
                 .with_type_parameter_decl(param, |decl| decl.default.clone())
                 .flatten()
                 .map(engine::UnresolvedType::from);
+
+            if let Some(default) = &mut default {
+                default.instantiate_with(&self.ctx, &substitutions);
+            }
 
             let kind = if inferred {
                 engine::UnresolvedTypeKind::Opaque(self.ctx.new_variable(default))

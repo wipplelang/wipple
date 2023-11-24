@@ -891,7 +891,6 @@ pub enum Intrinsic {
     RandomFloat,
     RandomDouble,
     UndefinedNumber,
-    NumberIsUndefined,
     MakeHasher,
     HashIntoHasher,
     ValueOfHasher,

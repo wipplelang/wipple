@@ -124,23 +124,11 @@ impl Interpreter {
     }
 }
 
-#[derive(Debug, Clone, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Number {
     Undefined,
     Decimal(rust_decimal::Decimal),
 }
-
-impl PartialEq for Number {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Number::Undefined, Number::Undefined) => false,
-            (Number::Decimal(lhs), Number::Decimal(rhs)) => lhs == rhs,
-            _ => false,
-        }
-    }
-}
-
-impl Eq for Number {}
 
 #[derive(Clone)]
 pub enum Value {

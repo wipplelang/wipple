@@ -980,9 +980,6 @@ impl Interpreter {
                 ir::Intrinsic::UndefinedNumber => runtime_fn!(() => async {
                     Ok(Value::Number(Number::Undefined))
                 }),
-                ir::Intrinsic::NumberIsUndefined => runtime_fn!((Value::Number(n)) => async {
-                    Ok(if matches!(n, Number::Undefined) { r#true() } else { r#false() })
-                }),
                 ir::Intrinsic::MakeHasher => runtime_fn!(() => async {
                     Ok(Value::Hasher(Default::default()))
                 }),
