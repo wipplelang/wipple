@@ -1791,6 +1791,7 @@ impl Typechecker {
 
 struct ConvertInfo {
     id: Option<ConstantId>,
+    substitutions: engine::GenericSubstitutions,
     variables: BTreeMap<VariableId, engine::UnresolvedType>,
     existing_types: BTreeMap<ExpressionId, engine::UnresolvedType>,
     function_end_value: Option<UnresolvedExpression>,
@@ -1800,6 +1801,7 @@ impl ConvertInfo {
     fn new(id: impl Into<Option<ConstantId>>) -> Self {
         ConvertInfo {
             id: id.into(),
+            substitutions: Default::default(),
             variables: Default::default(),
             existing_types: Default::default(),
             function_end_value: Default::default(),
@@ -2148,8 +2150,10 @@ impl Typechecker {
                 }
             }
             lower::ExpressionKind::Annotate(value, ty) => {
-                let ty =
+                let mut ty =
                     self.convert_type_annotation(Some(engine::TypeReason::Annotation(ty.span)), ty);
+
+                self.add_substitutions(&mut ty, &mut info.substitutions);
 
                 let value = self.convert_expr(*value, info);
 

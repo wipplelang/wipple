@@ -431,7 +431,7 @@ impl Converter<'_> {
 
     fn convert_type(&mut self, ty: &analysis::Type) -> Type {
         match &ty.kind {
-            analysis::TypeKind::Parameter(_) => panic!("unexpected type parameter"),
+            analysis::TypeKind::Parameter(id) => panic!("unexpected type parameter {id:#?}"),
             analysis::TypeKind::Named(id, _, structure) => match structure {
                 analysis::TypeStructure::Marker => Type::Marker,
                 analysis::TypeStructure::Structure(tys) => {
