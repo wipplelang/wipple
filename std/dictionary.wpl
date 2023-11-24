@@ -58,7 +58,7 @@ entry : key { hasher entries } -> {
 
 [help "Add a new entry to a `Dictionary`."]
 [help-group "Collections"]
-insert-entry :: Key Value where (Hash Key) => (Key ; Value) -> Dictionary Key Value -> Dictionary Key Value
+insert-entry :: Key Value where (Equal Key) (Hash Key) => (Key ; Value) -> Dictionary Key Value -> Dictionary Key Value
 insert-entry : (key ; value) { hasher size entries } -> {
   dictionary : if (size >= count entries / 2) {
     -- Double the size of the dictionary
@@ -85,12 +85,12 @@ insert-entry : (key ; value) { hasher size entries } -> {
 
 [help "Add a new entry to a `Mutable Dictionary`."]
 [help-group "Collections"]
-insert-entry! :: Key Value where (Hash Key) => (Key ; Value) -> Mutable (Dictionary Key Value) -> ()
+insert-entry! :: Key Value where (Equal Key) (Hash Key) => (Key ; Value) -> Mutable (Dictionary Key Value) -> ()
 insert-entry! : entry dictionary -> dictionary . set! (get dictionary . insert-entry entry)
 
 [help "Remove an entry from a `Dictionary`."]
 [help-group "Collections"]
-remove-entry :: Key Value where (Hash Key) => Key -> Dictionary Key Value -> Dictionary Key Value
+remove-entry :: Key Value where (Equal Key) (Hash Key) => Key -> Dictionary Key Value -> Dictionary Key Value
 remove-entry : key { hasher size entries } -> {
   dictionary : Dictionary {
     hasher
@@ -103,20 +103,24 @@ remove-entry : key { hasher size entries } -> {
 
 [help "Remove an entry from a `Mutable Dictionary`."]
 [help-group "Collections"]
-remove-entry! :: Key where (Hash Key) => Key -> Mutable (Dictionary Key _) -> ()
+remove-entry! :: Key where (Equal Key) (Hash Key) => Key -> Mutable (Dictionary Key _) -> ()
 remove-entry! : key dictionary -> dictionary . set! (get dictionary . remove-entry key)
 
 [private]
-set-entry :: Key Value where (Hash Key) => Key -> Maybe Value -> Dictionary Key Value -> Dictionary Key Value
+set-entry :: Key Value where (Equal Key) (Hash Key) => Key -> Maybe Value -> Dictionary Key Value -> Dictionary Key Value
 set-entry : key value { hasher size entries } -> {
   index : mutable ((intrinsic "value-of-hasher" (Hash key hasher)) mod count entries)
 
   -- Find a spot for the entry
   repeat {
     when (entries . nth (get index) . unwrap) {
-      Some _ -> {
-        index . set! ((get index + 1) mod count entries)
-        Continue
+      Some (existing ; _) -> {
+        if (key = existing) {
+          Break ()
+        } {
+          index . set! ((get index + 1) mod count entries)
+          Continue
+        }
       }
       None -> Break ()
     }
@@ -142,7 +146,24 @@ set-entry : key value { hasher size entries } -> {
   }
 }
 
+Key Value where (Equal Key) (Hash Key) => instance (From-Sequence (Key ; Value) (Dictionary Key Value)) : seq -> {
+  dictionary : mutable Default
+  repeat {
+    when (next seq) {
+      Some entry -> {
+        dictionary . insert-entry! entry
+        Continue
+      }
+      None -> Break ()
+    }
+  }
+
+  get dictionary
+}
+
 Key Value => instance (As-Sequence (Dictionary Key Value) (Key ; Value)) : dictionary -> (((entries of dictionary) . As-Sequence) :: Sequence (Maybe (_ ; _))) . flatten
+
+Key Value where (Equal Key) (Hash Key) => instance (Container (Dictionary Key Value) Key) : target -> entry target | (is Some _)
 
 [help "A collection of unique elements."]
 [help-group "Collections"]
@@ -155,23 +176,24 @@ instance (Default (Set _)) : Set { dictionary : Default }
 
 [help "Add a new element to a `Set`."]
 [help-group "Collections"]
-insert :: Element where (Hash Element) => Element -> Set Element -> Set Element
+insert :: Element where (Equal Element) (Hash Element) => Element -> Set Element -> Set Element
 insert : element { dictionary } -> Set { dictionary : dictionary . insert-entry (element ; ()) }
 
 [help "Add a new element to a `Mutable Set`."]
 [help-group "Collections"]
-insert! :: Element where (Hash Element) => Element -> Mutable (Set Element) -> ()
+insert! :: Element where (Equal Element) (Hash Element) => Element -> Mutable (Set Element) -> ()
 insert! : entry set -> set . set! (get set . insert entry)
 
 [help "Remove an element from a `Set`."]
 [help-group "Collections"]
-remove :: Element where (Hash Element) => Element -> Set Element -> Set Element
+remove :: Element where (Equal Element) (Hash Element) => Element -> Set Element -> Set Element
 remove : element { dictionary } -> Set { dictionary : dictionary . remove-entry element }
 
 [help "Remove an element from a `Mutable Set`."]
 [help-group "Collections"]
-remove! :: Element where (Hash Element) => Element -> Mutable (Set Element) -> ()
+remove! :: Element where (Equal Element) (Hash Element) => Element -> Mutable (Set Element) -> ()
 remove! : entry set -> set . set! (get set . remove entry)
 
+Element => instance (From-Sequence Element (Set Element)) : seq -> Set { dictionary : seq . transform (key -> (key ; ())) . collect }
 Element => instance (As-Sequence (Set Element) Element) : { dictionary } -> dictionary . transform ((key ; _) -> key)
 Element where (Equal Element) (Hash Element) => instance (Container (Set Element) Element) : target -> (dictionary of) | entry target | (is Some _)
