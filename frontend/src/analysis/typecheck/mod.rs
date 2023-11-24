@@ -861,6 +861,7 @@ impl Typechecker {
             self.ctx = prev_ctx;
             self.monomorphization_cache.clear();
             self.items.clear();
+            self.contexts.clear();
         }
 
         // Typecheck the top level
