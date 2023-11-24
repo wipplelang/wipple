@@ -21,6 +21,11 @@ tasks:
         cmds:
             - cargo run --bin wipple-test -- {{.CLI_ARGS}}
 
+    flamegraph:
+        run: once
+        cmds:
+            - cargo flamegraph --root --dev --flamechart --bin wipple -- run {{.CLI_ARGS}}
+
     cli:
         run: once
         cmds:

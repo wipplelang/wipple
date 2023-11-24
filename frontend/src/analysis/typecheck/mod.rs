@@ -1648,18 +1648,17 @@ impl Typechecker {
         use_ty.apply(&self.ctx);
         assert!(!use_ty.contains_opaque());
 
-        let use_ty_for_caching = self.use_ty_for_caching(use_ty.clone());
+        // Register the monomorphized constant, or use an existing one from the
+        // cache
+
+        let ty_for_caching = self.use_ty_for_caching(instantiated_generic_ty.clone());
 
         if let Some(candidates) = self.monomorphization_cache.get(&id) {
             for (ty, monomorphized_id) in candidates {
                 let monomorphized_id = *monomorphized_id;
                 let prev_ctx = self.ctx.clone();
 
-                if self
-                    .ctx
-                    .unify(ty.clone(), use_ty_for_caching.clone())
-                    .is_ok()
-                {
+                if self.ctx.unify(ty.clone(), ty_for_caching.clone()).is_ok() {
                     return Ok(Some(monomorphized_id));
                 }
 
@@ -1673,7 +1672,7 @@ impl Typechecker {
             self.monomorphization_cache
                 .entry(id)
                 .or_default()
-                .push((use_ty_for_caching, monomorphized_id));
+                .push((ty_for_caching, monomorphized_id));
 
             self.item_queue.push_back(QueuedItem {
                 generic_id: Some((trait_id, id)),
@@ -1756,19 +1755,20 @@ impl Typechecker {
     }
 
     fn use_ty_for_caching(
-        &mut self,
+        &self,
         use_ty: impl Into<engine::UnresolvedType>,
     ) -> engine::UnresolvedType {
         let mut use_ty_for_caching = use_ty.into();
         use_ty_for_caching.apply(&self.ctx);
 
-        // HACK: Replace all variables with the same variable
         let ctx = self.ctx.clone();
-        let unused_var = engine::TypeVariable(usize::MAX);
+
+        // HACK: Replace all variables with the same variable
+        let caching_var = engine::TypeVariable(usize::MAX);
         for var in use_ty_for_caching.all_vars() {
             ctx.substitutions.borrow_mut().insert(
                 var,
-                self.unresolved_ty(engine::UnresolvedTypeKind::Variable(unused_var), None),
+                self.unresolved_ty(engine::UnresolvedTypeKind::Opaque(caching_var), None),
             );
         }
 
@@ -3689,33 +3689,6 @@ impl Typechecker {
                     instance_id == *stack_instance_id && bound_index == *stack_bound_index
                 })
             {
-                let params_for_caching = params
-                    .clone()
-                    .into_iter()
-                    .map(|ty| self.use_ty_for_caching(ty))
-                    .collect::<Vec<_>>();
-
-                // Replace the instance params with opaque variables
-                let mut instance_params = instance_params.clone();
-                {
-                    let ctx = self.ctx.clone();
-                    for param in &mut instance_params {
-                        param.apply(&ctx);
-
-                        for var in param.vars() {
-                            ctx.substitutions.borrow_mut().insert(
-                                var,
-                                self.unresolved_ty(
-                                    engine::UnresolvedTypeKind::Opaque(ctx.new_variable(None)),
-                                    None,
-                                ),
-                            );
-                        }
-
-                        param.apply(&ctx);
-                    }
-                }
-
                 let prev_ctx = self.ctx.clone();
 
                 let mut error = false;
@@ -3724,7 +3697,10 @@ impl Typechecker {
                 {
                     if self
                         .ctx
-                        .unify_generic(instance_param_ty.clone(), param_ty.clone())
+                        .unify_generic(
+                            self.use_ty_for_caching(instance_param_ty.clone()),
+                            self.use_ty_for_caching(param_ty.clone()),
+                        )
                         .is_err()
                     {
                         error = true;
@@ -3733,11 +3709,12 @@ impl Typechecker {
                 }
 
                 if !error {
-                    if params.clone().into_iter().zip(params_for_caching).any(
+                    if params.clone().into_iter().zip(params.clone()).any(
                         |(param, param_for_caching)| {
                             // Ensure that applying the instance recursively
                             // actually makes progress on determining the type
-                            self.use_ty_for_caching(param) != param_for_caching
+                            self.use_ty_for_caching(param)
+                                != self.use_ty_for_caching(param_for_caching)
                         },
                     ) {
                         return Ok(Some((*id, bounds.clone())));
