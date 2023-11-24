@@ -45,9 +45,6 @@ impl fmt::Display for Program {
 
                     write!(f, " : ")?;
                     expr.display_with(f, self, 0)?;
-
-                    writeln!(f)?;
-                    writeln!(f)?;
                 } else {
                     let decl = self.declarations.constants.get(constant).unwrap();
 
@@ -57,13 +54,13 @@ impl fmt::Display for Program {
 
                     write!(f, "{} : ", decl.name)?;
                     expr.display_with(f, self, 0)?;
-
-                    writeln!(f)?;
-                    writeln!(f)?;
                 }
             } else {
                 expr.display_with(f, self, 0)?;
             }
+
+            writeln!(f)?;
+            writeln!(f)?;
         }
 
         Ok(())
@@ -73,7 +70,12 @@ impl fmt::Display for Program {
 impl Expression {
     fn display_with(&self, f: &mut impl fmt::Write, file: &Program, indent: usize) -> fmt::Result {
         match &self.kind {
-            ExpressionKind::Error(_) => write!(f, "<error expression>")?,
+            ExpressionKind::Error(_) | ExpressionKind::ErrorConstant(_) => {
+                write!(f, "<error expression>")?
+            }
+            ExpressionKind::BoundInstance(id) => {
+                write!(f, "<bound instance for trait #{}>", id.counter)?
+            }
             ExpressionKind::UnresolvedConstant(id) => {
                 write!(f, "<unresolved constant #{}>", id.counter)?
             }

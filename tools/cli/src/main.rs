@@ -34,7 +34,7 @@ enum Args {
     Compile {
         path: String,
 
-        #[clap(short, value_enum, default_value = "executable")]
+        #[clap(short, value_enum)]
         format: CompileFormat,
 
         #[clap(short)]

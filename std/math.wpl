@@ -16,19 +16,23 @@ undefined? : n -> semantics "pure" (intrinsic "number-is-undefined" n)
 [help-group "Math"]
 [help-show-code]
 [on-unimplemented ("cannot add _ to _" Left Right)]
-Add : (Left : Number) (Right : Number) (infer Sum) => trait (Right -> Left -> Sum)
+Add : Left Right Sum => trait (Right -> Left -> Sum)
+
+[private]
+add :: (Left : Number) (Right : Number) (infer Sum) where (Add Left Right Sum) => Right -> Left -> Sum
+add : Add
 
 [help "Add two values together, returning the sum."]
 [help-group "Math"]
 [operator Addition-Precedence]
 + : syntax {
-  'a + 'b -> Add 'b 'a
+  'a + 'b -> add 'b 'a
   'a + -> {
     a : 'a
-    b -> Add b a
+    b -> add b a
   }
-  + 'b -> Add 'b
-  + -> Add
+  + 'b -> add 'b
+  + -> add
 }
 
 instance (Add Number Number Number) : b a -> semantics "pure" (intrinsic "add-number" a b)
@@ -44,19 +48,23 @@ instance (Add Double Double Double) : b a -> semantics "pure" (intrinsic "add-do
 [help-group "Math"]
 [help-show-code]
 [on-unimplemented ("cannot subtract _ from _" Right Left)]
-Subtract : (Left : Number) (Right : Number) (infer Difference) => trait (Right -> Left -> Difference)
+Subtract : Left Right Difference => trait (Right -> Left -> Difference)
+
+[private]
+subtract :: (Left : Number) (Right : Number) (infer Difference) where (Subtract Left Right Difference) => Right -> Left -> Difference
+subtract : Subtract
 
 [help "Subtract the right side from the left side, returning the difference."]
 [help-group "Math"]
 [operator Addition-Precedence]
 - : syntax {
-  'a - 'b -> Subtract 'b 'a
+  'a - 'b -> subtract 'b 'a
   'a - -> {
     a : 'a
-    b -> Subtract b a
+    b -> subtract b a
   }
-  - 'b -> Subtract 'b
-  - -> Subtract
+  - 'b -> subtract 'b
+  - -> subtract
 }
 
 instance (Subtract Number Number Number) : b a -> semantics "pure" (intrinsic "subtract-number" a b)
@@ -72,19 +80,23 @@ instance (Subtract Double Double Double) : b a -> semantics "pure" (intrinsic "s
 [help-group "Math"]
 [help-show-code]
 [on-unimplemented ("cannot multiply _ by _" Left Right)]
-Multiply : (Left : Number) (Right : Number) (infer Product) => trait (Right -> Left -> Product)
+Multiply : Left Right Product => trait (Right -> Left -> Product)
+
+[private]
+multiply :: (Left : Number) (Right : Number) (infer Product) where (Multiply Left Right Product) => Right -> Left -> Product
+multiply : Multiply
 
 [help "Multiply two values together, returning the product."]
 [help-group "Math"]
 [operator Multiplication-Precedence]
 * : syntax {
-  'a * 'b -> Multiply 'b 'a
+  'a * 'b -> multiply 'b 'a
   'a * -> {
     a : 'a
-    b -> Multiply b a
+    b -> multiply b a
   }
-  * 'b -> Multiply 'b
-  * -> Multiply
+  * 'b -> multiply 'b
+  * -> multiply
 }
 
 instance (Multiply Number Number Number) : b a -> semantics "pure" (intrinsic "multiply-number" a b)
@@ -100,19 +112,23 @@ instance (Multiply Double Double Double) : b a -> semantics "pure" (intrinsic "m
 [help-group "Math"]
 [help-show-code]
 [on-unimplemented ("cannot divide _ by _" Left Right)]
-Divide : (Left : Number) (Right : Number) (infer Quotient) => trait (Right -> Left -> Quotient)
+Divide : Left Right Quotient => trait (Right -> Left -> Quotient)
+
+[private]
+divide :: (Left : Number) (Right : Number) (infer Quotient) where (Divide Left Right Quotient) => Right -> Left -> Quotient
+divide : Divide
 
 [help "Divide the left side by the right side, returning the quotient."]
 [help-group "Math"]
 [operator Multiplication-Precedence]
 / : syntax {
-  'a / 'b -> Divide 'b 'a
+  'a / 'b -> divide 'b 'a
   'a / -> {
     a : 'a
-    b -> Divide b a
+    b -> divide b a
   }
-  / 'b -> Divide 'b
-  / -> Divide
+  / 'b -> divide 'b
+  / -> divide
 }
 
 instance (Divide Number Number Number) : b a -> semantics "pure" (intrinsic "divide-number" a b)
@@ -128,19 +144,23 @@ instance (Divide Double Double Double) : b a -> semantics "pure" (intrinsic "div
 [help-group "Math"]
 [help-show-code]
 [on-unimplemented ("cannot divide _ by _" Left Right)]
-Modulo : (Left : Number) (Right : Number) (infer Remainder) => trait (Right -> Left -> Remainder)
+Modulo : Left Right Remainder => trait (Right -> Left -> Remainder)
+
+[private]
+modulo :: (Left : Number) (Right : Number) (infer Remainder) where (Modulo Left Right Remainder) => Right -> Left -> Remainder
+modulo : Modulo
 
 [help "Divide the left side by the right side, returning the remainder."]
 [help-group "Math"]
 [operator Multiplication-Precedence]
 mod : syntax {
-  'a mod 'b -> Modulo 'b 'a
+  'a mod 'b -> modulo 'b 'a
   'a mod -> {
     a : 'a
-    b -> Modulo b a
+    b -> modulo b a
   }
-  mod 'b -> Modulo 'b
-  mod -> Modulo
+  mod 'b -> modulo 'b
+  mod -> modulo
 }
 
 instance (Modulo Number Number Number) : b a -> semantics "pure" (intrinsic "modulo-number" a b)
@@ -156,19 +176,23 @@ instance (Modulo Double Double Double) : b a -> semantics "pure" (intrinsic "mod
 [help-group "Math"]
 [help-show-code]
 [on-unimplemented ("cannot raise _ to the power of _" Left Right)]
-Power : (Left : Number) (Right : Number) (infer Power) => trait (Right -> Left -> Power)
+Power : Left Right Pow => trait (Right -> Left -> Pow)
+
+[private]
+power :: (Left : Number) (Right : Number) (infer Pow) where (Power Left Right Pow) => Right -> Left -> Pow
+power : Power
 
 [help "Raise the left side to the power of the right side."]
 [help-group "Math"]
 [operator Exponentiation-Precedence]
 ^ : syntax {
-  'a ^ 'b -> Power 'b 'a
+  'a ^ 'b -> power 'b 'a
   'a ^ -> {
     a : 'a
-    b -> Power b a
+    b -> power b a
   }
-  ^ 'b -> Power 'b
-  ^ -> Power
+  ^ 'b -> power 'b
+  ^ -> power
 }
 
 instance (Power Number Number Number) : b a -> semantics "pure" (intrinsic "power-number" a b)
@@ -182,7 +206,7 @@ instance (Power Double Double Double) : b a -> semantics "pure" (intrinsic "powe
 
 [help "Rounds down a number to the nearest integer."]
 [help-group "Math"]
-Floor : (N : Number) => trait (N -> N)
+Floor : N => trait (N -> N)
 floor :: N where (Floor N) => N -> N
 floor : Floor
 instance (Floor Number) : n -> semantics "pure" (intrinsic "floor-number" n)
@@ -191,8 +215,8 @@ instance (Floor Double) : n -> semantics "pure" (intrinsic "floor-double" n)
 
 [help "Rounds up a number to the nearest integer."]
 [help-group "Math"]
-Ceil : (N : Number) => trait (N -> N)
-ceil :: N where (Ceil N) => N -> N
+Ceil : N => trait (N -> N)
+ceil :: (N : Number) where (Ceil N) => N -> N
 ceil : Ceil
 instance (Ceil Number) : n -> semantics "pure" (intrinsic "ceil-number" n)
 instance (Ceil Float) : n -> semantics "pure" (intrinsic "ceil-float" n)
@@ -200,8 +224,8 @@ instance (Ceil Double) : n -> semantics "pure" (intrinsic "ceil-double" n)
 
 [help "Calculates the square root of a number."]
 [help-group "Math"]
-Sqrt : (N : Number) => trait (N -> N)
-sqrt :: N where (Sqrt N) => N -> N
+Sqrt : N => trait (N -> N)
+sqrt :: (N : Number) where (Sqrt N) => N -> N
 sqrt : Sqrt
 instance (Sqrt Number) : n -> semantics "pure" (intrinsic "sqrt-number" n)
 instance (Sqrt Float) : n -> semantics "pure" (intrinsic "sqrt-float" n)
@@ -209,8 +233,8 @@ instance (Sqrt Double) : n -> semantics "pure" (intrinsic "sqrt-double" n)
 
 [help "Negates the sign of a number."]
 [help-group "Math"]
-Negate : (N : Number) => trait (N -> N)
-negate :: N where (Negate N) => N -> N
+Negate : N => trait (N -> N)
+negate :: (N : Number) where (Negate N) => N -> N
 negate : Negate
 instance (Negate Number) : n -> semantics "pure" (intrinsic "negate-number" n)
 instance (Negate Integer) : n -> semantics "pure" (intrinsic "negate-integer" n)
@@ -220,5 +244,5 @@ instance (Negate Double) : n -> semantics "pure" (intrinsic "negate-double" n)
 
 [help "Check if a number is divisible by another number."]
 [help-group "Math"]
-divisible-by? :: N where (Modulo N N N) (Equal N) (Default N) => N -> N -> Boolean
+divisible-by? :: (N : Number) where (Modulo N N N) (Equal N) (Default N) => N -> N -> Boolean
 divisible-by? : a b -> a mod b = Default

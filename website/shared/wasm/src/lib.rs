@@ -628,18 +628,8 @@ fn get_syntax_highlighting(
         ControlFlow::Continue(())
     };
 
-    for decl in program.declarations.constants.values() {
-        if let Some(expr) = &decl.body {
-            expr.traverse(&mut traverse_semantic_tokens, |_| ControlFlow::Continue(()));
-        }
-    }
-
-    for instances in program.declarations.instances.values() {
-        for decl in instances.values() {
-            if let Some(expr) = &decl.body {
-                expr.traverse(&mut traverse_semantic_tokens, |_| ControlFlow::Continue(()));
-            }
-        }
+    for expr in program.declarations.constants.values() {
+        expr.traverse(&mut traverse_semantic_tokens, |_| ControlFlow::Continue(()));
     }
 
     for item in program.items.values() {

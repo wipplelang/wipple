@@ -13,9 +13,9 @@ warning:
  2 │ 1 + 2
    │ ^^^^^ result of this code is never used
    │
-   ┌─ <dir>/std/math.wpl:25:14
+   ┌─ <dir>/std/math.wpl:29:14
    │
-25 │   'a + 'b -> Add 'b 'a
+29 │   'a + 'b -> add 'b 'a
    │              --- actual warning occurred here
    │
    = `show` the result: `show `

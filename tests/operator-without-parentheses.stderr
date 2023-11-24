@@ -10,9 +10,12 @@ error:
    │ this has type `()`
    │ this is parsed as one single input to `+`
    │
-   ┌─ <dir>/std/math.wpl:25:14
+   ┌─ <dir>/std/math.wpl:22:59
    │
-25 │   'a + 'b -> Add 'b 'a
+22 │ add :: (Left : Number) (Right : Number) (infer Sum) where (Add Left Right Sum) => Right -> Left -> Sum
+   │                                                           -------------------- required by this bound here
+   ·
+29 │   'a + 'b -> add 'b 'a
    │              --- actual error occurred here
    │
    = add parentheses around `1 + 2`: `(1 + 2)`
@@ -29,10 +32,13 @@ error:
    │ this has type `()`
    │ this is parsed as one single input to `or`
    │
-   ┌─ <dir>/std/logic.wpl:54:15
+   ┌─ <dir>/std/logic.wpl:57:40
    │
-54 │   'a or 'b -> Or (() -> 'b) 'a
-   │               -- actual error occurred here
+57 │ or' :: Left Right (infer Output) where (Or Left Right Output) => ((() -> Right) -> Left -> Output)
+   │                                        ---------------------- required by this bound here
+   ·
+64 │   'a or 'b -> or' (() -> 'b) 'a
+   │               --- actual error occurred here
    │
    = add parentheses around `True or False`: `(True or False)`
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
@@ -47,9 +53,12 @@ error:
    │       │ could not find instance `Add Number Text _`
    │       this has type `Number`
    │
-   ┌─ <dir>/std/math.wpl:25:14
+   ┌─ <dir>/std/math.wpl:22:59
    │
-25 │   'a + 'b -> Add 'b 'a
+22 │ add :: (Left : Number) (Right : Number) (infer Sum) where (Add Left Right Sum) => Right -> Left -> Sum
+   │                                                           -------------------- required by this bound here
+   ·
+29 │   'a + 'b -> add 'b 'a
    │              --- actual error occurred here
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance

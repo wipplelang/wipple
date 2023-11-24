@@ -86,8 +86,8 @@ macro_rules! traverse_expr_impl {
                     End(value) => {
                         value.$traverse($pass_parent!(expr), context.clone(), enter, exit)?;
                     }
-                    Semantics(_, expr) => {
-                        expr.$traverse($pass_parent!(expr), context.clone(), enter, exit)?;
+                    Semantics(_, value) => {
+                        value.$traverse($pass_parent!(expr), context.clone(), enter, exit)?;
                     }
                     Extend(value, fields) => {
                         value.$traverse($pass_parent!(expr), context.clone(), enter, exit)?;

@@ -1,5 +1,7 @@
 [[no-implicit-use]]
 
+use "fp"
+
 [language "boolean"]
 [help "Represents either `True` or `False`."]
 [help-group "Logic"]
@@ -21,40 +23,48 @@ if : syntax {
 
 [help "Represents the logical inverse of a value."]
 [help-group "Logic"]
-Not : (A : Boolean) => trait (A -> A)
+Not : A => trait (A -> A)
 
 instance (Not Boolean) : bool -> if bool False True
-A B where (Not B) => instance (Not (A -> B)) : f x -> not (f x)
+A (B : Boolean) where (Not B) => instance (Not (A -> B)) : f -> f | not
 
 [help "Returns `False` if provided `True`, and vice versa. Can also be used on boolean functions and any other value that implements `Not`."]
 [help-group "Logic"]
-not :: A where (Not A) => A -> A
+not :: (A : Boolean) where (Not A) => A -> A
 not : Not
 
-And : Left Right (infer Output) => trait ((() -> Right) -> Left -> Output)
+And : Left Right Output => trait ((() -> Right) -> Left -> Output)
+
+[private]
+and' :: Left Right (infer Output) where (And Left Right Output) => ((() -> Right) -> Left -> Output)
+and' : And
 
 [help "Returns `True` if both sides are `True`."]
 [help-group "Logic"]
 [operator Conjunction-Precedence]
 and : syntax {
-  'a and 'b -> And (() -> 'b) 'a
-  'a and -> b -> And b 'a
-  and 'b -> And (() -> 'b)
-  and -> And
+  'a and 'b -> and' (() -> 'b) 'a
+  'a and -> b -> and' b 'a
+  and 'b -> and' (() -> 'b)
+  and -> and'
 }
 
 instance (And Boolean Boolean Boolean) : b a -> if a (b ()) False
 
-Or : Left Right (infer Output) => trait ((() -> Right) -> Left -> Output)
+Or : Left Right Output => trait ((() -> Right) -> Left -> Output)
+
+[private]
+or' :: Left Right (infer Output) where (Or Left Right Output) => ((() -> Right) -> Left -> Output)
+or' : Or
 
 [help "Returns `True` if either side is `True`."]
 [help-group "Logic"]
 [operator Disjunction-Precedence]
 or : syntax {
-  'a or 'b -> Or (() -> 'b) 'a
-  'a or -> b -> Or b 'a
-  or 'b -> Or (() -> 'b)
-  or -> Or
+  'a or 'b -> or' (() -> 'b) 'a
+  'a or -> b -> or' b 'a
+  or 'b -> or' (() -> 'b)
+  or -> or'
 }
 
 instance (Or Boolean Boolean Boolean) : b a -> if a True (b ())

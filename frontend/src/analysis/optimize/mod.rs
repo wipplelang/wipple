@@ -564,7 +564,7 @@ mod util {
     #[derive(Debug, Default)]
     struct Info {
         function_call: Option<BTreeSet<VariableId>>,
-        expanded_constant: bool,
+        stack: Vec<ItemId>,
     }
 
     impl Expression {
@@ -587,6 +587,8 @@ mod util {
         fn is_pure_inner(&self, program: &Program, info: &mut Info) -> bool {
             match &self.kind {
                 ExpressionKind::Error(_)
+                | ExpressionKind::ErrorConstant(_)
+                | ExpressionKind::BoundInstance(_)
                 | ExpressionKind::UnresolvedConstant(_)
                 | ExpressionKind::UnresolvedTrait(_)
                 | ExpressionKind::UnresolvedExtend => false,
@@ -611,7 +613,6 @@ mod util {
                 ExpressionKind::Call(func, input, _) => {
                     let mut func = func.as_ref().clone();
                     let prev_function_call = mem::take(&mut info.function_call);
-                    let prev_expanded_constant = info.expanded_constant;
                     loop {
                         match &func.kind {
                             ExpressionKind::Function(pattern, body, captures) => {
@@ -624,13 +625,10 @@ mod util {
                             }
                             ExpressionKind::Constant(constant)
                             | ExpressionKind::ExpandedConstant(constant) => {
-                                if info.expanded_constant {
-                                    return false;
-                                } else if let Some(body) =
+                                if let Some(body) =
                                     Self::pure_constant_body(constant, program, info)
                                 {
                                     func = body;
-                                    info.expanded_constant = true;
                                 } else {
                                     return false;
                                 }
@@ -642,7 +640,6 @@ mod util {
                     let func_is_pure = func.is_pure_inner(program, info);
 
                     info.function_call = prev_function_call;
-                    info.expanded_constant = prev_expanded_constant;
 
                     func_is_pure && input.is_pure_inner(program, info)
                 }
@@ -692,6 +689,12 @@ mod util {
             program: &Program,
             info: &mut Info,
         ) -> Option<Expression> {
+            if info.stack.contains(constant) {
+                return None;
+            }
+
+            info.stack.push(*constant);
+
             let item = match program.items.get(constant) {
                 Some(item) => item,
                 None => return None,
@@ -700,7 +703,11 @@ mod util {
             let item = item.read();
             let (_, body) = &*item;
 
-            body.is_pure_inner(program, info).then(|| body.clone())
+            let body = body.is_pure_inner(program, info).then(|| body.clone());
+
+            info.stack.pop();
+
+            body
         }
     }
 

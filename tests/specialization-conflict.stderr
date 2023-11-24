@@ -14,20 +14,6 @@ error:
    = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types
 
 error: 
-   ┌─ test:20:1
-   │
- 3 │ greet :: A where (Greet A) => A -> Text
-   │                  --------- required by this bound here
-   ·
-20 │ greet :: Baz -> Text
-   │ ^^^^^
-   │ │
-   │ could not find instance `Greet Baz`
-   │ this constant must satisfy the bounds of the original constant
-   │
-   = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
-
-error: 
    ┌─ test:25:7
    │
  3 │ greet :: A where (Greet A) => A -> Text

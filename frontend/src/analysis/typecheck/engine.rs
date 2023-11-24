@@ -4,11 +4,10 @@ use std::{
     cell::{Cell, RefCell},
     collections::BTreeMap,
     hash::Hash,
-    rc::Rc,
 };
 use wipple_util::Backtrace;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct TypeInfo {
     pub span: Option<SpanList>,
     pub reason: Option<TypeReason>,
@@ -20,7 +19,6 @@ pub struct TypeInfo {
 impl TypeInfo {
     pub fn merge(&mut self, other: Self) {
         self.span = self.span.or(other.span);
-        self.trace = other.trace;
         // Don't merge reasons
     }
 }
@@ -70,6 +68,7 @@ impl Hash for UnresolvedType {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum UnresolvedTypeKind {
     Variable(TypeVariable),
+    Opaque(TypeVariable),
     Parameter(TypeParameterId),
     NumericVariable(TypeVariable),
     Named(TypeId, Vec<UnresolvedType>, TypeStructure<UnresolvedType>),
@@ -297,26 +296,8 @@ impl Context {
         var
     }
 
-    pub fn unify_params(
-        &self,
-        actual: UnresolvedType,
-        expected: impl Into<UnresolvedType>,
-        get_default: impl Fn(TypeParameterId) -> Option<UnresolvedType>,
-    ) -> GenericSubstitutions {
-        let params: Rc<RefCell<GenericSubstitutions>> = Default::default();
-        let _ = self.unify_internal(
-            actual,
-            expected.into(),
-            false,
-            false,
-            Some((params.clone(), Rc::new(get_default))),
-        );
-
-        Rc::into_inner(params).unwrap().into_inner()
-    }
-
     pub fn unify(&self, actual: UnresolvedType, expected: impl Into<UnresolvedType>) -> Result<()> {
-        self.unify_internal(actual, expected.into(), false, false, None)
+        self.unify_internal(actual, expected.into(), false, false)
     }
 
     pub fn unify_reverse(
@@ -324,7 +305,7 @@ impl Context {
         actual: impl Into<UnresolvedType>,
         expected: UnresolvedType,
     ) -> Result<()> {
-        self.unify_internal(actual.into(), expected, false, true, None)
+        self.unify_internal(actual.into(), expected, false, true)
     }
 
     pub fn unify_generic(
@@ -332,7 +313,7 @@ impl Context {
         actual: UnresolvedType,
         expected: impl Into<UnresolvedType>,
     ) -> Result<()> {
-        self.unify_internal(actual, expected.into(), true, false, None)
+        self.unify_internal(actual, expected.into(), true, false)
     }
 
     fn unify_internal(
@@ -341,19 +322,9 @@ impl Context {
         mut expected: UnresolvedType,
         generic: bool,
         reverse: bool,
-        params: Option<(
-            Rc<RefCell<BTreeMap<TypeParameterId, UnresolvedType>>>,
-            Rc<dyn Fn(TypeParameterId) -> Option<UnresolvedType> + '_>,
-        )>,
     ) -> Result<()> {
         actual.apply(self);
         expected.apply(self);
-
-        if let Some((params, _)) = &params {
-            if let UnresolvedTypeKind::Parameter(param) = expected.kind {
-                params.borrow_mut().insert(param, actual.clone());
-            }
-        }
 
         let mismatch = || {
             if reverse {
@@ -363,71 +334,32 @@ impl Context {
             }
         };
 
-        macro_rules! unify_var {
-            ($var:ident, $ty:ident) => {{
-                let var = $var;
-                let ty = $ty;
-
-                if let UnresolvedTypeKind::Variable(other) = ty.kind {
-                    if var == other {
-                        return Ok(());
-                    }
-                }
-
-                if ty.contains(&var) {
-                    if params.is_none() {
-                        Err(Box::new(TypeError::Recursive(var)))
-                    } else {
-                        Ok(())
-                    }
-                } else {
-                    if let UnresolvedTypeKind::Variable(other) = ty.kind {
-                        let mut defaults = self.defaults.borrow_mut();
-
-                        if let Some(source) = defaults.get(&var).cloned() {
-                            defaults.insert(other, source);
-                        } else if let Some(default) = defaults.get(&other).cloned() {
-                            defaults.insert(var, default);
-                        }
-                    }
-
-                    self.substitutions.borrow_mut().insert(var, ty);
-
-                    Ok(())
-                }
-            }};
-        }
-
         match (actual.kind.clone(), expected.kind.clone()) {
+            (UnresolvedTypeKind::Opaque(_), _) | (_, UnresolvedTypeKind::Opaque(_)) => Ok(()),
             (
                 UnresolvedTypeKind::Parameter(actual_param),
                 UnresolvedTypeKind::Parameter(expected_param),
-            ) if generic => {
-                if actual_param == expected_param {
+            ) => {
+                if !generic || actual_param == expected_param {
                     Ok(())
-                } else if params.is_none() {
-                    Err(mismatch())
                 } else {
-                    Ok(())
+                    Err(mismatch())
                 }
             }
-            (ty, UnresolvedTypeKind::Parameter(param)) if !generic => {
-                if let UnresolvedTypeKind::Variable(var) = ty {
-                    if let Some((_, default)) = params {
-                        if let Some(ty) = default(param) {
-                            self.defaults.borrow_mut().insert(var, ty);
-                        }
+            (UnresolvedTypeKind::Variable(var), _) => self.unify_var(var, expected),
+            (_, UnresolvedTypeKind::Variable(var)) => self.unify_var(var, actual),
+            (UnresolvedTypeKind::Parameter(param), ty) => {
+                if let UnresolvedTypeKind::Parameter(other) = ty {
+                    if !generic || param == other {
+                        Ok(())
+                    } else {
+                        Err(mismatch())
                     }
+                } else {
+                    Err(mismatch())
                 }
-
-                Ok(())
             }
-            // FIXME: Determine if removing this is sound
-            // (UnresolvedTypeKind::Parameter(actual), expected) if !generic => {
-            //     Err(mismatch!(UnresolvedTypeKind::Parameter(actual), expected))
-            // }
-            (UnresolvedTypeKind::Variable(var), _) => unify_var!(var, expected),
-            (_, UnresolvedTypeKind::Variable(var)) => unify_var!(var, actual),
+            (_, UnresolvedTypeKind::Parameter(_)) => Ok(()),
             (UnresolvedTypeKind::NumericVariable(var), expected_kind) => {
                 match expected_kind {
                     UnresolvedTypeKind::NumericVariable(other) => {
@@ -436,23 +368,16 @@ impl Context {
                         }
                     }
                     UnresolvedTypeKind::Builtin(ty) if ty.is_numeric() => {}
-                    _ => {
-                        if params.is_none() {
-                            return Err(mismatch());
-                        }
-                    }
+                    _ => return Err(mismatch()),
                 }
 
                 if expected.contains(&var) {
-                    if params.is_none() {
-                        Err(Box::new(TypeError::Recursive(var)))
-                    } else {
-                        Ok(())
-                    }
+                    Err(Box::new(TypeError::Recursive(var)))
                 } else {
                     self.numeric_substitutions
                         .borrow_mut()
                         .insert(var, expected);
+
                     Ok(())
                 }
             }
@@ -464,19 +389,11 @@ impl Context {
                         }
                     }
                     UnresolvedTypeKind::Builtin(ty) if ty.is_numeric() => {}
-                    _ => {
-                        if params.is_none() {
-                            return Err(mismatch());
-                        }
-                    }
+                    _ => return Err(mismatch()),
                 }
 
                 if actual.contains(&var) {
-                    if params.is_none() {
-                        Err(Box::new(TypeError::Recursive(var)))
-                    } else {
-                        Ok(())
-                    }
+                    Err(Box::new(TypeError::Recursive(var)))
                 } else {
                     self.numeric_substitutions.borrow_mut().insert(var, actual);
                     Ok(())
@@ -489,30 +406,24 @@ impl Context {
                 if actual_id == expected_id {
                     let mut error = false;
                     for (actual, expected) in actual_params.iter().zip(&expected_params) {
-                        if let Err(e) = self.unify_internal(
-                            actual.clone(),
-                            expected.clone(),
-                            generic,
-                            reverse,
-                            params.clone(),
-                        ) {
+                        if let Err(e) =
+                            self.unify_internal(actual.clone(), expected.clone(), generic, reverse)
+                        {
                             if let TypeError::Mismatch(_, _) = *e {
                                 error = true;
-                            } else if params.is_none() {
+                            } else {
                                 return Err(e);
                             }
                         }
                     }
 
-                    if error && params.is_none() {
+                    if error {
                         return Err(mismatch());
                     }
 
                     Ok(())
-                } else if params.is_none() {
-                    Err(mismatch())
                 } else {
-                    Ok(())
+                    Err(mismatch())
                 }
             }
             (
@@ -526,11 +437,10 @@ impl Context {
                     (*expected_input).clone(),
                     generic,
                     reverse,
-                    params.clone(),
                 ) {
                     if let TypeError::Mismatch(_, _) = *e {
                         error = true;
-                    } else if params.is_none() {
+                    } else {
                         return Err(e);
                     }
                 }
@@ -540,44 +450,39 @@ impl Context {
                     (*expected_output).clone(),
                     generic,
                     reverse,
-                    params.clone(),
                 ) {
                     if let TypeError::Mismatch(_, _) = *e {
                         error = true;
-                    } else if params.is_none() {
+                    } else {
                         return Err(e);
                     }
                 }
 
-                if error && params.is_none() {
+                if error {
                     return Err(mismatch());
                 }
 
                 Ok(())
             }
             (UnresolvedTypeKind::Tuple(actual_tys), UnresolvedTypeKind::Tuple(expected_tys)) => {
-                if actual_tys.len() != expected_tys.len() && params.is_none() {
+                if actual_tys.len() != expected_tys.len() {
                     return Err(mismatch());
                 }
 
                 let mut error = false;
                 for (actual, expected) in std::iter::zip(&actual_tys, &expected_tys) {
-                    if let Err(e) = self.unify_internal(
-                        actual.clone(),
-                        expected.clone(),
-                        generic,
-                        reverse,
-                        params.clone(),
-                    ) {
+                    if let Err(e) =
+                        self.unify_internal(actual.clone(), expected.clone(), generic, reverse)
+                    {
                         if let TypeError::Mismatch(_, _) = *e {
                             error = true;
-                        } else if params.is_none() {
+                        } else {
                             return Err(e);
                         }
                     }
                 }
 
-                if error && params.is_none() {
+                if error {
                     return Err(mismatch());
                 }
 
@@ -605,15 +510,12 @@ impl Context {
                         (*expected_element).clone(),
                         generic,
                         reverse,
-                        params.clone(),
                     ) {
-                        if params.is_none() {
-                            return Err(if let TypeError::Mismatch(_, _) = *error {
-                                mismatch()
-                            } else {
-                                error
-                            });
-                        }
+                        return Err(if let TypeError::Mismatch(_, _) = *error {
+                            mismatch()
+                        } else {
+                            error
+                        });
                     }
 
                     Ok(())
@@ -627,35 +529,46 @@ impl Context {
                         (*expected_element).clone(),
                         generic,
                         reverse,
-                        params.clone(),
                     ) {
-                        if params.is_none() {
-                            return Err(if let TypeError::Mismatch(_, _) = *error {
-                                mismatch()
-                            } else {
-                                error
-                            });
-                        }
+                        return Err(if let TypeError::Mismatch(_, _) = *error {
+                            mismatch()
+                        } else {
+                            error
+                        });
                     }
 
                     Ok(())
                 }
-                _ => {
-                    if params.is_none() {
-                        Err(mismatch())
-                    } else {
-                        Ok(())
-                    }
-                }
+                _ => Err(mismatch()),
             },
             (_, UnresolvedTypeKind::Error) | (UnresolvedTypeKind::Error, _) => Ok(()),
-            _ => {
-                if params.is_none() {
-                    Err(mismatch())
-                } else {
-                    Ok(())
+            _ => Err(mismatch()),
+        }
+    }
+
+    fn unify_var(&self, var: TypeVariable, ty: UnresolvedType) -> Result<()> {
+        if let UnresolvedTypeKind::Variable(other) = ty.kind {
+            if var == other {
+                return Ok(());
+            }
+        }
+
+        if ty.contains(&var) {
+            Err(Box::new(TypeError::Recursive(var)))
+        } else {
+            if let UnresolvedTypeKind::Variable(other) = ty.kind {
+                let mut defaults = self.defaults.borrow_mut();
+
+                if let Some(source) = defaults.get(&var).cloned() {
+                    defaults.insert(other, source);
+                } else if let Some(default) = defaults.get(&other).cloned() {
+                    defaults.insert(var, default);
                 }
             }
+
+            self.substitutions.borrow_mut().insert(var, ty);
+
+            Ok(())
         }
     }
 }
@@ -704,9 +617,27 @@ impl UnresolvedType {
         }
     }
 
+    pub fn contains_opaque(&self) -> bool {
+        match &self.kind {
+            UnresolvedTypeKind::Opaque(_) => true,
+            UnresolvedTypeKind::Function(input, output) => {
+                input.contains_opaque() || output.contains_opaque()
+            }
+            UnresolvedTypeKind::Named(_, params, _) => {
+                params.iter().any(|param| param.contains_opaque())
+            }
+            UnresolvedTypeKind::Tuple(tys) => tys.iter().any(|ty| ty.contains_opaque()),
+            UnresolvedTypeKind::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Reference(ty) => ty.contains_opaque(),
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
     pub fn contains_vars(&self) -> bool {
         match &self.kind {
-            UnresolvedTypeKind::Variable(_) => true,
+            UnresolvedTypeKind::Variable(_) | UnresolvedTypeKind::NumericVariable(_) => true,
             UnresolvedTypeKind::Function(input, output) => {
                 input.contains_vars() || output.contains_vars()
             }
@@ -723,39 +654,83 @@ impl UnresolvedType {
     }
 
     pub fn apply(&mut self, ctx: &Context) {
+        self.apply_inner(ctx, &mut Vec::new());
+    }
+
+    pub fn apply_inner(&mut self, ctx: &Context, stack: &mut Vec<TypeVariable>) {
         match &mut self.kind {
             UnresolvedTypeKind::Variable(var) => {
                 if let Some(ty) = ctx.substitutions.borrow().get(var).cloned() {
+                    assert!(!stack.contains(var), "detected recursive type");
+                    stack.push(*var);
+
                     self.kind = ty.kind;
                     self.info.merge(ty.info);
-                    self.apply(ctx);
+                    self.apply_inner(ctx, stack);
+
+                    stack.pop();
                 }
             }
             UnresolvedTypeKind::NumericVariable(var) => {
                 if let Some(ty) = ctx.numeric_substitutions.borrow().get(var).cloned() {
                     self.kind = ty.kind;
                     self.info.merge(ty.info);
-                    self.apply(ctx);
+                    self.apply_inner(ctx, stack);
                 }
             }
             UnresolvedTypeKind::Function(input, output) => {
-                input.apply(ctx);
-                output.apply(ctx);
+                input.apply_inner(ctx, stack);
+                output.apply_inner(ctx, stack);
             }
             UnresolvedTypeKind::Named(_, params, structure) => {
                 for param in params {
-                    param.apply(ctx);
+                    param.apply_inner(ctx, stack);
                 }
 
-                structure.apply(ctx);
+                structure.apply_inner(ctx, stack);
             }
             UnresolvedTypeKind::Tuple(tys) => {
                 for ty in tys {
-                    ty.apply(ctx);
+                    ty.apply_inner(ctx, stack);
                 }
             }
             UnresolvedTypeKind::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Reference(ty) => ty.apply(ctx),
+                BuiltinType::List(ty) | BuiltinType::Reference(ty) => {
+                    ty.apply_inner(ctx, stack);
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+
+    pub fn instantiate_opaque(&mut self, ctx: &Context) {
+        self.apply(ctx);
+
+        match &mut self.kind {
+            UnresolvedTypeKind::Opaque(var) => {
+                self.kind = UnresolvedTypeKind::Variable(*var);
+            }
+            UnresolvedTypeKind::Function(input, output) => {
+                input.instantiate_opaque(ctx);
+                output.instantiate_opaque(ctx);
+            }
+            UnresolvedTypeKind::Named(_, params, structure) => {
+                for param in params {
+                    param.instantiate_opaque(ctx);
+                }
+
+                structure.instantiate_opaque(ctx);
+            }
+            UnresolvedTypeKind::Tuple(tys) => {
+                for ty in tys {
+                    ty.instantiate_opaque(ctx);
+                }
+            }
+            UnresolvedTypeKind::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Reference(ty) => {
+                    ty.instantiate_opaque(ctx);
+                }
                 _ => {}
             },
             _ => {}
@@ -767,14 +742,12 @@ impl UnresolvedType {
 
         match &mut self.kind {
             UnresolvedTypeKind::Parameter(param) => {
-                *self = substitutions.get(param).cloned().unwrap_or_else(|| {
-                    // HACK: If the typechecker behaves erratically, try panicking here instead
-                    // of returning a new type variable to get to the root cause earlier.
-                    UnresolvedType::from_parts(
-                        UnresolvedTypeKind::Variable(ctx.new_variable(None)),
-                        self.info.clone(),
-                    )
-                });
+                if let Some(ty) = substitutions.get(param).cloned() {
+                    *self = ty;
+                } else {
+                    // HACK: If the typechecker behaves erratically, try
+                    // panicking here to get to the root cause earlier.
+                }
             }
             UnresolvedTypeKind::Function(input, output) => {
                 input.instantiate_with(ctx, substitutions);
@@ -800,6 +773,8 @@ impl UnresolvedType {
             },
             _ => {}
         }
+
+        self.apply(ctx);
     }
 
     pub fn vars(&self) -> Vec<TypeVariable> {
@@ -890,73 +865,46 @@ impl UnresolvedType {
         }
     }
 
-    pub fn substitute_defaults(&mut self, ctx: &Context) {
+    pub fn substitute_defaults(&mut self, ctx: &Context, numeric_only: bool) {
         self.apply(ctx);
 
         match &mut self.kind {
             UnresolvedTypeKind::Variable(var) => {
-                if let Some(default) = ctx.defaults.borrow().get(var).cloned() {
-                    ctx.substitutions.borrow_mut().insert(*var, default.clone());
-                    self.substitute_defaults(ctx);
+                if !numeric_only {
+                    if let Some(default) = ctx.defaults.borrow().get(var).cloned() {
+                        ctx.substitutions.borrow_mut().insert(*var, default.clone());
+                        self.kind = default.kind;
+                        self.substitute_defaults(ctx, numeric_only);
+                    }
                 }
             }
-            UnresolvedTypeKind::Function(input, output) => {
-                input.substitute_defaults(ctx);
-                output.substitute_defaults(ctx);
-            }
-            UnresolvedTypeKind::Named(_, params, structure) => {
-                for param in params {
-                    param.substitute_defaults(ctx);
-                }
-
-                structure.finalize_defaults(ctx);
-            }
-            UnresolvedTypeKind::Tuple(tys) => {
-                for ty in tys {
-                    ty.substitute_defaults(ctx);
-                }
-            }
-            UnresolvedTypeKind::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Reference(ty) => {
-                    ty.substitute_defaults(ctx);
-                }
-                _ => {}
-            },
-            _ => {}
-        }
-    }
-
-    pub fn finalize_numeric_variables(&mut self, ctx: &Context) {
-        self.apply(ctx);
-
-        match &mut self.kind {
             UnresolvedTypeKind::NumericVariable(var) => {
                 if let Some(ty) = ctx.numeric_substitutions.borrow().get(var).cloned() {
                     self.kind = ty.kind;
-                    self.finalize_numeric_variables(ctx);
+                    self.substitute_defaults(ctx, numeric_only);
                 } else {
                     self.kind = UnresolvedTypeKind::Builtin(BuiltinType::Number);
                 }
             }
             UnresolvedTypeKind::Function(input, output) => {
-                input.finalize_numeric_variables(ctx);
-                output.finalize_numeric_variables(ctx);
+                input.substitute_defaults(ctx, numeric_only);
+                output.substitute_defaults(ctx, numeric_only);
             }
             UnresolvedTypeKind::Named(_, params, structure) => {
                 for param in params {
-                    param.finalize_numeric_variables(ctx);
+                    param.substitute_defaults(ctx, numeric_only);
                 }
 
-                structure.finalize_numeric_variables(ctx);
+                structure.substitute_defaults(ctx, numeric_only);
             }
             UnresolvedTypeKind::Tuple(tys) => {
                 for ty in tys {
-                    ty.finalize_numeric_variables(ctx);
+                    ty.substitute_defaults(ctx, numeric_only);
                 }
             }
             UnresolvedTypeKind::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Reference(ty) => {
-                    ty.finalize_numeric_variables(ctx)
+                    ty.substitute_defaults(ctx, numeric_only);
                 }
                 _ => {}
             },
@@ -965,26 +913,27 @@ impl UnresolvedType {
     }
 
     pub fn finalize(&self, ctx: &Context) -> (Type, bool) {
+        let mut ty = self.clone();
+        ty.substitute_defaults(ctx, false);
+
         let mut resolved = true;
-        let ty = self.finalize_inner(ctx, &mut resolved);
+        let ty = ty.finalize_inner(ctx, &mut resolved);
+
         (ty, resolved)
     }
 
-    fn finalize_inner(&self, ctx: &Context, resolved: &mut bool) -> Type {
-        let mut ty = self.clone();
-        ty.apply(ctx);
-        ty.substitute_defaults(ctx);
-        ty.finalize_numeric_variables(ctx);
-
+    fn finalize_inner(self, ctx: &Context, resolved: &mut bool) -> Type {
         Type {
-            info: ty.info,
-            kind: match ty.kind.clone() {
+            info: self.info,
+            kind: match self.kind.clone() {
                 UnresolvedTypeKind::Variable(_) => {
                     *resolved = false;
                     TypeKind::Error
                 }
                 UnresolvedTypeKind::Parameter(param) => TypeKind::Parameter(param),
-                UnresolvedTypeKind::NumericVariable(_) => unreachable!(),
+                UnresolvedTypeKind::Opaque(_) | UnresolvedTypeKind::NumericVariable(_) => {
+                    unreachable!()
+                }
                 UnresolvedTypeKind::Named(id, params, structure) => TypeKind::Named(
                     id,
                     params
@@ -1029,25 +978,43 @@ impl UnresolvedType {
 }
 
 impl TypeStructure<UnresolvedType> {
-    pub fn apply(&mut self, ctx: &Context) {
+    fn apply_inner(&mut self, ctx: &Context, stack: &mut Vec<TypeVariable>) {
         match self {
             TypeStructure::Marker | TypeStructure::Recursive(_) => {}
             TypeStructure::Structure(tys) => {
                 for ty in tys {
-                    ty.apply(ctx);
+                    ty.apply_inner(ctx, stack);
                 }
             }
             TypeStructure::Enumeration(variants) => {
                 for tys in variants {
                     for ty in tys {
-                        ty.apply(ctx);
+                        ty.apply_inner(ctx, stack);
                     }
                 }
             }
         }
     }
 
-    pub fn instantiate_with(&mut self, ctx: &Context, substitutions: &GenericSubstitutions) {
+    fn instantiate_opaque(&mut self, ctx: &Context) {
+        match self {
+            TypeStructure::Marker | TypeStructure::Recursive(_) => {}
+            TypeStructure::Structure(tys) => {
+                for ty in tys {
+                    ty.instantiate_opaque(ctx);
+                }
+            }
+            TypeStructure::Enumeration(variants) => {
+                for tys in variants {
+                    for ty in tys {
+                        ty.instantiate_opaque(ctx);
+                    }
+                }
+            }
+        }
+    }
+
+    fn instantiate_with(&mut self, ctx: &Context, substitutions: &GenericSubstitutions) {
         match self {
             TypeStructure::Marker | TypeStructure::Recursive(_) => {}
             TypeStructure::Structure(tys) => {
@@ -1065,7 +1032,7 @@ impl TypeStructure<UnresolvedType> {
         }
     }
 
-    pub fn vars(&self) -> Vec<TypeVariable> {
+    fn vars(&self) -> Vec<TypeVariable> {
         match self {
             TypeStructure::Marker | TypeStructure::Recursive(_) => Vec::new(),
             TypeStructure::Structure(tys) => tys.iter().flat_map(|ty| ty.vars()).collect(),
@@ -1076,7 +1043,7 @@ impl TypeStructure<UnresolvedType> {
         }
     }
 
-    pub fn all_vars(&self) -> Vec<TypeVariable> {
+    fn all_vars(&self) -> Vec<TypeVariable> {
         match self {
             TypeStructure::Marker | TypeStructure::Recursive(_) => Vec::new(),
             TypeStructure::Structure(tys) => tys.iter().flat_map(|ty| ty.all_vars()).collect(),
@@ -1087,7 +1054,7 @@ impl TypeStructure<UnresolvedType> {
         }
     }
 
-    pub fn params(&self) -> Vec<TypeParameterId> {
+    fn params(&self) -> Vec<TypeParameterId> {
         match self {
             TypeStructure::Marker | TypeStructure::Recursive(_) => Vec::new(),
             TypeStructure::Structure(tys) => tys.iter().flat_map(|ty| ty.params()).collect(),
@@ -1098,36 +1065,18 @@ impl TypeStructure<UnresolvedType> {
         }
     }
 
-    pub fn finalize_defaults(&mut self, ctx: &Context) {
+    fn substitute_defaults(&mut self, ctx: &Context, numeric_only: bool) {
         match self {
             TypeStructure::Marker | TypeStructure::Recursive(_) => {}
             TypeStructure::Structure(tys) => {
                 for ty in tys {
-                    ty.substitute_defaults(ctx);
+                    ty.substitute_defaults(ctx, numeric_only);
                 }
             }
             TypeStructure::Enumeration(variants) => {
                 for tys in variants {
                     for ty in tys {
-                        ty.substitute_defaults(ctx);
-                    }
-                }
-            }
-        }
-    }
-
-    pub fn finalize_numeric_variables(&mut self, ctx: &Context) {
-        match self {
-            TypeStructure::Marker | TypeStructure::Recursive(_) => {}
-            TypeStructure::Structure(tys) => {
-                for ty in tys {
-                    ty.finalize_numeric_variables(ctx);
-                }
-            }
-            TypeStructure::Enumeration(variants) => {
-                for tys in variants {
-                    for ty in tys {
-                        ty.finalize_numeric_variables(ctx);
+                        ty.substitute_defaults(ctx, numeric_only);
                     }
                 }
             }
@@ -1241,6 +1190,20 @@ impl Type {
                 _ => {}
             },
             _ => {}
+        }
+    }
+
+    pub fn contains_error(&self) -> bool {
+        match &self.kind {
+            TypeKind::Error => true,
+            TypeKind::Function(input, output) => input.contains_error() || output.contains_error(),
+            TypeKind::Named(_, params, _) => params.iter().any(|param| param.contains_error()),
+            TypeKind::Tuple(tys) => tys.iter().any(|ty| ty.contains_error()),
+            TypeKind::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Reference(ty) => ty.contains_error(),
+                _ => false,
+            },
+            _ => false,
         }
     }
 }

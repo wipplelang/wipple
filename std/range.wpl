@@ -17,16 +17,18 @@ Stride : N => type {
   step :: N
 }
 
-N where (Default N) (Order N) (Add N N N) => instance (As-Sequence (Stride N) N) : range -> {
+N where (Default N) (Order N) (Add N N N) => instance (As-Sequence (Stride N) N) : stride -> {
   zero : Default
-  { min max step } : range
+  { min max step } : stride
 
   (max >= min) . expect "`max` must be greater than `min`"
   (step >= zero) . expect "`step` must be positive"
 
   current : mutable min
   sequence {
-    if (get current >= max) { None } {
+    if (get current >= max) {
+      None
+    } {
       n : get current
       current . add! step
       Some n

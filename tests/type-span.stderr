@@ -8,9 +8,12 @@ error:
    │ │    could not find instance `Add (_ -> ()) Number _`
    │ this has type `_ -> ()`
    │
-   ┌─ <dir>/std/math.wpl:25:14
+   ┌─ <dir>/std/math.wpl:22:59
    │
-25 │   'a + 'b -> Add 'b 'a
+22 │ add :: (Left : Number) (Right : Number) (infer Sum) where (Add Left Right Sum) => Right -> Left -> Sum
+   │                                                           -------------------- required by this bound here
+   ·
+29 │   'a + 'b -> add 'b 'a
    │              --- actual error occurred here
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
@@ -22,12 +25,15 @@ error:
    │ ---- ^ - this has type `Number`
    │ │    │  
    │ │    cannot add `Show` to `1`
-   │ │    could not find instance `Add (Text -> Text) Number _`
-   │ this has type `Text -> Text`
+   │ │    could not find instance `Add (_ -> Text) Number _`
+   │ this has type `_ -> Text`
    │
-   ┌─ <dir>/std/math.wpl:25:14
+   ┌─ <dir>/std/math.wpl:22:59
    │
-25 │   'a + 'b -> Add 'b 'a
+22 │ add :: (Left : Number) (Right : Number) (infer Sum) where (Add Left Right Sum) => Right -> Left -> Sum
+   │                                                           -------------------- required by this bound here
+   ·
+29 │   'a + 'b -> add 'b 'a
    │              --- actual error occurred here
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance

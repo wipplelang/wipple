@@ -16,7 +16,7 @@ repeat' : body -> when (body ()) {
 
 [help "Used in `repeat` to specify when to stop repeating."]
 [help-group "Control Flow"]
-Repeat-Predicate : A (infer Result) => trait (A -> () -> Control-Flow Result)
+Repeat-Predicate : A Result => trait (A -> () -> Control-Flow Result)
 
 [private]
 repeat-with-predicate' :: P (infer Result) where (Repeat-Predicate P Result) => P -> (() -> Result) -> Result

@@ -3,7 +3,7 @@
 use "list"
 use "dictionary"
 
-Build-Collection : Collection (infer Element) => trait (Element -> Mutable Collection -> ())
+Build-Collection : Collection Element => trait (Element -> Mutable Collection -> ())
 
 [private]
 initial-collection :: Element (Collection : List Element) where (Default Collection) => Collection

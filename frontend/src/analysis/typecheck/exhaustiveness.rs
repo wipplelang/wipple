@@ -21,9 +21,17 @@ impl Typechecker {
             |expr| {
                 match &expr.kind {
                     analysis::ExpressionKind::Initialize(pattern, value) => {
-                        if pattern.contains_error() {
-                            return ControlFlow::Continue(());
-                        }
+                        let pattern_span = pattern.span;
+
+                        let pattern = match self.convert_match_pattern(pattern) {
+                            Some(pattern) => pattern,
+                            None => return ControlFlow::Continue(()),
+                        };
+
+                        let ty = match self.convert_ty(&value.ty) {
+                            Some(ty) => ty,
+                            None => return ControlFlow::Continue(()),
+                        };
 
                         let match_compiler = MatchCompiler {
                             typechecker: self,
@@ -31,18 +39,21 @@ impl Typechecker {
                         };
 
                         let rows = vec![(
-                            self.convert_match_pattern(pattern),
+                            pattern,
                             false,
                             self.compiler.new_reachable_marker_id(), // TODO
                         )];
 
-                        let result = match_compiler.compile(
+                        let result = match match_compiler.compile(
                             Variable {
                                 id: self.compiler.new_variable_id(None),
-                                ty: self.convert_ty(&value.ty),
+                                ty,
                             },
                             rows,
-                        );
+                        ) {
+                            Some(result) => result,
+                            None => return ControlFlow::Continue(()),
+                        };
 
                         if result.info.missing {
                             let mut missing_patterns = result
@@ -55,7 +66,7 @@ impl Typechecker {
                                 .collect::<Vec<_>>();
 
                             self.compiler.add_error(
-                                pattern.span,
+                                pattern_span,
                                 match missing_patterns.len() {
                                     0 => unreachable!(),
                                     1 => format!(
@@ -77,13 +88,20 @@ impl Typechecker {
                         }
                     }
                     analysis::ExpressionKind::Function(pattern, _, _) => {
-                        if pattern.contains_error() {
-                            return ControlFlow::Continue(());
-                        }
+                        let pattern_span = pattern.span;
+                        let pattern = match self.convert_match_pattern(pattern) {
+                            Some(pattern) => pattern,
+                            None => return ControlFlow::Continue(()),
+                        };
 
                         let input_ty = match &expr.ty.kind {
                             analysis::TypeKind::Function(input, _) => input.as_ref(),
                             _ => unreachable!(),
+                        };
+
+                        let input_ty = match self.convert_ty(input_ty) {
+                            Some(ty) => ty,
+                            None => return ControlFlow::Continue(()),
                         };
 
                         let match_compiler = MatchCompiler {
@@ -92,18 +110,21 @@ impl Typechecker {
                         };
 
                         let rows = vec![(
-                            self.convert_match_pattern(pattern),
+                            pattern,
                             false,
                             self.compiler.new_reachable_marker_id(), // TODO
                         )];
 
-                        let result = match_compiler.compile(
+                        let result = match match_compiler.compile(
                             Variable {
                                 id: self.compiler.new_variable_id(None),
-                                ty: self.convert_ty(input_ty),
+                                ty: input_ty,
                             },
                             rows,
-                        );
+                        ) {
+                            Some(result) => result,
+                            None => return ControlFlow::Continue(()),
+                        };
 
                         if result.info.missing {
                             let mut missing_patterns = result
@@ -116,7 +137,7 @@ impl Typechecker {
                                 .collect::<Vec<_>>();
 
                             self.compiler.add_error(
-                                pattern.span,
+                                pattern_span,
                                 match missing_patterns.len() {
                                     0 => unreachable!(),
                                     1 => format!(
@@ -138,6 +159,11 @@ impl Typechecker {
                         }
                     }
                     analysis::ExpressionKind::When(input, arms) => {
+                        let input_ty = match self.convert_ty(&input.ty) {
+                            Some(ty) => ty,
+                            None => return ControlFlow::Continue(()),
+                        };
+
                         let match_compiler = MatchCompiler {
                             typechecker: self,
                             info: Info::default(),
@@ -145,32 +171,35 @@ impl Typechecker {
 
                         let mut row_ids = HashMap::new();
 
-                        let rows = arms
+                        let rows = match arms
                             .iter()
-                            .filter_map(|arm| {
-                                if arm.pattern.contains_error() {
-                                    return None;
-                                }
-
+                            .map(|arm| {
                                 let id = self.compiler.new_reachable_marker_id();
 
                                 row_ids.insert(id, arm.span);
 
                                 Some((
-                                    self.convert_match_pattern(&arm.pattern),
+                                    self.convert_match_pattern(&arm.pattern)?,
                                     arm.guard.is_some(),
                                     id,
                                 ))
                             })
-                            .collect::<Vec<_>>();
+                            .collect::<Option<Vec<_>>>()
+                        {
+                            Some(rows) => rows,
+                            None => return ControlFlow::Continue(()),
+                        };
 
-                        let result = match_compiler.compile(
+                        let result = match match_compiler.compile(
                             Variable {
                                 id: self.compiler.new_variable_id(None),
-                                ty: self.convert_ty(&input.ty),
+                                ty: input_ty,
                             },
                             rows,
-                        );
+                        ) {
+                            Some(result) => result,
+                            None => return ControlFlow::Continue(()),
+                        };
 
                         if result.info.missing {
                             let mut missing_patterns = result
@@ -223,11 +252,11 @@ impl Typechecker {
         )
     }
 
-    fn convert_match_pattern(&self, pattern: &analysis::Pattern) -> Pattern {
-        match &pattern.kind {
+    fn convert_match_pattern(&self, pattern: &analysis::Pattern) -> Option<Pattern> {
+        Some(match &pattern.kind {
             analysis::PatternKind::Error(_)
             | analysis::PatternKind::UnresolvedDestructure
-            | analysis::PatternKind::UnresolvedVariant => unreachable!(),
+            | analysis::PatternKind::UnresolvedVariant => return None,
             analysis::PatternKind::Wildcard => Pattern::Binding(None),
             analysis::PatternKind::Variable(variable) => Pattern::Binding(Some(Variable {
                 id: *variable,
@@ -239,25 +268,25 @@ impl Typechecker {
                         .get(variable)
                         .unwrap()
                         .ty,
-                ),
+                )?,
             })),
             analysis::PatternKind::Or(left, right) => Pattern::Or(vec![
-                self.convert_match_pattern(left),
-                self.convert_match_pattern(right),
+                self.convert_match_pattern(left)?,
+                self.convert_match_pattern(right)?,
             ]),
             analysis::PatternKind::Variant(id, index, patterns) => Pattern::Constructor(
                 Constructor::Variant(*id, *index),
                 patterns
                     .iter()
                     .map(|pattern| self.convert_match_pattern(pattern))
-                    .collect(),
+                    .collect::<Option<_>>()?,
             ),
             analysis::PatternKind::Tuple(patterns) => Pattern::Constructor(
                 Constructor::Tuple,
                 patterns
                     .iter()
                     .map(|pattern| self.convert_match_pattern(pattern))
-                    .collect(),
+                    .collect::<Option<_>>()?,
             ),
             analysis::PatternKind::Destructure(id, fields) => {
                 let num_fields = match &self.declarations.borrow().types.get(id).unwrap().kind {
@@ -267,7 +296,7 @@ impl Typechecker {
 
                 let mut patterns = vec![Pattern::Binding(None); num_fields];
                 for (index, pattern) in fields {
-                    patterns[index.0] = self.convert_match_pattern(pattern);
+                    patterns[index.0] = self.convert_match_pattern(pattern)?;
                 }
 
                 Pattern::Constructor(Constructor::Structure(*id), patterns)
@@ -335,11 +364,12 @@ impl Typechecker {
                 )),
                 Vec::new(),
             ),
-        }
+        })
     }
 
-    fn convert_ty(&self, ty: &analysis::Type) -> Type {
-        match &ty.kind {
+    fn convert_ty(&self, ty: &analysis::Type) -> Option<Type> {
+        Some(match &ty.kind {
+            analysis::TypeKind::Error => return None,
             analysis::TypeKind::Named(id, _, analysis::TypeStructure::Marker) => Type::Marker(*id),
             analysis::TypeKind::Named(id, _, analysis::TypeStructure::Enumeration(variants)) => {
                 Type::Enumeration(*id, variants.clone())
@@ -395,12 +425,12 @@ impl Typechecker {
 
                         Type::Structure(*recursive_id, fields)
                     }
-                    analysis::typecheck::TypeDeclKind::Alias(ty) => self.convert_ty(&ty),
+                    analysis::typecheck::TypeDeclKind::Alias(ty) => self.convert_ty(&ty)?,
                 }
             }
             analysis::TypeKind::Tuple(tys) => Type::Tuple(tys.clone()),
             _ => Type::Unmatchable(ty.clone()),
-        }
+        })
     }
 
     fn format_pattern(&self, pattern: &Pattern, parenthesize: bool) -> String {
@@ -521,7 +551,9 @@ impl Typechecker {
         let type_names = getter!(types, |name: InternedString| name.to_string());
         let trait_names = getter!(traits, |name: InternedString| name.to_string());
         let param_names = getter!(type_parameters, |name: Option<_>| {
-            name.as_ref().map(ToString::to_string)
+            name.as_ref()
+                .map(ToString::to_string)
+                .unwrap_or_else(|| String::from("_"))
         });
 
         format_type(
@@ -717,7 +749,11 @@ struct MatchCompiler<'a> {
 }
 
 impl<'a> MatchCompiler<'a> {
-    fn compile(mut self, input: Variable, arms: Vec<(Pattern, bool, ReachableMarkerId)>) -> Match {
+    fn compile(
+        mut self,
+        input: Variable,
+        arms: Vec<(Pattern, bool, ReachableMarkerId)>,
+    ) -> Option<Match> {
         let rows = arms
             .into_iter()
             .map(|(pattern, guard, body)| Row {
@@ -730,18 +766,18 @@ impl<'a> MatchCompiler<'a> {
             })
             .collect();
 
-        let tree = self.compile_rows(rows);
+        let tree = self.compile_rows(rows)?;
 
-        Match {
+        Some(Match {
             tree,
             info: self.info,
-        }
+        })
     }
 
-    fn compile_rows(&mut self, rows: Vec<Row>) -> Decision {
+    fn compile_rows(&mut self, rows: Vec<Row>) -> Option<Decision> {
         if rows.is_empty() {
             self.info.missing = true;
-            return Decision::NotMatched;
+            return Some(Decision::NotMatched);
         }
 
         let mut rows = rows
@@ -761,33 +797,33 @@ impl<'a> MatchCompiler<'a> {
 
             self.info.reachable.push(row.reachable);
 
-            return if row.guard {
-                Decision::Guard(row.reachable, Box::new(self.compile_rows(rows)))
+            return Some(if row.guard {
+                Decision::Guard(row.reachable, Box::new(self.compile_rows(rows)?))
             } else {
                 Decision::Matched(row.reachable)
-            };
+            });
         }
 
         let branch_var = self.branch_variable(rows.first().unwrap(), &rows).clone();
-        match &branch_var.ty {
+        Some(match &branch_var.ty {
             Type::Enumeration(id, variants) => {
                 let cases = variants
                     .iter()
                     .enumerate()
                     .map(|(index, tys)| {
-                        (
+                        Some((
                             Constructor::Variant(*id, VariantIndex(index)),
                             self.new_variables(
                                 tys.iter()
                                     .map(|ty| self.typechecker.convert_ty(ty))
-                                    .collect::<Vec<_>>(),
+                                    .collect::<Option<Vec<_>>>()?,
                             ),
                             Vec::new(),
-                        )
+                        ))
                     })
-                    .collect();
+                    .collect::<Option<_>>()?;
 
-                let cases = self.compile_constructor_cases(rows, &branch_var, cases);
+                let cases = self.compile_constructor_cases(rows, &branch_var, cases)?;
 
                 Decision::Switch(branch_var, cases, None)
             }
@@ -798,12 +834,12 @@ impl<'a> MatchCompiler<'a> {
                         fields
                             .iter()
                             .map(|ty| self.typechecker.convert_ty(ty))
-                            .collect::<Vec<_>>(),
+                            .collect::<Option<Vec<_>>>()?,
                     ),
                     Vec::new(),
                 )];
 
-                let cases = self.compile_constructor_cases(rows, &branch_var, cases);
+                let cases = self.compile_constructor_cases(rows, &branch_var, cases)?;
 
                 Decision::Switch(branch_var, cases, None)
             }
@@ -813,25 +849,25 @@ impl<'a> MatchCompiler<'a> {
                     self.new_variables(
                         tys.iter()
                             .map(|ty| self.typechecker.convert_ty(ty))
-                            .collect::<Vec<_>>(),
+                            .collect::<Option<Vec<_>>>()?,
                     ),
                     Vec::new(),
                 )];
 
-                let cases = self.compile_constructor_cases(rows, &branch_var, cases);
+                let cases = self.compile_constructor_cases(rows, &branch_var, cases)?;
 
                 Decision::Switch(branch_var, cases, None)
             }
             Type::Marker(id) => {
                 let cases = vec![(Constructor::Marker(*id), Vec::new(), Vec::new())];
-                let cases = self.compile_constructor_cases(rows, &branch_var, cases);
+                let cases = self.compile_constructor_cases(rows, &branch_var, cases)?;
                 Decision::Switch(branch_var, cases, None)
             }
             Type::Unmatchable(ty) => {
-                let (cases, fallback) = self.compile_unbounded_cases(ty, rows, &branch_var);
+                let (cases, fallback) = self.compile_unbounded_cases(ty, rows, &branch_var)?;
                 Decision::Switch(branch_var, cases, Some(Box::new(fallback)))
             }
-        }
+        })
     }
 
     fn compile_constructor_cases(
@@ -839,7 +875,7 @@ impl<'a> MatchCompiler<'a> {
         rows: Vec<Row>,
         branch_var: &Variable,
         mut cases: Vec<(Constructor, Vec<Variable>, Vec<Row>)>,
-    ) -> Vec<Case> {
+    ) -> Option<Vec<Case>> {
         for mut row in rows {
             if let Some(column) = row.remove_column(branch_var) {
                 for (pattern, row) in column.pattern.flatten_or(row) {
@@ -870,10 +906,12 @@ impl<'a> MatchCompiler<'a> {
 
         cases
             .into_iter()
-            .map(|(constructor, variables, rows)| Case {
-                constructor,
-                arguments: variables,
-                body: self.compile_rows(rows),
+            .map(|(constructor, variables, rows)| {
+                Some(Case {
+                    constructor,
+                    arguments: variables,
+                    body: self.compile_rows(rows)?,
+                })
             })
             .collect()
     }
@@ -883,7 +921,7 @@ impl<'a> MatchCompiler<'a> {
         ty: &analysis::Type,
         rows: Vec<Row>,
         branch_var: &Variable,
-    ) -> (Vec<Case>, Decision) {
+    ) -> Option<(Vec<Case>, Decision)> {
         let mut raw_cases: Vec<(Constructor, Vec<Variable>, Vec<Row>)> = Vec::new();
         let mut fallback_rows = Vec::new();
 
@@ -904,14 +942,16 @@ impl<'a> MatchCompiler<'a> {
 
         let cases = raw_cases
             .into_iter()
-            .map(|(cons, vars, rows)| Case {
-                constructor: cons,
-                arguments: vars,
-                body: self.compile_rows(rows),
+            .map(|(cons, vars, rows)| {
+                Some(Case {
+                    constructor: cons,
+                    arguments: vars,
+                    body: self.compile_rows(rows)?,
+                })
             })
-            .collect();
+            .collect::<Option<_>>()?;
 
-        (cases, self.compile_rows(fallback_rows))
+        Some((cases, self.compile_rows(fallback_rows)?))
     }
 
     // TODO: This may not be necessary if we're just checking for

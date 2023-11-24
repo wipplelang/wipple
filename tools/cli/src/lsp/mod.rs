@@ -253,18 +253,8 @@ impl LanguageServer for Backend {
             ControlFlow::Continue(())
         };
 
-        for decl in document.program.declarations.constants.values() {
-            if let Some(expr) = &decl.body {
-                expr.traverse(&mut traverse_semantic_tokens, |_| ControlFlow::Continue(()));
-            }
-        }
-
-        for instances in document.program.declarations.instances.values() {
-            for decl in instances.values() {
-                if let Some(expr) = &decl.body {
-                    expr.traverse(&mut traverse_semantic_tokens, |_| ControlFlow::Continue(()));
-                }
-            }
+        for expr in document.program.generic_items.values() {
+            expr.traverse(&mut traverse_semantic_tokens, |_| ControlFlow::Continue(()));
         }
 
         for item in document.program.items.values() {
@@ -392,7 +382,9 @@ impl LanguageServer for Backend {
                 getter!(types, |name: InternedString| name.to_string()),
                 getter!(traits, |name: InternedString| name.to_string()),
                 getter!(type_parameters, |name: Option<_>| {
-                    name.as_ref().map(ToString::to_string)
+                    name.as_ref()
+                        .map(ToString::to_string)
+                        .unwrap_or_else(|| String::from("_"))
                 }),
                 format,
             )
@@ -623,7 +615,9 @@ impl LanguageServer for Backend {
                 getter!(types, |name: InternedString| name.to_string()),
                 getter!(traits, |name: InternedString| name.to_string()),
                 getter!(type_parameters, |name: Option<_>| {
-                    name.as_ref().map(ToString::to_string)
+                    name.as_ref()
+                        .map(ToString::to_string)
+                        .unwrap_or_else(|| String::from("_"))
                 }),
                 format,
             )

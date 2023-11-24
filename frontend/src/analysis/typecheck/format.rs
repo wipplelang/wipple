@@ -84,28 +84,24 @@ impl FormattableType {
         vars
     }
 
-    fn param_names(&self, get_name: impl Fn(TypeParameterId) -> Option<String>) -> Vec<String> {
+    fn param_names(&self, get_name: impl Fn(TypeParameterId) -> String) -> Vec<String> {
         let mut names = BTreeMap::new();
         match &self.kind {
             FormattableTypeKind::Type(ty) => {
                 for param in ty.params() {
-                    let name = match get_name(param) {
-                        Some(name) => name,
-                        None => continue,
-                    };
-
-                    names.insert(param, name);
+                    let name = get_name(param);
+                    if name != "_" {
+                        names.insert(param, name);
+                    }
                 }
             }
             FormattableTypeKind::Trait(_, tys) => {
                 for ty in tys {
                     for param in ty.params() {
-                        let name = match get_name(param) {
-                            Some(name) => name,
-                            None => continue,
-                        };
-
-                        names.insert(param, name);
+                        let name = get_name(param);
+                        if name != "_" {
+                            names.insert(param, name);
+                        }
                     }
                 }
             }
@@ -145,7 +141,7 @@ pub fn format_type(
     ty: impl Into<FormattableType>,
     type_names: impl Fn(TypeId) -> String,
     trait_names: impl Fn(TraitId) -> String,
-    param_names: impl Fn(TypeParameterId) -> Option<String>,
+    param_names: impl Fn(TypeParameterId) -> String,
     format: Format,
 ) -> String {
     format_type_with(ty, &type_names, &trait_names, &param_names, format)
@@ -155,7 +151,7 @@ fn format_type_with(
     ty: impl Into<FormattableType>,
     type_names: &impl Fn(TypeId) -> String,
     trait_names: &impl Fn(TraitId) -> String,
-    param_names: &impl Fn(TypeParameterId) -> Option<String>,
+    param_names: &impl Fn(TypeParameterId) -> String,
     mut format: Format,
 ) -> String {
     let mut ty: FormattableType = ty.into();
@@ -183,7 +179,7 @@ fn format_type_with(
         ty: FormattableType,
         type_names: &impl Fn(TypeId) -> String,
         trait_names: &impl Fn(TraitId) -> String,
-        param_names: &impl Fn(TypeParameterId) -> Option<String>,
+        param_names: &impl Fn(TypeParameterId) -> String,
         var_names: &impl Fn(TypeVariable) -> String,
         is_top_level: bool,
         is_return: bool,
@@ -226,9 +222,8 @@ fn format_type_with(
                 UnresolvedTypeKind::NumericVariable(_) => {
                     format_named_type!("Number", Vec::new())
                 }
-                UnresolvedTypeKind::Parameter(param) => {
-                    param_names(param).unwrap_or_else(|| String::from("_"))
-                }
+                UnresolvedTypeKind::Opaque(_) => String::from("<opaque type>"),
+                UnresolvedTypeKind::Parameter(param) => param_names(param),
                 UnresolvedTypeKind::Error => String::from("_"),
                 UnresolvedTypeKind::Named(id, params, _) => {
                     format_named_type!(type_names(id), params)
@@ -354,28 +349,36 @@ fn format_type_with(
     );
 
     let formatted = if let Some(bounds) = bounds {
-        let bounds = bounds
-            .iter()
-            .map(|bound| {
-                let trait_name = trait_names(bound.trait_id);
+        macro_rules! format_bounds {
+            ($bounds:expr) => {
+                $bounds
+                    .iter()
+                    .map(|bound| {
+                        let trait_name = trait_names(bound.trait_id);
 
-                format!(
-                    " ({})",
-                    std::iter::once(trait_name)
-                        .chain(bound.params.clone().into_iter().map(|ty| format_type_inner(
-                            ty.into(),
-                            type_names,
-                            trait_names,
-                            param_names,
-                            &var_names,
-                            true,
-                            false,
-                            false,
-                        )))
-                        .join(" ")
-                )
-            })
-            .collect::<String>();
+                        format!(
+                            " ({})",
+                            std::iter::once(trait_name)
+                                .chain(bound.params.clone().into_iter().map(
+                                    |ty| format_type_inner(
+                                        ty.into(),
+                                        type_names,
+                                        trait_names,
+                                        param_names,
+                                        &var_names,
+                                        true,
+                                        false,
+                                        false,
+                                    )
+                                ))
+                                .join(" ")
+                        )
+                    })
+                    .collect::<String>()
+            };
+        }
+
+        let bounds = format_bounds!(bounds);
 
         format!(
             "{}{}=> {}",
@@ -397,7 +400,7 @@ fn format_type_with(
             } else {
                 format!("where{bounds} ")
             },
-            formatted
+            formatted,
         )
     } else {
         formatted

@@ -142,8 +142,7 @@ set-entry : key value { hasher size entries } -> {
   }
 }
 
-Key Value => instance (As-Sequence (Dictionary Key Value) (Key ; Value)) : (entries of) | flatten
-Key where (Equal Key) (Hash Key) => instance (Container (Dictionary Key _) Key) : target -> entry target | (is Some _)
+Key Value => instance (As-Sequence (Dictionary Key Value) (Key ; Value)) : dictionary -> (((entries of dictionary) . As-Sequence) :: Sequence (Maybe (_ ; _))) . flatten
 
 [help "A collection of unique elements."]
 [help-group "Collections"]

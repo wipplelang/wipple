@@ -192,15 +192,18 @@ impl Converter<'_> {
             ty: self.convert_type(&expr.ty),
             kind: match &expr.kind {
                 analysis::ExpressionKind::Error(trace) => {
-                    panic!(
-                        "found error expression in program: {:?}",
-                        trace.clone().into_inner()
-                    )
+                    panic!("found error expression in program: {:?}", trace)
+                }
+                analysis::ExpressionKind::ErrorConstant(id) => {
+                    panic!("found error constant in program: {:?}", id);
+                }
+                analysis::ExpressionKind::BoundInstance(_) => {
+                    panic!("cannot lower a generic constant to IR: {:#?}", expr.span);
                 }
                 analysis::ExpressionKind::UnresolvedConstant(_)
                 | analysis::ExpressionKind::UnresolvedTrait(_)
                 | analysis::ExpressionKind::UnresolvedExtend => {
-                    panic!("found unresolved expression in program")
+                    panic!("found unresolved expression in program: {:#?}", expr.span)
                 }
                 analysis::ExpressionKind::Marker => ExpressionKind::Marker,
                 analysis::ExpressionKind::Variable(var) => ExpressionKind::Variable(*var),
@@ -496,7 +499,7 @@ impl Converter<'_> {
                 analysis::typecheck::BuiltinType::TaskGroup => Type::TaskGroup,
                 analysis::typecheck::BuiltinType::Hasher => Type::Hasher,
             },
-            analysis::TypeKind::Error => unreachable!(),
+            analysis::TypeKind::Error => panic!("unexpected error type: {:#?}", ty.info),
         }
     }
 }
