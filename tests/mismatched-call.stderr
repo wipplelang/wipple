@@ -4,9 +4,9 @@ error:
  6 │ accepts-text (1 + 2)
    │               ^^^^^ expected `Text`, but found `Number`
    │
-   ┌─ <dir>/std/math.wpl:29:14
+   ┌─ <dir>/std/math.wpl:25:14
    │
-29 │   'a + 'b -> add 'b 'a
+25 │   'a + 'b -> add 'b 'a
    │              --- actual error occurred here
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types

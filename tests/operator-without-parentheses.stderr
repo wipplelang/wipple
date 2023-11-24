@@ -10,12 +10,12 @@ error:
    │ this has type `()`
    │ this is parsed as one single input to `+`
    │
-   ┌─ <dir>/std/math.wpl:22:59
+   ┌─ <dir>/std/math.wpl:18:59
    │
-22 │ add :: (Left : Number) (Right : Number) (infer Sum) where (Add Left Right Sum) => Right -> Left -> Sum
+18 │ add :: (Left : Number) (Right : Number) (infer Sum) where (Add Left Right Sum) => Right -> Left -> Sum
    │                                                           -------------------- required by this bound here
    ·
-29 │   'a + 'b -> add 'b 'a
+25 │   'a + 'b -> add 'b 'a
    │              --- actual error occurred here
    │
    = add parentheses around `1 + 2`: `(1 + 2)`
@@ -53,12 +53,12 @@ error:
    │       │ could not find instance `Add Number Text _`
    │       this has type `Number`
    │
-   ┌─ <dir>/std/math.wpl:22:59
+   ┌─ <dir>/std/math.wpl:18:59
    │
-22 │ add :: (Left : Number) (Right : Number) (infer Sum) where (Add Left Right Sum) => Right -> Left -> Sum
+18 │ add :: (Left : Number) (Right : Number) (infer Sum) where (Add Left Right Sum) => Right -> Left -> Sum
    │                                                           -------------------- required by this bound here
    ·
-29 │   'a + 'b -> add 'b 'a
+25 │   'a + 'b -> add 'b 'a
    │              --- actual error occurred here
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
