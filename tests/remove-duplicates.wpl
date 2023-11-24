@@ -1,0 +1,4 @@
+remove-duplicates :: Element where (Equal Element) (Hash Element) => List Element -> List Element
+remove-duplicates : (collect :: (_ -> Set _)) | collect
+
+(1 , 2 , 2 , 3) . remove-duplicates . each show

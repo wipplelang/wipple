@@ -1146,7 +1146,11 @@ impl Typechecker {
             {
                 let resolved_exprs = info.resolved_exprs.lock();
 
-                if (resolved_exprs.is_empty() && prev_resolved_exprs.is_empty())
+                if resolved_exprs.is_empty() {
+                    break;
+                }
+
+                if prev_resolved_exprs.is_empty()
                     || resolved_exprs
                         .keys()
                         .any(|id| !prev_resolved_exprs.contains_key(id))
@@ -1179,19 +1183,21 @@ impl Typechecker {
     }
 
     fn report_recursion_limit_reached(&self, span: SpanList, stack: &[SpanList]) {
-        self.compiler
-            .error(
-                span,
-                "recursion limit reached while computing the type of this expression",
-                "recursion-limit",
-            )
-            .notes(
-                stack
-                    .iter()
-                    .copied()
-                    .unique()
-                    .map(|span| Note::secondary(span, "while computing this")),
-            );
+        self.compiler.add_diagnostic(
+            self.compiler
+                .error(
+                    span,
+                    "recursion limit reached while computing the type of this expression",
+                    "recursion-limit",
+                )
+                .notes(
+                    stack
+                        .iter()
+                        .copied()
+                        .unique()
+                        .map(|span| Note::secondary(span, "while computing this")),
+                ),
+        );
     }
 }
 
@@ -2883,12 +2889,12 @@ impl Typechecker {
                             MonomorphizedExpressionKind::Constant(id.unwrap())
                         }
                         Err(error) => {
-                            info.resolved_exprs
-                                .lock()
-                                .insert(Ok(expr.id), self.compiler.backtrace());
-
                             if let Some(error) = error {
                                 self.add_error(error);
+
+                                info.resolved_exprs
+                                    .lock()
+                                    .insert(Ok(expr.id), self.compiler.backtrace());
 
                                 MonomorphizedExpressionKind::ErrorConstant(generic_id)
                             } else {
@@ -3725,7 +3731,7 @@ impl Typechecker {
                         return Ok(Some((*id, bounds.clone())));
                     } else {
                         self.ctx = prev_ctx;
-                        return Err(FindInstanceError::RecursionLimitReached);
+                        return Err(FindInstanceError::MultipleCandidates(None));
                     }
                 } else {
                     self.ctx = prev_ctx;
@@ -5816,9 +5822,10 @@ impl Typechecker {
                     // Prevent unresolved type errors from cascading throughout the
                     // entire program -- just report the first instance of a value
                     // whose type cannot be determined
-                    if vars
-                        .iter()
-                        .any(|var| !reported_type_variables.contains(var))
+                    if vars.is_empty()
+                        || vars
+                            .iter()
+                            .any(|var| !reported_type_variables.contains(var))
                     {
                         self.report_error(error);
                     }
@@ -6567,7 +6574,8 @@ impl Typechecker {
                                 let (_, constant) = self.items.get(&item).unwrap().0?;
                                 constant
                             }
-                            ExpressionKind::UnresolvedConstant(id) => id,
+                            ExpressionKind::ErrorConstant(id)
+                            | ExpressionKind::UnresolvedConstant(id) => id,
                             _ => return None,
                         };
 
