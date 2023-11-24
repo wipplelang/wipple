@@ -47,10 +47,12 @@ error:
    ┌─ test:3:9
    │
  3 │ show (1 + "hi")
-   │       - ^ ---- this has type `Text`
-   │       │ │  
+   │       --^-----
+   │       │ │ │
+   │       │ │ this has type `Text`
    │       │ cannot add `1` to `"hi"`
-   │       │ could not find instance `Add Number Text _`
+   │       │ could not find instance `Add Number Text Text`
+   │       this has type `Text`
    │       this has type `Number`
    │
    ┌─ <dir>/std/math.wpl:18:59

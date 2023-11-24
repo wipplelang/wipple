@@ -5,8 +5,8 @@ error:
    │ ---- ^ - this has type `Number`
    │ │    │  
    │ │    cannot add `show` to `1`
-   │ │    could not find instance `Add (_ -> ()) Number _`
-   │ this has type `_ -> ()`
+   │ │    could not find instance `Add (Text -> ()) Number _`
+   │ this has type `Text -> ()`
    │
    ┌─ <dir>/std/math.wpl:18:59
    │

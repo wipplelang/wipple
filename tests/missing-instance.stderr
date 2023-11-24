@@ -7,10 +7,10 @@ error:
    │ cannot display `Foo` on the screen
    │ could not find instance `Show Foo`
    │
-   ┌─ <dir>/std/io.wpl:25:17
+   ┌─ <dir>/std/io.wpl:25:26
    │
-25 │ show :: A where (Show A) => A -> ()
-   │                 -------- required by this bound here
+25 │ show :: (A : Text) where (Show A) => A -> ()
+   │                          -------- required by this bound here
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
 

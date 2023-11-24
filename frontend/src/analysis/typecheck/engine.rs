@@ -559,10 +559,10 @@ impl Context {
             if let UnresolvedTypeKind::Variable(other) = ty.kind {
                 let mut defaults = self.defaults.borrow_mut();
 
-                if let Some(source) = defaults.get(&var).cloned() {
-                    defaults.insert(other, source);
-                } else if let Some(default) = defaults.get(&other).cloned() {
+                if let Some(default) = defaults.get(&other).cloned() {
                     defaults.insert(var, default);
+                } else if let Some(default) = defaults.get(&var).cloned() {
+                    defaults.insert(other, default);
                 }
             }
 
@@ -865,7 +865,18 @@ impl UnresolvedType {
         }
     }
 
-    pub fn substitute_defaults(&mut self, ctx: &Context, numeric_only: bool) {
+    pub fn substitute_defaults(&mut self, ctx: &Context, numeric_only: bool) -> bool {
+        let mut substituted = false;
+        self.substitute_defaults_inner(ctx, numeric_only, &mut substituted);
+        substituted
+    }
+
+    fn substitute_defaults_inner(
+        &mut self,
+        ctx: &Context,
+        numeric_only: bool,
+        substituted: &mut bool,
+    ) {
         self.apply(ctx);
 
         match &mut self.kind {
@@ -874,37 +885,39 @@ impl UnresolvedType {
                     if let Some(default) = ctx.defaults.borrow().get(var).cloned() {
                         ctx.substitutions.borrow_mut().insert(*var, default.clone());
                         self.kind = default.kind;
-                        self.substitute_defaults(ctx, numeric_only);
+                        *substituted = true;
+                        self.substitute_defaults_inner(ctx, numeric_only, substituted);
                     }
                 }
             }
             UnresolvedTypeKind::NumericVariable(var) => {
                 if let Some(ty) = ctx.numeric_substitutions.borrow().get(var).cloned() {
                     self.kind = ty.kind;
-                    self.substitute_defaults(ctx, numeric_only);
+                    *substituted = true;
+                    self.substitute_defaults_inner(ctx, numeric_only, substituted);
                 } else {
                     self.kind = UnresolvedTypeKind::Builtin(BuiltinType::Number);
                 }
             }
             UnresolvedTypeKind::Function(input, output) => {
-                input.substitute_defaults(ctx, numeric_only);
-                output.substitute_defaults(ctx, numeric_only);
+                input.substitute_defaults_inner(ctx, numeric_only, substituted);
+                output.substitute_defaults_inner(ctx, numeric_only, substituted);
             }
             UnresolvedTypeKind::Named(_, params, structure) => {
                 for param in params {
-                    param.substitute_defaults(ctx, numeric_only);
+                    param.substitute_defaults_inner(ctx, numeric_only, substituted);
                 }
 
-                structure.substitute_defaults(ctx, numeric_only);
+                structure.substitute_defaults_inner(ctx, numeric_only, substituted);
             }
             UnresolvedTypeKind::Tuple(tys) => {
                 for ty in tys {
-                    ty.substitute_defaults(ctx, numeric_only);
+                    ty.substitute_defaults_inner(ctx, numeric_only, substituted);
                 }
             }
             UnresolvedTypeKind::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Reference(ty) => {
-                    ty.substitute_defaults(ctx, numeric_only);
+                    ty.substitute_defaults_inner(ctx, numeric_only, substituted);
                 }
                 _ => {}
             },
@@ -1065,18 +1078,23 @@ impl TypeStructure<UnresolvedType> {
         }
     }
 
-    fn substitute_defaults(&mut self, ctx: &Context, numeric_only: bool) {
+    fn substitute_defaults_inner(
+        &mut self,
+        ctx: &Context,
+        numeric_only: bool,
+        substituted: &mut bool,
+    ) {
         match self {
             TypeStructure::Marker | TypeStructure::Recursive(_) => {}
             TypeStructure::Structure(tys) => {
                 for ty in tys {
-                    ty.substitute_defaults(ctx, numeric_only);
+                    ty.substitute_defaults_inner(ctx, numeric_only, substituted);
                 }
             }
             TypeStructure::Enumeration(variants) => {
                 for tys in variants {
                     for ty in tys {
-                        ty.substitute_defaults(ctx, numeric_only);
+                        ty.substitute_defaults_inner(ctx, numeric_only, substituted);
                     }
                 }
             }

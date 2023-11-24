@@ -24,8 +24,8 @@ macro_rules! traverse_expr_impl {
                         }
                     }
                     Call(function, input, _) => {
-                        function.$traverse($pass_parent!(expr), context.clone(), enter, exit)?;
                         input.$traverse($pass_parent!(expr), context.clone(), enter, exit)?;
+                        function.$traverse($pass_parent!(expr), context.clone(), enter, exit)?;
                     }
                     Function(_, body, _) => {
                         body.$traverse($pass_parent!(expr), context.clone(), enter, exit)?;

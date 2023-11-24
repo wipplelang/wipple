@@ -3957,10 +3957,15 @@ impl Typechecker {
     ) -> engine::GenericSubstitutions {
         let mut substitutions = engine::GenericSubstitutions::new();
         for param in params {
+            let mut default = self.get_default_for_param(param, Some(&mut substitutions));
+            if let Some(ty) = &mut default {
+                self.add_substitutions(ty, &mut substitutions);
+            }
+
             substitutions.insert(
                 param,
                 self.unresolved_ty(
-                    engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None)),
+                    engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(default)),
                     None,
                 ),
             );
