@@ -1082,7 +1082,6 @@ impl Typechecker {
             .unwrap_or(Compiler::DEFAULT_RECURSION_LIMIT);
 
         let mut expr = MonomorphizedExpression::from(expr);
-        let mut substituted_defaults = false;
         loop {
             if info.recursion_stack.len() > recursion_limit {
                 self.report_recursion_limit_reached(expr.span, &info.recursion_stack);
@@ -1142,17 +1141,14 @@ impl Typechecker {
                 break;
             }
 
-            // Stop if we've made no progress and we've already substituted defaults
-            if !*info.has_resolved_expr.lock() && substituted_defaults {
-                break;
-            }
-
             // Substitute defaults one expression at a time, working from the
             // innermost expression out
+            let mut substituted_defaults = false;
             expr.traverse_mut(
                 |_| ControlFlow::Continue(()),
                 |expr| {
                     if expr.ty.substitute_defaults(&self.ctx, false) {
+                        substituted_defaults = true;
                         ControlFlow::Break(false)
                     } else {
                         ControlFlow::Continue(())
@@ -1160,7 +1156,11 @@ impl Typechecker {
                 },
             );
 
-            substituted_defaults = true;
+            // Stop if we've made no progress and there are no more defaults to
+            // substitute
+            if !*info.has_resolved_expr.lock() && !substituted_defaults {
+                break;
+            }
 
             info.recursion_stack.push(expr.span);
         }
@@ -4434,23 +4434,13 @@ impl Typechecker {
         let decl = self.top_level.declarations.types.get(&id)?.clone();
 
         for &param in &decl.value.parameters {
-            let (span, inferred, has_default) = self
-                .with_type_parameter_decl(param, |decl| {
-                    (decl.span, decl.infer, decl.default.is_some())
-                })
+            let (span, inferred) = self
+                .with_type_parameter_decl(param, |decl| (decl.span, decl.infer))
                 .unwrap();
 
             if inferred {
                 self.compiler
                     .add_error(span, "inferred type parameters are only allowed in constants and instance definitions", "");
-            }
-
-            if has_default {
-                self.compiler.add_error(
-                    span,
-                    "default types are only allowed in constants and instance definitions",
-                    "",
-                );
             }
         }
 
@@ -4542,23 +4532,13 @@ impl Typechecker {
         let decl = self.top_level.declarations.traits.get(&id)?.clone();
 
         for &param in &decl.value.parameters {
-            let (span, inferred, has_default) = self
-                .with_type_parameter_decl(param, |decl| {
-                    (decl.span, decl.infer, decl.default.is_some())
-                })
+            let (span, inferred) = self
+                .with_type_parameter_decl(param, |decl| (decl.span, decl.infer))
                 .unwrap();
 
             if inferred {
                 self.compiler
                     .add_error(span, "inferred type parameters are only allowed in constants and instance definitions", "");
-            }
-
-            if has_default {
-                self.compiler.add_error(
-                    span,
-                    "default types are only allowed in constants and instance definitions",
-                    "",
-                );
             }
         }
 
