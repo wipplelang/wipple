@@ -96,7 +96,7 @@ impl<D: Driver> fmt::Display for File<D> {
         }
 
         for (index, line) in self.comments.iter().enumerate() {
-            line.fmt(f, 0, false, index == 0)?;
+            line.fmt(f, 0, false, index == 0, true)?;
             writeln!(f)?;
         }
 
@@ -115,7 +115,13 @@ impl<D: Driver> fmt::Display for File<D> {
                     indent += 1;
                 }
 
-                line.fmt(f, indent, true, statement_index == 0 && line_index == 0)?;
+                line.fmt(
+                    f,
+                    indent,
+                    true,
+                    statement_index == 0 && line_index == 0,
+                    true,
+                )?;
 
                 if line_index + 1 < statement.lines.len() {
                     write!(f, " \\")?;
@@ -131,12 +137,12 @@ impl<D: Driver> fmt::Display for File<D> {
 
 impl<D: Driver> fmt::Display for Expr<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.fmt(f, 0)
+        self.fmt(f, 0, false)
     }
 }
 
 impl<D: Driver> Expr<D> {
-    fn fmt(&self, f: &mut fmt::Formatter, indent: usize) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter, indent: usize, is_statement: bool) -> fmt::Result {
         match &self.kind {
             ExprKind::Underscore => write!(f, "_")?,
             ExprKind::Placeholder(placeholder) => write!(f, "{{%{}%}}", placeholder.as_ref())?,
@@ -155,7 +161,7 @@ impl<D: Driver> Expr<D> {
                 let single_expr = exprs.len() == 1
                     && !matches!(exprs.first().unwrap().kind, ExprKind::Name(_, _));
 
-                if !single_expr {
+                if !is_statement || single_expr {
                     write!(f, "(")?;
                 }
 
@@ -164,10 +170,10 @@ impl<D: Driver> Expr<D> {
                         write!(f, " ")?;
                     }
 
-                    expr.fmt(f, indent)?;
+                    expr.fmt(f, indent, false)?;
                 }
 
-                if !single_expr {
+                if !is_statement || single_expr {
                     write!(f, ")")?;
                 }
             }
@@ -184,7 +190,7 @@ impl<D: Driver> Expr<D> {
                         write!(f, " ")?;
                     }
 
-                    expr.fmt(f, indent)?;
+                    expr.fmt(f, indent, false)?;
                 }
 
                 write!(f, ")")?;
@@ -202,7 +208,13 @@ impl<D: Driver> Expr<D> {
                                 indent += 1;
                             }
 
-                            line.fmt(f, indent + 1, true, statement_index == 0 && line_index == 0)?;
+                            line.fmt(
+                                f,
+                                indent + 1,
+                                true,
+                                statement_index == 0 && line_index == 0,
+                                true,
+                            )?;
 
                             if line_index + 1 < statement.lines.len() {
                                 write!(f, " \\")?;
@@ -225,7 +237,7 @@ impl<D: Driver> Expr<D> {
                             .lines
                             .first()
                             .unwrap()
-                            .fmt(f, indent, false, false)?;
+                            .fmt(f, indent, false, false, true)?;
 
                         write!(f, " ")?;
                     }
@@ -240,7 +252,7 @@ impl<D: Driver> Expr<D> {
                     writeln!(f)?;
 
                     for (index, line) in lines.iter().enumerate() {
-                        line.fmt(f, indent + 1, true, index == 0)?;
+                        line.fmt(f, indent + 1, true, index == 0, false)?;
                         writeln!(f)?;
                     }
 
@@ -248,7 +260,7 @@ impl<D: Driver> Expr<D> {
                 } else if let Some(line) = lines.first() {
                     write!(f, " ")?;
 
-                    line.fmt(f, indent, false, false)?;
+                    line.fmt(f, indent, false, false, false)?;
 
                     write!(f, " ")?;
                 }
@@ -314,13 +326,13 @@ impl<D: Driver> Attribute<D> {
                 write!(f, " ")?;
             }
 
-            expr.fmt(f, indent)?;
+            expr.fmt(f, indent, false)?;
         }
 
         write!(f, "{}", end)?;
 
         if let Some(comment) = &self.comment {
-            write!(f, " --{}", comment.as_ref())?;
+            write!(f, " -- {}", comment.as_ref().trim())?;
         }
 
         writeln!(f)?;
@@ -336,6 +348,7 @@ impl<D: Driver> ListLine<D> {
         indent: usize,
         indent_self: bool,
         first_line: bool,
+        in_block: bool,
     ) -> fmt::Result {
         if !first_line && self.leading_lines > 0 {
             writeln!(f)?;
@@ -354,7 +367,7 @@ impl<D: Driver> ListLine<D> {
                 write!(f, " ")?;
             }
 
-            expr.fmt(f, indent)?;
+            expr.fmt(f, indent, in_block && self.exprs.len() == 1)?;
         }
 
         if let Some(comment) = &self.comment {
@@ -362,7 +375,7 @@ impl<D: Driver> ListLine<D> {
                 write!(f, " ")?;
             }
 
-            write!(f, "--{}", comment.as_ref())?;
+            write!(f, "-- {}", comment.as_ref().trim())?;
         }
 
         Ok(())

@@ -580,13 +580,22 @@ impl LanguageServer for Backend {
                     None => continue,
                 };
 
-                let contents = code_segment(format!("{} : syntax", decl.name));
+                let mut contents = vec![code_segment(format!("{} : syntax", decl.name))];
+
+                contents.extend(
+                    decl.attributes
+                        .decl_attributes
+                        .help
+                        .iter()
+                        .map(|line| MarkedString::String(line.to_string()))
+                        .collect::<Vec<_>>(),
+                );
 
                 hovers.push((
                     span,
                     Hover {
                         range: Some(range),
-                        contents: HoverContents::Scalar(contents),
+                        contents: HoverContents::Array(contents),
                     },
                 ));
             }
