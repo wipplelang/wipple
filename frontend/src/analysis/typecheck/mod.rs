@@ -851,7 +851,7 @@ impl Typechecker {
             let prev_ctx = self.ctx.clone();
 
             if let Err(Some(error)) =
-                self.typecheck_constant_expr(tr, id, None, None, None, Default::default())
+                self.typecheck_constant_expr(tr, id, None, None, None, Some(id), Default::default())
             {
                 self.add_error(error);
             }
@@ -873,7 +873,7 @@ impl Typechecker {
                 generic_id: None,
                 id: top_level_id,
                 expr: top_level,
-                info: MonomorphizeInfo::default(),
+                info: MonomorphizeInfo::new(None, Default::default()),
                 contextual: false,
                 top_level: true,
             });
@@ -921,6 +921,7 @@ impl Typechecker {
                     None,
                     decl.span,
                     Some(decl.ty.into()),
+                    Some(entrypoint),
                     Default::default(),
                 )
                 .expect("entrypoint must not contain bounds");
@@ -1261,17 +1262,15 @@ impl Typechecker {
         use_id: impl Into<Option<ExpressionId>>,
         use_span: impl Into<Option<SpanList>>,
         use_ty: impl Into<Option<engine::UnresolvedType>>,
+        source: Option<ConstantId>,
         known_bounds: BoundInstances,
     ) -> Result<Option<ItemId>, Option<Error>> {
         let use_id = use_id.into();
         let use_span = use_span.into();
         let use_ty = use_ty.into();
 
-        let mut info = MonomorphizeInfo {
-            is_generic: use_ty.is_none(),
-            bound_instances: known_bounds.clone(),
-            ..Default::default()
-        };
+        let mut info = MonomorphizeInfo::new(source, known_bounds.clone());
+        info.is_generic = use_ty.is_none();
 
         let (generic_span, params, constant_generic_ty, generic_bounds) = if trait_id.is_some() {
             let (tr, params, trait_params, span, bounds) = self
@@ -1523,13 +1522,16 @@ impl Typechecker {
             use_ty.apply(&self.ctx);
             assert!(!use_ty.contains_opaque());
 
-            mem::take(&mut info.bound_instances);
+            info.bound_instances = known_bounds.clone();
+            info.bound_instances.push(Default::default());
             for bound in &mut instantiated_bounds {
                 for param in &mut bound.params {
                     param.apply(&self.ctx);
                 }
 
                 info.bound_instances
+                    .last_mut()
+                    .unwrap()
                     .entry(bound.trait_id)
                     .or_default()
                     .push((
@@ -1554,16 +1556,9 @@ impl Typechecker {
                     ) {
                         Ok(instance) => instance,
                         Err(error) => match error {
-                            FindInstanceError::RecursionLimitReached => {
-                                return Err(None);
-                            }
-                            FindInstanceError::TypeError(error) => {
-                                self.ctx = prev_ctx.clone();
-                                return Err(Some(error));
-                            }
-                            FindInstanceError::MultipleCandidates(_) => {
-                                return Err(None);
-                            }
+                            FindInstanceError::RecursionLimitReached
+                            | FindInstanceError::MultipleCandidates(_) => return Err(None),
+                            FindInstanceError::TypeError(error) => return Err(Some(error)),
                         },
                     };
 
@@ -1573,13 +1568,16 @@ impl Typechecker {
                 })
                 .collect::<Result<Vec<_>, _>>()?;
 
-            mem::take(&mut info.bound_instances);
+            info.bound_instances = known_bounds.clone();
+            info.bound_instances.push(Default::default());
             for (instance, mut bound) in resolved_bounds {
                 for param in &mut bound.params {
                     param.apply(&self.ctx);
                 }
 
                 info.bound_instances
+                    .last_mut()
+                    .unwrap()
                     .entry(bound.trait_id)
                     .or_default()
                     .push((
@@ -1740,6 +1738,7 @@ impl Typechecker {
                     use_id,
                     use_span,
                     Some(use_ty.clone().into()),
+                    Some(generic_id),
                     Default::default(),
                 )
                 .expect("specialized constants may not contain bounds")
@@ -2815,24 +2814,40 @@ impl Typechecker {
     }
 }
 
-type BoundInstances = im::OrdMap<
-    TraitId,
-    Vec<(
-        Vec<engine::UnresolvedType>,
-        Option<(ConstantId, Vec<Bound>)>,
-        SpanList,
-        Backtrace,
-    )>,
+type BoundInstances = Vec<
+    im::OrdMap<
+        TraitId,
+        Vec<(
+            Vec<engine::UnresolvedType>,
+            Option<(ConstantId, Vec<Bound>)>,
+            SpanList,
+            Backtrace,
+        )>,
+    >,
 >;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 struct MonomorphizeInfo {
-    is_generic: bool,
+    source: Option<ConstantId>,
     bound_instances: BoundInstances,
+    is_generic: bool,
     instance_stack:
         BTreeMap<TraitId, Vec<(ConstantId, usize, Vec<engine::UnresolvedType>, Vec<Bound>)>>,
     recursion_stack: Vec<SpanList>,
     has_resolved_expr: Shared<bool>,
+}
+
+impl MonomorphizeInfo {
+    fn new(source: Option<ConstantId>, bound_instances: BoundInstances) -> Self {
+        MonomorphizeInfo {
+            source,
+            bound_instances,
+            is_generic: false,
+            instance_stack: Default::default(),
+            recursion_stack: Default::default(),
+            has_resolved_expr: Default::default(),
+        }
+    }
 }
 
 impl Typechecker {
@@ -2867,6 +2882,7 @@ impl Typechecker {
                         expr.id,
                         expr.span,
                         expr.ty.clone(),
+                        info.source,
                         info.bound_instances.clone(),
                     ) {
                         Ok(id) => {
@@ -3002,8 +3018,6 @@ impl Typechecker {
                     )
                 }
                 MonomorphizedExpressionKind::UnresolvedTrait(tr, _) => {
-                    let prev_bound_instances = info.bound_instances.clone();
-
                     let instance_id =
                         match self.instance_for_ty(tr, expr.ty.clone(), expr.id, expr.span, info) {
                             Ok(Some(instance)) => instance,
@@ -3012,8 +3026,6 @@ impl Typechecker {
                                 // bound in a generic constant -- return a placeholder since generic
                                 // constants aren't lowered to IR anyway
 
-                                info.bound_instances = prev_bound_instances;
-
                                 expr.ty.apply(&self.ctx);
                                 assert!(!expr.ty.contains_opaque());
 
@@ -3021,30 +3033,24 @@ impl Typechecker {
 
                                 return MonomorphizedExpressionKind::BoundInstance(tr);
                             }
-                            Err(error) => {
-                                info.bound_instances = prev_bound_instances;
-
-                                match error {
-                                    FindInstanceError::RecursionLimitReached => {
-                                        return MonomorphizedExpressionKind::error(&self.compiler);
-                                    }
-                                    FindInstanceError::TypeError(error) => {
-                                        self.add_error(error);
-                                        return MonomorphizedExpressionKind::error(&self.compiler);
-                                    }
-                                    FindInstanceError::MultipleCandidates(candidates) => {
-                                        return MonomorphizedExpressionKind::UnresolvedTrait(
-                                            tr, candidates,
-                                        );
-                                    }
+                            Err(error) => match error {
+                                FindInstanceError::RecursionLimitReached => {
+                                    return MonomorphizedExpressionKind::error(&self.compiler);
                                 }
-                            }
+                                FindInstanceError::TypeError(error) => {
+                                    self.add_error(error);
+                                    return MonomorphizedExpressionKind::error(&self.compiler);
+                                }
+                                FindInstanceError::MultipleCandidates(candidates) => {
+                                    return MonomorphizedExpressionKind::UnresolvedTrait(
+                                        tr, candidates,
+                                    );
+                                }
+                            },
                         };
 
                     expr.ty.apply(&self.ctx);
                     assert!(!expr.ty.contains_opaque());
-
-                    info.bound_instances = prev_bound_instances;
 
                     let monomorphized_id = self.typecheck_constant_expr(
                         Some(tr),
@@ -3052,6 +3058,7 @@ impl Typechecker {
                         expr.id,
                         expr.span,
                         expr.ty.clone(),
+                        info.source,
                         info.bound_instances.clone(),
                     );
 
@@ -3096,6 +3103,7 @@ impl Typechecker {
                         expr.id,
                         expr.span,
                         expr.ty.clone(),
+                        info.source,
                         info.bound_instances.clone(),
                     ) {
                         Ok(_) => {
@@ -3770,28 +3778,32 @@ impl Typechecker {
             }};
         }
 
-        let bound_instances = info.bound_instances.get(&tr).cloned().unwrap_or_default();
+        for bound_instances in info.bound_instances.iter().rev() {
+            let bound_instances = bound_instances.get(&tr).cloned().unwrap_or_default();
 
-        find_instance!(|params: Vec<engine::UnresolvedType>| {
-            let mut candidates = Vec::new();
-            'check: for (instance_params, candidate, span, _backtrace) in bound_instances.clone() {
-                let prev_ctx = self.ctx.clone();
+            find_instance!(|params: Vec<engine::UnresolvedType>| {
+                let mut candidates = Vec::new();
+                'check: for (instance_params, candidate, span, _backtrace) in
+                    bound_instances.clone()
+                {
+                    let prev_ctx = self.ctx.clone();
 
-                unify_instance_params!(
-                    'check,
-                    candidates,
-                    |left, right| self.ctx.unify_generic(left, right),
-                    params,
-                    instance_params,
-                    prev_ctx,
-                );
+                    unify_instance_params!(
+                        'check,
+                        candidates,
+                        |left, right| self.ctx.unify_generic(left, right),
+                        params,
+                        instance_params,
+                        prev_ctx,
+                    );
 
-                let ctx = mem::replace(&mut self.ctx, prev_ctx);
-                candidates.push((ctx, candidate, span));
-            }
+                    let ctx = mem::replace(&mut self.ctx, prev_ctx);
+                    candidates.push((ctx, candidate, span));
+                }
 
-            Ok(candidates)
-        });
+                Ok(candidates)
+            });
+        }
 
         let declared_instances = self
             .instances
@@ -3832,7 +3844,7 @@ impl Typechecker {
                 unify_instance_params!(
                     'check,
                     candidates,
-                    |left, right| self.ctx.unify(left, right),
+                    |left, right| self.ctx.unify(right, left),
                     params,
                     instance_params,
                     prev_ctx,
