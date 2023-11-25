@@ -1095,7 +1095,7 @@ impl Typechecker {
                 };
             }
 
-            let prev_resolved_exprs = mem::take(&mut *info.resolved_exprs.lock());
+            *info.has_resolved_expr.lock() = false;
             expr = self.monomorphize_expr(expr, info);
 
             let is_resolved = || {
@@ -1142,36 +1142,22 @@ impl Typechecker {
                 break;
             }
 
-            // Continue if we've made progress
-            {
-                let resolved_exprs = info.resolved_exprs.lock();
-
-                if resolved_exprs.is_empty() {
-                    break;
-                }
-
-                if prev_resolved_exprs.is_empty()
-                    || resolved_exprs
-                        .keys()
-                        .any(|id| !prev_resolved_exprs.contains_key(id))
-                {
-                    info.recursion_stack.push(expr.span);
-                    continue;
-                }
-            }
-
             // Stop if we've made no progress and we've already substituted defaults
-            if substituted_defaults {
+            if !*info.has_resolved_expr.lock() && substituted_defaults {
                 break;
             }
 
+            // Substitute defaults one expression at a time, working from the
+            // innermost expression out
             expr.traverse_mut(
-                |expr| {
-                    expr.ty.substitute_defaults(&self.ctx, false);
-
-                    ControlFlow::Continue(())
-                },
                 |_| ControlFlow::Continue(()),
+                |expr| {
+                    if expr.ty.substitute_defaults(&self.ctx, false) {
+                        ControlFlow::Break(false)
+                    } else {
+                        ControlFlow::Continue(())
+                    }
+                },
             );
 
             substituted_defaults = true;
@@ -1581,9 +1567,7 @@ impl Typechecker {
                         },
                     };
 
-                    info.resolved_exprs
-                        .lock()
-                        .insert(Err((id, bound_index)), self.compiler.backtrace());
+                    *info.has_resolved_expr.lock() = true;
 
                     Ok((instance, bound))
                 })
@@ -2848,7 +2832,7 @@ struct MonomorphizeInfo {
     instance_stack:
         BTreeMap<TraitId, Vec<(ConstantId, usize, Vec<engine::UnresolvedType>, Vec<Bound>)>>,
     recursion_stack: Vec<SpanList>,
-    resolved_exprs: Shared<BTreeMap<Result<ExpressionId, (ConstantId, usize)>, Backtrace>>,
+    has_resolved_expr: Shared<bool>,
 }
 
 impl Typechecker {
@@ -2886,9 +2870,7 @@ impl Typechecker {
                         info.bound_instances.clone(),
                     ) {
                         Ok(id) => {
-                            info.resolved_exprs
-                                .lock()
-                                .insert(Ok(expr.id), self.compiler.backtrace());
+                            *info.has_resolved_expr.lock() = true;
 
                             MonomorphizedExpressionKind::Constant(id.unwrap())
                         }
@@ -2896,9 +2878,7 @@ impl Typechecker {
                             if let Some(error) = error {
                                 self.add_error(error);
 
-                                info.resolved_exprs
-                                    .lock()
-                                    .insert(Ok(expr.id), self.compiler.backtrace());
+                                *info.has_resolved_expr.lock() = true;
 
                                 MonomorphizedExpressionKind::ErrorConstant(generic_id)
                             } else {
@@ -2913,10 +2893,6 @@ impl Typechecker {
                     kind
                 }
                 MonomorphizedExpressionKind::Constant(id) => {
-                    info.resolved_exprs
-                        .lock()
-                        .insert(Ok(expr.id), self.compiler.backtrace());
-
                     MonomorphizedExpressionKind::Constant(id)
                 }
                 MonomorphizedExpressionKind::Variable(var) => {
@@ -3041,9 +3017,7 @@ impl Typechecker {
                                 expr.ty.apply(&self.ctx);
                                 assert!(!expr.ty.contains_opaque());
 
-                                info.resolved_exprs
-                                    .lock()
-                                    .insert(Ok(expr.id), self.compiler.backtrace());
+                                *info.has_resolved_expr.lock() = true;
 
                                 return MonomorphizedExpressionKind::BoundInstance(tr);
                             }
@@ -3081,19 +3055,11 @@ impl Typechecker {
                         info.bound_instances.clone(),
                     );
 
+                    *info.has_resolved_expr.lock() = true;
+
                     match monomorphized_id {
-                        Ok(id) => {
-                            info.resolved_exprs
-                                .lock()
-                                .insert(Ok(expr.id), self.compiler.backtrace());
-
-                            MonomorphizedExpressionKind::Constant(id.unwrap())
-                        }
+                        Ok(id) => MonomorphizedExpressionKind::Constant(id.unwrap()),
                         Err(error) => {
-                            info.resolved_exprs
-                                .lock()
-                                .insert(Ok(expr.id), self.compiler.backtrace());
-
                             if let Some(error) = error {
                                 self.add_error(error);
                             }
@@ -3132,11 +3098,12 @@ impl Typechecker {
                         expr.ty.clone(),
                         info.bound_instances.clone(),
                     ) {
-                        Ok(_) => MonomorphizedExpressionKind::ContextualConstant(id),
+                        Ok(_) => {
+                            *info.has_resolved_expr.lock() = true;
+                            MonomorphizedExpressionKind::ContextualConstant(id)
+                        }
                         Err(error) => {
-                            info.resolved_exprs
-                                .lock()
-                                .insert(Ok(expr.id), self.compiler.backtrace());
+                            *info.has_resolved_expr.lock() = true;
 
                             if let Some(error) = error {
                                 self.add_error(error);
