@@ -46,13 +46,19 @@ pub enum Progress {
 #[derive(Debug, Default)]
 pub struct Program {
     pub items: BTreeMap<ItemId, RwLock<(Option<(Option<TraitId>, ConstantId)>, Expression)>>,
-    pub generic_items: BTreeMap<ConstantId, Expression>,
+    pub generic_items: BTreeMap<ConstantId, GenericItem>,
     pub contexts: BTreeMap<ConstantId, ItemId>,
     pub top_level: Option<ItemId>,
     pub entrypoint_wrapper: Option<ItemId>,
     pub file_attributes: BTreeMap<FilePath, lower::FileAttributes>,
     pub declarations: Declarations,
     pub exported: HashMap<InternedString, HashSet<lower::AnyDeclaration>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct GenericItem {
+    pub expr: Expression,
+    pub reduced_ty: Option<Type>,
 }
 
 macro_rules! declarations {
@@ -149,7 +155,6 @@ pub struct ConstantDecl {
     pub bound_annotations: Vec<(TraitId, Vec<TypeAnnotation>)>,
     pub ty_annotation: TypeAnnotation,
     pub ty: engine::Type,
-    pub reduced_ty: Option<engine::Type>,
     pub specializations: Vec<ConstantId>,
     pub enumeration_ty: Option<TypeId>,
     pub attributes: lower::ConstantAttributes,
@@ -681,7 +686,7 @@ struct Typechecker {
     monomorphization_cache: im::OrdMap<ConstantId, Vec<(engine::UnresolvedType, ItemId)>>,
     item_queue: im::Vector<QueuedItem>,
     items: im::OrdMap<ItemId, (Option<(Option<TraitId>, ConstantId)>, Option<Expression>)>,
-    generic_items: im::OrdMap<ConstantId, Expression>,
+    generic_items: im::OrdMap<ConstantId, GenericItem>,
     top_level_expr: Option<UnresolvedExpression>,
     top_level_item: Option<ItemId>,
     errors: RefCell<im::Vector<Error>>,
@@ -820,7 +825,11 @@ impl Typechecker {
                     }
 
                     if let Some((_, id)) = item.generic_id {
-                        self.generic_items.insert(id, expr.clone());
+                        self.generic_items.entry(id).or_insert_with(|| GenericItem {
+                            expr: expr.clone(),
+                            reduced_ty: (is_generic && expr.ty.params().is_empty())
+                                .then(|| expr.ty.clone()),
+                        });
                     }
 
                     if !is_generic {
@@ -4637,7 +4646,6 @@ impl Typechecker {
                 .collect(),
             ty_annotation: decl.value.ty,
             ty,
-            reduced_ty: None,
             specializations: self
                 .top_level
                 .specializations
@@ -6659,7 +6667,7 @@ impl Typechecker {
 impl Typechecker {
     fn root_for(&mut self, id: impl Into<Option<ConstantId>>) -> Option<Expression> {
         match id.into() {
-            Some(id) => self.generic_items.get(&id).cloned(),
+            Some(id) => self.generic_items.get(&id).cloned().map(|item| item.expr),
             None => self
                 .items
                 .get(&self.top_level_item?)

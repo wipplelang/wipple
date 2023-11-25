@@ -628,8 +628,9 @@ fn get_syntax_highlighting(
         ControlFlow::Continue(())
     };
 
-    for expr in program.generic_items.values() {
-        expr.traverse(&mut traverse_semantic_tokens, |_| ControlFlow::Continue(()));
+    for item in program.generic_items.values() {
+        item.expr
+            .traverse(&mut traverse_semantic_tokens, |_| ControlFlow::Continue(()));
     }
 
     if let Some(top_level) = program.top_level.and_then(|id| program.items.get(&id)) {
@@ -1132,8 +1133,8 @@ pub fn hover(start: usize, end: usize) -> JsValue {
         )
     };
 
-    for expr in analysis.program.generic_items.values() {
-        traverse(expr);
+    for item in analysis.program.generic_items.values() {
+        traverse(&item.expr);
     }
 
     if let Some(top_level) = analysis
@@ -1216,6 +1217,8 @@ pub fn hover(start: usize, end: usize) -> JsValue {
     });
 
     for (&id, decl) in &analysis.program.declarations.constants {
+        let item = analysis.program.generic_items.get(&id).unwrap();
+
         for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
             if !within_hover(span.original()) {
                 continue;
@@ -1238,7 +1241,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                         "{} :: {}",
                         decl.name,
                         format_type(
-                            decl.reduced_ty.clone().unwrap_or_else(|| decl.ty.clone()),
+                            item.reduced_ty.clone().unwrap_or_else(|| decl.ty.clone()),
                             format
                         )
                     ),

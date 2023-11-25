@@ -253,8 +253,9 @@ impl LanguageServer for Backend {
             ControlFlow::Continue(())
         };
 
-        for expr in document.program.generic_items.values() {
-            expr.traverse(&mut traverse_semantic_tokens, |_| ControlFlow::Continue(()));
+        for item in document.program.generic_items.values() {
+            item.expr
+                .traverse(&mut traverse_semantic_tokens, |_| ControlFlow::Continue(()));
         }
 
         for item in document.program.items.values() {
@@ -490,7 +491,9 @@ impl LanguageServer for Backend {
             decl.attributes.decl_attributes.help.clone()
         });
 
-        for decl in document.program.declarations.constants.values() {
+        for (&id, decl) in &document.program.declarations.constants {
+            let item = document.program.generic_items.get(&id).unwrap();
+
             for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
                 if !within_hover(span.original()) {
                     continue;
@@ -510,7 +513,7 @@ impl LanguageServer for Backend {
                     "{} :: {}",
                     decl.name,
                     format_type(
-                        decl.reduced_ty.clone().unwrap_or_else(|| decl.ty.clone()),
+                        item.reduced_ty.clone().unwrap_or_else(|| decl.ty.clone()),
                         format
                     )
                 ))];

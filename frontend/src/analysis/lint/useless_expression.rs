@@ -3,8 +3,8 @@ use std::ops::ControlFlow;
 
 impl Compiler {
     pub(super) fn useless_expression_lint(&self, program: &analysis::Program) {
-        for expr in program.generic_items.values() {
-            self.check_useless_expression(expr, program);
+        for item in program.generic_items.values() {
+            self.check_useless_expression(&item.expr, program);
         }
 
         for item in program.items.values() {
