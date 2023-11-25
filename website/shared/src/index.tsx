@@ -137,17 +137,22 @@ export const PlaygroundRunner = forwardRef<
 
                     setOutput({
                         code,
-                        items: [],
+                        items:
+                            analysis.diagnostics.filter((d) => d.level === "error").length > 0
+                                ? output.current?.items ?? []
+                                : [],
                         diagnostics,
                     });
 
-                    setOpenOutputs(new Array(analysis.diagnostics.length).fill(false));
+                    if (analysis.diagnostics.length === 0) {
+                        for (const el of uiElements.current) {
+                            await el.cleanup();
+                        }
 
-                    for (const el of uiElements.current) {
-                        await el.cleanup();
+                        setUiElements([]);
                     }
 
-                    setUiElements([]);
+                    setOpenOutputs(new Array(analysis.diagnostics.length).fill(false));
 
                     setShowTemplatesWarning(props.containsTemplates());
 
