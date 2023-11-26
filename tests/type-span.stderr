@@ -11,7 +11,7 @@ error:
    ┌─ <dir>/std/math.wpl:18:59
    │
 18 │ add :: (Left : Number) (Right : Number) (infer Sum) where (Add Left Right Sum) => Right -> Left -> Sum
-   │                                                           -------------------- required by this bound here
+   │                                                           -------------------- required by this bound
    ·
 25 │   'a + 'b -> add 'b 'a
    │              --- actual error occurred here
@@ -31,7 +31,7 @@ error:
    ┌─ <dir>/std/math.wpl:18:59
    │
 18 │ add :: (Left : Number) (Right : Number) (infer Sum) where (Add Left Right Sum) => Right -> Left -> Sum
-   │                                                           -------------------- required by this bound here
+   │                                                           -------------------- required by this bound
    ·
 25 │   'a + 'b -> add 'b 'a
    │              --- actual error occurred here

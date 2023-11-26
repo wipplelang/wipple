@@ -10,7 +10,7 @@ error:
    ┌─ <dir>/std/io.wpl:25:26
    │
 25 │ show :: (A : Text) where (Show A) => A -> ()
-   │                          -------- required by this bound here
+   │                          -------- required by this bound
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
 

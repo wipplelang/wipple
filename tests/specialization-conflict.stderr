@@ -17,7 +17,7 @@ error:
    ┌─ test:25:7
    │
  3 │ greet :: A where (Greet A) => A -> Text
-   │                  --------- required by this bound here
+   │                  --------- required by this bound
    ·
 25 │ show (greet Baz)
    │       ^^^^^ could not find instance `Greet Baz`
