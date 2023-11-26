@@ -266,14 +266,22 @@ pub enum TypeError {
     ErrorExpression,
     Recursive(TypeVariable),
     Mismatch(UnresolvedType, UnresolvedType),
-    MissingInstance(
-        TraitId,
-        Vec<UnresolvedType>,
-        Option<SpanList>,
-        Vec<(SpanList, Vec<(TraitId, Vec<UnresolvedType>)>)>,
-    ),
-    UnresolvedType(UnresolvedType, Option<(Option<SpanList>, Vec<SpanList>)>),
+    MissingInstance(InstanceCandidate, MissingInstanceReason),
+    UnresolvedType(UnresolvedType, Vec<InstanceCandidate>),
     InvalidNumericLiteral(UnresolvedType),
+}
+
+#[derive(Debug, Clone)]
+pub struct InstanceCandidate {
+    pub span: SpanList,
+    pub trait_id: TraitId,
+    pub params: Vec<UnresolvedType>,
+}
+
+#[derive(Debug, Clone)]
+pub enum MissingInstanceReason {
+    MultipleCandidates(Vec<InstanceCandidate>),
+    UnsatisfiedBound(Vec<InstanceCandidate>),
 }
 
 pub type Result<T> = std::result::Result<T, Box<TypeError>>;

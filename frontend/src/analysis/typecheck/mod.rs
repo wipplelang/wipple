@@ -318,8 +318,8 @@ expr!(, "Monomorphized", engine::UnresolvedType, {
     Number(InternedString),
     BoundInstance(TraitId),
     ErrorConstant(ConstantId),
-    UnresolvedConstant(ConstantId, Option<(Option<SpanList>, Vec<SpanList>)>),
-    UnresolvedTrait(TraitId, Option<(Option<SpanList>, Vec<SpanList>)>),
+    UnresolvedConstant(ConstantId, #[serde(skip)] Vec<engine::InstanceCandidate>),
+    UnresolvedTrait(TraitId, #[serde(skip)] Vec<engine::InstanceCandidate>),
     Constant(ItemId),
     UnresolvedExtend(Box<MonomorphizedExpression>, Vec<((SpanList, InternedString), MonomorphizedExpression)>),
     Extend(Box<MonomorphizedExpression>, BTreeMap<FieldIndex, MonomorphizedExpression>),
@@ -415,10 +415,10 @@ impl From<UnresolvedExpression> for MonomorphizedExpression {
                     MonomorphizedExpressionKind::Number(number)
                 }
                 UnresolvedExpressionKind::Trait(id) => {
-                    MonomorphizedExpressionKind::UnresolvedTrait(id, None)
+                    MonomorphizedExpressionKind::UnresolvedTrait(id, Vec::new())
                 }
                 UnresolvedExpressionKind::Constant(id) => {
-                    MonomorphizedExpressionKind::UnresolvedConstant(id, None)
+                    MonomorphizedExpressionKind::UnresolvedConstant(id, Vec::new())
                 }
                 UnresolvedExpressionKind::With((id, value), body) => {
                     MonomorphizedExpressionKind::With(
@@ -1404,10 +1404,10 @@ impl Typechecker {
                 &mut info,
             ) {
                 match error {
-                    FindInstanceError::RecursionLimitReached => {
+                    Some(FindInstanceError::RecursionLimitReached) => {
                         return Err(None);
                     }
-                    FindInstanceError::TypeError(error) => {
+                    Some(FindInstanceError::TypeError(error)) => {
                         if !matches!(error.error.as_ref(), engine::TypeError::MissingInstance(..)) {
                             if let Err(error) = self
                                 .ctx
@@ -1421,7 +1421,7 @@ impl Typechecker {
                             }
                         }
                     }
-                    FindInstanceError::MultipleCandidates(_) => {}
+                    Some(FindInstanceError::MultipleCandidates(_)) | None => {}
                 };
             }
         }
@@ -1455,10 +1455,10 @@ impl Typechecker {
                 &mut info,
             ) {
                 match error {
-                    FindInstanceError::RecursionLimitReached => {
+                    Some(FindInstanceError::RecursionLimitReached) => {
                         return Err(None);
                     }
-                    FindInstanceError::TypeError(error) => {
+                    Some(FindInstanceError::TypeError(error)) => {
                         if !matches!(error.error.as_ref(), engine::TypeError::MissingInstance(..)) {
                             if let Err(error) = self.unify(
                                 use_id,
@@ -1474,7 +1474,7 @@ impl Typechecker {
                             }
                         }
                     }
-                    FindInstanceError::MultipleCandidates(_) => {}
+                    Some(FindInstanceError::MultipleCandidates(_)) | None => {}
                 };
             }
         }
@@ -1565,9 +1565,12 @@ impl Typechecker {
                     ) {
                         Ok(instance) => instance,
                         Err(error) => match error {
-                            FindInstanceError::RecursionLimitReached
-                            | FindInstanceError::MultipleCandidates(_) => return Err(None),
-                            FindInstanceError::TypeError(error) => return Err(Some(error)),
+                            Some(
+                                FindInstanceError::RecursionLimitReached
+                                | FindInstanceError::MultipleCandidates(_),
+                            )
+                            | None => return Err(None),
+                            Some(FindInstanceError::TypeError(error)) => return Err(Some(error)),
                         },
                     };
 
@@ -2907,7 +2910,10 @@ impl Typechecker {
 
                                 MonomorphizedExpressionKind::ErrorConstant(generic_id)
                             } else {
-                                MonomorphizedExpressionKind::UnresolvedConstant(generic_id, None)
+                                MonomorphizedExpressionKind::UnresolvedConstant(
+                                    generic_id,
+                                    Vec::new(),
+                                )
                             }
                         }
                     };
@@ -3043,16 +3049,22 @@ impl Typechecker {
                                 return MonomorphizedExpressionKind::BoundInstance(tr);
                             }
                             Err(error) => match error {
-                                FindInstanceError::RecursionLimitReached => {
+                                Some(FindInstanceError::RecursionLimitReached) => {
                                     return MonomorphizedExpressionKind::error(&self.compiler);
                                 }
-                                FindInstanceError::TypeError(error) => {
+                                Some(FindInstanceError::TypeError(error)) => {
                                     self.add_error(error);
                                     return MonomorphizedExpressionKind::error(&self.compiler);
                                 }
-                                FindInstanceError::MultipleCandidates(candidates) => {
+                                Some(FindInstanceError::MultipleCandidates(candidates)) => {
                                     return MonomorphizedExpressionKind::UnresolvedTrait(
                                         tr, candidates,
+                                    );
+                                }
+                                None => {
+                                    return MonomorphizedExpressionKind::UnresolvedTrait(
+                                        tr,
+                                        Vec::new(),
                                     );
                                 }
                             },
@@ -3595,7 +3607,7 @@ impl Typechecker {
 enum FindInstanceError {
     RecursionLimitReached,
     TypeError(Error),
-    MultipleCandidates(Option<(Option<SpanList>, Vec<SpanList>)>),
+    MultipleCandidates(Vec<engine::InstanceCandidate>),
 }
 
 impl Typechecker {
@@ -3606,9 +3618,15 @@ impl Typechecker {
         use_id: impl Into<Option<ExpressionId>>,
         use_span: SpanList,
         info: &mut MonomorphizeInfo,
-    ) -> Result<Option<ConstantId>, FindInstanceError> {
-        let instance =
-            self.instance_for_inner(tr, Ok(ty.clone()), use_id.into(), use_span, None, info)?;
+    ) -> Result<Option<ConstantId>, Option<FindInstanceError>> {
+        let instance = self.instance_for_inner(
+            tr,
+            Ok(ty.clone()),
+            use_id.into(),
+            use_span,
+            Vec::new(),
+            info,
+        )?;
 
         Ok(instance.map(|(id, _)| id))
     }
@@ -3621,8 +3639,17 @@ impl Typechecker {
         use_span: SpanList,
         bound: Option<(ConstantId, usize, Bound)>,
         info: &mut MonomorphizeInfo,
-    ) -> Result<Option<(ConstantId, Vec<Bound>)>, FindInstanceError> {
-        self.instance_for_inner(tr, Err(params), use_id.into(), use_span, bound, info)
+    ) -> Result<Option<(ConstantId, Vec<Bound>)>, Option<FindInstanceError>> {
+        self.instance_for_inner(
+            tr,
+            Err(params),
+            use_id.into(),
+            use_span,
+            Vec::from_iter(bound.map(|(id, index, bound)| {
+                (id, Some(index), bound.trait_id, bound.span, bound.params)
+            })),
+            info,
+        )
     }
 
     fn instance_for_inner(
@@ -3631,9 +3658,15 @@ impl Typechecker {
         ty_or_params: Result<engine::UnresolvedType, Vec<engine::UnresolvedType>>,
         use_id: Option<ExpressionId>,
         use_span: SpanList,
-        bound: Option<(ConstantId, usize, Bound)>,
+        mut bound_stack: Vec<(
+            ConstantId,
+            Option<usize>,
+            TraitId,
+            SpanList,
+            Vec<engine::UnresolvedType>,
+        )>,
         info: &mut MonomorphizeInfo,
-    ) -> Result<Option<(ConstantId, Vec<Bound>)>, FindInstanceError> {
+    ) -> Result<Option<(ConstantId, Vec<Bound>)>, Option<FindInstanceError>> {
         let recursion_limit = self
             .top_level
             .info
@@ -3642,10 +3675,12 @@ impl Typechecker {
 
         if info.recursion_stack.len() > recursion_limit {
             self.report_recursion_limit_reached(use_span, &info.recursion_stack);
-            return Err(FindInstanceError::RecursionLimitReached);
+            return Err(Some(FindInstanceError::RecursionLimitReached));
         }
 
         let tr_decl = self.with_trait_decl(tr, Clone::clone).unwrap();
+
+        let is_from_bound = ty_or_params.is_err();
 
         let mut params = match ty_or_params {
             Ok(ty) => {
@@ -3660,13 +3695,20 @@ impl Typechecker {
                 self.add_substitutions(&mut trait_ty, &mut substitutions);
 
                 if let Err(error) = self.unify(use_id, use_span, ty.clone(), trait_ty.clone()) {
-                    return Err(FindInstanceError::TypeError(error));
+                    return Err(Some(FindInstanceError::TypeError(error)));
                 }
 
                 tr_decl
                     .params
                     .into_iter()
-                    .map(|param| substitutions.get(&param).unwrap().clone())
+                    .map(|param| {
+                        substitutions.get(&param).cloned().unwrap_or_else(|| {
+                            self.unresolved_ty(
+                                engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None)),
+                                None,
+                            )
+                        })
+                    })
                     .collect()
             }
             Err(params) => params,
@@ -3677,7 +3719,7 @@ impl Typechecker {
         }
 
         // If a bound refers to itself, assume that the bound is satisfied
-        if let Some((instance_id, bound_index, _)) = bound {
+        if let Some(&(instance_id, Some(bound_index), _, _, _)) = bound_stack.last() {
             if let Some((id, _, instance_params, bounds)) = info
                 .instance_stack
                 .entry(tr)
@@ -3719,7 +3761,7 @@ impl Typechecker {
                         return Ok(Some((*id, bounds.clone())));
                     } else {
                         self.ctx = prev_ctx;
-                        return Err(FindInstanceError::MultipleCandidates(None));
+                        return Err(None);
                     }
                 } else {
                     self.ctx = prev_ctx;
@@ -3736,7 +3778,7 @@ impl Typechecker {
                     // ...if there is a single candidate, return it.
                     Some(Ok(candidate)) => return Ok(candidate),
                     // ...if there are multiple candidates, try again finalizing numeric variables.
-                    Some(Err(FindInstanceError::MultipleCandidates(_))) => {
+                    Some(Err(Some(FindInstanceError::MultipleCandidates(_)) | None)) => {
                         let params = params
                             .clone()
                             .into_iter()
@@ -3767,9 +3809,16 @@ impl Typechecker {
                         self.ctx = ctx;
                         Some(Ok(candidate))
                     }
-                    _ => Some(Err(FindInstanceError::MultipleCandidates(
-                        Some((bound.as_ref().map(|(_, _, bound)| bound.span), candidates.into_iter().map(|(.., span)| span).collect())),
-                    ))),
+                    _ => Some(Err(Some(FindInstanceError::MultipleCandidates(
+                        bound_stack
+                            .iter()
+                            .map(|(_, _, trait_id, span, params)| engine::InstanceCandidate {
+                                span: *span,
+                                trait_id: *trait_id,
+                                params: params.clone(),
+                            })
+                            .collect(),
+                    )))),
                 }
             }};
         }
@@ -3810,7 +3859,7 @@ impl Typechecker {
                     candidates.push((ctx, candidate, span));
                 }
 
-                Ok(candidates)
+                Ok::<_, Option<FindInstanceError>>(candidates)
             });
         }
 
@@ -3859,13 +3908,18 @@ impl Typechecker {
                     prev_ctx,
                 );
 
-                if let Some((id, bound_index, _)) = bound {
+                if let Some(&(id, Some(bound_index), _, _, _)) = bound_stack.last() {
                     info.instance_stack.entry(tr).or_default().push((
                         id,
                         bound_index,
                         instance_params.clone(),
                         instance_bounds.clone(),
                     ));
+                }
+
+                let mut bound_stack = bound_stack.clone();
+                if bound_stack.is_empty() {
+                    bound_stack.push((id, None, tr, instance_span, instance_params.clone()));
                 }
 
                 for (index, mut instance_bound) in instance_bounds.clone().into_iter().enumerate() {
@@ -3875,42 +3929,76 @@ impl Typechecker {
 
                     info.recursion_stack.push(instance_bound.span);
 
-                    let result = self.instance_for_params(
-                        instance_bound.trait_id,
-                        instance_bound.params.clone(),
-                        None,
-                        instance_bound.span,
-                        Some((id, index, instance_bound.clone())),
-                        info,
-                    );
+                    let result = {
+                        let mut bound_stack = bound_stack.clone();
+                        bound_stack.push((
+                            id,
+                            Some(index),
+                            instance_bound.trait_id,
+                            instance_bound.span,
+                            instance_bound.params.clone(),
+                        ));
+
+                        self.instance_for_inner(
+                            instance_bound.trait_id,
+                            Err(instance_bound.params.clone()),
+                            None,
+                            instance_bound.span,
+                            bound_stack,
+                            info,
+                        )
+                    };
 
                     info.recursion_stack.pop();
 
                     if let Err(error) = result {
                         self.ctx = prev_ctx;
 
-                        if bound.is_some() {
+                        if !bound_stack.is_empty() {
                             info.instance_stack.entry(tr).or_default().pop();
                         }
 
-                        let unsatisfied_bounds = match error {
+                        let (target, stack) = match error {
                             // TODO: Display multiple bounds
-                            FindInstanceError::TypeError(error) => match *error.error {
-                                engine::TypeError::MissingInstance(tr, params, _, _) => {
-                                    vec![(tr, params)]
+                            Some(FindInstanceError::TypeError(error)) => match *error.error {
+                                engine::TypeError::MissingInstance(target, reason) => {
+                                    match reason {
+                                        engine::MissingInstanceReason::MultipleCandidates(_) => {
+                                            (target, Vec::new())
+                                        }
+                                        engine::MissingInstanceReason::UnsatisfiedBound(stack) => {
+                                            (target, stack)
+                                        }
+                                    }
                                 }
-                                _ => return Err(FindInstanceError::TypeError(error)),
+                                _ => return Err(Some(FindInstanceError::TypeError(error))),
                             },
-                            FindInstanceError::MultipleCandidates(_) => Vec::new(),
-                            _ => return Err(error),
+                            Some(FindInstanceError::MultipleCandidates(candidates)) => (
+                                engine::InstanceCandidate {
+                                    span: instance_bound.span,
+                                    trait_id: instance_bound.trait_id,
+                                    params: instance_bound.params.clone(),
+                                },
+                                candidates,
+                            ),
+                            None => (
+                                engine::InstanceCandidate {
+                                    span: instance_bound.span,
+                                    trait_id: instance_bound.trait_id,
+                                    params: instance_bound.params.clone(),
+                                },
+                                Vec::new(),
+                            ),
+                            Some(error) => return Err(Some(error)),
                         };
 
-                        error_candidates.push((instance_span, unsatisfied_bounds));
+                        error_candidates.push((target, stack));
+
                         continue 'check;
                     }
                 }
 
-                if bound.is_some() {
+                if !bound_stack.is_empty() {
                     info.instance_stack.entry(tr).or_default().pop();
                 }
 
@@ -3925,15 +4013,63 @@ impl Typechecker {
             Ok(candidates)
         });
 
-        Err(FindInstanceError::TypeError(self.error(
-            engine::TypeError::MissingInstance(
-                tr,
-                params,
-                bound.as_ref().map(|(_, _, bound)| bound.span),
-                error_candidates,
+        let error = match error_candidates.len() {
+            0 => {
+                let span = if is_from_bound {
+                    let (_, _, _, span, _) = bound_stack.pop().unwrap();
+                    span
+                } else {
+                    use_span
+                };
+
+                engine::TypeError::MissingInstance(
+                    engine::InstanceCandidate {
+                        span,
+                        trait_id: tr,
+                        params: params.clone(),
+                    },
+                    engine::MissingInstanceReason::UnsatisfiedBound(
+                        bound_stack
+                            .into_iter()
+                            .map(|(_, _, trait_id, span, params)| engine::InstanceCandidate {
+                                span,
+                                trait_id,
+                                params,
+                            })
+                            .chain(is_from_bound.then_some(engine::InstanceCandidate {
+                                span,
+                                trait_id: tr,
+                                params,
+                            }))
+                            .collect(),
+                    ),
+                )
+            }
+            1 => {
+                let (target, stack) = error_candidates.pop().unwrap();
+
+                engine::TypeError::MissingInstance(
+                    target,
+                    engine::MissingInstanceReason::UnsatisfiedBound(stack),
+                )
+            }
+            _ => engine::TypeError::MissingInstance(
+                engine::InstanceCandidate {
+                    span: use_span,
+                    trait_id: tr,
+                    params,
+                },
+                engine::MissingInstanceReason::MultipleCandidates(
+                    error_candidates
+                        .into_iter()
+                        .map(|(candidate, _)| candidate)
+                        .collect(),
+                ),
             ),
-            use_id,
-            use_span,
+        };
+
+        Err(Some(FindInstanceError::TypeError(
+            self.error(error, use_id, use_span),
         )))
     }
 
@@ -3997,7 +4133,7 @@ impl Typechecker {
         let (ty, resolved) = expr.ty.finalize(&self.ctx);
         if !resolved && report_error_if_unresolved {
             self.add_error(self.error(
-                engine::TypeError::UnresolvedType(expr.ty.clone(), None),
+                engine::TypeError::UnresolvedType(expr.ty.clone(), Vec::new()),
                 expr.id,
                 expr.span,
             ));
@@ -4185,7 +4321,7 @@ impl Typechecker {
             )),
             MonomorphizedExpressionKind::UnresolvedExtend(_, _) => {
                 self.add_error(self.error(
-                    engine::TypeError::UnresolvedType(expr.ty, None),
+                    engine::TypeError::UnresolvedType(expr.ty, Vec::new()),
                     expr.id,
                     expr.span,
                 ));
@@ -4262,7 +4398,7 @@ impl Typechecker {
                 }
                 MonomorphizedPatternKind::UnresolvedDestructure(_, _) => {
                     self.add_error(self.error(
-                        engine::TypeError::UnresolvedType(input_ty.clone().into(), None),
+                        engine::TypeError::UnresolvedType(input_ty.clone().into(), Vec::new()),
                         None,
                         pattern.span,
                     ));
@@ -4302,7 +4438,7 @@ impl Typechecker {
                 }
                 MonomorphizedPatternKind::UnresolvedVariant(_, _, _) => {
                     self.add_error(self.error(
-                        engine::TypeError::UnresolvedType(input_ty.clone().into(), None),
+                        engine::TypeError::UnresolvedType(input_ty.clone().into(), Vec::new()),
                         None,
                         pattern.span,
                     ));
@@ -5116,7 +5252,11 @@ impl Typechecker {
 
         let (finalized_ty, resolved) = ty.finalize(&self.ctx);
         if !resolved {
-            self.add_error(self.error(engine::TypeError::UnresolvedType(ty, None), None, span));
+            self.add_error(self.error(
+                engine::TypeError::UnresolvedType(ty, Vec::new()),
+                None,
+                span,
+            ));
         }
 
         finalized_ty
@@ -5138,7 +5278,11 @@ impl Typechecker {
 
         let (finalized_ty, resolved) = ty.finalize(&self.ctx);
         if !resolved {
-            self.add_error(self.error(engine::TypeError::UnresolvedType(ty, None), None, span));
+            self.add_error(self.error(
+                engine::TypeError::UnresolvedType(ty, Vec::new()),
+                None,
+                span,
+            ));
         }
 
         finalized_ty
@@ -6402,8 +6546,8 @@ impl Typechecker {
 
                 error
             }
-            engine::TypeError::MissingInstance(id, mut params, bound_span, error_candidates) => {
-                for param in &mut params {
+            engine::TypeError::MissingInstance(mut candidate, reason) => {
+                for param in &mut candidate.params {
                     param.apply(&self.ctx);
                 }
 
@@ -6411,7 +6555,7 @@ impl Typechecker {
                     .declarations
                     .borrow()
                     .traits
-                    .get(&id)
+                    .get(&candidate.trait_id)
                     .unwrap()
                     .attributes
                     .clone();
@@ -6420,16 +6564,16 @@ impl Typechecker {
                     .declarations
                     .borrow()
                     .traits
-                    .get(&id)
+                    .get(&candidate.trait_id)
                     .unwrap()
                     .params
                     .clone();
 
-                let format = if params
+                let format = if candidate.params
                     .iter()
                     .map(|ty| ty.visible_vars().len())
                     .sum::<usize>()
-                    == params
+                    == candidate.params
                         .iter()
                         .map(|ty| ty.visible_vars().into_iter().unique().count())
                         .sum()
@@ -6442,7 +6586,7 @@ impl Typechecker {
                 let mut notes = trait_params
                     .clone()
                     .into_iter()
-                    .zip(params.clone())
+                    .zip(candidate.params.clone())
                     .filter_map(|(_, ty)| {
                         let span = ty.info.span?;
 
@@ -6461,40 +6605,52 @@ impl Typechecker {
                     .collect::<Vec<_>>()
                     .into_iter()
                     .chain(operator_notes().into_iter().flatten())
-                    .chain(bound_span.map(|span| Note::secondary(span, "required by this bound here")))
-                    .chain(error_candidates.into_iter().filter_map(|(span, unsatisfied_bounds)| {
-                        if unsatisfied_bounds.is_empty() {
-                            return None;
-                        }
+                    .collect::<Vec<_>>();
 
+                match reason {
+                    engine::MissingInstanceReason::MultipleCandidates(candidates) => {
+                        for candidate in candidates {
+                            notes.push(Note::secondary(
+                                candidate.span,
+                                "this instance could apply",
+                            ));
+                        }
+                    },
+                    engine::MissingInstanceReason::UnsatisfiedBound(stack) => {
                         let format = format::Format {
                             surround_in_backticks: true,
                             ..Default::default()
                         };
 
-                        Some(Note::secondary(
-                            span,
-                            format!(
-                                "this instance could apply, but {}",
-                                match unsatisfied_bounds.as_slice() {
-                                    [] => unreachable!(),
-                                    [(tr, params)] => format!("the bound {} wasn't satisfied", self.format_type(format::FormattableType::r#trait(*tr, params.clone()), format)),
-                                    [(tr, params), rest @ ..] => format!(
-                                        "the bounds {} and {} weren't satisfied",
-                                        self.format_type(format::FormattableType::r#trait(*tr, params.clone()), format),
-                                        rest.iter()
-                                            .map(|(tr, params)| self.format_type(format::FormattableType::r#trait(*tr, params.clone()), format))
-                                            .join(", "),
-                                    )
+                        match stack.len() {
+                            0 => {}
+                            1 => {
+                                notes.push(Note::secondary(stack.first().unwrap().span, "required by this bound"));
+                            }
+                            _ => {
+                                notes.push(Note::secondary(stack.first().unwrap().span, "this instance could apply, but..."));
+
+                                for (mut candidate, bound) in stack.into_iter().tuple_windows() {
+                                    for param in &mut candidate.params {
+                                        param.apply(&self.ctx);
+                                    }
+
+                                    notes.push(Note::secondary(
+                                        bound.span,
+                                        format!(
+                                            "...this bound is needed to satisfy {}",
+                                            self.format_type(format::FormattableType::r#trait(candidate.trait_id, candidate.params), format),
+                                        ),
+                                    ));
                                 }
-                            ),
-                        ))
-                    }))
-                    .collect::<Vec<_>>();
+                            }
+                        }
+                    }
+                }
 
                 let default_error_message = format!(
                     "could not find instance {}",
-                    self.format_type(format::FormattableType::r#trait(id, params.clone()), format)
+                    self.format_type(format::FormattableType::r#trait(candidate.trait_id, candidate.params.clone()), format)
                 );
 
                 let error_message = match trait_attributes.on_unimplemented {
@@ -6506,7 +6662,7 @@ impl Typechecker {
                             (segments, trailing_segment),
                             trait_params
                                 .into_iter()
-                                .zip(params)
+                                .zip(candidate.params)
                                 .collect(),
                             trait_attributes.decl_attributes.help_show_code,
                             format,
@@ -6600,16 +6756,16 @@ impl Typechecker {
 
                 let mut notes = note.into_iter().collect::<Vec<_>>();
 
-                // TODO: List candidates in a smarter way to not overwhelm the user
-                if let Some((bound, candidates)) = _candidates {
-                    if let Some(bound) = bound {
-                        notes.push(Note::secondary(bound, "...as required by this bound"));
-                    }
+                // // TODO: List candidates in a smarter way to not overwhelm the user
+                // if let Some((bound, candidates)) = _candidates {
+                //     if let Some(bound) = bound {
+                //         notes.push(Note::secondary(bound, "...as required by this bound"));
+                //     }
 
-                    for candidate in candidates {
-                        notes.push(Note::secondary(candidate, if bound.is_some() { "this instance could potentially apply..." } else { "this instance could potentially apply" }));
-                    }
-                }
+                //     for candidate in candidates {
+                //         notes.push(Note::secondary(candidate, if bound.is_some() { "this instance could potentially apply..." } else { "this instance could potentially apply" }));
+                //     }
+                // }
 
                 let default_error_message = String::from("could not determine the type of this expression");
 
