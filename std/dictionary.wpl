@@ -43,13 +43,14 @@ instance (Default (Dictionary _ _)) : Dictionary {
 [help-group "Collections"]
 entry :: Key Value where (Equal Key) (Hash Key) => Key -> Dictionary Key Value -> Maybe Value
 entry : key { hasher entries } -> {
-  index : mutable ((intrinsic "value-of-hasher" (Hash key hasher)) mod count entries)
+  initial-index : ((intrinsic "value-of-hasher" (Hash key hasher)) mod count entries)
+  index : mutable initial-index
 
   repeat {
     when (entries . nth (get index) . unwrap) {
       Some (existing-key ; value) -> if (key = existing-key) (Break (Some value)) {
         index . set! ((get index + 1) mod count entries)
-        Continue
+        if (get index = initial-index) (Break None) Continue
       }
       None -> Break None
     }

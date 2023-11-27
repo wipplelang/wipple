@@ -1,4 +1,11 @@
-remove-duplicates :: Element where (Equal Element) (Hash Element) => List Element -> List Element
-remove-duplicates : (collect :: (_ -> Set _)) | collect
+remove-duplicates :: Element where (Show Element) (Equal Element) (Hash Element) => List Element -> Sequence Element
+remove-duplicates : list -> {
+  seen : mutable (,)
+  list . filter (item -> (get seen . not contains? item) and {
+    seen . insert! item
+    True
+  })
+}
 
-(1 , 2 , 2 , 3) . remove-duplicates . each show
+numbers : 5 , 5 , 4 , 3 , 3 , 3 , 2 , 1 , 2 , 3 , 4 , 5
+numbers . remove-duplicates . each show
