@@ -79,6 +79,7 @@ Ordering : type {
 
 [help "Implement this trait to enable comparisons between two values of your type."]
 [help-group "Logic"]
+[on-unimplemented ("cannot compare _ values" A)]
 Order : A => trait (A -> A -> Ordering)
 
 instance (Order Number) : b a -> semantics "pure" (intrinsic "number-ordering" a b)
@@ -172,6 +173,7 @@ instance (Order Double) : b a -> semantics "pure" (intrinsic "double-ordering" a
 
 [help "Implement this trait to enable equality testing between two values of your type."]
 [help-group "Logic"]
+[on-unimplemented ("cannot compare _ values" A)]
 Equal : A => trait (A -> A -> Boolean)
 
 [help "Returns `True` if both sides are equal."]

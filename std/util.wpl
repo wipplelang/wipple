@@ -84,6 +84,7 @@ expect : Expect
 unwrap :: Container (infer Value) where (Expect Container Value) (Unwrap-Message Container) => Container -> Value
 unwrap : x? -> expect (Unwrap-Message x?) x?
 
+[on-unimplemented ("cannot convert _ into _" Input Output)]
 As : Input Output => trait (Input -> Output)
 
 [help "Convert a value of one type into a value of a different type."]
@@ -103,6 +104,7 @@ Success => instance (As (Result Success _) (Maybe Success)) : result -> when res
   Error _ -> None
 }
 
+[on-unimplemented ("cannot convert _ into _" Input Output)]
 As? : Input Output => trait (Input -> Maybe Output)
 
 [help "Convert a value of one type into a value of a different type, or `None` if the conversion fails."]
@@ -129,6 +131,7 @@ as! : syntax {
 
 [help "Represents the default or initial value of a type."]
 [help-group "Utilities"]
+[on-unimplemented ("_ has no default value" Value)]
 Default : Value => trait Value
 instance (Default Number) : 0
 instance (Default Integer) : 0

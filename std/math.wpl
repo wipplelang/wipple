@@ -11,7 +11,7 @@ undefined : semantics "pure" (intrinsic "undefined-number")
 [help "Implements the `+` operator."]
 [help-group "Math"]
 [help-show-code]
-[on-unimplemented ("cannot add _ to _" Left Right)]
+[on-unimplemented ("cannot add _ to _" Right Left)]
 Add : Left Right Sum => trait (Right -> Left -> Sum)
 
 [private]

@@ -56,6 +56,7 @@ Success Failure where (Show Failure) => instance (Expect (Result Success Failure
 
 [help "Implement the `read` function."]
 [help-group "Input and Output"]
+[on-unimplemented ("cannot produce a _ value from `Text`" A)]
 Read : A => trait (Text -> Maybe A)
 
 [help "Parse `Text` into a value."]

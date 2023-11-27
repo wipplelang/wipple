@@ -28,6 +28,7 @@ next : { next } -> next ()
 [help "Implement this trait to enable traversing your collection type."]
 [help-group "Collections"]
 [help-playground "https://wipple.dev/std/examples/sequence.txt"]
+[on-unimplemented ("cannot create a sequence from a _" Container)]
 As-Sequence : Container Element => trait (Container -> Sequence Element)
 
 Element => instance (As-Sequence (Sequence Element) Element) : it
@@ -152,6 +153,7 @@ sum : reduce Default (+)
 [help "Implement this trait to enable reducing a sequence into your collection type."]
 [help-group "Collections"]
 [help-playground "https://wipple.dev/std/examples/collect.txt"]
+[on-unimplemented ("cannot create a _ from a sequence of _" Container Element)]
 From-Sequence : Element Container => trait (Sequence Element -> Container)
 
 [help "Collect a sequence into a single value, like a `List`."]

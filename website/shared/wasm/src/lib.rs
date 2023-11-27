@@ -1109,7 +1109,12 @@ pub fn hover(start: usize, end: usize) -> JsValue {
 
                 if matches!(
                     expr.kind,
-                    ExpressionKind::Variable(_) | ExpressionKind::Constant(_)
+                    ExpressionKind::Variable(_)
+                        | ExpressionKind::BoundInstance(_)
+                        | ExpressionKind::ErrorConstant(_)
+                        | ExpressionKind::UnresolvedConstant(_)
+                        | ExpressionKind::UnresolvedTrait(_)
+                        | ExpressionKind::Constant(_)
                 ) {
                     return ControlFlow::Continue(());
                 }
