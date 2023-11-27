@@ -1,0 +1,23 @@
+[[help-url "https://wipple.dev/doc/game.html"]]
+
+Arduino : type { handle :: UI }
+
+[context]
+arduino :: Arduino
+arduino : error "use of Arduino device outside `with-arduino`"
+
+with-arduino : syntax {
+  with-arduino 'body -> {
+    with-ui "/playground/ui/arduino/index.js" (handle -> {
+      with (arduino : Arduino { handle }) {
+        'body :: ()
+      }
+    })
+  }
+}
+
+-- TODO: More commands
+
+[entrypoint]
+entrypoint :: Entrypoint
+entrypoint : program -> with-arduino { program () }
