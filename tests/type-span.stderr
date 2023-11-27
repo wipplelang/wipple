@@ -4,7 +4,7 @@ error:
  1 │ show + 1
    │ ---- ^ - this has type `Number`
    │ │    │  
-   │ │    cannot add `show` to `1`
+   │ │    cannot add `1` to `show`
    │ │    could not find instance `Add (Text -> ()) Number _`
    │ this has type `Text -> ()`
    │
@@ -24,7 +24,7 @@ error:
  2 │ Show + 1
    │ ---- ^ - this has type `Number`
    │ │    │  
-   │ │    cannot add `Show` to `1`
+   │ │    cannot add `1` to `Show`
    │ │    could not find instance `Add (Text -> Text) Number _`
    │ this has type `Text -> Text`
    │

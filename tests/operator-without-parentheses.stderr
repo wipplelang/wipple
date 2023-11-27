@@ -4,7 +4,7 @@ error:
  1 │ show 1 + 2
    │ ------ ^ - this has type `Number`
    │ │      │  
-   │ │      cannot add `show 1` to `2`
+   │ │      cannot add `2` to `show 1`
    │ │      `+` consumes all expressions on either side; you may be missing parentheses
    │ │      could not find instance `Add () Number _`
    │ this has type `()`
@@ -50,7 +50,7 @@ error:
    │       --^-----
    │       │ │ │
    │       │ │ this has type `Text`
-   │       │ cannot add `1` to `"hi"`
+   │       │ cannot add `"hi"` to `1`
    │       │ could not find instance `Add Number Text Text`
    │       this has type `Text`
    │       this has type `Number`
