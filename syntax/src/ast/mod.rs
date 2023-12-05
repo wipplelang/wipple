@@ -41,7 +41,7 @@ use sync_wrapper::SyncFuture;
 use syntax::{Syntax, SyntaxContext};
 use wipple_util::Shared;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BuiltinSyntaxDefinition {
     pub name: &'static str,
     pub operator: bool,
@@ -247,7 +247,7 @@ impl<D: Driver> std::fmt::Debug for File<D> {
 
 pub(crate) async fn build<D: Driver>(
     driver: D,
-    path: D::Path,
+    path: D::InternedString,
     driver_file: D::File,
     parse_file: parse::File<D>,
     options: parse::Options,
@@ -260,7 +260,7 @@ pub(crate) async fn build<D: Driver>(
     let ast_builder = AstBuilder {
         driver,
         file: driver_file,
-        path,
+        path: path.clone(),
         attributes: Default::default(),
         options,
     };
@@ -323,9 +323,7 @@ pub(crate) async fn build<D: Driver>(
         .map(|result| result.unwrap_or_else(|_| unreachable!()))
         .map(|statement| match statement {
             TopLevelStatement::Use(statement) => {
-                if let Some(path) = statement.path {
-                    queue.push(path);
-                }
+                queue.push(statement.path);
 
                 statement.statement
             }
@@ -333,7 +331,10 @@ pub(crate) async fn build<D: Driver>(
         })
         .collect::<Vec<_>>();
 
-    ast_builder.driver.queue_files(Some(path), queue).await;
+    ast_builder
+        .driver
+        .queue_files(Some(path.clone()), queue)
+        .await;
 
     if let Some(implicit_imports) = implicit_imports {
         for implicit_path in implicit_imports {
@@ -341,7 +342,7 @@ pub(crate) async fn build<D: Driver>(
                 .driver
                 .clone()
                 .syntax_of(
-                    Some((path, ast_builder.file.clone())),
+                    Some((path.clone(), ast_builder.file.clone())),
                     None,
                     implicit_path,
                     options,
@@ -379,7 +380,7 @@ pub(crate) async fn build<D: Driver>(
 #[derive(Clone)]
 pub(crate) struct AstBuilder<D: Driver> {
     driver: D,
-    path: D::Path,
+    path: D::InternedString,
     file: D::File,
     attributes: Shared<FileAttributes<D>>,
     options: parse::Options,

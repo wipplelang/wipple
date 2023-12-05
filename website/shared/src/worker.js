@@ -27,35 +27,13 @@ onmessage = async (event) => {
                 const { code, setup, lint } = event.data;
 
                 const analysis = await new Promise((resolve, reject) => {
-                    runner.analyze(
-                        code,
-                        lint,
-                        setup,
-                        (path, name, input, api) =>
-                            new Promise((resolve, reject) => {
-                                const responderId = uuid();
-
-                                postMessage({
-                                    type: "plugin",
-                                    path,
-                                    name,
-                                    input,
-                                    api: {
-                                        // TODO
-                                    },
-                                    id: responderId,
-                                });
-
-                                responders[responderId] = { resolve, reject };
-                            }),
-                        (success, result) => {
-                            if (success) {
-                                resolve(result);
-                            } else {
-                                reject(result);
-                            }
+                    runner.analyze(code, lint, setup, (success, result) => {
+                        if (success) {
+                            resolve(result);
+                        } else {
+                            reject(result);
                         }
-                    );
+                    });
                 });
 
                 postMessage({ type: "done", analysis });
@@ -171,14 +149,6 @@ onmessage = async (event) => {
                 postMessage(completion);
                 break;
             }
-            case "pluginSuccessCallback":
-                await responders[event.data.id].resolve(event.data.output);
-                responders[event.data.id] = undefined;
-                break;
-            case "pluginFailureCallback":
-                await responders[event.data.id].reject(event.data.error);
-                responders[event.data.id] = undefined;
-                break;
             case "displayCallback":
                 await responders[event.data.id].callback();
                 responders[event.data.id] = undefined;

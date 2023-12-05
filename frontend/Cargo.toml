@@ -13,7 +13,7 @@ convert_case = { git = "https://github.com/WilsonGramer/convert-case", branch = 
 distance = "0.4"
 enum_dispatch = "0.3"
 futures = "0.3"
-im = "15"
+im = { version = "15", features = ["serde"] }
 indexmap = "1"
 internment = { version = "0.7", features = ["serde"] }
 itertools = "0.10"

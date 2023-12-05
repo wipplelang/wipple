@@ -13,7 +13,12 @@ use logos::Lexer;
 #[non_exhaustive]
 pub struct Options {}
 
-pub fn parse<D: Driver>(driver: &D, path: D::Path, code: &str, Options {}: Options) -> File<D> {
+pub fn parse<D: Driver>(
+    driver: &D,
+    path: D::InternedString,
+    code: &str,
+    Options {}: Options,
+) -> File<D> {
     let code = code.replace("\r\n", "\n");
 
     let (shebang, code) = match grammar::parse_shebang(&code) {

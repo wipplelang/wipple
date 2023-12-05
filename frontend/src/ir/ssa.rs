@@ -248,7 +248,6 @@ impl Converter<'_> {
                             .collect(),
                     )
                 }
-                analysis::ExpressionKind::Plugin(_, _, _) => panic!("found unresolved plugin"),
                 analysis::ExpressionKind::Initialize(_, _) => {
                     unreachable!(
                         "variable initialization is handled specially by convert_block_to_ssa"
@@ -288,8 +287,8 @@ impl Converter<'_> {
                 analysis::ExpressionKind::Byte(byte) => ExpressionKind::Byte(*byte),
                 analysis::ExpressionKind::Signed(signed) => ExpressionKind::Signed(*signed),
                 analysis::ExpressionKind::Unsigned(unsigned) => ExpressionKind::Unsigned(*unsigned),
-                analysis::ExpressionKind::Float(float) => ExpressionKind::Float(*float),
-                analysis::ExpressionKind::Double(double) => ExpressionKind::Double(*double),
+                analysis::ExpressionKind::Float(float) => ExpressionKind::Float(float.0),
+                analysis::ExpressionKind::Double(double) => ExpressionKind::Double(double.0),
                 analysis::ExpressionKind::Constant(constant)
                 | analysis::ExpressionKind::ExpandedConstant(constant) => {
                     ExpressionKind::Constant(*constant)
@@ -400,8 +399,8 @@ impl Converter<'_> {
                 analysis::PatternKind::Byte(byte) => PatternKind::Byte(*byte),
                 analysis::PatternKind::Signed(signed) => PatternKind::Signed(*signed),
                 analysis::PatternKind::Unsigned(unsigned) => PatternKind::Unsigned(*unsigned),
-                analysis::PatternKind::Float(float) => PatternKind::Float(*float),
-                analysis::PatternKind::Double(double) => PatternKind::Double(*double),
+                analysis::PatternKind::Float(float) => PatternKind::Float(float.0),
+                analysis::PatternKind::Double(double) => PatternKind::Double(double.0),
                 analysis::PatternKind::Tuple(patterns) => PatternKind::Tuple(
                     patterns
                         .iter()

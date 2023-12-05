@@ -214,7 +214,6 @@ impl Expression {
                 }
                 write!(f, ")")?;
             }
-            ExpressionKind::Plugin(_, _, _) => panic!("found unresolved plugin"),
             ExpressionKind::Initialize(pattern, value) => {
                 pattern.display_with(f, &value.ty, file, indent)?;
                 write!(f, " : ")?;

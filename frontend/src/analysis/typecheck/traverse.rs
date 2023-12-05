@@ -54,11 +54,6 @@ macro_rules! traverse_expr_impl {
                             input.$traverse($pass_parent!(expr), context.clone(), enter, exit)?;
                         }
                     }
-                    Plugin(_, _, inputs) => {
-                        for input in inputs {
-                            input.$traverse($pass_parent!(expr), context.clone(), enter, exit)?;
-                        }
-                    }
                     Structure(fields) => {
                         for field in fields {
                             field.$traverse($pass_parent!(expr), context.clone(), enter, exit)?;

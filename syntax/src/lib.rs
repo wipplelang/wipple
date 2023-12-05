@@ -36,29 +36,43 @@ pub type ScopeSet<S> = im::OrdSet<S>;
 #[async_trait]
 pub trait Driver: Debug + Clone + Send + Sync + 'static {
     type InternedString: Debug + Clone + Eq + AsRef<str> + Eq + Hash + Send + Sync;
-    type Path: Debug + Copy + Send + Sync + 'static;
-    type Span: Debug + Copy + Span<InternedString = Self::InternedString> + Send + Sync + 'static;
+    type Span: Debug
+        + Copy
+        + Eq
+        + Hash
+        + Send
+        + Sync
+        + Span<InternedString = Self::InternedString>
+        + 'static;
     type File: Debug + Clone + Send + Sync + File<Self> + 'static;
-    type Scope: Debug + Copy + Eq + Ord + Send + Sync;
+    type Scope: Debug + Copy + Eq + Hash + Ord + Send + Sync;
 
     fn intern(&self, s: impl AsRef<str>) -> Self::InternedString;
-    fn make_path(&self, path: Self::InternedString) -> Option<Self::Path>;
-    fn make_span(&self, path: Self::Path, range: std::ops::Range<CharIndex>) -> Self::Span;
 
-    fn implicit_entrypoint_imports(&self) -> Vec<Self::Path>;
-    fn implicit_dependency_imports(&self) -> Vec<Self::Path>;
+    fn make_span(
+        &self,
+        path: Self::InternedString,
+        range: std::ops::Range<CharIndex>,
+    ) -> Self::Span;
+
+    fn implicit_entrypoint_imports(&self) -> Vec<Self::InternedString>;
+    fn implicit_dependency_imports(&self) -> Vec<Self::InternedString>;
 
     /// Allows the driver to download files in parallel so loading is faster.
-    async fn queue_files(&self, source_path: Option<Self::Path>, paths: Vec<Self::Path>) {
+    async fn queue_files(
+        &self,
+        source_path: Option<Self::InternedString>,
+        paths: Vec<Self::InternedString>,
+    ) {
         let _ = (source_path, paths); // do nothing
     }
 
     async fn expand_file(
         &self,
-        source_file: Option<(Self::Path, Self::File)>,
+        source_file: Option<(Self::InternedString, Self::File)>,
         source_span: Option<Self::Span>,
-        path: Self::Path,
-        expand: impl FnOnce(Self::Path, Self::File) -> BoxFuture<'static, Arc<ast::File<Self>>>
+        path: Self::InternedString,
+        expand: impl FnOnce(Self::InternedString, Self::File) -> BoxFuture<'static, Arc<ast::File<Self>>>
             + Send
             + 'static,
     ) -> Option<Arc<ast::File<Self>>>;
@@ -151,9 +165,9 @@ pub trait Span: Sized + Debug {
 pub trait DriverExt: Driver {
     fn syntax_of(
         self,
-        source_file: Option<(Self::Path, Self::File)>,
+        source_file: Option<(Self::InternedString, Self::File)>,
         source_span: Option<Self::Span>,
-        path: Self::Path,
+        path: Self::InternedString,
         options: parse::Options,
     ) -> SyncFuture<BoxFuture<'static, Option<Arc<ast::File<Self>>>>>;
 }
@@ -161,9 +175,9 @@ pub trait DriverExt: Driver {
 impl<D: Driver> DriverExt for D {
     fn syntax_of(
         self,
-        source_file: Option<(Self::Path, Self::File)>,
+        source_file: Option<(Self::InternedString, Self::File)>,
         source_span: Option<Self::Span>,
-        path: Self::Path,
+        path: Self::InternedString,
         options: parse::Options,
     ) -> SyncFuture<BoxFuture<'static, Option<Arc<ast::File<Self>>>>> {
         SyncFuture::new(Box::pin(async move {
@@ -172,8 +186,12 @@ impl<D: Driver> DriverExt for D {
 
                 move |resolved_path, driver_file| {
                     Box::pin(async move {
-                        let parse_file =
-                            parse::parse(&driver, resolved_path, driver_file.code(), options);
+                        let parse_file = parse::parse(
+                            &driver,
+                            resolved_path.clone(),
+                            driver_file.code(),
+                            options,
+                        );
 
                         let file =
                             ast::build(driver, resolved_path, driver_file, parse_file, options)

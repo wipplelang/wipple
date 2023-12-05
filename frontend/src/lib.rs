@@ -26,58 +26,44 @@ use std::{
     sync::{atomic::AtomicUsize, Arc},
 };
 
-pub type SourceMap = HashMap<FilePath, Arc<str>>;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum FileKind {
-    Source,
-    Plugin,
-}
+pub type SourceMap = HashMap<InternedString, Arc<str>>;
 
 #[async_trait]
 pub trait Loader: Debug + Send + Sync + 'static {
-    fn std_path(&self) -> Option<FilePath>;
+    fn std_path(&self) -> Option<InternedString>;
 
     fn resolve(
         &self,
-        path: FilePath,
-        kind: FileKind,
-        current: Option<FilePath>,
-    ) -> anyhow::Result<FilePath>;
+        path: InternedString,
+        current: Option<InternedString>,
+    ) -> anyhow::Result<InternedString>;
 
-    async fn load(&self, path: FilePath) -> anyhow::Result<Arc<str>>;
+    async fn load(&self, path: InternedString) -> anyhow::Result<Arc<str>>;
 
-    async fn plugin(
+    fn insert_virtual(&self, path: InternedString, code: Arc<str>);
+
+    fn queue(&self) -> HashSet<InternedString>;
+
+    fn cache(&self, path: InternedString, file: Arc<analysis::ast::File<analysis::Analysis>>);
+
+    fn get_cached(
         &self,
-        path: FilePath,
-        name: InternedString,
-        input: PluginInput,
-        api: &dyn PluginApi,
-    ) -> anyhow::Result<PluginOutput>;
-
-    fn virtual_paths(&self) -> Shared<HashMap<InternedString, Arc<str>>>;
-
-    fn queue(&self) -> HashSet<FilePath>;
-
-    fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::ast::File<analysis::Analysis>>>>;
+        path: InternedString,
+    ) -> Option<Arc<analysis::ast::File<analysis::Analysis>>>;
 
     fn source_map(&self) -> Shared<SourceMap>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum FilePath {
-    Path(InternedString),
-    Url(InternedString),
-    Virtual(InternedString),
+    File(InternedString),
     Builtin,
 }
 
 impl FilePath {
     pub fn as_str(&self) -> &'static str {
         match self {
-            FilePath::Path(path) => path.as_str(),
-            FilePath::Url(url) => url.as_str(),
-            FilePath::Virtual(name) => name.as_str(),
+            FilePath::File(path) => path.as_str(),
             FilePath::Builtin => "builtin",
         }
     }
@@ -89,24 +75,6 @@ impl fmt::Display for FilePath {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct PluginInput {
-    id: ExpressionId,
-    span: analysis::SpanList,
-    ty: analysis::Type,
-    inputs: Vec<analysis::Expression>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct PluginOutput {
-    pub expr: analysis::lower::Expression,
-}
-
-#[async_trait]
-pub trait PluginApi: Send + Sync {
-    // TODO
-}
-
 #[derive(Debug, Clone)]
 pub struct Compiler {
     pub loader: Arc<dyn Loader>,
@@ -114,7 +82,8 @@ pub struct Compiler {
     file_ids: FileIds,
     node_ids: NodeIds,
     ids: Ids,
-    pub(crate) cache: Shared<indexmap::IndexMap<FilePath, Arc<analysis::lower::File>>>,
+    pub(crate) cache: Shared<indexmap::IndexMap<InternedString, Arc<analysis::lower::File>>>,
+    pub(crate) changed_files: Shared<Option<Vec<InternedString>>>,
     #[cfg(debug_assertions)]
     pub(crate) backtrace_enabled: bool,
 }
@@ -317,9 +286,14 @@ impl Compiler {
             node_ids: Default::default(),
             ids: Default::default(),
             cache: Default::default(),
+            changed_files: Default::default(),
             #[cfg(debug_assertions)]
             backtrace_enabled: false,
         }
+    }
+
+    pub fn set_changed_files(&self, changed_files: impl IntoIterator<Item = InternedString>) {
+        *self.changed_files.lock() = Some(Vec::from_iter(changed_files));
     }
 
     #[cfg(debug_assertions)]

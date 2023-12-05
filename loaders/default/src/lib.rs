@@ -6,7 +6,6 @@ use futures::future::BoxFuture;
 use path_clean::PathClean;
 use std::{
     collections::{HashMap, HashSet},
-    mem,
     path::PathBuf,
     str::FromStr,
     sync::Arc,
@@ -15,7 +14,7 @@ use url::Url;
 use wipple_frontend::{
     analysis::{self, Analysis},
     helpers::{InternedString, Shared},
-    FileKind, FilePath, PluginApi, PluginInput, PluginOutput, SourceMap,
+    FilePath, SourceMap,
 };
 
 pub const STD_URL: &str = "https://wipple.dev/std/std.wpl";
@@ -26,14 +25,13 @@ pub fn make_example_url(example: &str) -> String {
 
 #[derive(Debug, Clone)]
 pub struct Loader {
-    virtual_paths: Shared<HashMap<InternedString, Arc<str>>>,
+    pub virtual_paths: Shared<HashMap<InternedString, Arc<str>>>,
     fetcher: Shared<Fetcher>,
-    plugin_handler: Shared<PluginHandler>,
-    base: Shared<Option<FilePath>>,
-    std_path: Option<FilePath>,
+    base: Shared<Option<InternedString>>,
+    std_path: Option<InternedString>,
     source_map: Shared<SourceMap>,
-    queue: Shared<HashMap<FilePath, Arc<str>>>,
-    cache: Shared<HashMap<FilePath, Arc<analysis::ast::File<Analysis>>>>,
+    queue: Shared<HashMap<InternedString, Arc<str>>>,
+    cache: Shared<HashMap<InternedString, Arc<analysis::ast::File<Analysis>>>>,
 }
 
 #[derive(Default)]
@@ -132,317 +130,147 @@ impl std::fmt::Debug for Fetcher {
     }
 }
 
-#[derive(Default)]
-pub struct PluginHandler {
-    from_path: Option<
-        Box<
-            dyn Fn(
-                    &str,
-                    &str,
-                    PluginInput,
-                    &dyn PluginApi,
-                ) -> BoxFuture<'static, anyhow::Result<PluginOutput>>
-                + Send
-                + Sync,
-        >,
-    >,
-    from_url: Option<
-        Box<
-            dyn Fn(
-                    Url,
-                    &str,
-                    PluginInput,
-                    &dyn PluginApi,
-                ) -> BoxFuture<'static, anyhow::Result<PluginOutput>>
-                + Send
-                + Sync,
-        >,
-    >,
-}
-
-impl PluginHandler {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
-    pub fn with_path_handler(
-        mut self,
-        from_path: impl Fn(
-                &str,
-                &str,
-                PluginInput,
-                &dyn PluginApi,
-            ) -> BoxFuture<'static, anyhow::Result<PluginOutput>>
-            + Send
-            + Sync
-            + 'static,
-    ) -> Self {
-        self.from_path = Some(Box::new(from_path));
-        self
-    }
-
-    pub fn with_url_handler(
-        mut self,
-        from_url: impl Fn(
-                Url,
-                &str,
-                PluginInput,
-                &dyn PluginApi,
-            ) -> BoxFuture<'static, anyhow::Result<PluginOutput>>
-            + Send
-            + Sync
-            + 'static,
-    ) -> Self {
-        self.from_url = Some(Box::new(from_url));
-        self
-    }
-}
-
-impl std::fmt::Debug for PluginHandler {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("PluginHandler").finish()
-    }
-}
-
 impl Loader {
-    pub fn new(base: Option<FilePath>, std_path: Option<FilePath>) -> Self {
+    pub fn new(base: Option<impl AsRef<str>>, std_path: Option<impl AsRef<str>>) -> Self {
         Loader {
             virtual_paths: Default::default(),
             fetcher: Default::default(),
-            plugin_handler: Default::default(),
-            base: Shared::new(base),
-            std_path,
+            base: Shared::new(base.map(InternedString::new)),
+            std_path: std_path.map(InternedString::new),
             source_map: Default::default(),
             queue: Default::default(),
             cache: Default::default(),
         }
     }
 
-    pub fn set_base(&self, base: Option<FilePath>) {
-        *self.base.lock() = base;
+    pub fn set_base(&self, base: Option<impl AsRef<str>>) {
+        *self.base.lock() = base.map(InternedString::new);
     }
 
     pub fn with_fetcher(&self, fetcher: Fetcher) -> Self {
         *self.fetcher.lock() = fetcher;
         self.clone()
     }
-
-    pub fn with_plugin_handler(&self, handler: PluginHandler) -> Self {
-        *self.plugin_handler.lock() = handler;
-        self.clone()
-    }
-
-    pub fn set_plugin_handler(&self, handler: PluginHandler) -> PluginHandler {
-        mem::replace(&mut *self.plugin_handler.lock(), handler)
-    }
 }
 
 #[async_trait]
 impl wipple_frontend::Loader for Loader {
-    fn std_path(&self) -> Option<FilePath> {
+    fn std_path(&self) -> Option<InternedString> {
         self.std_path
     }
 
     fn resolve(
         &self,
-        path: FilePath,
-        kind: FileKind,
-        current: Option<FilePath>,
-    ) -> anyhow::Result<FilePath> {
-        fn set_extension_if_needed(path: &mut PathBuf, kind: FileKind) {
+        path: InternedString,
+        current: Option<InternedString>,
+    ) -> anyhow::Result<InternedString> {
+        fn set_extension_if_needed(path: &mut PathBuf) {
             if path.extension().is_none() {
-                match kind {
-                    FileKind::Source => {
-                        path.set_extension("wpl");
-                    }
-                    FileKind::Plugin => {}
-                };
+                path.set_extension("wpl");
             }
         }
 
-        match path {
-            FilePath::Path(path) => {
-                if self.virtual_paths.lock().contains_key(&path) {
-                    return Ok(FilePath::Virtual(path));
-                }
+        if self.virtual_paths.lock().contains_key(&path) {
+            return Ok(path);
+        }
 
-                if is_url(path) {
-                    let mut url = Url::from_str(&path)?.join(path.as_str())?;
+        if let Ok(url) = Url::from_str(&path) {
+            let mut url = url.join(path.as_str())?;
 
+            let mut path = PathBuf::from(url.path());
+            set_extension_if_needed(&mut path);
+            url.set_path(path.to_str().unwrap());
+
+            Ok(InternedString::new(url.as_str()))
+        } else {
+            let mut parsed_path = PathBuf::from(path.as_str());
+            set_extension_if_needed(&mut parsed_path);
+
+            if parsed_path.has_root() {
+                Ok(InternedString::new(parsed_path.to_string_lossy()))
+            } else {
+                let base = match current {
+                    Some(path) => path,
+                    None => match *self.base.lock() {
+                        Some(base) => base,
+                        None => return Ok(InternedString::new(parsed_path.to_string_lossy())),
+                    },
+                };
+
+                if let Ok(mut url) = Url::from_str(&base) {
+                    url = url.join(path.as_str())?;
                     let mut path = PathBuf::from(url.path());
-                    set_extension_if_needed(&mut path, kind);
+                    set_extension_if_needed(&mut path);
                     url.set_path(path.to_str().unwrap());
 
-                    Ok(FilePath::Url(InternedString::new(url.as_str())))
+                    Ok(InternedString::from(url.to_string()))
                 } else {
-                    let mut parsed_path = PathBuf::from(path.as_str());
-                    set_extension_if_needed(&mut parsed_path, kind);
+                    let mut path = PathBuf::from(base.as_str())
+                        .parent()
+                        .expect("not a file")
+                        .join(path.as_str())
+                        .clean();
 
-                    if parsed_path.has_root() {
-                        Ok(FilePath::Path(InternedString::new(
-                            parsed_path.to_string_lossy(),
-                        )))
-                    } else {
-                        let base = match current {
-                            Some(path) => path,
-                            None => match *self.base.lock() {
-                                Some(base) => base,
-                                None => {
-                                    return Ok(FilePath::Path(InternedString::new(
-                                        parsed_path.to_string_lossy(),
-                                    )))
-                                }
-                            },
-                        };
+                    set_extension_if_needed(&mut path);
 
-                        match base {
-                            FilePath::Url(base) => {
-                                let mut url = Url::from_str(&base).unwrap().join(path.as_str())?;
-
-                                let mut path = PathBuf::from(url.path());
-                                set_extension_if_needed(&mut path, kind);
-                                url.set_path(path.to_str().unwrap());
-
-                                Ok(FilePath::Url(InternedString::from(url.to_string())))
-                            }
-                            FilePath::Path(base) => {
-                                let path = match PathBuf::from(base.as_str()).parent() {
-                                    Some(base) => base.join(parsed_path).clean(),
-                                    None => parsed_path,
-                                };
-
-                                Ok(FilePath::Path(InternedString::new(path.to_str().unwrap())))
-                            }
-                            FilePath::Virtual(_) => {
-                                let base = match base {
-                                    FilePath::Url(_) | FilePath::Path(_) => base,
-                                    _ => self.base.lock().ok_or_else(|| {
-                                        anyhow::Error::msg(
-                                            "attempt to load nested virtual path without base set",
-                                        )
-                                    })?,
-                                };
-
-                                match base {
-                                    FilePath::Path(base) => {
-                                        let path =
-                                            PathBuf::from(base.as_str()).join(parsed_path).clean();
-
-                                        Ok(FilePath::Path(InternedString::new(
-                                            path.to_str().unwrap(),
-                                        )))
-                                    }
-                                    FilePath::Url(base) => {
-                                        let mut url = Url::from_str(&base)?.join(path.as_str())?;
-
-                                        let mut path = PathBuf::from(url.path());
-                                        set_extension_if_needed(&mut path, kind);
-                                        url.set_path(path.to_str().unwrap());
-
-                                        Ok(FilePath::Url(InternedString::new(url.as_str())))
-                                    }
-                                    _ => Err(anyhow::Error::msg("base must be a file path or URL")),
-                                }
-                            }
-                            _ => unimplemented!(),
-                        }
-                    }
+                    Ok(InternedString::from(
+                        path.into_os_string().into_string().unwrap(),
+                    ))
                 }
             }
-            FilePath::Virtual(path) => Ok(FilePath::Virtual(path)),
-            _ => unimplemented!(),
         }
     }
 
-    async fn load(&self, path: FilePath) -> anyhow::Result<Arc<str>> {
+    async fn load(&self, path: InternedString) -> anyhow::Result<Arc<str>> {
         if let Some(code) = self.queue.lock().get(&path) {
             return Ok(code.clone());
         }
 
-        let code = match path {
-            FilePath::Path(path) => {
-                let fut = self.fetcher.lock().from_path.as_ref().ok_or_else(|| {
-                    anyhow::Error::msg("this environment does not support loading from paths")
-                })?(path.as_str());
+        let virtual_code = self.virtual_paths.lock().get(&path).cloned();
+        let (code, cache) = if let Some(code) = virtual_code {
+            (code, false)
+        } else if let Ok(url) = Url::from_str(path.as_str()) {
+            let fut = self.fetcher.lock().from_url.as_ref().ok_or_else(|| {
+                anyhow::Error::msg("this environment does not support loading from URLs")
+            })?(url);
 
-                Arc::from(fut.await?)
-            }
-            FilePath::Url(url) => {
-                let fut = self.fetcher.lock().from_url.as_ref().ok_or_else(|| {
-                    anyhow::Error::msg("this environment does not support loading from URLs")
-                })?(Url::from_str(&url).unwrap());
+            (Arc::from(fut.await?), true)
+        } else {
+            let fut = self.fetcher.lock().from_path.as_ref().ok_or_else(|| {
+                anyhow::Error::msg("this environment does not support loading from paths")
+            })?(path.as_str());
 
-                Arc::from(fut.await?)
-            }
-            FilePath::Virtual(path) => self
-                .virtual_paths
-                .lock()
-                .get(&path)
-                .cloned()
-                .ok_or_else(|| anyhow::Error::msg("invalid virtual path"))?,
-            _ => unimplemented!(),
+            (Arc::from(fut.await?), true)
         };
 
-        // Never cache virtual or builtin paths
-        if !matches!(path, FilePath::Virtual(_) | FilePath::Builtin) {
+        if cache {
             self.queue.lock().insert(path, code.clone());
         }
 
         Ok(code)
     }
 
-    async fn plugin(
-        &self,
-        path: FilePath,
-        name: InternedString,
-        input: PluginInput,
-        api: &dyn PluginApi,
-    ) -> anyhow::Result<PluginOutput> {
-        let output = match path {
-            FilePath::Path(path) => {
-                let fut = self
-                    .plugin_handler
-                    .lock()
-                    .from_path
-                    .as_ref()
-                    .ok_or_else(|| {
-                        anyhow::Error::msg(
-                            "this environment does not support loading plugins from paths",
-                        )
-                    })?(path.as_str(), &name, input, api);
-
-                fut.await?
-            }
-            FilePath::Url(url) => {
-                let fut = self
-                    .plugin_handler
-                    .lock()
-                    .from_url
-                    .as_ref()
-                    .ok_or_else(|| {
-                        anyhow::Error::msg(
-                            "this environment does not support loading plugins from URLs",
-                        )
-                    })?(Url::from_str(&url).unwrap(), &name, input, api);
-
-                fut.await?
-            }
-            _ => unimplemented!(),
-        };
-
-        Ok(output)
-    }
-
-    fn virtual_paths(&self) -> Shared<HashMap<InternedString, Arc<str>>> {
-        self.virtual_paths.clone()
-    }
-
-    fn queue(&self) -> HashSet<FilePath> {
+    fn queue(&self) -> HashSet<InternedString> {
         self.queue.lock().keys().cloned().collect()
     }
 
-    fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::ast::File<Analysis>>>> {
-        self.cache.clone()
+    fn insert_virtual(&self, path: InternedString, code: Arc<str>) {
+        self.virtual_paths.lock().insert(path, code);
+    }
+
+    fn cache(&self, path: InternedString, file: Arc<analysis::ast::File<analysis::Analysis>>) {
+        if self.virtual_paths.lock().contains_key(&path) {
+            return;
+        }
+
+        self.cache.lock().insert(path, file);
+    }
+
+    fn get_cached(
+        &self,
+        path: InternedString,
+    ) -> Option<Arc<analysis::ast::File<analysis::Analysis>>> {
+        self.cache.lock().get(&path).cloned()
     }
 
     fn source_map(&self) -> Shared<SourceMap> {
@@ -455,30 +283,17 @@ pub fn is_url(s: impl AsRef<str>) -> bool {
 }
 
 pub fn is_relative_to_entrypoint(path: FilePath, entrypoint: FilePath) -> bool {
-    match (path, entrypoint) {
-        (FilePath::Path(path), FilePath::Path(entrypoint)) => {
-            let path = PathBuf::from(path.as_str());
-            let entrypoint = PathBuf::from(entrypoint.as_str());
+    let (path, entrypoint) = match (path, entrypoint) {
+        (FilePath::File(path), FilePath::File(entrypoint)) => (path, entrypoint),
+        _ => return false,
+    };
 
-            let entrypoint_dir = match entrypoint.parent() {
-                Some(path) => path,
-                None => return false,
-            };
-
-            path.strip_prefix(entrypoint_dir).is_ok()
-        }
-        (FilePath::Url(url), FilePath::Url(entrypoint)) => {
-            let url = match url.parse::<Url>() {
-                Ok(url) => url,
-                Err(_) => return false,
-            };
-
+    match (
+        Url::from_str(path.as_str()),
+        Url::from_str(entrypoint.as_str()),
+    ) {
+        (Ok(url), Ok(entrypoint)) => {
             let path = PathBuf::from(url.path());
-
-            let entrypoint = match entrypoint.parse::<Url>() {
-                Ok(url) => url,
-                Err(_) => return false,
-            };
 
             let entrypoint_path = PathBuf::from(entrypoint.path());
 
@@ -488,6 +303,17 @@ pub fn is_relative_to_entrypoint(path: FilePath, entrypoint: FilePath) -> bool {
             };
 
             url.origin() == entrypoint.origin() && path.strip_prefix(entrypoint_dir).is_ok()
+        }
+        (Err(_), Err(_)) => {
+            let path = PathBuf::from(path.as_str());
+            let entrypoint = PathBuf::from(entrypoint.as_str());
+
+            let entrypoint_dir = match entrypoint.parent() {
+                Some(path) => path,
+                None => return false,
+            };
+
+            path.strip_prefix(entrypoint_dir).is_ok()
         }
         _ => false,
     }

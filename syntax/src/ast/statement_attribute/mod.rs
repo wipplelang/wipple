@@ -2,7 +2,6 @@ definitions! {
     mod allow_overlapping_instances;
     mod contextual;
     mod convert_from;
-    mod derive;
     mod diagnostic_alias;
     mod diagnostic_item;
     mod entrypoint;
@@ -41,7 +40,6 @@ syntax_group! {
             AllowOverlappingInstances,
             Contextual,
             ConvertFrom,
-            Derive,
             DiagnosticAlias,
             DiagnosticItem,
             Entrypoint,

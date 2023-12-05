@@ -108,43 +108,6 @@ export const useRunner = (context: any) => {
                 runner.current!.onmessage = async (event) => {
                     try {
                         switch (event.data.type) {
-                            case "plugin":
-                                const api = {
-                                    // TODO
-                                };
-
-                                try {
-                                    console.log("Received plugin request:", {
-                                        path: event.data.path,
-                                        name: event.data.name,
-                                        input: event.data.input,
-                                        api,
-                                    });
-
-                                    const plugin = await import(/* @vite-ignore */ event.data.path);
-
-                                    if (!(event.data.name in plugin)) {
-                                        throw new Error(
-                                            `no such plugin '${event.data.name}' in file`
-                                        );
-                                    }
-
-                                    const output = plugin[event.data.name](event.data.input, api);
-
-                                    runner.current!.postMessage({
-                                        operation: "pluginSuccessCallback",
-                                        id: event.data.id,
-                                        output,
-                                    });
-                                } catch (error) {
-                                    runner.current!.postMessage({
-                                        operation: "pluginFailureCallback",
-                                        id: event.data.id,
-                                        error,
-                                    });
-                                }
-
-                                break;
                             case "done":
                                 resolve(event.data.analysis);
                                 runner.current!.onmessage = prevonmessage;

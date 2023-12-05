@@ -17,7 +17,7 @@ pub struct UseStatement<D: Driver> {
 
 #[derive(Debug, Clone)]
 pub enum UseStatementKind<D: Driver> {
-    File(D::Span, parse::Text<D>, Option<D::Path>),
+    File(D::Span, parse::Text<D>, D::InternedString),
 }
 
 impl<D: Driver> UseStatement<D> {
@@ -59,26 +59,18 @@ impl<D: Driver> Syntax<D> for UseStatementSyntax {
                 let input = exprs.pop().unwrap();
                 let kind = match input.kind {
                     parse::ExprKind::Text(text) => {
-                        let path = context
+                        let path = text.ignoring_escaped_underscores().clone();
+
+                        context
                             .ast_builder
                             .driver
-                            .make_path(text.ignoring_escaped_underscores().clone());
-
-                        if let Some(path) = path {
-                            context
-                                .ast_builder
-                                .driver
-                                .syntax_of(
-                                    Some((
-                                        context.ast_builder.path,
-                                        context.ast_builder.file.clone(),
-                                    )),
-                                    Some(span),
-                                    path,
-                                    context.ast_builder.options,
-                                )
-                                .await;
-                        }
+                            .syntax_of(
+                                Some((context.ast_builder.path, context.ast_builder.file.clone())),
+                                Some(span),
+                                path.clone(),
+                                context.ast_builder.options,
+                            )
+                            .await;
 
                         Ok(UseStatementKind::File(input.span, text, path))
                     }

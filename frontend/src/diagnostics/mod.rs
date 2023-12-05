@@ -1,6 +1,6 @@
 use crate::{
     analysis::{Span, SpanList},
-    helpers::{Backtrace, Shared},
+    helpers::{Backtrace, InternedString, Shared},
     Compiler, FilePath, SourceMap,
 };
 use itertools::Itertools;
@@ -384,7 +384,7 @@ impl FinalizedDiagnostics {
         show_expansion_history: bool,
         #[cfg(debug_assertions)] include_trace: bool,
     ) -> (
-        codespan_reporting::files::SimpleFiles<FilePath, Arc<str>>,
+        codespan_reporting::files::SimpleFiles<InternedString, Arc<str>>,
         Vec<codespan_reporting::diagnostic::Diagnostic<usize>>,
     ) {
         use codespan_reporting::{
@@ -397,14 +397,19 @@ impl FinalizedDiagnostics {
         let mut files = SimpleFiles::new();
         let mut console_diagnostics = Vec::new();
 
-        let mut tracked_files = HashMap::<FilePath, usize>::new();
+        let mut tracked_files = HashMap::<InternedString, usize>::new();
         for diagnostic in diagnostics {
             let mut make_note = |style: LabelStyle, span: Span, message: &str, use_caller: bool| {
-                self.source_map.get(&span.path).map(|src| {
-                    let file = match tracked_files.entry(span.path) {
+                let path = match span.path {
+                    FilePath::File(path) => path,
+                    FilePath::Builtin => return None,
+                };
+
+                self.source_map.get(&path).map(|src| {
+                    let file = match tracked_files.entry(path) {
                         Entry::Occupied(entry) => *entry.get(),
                         Entry::Vacant(entry) => {
-                            let file = files.add(span.path, src.clone());
+                            let file = files.add(path, src.clone());
                             entry.insert(file);
                             file
                         }

@@ -38,7 +38,7 @@ impl Typechecker {
                         }
                     }
                     analysis::ExpressionKind::Constant(item) => {
-                        let constant = match self.items.get(item) {
+                        let constant = match self.items.borrow().get(item) {
                             Some((Some((_, constant)), _)) => *constant,
                             _ => return ControlFlow::Continue(()),
                         };

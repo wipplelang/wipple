@@ -8,7 +8,6 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["console_error_panic_hook"]
-debug_playground = ["rust-embed"]
 
 [dependencies]
 anyhow = "1"
@@ -30,7 +29,6 @@ wipple-default-loader = { path = "../../../loaders/default" }
 wipple-frontend = { path = "../../../frontend" }
 wipple-interpreter-backend = { path = "../../../backends/interpreter" }
 wipple-syntax = { path = "../../../syntax" }
-rust-embed = { version = "6", features = ["debug-embed", "interpolate-folder-path"], optional = true }
 send_wrapper = "0.6"
 url = "2"
 

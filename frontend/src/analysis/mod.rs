@@ -8,8 +8,9 @@ pub mod typecheck;
 
 pub use span::{Span, SpanList};
 pub use typecheck::{
-    Arm, Bound, Expression, ExpressionKind, Intrinsic, LiteralKind, Pattern, PatternKind, Program,
-    Semantics, Type, TypeAnnotation, TypeAnnotationKind, TypeKind, TypeStructure,
+    Arm, Bound, Expression, ExpressionKind, GenericItem, Intrinsic, LiteralKind, Pattern,
+    PatternKind, Program, Semantics, Type, TypeAnnotation, TypeAnnotationKind, TypeKind,
+    TypeStructure,
 };
 pub use wipple_syntax::{ast, parse};
 
@@ -18,7 +19,7 @@ pub type ScopeSet = wipple_syntax::ScopeSet<ScopeId>;
 use crate::{
     diagnostics::*,
     helpers::{InternedString, Shared},
-    BuiltinSyntaxId, Compiler, FileKind, FilePath, ScopeId, SnippetId, SyntaxId,
+    BuiltinSyntaxId, Compiler, FilePath, ScopeId, SnippetId, SyntaxId,
 };
 use async_trait::async_trait;
 use futures::future::BoxFuture;
@@ -34,7 +35,7 @@ use wipple_util::Backtrace;
 pub struct Options {
     progress: Option<Shared<Box<dyn Fn(Progress) + Send + Sync>>>,
     lint: bool,
-    implicit_imports: Vec<FilePath>,
+    implicit_imports: Vec<InternedString>,
     parse: parse::Options,
 }
 
@@ -61,7 +62,10 @@ impl Options {
         self
     }
 
-    pub fn with_implicit_imports(mut self, imports: impl IntoIterator<Item = FilePath>) -> Self {
+    pub fn with_implicit_imports(
+        mut self,
+        imports: impl IntoIterator<Item = InternedString>,
+    ) -> Self {
         self.implicit_imports = Vec::from_iter(imports);
         self
     }
@@ -87,11 +91,11 @@ impl std::fmt::Debug for Options {
 #[derive(Debug)]
 pub enum Progress {
     Resolving {
-        path: FilePath,
+        path: InternedString,
         count: usize,
     },
     Lowering {
-        path: FilePath,
+        path: InternedString,
         current: usize,
         total: usize,
     },
@@ -101,7 +105,7 @@ pub enum Progress {
 impl Compiler {
     pub fn analyze_with(
         &self,
-        entrypoint: FilePath,
+        entrypoint: InternedString,
         options: &Options,
     ) -> BoxFuture<'static, (Program, FinalizedDiagnostics)> {
         let compiler = self.clone();
@@ -128,13 +132,13 @@ impl Compiler {
 
     pub async fn expand_with(
         &self,
-        entrypoint: FilePath,
+        entrypoint: InternedString,
         options: &Options,
-    ) -> indexmap::IndexMap<FilePath, Arc<ast::File<Analysis>>> {
+    ) -> indexmap::IndexMap<InternedString, Arc<ast::File<Analysis>>> {
         let driver = Analysis {
+            id: Shared::new(()),
             compiler: self.clone(),
             options: options.clone(),
-            entrypoint,
             cache: Default::default(),
             count: Default::default(),
             stack: Default::default(),
@@ -150,7 +154,7 @@ impl Compiler {
 
     pub fn lower_with(
         &self,
-        files: indexmap::IndexMap<FilePath, Arc<ast::File<Analysis>>>,
+        files: indexmap::IndexMap<InternedString, Arc<ast::File<Analysis>>>,
         _options: &Options,
     ) -> (lower::File, bool) {
         assert!(!files.is_empty(), "expected at least one file");
@@ -172,7 +176,7 @@ impl Compiler {
             let file = Arc::new(compiler.lower(&file, dependencies));
 
             // Only cache files already cached by loader
-            if compiler.loader.cache().lock().contains_key(&path) {
+            if compiler.loader.get_cached(path).is_some() {
                 compiler.cache.lock().insert(path, file.clone());
             }
 
@@ -213,18 +217,31 @@ impl Compiler {
 
 #[derive(Debug, Clone)]
 pub struct Analysis {
+    id: Shared<()>,
     compiler: Compiler,
     options: Options,
-    entrypoint: FilePath,
-    cache: Shared<indexmap::IndexMap<FilePath, Arc<ast::File<Self>>>>,
+    cache: Shared<indexmap::IndexMap<InternedString, Arc<ast::File<Self>>>>,
     count: Arc<AtomicUsize>,
-    stack: Shared<Vec<FilePath>>,
+    stack: Shared<Vec<InternedString>>,
+}
+
+impl PartialEq for Analysis {
+    fn eq(&self, other: &Self) -> bool {
+        Shared::ptr_eq(&self.id, &other.id)
+    }
+}
+
+impl Eq for Analysis {}
+
+impl std::hash::Hash for Analysis {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        Shared::id_ptr(&self.id).hash(state);
+    }
 }
 
 #[async_trait]
 impl wipple_syntax::Driver for Analysis {
     type InternedString = InternedString;
-    type Path = FilePath;
     type Span = SpanList;
     type File = File;
     type Scope = ScopeId;
@@ -233,15 +250,15 @@ impl wipple_syntax::Driver for Analysis {
         InternedString::new(s)
     }
 
-    fn make_path(&self, path: Self::InternedString) -> Option<Self::Path> {
-        Some(FilePath::Path(path))
+    fn make_span(
+        &self,
+        path: Self::InternedString,
+        range: std::ops::Range<CharIndex>,
+    ) -> Self::Span {
+        SpanList::from(Span::new(FilePath::File(path), range))
     }
 
-    fn make_span(&self, path: Self::Path, range: std::ops::Range<CharIndex>) -> Self::Span {
-        SpanList::from(Span::new(path, range))
-    }
-
-    fn implicit_entrypoint_imports(&self) -> Vec<Self::Path> {
+    fn implicit_entrypoint_imports(&self) -> Vec<Self::InternedString> {
         self.compiler
             .loader
             .std_path()
@@ -250,22 +267,21 @@ impl wipple_syntax::Driver for Analysis {
             .collect()
     }
 
-    fn implicit_dependency_imports(&self) -> Vec<Self::Path> {
+    fn implicit_dependency_imports(&self) -> Vec<Self::InternedString> {
         Vec::from_iter(self.compiler.loader.std_path())
     }
 
-    async fn queue_files(&self, source_path: Option<Self::Path>, paths: Vec<Self::Path>) {
+    async fn queue_files(
+        &self,
+        source_path: Option<Self::InternedString>,
+        paths: Vec<Self::InternedString>,
+    ) {
         let queue = self.compiler.loader.queue();
 
         futures::future::join_all(
             paths
                 .into_iter()
-                .filter_map(|path| {
-                    self.compiler
-                        .loader
-                        .resolve(path, FileKind::Source, source_path)
-                        .ok()
-                })
+                .filter_map(|path| self.compiler.loader.resolve(path, source_path).ok())
                 .filter(|resolved_path| !queue.contains(resolved_path))
                 .map(|resolved_path| async move {
                     let _ = self.compiler.loader.load(resolved_path).await;
@@ -276,14 +292,14 @@ impl wipple_syntax::Driver for Analysis {
 
     async fn expand_file(
         &self,
-        source_file: Option<(Self::Path, Self::File)>,
+        source_file: Option<(Self::InternedString, Self::File)>,
         source_span: Option<Self::Span>,
-        path: Self::Path,
-        expand: impl FnOnce(Self::Path, Self::File) -> BoxFuture<'static, Arc<ast::File<Self>>>
+        path: Self::InternedString,
+        expand: impl FnOnce(Self::InternedString, Self::File) -> BoxFuture<'static, Arc<ast::File<Self>>>
             + Send
             + 'static,
     ) -> Option<Arc<ast::File<Self>>> {
-        fn add_dependency(file: &Arc<ast::File<Analysis>>, source_file: File) {
+        fn add_dependency(file: Arc<ast::File<Analysis>>, source_file: File) {
             source_file
                 .syntax_declarations
                 .lock()
@@ -308,7 +324,7 @@ impl wipple_syntax::Driver for Analysis {
                     .extend(dependency_snippets);
             }
 
-            source_file.dependencies.lock().push(file.clone());
+            source_file.dependencies.lock().push(file);
         }
 
         macro_rules! try_load {
@@ -317,7 +333,7 @@ impl wipple_syntax::Driver for Analysis {
                     Ok(x) => x,
                     Err(error) => {
                         let span = source_span.unwrap_or_else(|| {
-                            Span::new(path, CharIndex::ZERO..CharIndex::ZERO).into()
+                            Span::new(FilePath::File(path), CharIndex::ZERO..CharIndex::ZERO).into()
                         });
 
                         self.compiler.add_error(
@@ -332,16 +348,15 @@ impl wipple_syntax::Driver for Analysis {
             };
         }
 
-        let resolved_path = try_load!(self.compiler.loader.resolve(
-            path,
-            FileKind::Source,
-            source_file.as_ref().map(|(path, _)| *path)
-        ));
+        let resolved_path = try_load!(self
+            .compiler
+            .loader
+            .resolve(path, source_file.as_ref().map(|(path, _)| *path)));
 
-        if let Some(cached) = self.compiler.loader.cache().lock().get(&resolved_path) {
+        if let Some(cached) = self.compiler.loader.get_cached(resolved_path) {
             fn insert(
                 file: Arc<ast::File<Analysis>>,
-                files: &mut indexmap::IndexMap<FilePath, Arc<ast::File<Analysis>>>,
+                files: &mut indexmap::IndexMap<InternedString, Arc<ast::File<Analysis>>>,
             ) {
                 for dependency in &*file.file.dependencies.lock() {
                     insert(dependency.clone(), files);
@@ -354,7 +369,7 @@ impl wipple_syntax::Driver for Analysis {
             insert(cached.clone(), &mut files);
 
             if let Some((_, source_file)) = source_file {
-                add_dependency(cached, source_file);
+                add_dependency(cached.clone(), source_file);
             }
 
             return Some(cached.clone());
@@ -422,21 +437,11 @@ impl wipple_syntax::Driver for Analysis {
 
         let file = expand(resolved_path, file).await;
 
-        // Don't cache virtual or builtin paths, nor the entrypoint
-        if resolved_path != self.entrypoint
-            && !matches!(resolved_path, FilePath::Virtual(_) | FilePath::Builtin)
-        {
-            self.compiler
-                .loader
-                .cache()
-                .lock()
-                .insert(resolved_path, file.clone());
-        }
-
+        self.compiler.loader.cache(resolved_path, file.clone());
         self.cache.lock().insert(resolved_path, file.clone());
 
         if let Some((_, source_file)) = source_file {
-            add_dependency(&file, source_file);
+            add_dependency(file.clone(), source_file);
         }
 
         Some(file)
@@ -505,7 +510,7 @@ impl wipple_syntax::Span for SpanList {
 #[derive(Debug, Clone)]
 pub struct File {
     compiler: Compiler,
-    path: FilePath,
+    path: InternedString,
     is_entrypoint: bool,
     code: Arc<str>,
     dependencies: Shared<Vec<Arc<ast::File<Analysis>>>>,
@@ -536,7 +541,7 @@ impl wipple_syntax::File<Analysis> for File {
     }
 
     fn make_scope(&self) -> ScopeId {
-        self.compiler.new_scope_id_in(self.path)
+        self.compiler.new_scope_id_in(FilePath::File(self.path))
     }
 
     fn define_syntax(
@@ -545,7 +550,7 @@ impl wipple_syntax::File<Analysis> for File {
         scope_set: ScopeSet,
         value: ast::SyntaxAssignmentValue<Analysis>,
     ) {
-        let id = self.compiler.new_syntax_id_in(self.path);
+        let id = self.compiler.new_syntax_id_in(FilePath::File(self.path));
 
         self.syntax_declarations.lock().insert(id, value);
 
@@ -661,7 +666,7 @@ impl wipple_syntax::File<Analysis> for File {
     }
 
     fn define_snippet(&self, name: InternedString, value: ast::SnippetAssignmentValue<Analysis>) {
-        let id = self.compiler.new_snippet_id_in(self.path);
+        let id = self.compiler.new_snippet_id_in(FilePath::File(self.path));
         self.snippet_declarations.lock().insert(id, value);
         self.snippets.lock().entry(name).or_default().push(id);
     }
@@ -669,14 +674,17 @@ impl wipple_syntax::File<Analysis> for File {
 
 impl Compiler {
     fn source_code_for_span(&self, span: Span) -> Option<String> {
-        Some(
-            self.loader
-                .source_map()
-                .lock()
-                .get(&span.path)?
-                .get(span.primary_range().start.utf8..span.primary_range().end.utf8)?
-                .to_string(),
-        )
+        match span.path {
+            FilePath::File(path) => Some(
+                self.loader
+                    .source_map()
+                    .lock()
+                    .get(&path)?
+                    .get(span.primary_range().start.utf8..span.primary_range().end.utf8)?
+                    .to_string(),
+            ),
+            FilePath::Builtin => None,
+        }
     }
 
     fn single_line_source_code_for_span(&self, span: Span) -> Option<String> {

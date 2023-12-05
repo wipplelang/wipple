@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 backtrace = "0.3"
 parking_lot = "0.12"
+serde = { version = "1", features = ["derive"] }

@@ -11,7 +11,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{BTreeMap, BTreeSet},
     hash::Hash,
     mem,
     sync::Arc,
@@ -19,8 +19,9 @@ use std::{
 
 #[derive(Debug, Clone)]
 pub struct File<Decls = Declarations> {
+    pub path: InternedString,
     pub span: SpanList,
-    pub attributes: BTreeMap<FilePath, FileAttributes>,
+    pub attributes: BTreeMap<InternedString, FileAttributes>,
     pub declarations: Decls,
     pub info: FileInfo,
     pub specializations: BTreeMap<ConstantId, Vec<ConstantId>>,
@@ -32,11 +33,11 @@ pub struct File<Decls = Declarations> {
 #[derive(Debug, Clone, Default)]
 #[non_exhaustive]
 pub struct FileAttributes {
-    pub imported_by: Shared<Vec<FilePath>>,
+    pub imported_by: Shared<Vec<InternedString>>,
     pub help_url: Option<InternedString>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct Declarations {
     pub syntaxes: im::OrdMap<SyntaxId, Declaration<SyntaxDeclaration>>,
     pub types: im::OrdMap<TypeId, Declaration<TypeDeclaration>>,
@@ -50,7 +51,7 @@ pub struct Declarations {
     pub snippets: im::OrdMap<SnippetId, Declaration<SnippetDeclaration>>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 struct UnresolvedDeclarations {
     syntaxes: im::OrdMap<SyntaxId, Declaration<SyntaxDeclaration>>,
     types: im::OrdMap<TypeId, Declaration<Option<TypeDeclaration>>>,
@@ -101,7 +102,7 @@ impl UnresolvedDeclarations {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Declaration<T> {
     pub name: Option<InternedString>,
     pub span: SpanList,
@@ -175,7 +176,7 @@ impl<T> Declaration<T> {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub struct DeclarationAttributes {
     pub help: Vec<InternedString>,
@@ -185,38 +186,38 @@ pub struct DeclarationAttributes {
     pub private: bool,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct SyntaxDeclaration {
     pub operator: bool,
     pub keyword: bool,
     pub attributes: SyntaxAttributes,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub struct SyntaxAttributes {
     pub decl_attributes: DeclarationAttributes,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeDeclaration {
     pub parameters: Vec<TypeParameterId>,
     pub kind: TypeDeclarationKind,
     pub attributes: TypeAttributes,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeDeclarationKind {
     Marker,
-    Structure(Vec<StructureField>, HashMap<InternedString, FieldIndex>),
+    Structure(Vec<StructureField>, im::HashMap<InternedString, FieldIndex>),
     Enumeration(
         Vec<EnumerationVariant>,
-        HashMap<InternedString, VariantIndex>,
+        im::HashMap<InternedString, VariantIndex>,
     ),
     Alias(TypeAnnotation),
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub struct TypeAttributes {
     pub decl_attributes: DeclarationAttributes,
@@ -225,14 +226,14 @@ pub struct TypeAttributes {
     pub sealed: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructureField {
     pub name_span: SpanList,
     pub name: InternedString,
     pub ty: TypeAnnotation,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnumerationVariant {
     pub name_span: SpanList,
     pub name: InternedString,
@@ -241,20 +242,20 @@ pub struct EnumerationVariant {
     pub constructor: ConstantId,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeParameterDeclaration {
     pub infer: bool,
     pub default: Option<TypeAnnotation>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TraitDeclaration {
     pub parameters: Vec<TypeParameterId>,
     pub ty: Option<TypeAnnotation>,
     pub attributes: TraitAttributes,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub struct TraitAttributes {
     pub decl_attributes: DeclarationAttributes,
@@ -264,16 +265,15 @@ pub struct TraitAttributes {
     )>,
     pub sealed: bool,
     pub allow_overlapping_instances: bool,
-    pub derive: Option<(SpanList, InternedString, InternedString)>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BuiltinTypeDeclaration {
     pub kind: BuiltinTypeDeclarationKind,
     pub attributes: DeclarationAttributes,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BuiltinTypeDeclarationKind {
     Number,
     Integer,
@@ -291,7 +291,7 @@ pub enum BuiltinTypeDeclarationKind {
     Hasher,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstantDeclaration {
     pub parameters: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
@@ -301,7 +301,7 @@ pub struct ConstantDeclaration {
     pub attributes: ConstantAttributes,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UnresolvedConstantDeclaration {
     pub parameters: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
@@ -340,7 +340,7 @@ impl Resolve<ConstantDeclaration> for UnresolvedConstantDeclaration {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub struct ConstantAttributes {
     pub decl_attributes: DeclarationAttributes,
@@ -353,7 +353,7 @@ pub struct ConstantAttributes {
     pub is_contextual: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UnresolvedInstanceDeclaration {
     pub parameters: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
@@ -363,7 +363,7 @@ pub struct UnresolvedInstanceDeclaration {
     pub value: Shared<Option<InstanceValue>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct InstanceDeclaration {
     pub parameters: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
@@ -399,27 +399,27 @@ impl Resolve<InstanceDeclaration> for UnresolvedInstanceDeclaration {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct InstanceValue {
     pub colon_span: Option<SpanList>,
     pub value: Expression,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VariableDeclaration;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BuiltinSyntaxDeclaration {
     pub definition: ast::BuiltinSyntaxDefinition,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SnippetDeclaration {
     pub expr: parse::Expr<Analysis>,
     pub wrap: bool,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct FileInfo {
     pub recursion_limit: Option<usize>,
     pub language_items: LanguageItems,
@@ -446,7 +446,7 @@ impl FileInfo {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub struct LanguageItems {
     pub boolean: Option<TypeId>,
@@ -465,7 +465,7 @@ impl LanguageItems {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub struct DiagnosticItems {
     pub accepts_text: Vec<ConstantId>,
@@ -479,7 +479,7 @@ impl DiagnosticItems {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub struct DiagnosticAliases {
     pub aliases: BTreeMap<InternedString, Vec<InternedString>>,
@@ -493,14 +493,14 @@ impl DiagnosticAliases {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 pub struct Expression {
     pub id: ExpressionId,
     pub span: SpanList,
     pub kind: ExpressionKind,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 pub enum ExpressionKind {
     Error(#[serde(skip)] Backtrace),
     Marker(TypeId),
@@ -515,7 +515,6 @@ pub enum ExpressionKind {
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
     Intrinsic(Intrinsic, Vec<Expression>),
-    Plugin(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
     Initialize(Pattern, Box<Expression>),
     Instantiate(TypeId, Vec<((SpanList, InternedString), Expression)>),
@@ -552,8 +551,7 @@ impl Expression {
             | ExpressionKind::Trait(_)
             | ExpressionKind::Variable(_)
             | ExpressionKind::Text(_)
-            | ExpressionKind::Number(_)
-            | ExpressionKind::Plugin(_, _, _) => {}
+            | ExpressionKind::Number(_) => {}
             ExpressionKind::Block(statements, _) => {
                 for statement in statements {
                     statement.traverse_mut_inner(f);
@@ -625,7 +623,7 @@ impl Expression {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 pub struct Arm {
     pub span: SpanList,
     pub pattern: Pattern,
@@ -633,20 +631,20 @@ pub struct Arm {
     pub body: Expression,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 pub struct Pattern {
     pub span: SpanList,
     pub kind: PatternKind,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 pub enum PatternKind {
     Error(#[serde(skip)] Backtrace),
     Wildcard,
     Number(InternedString),
     Text(InternedString),
     Variable(VariableId),
-    Destructure(HashMap<InternedString, Pattern>),
+    Destructure(im::HashMap<InternedString, Pattern>),
     Variant(TypeId, VariantIndex, Vec<Pattern>),
     Annotate(Box<Pattern>, TypeAnnotation),
     Or(Box<Pattern>, Box<Pattern>),
@@ -706,13 +704,13 @@ impl Pattern {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 pub struct TypeAnnotation {
     pub span: SpanList,
     pub kind: TypeAnnotationKind,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 pub enum TypeAnnotationKind {
     Error(#[serde(skip)] Backtrace),
     Placeholder,
@@ -729,7 +727,7 @@ impl TypeAnnotationKind {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Bound {
     pub span: SpanList,
     pub tr_span: SpanList,
@@ -1077,7 +1075,7 @@ impl Compiler {
         for dependency in dependencies {
             dependency
                 .attributes
-                .get(&dependency.span.first().path)
+                .get(&dependency.path)
                 .unwrap()
                 .imported_by
                 .lock()
@@ -1264,6 +1262,7 @@ impl Compiler {
         }
 
         File {
+            path: file.file.path,
             span: file.span,
             attributes: file_attributes,
             declarations: lowerer.declarations.resolve(),
@@ -1857,25 +1856,10 @@ impl Lowerer {
                         })
                         .collect::<Vec<_>>();
 
-                    let value = value
-                        .map(|(colon_span, value)| InstanceValue {
-                            colon_span: Some(colon_span),
-                            value: self.lower_expr(value, ctx),
-                        })
-                        .or_else(|| {
-                            let tr_decl = self.declarations.traits.get(&tr).unwrap();
-
-                            tr_decl.value.as_ref().unwrap().attributes.derive.map(
-                                |(span, path, name)| InstanceValue {
-                                    colon_span: None,
-                                    value: Expression {
-                                        id: self.compiler.new_expression_id(id),
-                                        span: span.merge(decl.span),
-                                        kind: ExpressionKind::Plugin(path, name, Vec::new()),
-                                    },
-                                },
-                            )
-                        });
+                    let value = value.map(|(colon_span, value)| InstanceValue {
+                        colon_span: Some(colon_span),
+                        value: self.lower_expr(value, ctx),
+                    });
 
                     self.declarations.instances.get_mut(&id).unwrap().value =
                         Some(UnresolvedInstanceDeclaration {
@@ -3162,26 +3146,6 @@ impl Lowerer {
                     id: self.compiler.new_expression_id(ctx.owner),
                     span: expr.span(),
                     kind: ExpressionKind::Intrinsic(func, inputs),
-                }
-            }
-            ast::Expression::Plugin(expr) => {
-                let inputs = expr
-                    .inputs
-                    .iter()
-                    .map(|expr| match expr {
-                        Ok(expr) => self.lower_expr(expr, ctx),
-                        Err(error) => Expression {
-                            id: self.compiler.new_expression_id(ctx.owner),
-                            span: error.span,
-                            kind: ExpressionKind::error(&self.compiler),
-                        },
-                    })
-                    .collect::<Vec<_>>();
-
-                Expression {
-                    id: self.compiler.new_expression_id(ctx.owner),
-                    span: expr.span(),
-                    kind: ExpressionKind::Plugin(expr.path, expr.name, inputs),
                 }
             }
             ast::Expression::Annotate(expr) => {
@@ -4623,10 +4587,6 @@ impl Lowerer {
             }),
             sealed: attributes.sealed.is_some(),
             allow_overlapping_instances: attributes.allow_overlapping_instances.is_some(),
-            derive: attributes
-                .derive
-                .as_ref()
-                .map(|attribute| (attribute.span, attribute.path, attribute.name)),
         }
     }
 

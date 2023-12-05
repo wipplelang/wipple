@@ -13,20 +13,20 @@ pub struct File<D: Driver> {
     pub statements: Vec<Statement<D>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Attribute<D: Driver> {
     pub span: D::Span,
     pub exprs: Vec<Expr<D>>,
     pub comment: Option<D::InternedString>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Expr<D: Driver> {
     pub span: D::Span,
     pub kind: ExprKind<D>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ExprKind<D: Driver> {
     Placeholder(D::InternedString),
     Underscore,
@@ -43,7 +43,7 @@ pub enum ExprKind<D: Driver> {
     SourceCode(String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Text<D: Driver> {
     parsed: D::InternedString,
     escaped_underscores: Vec<usize>,
@@ -132,12 +132,12 @@ impl<D: Driver> Expr<D> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Statement<D: Driver> {
     pub lines: Vec<ListLine<D>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ListLine<D: Driver> {
     pub leading_lines: u32,
     pub attributes: Vec<Attribute<D>>,
@@ -228,7 +228,7 @@ impl<D: Driver> Expr<D> {
 
 pub(crate) struct Parser<'src, 'a, D: Driver> {
     pub driver: &'a D,
-    pub path: D::Path,
+    pub path: D::InternedString,
     pub lexer: Peekable<LexerIter<'src, D>>,
     pub len: CharIndex,
     pub offset: CharIndex,
@@ -903,7 +903,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
 
     pub fn offset(&mut self, range: Range<CharIndex>) -> D::Span {
         self.driver.make_span(
-            self.path,
+            self.path.clone(),
             (range.start + self.offset)..(range.end + self.offset),
         )
     }

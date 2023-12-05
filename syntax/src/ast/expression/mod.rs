@@ -4,7 +4,6 @@ definitions! {
     mod external;
     mod function;
     mod intrinsic;
-    mod plugin;
     mod semantics;
     mod tuple;
     mod when;
@@ -38,7 +37,6 @@ syntax_group! {
             End,
             External,
             Intrinsic,
-            Plugin,
             Semantics,
             With,
             Where,

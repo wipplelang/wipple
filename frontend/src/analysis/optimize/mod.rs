@@ -662,7 +662,6 @@ mod util {
                 ExpressionKind::Format(segments, _) => segments
                     .iter()
                     .all(|(_, expr)| expr.is_pure_inner(program, info)),
-                ExpressionKind::Plugin(_, _, _) => panic!("found unresolved plugin"),
                 ExpressionKind::Intrinsic(_, _)
                 | ExpressionKind::External(_, _, _)
                 | ExpressionKind::Initialize(_, _)

@@ -26,6 +26,9 @@ struct Args {
     optimize: bool,
 
     #[clap(long)]
+    no_incremental: bool,
+
+    #[clap(long)]
     show_expansion_history: bool,
 
     #[cfg(debug_assertions)]
@@ -38,17 +41,15 @@ async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let loader = loader::Loader::new(
-        None,
-        Some(wipple_frontend::FilePath::Path(
-            wipple_frontend::helpers::InternedString::new(
-                env::current_dir()
-                    .unwrap()
-                    .join("std/std.wpl")
-                    .as_os_str()
-                    .to_str()
-                    .unwrap(),
-            ),
-        )),
+        None::<&str>,
+        Some(
+            env::current_dir()
+                .unwrap()
+                .join("std/std.wpl")
+                .as_os_str()
+                .to_str()
+                .unwrap(),
+        ),
     )
     .with_fetcher(loader::Fetcher::new().with_default_path_handler());
 
@@ -62,92 +63,101 @@ async fn main() -> anyhow::Result<()> {
     let update_count = AtomicUsize::new(0);
     let results = Mutex::new(Vec::new());
 
-    let run_path = |src_path: PathBuf| async {
-        let test_name = src_path.to_string_lossy().to_string();
-        let stdout_path = src_path.with_extension("stdout");
-        let stderr_path = src_path.with_extension("stderr");
+    let run_path = |src_path: PathBuf, incremental: bool| {
+        let pass_count = &pass_count;
+        let fail_count = &fail_count;
+        let update_count = &update_count;
+        let results = &results;
+        let compiler = &compiler;
 
-        eprint!(
-            "{} {}",
-            " RUNS ".black().on_bright_black(),
-            test_name.bold(),
-        );
+        async move {
+            let test_name = src_path.to_string_lossy().to_string();
+            let stdout_path = src_path.with_extension("stdout");
+            let stderr_path = src_path.with_extension("stderr");
 
-        let src = fs::read_to_string(&src_path)?;
-        let stdout = fs::read_to_string(&stdout_path).ok();
-        let stderr = fs::read_to_string(&stderr_path).ok();
-
-        let result = run(
-            &src,
-            stdout.as_deref(),
-            stderr.as_deref(),
-            compiler.clone(),
-            args.optimize,
-            args.show_expansion_history,
-            #[cfg(debug_assertions)]
-            args.trace,
-        )
-        .await?;
-
-        if result.passed() {
-            pass_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-
-            eprintln!(
-                "\r{} {}",
-                " PASS ".bright_white().on_bright_green(),
-                test_name.bold()
-            );
-        } else if args.write {
-            update_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-
-            eprintln!(
-                "\r{} {}",
-                " UPDATE ".bright_white().on_bright_black(),
-                test_name.bold()
+            eprint!(
+                "{} {}",
+                " RUNS ".black().on_bright_black(),
+                test_name.bold(),
             );
 
-            if !result.output.is_empty() {
-                fs::write(&stdout_path, &result.output)?;
-            }
+            let src = fs::read_to_string(&src_path)?;
+            let stdout = fs::read_to_string(&stdout_path).ok();
+            let stderr = fs::read_to_string(&stderr_path).ok();
 
-            if !result.diagnostics.is_empty() {
-                fs::write(&stderr_path, &result.diagnostics)?;
-            }
-        } else {
-            fail_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let result = run(RunOptions {
+                src: &src,
+                stdout: stdout.as_deref(),
+                stderr: stderr.as_deref(),
+                compiler: compiler.clone(),
+                incremental,
+                optimize: args.optimize,
+                show_expansion_history: args.show_expansion_history,
+                #[cfg(debug_assertions)]
+                trace_diagnostics: args.trace,
+            })
+            .await?;
 
-            eprintln!(
-                "\r{} {}",
-                " FAIL ".bright_white().on_bright_red(),
-                test_name.bold()
-            );
+            if result.passed() {
+                pass_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-            if let Some(output_diff) = result.output_diff.as_ref() {
-                if !output_diff.is_empty() {
-                    eprintln!("\nOutput:\n");
-                    output_diff.print();
+                eprintln!(
+                    "\r{} {}",
+                    " PASS ".bright_white().on_bright_green(),
+                    test_name.bold()
+                );
+            } else if args.write {
+                update_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+                eprintln!(
+                    "\r{} {}",
+                    " UPDATE ".bright_white().on_bright_black(),
+                    test_name.bold()
+                );
+
+                if !result.output.is_empty() {
+                    fs::write(&stdout_path, &result.output)?;
+                }
+
+                if !result.diagnostics.is_empty() {
+                    fs::write(&stderr_path, &result.diagnostics)?;
+                }
+            } else {
+                fail_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+                eprintln!(
+                    "\r{} {}",
+                    " FAIL ".bright_white().on_bright_red(),
+                    test_name.bold()
+                );
+
+                if let Some(output_diff) = result.output_diff.as_ref() {
+                    if !output_diff.is_empty() {
+                        eprintln!("\nOutput:\n");
+                        output_diff.print();
+                    }
+                }
+
+                if let Some(diagnostics_diff) = result.diagnostics_diff.as_ref() {
+                    if !diagnostics_diff.is_empty() {
+                        eprintln!("\nDiagnostics:\n");
+                        diagnostics_diff.print();
+                    }
+                }
+
+                if result.output_diff.is_some() || result.diagnostics_diff.is_some() {
+                    eprintln!();
                 }
             }
 
-            if let Some(diagnostics_diff) = result.diagnostics_diff.as_ref() {
-                if !diagnostics_diff.is_empty() {
-                    eprintln!("\nDiagnostics:\n");
-                    diagnostics_diff.print();
-                }
-            }
+            results.lock().push((test_name, src_path, result));
 
-            if result.output_diff.is_some() || result.diagnostics_diff.is_some() {
-                eprintln!();
-            }
+            anyhow::Result::<()>::Ok(())
         }
-
-        results.lock().push((test_name, src_path, result));
-
-        anyhow::Result::<()>::Ok(())
     };
 
-    for file in args.files {
-        run_path(file).await?;
+    for (index, file) in args.files.into_iter().enumerate() {
+        run_path(file, !args.no_incremental && index > 0).await?;
     }
 
     let pass_count = pass_count.into_inner();
@@ -263,28 +273,33 @@ impl TestResult {
     }
 }
 
-async fn run(
-    src: &str,
-    stdout: Option<&str>,
-    stderr: Option<&str>,
+struct RunOptions<'a> {
+    src: &'a str,
+    stdout: Option<&'a str>,
+    stderr: Option<&'a str>,
     compiler: wipple_frontend::Compiler,
+    incremental: bool,
     optimize: bool,
     show_expansion_history: bool,
-    #[cfg(debug_assertions)] trace_diagnostics: bool,
-) -> anyhow::Result<TestResult> {
+    #[cfg(debug_assertions)]
+    trace_diagnostics: bool,
+}
+
+async fn run(options: RunOptions<'_>) -> anyhow::Result<TestResult> {
     let test_path = wipple_frontend::helpers::InternedString::new("test");
 
-    compiler
+    options
+        .compiler
         .loader
-        .virtual_paths()
-        .lock()
-        .insert(test_path, Arc::from(src));
+        .insert_virtual(test_path, Arc::from(options.src));
 
-    let (program, diagnostics) = compiler
-        .analyze_with(
-            wipple_frontend::FilePath::Virtual(test_path),
-            &Default::default(),
-        )
+    if options.incremental {
+        options.compiler.set_changed_files([test_path]);
+    }
+
+    let (program, diagnostics) = options
+        .compiler
+        .analyze_with(test_path, &Default::default())
         .await;
 
     let success = !diagnostics.contains_errors();
@@ -293,10 +308,10 @@ async fn run(
         let buf = Shared::new(Vec::new());
 
         if success {
-            let mut ir = compiler.ir_from(&program);
+            let mut ir = options.compiler.ir_from(&program);
 
-            if optimize {
-                ir = compiler.optimize_with(ir, Default::default());
+            if options.optimize {
+                ir = options.compiler.optimize_with(ir, Default::default());
             }
 
             let interpreter = wipple_interpreter_backend::Interpreter::new({
@@ -332,9 +347,9 @@ async fn run(
         {
             let (files, diagnostics) = diagnostics.into_console_friendly(
                 loader::make_example_url,
-                show_expansion_history,
+                options.show_expansion_history,
                 #[cfg(debug_assertions)]
-                trace_diagnostics,
+                options.trace_diagnostics,
             );
 
             let mut writer = codespan_reporting::term::termcolor::NoColor::new(&mut buf);
@@ -352,9 +367,9 @@ async fn run(
     diagnostics = diagnostics.replace(env!("CARGO_WORKSPACE_DIR"), "<dir>/");
 
     Ok(TestResult {
-        output_diff: stdout.map(|expected| diff(expected, &output)),
+        output_diff: options.stdout.map(|expected| diff(expected, &output)),
         output,
-        diagnostics_diff: stderr.map(|expected| diff(expected, &diagnostics)),
+        diagnostics_diff: options.stderr.map(|expected| diff(expected, &diagnostics)),
         diagnostics,
     })
 }

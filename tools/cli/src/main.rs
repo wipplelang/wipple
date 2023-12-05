@@ -16,7 +16,7 @@ use std::{
     thread,
 };
 use wipple_default_loader as loader;
-use wipple_frontend::{Compiler, Loader};
+use wipple_frontend::Compiler;
 
 #[derive(Parser)]
 #[clap(
@@ -584,37 +584,35 @@ async fn build_with_passes<P>(
     };
 
     let loader = loader::Loader::new(
-        options.base_path.clone().map(|path| {
-            wipple_frontend::FilePath::Path(wipple_frontend::helpers::InternedString::new(
-                path.to_string_lossy(),
-            ))
-        }),
-        Some({
+        options
+            .base_path
+            .clone()
+            .map(|path| path.to_string_lossy().to_string()),
+        Some((|| {
             let path = options.std.as_deref();
 
-            wipple_frontend::FilePath::Path(
-                #[cfg(debug_assertions)]
-                wipple_frontend::helpers::InternedString::new(
-                    path.unwrap_or(concat!(env!("CARGO_WORKSPACE_DIR"), "std/std.wpl")),
-                ),
-                #[cfg(not(debug_assertions))]
-                {
-                    let path = path.unwrap_or(loader::STD_URL);
+            #[cfg(debug_assertions)]
+            return wipple_frontend::helpers::InternedString::new(
+                path.unwrap_or(concat!(env!("CARGO_WORKSPACE_DIR"), "std/std.wpl")),
+            );
 
-                    if loader::is_url(path) {
-                        wipple_frontend::helpers::InternedString::new(path)
-                    } else {
-                        wipple_frontend::helpers::InternedString::new(
-                            PathBuf::from(path)
-                                .canonicalize()
-                                .unwrap()
-                                .to_str()
-                                .unwrap(),
-                        )
-                    }
-                },
-            )
-        }),
+            #[cfg(not(debug_assertions))]
+            {
+                let path = path.unwrap_or(loader::STD_URL);
+
+                return if loader::is_url(path) {
+                    wipple_frontend::helpers::InternedString::new(path)
+                } else {
+                    wipple_frontend::helpers::InternedString::new(
+                        PathBuf::from(path)
+                            .canonicalize()
+                            .unwrap()
+                            .to_str()
+                            .unwrap(),
+                    )
+                };
+            }
+        })()),
     )
     .with_fetcher(
         loader::Fetcher::new()
@@ -626,7 +624,7 @@ async fn build_with_passes<P>(
         let mut stdin = String::new();
         io::stdin().read_to_string(&mut stdin).unwrap();
 
-        loader.virtual_paths().lock().insert(
+        loader.virtual_paths.lock().insert(
             wipple_frontend::helpers::InternedString::new("stdin"),
             Arc::from(stdin),
         );
@@ -637,11 +635,8 @@ async fn build_with_passes<P>(
     #[cfg(debug_assertions)]
     let compiler = compiler.set_backtrace_enabled(options.trace);
 
-    let path = if path == "-" {
-        wipple_frontend::FilePath::Virtual(wipple_frontend::helpers::InternedString::new("stdin"))
-    } else {
-        wipple_frontend::FilePath::Path(wipple_frontend::helpers::InternedString::new(path))
-    };
+    let path =
+        wipple_frontend::helpers::InternedString::new(if path == "-" { "stdin" } else { path });
 
     let (program, diagnostics) = compiler
         .analyze_with(
@@ -649,11 +644,12 @@ async fn build_with_passes<P>(
             &wipple_frontend::analysis::Options::new()
                 .tracking_progress(analysis_progress)
                 .lint(!options.no_lint)
-                .with_implicit_imports(options.r#use.iter().map(|path| {
-                    wipple_frontend::FilePath::Path(wipple_frontend::helpers::InternedString::new(
-                        path,
-                    ))
-                })),
+                .with_implicit_imports(
+                    options
+                        .r#use
+                        .iter()
+                        .map(wipple_frontend::helpers::InternedString::new),
+                ),
         )
         .await;
 

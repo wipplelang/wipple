@@ -146,105 +146,77 @@ impl<Fut: Future> Future for CancellableFuture<Fut> {
     }
 }
 
-#[cfg(feature = "debug_playground")]
-const FILES_PATH: &str = "http://localhost:8080/playground/files/";
+const FILES_PATH: &str = "/playground/files/";
+const STD_PATH: &str = "/std/std.wpl";
 
-#[cfg(not(feature = "debug_playground"))]
-const FILES_PATH: &str = "https://wipple.dev/playground/files/";
+async fn load(url: &str) -> anyhow::Result<String> {
+    let error_to_string = |msg: &str, value: JsValue| {
+        let error = value.as_string().or_else(|| {
+            value
+                .dyn_into::<js_sys::Error>()
+                .ok()
+                .map(|e| e.to_string().into())
+        });
+
+        match error {
+            Some(error) => format!("{msg}: {error}"),
+            None => msg.to_string(),
+        }
+    };
+
+    let global = js_sys::global()
+        .dyn_into::<web_sys::WorkerGlobalScope>()
+        .unwrap();
+
+    let response =
+        JsFuture::from(global.fetch_with_request(&web_sys::Request::new_with_str(url).unwrap()))
+            .await
+            .map_err(|e| anyhow::Error::msg(error_to_string("request failed", e)))?;
+
+    let response = response
+        .dyn_into::<web_sys::Response>()
+        .map_err(|e| anyhow::Error::msg(error_to_string("invalid response", e)))?;
+
+    if !response.ok() {
+        return Err(anyhow::Error::msg(format!(
+            "request failed: {}",
+            response.status_text()
+        )));
+    }
+
+    let text = JsFuture::from(
+        response
+            .text()
+            .map_err(|e| anyhow::Error::msg(error_to_string("invalid response", e)))?,
+    )
+    .await
+    .map_err(|e| anyhow::Error::msg(error_to_string("invalid response", e)))?;
+
+    let text = text
+        .as_string()
+        .ok_or_else(|| anyhow::Error::msg("invalid response"))?;
+
+    Ok(text)
+}
 
 lazy_static! {
     static ref PLAYGROUND_PATH: wipple_frontend::helpers::InternedString = wipple_frontend::helpers::InternedString::new("playground");
 
-
     static ref LOADER: loader::Loader = {
         loader::Loader::new(
-            Some(wipple_frontend::FilePath::Url(wipple_frontend::helpers::InternedString::new(FILES_PATH))),
-            Some(wipple_frontend::FilePath::Path(
-                #[cfg(feature = "debug_playground")]
-                wipple_frontend::helpers::InternedString::new(format!(
-                    "{}std/std.wpl",
-                    env!("CARGO_WORKSPACE_DIR")
-                )),
-                #[cfg(not(feature = "debug_playground"))]
-                wipple_frontend::helpers::InternedString::new(loader::STD_URL),
-            )),
+            Some(FILES_PATH),
+            Some(STD_PATH),
         )
         .with_fetcher(
             Fetcher::new()
                 .with_path_handler(|path| {
-                    Box::pin(async move {
-                        let error = || anyhow::Error::msg("loading files from paths is not supported in the playground; try loading from a URL instead");
-
-                        #[cfg(feature = "debug_playground")]
-                        {
-                            #[derive(rust_embed::RustEmbed)]
-                            #[folder = "$CARGO_WORKSPACE_DIR/std"]
-                            struct EmbeddedStd;
-
-                            let path = std::path::PathBuf::from(path);
-                            let path = path.file_name().unwrap().to_str().unwrap();
-
-                            let file = EmbeddedStd::get(path)
-                                .map(|file| String::from_utf8(file.data.to_vec()).unwrap())
-                                .ok_or_else(error)?;
-
-                            Ok(file)
-                        }
-
-                        #[cfg(not(feature = "debug_playground"))]
-                        {
-                            let _ = path;
-                            Err(error())
-                        }
-                    })
+                    Box::pin(SendSyncFuture(Box::pin(async move {
+                        load(path).await
+                    })))
                 })
                 .with_url_handler(move |url| {
                     Box::pin(SendSyncFuture(Box::pin(async move {
-                        let error_to_string = |msg: &str, value: JsValue| {
-                            let error = value
-                                .as_string()
-                                .or_else(|| {
-                                    value
-                                        .dyn_into::<js_sys::Error>()
-                                        .ok()
-                                        .map(|e| e.to_string().into())
-                                });
-
-                            match error {
-                                Some(error) => format!("{msg}: {error}"),
-                                None => msg.to_string(),
-                            }
-                        };
-
-                        let global = js_sys::global()
-                            .dyn_into::<web_sys::WorkerGlobalScope>()
-                            .unwrap();
-
-                        let response = JsFuture::from(global.fetch_with_request(
-                            &web_sys::Request::new_with_str(url.as_str()).unwrap(),
-                        ))
-                        .await
-                        .map_err(|e| anyhow::Error::msg(error_to_string("request failed", e)))?;
-
-                        let response = response
-                            .dyn_into::<web_sys::Response>()
-                            .map_err(|e| anyhow::Error::msg(error_to_string("invalid response", e)))?;
-
-                        if !response.ok() {
-                            return Err(anyhow::Error::msg(format!("request failed: {}", response.status_text())));
-                        }
-
-                        let text = JsFuture::from(
-                            response.text().map_err(|e| anyhow::Error::msg(error_to_string("invalid response", e)))?,
-                        )
-                        .await
-                        .map_err(|e| anyhow::Error::msg(error_to_string("invalid response", e)))?;
-
-                        let text = text
-                            .as_string()
-                            .ok_or_else(|| anyhow::Error::msg("invalid response"))?;
-
-                        Ok(text)
+                        load(url.as_str()).await
                     })))
                 }),
         )
@@ -279,79 +251,11 @@ fn get_analysis<'a>() -> Option<MappedMutexGuard<'a, Analysis>> {
 }
 
 #[wasm_bindgen]
-pub fn analyze(
-    code: String,
-    lint: bool,
-    setup: Option<String>,
-    handle_plugin: js_sys::Function,
-    callback: js_sys::Function,
-) {
+pub fn analyze(code: String, lint: bool, setup: Option<String>, callback: js_sys::Function) {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
     wasm_bindgen_futures::spawn_local(async move {
-        let handle_plugin = SendWrapper::new(handle_plugin);
-
-        let prev_plugin_hander = Mutex::new(Some(LOADER.set_plugin_handler(
-            loader::PluginHandler::new().with_url_handler(move |path, name, input, _api| {
-                let handle_plugin = handle_plugin.clone();
-                let path = path.to_string();
-                let name = name.to_string();
-
-                Box::pin(SendSyncFuture(Box::pin(async move {
-                    #[wasm_bindgen(getter_with_clone)]
-                    struct Api {
-                        // TODO
-                    }
-
-                    let api = Api {
-                        // TODO
-                    };
-
-                    let mut output = handle_plugin
-                        .apply(
-                            &JsValue::NULL,
-                            &js_sys::Array::from_iter([
-                                path.into(),
-                                name.into(),
-                                serde_wasm_bindgen::to_value(&input).unwrap(),
-                                api.into(),
-                            ]),
-                        )
-                        .map_err(|e| {
-                            anyhow::Error::msg(
-                                js_sys::Error::try_from(e)
-                                    .expect("expected error")
-                                    .to_string()
-                                    .as_string()
-                                    .unwrap(),
-                            )
-                        })?;
-
-                    let output = loop {
-                        let promise = match output.dyn_into::<js_sys::Promise>() {
-                            Ok(promise) => promise,
-                            Err(value) => break value,
-                        };
-
-                        output = wasm_bindgen_futures::JsFuture::from(promise)
-                            .await
-                            .map_err(|e| {
-                                anyhow::Error::msg(
-                                    js_sys::Error::try_from(e)
-                                        .expect("expected error")
-                                        .to_string()
-                                        .as_string()
-                                        .unwrap(),
-                                )
-                            })?;
-                    };
-
-                    Ok(serde_wasm_bindgen::from_value(output).unwrap())
-                })))
-            }),
-        )));
-
         let panic_hook = std::panic::take_hook();
 
         let callback = SendWrapper::new(callback);
@@ -364,29 +268,25 @@ pub fn analyze(
                     .call2(&JsValue::NULL, &JsValue::FALSE, &info.to_string().into())
                     .unwrap();
 
-                if let Some(prev_plugin_hander) = prev_plugin_hander.lock().take() {
-                    LOADER.set_plugin_handler(prev_plugin_hander);
-                }
-
                 panic_hook(info);
             })
         });
 
         LOADER
-            .virtual_paths()
+            .virtual_paths
             .lock()
             .insert(*PLAYGROUND_PATH, Arc::from(code));
 
+        COMPILER.set_changed_files([*PLAYGROUND_PATH]);
+
         let (program, diagnostics) = COMPILER
             .analyze_with(
-                wipple_frontend::FilePath::Virtual(*PLAYGROUND_PATH),
+                *PLAYGROUND_PATH,
                 &wipple_frontend::analysis::Options::new()
                     .lint(lint)
-                    .with_implicit_imports(setup.map(|path| {
-                        wipple_frontend::FilePath::Path(
-                            wipple_frontend::helpers::InternedString::new(path),
-                        )
-                    })),
+                    .with_implicit_imports(
+                        setup.map(wipple_frontend::helpers::InternedString::new),
+                    ),
             )
             .await;
 
@@ -408,7 +308,7 @@ pub fn analyze(
                         .unwrap_or_else(|| span.primary_range());
 
                     AnalysisOutputDiagnosticSpan {
-                        file: if span.path == wipple_frontend::FilePath::Virtual(*PLAYGROUND_PATH) {
+                        file: if span.path == wipple_frontend::FilePath::File(*PLAYGROUND_PATH) {
                             None
                         } else {
                             Some(span.path.to_string())
@@ -418,8 +318,15 @@ pub fn analyze(
                     }
                 };
 
-                let get_code = |path: wipple_frontend::FilePath| {
-                    LOADER.source_map().lock().get(&path).unwrap().to_string()
+                let get_code = |path: wipple_frontend::FilePath| match path {
+                    wipple_frontend::FilePath::File(path) => LOADER
+                        .source_map()
+                        .lock()
+                        .get(&path)
+                        .map_or_else(String::new, |code| code.to_string()),
+                    wipple_frontend::FilePath::Builtin => {
+                        panic!("cannot get code from builtin path")
+                    }
                 };
 
                 for note in diagnostic.notes {
@@ -517,7 +424,7 @@ pub fn analyze(
 fn get_syntax_highlighting(
     program: &wipple_frontend::analysis::Program,
 ) -> Vec<AnalysisOutputSyntaxHighlightingItem> {
-    let playground_path = wipple_frontend::FilePath::Virtual(*PLAYGROUND_PATH);
+    let playground_path = wipple_frontend::FilePath::File(*PLAYGROUND_PATH);
 
     let mut items = Vec::new();
 
@@ -1068,7 +975,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
     };
 
     let within_hover = |span: Span| {
-        span.path == FilePath::Virtual(*PLAYGROUND_PATH)
+        span.path == FilePath::File(*PLAYGROUND_PATH)
             && start == span.primary_start().utf16
             && end == span.primary_end().utf16
     };
@@ -1155,19 +1062,24 @@ pub fn hover(start: usize, end: usize) -> JsValue {
         file: wipple_frontend::FilePath,
         analysis: &Analysis,
     ) -> Option<String> {
-        let attributes = analysis.program.file_attributes.get(&file).unwrap();
+        match file {
+            wipple_frontend::FilePath::File(file) => {
+                let attributes = analysis.program.file_attributes.get(&file).unwrap();
 
-        attributes
-            .help_url
-            .as_ref()
-            .map(ToString::to_string)
-            .or_else(|| {
-                let imported_by = attributes.imported_by.lock().clone();
+                attributes
+                    .help_url
+                    .as_ref()
+                    .map(ToString::to_string)
+                    .or_else(|| {
+                        let imported_by = attributes.imported_by.lock().clone();
 
-                imported_by
-                    .into_iter()
-                    .find_map(|file| find_nearest_help_url(file, analysis))
-            })
+                        imported_by.into_iter().find_map(|file| {
+                            find_nearest_help_url(wipple_frontend::FilePath::File(file), analysis)
+                        })
+                    })
+            }
+            wipple_frontend::FilePath::Builtin => None,
+        }
     }
 
     macro_rules! help_url {

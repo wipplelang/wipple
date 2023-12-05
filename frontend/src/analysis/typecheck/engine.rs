@@ -271,7 +271,7 @@ pub enum TypeError {
     InvalidNumericLiteral(UnresolvedType),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct InstanceCandidate {
     pub span: SpanList,
     pub trait_id: TraitId,
@@ -289,6 +289,21 @@ pub type Result<T> = std::result::Result<T, Box<TypeError>>;
 impl Context {
     pub fn new() -> Self {
         Default::default()
+    }
+
+    pub fn reset_to(&self, snapshot: Self) -> Self {
+        Context {
+            next_var: self.next_var.replace(snapshot.next_var.into_inner()).into(),
+            substitutions: self
+                .substitutions
+                .replace(snapshot.substitutions.into_inner())
+                .into(),
+            defaults: self.defaults.replace(snapshot.defaults.into_inner()).into(),
+            numeric_substitutions: self
+                .numeric_substitutions
+                .replace(snapshot.numeric_substitutions.into_inner())
+                .into(),
+        }
     }
 
     pub fn new_variable(&self, default: Option<UnresolvedType>) -> TypeVariable {

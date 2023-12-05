@@ -26,18 +26,16 @@ pub async fn run() {
     let stdout = tokio::io::stdout();
 
     let loader = Loader::new(
-        None,
-        Some({
-            wipple_frontend::FilePath::Path(
-                #[cfg(debug_assertions)]
-                wipple_frontend::helpers::InternedString::new(concat!(
-                    env!("CARGO_WORKSPACE_DIR"),
-                    "std/std.wpl"
-                )),
-                #[cfg(not(debug_assertions))]
-                wipple_frontend::helpers::InternedString::new(wipple_default_loader::STD_URL),
-            )
-        }),
+        None::<&str>,
+        Some(
+            #[cfg(debug_assertions)]
+            wipple_frontend::helpers::InternedString::new(concat!(
+                env!("CARGO_WORKSPACE_DIR"),
+                "std/std.wpl"
+            )),
+            #[cfg(not(debug_assertions))]
+            wipple_frontend::helpers::InternedString::new(wipple_default_loader::STD_URL),
+        ),
     )
     .with_fetcher(
         Fetcher::new()
@@ -60,11 +58,11 @@ struct Backend {
     client: Client,
     loader: Loader,
     compiler: Compiler,
-    documents: Arc<RwLock<HashMap<FilePath, Document>>>,
+    documents: Arc<RwLock<HashMap<InternedString, Document>>>,
 }
 
 struct Document {
-    path: FilePath,
+    path: InternedString,
     source: String,
     program: Program,
 }
@@ -345,12 +343,12 @@ impl LanguageServer for Backend {
             utf8: position,
             utf16: position,
         };
-        let hover_span = Span::new(document.path, position..position);
+        let hover_span = Span::new(FilePath::File(document.path), position..position);
 
         let within_hover = |mut span: Span| {
             let mut hover_span = hover_span;
-            hover_span.path = FilePath::Virtual(InternedString::new(hover_span.path.as_str()));
-            span.path = FilePath::Virtual(InternedString::new(span.path.as_str()));
+            hover_span.path = FilePath::File(InternedString::new(hover_span.path.as_str()));
+            span.path = FilePath::File(InternedString::new(span.path.as_str()));
             hover_span.is_subspan_of(span)
         };
 
@@ -941,11 +939,7 @@ impl LanguageServer for Backend {
 }
 
 impl Backend {
-    fn file_path_from(&self, uri: &Url) -> FilePath {
-        FilePath::Path(self.raw_file_path_from(uri))
-    }
-
-    fn raw_file_path_from(&self, uri: &Url) -> InternedString {
+    fn file_path_from(&self, uri: &Url) -> InternedString {
         InternedString::new(uri.path())
     }
 
@@ -988,10 +982,13 @@ impl Backend {
 
         self.loader.set_base(Some(self.file_path_from(&base_url)));
 
-        self.compiler.loader.virtual_paths().lock().insert(
-            self.raw_file_path_from(&document.uri),
+        self.compiler.loader.insert_virtual(
+            self.file_path_from(&document.uri),
             Arc::from(document.text.as_str()),
         );
+
+        self.compiler
+            .set_changed_files([self.file_path_from(&document.uri)]);
 
         let (program, diagnostics) = self.compiler.analyze_with(path, &Default::default()).await;
 
@@ -1092,12 +1089,12 @@ impl Backend {
             utf8: position,
             utf16: position,
         };
-        let cursor_span = Span::new(document.path, position..position);
+        let cursor_span = Span::new(FilePath::File(document.path), position..position);
 
         let within_cursor = |mut span: Span| {
             let mut cursor_span = cursor_span;
-            cursor_span.path = FilePath::Virtual(InternedString::new(cursor_span.path.as_str()));
-            span.path = FilePath::Virtual(InternedString::new(span.path.as_str()));
+            cursor_span.path = FilePath::File(InternedString::new(cursor_span.path.as_str()));
+            span.path = FilePath::File(InternedString::new(span.path.as_str()));
             cursor_span.is_subspan_of(span)
         };
 

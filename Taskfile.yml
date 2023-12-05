@@ -104,6 +104,8 @@ tasks:
             - website-playground-app
             - website-playground-public
             - task: website-playground-ui
+              vars: { NAME: energy }
+            - task: website-playground-ui
               vars: { NAME: game }
             - task: website-playground-ui
               vars: { NAME: graphing }

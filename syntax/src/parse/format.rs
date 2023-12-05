@@ -19,7 +19,6 @@ pub fn format(code: &str) -> Option<String> {
     #[async_trait]
     impl Driver for FormatDriver {
         type InternedString = String;
-        type Path = ();
         type Span = ();
         type File = SingleFile;
         type Scope = ();
@@ -28,31 +27,36 @@ pub fn format(code: &str) -> Option<String> {
             s.as_ref().to_string()
         }
 
-        fn make_path(&self, _path: Self::InternedString) -> Option<Self::Path> {
-            Some(())
+        fn make_span(
+            &self,
+            _path: Self::InternedString,
+            _range: std::ops::Range<CharIndex>,
+        ) -> Self::Span {
         }
 
-        fn make_span(&self, _path: Self::Path, _range: std::ops::Range<CharIndex>) -> Self::Span {}
-
-        fn implicit_entrypoint_imports(&self) -> Vec<Self::Path> {
+        fn implicit_entrypoint_imports(&self) -> Vec<Self::InternedString> {
             unimplemented!()
         }
 
-        fn implicit_dependency_imports(&self) -> Vec<Self::Path> {
+        fn implicit_dependency_imports(&self) -> Vec<Self::InternedString> {
             unimplemented!()
         }
 
-        async fn queue_files(&self, _source_path: Option<Self::Path>, _paths: Vec<Self::Path>) {
+        async fn queue_files(
+            &self,
+            _source_path: Option<Self::InternedString>,
+            _paths: Vec<Self::InternedString>,
+        ) {
             unimplemented!()
         }
 
         async fn expand_file(
             &self,
-            _source_file: Option<(Self::Path, Self::File)>,
+            _source_file: Option<(Self::InternedString, Self::File)>,
             _source_span: Option<Self::Span>,
-            _path: Self::Path,
+            _path: Self::InternedString,
             _expand: impl FnOnce(
-                    Self::Path,
+                    Self::InternedString,
                     Self::File,
                 ) -> futures::future::BoxFuture<'static, Arc<ast::File<Self>>>
                 + Send
@@ -80,7 +84,7 @@ pub fn format(code: &str) -> Option<String> {
         valid: Arc::new(AtomicBool::new(true)),
     };
 
-    let file = parse::parse(&driver, (), code, parse::Options::default());
+    let file = parse::parse(&driver, String::new(), code, parse::Options::default());
 
     let valid = Arc::try_unwrap(driver.valid).unwrap().into_inner();
 
