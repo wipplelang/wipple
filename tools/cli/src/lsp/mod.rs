@@ -2,7 +2,7 @@ use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
 use std::{
     collections::{HashMap, HashSet},
     ops::ControlFlow,
-    sync::Arc,
+    sync::{atomic::AtomicBool, Arc},
 };
 use tower_lsp::{jsonrpc, lsp_types::*, Client, LanguageServer, LspService, Server};
 use wipple_default_loader::{Fetcher, Loader};
@@ -48,6 +48,7 @@ pub async fn run() {
         compiler: Compiler::new(loader.clone()),
         loader,
         documents: Default::default(),
+        incremental: Default::default(),
     });
 
     Server::new(stdin, stdout, socket).serve(service).await;
@@ -59,6 +60,7 @@ struct Backend {
     loader: Loader,
     compiler: Compiler,
     documents: Arc<RwLock<HashMap<InternedString, Document>>>,
+    incremental: Arc<AtomicBool>,
 }
 
 struct Document {
@@ -987,10 +989,14 @@ impl Backend {
             Arc::from(document.text.as_str()),
         );
 
+        let incremental = self.incremental.load(std::sync::atomic::Ordering::Relaxed);
         self.compiler
-            .set_changed_files([self.file_path_from(&document.uri)]);
+            .set_changed_files(incremental.then(|| [self.file_path_from(&document.uri)]));
 
         let (program, diagnostics) = self.compiler.analyze_with(path, &Default::default()).await;
+
+        self.incremental
+            .store(true, std::sync::atomic::Ordering::Relaxed);
 
         (program, diagnostics.diagnostics)
     }

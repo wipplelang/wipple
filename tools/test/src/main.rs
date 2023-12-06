@@ -293,9 +293,9 @@ async fn run(options: RunOptions<'_>) -> anyhow::Result<TestResult> {
         .loader
         .insert_virtual(test_path, Arc::from(options.src));
 
-    if options.incremental {
-        options.compiler.set_changed_files([test_path]);
-    }
+    options
+        .compiler
+        .set_changed_files(options.incremental.then_some([test_path]));
 
     let (program, diagnostics) = options
         .compiler

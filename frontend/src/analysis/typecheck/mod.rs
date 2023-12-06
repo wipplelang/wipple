@@ -724,6 +724,8 @@ impl Typechecker {
             .map(|(name, values)| (name, values.into_iter().map(|(_, value)| value).collect()))
             .collect::<HashMap<_, _>>();
 
+        let generic_items = im::OrdMap::from(compiler.store.lock().generic_items.clone());
+
         Typechecker {
             compiler,
             top_level: top_level_file,
@@ -737,7 +739,7 @@ impl Typechecker {
             monomorphization_cache: Default::default(),
             item_queue: Default::default(),
             items: Default::default(),
-            generic_items: Default::default(),
+            generic_items,
             top_level_expr: Default::default(),
             top_level_item: None,
             errors: Default::default(),
@@ -1048,13 +1050,17 @@ impl Typechecker {
 
         // Build the final program
 
+        let generic_items = self.generic_items.into_iter().collect::<BTreeMap<_, _>>();
+
+        self.compiler.store.lock().generic_items = generic_items.clone();
+
         Program {
             items: items
                 .into_iter()
                 .map(|(id, (ids, expr))| (id, RwLock::new((ids, expr.unwrap()))))
                 .collect(),
             contexts: self.contexts.into_inner(),
-            generic_items: self.generic_items.into_iter().collect(),
+            generic_items,
             top_level: top_level_item,
             entrypoint_wrapper: self
                 .top_level

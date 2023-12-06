@@ -288,7 +288,8 @@ pub fn analyze(code: String, lint: bool, setup: Option<String>, callback: js_sys
             .lock()
             .insert(*PLAYGROUND_PATH, Arc::from(code));
 
-        COMPILER.set_changed_files([*PLAYGROUND_PATH]);
+        let incremental = ANALYSIS.lock().is_some();
+        COMPILER.set_changed_files(incremental.then(|| [*PLAYGROUND_PATH]));
 
         let (program, diagnostics) = COMPILER
             .analyze_with(

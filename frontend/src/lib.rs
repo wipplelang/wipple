@@ -19,7 +19,7 @@ use diagnostics::*;
 use helpers::{InternedString, Shared};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     fmt::{self, Debug},
     hash::Hash,
     mem,
@@ -75,6 +75,11 @@ impl fmt::Display for FilePath {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct Store {
+    pub(crate) generic_items: BTreeMap<ConstantId, analysis::typecheck::GenericItem>,
+}
+
 #[derive(Debug, Clone)]
 pub struct Compiler {
     pub loader: Arc<dyn Loader>,
@@ -84,6 +89,7 @@ pub struct Compiler {
     ids: Ids,
     pub(crate) cache: Shared<indexmap::IndexMap<InternedString, Arc<analysis::lower::File>>>,
     pub(crate) changed_files: Shared<Option<Vec<InternedString>>>,
+    pub(crate) store: Shared<Store>,
     #[cfg(debug_assertions)]
     pub(crate) backtrace_enabled: bool,
 }
@@ -125,6 +131,12 @@ macro_rules! file_ids {
                         [<$id:camel Id>] { file, counter }
                     }
                 )*
+
+                fn reset(&self) {
+                    $(
+                        *self.[<next_ $id _id>].lock() = Default::default();
+                    )*
+                }
             }
 
             #[allow(unused)]
@@ -191,6 +203,12 @@ macro_rules! node_ids {
                         [<$id:camel Id>] { owner, counter }
                     }
                 )*
+
+                fn reset(&self) {
+                    $(
+                        *self.[<next_ $id _id>].lock() = Default::default();
+                    )*
+                }
             }
 
             #[allow(unused)]
@@ -238,6 +256,12 @@ macro_rules! ids {
                         [<$id:camel Id>] { counter }
                     }
                 )*
+
+                fn reset(&self) {
+                    $(
+                        self.[<next_ $id _id>].store(0, std::sync::atomic::Ordering::Relaxed);
+                    )*
+                }
             }
 
             impl Compiler {
@@ -287,13 +311,17 @@ impl Compiler {
             ids: Default::default(),
             cache: Default::default(),
             changed_files: Default::default(),
+            store: Default::default(),
             #[cfg(debug_assertions)]
             backtrace_enabled: false,
         }
     }
 
-    pub fn set_changed_files(&self, changed_files: impl IntoIterator<Item = InternedString>) {
-        *self.changed_files.lock() = Some(Vec::from_iter(changed_files));
+    pub fn set_changed_files(
+        &self,
+        changed_files: Option<impl IntoIterator<Item = InternedString>>,
+    ) {
+        *self.changed_files.lock() = changed_files.map(Vec::from_iter);
     }
 
     #[cfg(debug_assertions)]
@@ -311,6 +339,10 @@ impl Compiler {
     }
 
     pub fn finish_analysis(&self) -> FinalizedDiagnostics {
+        self.file_ids.reset();
+        self.node_ids.reset();
+        self.ids.reset();
+
         FinalizedDiagnostics {
             source_map: self.loader.source_map().lock().clone(),
             diagnostics: mem::take(&mut self.diagnostics.diagnostics.lock()),
