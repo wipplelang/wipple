@@ -10,9 +10,11 @@ use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
 use send_wrapper::SendWrapper;
 use serde::Serialize;
 use std::{
+    borrow::Cow,
     future::Future,
     ops::ControlFlow,
     pin::Pin,
+    str::FromStr,
     sync::{atomic::AtomicBool, Arc},
 };
 use url::Url;
@@ -168,8 +170,17 @@ async fn load(url: &str) -> anyhow::Result<String> {
         .dyn_into::<web_sys::WorkerGlobalScope>()
         .unwrap();
 
+    let url =
+        if !url.starts_with('/') && Url::from_str(url).is_ok_and(|url| !url.scheme().is_empty()) {
+            Cow::Borrowed(url)
+        } else {
+            let mut resolved_url = global.location().origin();
+            resolved_url.push_str(url);
+            Cow::Owned(resolved_url)
+        };
+
     let response =
-        JsFuture::from(global.fetch_with_request(&web_sys::Request::new_with_str(url).unwrap()))
+        JsFuture::from(global.fetch_with_request(&web_sys::Request::new_with_str(&url).unwrap()))
             .await
             .map_err(|e| anyhow::Error::msg(error_to_string("request failed", e)))?;
 
