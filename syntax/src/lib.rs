@@ -69,7 +69,8 @@ pub trait Driver: Debug + Clone + Send + Sync + 'static {
 
     async fn expand_file(
         &self,
-        source_file: Option<(Self::InternedString, Self::File)>,
+        source_path: Option<Self::InternedString>,
+        source_file: Option<Self::File>,
         source_span: Option<Self::Span>,
         path: Self::InternedString,
         expand: impl FnOnce(Self::InternedString, Self::File) -> BoxFuture<'static, Arc<ast::File<Self>>>
@@ -165,7 +166,8 @@ pub trait Span: Sized + Debug {
 pub trait DriverExt: Driver {
     fn syntax_of(
         self,
-        source_file: Option<(Self::InternedString, Self::File)>,
+        source_path: Option<Self::InternedString>,
+        source_file: Option<Self::File>,
         source_span: Option<Self::Span>,
         path: Self::InternedString,
         options: parse::Options,
@@ -175,13 +177,14 @@ pub trait DriverExt: Driver {
 impl<D: Driver> DriverExt for D {
     fn syntax_of(
         self,
-        source_file: Option<(Self::InternedString, Self::File)>,
+        source_path: Option<Self::InternedString>,
+        source_file: Option<Self::File>,
         source_span: Option<Self::Span>,
         path: Self::InternedString,
         options: parse::Options,
     ) -> SyncFuture<BoxFuture<'static, Option<Arc<ast::File<Self>>>>> {
         SyncFuture::new(Box::pin(async move {
-            self.expand_file(source_file, source_span, path, {
+            self.expand_file(source_path, source_file, source_span, path, {
                 let driver = self.clone();
 
                 move |resolved_path, driver_file| {

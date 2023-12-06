@@ -170,14 +170,17 @@ async fn load(url: &str) -> anyhow::Result<String> {
         .dyn_into::<web_sys::WorkerGlobalScope>()
         .unwrap();
 
-    let url =
-        if !url.starts_with('/') && Url::from_str(url).is_ok_and(|url| !url.scheme().is_empty()) {
-            Cow::Borrowed(url)
-        } else {
-            let mut resolved_url = global.location().origin();
-            resolved_url.push_str(url);
-            Cow::Owned(resolved_url)
-        };
+    let url = if Url::from_str(url).is_ok_and(|url| !url.cannot_be_a_base()) {
+        Cow::Borrowed(url)
+    } else {
+        Cow::Owned(
+            Url::from_str(&global.location().origin())
+                .expect("invalid origin")
+                .join(url)
+                .expect("invalid url path")
+                .to_string(),
+        )
+    };
 
     let response =
         JsFuture::from(global.fetch_with_request(&web_sys::Request::new_with_str(&url).unwrap()))

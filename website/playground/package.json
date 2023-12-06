@@ -3,7 +3,7 @@
     "private": true,
     "main": "dist-electron/main.js",
     "scripts": {
-        "dev": "ln -sf ../../../std ./public/std && vite",
+        "dev": "ln -sf ../../../std ./public && vite",
         "build": "NODE_OPTIONS=--max-old-space-size=8192 vite build",
         "preview": "vite preview",
         "dev:electron": "ELECTRON=1 npm run dev",

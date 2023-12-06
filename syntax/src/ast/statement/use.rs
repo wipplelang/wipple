@@ -65,7 +65,8 @@ impl<D: Driver> Syntax<D> for UseStatementSyntax {
                             .ast_builder
                             .driver
                             .syntax_of(
-                                Some((context.ast_builder.path, context.ast_builder.file.clone())),
+                                Some(context.ast_builder.path.clone()),
+                                Some(context.ast_builder.file.clone()),
                                 Some(span),
                                 path.clone(),
                                 context.ast_builder.options,

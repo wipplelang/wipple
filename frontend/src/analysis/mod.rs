@@ -146,7 +146,7 @@ impl Compiler {
 
         let cache = driver.cache.clone();
         driver
-            .syntax_of(None, None, entrypoint, options.parse)
+            .syntax_of(None, None, None, entrypoint, options.parse)
             .await;
 
         cache.into_unique()
@@ -292,7 +292,8 @@ impl wipple_syntax::Driver for Analysis {
 
     async fn expand_file(
         &self,
-        source_file: Option<(Self::InternedString, Self::File)>,
+        source_path: Option<Self::InternedString>,
+        source_file: Option<Self::File>,
         source_span: Option<Self::Span>,
         path: Self::InternedString,
         expand: impl FnOnce(Self::InternedString, Self::File) -> BoxFuture<'static, Arc<ast::File<Self>>>
@@ -348,10 +349,7 @@ impl wipple_syntax::Driver for Analysis {
             };
         }
 
-        let resolved_path = try_load!(self
-            .compiler
-            .loader
-            .resolve(path, source_file.as_ref().map(|(path, _)| *path)));
+        let resolved_path = try_load!(self.compiler.loader.resolve(path, source_path));
 
         if let Some(cached) = self.compiler.loader.get_cached(resolved_path) {
             fn insert(
@@ -368,7 +366,7 @@ impl wipple_syntax::Driver for Analysis {
             let mut files = self.cache.lock();
             insert(cached.clone(), &mut files);
 
-            if let Some((_, source_file)) = source_file {
+            if let Some(source_file) = source_file {
                 add_dependency(cached.clone(), source_file);
             }
 
@@ -440,7 +438,7 @@ impl wipple_syntax::Driver for Analysis {
         self.compiler.loader.cache(resolved_path, file.clone());
         self.cache.lock().insert(resolved_path, file.clone());
 
-        if let Some((_, source_file)) = source_file {
+        if let Some(source_file) = source_file {
             add_dependency(file.clone(), source_file);
         }
 

@@ -52,7 +52,8 @@ pub fn format(code: &str) -> Option<String> {
 
         async fn expand_file(
             &self,
-            _source_file: Option<(Self::InternedString, Self::File)>,
+            _source_path: Option<Self::InternedString>,
+            _source_file: Option<Self::File>,
             _source_span: Option<Self::Span>,
             _path: Self::InternedString,
             _expand: impl FnOnce(

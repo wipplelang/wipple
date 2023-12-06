@@ -174,14 +174,17 @@ impl wipple_frontend::Loader for Loader {
             return Ok(path);
         }
 
-        if let Ok(url) = Url::from_str(&path) {
-            let mut url = url.join(path.as_str())?;
+        if let Some(mut url) = Url::from_str(&path)
+            .ok()
+            .filter(|url| !url.cannot_be_a_base())
+        {
+            url = url.join(path.as_str())?;
 
             let mut path = PathBuf::from(url.path());
             set_extension_if_needed(&mut path);
             url.set_path(path.to_str().unwrap());
 
-            Ok(InternedString::new(url.as_str()))
+            return Ok(InternedString::new(url.as_str()));
         } else {
             let mut parsed_path = PathBuf::from(path.as_str());
             set_extension_if_needed(&mut parsed_path);
@@ -197,24 +200,31 @@ impl wipple_frontend::Loader for Loader {
                     },
                 };
 
-                if let Ok(mut url) = Url::from_str(&base) {
+                if let Some(mut url) = Url::from_str(&base)
+                    .ok()
+                    .filter(|url| !url.cannot_be_a_base())
+                {
                     url = url.join(path.as_str())?;
+
                     let mut path = PathBuf::from(url.path());
                     set_extension_if_needed(&mut path);
                     url.set_path(path.to_str().unwrap());
 
                     Ok(InternedString::from(url.to_string()))
                 } else {
-                    let mut path = PathBuf::from(base.as_str())
-                        .parent()
-                        .expect("not a file")
-                        .join(path.as_str())
-                        .clean();
+                    let mut resolved_path = PathBuf::from(base.as_str());
+                    if base.ends_with('/') {
+                        resolved_path.push(path.as_str());
+                    } else {
+                        resolved_path.set_file_name(path.as_str());
+                    }
 
-                    set_extension_if_needed(&mut path);
+                    resolved_path = resolved_path.clean();
+
+                    set_extension_if_needed(&mut resolved_path);
 
                     Ok(InternedString::from(
-                        path.into_os_string().into_string().unwrap(),
+                        resolved_path.into_os_string().into_string().unwrap(),
                     ))
                 }
             }

@@ -342,7 +342,8 @@ pub(crate) async fn build<D: Driver>(
                 .driver
                 .clone()
                 .syntax_of(
-                    Some((path.clone(), ast_builder.file.clone())),
+                    None,
+                    Some(ast_builder.file.clone()),
                     None,
                     implicit_path,
                     options,
