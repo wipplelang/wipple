@@ -89,6 +89,7 @@ tasks:
             - website-playground
         dir: website/playground-electron
         cmds:
+            - rm -rf ../_site/playground/downloads
             - rm -rf out resources && mkdir -p resources
             - cp -r ../_site/std ../_site/playground resources
             - npm i

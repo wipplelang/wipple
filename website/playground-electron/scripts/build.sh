@@ -2,6 +2,8 @@
 
 export CSC_IDENTITY_AUTO_DISCOVERY=false
 
+rm -rf dist
+
 if [[ -z "$CI" ]]; then
     npx electron-builder build
 else
