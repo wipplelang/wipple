@@ -1,0 +1,29 @@
+{
+    "name": "playground-electron",
+    "version": "0.0.0",
+    "private": true,
+    "main": "main.js",
+    "build": {
+        "appId": "dev.wipple.playground",
+        "productName": "Wipple Playground",
+        "copyright": "Copyright © 2023 Wilson Gramer",
+        "files": [
+            "main.js",
+            "icons",
+            "resources"
+        ],
+        "win": {
+            "icon": "icons/icon-win.png"
+        },
+        "mac": {
+            "icon": "icons/icon-mac.png"
+        },
+        "linux": {
+            "icon": "icons/icon-linux.png"
+        }
+    },
+    "devDependencies": {
+        "electron": "27.1.3",
+        "electron-builder": "^24.9.1"
+    }
+}

@@ -266,7 +266,7 @@ const App = () => {
                 onMouseDown={(e) => e.preventDefault()}
             >
                 <div className="flex items-center gap-4 p-4 flex-shrink-0 overflow-x-scroll text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75 backdrop-blur-lg disable-scrollbars">
-                    <a href="/" target="_blank" className="flex-shrink-0">
+                    <a href="https://wipple.dev" target="_blank" className="flex-shrink-0">
                         <img src="./images/logo.svg" alt="Wipple" className="w-6 h-6" />
                     </a>
 
@@ -278,7 +278,7 @@ const App = () => {
                                 <Menu {...bindMenu(popupState)} sx={{ marginTop: 1 }}>
                                     <MenuItem
                                         component="a"
-                                        href="/playground"
+                                        href="."
                                         target="_blank"
                                         onClick={popupState.close}
                                     >

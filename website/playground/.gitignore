@@ -1,6 +1,5 @@
 .env
 tsconfig.tsbuildinfo
-dist-electron
 
 # Logs
 logs
@@ -14,6 +13,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dist-electron
 dev-dist
 *.local
 

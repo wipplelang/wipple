@@ -1158,7 +1158,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                             <Tooltip title="Documentation">
                                 <a
                                     target="_blank"
-                                    href={`/doc/${props.setup}.html`}
+                                    href={`https://wipple.dev/doc/${props.setup}.html`}
                                     className="code-editor-button -my-0.5 -ml-0.5 px-0.5"
                                 >
                                     <SetupIcon setup={props.setup} size="medium" />

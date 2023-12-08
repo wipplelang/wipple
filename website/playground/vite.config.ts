@@ -3,7 +3,6 @@ import react from "@vitejs/plugin-react-swc";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { lezer } from "@lezer/generator/rollup";
 import rust from "@wasm-tool/rollup-plugin-rust";
-import electron from "vite-plugin-electron";
 import { rustOptions } from "../shared/build";
 
 export default defineConfig(({ mode }) => {
@@ -30,11 +29,6 @@ export default defineConfig(({ mode }) => {
                       },
                   })
                 : null,
-            env.ELECTRON != null
-                ? electron({
-                      entry: "electron/main.ts",
-                  })
-                : null,
         ],
         worker: {
             plugins: [rust(rustOptions(env))],
@@ -42,12 +36,7 @@ export default defineConfig(({ mode }) => {
         server: {
             port: 3000,
         },
-        base:
-            mode === "production" || env.ELECTRON == null
-                ? process.env.CI
-                    ? "https://wipple.dev/playground/"
-                    : "http://localhost:8080/playground/"
-                : "/playground",
+        base: "/playground/",
         define: {
             "process.env.NODE_ENV": '"production"',
         },

@@ -47,6 +47,7 @@ tasks:
             - website-home
             - website-compiler-docs
             - website-embed
+            - website-playground-electron
             - website-playground
             - website-std
             - website-doc
@@ -80,6 +81,19 @@ tasks:
             - mdbook build
             - mkdir -p ../_site/compiler-docs
             - cp -r book/* ../_site/compiler-docs
+
+    website-playground-electron:
+        run: once
+        deps:
+            - website-std
+            - website-playground
+        dir: website/playground-electron
+        cmds:
+            - rm -rf out resources && mkdir -p resources
+            - cp -r ../_site/std ../_site/playground resources
+            - npm i
+            - ./scripts/build.sh
+            - cp -r dist/. ../_site/playground/downloads
 
     website-playground:
         run: once
