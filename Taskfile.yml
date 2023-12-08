@@ -94,7 +94,7 @@ tasks:
             - cp -r ../_site/std ../_site/playground resources
             - npm i
             - ./scripts/build.sh
-            - cp -r dist/. ../_site/playground/downloads
+            - cp -r dist/*.zip ../_site/playground/downloads
 
     website-playground:
         run: once
