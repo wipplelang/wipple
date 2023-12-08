@@ -12,14 +12,12 @@
             "icons",
             "resources"
         ],
-        "win": {
-            "icon": "icons/icon-win.png"
-        },
         "mac": {
-            "icon": "icons/icon-mac.png"
-        },
-        "linux": {
-            "icon": "icons/icon-linux.png"
+            "icon": "icons/icon-mac.png",
+            "target": [
+                "mas"
+            ],
+            "identity": null
         }
     },
     "devDependencies": {
