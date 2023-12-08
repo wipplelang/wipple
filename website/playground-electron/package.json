@@ -15,7 +15,12 @@
         "mac": {
             "icon": "icons/icon-mac.png",
             "target": [
-                "mas"
+                {
+                    "target": "mas",
+                    "arch": [
+                        "universal"
+                    ]
+                }
             ],
             "identity": null
         }
