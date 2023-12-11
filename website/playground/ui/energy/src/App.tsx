@@ -68,10 +68,11 @@ export const App = (props: AppProps) => {
 };
 
 const scale = 1000;
+
 const secondsPerMonth = 2592000;
 const millionBtuPerKilowattHour = 3412 / 1000000;
+const thousandCubicFeetPerMillionBtu = (1039 * 1000) / 1000000; // https://www.nrg.com/resources/energy-tools/energy-conversion-calculator.html
 const joulesToKilowattHours = (joules: number) => joules / (3.6 * 10 ** 6);
-
 const averageCarbonEmissionsInKilogramsPerHouseholdPerMonth = 4000; // https://css.umich.edu/publications/factsheets/sustainability-indicators/carbon-footprint-factsheet, converted from t/yr to kg/mo
 
 const EnergySummary = (props: { energyUsage: number }) => {
@@ -79,39 +80,94 @@ const EnergySummary = (props: { energyUsage: number }) => {
     const kilowattHoursAtScaleForMonth = joulesToKilowattHours(watts * secondsPerMonth * scale);
 
     return (
-        <div className="prose prose-sky dark:prose-invert">
-            <p className="font-bold">
-                Your program consumed {watts.toFixed(2)} W on average. If you ran it at scale (
-                {scale} computers) for a month, you would consume{" "}
-                {kilowattHoursAtScaleForMonth.toFixed(2)} kWh of energy.
-            </p>
+        <div className="flex flex-col gap-6 w-full">
+            <div className="flex flex-col gap-4">
+                <h1 className="text-lg font-bold">Energy use report</h1>
 
-            <ul>
-                {energySources.map(
-                    ({
-                        name,
-                        costInDollarsPerKilowattHours,
-                        carbonEmissionsInKilogramsPerKilowattHours,
-                    }) => {
-                        const cost = costInDollarsPerKilowattHours(kilowattHoursAtScaleForMonth);
+                <div className="flex gap-2">
+                    <div className="flex flex-col items-center justify-center bg-green-500 px-2.5 py-2 rounded-lg">
+                        <p className="text-3xl font-bold text-white">{watts.toFixed(2)} W</p>
+                    </div>
 
-                        const emissions = carbonEmissionsInKilogramsPerKilowattHours(
-                            kilowattHoursAtScaleForMonth
-                        );
+                    <div className="flex flex-col items-center justify-center bg-blue-500 px-2.5 py-2 rounded-lg text-center">
+                        <p className="text-lg font-bold text-white">
+                            {kilowattHoursAtScaleForMonth.toFixed(0)} kWh
+                        </p>
 
-                        const factor =
-                            emissions / averageCarbonEmissionsInKilogramsPerHouseholdPerMonth;
+                        <p className="text-xs text-white text-opacity-70">1000 computers/mo</p>
+                    </div>
+                </div>
+            </div>
 
-                        return (
-                            <li key={name}>
-                                <strong>{name}:</strong> ${cost.toFixed(2)} ({emissions.toFixed(2)}{" "}
-                                kg CO<sub>2</sub>, {factor.toFixed(2)}x the emissions of the average
-                                household)
-                            </li>
-                        );
-                    }
-                )}
-            </ul>
+            <div className="flex flex-col gap-4 w-full">
+                <h1 className="text-lg font-bold">Compare energy sources</h1>
+
+                <ul className="flex flex-col gap-4 w-full">
+                    {energySources.map(
+                        ({
+                            name,
+                            image,
+                            costInDollarsPerKilowattHours,
+                            costSource,
+                            carbonEmissionsInKilogramsPerKilowattHours,
+                            emissionsSource,
+                        }) => {
+                            const cost = costInDollarsPerKilowattHours(
+                                kilowattHoursAtScaleForMonth
+                            );
+
+                            const emissions = carbonEmissionsInKilogramsPerKilowattHours(
+                                kilowattHoursAtScaleForMonth
+                            );
+
+                            const factor =
+                                emissions / averageCarbonEmissionsInKilogramsPerHouseholdPerMonth;
+
+                            return (
+                                <li key={name} className="flex flex-row items-start gap-2">
+                                    <img src={image} alt={name} className="w-10 h-10" />
+
+                                    <div className="flex flex-col justify-center mt-1">
+                                        <h2 className="font-bold">{name}</h2>
+
+                                        <div className="text-sm">
+                                            <p>
+                                                <strong>Price:</strong> ${cost.toFixed(2)}{" "}
+                                                <a
+                                                    href={costSource}
+                                                    target="_blank"
+                                                    className="text-blue-500"
+                                                >
+                                                    (source)
+                                                </a>
+                                            </p>
+
+                                            <p>
+                                                <strong>
+                                                    CO<sub>2</sub> emissions:
+                                                </strong>{" "}
+                                                {emissions.toFixed(2)} kg
+                                                <span className="text-gray-500">
+                                                    {" • "}
+                                                    {factor.toFixed(2)}x the emissions of the
+                                                    average US household
+                                                </span>{" "}
+                                                <a
+                                                    href={emissionsSource}
+                                                    target="_blank"
+                                                    className="text-blue-500"
+                                                >
+                                                    (source)
+                                                </a>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </li>
+                            );
+                        }
+                    )}
+                </ul>
+            </div>
         </div>
     );
 };
@@ -119,20 +175,24 @@ const EnergySummary = (props: { energyUsage: number }) => {
 const energySources = [
     {
         name: "Coal",
+        image: "https://img.icons8.com/color/48/manufacturing.png",
         costInDollarsPerKilowattHours: (kilowattHours: number) => {
-            const costInDollarsPerMillionBtu = 2.37; // as of 2023 (https://www.statista.com/statistics/244479/us-consumer-price-estimates-for-coal-energy/)
+            const costInDollarsPerMillionBtu = 2.37;
             return kilowattHours * millionBtuPerKilowattHour * costInDollarsPerMillionBtu;
         },
+        costSource:
+            "https://www.statista.com/statistics/244479/us-consumer-price-estimates-for-coal-energy/",
         carbonEmissionsInKilogramsPerKilowattHours: (kilowattHours: number) => {
-            const kilogramsPerMillionBtu = 95.92; // https://www.eia.gov/environment/emissions/co2_vol_mass.php
+            const kilogramsPerMillionBtu = 95.92;
             return kilowattHours * millionBtuPerKilowattHour * kilogramsPerMillionBtu;
         },
+        emissionsSource: "https://www.eia.gov/environment/emissions/co2_vol_mass.php",
     },
     {
         name: "Natural Gas",
+        image: "https://img.icons8.com/color/96/gas-industry.png",
         costInDollarsPerKilowattHours: (kilowattHours: number) => {
-            const costInDollarsPerThousandCubicFeet = 18.88; // in Massachusetts as of October 2023 (https://www.chooseenergy.com/data-center/natural-gas-rates-by-state/)
-            const thousandCubicFeetPerMillionBtu = (1039 * 1000) / 1000000; // https://www.nrg.com/resources/energy-tools/energy-conversion-calculator.html
+            const costInDollarsPerThousandCubicFeet = 18.88;
             return (
                 kilowattHours *
                 millionBtuPerKilowattHour *
@@ -140,9 +200,11 @@ const energySources = [
                 thousandCubicFeetPerMillionBtu
             );
         },
+        costSource: "https://www.chooseenergy.com/data-center/natural-gas-rates-by-state/", // Massachusetts
         carbonEmissionsInKilogramsPerKilowattHours: (kilowattHours: number) => {
-            const kilogramsPerMillionBtu = 52.91; // https://www.eia.gov/environment/emissions/co2_vol_mass.php
+            const kilogramsPerMillionBtu = 52.91;
             return kilowattHours * millionBtuPerKilowattHour * kilogramsPerMillionBtu;
         },
+        emissionsSource: "https://www.eia.gov/environment/emissions/co2_vol_mass.php",
     },
 ];
