@@ -1,6 +1,7 @@
-const { app, BrowserWindow, net, protocol, shell } = require("electron");
+const { app, BrowserWindow, net, protocol, shell, ipcMain } = require("electron");
 const path = require("path");
 const url = require("url");
+const energyUsage = require("./helpers/energy-usage");
 
 protocol.registerSchemesAsPrivileged([
     {
@@ -18,7 +19,7 @@ protocol.registerSchemesAsPrivileged([
 app.whenReady().then(() => {
     protocol.handle("wipple", (request) => {
         let resolvedPath = path.join(
-            __dirname,
+            path.dirname(__dirname),
             "resources",
             decodeURIComponent(new URL(request.url).pathname)
         );
@@ -42,6 +43,9 @@ app.whenReady().then(() => {
         height: 800,
         minWidth: 500,
         minHeight: 290,
+        webPreferences: {
+            preload: path.join(__dirname, "preload.js"),
+        },
     };
 
     const configureWindow = (window) => {
@@ -68,4 +72,12 @@ app.whenReady().then(() => {
     const browserWindow = new BrowserWindow(windowOptions);
     browserWindow.loadURL("wipple://playground/playground/index.html");
     configureWindow(browserWindow);
+});
+
+ipcMain.handle("wipple-energyUsage-beginMeasuring", async (_event, id) => {
+    await energyUsage.beginMeasuring(id);
+});
+
+ipcMain.handle("wipple-energyUsage-endMeasuring", async (_event, id) => {
+    return energyUsage.endMeasuring(id);
 });

@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react-swc";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { lezer } from "@lezer/generator/rollup";
 import rust from "@wasm-tool/rollup-plugin-rust";
+import commonjsExternals from "vite-plugin-commonjs-externals";
 import { rustOptions } from "../shared/build";
 
 export default defineConfig(({ mode }) => {
@@ -11,9 +12,14 @@ export default defineConfig(({ mode }) => {
         ...loadEnv(mode, process.cwd(), ""),
     };
 
+    const externals = ["electron"];
+
     return {
         build: {
             sourcemap: true,
+        },
+        optimizeDeps: {
+            exclude: externals,
         },
         plugins: [
             react(),
@@ -29,9 +35,10 @@ export default defineConfig(({ mode }) => {
                       },
                   })
                 : null,
+            commonjsExternals({ externals }),
         ],
         worker: {
-            plugins: [rust(rustOptions(env))],
+            plugins: [rust(rustOptions(env)), commonjsExternals({ externals })],
         },
         server: {
             port: 3000,

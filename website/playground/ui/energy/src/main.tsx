@@ -9,6 +9,7 @@ export const initialize = (id: string, container: HTMLElement) =>
         ReactDOM.createRoot(container).render(
             <React.StrictMode>
                 <App
+                    id={id}
                     setOnMessage={(handler) => {
                         onMessage[id] = handler;
                         resolve();

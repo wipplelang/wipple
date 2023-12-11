@@ -6,6 +6,7 @@ import MusicNoteRounded from "@mui/icons-material/MusicNoteRounded";
 import CalculateRounded from "@mui/icons-material/CalculateRounded";
 import SportsEsportsRounded from "@mui/icons-material/SportsEsportsRounded";
 import EditNoteRounded from "@mui/icons-material/EditNoteRounded";
+import ElectricBoltRounded from "@mui/icons-material/ElectricBoltRounded";
 
 export interface PickerProps {
     onSelect: (section: { type: "code"; setup?: string } | { type: "text" }) => void;
@@ -57,6 +58,13 @@ export const Picker = (props: PickerProps) => {
                     name="Game"
                     description="Create a video game."
                     onSelect={() => props.onSelect({ type: "code", setup: "game" })}
+                />
+
+                <PickerItem
+                    setup="energy"
+                    name="Energy"
+                    description="Measure the energy use of your program."
+                    onSelect={() => props.onSelect({ type: "code", setup: "energy" })}
                 />
 
                 <PickerItem
@@ -134,6 +142,14 @@ export const SetupIcon = (props: { setup: string | undefined; size: "medium" | "
                     fontSize={props.size}
                     color="inherit"
                     className="text-purple-500 pb-0.5"
+                />
+            );
+        case "energy":
+            return (
+                <ElectricBoltRounded
+                    fontSize={props.size}
+                    color="inherit"
+                    className="text-yellow-500 pb-0.5"
                 />
             );
         case "text":
