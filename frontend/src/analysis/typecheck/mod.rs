@@ -843,9 +843,8 @@ impl Typechecker {
                 self.add_error(error);
             }
 
-            process_queue!();
-
             self.ctx.reset_to(prev_ctx);
+            self.item_queue.borrow_mut().clear();
             self.monomorphization_cache.borrow_mut().clear();
             self.items.borrow_mut().clear();
             self.contexts.borrow_mut().clear();
@@ -3449,7 +3448,7 @@ impl Typechecker {
                     .expect("enumeration should have already been accessed at least once");
 
                 let mut variant_tys = match enumeration.kind {
-                    TypeDeclKind::Enumeration { mut variants, .. } => variants
+                    TypeDeclKind::Enumeration { mut variants, .. } if variant_ty == id => variants
                         .swap_remove(variant.into_inner())
                         .into_iter()
                         .map(|(_, ty)| engine::UnresolvedType::from(ty))
