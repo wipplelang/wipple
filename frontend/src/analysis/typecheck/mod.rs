@@ -843,8 +843,9 @@ impl Typechecker {
                 self.add_error(error);
             }
 
+            process_queue!();
+
             self.ctx.reset_to(prev_ctx);
-            self.item_queue.borrow_mut().clear();
             self.monomorphization_cache.borrow_mut().clear();
             self.items.borrow_mut().clear();
             self.contexts.borrow_mut().clear();
@@ -3778,16 +3779,22 @@ impl Typechecker {
                         self.ctx.reset_to(ctx);
                         Some(Ok(candidate))
                     }
-                    _ => Some(Err(Some(FindInstanceError::MultipleCandidates(
-                        bound_stack
-                            .iter()
-                            .map(|(_, _, trait_id, span, params)| engine::InstanceCandidate {
-                                span: *span,
-                                trait_id: *trait_id,
-                                params: params.clone(),
-                            })
-                            .collect(),
-                    )))),
+                    _ => {
+                        if bound_stack.is_empty() {
+                            None
+                        } else {
+                            Some(Err(Some(FindInstanceError::MultipleCandidates(
+                                bound_stack
+                                    .iter()
+                                    .map(|(_, _, trait_id, span, params)| engine::InstanceCandidate {
+                                        span: *span,
+                                        trait_id: *trait_id,
+                                        params: params.clone(),
+                                    })
+                                    .collect(),
+                            ))))
+                        }
+                    },
                 }
             }};
         }
