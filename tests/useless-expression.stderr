@@ -13,10 +13,10 @@ warning:
  2 │ 1 + 2
    │ ^^^^^ result of this code is never used
    │
-   ┌─ <dir>/std/math.wpl:25:14
+   ┌─ <dir>/std/math.wpl:25:16
    │
-25 │   'a + 'b -> add 'b 'a
-   │              --- actual warning occurred here
+25 │   ('a + 'b) -> add 'b 'a
+   │                --- actual warning occurred here
    │
    = `show` the result: `show `
    = for more information, see https://wipple.dev/playground/?lesson=errors/useless-expression

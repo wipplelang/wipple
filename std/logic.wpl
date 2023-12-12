@@ -43,10 +43,10 @@ and' : And
 [help-group "Logic"]
 [operator Conjunction-Precedence]
 and : syntax {
-  'a and 'b -> and' (() -> 'b) 'a
-  'a and -> b -> and' b 'a
-  and 'b -> and' (() -> 'b)
-  and -> and'
+  ('a and 'b) -> and' (() -> 'b) 'a
+  ('a and) -> b -> and' b 'a
+  (and 'b) -> and' (() -> 'b)
+  (and) -> and'
 }
 
 instance (And Boolean Boolean Boolean) : b a -> if a (b ()) False
@@ -61,10 +61,10 @@ or' : Or
 [help-group "Logic"]
 [operator Disjunction-Precedence]
 or : syntax {
-  'a or 'b -> or' (() -> 'b) 'a
-  'a or -> b -> or' b 'a
-  or 'b -> or' (() -> 'b)
-  or -> or'
+  ('a or 'b) -> or' (() -> 'b) 'a
+  ('a or) -> b -> or' b 'a
+  (or 'b) -> or' (() -> 'b)
+  (or) -> or'
 }
 
 instance (Or Boolean Boolean Boolean) : b a -> if a True (b ())
@@ -95,80 +95,80 @@ instance (Order Double) : b a -> semantics "pure" (intrinsic "double-ordering" a
 [help-group "Logic"]
 [operator Comparison-Precedence]
 < : syntax {
-  'a < 'b -> when (Order 'b 'a) {
+  ('a < 'b) -> when (Order 'b 'a) {
     Ordering Less -> True
     Ordering Equal -> False
     Ordering Greater -> False
   }
-  'a < -> {
+  ('a <) -> {
     a : 'a
     b -> a < b
   }
-  < 'b -> {
+  (< 'b) -> {
     b : 'b
     a -> a < b
   }
-  < -> b a -> a < b
+  (<) -> b a -> a < b
 }
 
 [help "Returns `True` if the left side is greater than the right side."]
 [help-group "Logic"]
 [operator Comparison-Precedence]
 > : syntax {
-  'a > 'b -> when (Order 'b 'a) {
+  ('a > 'b) -> when (Order 'b 'a) {
     Ordering Less -> False
     Ordering Equal -> False
     Ordering Greater -> True
   }
-  'a > -> {
+  ('a >) -> {
     a : 'a
     b -> a > b
   }
-  > 'b -> {
+  (> 'b) -> {
     b : 'b
     a -> a > b
   }
-  > -> b a -> a > b
+  (>) -> b a -> a > b
 }
 
 [help "Returns `True` if the left side is less than or equal to the right side."]
 [help-group "Logic"]
 [operator Comparison-Precedence]
 <= : syntax {
-  'a <= 'b -> when (Order 'b 'a) {
+  ('a <= 'b) -> when (Order 'b 'a) {
     Ordering Less -> True
     Ordering Equal -> True
     Ordering Greater -> False
   }
-  'a <= -> {
+  ('a <=) -> {
     a : 'a
     b -> a <= b
   }
-  <= 'b -> {
+  (<= 'b) -> {
     b : 'b
     a -> a <= b
   }
-  <= -> b a -> a <= b
+  (<=) -> b a -> a <= b
 }
 
 [help "Returns `True` if the left side is greater than or equal to the right side."]
 [help-group "Logic"]
 [operator Comparison-Precedence]
 >= : syntax {
-  'a >= 'b -> when (Order 'b 'a) {
+  ('a >= 'b) -> when (Order 'b 'a) {
     Ordering Less -> False
     Ordering Equal -> True
     Ordering Greater -> True
   }
-  'a >= -> {
+  ('a >=) -> {
     a : 'a
     b -> a >= b
   }
-  >= 'b -> {
+  (>= 'b) -> {
     b : 'b
     a -> a >= b
   }
-  >= -> b a -> a >= b
+  (>=) -> b a -> a >= b
 }
 
 [help "Implement this trait to enable equality testing between two values of your type."]
@@ -180,32 +180,32 @@ Equal : A => trait (A -> A -> Boolean)
 [help-group "Logic"]
 [operator Comparison-Precedence]
 = : syntax {
-  'a = 'b -> Equal 'b 'a
-  'a = -> {
+  ('a = 'b) -> Equal 'b 'a
+  ('a =) -> {
     a : 'a
     b -> a = b
   }
-  = 'b -> {
+  (= 'b) -> {
     b : 'b
     a -> a = b
   }
-  = -> Equal
+  (=) -> Equal
 }
 
 [help "Returns `True` if the left side is not equal to the right side."]
 [help-group "Logic"]
 [operator Comparison-Precedence]
 /= : syntax {
-  'a /= 'b -> not ('a = 'b)
-  'a /= -> {
+  ('a /= 'b) -> not ('a = 'b)
+  ('a /=) -> {
     a : 'a
     b -> a /= b
   }
-  /= 'b -> {
+  (/= 'b) -> {
     b : 'b
     a -> a /= b
   }
-  /= -> b a -> not (Equal b a)
+  (/=) -> b a -> not (Equal b a)
 }
 
 instance (Equal Text) : b a -> semantics "pure" (intrinsic "text-equality" a b)

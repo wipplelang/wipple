@@ -100,9 +100,8 @@ impl<D: Driver> fmt::Display for File<D> {
             write!(f, "{}\n\n", shebang.as_ref())?;
         }
 
-        for (index, line) in self.comments.iter().enumerate() {
-            line.fmt(f, 0, false, index == 0, true)?;
-            writeln!(f)?;
+        for comment in &self.comments {
+            writeln!(f, "-- {}", comment.as_ref().trim())?;
         }
 
         for attribute in &self.attributes {
@@ -114,7 +113,10 @@ impl<D: Driver> fmt::Display for File<D> {
         }
 
         for (statement_index, statement) in self.statements.iter().enumerate() {
-            for (line_index, line) in statement.lines.iter().enumerate() {
+            for line_index in 0..statement.lines.len() {
+                let line = &statement.lines[line_index];
+                let next_line = statement.lines.get(line_index + 1);
+
                 let mut indent = 0;
                 if line_index > 0 {
                     indent += 1;
@@ -128,7 +130,10 @@ impl<D: Driver> fmt::Display for File<D> {
                     true,
                 )?;
 
-                if line_index + 1 < statement.lines.len() {
+                if line_index + 1 < statement.lines.len()
+                    && !line.has_trailing_operator
+                    && !next_line.is_some_and(|line| line.has_leading_operator)
+                {
                     write!(f, " \\")?;
                 }
 
@@ -207,7 +212,10 @@ impl<D: Driver> Expr<D> {
                     writeln!(f)?;
 
                     for (statement_index, statement) in statements.iter().enumerate() {
-                        for (line_index, line) in statement.lines.iter().enumerate() {
+                        for line_index in 0..statement.lines.len() {
+                            let line = &statement.lines[line_index];
+                            let next_line = statement.lines.get(line_index + 1);
+
                             let mut indent = indent;
                             if line_index > 0 {
                                 indent += 1;
@@ -221,7 +229,10 @@ impl<D: Driver> Expr<D> {
                                 true,
                             )?;
 
-                            if line_index + 1 < statement.lines.len() {
+                            if line_index + 1 < statement.lines.len()
+                                && !line.has_trailing_operator
+                                && !next_line.is_some_and(|line| line.has_leading_operator)
+                            {
                                 write!(f, " \\")?;
                             }
 

@@ -661,6 +661,15 @@ impl<D: Driver> ExpressionSyntaxContext<D> {
         mut exprs: Vec<parse::Expr<D>>,
         scope_set: Shared<ScopeSet<D::Scope>>,
     ) -> Result<Expression<D>, SyntaxError<D>> {
+        // Wrap input in parentheses if operator
+        if exprs.len() > 1
+            && syntax.operator_precedence.map_or(false, |precedence| {
+                precedence.precedence != OperatorPrecedenceStatementAttributeKind::Variadic
+            })
+        {
+            exprs = vec![parse::Expr::list(span, exprs)];
+        }
+
         for expr in &mut exprs {
             // The empty set is a marker that we can detect below to restore
             // the scopes after expansion

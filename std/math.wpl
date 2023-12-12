@@ -22,13 +22,13 @@ add : Add
 [help-group "Math"]
 [operator Addition-Precedence]
 + : syntax {
-  'a + 'b -> add 'b 'a
-  'a + -> {
+  ('a + 'b) -> add 'b 'a
+  ('a +) -> {
     a : 'a
     b -> add b a
   }
-  + 'b -> add 'b
-  + -> add
+  (+ 'b) -> add 'b
+  (+) -> add
 }
 
 instance (Add Number Number Number) : b a -> semantics "pure" (intrinsic "add-number" a b)
@@ -54,13 +54,13 @@ subtract : Subtract
 [help-group "Math"]
 [operator Addition-Precedence]
 - : syntax {
-  'a - 'b -> subtract 'b 'a
-  'a - -> {
+  ('a - 'b) -> subtract 'b 'a
+  ('a -) -> {
     a : 'a
     b -> subtract b a
   }
-  - 'b -> subtract 'b
-  - -> subtract
+  (- 'b) -> subtract 'b
+  (-) -> subtract
 }
 
 instance (Subtract Number Number Number) : b a -> semantics "pure" (intrinsic "subtract-number" a b)
@@ -86,13 +86,13 @@ multiply : Multiply
 [help-group "Math"]
 [operator Multiplication-Precedence]
 * : syntax {
-  'a * 'b -> multiply 'b 'a
-  'a * -> {
+  ('a * 'b) -> multiply 'b 'a
+  ('a *) -> {
     a : 'a
     b -> multiply b a
   }
-  * 'b -> multiply 'b
-  * -> multiply
+  (* 'b) -> multiply 'b
+  (*) -> multiply
 }
 
 instance (Multiply Number Number Number) : b a -> semantics "pure" (intrinsic "multiply-number" a b)
@@ -118,13 +118,13 @@ divide : Divide
 [help-group "Math"]
 [operator Multiplication-Precedence]
 / : syntax {
-  'a / 'b -> divide 'b 'a
-  'a / -> {
+  ('a / 'b) -> divide 'b 'a
+  ('a /) -> {
     a : 'a
     b -> divide b a
   }
-  / 'b -> divide 'b
-  / -> divide
+  (/ 'b) -> divide 'b
+  (/) -> divide
 }
 
 instance (Divide Number Number Number) : b a -> semantics "pure" (intrinsic "divide-number" a b)
@@ -150,13 +150,13 @@ modulo : Modulo
 [help-group "Math"]
 [operator Multiplication-Precedence]
 mod : syntax {
-  'a mod 'b -> modulo 'b 'a
-  'a mod -> {
+  ('a mod 'b) -> modulo 'b 'a
+  ('a mod) -> {
     a : 'a
     b -> modulo b a
   }
-  mod 'b -> modulo 'b
-  mod -> modulo
+  (mod 'b) -> modulo 'b
+  (mod) -> modulo
 }
 
 instance (Modulo Number Number Number) : b a -> semantics "pure" (intrinsic "modulo-number" a b)
@@ -182,13 +182,13 @@ power : Power
 [help-group "Math"]
 [operator Exponentiation-Precedence]
 ^ : syntax {
-  'a ^ 'b -> power 'b 'a
-  'a ^ -> {
+  ('a ^ 'b) -> power 'b 'a
+  ('a ^) -> {
     a : 'a
     b -> power b a
   }
-  ^ 'b -> power 'b
-  ^ -> power
+  (^ 'b) -> power 'b
+  (^) -> power
 }
 
 instance (Power Number Number Number) : b a -> semantics "pure" (intrinsic "power-number" a b)

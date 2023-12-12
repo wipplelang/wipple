@@ -35,7 +35,7 @@ repeat-with-predicate' : predicate -> {
   body -> looper (next ; body)
 }
 
-instance (Repeat-Predicate (() -> Boolean) ()) : f () -> \
+instance (Repeat-Predicate (() -> Boolean) ()) : f () ->
   if (f ()) Continue (Break ())
 
 Forever : type
@@ -47,7 +47,7 @@ forever :: Forever
 forever : Forever
 
 While : type { continue? :: () -> Boolean }
-instance (Repeat-Predicate While ()) : { continue? } () -> \
+instance (Repeat-Predicate While ()) : { continue? } () ->
   if (continue? ()) Continue (Break ())
 
 [help "Used in `repeat` to repeat until the provided condition is `False`."]

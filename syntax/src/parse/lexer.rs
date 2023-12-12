@@ -54,7 +54,7 @@ pub enum Token<'src> {
     #[regex(r#"\{%[^\{\}%]*%\}"#, |lex| &lex.slice()[2..(lex.slice().len() - 2)])]
     Placeholder(&'src str),
 
-    #[regex(r#"--.*"#, |lex| &lex.slice()[2..], priority = 2)]
+    #[regex(r#"--.*"#, |lex| &lex.slice()[2..], priority = 3)]
     Comment(&'src str),
 
     #[regex(r#"'[A-Za-z0-9\-_]+[!?']?"#, |lex| &lex.slice()[1..])]
@@ -65,6 +65,11 @@ pub enum Token<'src> {
 
     #[regex(r#"|[~`!@#$%^&*\-+=\\\|:;<,>.?/]+|[A-Za-z0-9\-_]+[!?']?"#, |lex| lex.slice())]
     Name(&'src str),
+
+    /// If a common operator is used at the beginning or end of a line, the
+    /// previous and next lines are merged with it.
+    #[regex(r#":|::|->|=>|;|,|\.|\|"#, |lex| lex.slice(), priority = 3)]
+    CommonOperator(&'src str),
 
     #[regex(r#""[^"\\]*(?s:\\.[^"\\]*)*""#, |lex| &lex.slice()[1..(lex.slice().len() - 1)])]
     Text(&'src str),
@@ -103,6 +108,7 @@ impl<'src> Token<'src> {
             Token::QuoteName(s) => Some(Cow::Owned(format!("'{s}"))),
             Token::RepeatName(s) => Some(Cow::Owned(format!("...{s}"))),
             Token::Name(s) => Some(Cow::Borrowed(s)),
+            Token::CommonOperator(s) => Some(Cow::Borrowed(s)),
             Token::Text(s) => Some(Cow::Owned(format!("\"{s}\""))),
             Token::Number(s) => Some(Cow::Borrowed(s)),
             Token::Asset(s) => Some(Cow::Owned(format!("`{s}`"))),
@@ -134,6 +140,7 @@ impl<'src> fmt::Display for Token<'src> {
             Token::QuoteName(name) => write!(f, "`'{name}`"),
             Token::RepeatName(name) => write!(f, "`...{name}`"),
             Token::Name(name) => write!(f, "`{name}`"),
+            Token::CommonOperator(operator) => write!(f, "`{operator}`"),
             Token::Text(text) => write!(f, "`\"{text}\"`"),
             Token::Number(number) => write!(f, "`{number}`"),
             Token::Asset(_) => write!(f, "asset"),

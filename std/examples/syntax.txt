@@ -80,7 +80,7 @@ type: code
 
 [operator Addition-Precedence]
 plus : syntax {
-  'a plus 'b -> 'a + 'b
+  ('a plus 'b) -> 'a + 'b
 }
 
 show (1 plus 2 plus 3)

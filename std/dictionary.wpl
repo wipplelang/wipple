@@ -132,12 +132,12 @@ set-entry : key value { hasher size entries } -> {
     None -> None
   }
 
-  entries : entries \
-    . remove-at (get index) \
+  entries : entries
+    . remove-at (get index)
     . unwrap
 
-  entries : entries \
-    . insert-at (get index) entry \
+  entries : entries
+    . insert-at (get index) entry
     . unwrap
 
   Dictionary {

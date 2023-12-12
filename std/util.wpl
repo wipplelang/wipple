@@ -8,11 +8,11 @@ use "logic"
 [help-playground "https://wipple.dev/std/examples/of.txt"]
 [operator Accessor-Precedence]
 of : syntax {
-  'field of 'value -> {
+  ('field of 'value) -> {
     { 'field : value } : 'value
     value
   }
-  'field of -> value -> 'field of value
+  ('field of) -> value -> 'field of value
 }
 
 [help "Exit the program with the provided message."]
@@ -91,9 +91,9 @@ As : Input Output => trait (Input -> Output)
 [help-group "Utilities"]
 [operator Casting-Precedence]
 as : syntax {
-  'x as 't -> (As 'x :: 't)
-  as 't -> x -> x as 't
-  as -> As
+  ('x as 't) -> (As 'x :: 't)
+  (as 't) -> x -> x as 't
+  (as) -> As
 }
 
 A => instance (As A A) : it
@@ -111,9 +111,9 @@ As? : Input Output => trait (Input -> Maybe Output)
 [help-group "Utilities"]
 [operator Casting-Precedence]
 as? : syntax {
-  'x as? 't -> (As? 'x :: Maybe 't)
-  as? 't -> x -> x as? 't
-  as? -> As?
+  ('x as? 't) -> (As? 'x :: Maybe 't)
+  (as? 't) -> x -> x as? 't
+  (as?) -> As?
 }
 
 A => instance (As? A A) : Some
@@ -124,9 +124,9 @@ instance (As? Integer Natural) : n -> semantics "pure" (intrinsic "integer-to-na
 [help-group "Utilities"]
 [operator Casting-Precedence]
 as! : syntax {
-  'x as! 't -> 'x as? 't . expect "conversion failed"
-  as! 't -> x -> x as! 't
-  as! -> x -> x as! _
+  ('x as! 't) -> 'x as? 't . expect "conversion failed"
+  (as! 't) -> x -> x as! 't
+  (as!) -> x -> x as! _
 }
 
 [help "Represents the default or initial value of a type."]
@@ -150,9 +150,9 @@ A => instance (Default (Maybe A)) : None
 [help-playground "https://wipple.dev/std/examples/is.txt"]
 [operator Composition-Precedence]
 is : syntax {
-  'value is 'pattern -> when 'value {
+  ('value is 'pattern) -> when 'value {
     'pattern -> True
     _ -> False
   }
-  is 'pattern -> x -> x is 'pattern
+  (is 'pattern) -> x -> x is 'pattern
 }

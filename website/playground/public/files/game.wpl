@@ -83,7 +83,7 @@ render-line : glyphs -> {
   -- This works because JavaScript is dynamically typed
   when (glyphs as Glyph-Sequence) {
     Text-Glyph-Sequence c -> handle of game . message "render-line" c
-    Numeric-Glyph-Sequence n -> \
+    Numeric-Glyph-Sequence n ->
       handle of game . message "render-line" (n . transform (c -> c as Number) . collect :: List _)
   }
 }
@@ -95,7 +95,7 @@ render : glyphs -> {
   -- This works because JavaScript is dynamically typed
   when (glyphs as Glyph-Sequence) {
     Text-Glyph-Sequence c -> handle of game . message "render" c
-    Numeric-Glyph-Sequence n -> \
+    Numeric-Glyph-Sequence n ->
       handle of game . message "render" (n . transform (c -> c as Number) . collect :: List _)
   }
 }

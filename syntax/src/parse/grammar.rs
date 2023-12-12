@@ -8,7 +8,7 @@ use std::{iter::Peekable, marker::PhantomData, ops::Range};
 pub struct File<D: Driver> {
     pub span: D::Span,
     pub shebang: Option<D::InternedString>,
-    pub comments: Vec<ListLine<D>>,
+    pub comments: Vec<D::InternedString>,
     pub attributes: Vec<Attribute<D>>,
     pub statements: Vec<Statement<D>>,
 }
@@ -143,6 +143,8 @@ pub struct ListLine<D: Driver> {
     pub attributes: Vec<Attribute<D>>,
     pub exprs: Vec<Expr<D>>,
     pub comment: Option<D::InternedString>,
+    pub(crate) has_leading_operator: bool,
+    pub(crate) has_trailing_operator: bool,
 }
 
 impl<D: Driver> From<Vec<Expr<D>>> for ListLine<D> {
@@ -152,6 +154,8 @@ impl<D: Driver> From<Vec<Expr<D>>> for ListLine<D> {
             attributes: Vec::new(),
             exprs,
             comment: None,
+            has_leading_operator: false,
+            has_trailing_operator: false,
         }
     }
 }
@@ -285,7 +289,7 @@ pub enum ParseError {
 }
 
 pub struct FileContents<D: Driver> {
-    pub comments: Vec<ListLine<D>>,
+    pub comments: Vec<D::InternedString>,
     pub attributes: Vec<Attribute<D>>,
     pub statements: Vec<Statement<D>>,
 }
@@ -293,25 +297,9 @@ pub struct FileContents<D: Driver> {
 impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
     pub fn parse_file(&mut self) -> FileContents<D> {
         let mut comments = Vec::new();
-        loop {
-            let mut leading_lines = 0;
-            while let (_, Some(Token::LineBreak)) = self.peek() {
-                leading_lines += 1;
-                self.consume();
-            }
-
-            if let (_, Some(Token::Comment(c))) = self.peek() {
-                comments.push(ListLine {
-                    leading_lines,
-                    attributes: Vec::new(),
-                    exprs: Vec::new(),
-                    comment: Some(self.driver.intern(c)),
-                });
-
-                self.consume();
-            } else {
-                break;
-            }
+        while let (_, Some(Token::Comment(c))) = self.peek() {
+            comments.push(self.driver.intern(c));
+            self.consume();
         }
 
         let attributes = self.parse_file_attributes();
@@ -389,6 +377,11 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                     attributes: Vec::new(),
                     exprs: Vec::new(),
                     comment: None,
+                    has_leading_operator: matches!(
+                        self.peek(),
+                        (_, Some(Token::CommonOperator(_)))
+                    ),
+                    has_trailing_operator: false,
                 }];
 
                 loop {
@@ -407,6 +400,11 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                                 attributes: Vec::new(),
                                 exprs: Vec::new(),
                                 comment: None,
+                                has_leading_operator: matches!(
+                                    self.peek(),
+                                    (_, Some(Token::CommonOperator(_)))
+                                ),
+                                has_trailing_operator: false,
                             });
                         }
                         (Some(Token::Comment(c)), _) => {
@@ -422,6 +420,9 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                             return (lines, Some(token), Some(span));
                         }
                         _ => {
+                            lines.last_mut().unwrap().has_trailing_operator =
+                                matches!(self.peek(), (_, Some(Token::CommonOperator(_))));
+
                             if let Some(attribute) = self.try_parse_attribute() {
                                 lines.last_mut().unwrap().attributes.push(attribute);
 
@@ -462,6 +463,28 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                 break end_span;
             }
         };
+
+        // Merge lines with trailing operators with the line below, and lines
+        // with leading operators with the line above
+        let mut index = 0;
+        while index + 1 < statements.len() {
+            if statements[index]
+                .lines
+                .last()
+                .unwrap()
+                .has_trailing_operator
+                || statements[index + 1]
+                    .lines
+                    .first()
+                    .unwrap()
+                    .has_leading_operator
+            {
+                let next_statement = statements.remove(index + 1);
+                statements[index].lines.extend(next_statement.lines);
+            } else {
+                index += 1;
+            }
+        }
 
         (statements, end_span)
     }
@@ -578,7 +601,7 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
         let (span, token) = self.peek();
 
         match token {
-            Some(Token::Name(name)) => {
+            Some(Token::Name(name) | Token::CommonOperator(name)) => {
                 self.consume();
 
                 Ok(Expr::new(
@@ -820,6 +843,8 @@ impl<'src, 'a, D: Driver> Parser<'src, 'a, D> {
                     attributes: Vec::new(),
                     exprs,
                     comment,
+                    has_leading_operator: false,
+                    has_trailing_operator: false,
                 });
             }
 

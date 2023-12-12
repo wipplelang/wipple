@@ -15,8 +15,8 @@ error:
 18 │ add :: (Left : Number) (Right : Number) (infer Sum) where (Add Left Right Sum) => Right -> Left -> Sum
    │                                                           -------------------- required by this bound
    ·
-25 │   'a + 'b -> add 'b 'a
-   │              --- actual error occurred here
+25 │   ('a + 'b) -> add 'b 'a
+   │                --- actual error occurred here
    │
    = add parentheses around `1 + 2`: `(1 + 2)`
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
@@ -37,8 +37,8 @@ error:
 57 │ or' :: Left Right (infer Output) where (Or Left Right Output) => ((() -> Right) -> Left -> Output)
    │                                        ---------------------- required by this bound
    ·
-64 │   'a or 'b -> or' (() -> 'b) 'a
-   │               --- actual error occurred here
+64 │   ('a or 'b) -> or' (() -> 'b) 'a
+   │                 --- actual error occurred here
    │
    = add parentheses around `True or False`: `(True or False)`
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
@@ -60,8 +60,8 @@ error:
 18 │ add :: (Left : Number) (Right : Number) (infer Sum) where (Add Left Right Sum) => Right -> Left -> Sum
    │                                                           -------------------- required by this bound
    ·
-25 │   'a + 'b -> add 'b 'a
-   │              --- actual error occurred here
+25 │   ('a + 'b) -> add 'b 'a
+   │                --- actual error occurred here
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/missing-instance
 

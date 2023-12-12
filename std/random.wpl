@@ -61,7 +61,7 @@ instance (Random (Range Double) Double) : { min max } -> {
   intrinsic "random-double" min max
 }
 
-Element => instance (Random (List Element) (Maybe Element)) : l -> \
+Element => instance (Random (List Element) (Maybe Element)) : l ->
   l . nth (random (0 to (count l)))
 
 instance (Random () Boolean) : () -> (random ((0 :: Natural) to 2)) = 1
