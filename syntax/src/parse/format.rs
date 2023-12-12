@@ -101,7 +101,7 @@ impl<D: Driver> fmt::Display for File<D> {
         }
 
         for comment in &self.comments {
-            writeln!(f, "-- {}", comment.as_ref().trim())?;
+            writeln!(f, "--{}", comment.as_ref().trim_end())?;
         }
 
         for attribute in &self.attributes {
@@ -348,7 +348,7 @@ impl<D: Driver> Attribute<D> {
         write!(f, "{}", end)?;
 
         if let Some(comment) = &self.comment {
-            write!(f, " -- {}", comment.as_ref().trim())?;
+            write!(f, " --{}", comment.as_ref().trim_end())?;
         }
 
         writeln!(f)?;
@@ -391,7 +391,7 @@ impl<D: Driver> ListLine<D> {
                 write!(f, " ")?;
             }
 
-            write!(f, "-- {}", comment.as_ref().trim())?;
+            write!(f, "--{}", comment.as_ref().trim_end())?;
         }
 
         Ok(())
