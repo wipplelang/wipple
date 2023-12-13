@@ -4526,7 +4526,7 @@ impl Typechecker {
 
             if inferred {
                 self.compiler
-                    .add_error(span, "inferred type parameters are only allowed in constants and instance definitions", "");
+                    .add_error(span, "inferred type parameters are only allowed in traits, constants and instance definitions", "");
             }
         }
 
@@ -4616,17 +4616,6 @@ impl Typechecker {
         }
 
         let decl = self.top_level.declarations.traits.get(&id)?.clone();
-
-        for &param in &decl.value.parameters {
-            let (span, inferred) = self
-                .with_type_parameter_decl(param, |decl| (decl.span, decl.infer))
-                .unwrap();
-
-            if inferred {
-                self.compiler
-                    .add_error(span, "inferred type parameters are only allowed in constants and instance definitions", "");
-            }
-        }
 
         let decl = TraitDecl {
             name: decl
@@ -4767,13 +4756,17 @@ impl Typechecker {
                     &mut decl_params,
                 )
             })
+            .zip(tr.params.iter().map(|&param| {
+                self.with_type_parameter_decl(param, |param| param.infer.then_some(param.span))
+                    .flatten()
+            }))
             .collect::<Vec<_>>();
 
         for param in tr.params.iter().skip(params.len()) {
             let name = match self.with_type_parameter_decl(*param, |decl| decl.name) {
                 Some(name) => name,
                 None => {
-                    params.push(self.ty(engine::TypeKind::Error, None));
+                    params.push((self.ty(engine::TypeKind::Error, None), None));
                     continue;
                 }
             };
@@ -4791,7 +4784,7 @@ impl Typechecker {
                     .fix_with("add a type", FixRange::after(decl.span.first()), "{%type%}"),
             );
 
-            params.push(self.ty(engine::TypeKind::Error, None));
+            params.push((self.ty(engine::TypeKind::Error, None), None));
         }
 
         let has_bounds = !decl.value.bounds.is_empty();
@@ -4844,9 +4837,13 @@ impl Typechecker {
                     let mut substitutions = engine::GenericSubstitutions::new();
 
                     let mut all_unify = true;
-                    for (instance_param_ty, other_param_ty) in
+                    for ((instance_param_ty, infer_span), other_param_ty) in
                         params.clone().into_iter().zip(other.trait_params)
                     {
+                        if infer_span.is_some() {
+                            continue;
+                        }
+
                         let mut instance_param_ty = engine::UnresolvedType::from(instance_param_ty);
                         self.add_substitutions(&mut instance_param_ty, &mut substitutions);
 
@@ -4879,6 +4876,12 @@ impl Typechecker {
                     error = error.note(Note::secondary(decl.span, "this instance may have different bounds than the others, but one type could satisfy the bounds on more than one of these instances simultaneously"));
                 }
 
+                for &(_, infer_span) in &params {
+                    if let Some(infer_span) = infer_span {
+                        error = error.note(Note::secondary(infer_span, "this type parameter is inferred and cannot be different across instances with otherwise the same types"));
+                    }
+                }
+
                 for span in colliding_instances {
                     error = error.note(Note::secondary(
                         span,
@@ -4901,7 +4904,7 @@ impl Typechecker {
                 .map(|bound| (bound.tr, bound.parameters))
                 .collect(),
             trait_id,
-            trait_params: params,
+            trait_params: params.into_iter().map(|(param, _)| param).collect(),
             trait_param_annotations: decl.value.tr_parameters,
             body: decl.value.value.map(|value| value.value),
         };

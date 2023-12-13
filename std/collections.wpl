@@ -4,7 +4,7 @@ use "list"
 use "dictionary"
 
 [on-unimplemented ("cannot create a _ from elements of type _" Collection Element)]
-Build-Collection : Collection Element => trait (Element -> Mutable Collection -> ())
+Build-Collection : Collection (infer Element) => trait (Element -> Mutable Collection -> ())
 
 [private]
 initial-collection :: Element (Collection : List Element) where (Default Collection) => Collection

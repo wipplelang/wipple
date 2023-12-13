@@ -12,7 +12,7 @@ undefined : semantics "pure" (intrinsic "undefined-number")
 [help-group "Math"]
 [help-show-code]
 [on-unimplemented ("cannot add _ to _" Right Left)]
-Add : Left Right Sum => trait (Right -> Left -> Sum)
+Add : Left Right (infer Sum) => trait (Right -> Left -> Sum)
 
 [private]
 add :: (Left : Number) (Right : Number) (infer Sum) where (Add Left Right Sum) => Right -> Left -> Sum
@@ -44,7 +44,7 @@ instance (Add Double Double Double) : b a -> semantics "pure" (intrinsic "add-do
 [help-group "Math"]
 [help-show-code]
 [on-unimplemented ("cannot subtract _ from _" Right Left)]
-Subtract : Left Right Difference => trait (Right -> Left -> Difference)
+Subtract : Left Right (infer Difference) => trait (Right -> Left -> Difference)
 
 [private]
 subtract :: (Left : Number) (Right : Number) (infer Difference) where (Subtract Left Right Difference) => Right -> Left -> Difference
@@ -76,7 +76,7 @@ instance (Subtract Double Double Double) : b a -> semantics "pure" (intrinsic "s
 [help-group "Math"]
 [help-show-code]
 [on-unimplemented ("cannot multiply _ by _" Left Right)]
-Multiply : Left Right Product => trait (Right -> Left -> Product)
+Multiply : Left Right (infer Product) => trait (Right -> Left -> Product)
 
 [private]
 multiply :: (Left : Number) (Right : Number) (infer Product) where (Multiply Left Right Product) => Right -> Left -> Product
@@ -108,7 +108,7 @@ instance (Multiply Double Double Double) : b a -> semantics "pure" (intrinsic "m
 [help-group "Math"]
 [help-show-code]
 [on-unimplemented ("cannot divide _ by _" Left Right)]
-Divide : Left Right Quotient => trait (Right -> Left -> Quotient)
+Divide : Left Right (infer Quotient) => trait (Right -> Left -> Quotient)
 
 [private]
 divide :: (Left : Number) (Right : Number) (infer Quotient) where (Divide Left Right Quotient) => Right -> Left -> Quotient
@@ -140,7 +140,7 @@ instance (Divide Double Double Double) : b a -> semantics "pure" (intrinsic "div
 [help-group "Math"]
 [help-show-code]
 [on-unimplemented ("cannot divide _ by _" Left Right)]
-Modulo : Left Right Remainder => trait (Right -> Left -> Remainder)
+Modulo : Left Right (infer Remainder) => trait (Right -> Left -> Remainder)
 
 [private]
 modulo :: (Left : Number) (Right : Number) (infer Remainder) where (Modulo Left Right Remainder) => Right -> Left -> Remainder
@@ -172,7 +172,7 @@ instance (Modulo Double Double Double) : b a -> semantics "pure" (intrinsic "mod
 [help-group "Math"]
 [help-show-code]
 [on-unimplemented ("cannot raise _ to the power of _" Left Right)]
-Power : Left Right Pow => trait (Right -> Left -> Pow)
+Power : Left Right (infer Pow) => trait (Right -> Left -> Pow)
 
 [private]
 power :: (Left : Number) (Right : Number) (infer Pow) where (Power Left Right Pow) => Right -> Left -> Pow

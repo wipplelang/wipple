@@ -76,7 +76,7 @@ Success Failure => instance (Unwrap-Message (Result Success Failure)) : just "ca
 
 [help "Produces the `Some` value contained within a `Maybe`, or exits the program with the provided message."]
 [help-group "Utilities"]
-expect :: Container Value where (Expect Container Value) => Text -> Container -> Value
+expect :: Container (infer Value) where (Expect Container Value) => Text -> Container -> Value
 expect : Expect
 
 [help "Produces the `Some` value contained within a `Maybe`, or exits the program."]

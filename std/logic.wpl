@@ -33,7 +33,7 @@ A (B : Boolean) where (Not B) => instance (Not (A -> B)) : f -> f | not
 not :: (A : Boolean) where (Not A) => A -> A
 not : Not
 
-And : Left Right Output => trait ((() -> Right) -> Left -> Output)
+And : Left Right (infer Output) => trait ((() -> Right) -> Left -> Output)
 
 [private]
 and' :: Left Right (infer Output) where (And Left Right Output) => ((() -> Right) -> Left -> Output)
@@ -51,7 +51,7 @@ and : syntax {
 
 instance (And Boolean Boolean Boolean) : b a -> if a (b ()) False
 
-Or : Left Right Output => trait ((() -> Right) -> Left -> Output)
+Or : Left Right (infer Output) => trait ((() -> Right) -> Left -> Output)
 
 [private]
 or' :: Left Right (infer Output) where (Or Left Right Output) => ((() -> Right) -> Left -> Output)
