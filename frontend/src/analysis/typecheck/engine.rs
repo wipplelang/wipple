@@ -1,11 +1,38 @@
 use crate::{analysis::SpanList, Compiler, TraitId, TypeId, TypeParameterId};
+use lazy_static::lazy_static;
 use serde::Serialize;
 use std::{
     cell::{Cell, RefCell},
-    collections::BTreeMap,
+    collections::{BTreeMap, HashSet},
     hash::Hash,
+    sync::atomic::AtomicUsize,
 };
 use wipple_util::Backtrace;
+
+lazy_static! {
+    static ref NEXT_CONTEXT_ID: AtomicUsize = Default::default();
+}
+
+#[derive(Clone, Default, PartialEq, Eq)]
+struct ContextId(HashSet<usize>);
+
+impl ContextId {
+    fn child(&self) -> ContextId {
+        let mut ids = self.0.clone();
+        ids.insert(NEXT_CONTEXT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
+        ContextId(ids)
+    }
+
+    fn has_ancestor(&self, other: &Self) -> bool {
+        self.0.is_superset(&other.0)
+    }
+}
+
+impl std::fmt::Debug for ContextId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("ContextId").finish()
+    }
+}
 
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct TypeInfo {
@@ -223,8 +250,26 @@ impl From<TypeStructure<Type>> for TypeStructure<UnresolvedType> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
-pub struct TypeVariable(pub usize);
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TypeVariable {
+    #[serde(skip)]
+    id: ContextId,
+    pub(crate) counter: usize,
+}
+
+impl std::hash::Hash for TypeVariable {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.counter.hash(state);
+    }
+}
+
+impl TypeVariable {
+    pub(crate) fn counter_in(&self, context: &Context) -> usize {
+        assert!(self.id.has_ancestor(&context.id));
+
+        self.counter
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum BuiltinType<Ty> {
@@ -253,12 +298,25 @@ pub enum BottomTypeReason {
 pub type GenericSubstitutions = BTreeMap<TypeParameterId, UnresolvedType>;
 pub type FinalizedGenericSubstitutions = BTreeMap<TypeParameterId, Type>;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct Context {
+    id: ContextId,
     pub next_var: Cell<usize>,
-    pub substitutions: RefCell<im::HashMap<TypeVariable, UnresolvedType>>,
-    pub defaults: RefCell<im::HashMap<TypeVariable, UnresolvedType>>,
-    pub numeric_substitutions: RefCell<im::HashMap<TypeVariable, UnresolvedType>>,
+    pub substitutions: RefCell<im::HashMap<usize, UnresolvedType>>,
+    pub defaults: RefCell<im::HashMap<usize, UnresolvedType>>,
+    pub numeric_substitutions: RefCell<im::HashMap<usize, UnresolvedType>>,
+}
+
+impl Context {
+    pub fn snapshot(&self) -> Self {
+        Context {
+            id: self.id.child(),
+            next_var: self.next_var.clone(),
+            substitutions: self.substitutions.clone(),
+            defaults: self.defaults.clone(),
+            numeric_substitutions: self.numeric_substitutions.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -293,6 +351,7 @@ impl Context {
 
     pub fn reset_to(&self, snapshot: Self) -> Self {
         Context {
+            id: snapshot.id,
             next_var: self.next_var.replace(snapshot.next_var.into_inner()).into(),
             substitutions: self
                 .substitutions
@@ -306,12 +365,24 @@ impl Context {
         }
     }
 
+    pub fn dummy_variable(&self) -> TypeVariable {
+        TypeVariable {
+            id: self.id.clone(),
+            counter: usize::MAX,
+        }
+    }
+
     pub fn new_variable(&self, default: Option<UnresolvedType>) -> TypeVariable {
         let next_var = self.next_var.get();
-        let var = TypeVariable(next_var);
+        let var = TypeVariable {
+            id: self.id.clone(),
+            counter: next_var,
+        };
 
         if let Some(default) = default {
-            self.defaults.borrow_mut().insert(var, default);
+            self.defaults
+                .borrow_mut()
+                .insert(var.counter_in(self), default);
         }
 
         self.next_var.set(next_var + 1);
@@ -399,7 +470,7 @@ impl Context {
                 } else {
                     self.numeric_substitutions
                         .borrow_mut()
-                        .insert(var, expected);
+                        .insert(var.counter_in(self), expected);
 
                     Ok(())
                 }
@@ -418,7 +489,9 @@ impl Context {
                 if actual.contains(&var) {
                     Err(Box::new(TypeError::Recursive(var)))
                 } else {
-                    self.numeric_substitutions.borrow_mut().insert(var, actual);
+                    self.numeric_substitutions
+                        .borrow_mut()
+                        .insert(var.counter_in(self), actual);
                     Ok(())
                 }
             }
@@ -570,8 +643,10 @@ impl Context {
     }
 
     fn unify_var(&self, var: TypeVariable, ty: UnresolvedType) -> Result<()> {
-        if let UnresolvedTypeKind::Variable(other) = ty.kind {
-            if var == other {
+        if let UnresolvedTypeKind::Variable(other) = &ty.kind {
+            assert!(other.id.has_ancestor(&var.id));
+
+            if var == *other {
                 return Ok(());
             }
         }
@@ -579,17 +654,19 @@ impl Context {
         if ty.contains(&var) {
             Err(Box::new(TypeError::Recursive(var)))
         } else {
-            if let UnresolvedTypeKind::Variable(other) = ty.kind {
+            if let UnresolvedTypeKind::Variable(other) = &ty.kind {
                 let mut defaults = self.defaults.borrow_mut();
 
-                if let Some(default) = defaults.get(&other).cloned() {
-                    defaults.insert(var, default);
-                } else if let Some(default) = defaults.get(&var).cloned() {
-                    defaults.insert(other, default);
+                if let Some(default) = defaults.get(&other.counter_in(self)).cloned() {
+                    defaults.insert(var.counter_in(self), default);
+                } else if let Some(default) = defaults.get(&var.counter_in(self)).cloned() {
+                    defaults.insert(other.counter_in(self), default);
                 }
             }
 
-            self.substitutions.borrow_mut().insert(var, ty);
+            self.substitutions
+                .borrow_mut()
+                .insert(var.counter_in(self), ty);
 
             Ok(())
         }
@@ -680,12 +757,20 @@ impl UnresolvedType {
         self.apply_inner(ctx, &mut Vec::new());
     }
 
-    pub fn apply_inner(&mut self, ctx: &Context, stack: &mut Vec<TypeVariable>) {
+    pub fn apply_inner(&mut self, ctx: &Context, stack: &mut Vec<usize>) {
         match &mut self.kind {
             UnresolvedTypeKind::Variable(var) => {
-                if let Some(ty) = ctx.substitutions.borrow().get(var).cloned() {
-                    assert!(!stack.contains(var), "detected recursive type");
-                    stack.push(*var);
+                if let Some(ty) = ctx
+                    .substitutions
+                    .borrow()
+                    .get(&var.counter_in(ctx))
+                    .cloned()
+                {
+                    assert!(
+                        !stack.contains(&var.counter_in(ctx)),
+                        "detected recursive type"
+                    );
+                    stack.push(var.counter_in(ctx));
 
                     self.kind = ty.kind;
                     self.info.merge(ty.info);
@@ -695,7 +780,12 @@ impl UnresolvedType {
                 }
             }
             UnresolvedTypeKind::NumericVariable(var) => {
-                if let Some(ty) = ctx.numeric_substitutions.borrow().get(var).cloned() {
+                if let Some(ty) = ctx
+                    .numeric_substitutions
+                    .borrow()
+                    .get(&var.counter_in(ctx))
+                    .cloned()
+                {
                     self.kind = ty.kind;
                     self.info.merge(ty.info);
                     self.apply_inner(ctx, stack);
@@ -732,7 +822,7 @@ impl UnresolvedType {
 
         match &mut self.kind {
             UnresolvedTypeKind::Opaque(var) => {
-                self.kind = UnresolvedTypeKind::Variable(*var);
+                self.kind = UnresolvedTypeKind::Variable(var.clone());
             }
             UnresolvedTypeKind::Function(input, output) => {
                 input.instantiate_opaque(ctx);
@@ -802,7 +892,7 @@ impl UnresolvedType {
 
     pub fn vars(&self) -> Vec<TypeVariable> {
         match &self.kind {
-            UnresolvedTypeKind::Variable(var) => vec![*var],
+            UnresolvedTypeKind::Variable(var) => vec![var.clone()],
             UnresolvedTypeKind::Function(input, output) => {
                 let mut vars = input.vars();
                 vars.extend(output.vars());
@@ -824,7 +914,7 @@ impl UnresolvedType {
 
     pub fn visible_vars(&self) -> Vec<TypeVariable> {
         match &self.kind {
-            UnresolvedTypeKind::Variable(var) => vec![*var],
+            UnresolvedTypeKind::Variable(var) => vec![var.clone()],
             UnresolvedTypeKind::Function(input, output) => {
                 let mut vars = input.visible_vars();
                 vars.extend(output.visible_vars());
@@ -845,7 +935,7 @@ impl UnresolvedType {
     pub fn all_vars(&self) -> Vec<TypeVariable> {
         match &self.kind {
             UnresolvedTypeKind::Variable(var) | UnresolvedTypeKind::NumericVariable(var) => {
-                vec![*var]
+                vec![var.clone()]
             }
             UnresolvedTypeKind::Function(input, output) => {
                 let mut vars = input.all_vars();
@@ -905,8 +995,11 @@ impl UnresolvedType {
         match &mut self.kind {
             UnresolvedTypeKind::Variable(var) => {
                 if !numeric_only {
-                    if let Some(default) = ctx.defaults.borrow().get(var).cloned() {
-                        ctx.substitutions.borrow_mut().insert(*var, default.clone());
+                    if let Some(default) = ctx.defaults.borrow().get(&var.counter_in(ctx)).cloned()
+                    {
+                        ctx.substitutions
+                            .borrow_mut()
+                            .insert(var.counter_in(ctx), default.clone());
                         self.kind = default.kind;
                         *substituted = true;
                         self.substitute_defaults_inner(ctx, numeric_only, substituted);
@@ -914,7 +1007,12 @@ impl UnresolvedType {
                 }
             }
             UnresolvedTypeKind::NumericVariable(var) => {
-                if let Some(ty) = ctx.numeric_substitutions.borrow().get(var).cloned() {
+                if let Some(ty) = ctx
+                    .numeric_substitutions
+                    .borrow()
+                    .get(&var.counter_in(ctx))
+                    .cloned()
+                {
                     self.kind = ty.kind;
                     *substituted = true;
                     self.substitute_defaults_inner(ctx, numeric_only, substituted);
@@ -1014,7 +1112,7 @@ impl UnresolvedType {
 }
 
 impl TypeStructure<UnresolvedType> {
-    fn apply_inner(&mut self, ctx: &Context, stack: &mut Vec<TypeVariable>) {
+    fn apply_inner(&mut self, ctx: &Context, stack: &mut Vec<usize>) {
         match self {
             TypeStructure::Marker | TypeStructure::Recursive(_) => {}
             TypeStructure::Structure(tys) => {

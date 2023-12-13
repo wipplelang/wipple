@@ -638,7 +638,7 @@ impl Compiler {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct Typechecker {
     compiler: Compiler,
     top_level: lower::File,
@@ -835,7 +835,7 @@ impl Typechecker {
                 }
             }
 
-            let prev_ctx = self.ctx.clone();
+            let prev_ctx = self.ctx.snapshot();
 
             if let Err(Some(error)) =
                 self.typecheck_constant_expr(tr, id, None, None, None, Some(id), Default::default())
@@ -1326,7 +1326,7 @@ impl Typechecker {
 
         // Unify instantiated constant type with type at use site
 
-        let prev_ctx = self.ctx.clone();
+        let prev_ctx = self.ctx.snapshot();
 
         let mut substitutions = engine::GenericSubstitutions::new();
         for param in params {
@@ -1654,7 +1654,7 @@ impl Typechecker {
         if let Some(candidates) = self.monomorphization_cache.borrow().get(&id) {
             for (ty, monomorphized_id) in candidates {
                 let monomorphized_id = *monomorphized_id;
-                let prev_ctx = self.ctx.clone();
+                let prev_ctx = self.ctx.snapshot();
 
                 if self.ctx.unify(ty.clone(), ty_for_caching.clone()).is_ok() {
                     return Ok(Some(monomorphized_id));
@@ -1704,7 +1704,7 @@ impl Typechecker {
                 .with_constant_decl(candidate, |decl| (decl.span, decl.ty.clone()))
                 .unwrap();
 
-            let prev_ctx = self.ctx.clone();
+            let prev_ctx = self.ctx.snapshot();
 
             if let Err(error) = self
                 .ctx
@@ -1763,18 +1763,23 @@ impl Typechecker {
         let mut use_ty_for_caching = use_ty.into();
         use_ty_for_caching.apply(&self.ctx);
 
-        let ctx = self.ctx.clone();
+        let prev_ctx = self.ctx.snapshot();
 
         // HACK: Replace all variables with the same variable
-        let caching_var = engine::TypeVariable(usize::MAX);
+        let caching_var = self.ctx.dummy_variable();
         for var in use_ty_for_caching.all_vars() {
-            ctx.substitutions.borrow_mut().insert(
-                var,
-                self.unresolved_ty(engine::UnresolvedTypeKind::Opaque(caching_var), None),
+            self.ctx.substitutions.borrow_mut().insert(
+                var.counter_in(&self.ctx),
+                self.unresolved_ty(
+                    engine::UnresolvedTypeKind::Opaque(caching_var.clone()),
+                    None,
+                ),
             );
         }
 
-        use_ty_for_caching.apply(&ctx);
+        use_ty_for_caching.apply(&self.ctx);
+
+        self.ctx.reset_to(prev_ctx);
 
         use_ty_for_caching
     }
@@ -3700,7 +3705,7 @@ impl Typechecker {
                     instance_id == *stack_instance_id && bound_index == *stack_bound_index
                 })
             {
-                let prev_ctx = self.ctx.clone();
+                let prev_ctx = self.ctx.snapshot();
 
                 let mut error = false;
                 for (instance_param_ty, param_ty) in
@@ -3805,7 +3810,7 @@ impl Typechecker {
                     $instance_params.clone().into_iter().zip($params.clone())
                 {
                     if $unify(instance_param_ty.clone(), param_ty.clone()).is_err() {
-                        self.ctx.reset_to($prev_ctx.clone());
+                        self.ctx.reset_to($prev_ctx.snapshot());
                         continue $label;
                     }
                 }
@@ -3820,7 +3825,7 @@ impl Typechecker {
                 'check: for (instance_params, candidate, span, _backtrace) in
                     bound_instances.clone()
                 {
-                    let prev_ctx = self.ctx.clone();
+                    let prev_ctx = self.ctx.snapshot();
 
                     unify_instance_params!(
                         'check,
@@ -3869,7 +3874,7 @@ impl Typechecker {
             'check: for (id, mut instance_params, instance_span, instance_bounds) in
                 declared_instances.clone()
             {
-                let prev_ctx = self.ctx.clone();
+                let prev_ctx = self.ctx.snapshot();
 
                 let mut substitutions = engine::GenericSubstitutions::new();
                 for ty in &mut instance_params {
@@ -3999,55 +4004,65 @@ impl Typechecker {
                     use_span
                 };
 
-                engine::TypeError::MissingInstance(
-                    engine::InstanceCandidate {
-                        span,
-                        trait_id: tr,
-                        params: params.clone(),
-                    },
-                    engine::MissingInstanceReason::UnsatisfiedBound(
-                        bound_stack
-                            .into_iter()
-                            .map(|(_, _, trait_id, span, params)| engine::InstanceCandidate {
-                                span,
-                                trait_id,
-                                params,
-                            })
-                            .chain(is_from_bound.then_some(engine::InstanceCandidate {
-                                span,
-                                trait_id: tr,
-                                params,
-                            }))
-                            .collect(),
+                self.error(
+                    engine::TypeError::MissingInstance(
+                        engine::InstanceCandidate {
+                            span,
+                            trait_id: tr,
+                            params: params.clone(),
+                        },
+                        engine::MissingInstanceReason::UnsatisfiedBound(
+                            bound_stack
+                                .into_iter()
+                                .map(|(_, _, trait_id, span, params)| engine::InstanceCandidate {
+                                    span,
+                                    trait_id,
+                                    params,
+                                })
+                                .chain(is_from_bound.then_some(engine::InstanceCandidate {
+                                    span,
+                                    trait_id: tr,
+                                    params,
+                                }))
+                                .collect(),
+                        ),
                     ),
+                    use_id,
+                    use_span,
                 )
             }
             1 => {
                 let (target, stack) = error_candidates.pop().unwrap();
 
-                engine::TypeError::MissingInstance(
-                    target,
-                    engine::MissingInstanceReason::UnsatisfiedBound(stack),
+                self.error(
+                    engine::TypeError::MissingInstance(
+                        target,
+                        engine::MissingInstanceReason::UnsatisfiedBound(stack),
+                    ),
+                    use_id,
+                    use_span,
                 )
             }
-            _ => engine::TypeError::MissingInstance(
-                engine::InstanceCandidate {
-                    span: use_span,
-                    trait_id: tr,
-                    params,
-                },
-                engine::MissingInstanceReason::MultipleCandidates(
-                    error_candidates
-                        .into_iter()
-                        .map(|(candidate, _)| candidate)
-                        .collect(),
+            _ => self.error(
+                engine::TypeError::MissingInstance(
+                    engine::InstanceCandidate {
+                        span: use_span,
+                        trait_id: tr,
+                        params,
+                    },
+                    engine::MissingInstanceReason::MultipleCandidates(
+                        error_candidates
+                            .into_iter()
+                            .map(|(candidate, _)| candidate)
+                            .collect(),
+                    ),
                 ),
+                use_id,
+                use_span,
             ),
         };
 
-        Err(Some(FindInstanceError::TypeError(
-            self.error(error, use_id, use_span),
-        )))
+        Err(Some(FindInstanceError::TypeError(error)))
     }
 
     fn extract_params(
@@ -4072,7 +4087,7 @@ impl Typechecker {
             );
         }
 
-        let prev_ctx = self.ctx.clone();
+        let prev_ctx = self.ctx.snapshot();
 
         let mut generic_ty = engine::UnresolvedType::from(generic_ty.clone());
         generic_ty.instantiate_with(&self.ctx, &substitutions);
@@ -4824,7 +4839,7 @@ impl Typechecker {
             let colliding_instances = other_instances
                 .into_values()
                 .filter_map(|other| {
-                    let ctx = self.ctx.clone();
+                    let prev_ctx = self.ctx.snapshot();
 
                     let mut substitutions = engine::GenericSubstitutions::new();
 
@@ -4838,11 +4853,13 @@ impl Typechecker {
                         let mut other_param_ty = engine::UnresolvedType::from(other_param_ty);
                         self.add_substitutions(&mut other_param_ty, &mut substitutions);
 
-                        if ctx.unify(instance_param_ty, other_param_ty).is_err() {
+                        if self.ctx.unify(instance_param_ty, other_param_ty).is_err() {
                             all_unify = false;
                             break;
                         }
                     }
+
+                    self.ctx.reset_to(prev_ctx);
 
                     all_unify.then_some(other.span)
                 })
@@ -5788,12 +5805,12 @@ impl Typechecker {
                     if vars.is_empty()
                         || vars
                             .iter()
-                            .any(|var| !reported_type_variables.contains(var))
+                            .any(|var| !reported_type_variables.contains(&var.counter))
                     {
                         self.report_error(error);
                     }
 
-                    reported_type_variables.extend(vars);
+                    reported_type_variables.extend(vars.into_iter().map(|var| var.counter));
                 }
             }
         }
@@ -5839,7 +5856,7 @@ impl Typechecker {
                                 if let Some(root) = self.root_for(id.owner) {
                                     if self
                                         .ctx
-                                        .clone()
+                                        .snapshot()
                                         .unify(actual_output.clone(), expected_output.clone())
                                         .is_err()
                                     {
@@ -5854,7 +5871,7 @@ impl Typechecker {
                                         }
                                     } else if self
                                         .ctx
-                                        .clone()
+                                        .snapshot()
                                         .unify(actual_input.clone(), expected_input.clone())
                                         .is_err()
                                     {
@@ -6122,7 +6139,7 @@ impl Typechecker {
                         num_inputs += 1;
                     }
 
-                    if self.ctx.clone().unify(output, expected.clone()).is_ok() {
+                    if self.ctx.snapshot().unify(output, expected.clone()).is_ok() {
                         notes.push(Note::secondary(
                             error.span,
                             "try providing an input to this function",
@@ -6178,7 +6195,7 @@ impl Typechecker {
 
                             if self
                                 .ctx
-                                .clone()
+                                .snapshot()
                                 .unify(actual_output.clone(), expected_output.clone())
                                 .is_err()
                             {
@@ -6188,7 +6205,7 @@ impl Typechecker {
 
                         if self
                             .ctx
-                            .clone()
+                            .snapshot()
                             .unify(actual_output.clone(), expected_output.clone())
                             .is_err()
                         {
@@ -6199,7 +6216,7 @@ impl Typechecker {
                             ));
                         } else if self
                             .ctx
-                            .clone()
+                            .snapshot()
                             .unify(
                                 actual_input.as_ref().clone(),
                                 expected_input.as_ref().clone(),
@@ -6246,7 +6263,7 @@ impl Typechecker {
 
                                         let inner_ty = actual_params[param].clone();
 
-                                        self.ctx.clone().unify(inner_ty, expected.clone()).is_ok()
+                                        self.ctx.snapshot().unify(inner_ty, expected.clone()).is_ok()
                                     })
                                     .then(|| Note::secondary(error.span, message))
                             })
@@ -6265,7 +6282,7 @@ impl Typechecker {
                         if let Some(replacement) =
                             ty.convert_from.iter().find_map(|(ty, replacement)| {
                                 self.ctx
-                                    .clone()
+                                    .snapshot()
                                     .unify(actual.clone(), ty.clone())
                                     .is_ok()
                                     .then_some(replacement)

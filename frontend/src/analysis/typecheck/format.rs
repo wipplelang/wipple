@@ -5,7 +5,7 @@ use std::{collections::BTreeMap, mem};
 
 #[derive(Debug, Clone)]
 pub struct FormattableType {
-    vars: BTreeMap<TypeVariable, String>,
+    vars: BTreeMap<usize, String>,
     kind: FormattableTypeKind,
 }
 
@@ -72,7 +72,7 @@ impl FormattableType {
 }
 
 impl FormattableType {
-    fn var_names(&self) -> Vec<(TypeVariable, String)> {
+    fn var_names(&self) -> Vec<(usize, String)> {
         let mut vars = self
             .vars
             .iter()
@@ -169,9 +169,9 @@ fn format_type_with(
     }
     let var_names = |var: TypeVariable| match format.type_variable {
         TypeVariableFormat::None => String::from("_"),
-        TypeVariableFormat::Numeric => format!("{{{}}}", var.0),
+        TypeVariableFormat::Numeric => format!("{{{}}}", var.counter),
         TypeVariableFormat::Standalone | TypeVariableFormat::Description => {
-            ty_vars.get(&var).unwrap().clone()
+            ty_vars.get(&var.counter).unwrap().clone()
         }
     };
 
@@ -474,11 +474,11 @@ fn format_type_with(
     }
 }
 
-fn collect_vars(ty: &UnresolvedType, vars: &mut BTreeMap<TypeVariable, String>) {
+fn collect_vars(ty: &UnresolvedType, vars: &mut BTreeMap<usize, String>) {
     for var in ty.vars() {
         let index = vars.len();
 
-        vars.entry(var).or_insert_with(|| {
+        vars.entry(var.counter).or_insert_with(|| {
             ('a'..='z')
                 .nth(index)
                 .map(|c| c.to_string())
