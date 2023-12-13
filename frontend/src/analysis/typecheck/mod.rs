@@ -5857,12 +5857,15 @@ impl Typechecker {
 
                             if let Some(id) = error.expr {
                                 if let Some(root) = self.root_for(id.owner) {
+                                    let prev_ctx = self.ctx.snapshot();
+
                                     if self
                                         .ctx
-                                        .snapshot()
                                         .unify(actual_output.clone(), expected_output.clone())
                                         .is_err()
                                     {
+                                        self.ctx.reset_to(prev_ctx);
+
                                         if let Some(call) = root.as_root_query_parent_of(id) {
                                             *actual = actual_output;
                                             *expected = expected_output;
@@ -5874,10 +5877,11 @@ impl Typechecker {
                                         }
                                     } else if self
                                         .ctx
-                                        .snapshot()
                                         .unify(actual_input.clone(), expected_input.clone())
                                         .is_err()
                                     {
+                                        self.ctx.reset_to(prev_ctx);
+
                                         if let Some(call) = root.as_root_query_parent_of(id) {
                                             if let ExpressionKind::Call(_, input, _) = &call.kind {
                                                 *actual = expected_input;
@@ -6142,7 +6146,9 @@ impl Typechecker {
                         num_inputs += 1;
                     }
 
-                    if self.ctx.snapshot().unify(output, expected.clone()).is_ok() {
+                    let prev_ctx = self.ctx.snapshot();
+
+                    if self.ctx.unify(output, expected.clone()).is_ok() {
                         notes.push(Note::secondary(
                             error.span,
                             "try providing an input to this function",
@@ -6177,6 +6183,8 @@ impl Typechecker {
                             ));
                         }
                     }
+
+                    self.ctx.reset_to(prev_ctx);
                 }
 
                 if let engine::UnresolvedTypeKind::Function(expected_input, expected_output) =
@@ -6196,19 +6204,25 @@ impl Typechecker {
                             actual_output = actual_output_inner.as_ref().clone();
                             expected_output = expected_output_inner.as_ref().clone();
 
+                            let prev_ctx = self.ctx.snapshot();
+
                             if self
                                 .ctx
-                                .snapshot()
                                 .unify(actual_output.clone(), expected_output.clone())
                                 .is_err()
                             {
+                                self.ctx.reset_to(prev_ctx);
+
                                 break;
                             }
+
+                            self.ctx.reset_to(prev_ctx);
                         }
+
+                        let prev_ctx = self.ctx.snapshot();
 
                         if self
                             .ctx
-                            .snapshot()
                             .unify(actual_output.clone(), expected_output.clone())
                             .is_err()
                         {
@@ -6219,7 +6233,6 @@ impl Typechecker {
                             ));
                         } else if self
                             .ctx
-                            .snapshot()
                             .unify(
                                 actual_input.as_ref().clone(),
                                 expected_input.as_ref().clone(),
@@ -6232,6 +6245,8 @@ impl Typechecker {
                                 self.format_type(expected_input.as_ref().clone(), format)
                             ));
                         }
+
+                        self.ctx.reset_to(prev_ctx);
                     } else if let Some(id) = error.expr {
                         if let Some(root) = self.root_for(id.owner) {
                             if let Some(expr) = root.as_root_query(id) {
@@ -6266,7 +6281,13 @@ impl Typechecker {
 
                                         let inner_ty = actual_params[param].clone();
 
-                                        self.ctx.snapshot().unify(inner_ty, expected.clone()).is_ok()
+                                        let prev_ctx = self.ctx.snapshot();
+
+                                        let result = self.ctx.unify(inner_ty, expected.clone()).is_ok();
+
+                                        self.ctx.reset_to(prev_ctx);
+
+                                        result
                                     })
                                     .then(|| Note::secondary(error.span, message))
                             })
@@ -6284,11 +6305,16 @@ impl Typechecker {
                     {
                         if let Some(replacement) =
                             ty.convert_from.iter().find_map(|(ty, replacement)| {
-                                self.ctx
-                                    .snapshot()
+                                let prev_ctx = self.ctx.snapshot();
+
+                                let result = self.ctx
                                     .unify(actual.clone(), ty.clone())
                                     .is_ok()
-                                    .then_some(replacement)
+                                    .then_some(replacement);
+
+                                self.ctx.reset_to(prev_ctx);
+
+                                result
                             })
                         {
                             let mut replacement = replacement.clone();
