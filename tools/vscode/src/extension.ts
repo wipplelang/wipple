@@ -11,7 +11,9 @@ let client: LanguageClient;
 export const activate = (context: vscode.ExtensionContext) => {
     const serverOptions: ServerOptions = {
         run: {
-            command: "wipple",
+            command:
+                vscode.workspace.getConfiguration("wipple").get("wipplePath") ??
+                "wipple",
             args: ["lsp"],
         },
         debug: {

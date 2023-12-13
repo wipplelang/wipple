@@ -33,6 +33,15 @@ tasks:
         env:
             CARGO_TARGET_DIR: target
 
+    vscode:
+        run: once
+        dir: tools/vscode
+        cmds:
+            - npm i
+            - npx @vscode/vsce package --skip-license
+            - code --install-extension *.vsix
+            - rm *.vsix
+
     serve:
         run: once
         cmds:

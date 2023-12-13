@@ -40,7 +40,17 @@
                 "scopeName": "source.wipple",
                 "path": "./syntaxes/wipple.tmLanguage.json"
             }
-        ]
+        ],
+        "configuration": {
+            "title": "Wipple",
+            "properties": {
+                "wipple.wipplePath": {
+                    "type": "string",
+                    "default": "wipple",
+                    "description": "Path to `wipple` command."
+                }
+            }
+        }
     },
     "scripts": {
         "vscode:prepublish": "npm run package",
