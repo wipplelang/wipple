@@ -4872,7 +4872,7 @@ impl Typechecker {
 
                 for &(_, infer_span) in &params {
                     if let Some(infer_span) = infer_span {
-                        error = error.note(Note::secondary(infer_span, "this type parameter is inferred and cannot be different across instances with otherwise the same types"));
+                        error = error.note(Note::secondary(infer_span, "this type parameter is inferred and cannot be different across instances with otherwise compatible types"));
                     }
                 }
 
