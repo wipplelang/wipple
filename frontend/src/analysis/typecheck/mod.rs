@@ -3784,22 +3784,16 @@ impl Typechecker {
                         self.ctx.reset_to(ctx);
                         Some(Ok(candidate))
                     }
-                    _ => {
-                        if bound_stack.is_empty() {
-                            None
-                        } else {
-                            Some(Err(Some(FindInstanceError::MultipleCandidates(
-                                bound_stack
-                                    .iter()
-                                    .map(|(_, _, trait_id, span, params)| engine::InstanceCandidate {
-                                        span: *span,
-                                        trait_id: *trait_id,
-                                        params: params.clone(),
-                                    })
-                                    .collect(),
-                            ))))
-                        }
-                    },
+                    _ => Some(Err(Some(FindInstanceError::MultipleCandidates(
+                        bound_stack
+                            .iter()
+                            .map(|(_, _, trait_id, span, params)| engine::InstanceCandidate {
+                                span: *span,
+                                trait_id: *trait_id,
+                                params: params.clone(),
+                            })
+                            .collect(),
+                    )))),
                 }
             }};
         }
