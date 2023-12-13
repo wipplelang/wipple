@@ -13,5 +13,6 @@ else
     (cd dist/mas && zip -r ../mac.zip *)
     rm -r dist/mas
 
-    cp -r dist/*.zip ../_site/playground/downloads
+    mkdir ../_site/playground/downloads
+    cp -r dist/*.zip ../_site/playground/downloads/
 fi
