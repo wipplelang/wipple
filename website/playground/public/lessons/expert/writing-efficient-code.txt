@@ -1,0 +1,137 @@
+---
+previous:
+  name: Extending Wipple with JavaScript
+  link: ?lesson=expert/javascript
+next:
+  name: Beyond the Playground
+  link: ?lesson=expert/beyond-the-playground
+---
+
+---
+id: LyLruTQs
+type: text
+locked: true
+---
+
+# Writing efficient code
+
+Someday, the code you write could run on thousands or millions of computers around the world. In data centers, computers run 24 hours a way, 7 days a week to serve websites and apps. These computers consume a _lot_ of energy, so if you can make your code more energy efficient, you can save money and the environment!
+
+Wipple has a tool that can measure how much power your computer consumes while it's running your code. To continue, please download the Wipple Playground app using the link below, and re-open this lesson there. If you see **Begin measuring**, you're all set!
+
+Let's start with a simple program to get a baseline reading of your computer's power consumption. Go ahead and click **Begin measuring** below. You'll need to enter your password so Wipple can access the system's power metrics. Make sure you don't have any other resource-intensive programs running.
+
+---
+id: XPb2kkL0
+type: code
+setup: energy
+---
+
+show "Hello, world!"
+
+---
+id: ekpOz8pp
+type: text
+locked: true
+---
+
+Once the program finishes, Wipple will display the average power consumption in Watts, as well as the total energy use if you were to run your program on a thousand computers for a month. Then, you can compare the emissions and how much it would cost to power these computers on various energy sources!
+
+Let's try writing a program to calculate the $n$th Fibonacci number in three different ways. The first way is the simplest:
+
+---
+id: -T4e71py
+type: code
+setup: energy
+---
+
+fibonacci :: Natural -> Natural
+fibonacci : n -> when n {
+  0 or 1 -> 1
+  n -> fibonacci (n - 2) + fibonacci (n - 1)
+}
+
+show (fibonacci 30) -- might take a while!
+
+---
+id: jsSCRo_T
+type: text
+locked: true
+---
+
+Notice that the same Fibonacci number will be calculated over and over — that's why this program is so slow! We can fix this by using a cache:
+
+---
+id: 8tvAyowV
+type: code
+setup: energy
+---
+
+fibonacci :: Natural -> Natural
+fibonacci : {
+  fibonacci-cached :: Mutable (Dictionary Natural Natural) -> Natural -> Natural
+  fibonacci-cached : cache n -> when (get cache . entry n) {
+    Some cached -> cached
+    None -> {
+      cached : when n {
+        0 or 1 -> 1
+        n -> fibonacci-cached cache (n - 2) + fibonacci-cached cache (n - 1)
+      }
+
+      cache . insert-entry! (n ; cached)
+
+      cached
+    }
+  }
+
+  fibonacci-cached (mutable (,))
+}
+
+show (fibonacci 30)
+
+---
+id: QoyyCGhi
+type: text
+locked: true
+---
+
+Much faster, and your computer will consume much less energy!
+
+Let's try the traditional approach, using mutable variables:
+
+---
+id: HRyMjQWQ
+type: code
+setup: energy
+lint: false
+---
+
+fibonacci :: Natural -> Natural
+fibonacci : n -> when n {
+  0 or 1 -> 1
+  n -> {
+    a : mutable 1
+    b : mutable 1
+    c : mutable 0
+
+    repeat ((n - 1) times) {
+      c . set! (get a + get b)
+      a . set! (get b)
+      b . set! (get c)
+    }
+
+    get b
+  }
+}
+
+show (fibonacci 30)
+
+---
+id: g2C2bzeo
+type: text
+locked: true
+---
+
+Even faster!
+
+When you're writing programs in Wipple, generally prefer making your code easy to reason about and follow the conventions of the language (like composing functions). But if you're concerned about performance, it's OK to use mutation and traditional loops in the parts of your program that need it. Always test to see what is causing high CPU usage first!

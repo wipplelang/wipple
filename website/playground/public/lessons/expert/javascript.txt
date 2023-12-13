@@ -3,8 +3,8 @@ previous:
   name: Rendering HTML
   link: ?lesson=expert/html
 next:
-  name: Beyond the Playground
-  link: ?lesson=expert/beyond-the-playground
+  name: Writing efficient code
+  link: ?lesson=expert/writing-efficient-code
 ---
 
 ---

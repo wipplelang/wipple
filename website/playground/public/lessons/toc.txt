@@ -49,4 +49,5 @@ locked: true
 - [Type-level programming](?lesson=expert/type-level-programming)
 - [Rendering HTML](?lesson=expert/html)
 - [Extending Wipple with JavaScript](?lesson=expert/javascript)
+- [Writing efficient code](?lesson=expert/writing-efficient-code)
 - [Beyond the Playground](?lesson=expert/beyond-the-playground)
