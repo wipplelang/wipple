@@ -1023,17 +1023,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
         });
     }, [settings.current!.focus]);
 
-    const newlineKeybindings = useMemo(
-        () =>
-            Prec.highest(
-                keymap.of([
-                    { key: "Enter", run: commands.insertBlankLine },
-                    { key: "Mod-Enter", run: commands.insertNewline },
-                ])
-            ),
-        []
-    );
-
     useEffect(() => {
         view.current = new EditorView({
             state: EditorState.create({
@@ -1073,7 +1062,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     highlight,
                     insertButton,
                     keymap.of([...defaultKeymap, indentWithTab]),
-                    newlineKeybindings,
                     peerExtension,
                     remoteCursorsTheme,
                     remoteCursors(() => cursors.current),
