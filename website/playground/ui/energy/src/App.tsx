@@ -81,7 +81,12 @@ export const App = (props: AppProps) => {
     ) : energyUsage != null ? (
         <EnergySummary energyUsage={energyUsage} />
     ) : (
-        <button onClick={() => handleStart!()}>Begin Measuring</button>
+        <button
+            className="mb-2 px-2 py-1 rounded-lg bg-opacity-10 bg-sky-500 text-sky-500"
+            onClick={() => handleStart!()}
+        >
+            Begin Measuring
+        </button>
     );
 };
 
