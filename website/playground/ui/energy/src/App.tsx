@@ -71,7 +71,7 @@ export const App = (props: AppProps) => {
 
             <a
                 href="https://wipple.dev/playground/downloads/mac.zip"
-                className="not-prose my-2 px-2 py-1 rounded-lg bg-opacity-10 bg-sky-500 text-sky-500"
+                className="block my-2 px-2 py-1 rounded-lg bg-opacity-10 bg-sky-500 text-sky-500"
             >
                 Download for Mac
             </a>
@@ -95,37 +95,46 @@ const EnergySummary = (props: { energyUsage: number }) => {
     const kilowattHoursAtScaleForMonth = joulesToKilowattHours(watts * secondsPerMonth * scale);
 
     return (
-        <div className="flex flex-col gap-6 w-full">
-            <div className="flex flex-col gap-4">
-                <h1 className="text-lg font-bold">Energy use report</h1>
+        <div className="w-full mb-4">
+            <div className="flex flex-col gap-6 bg-white dark:bg-gray-900 p-4 rounded-lg shadow-lg shadow-gray-100 dark:shadow-gray-900">
+                <div className="flex flex-col gap-4">
+                    <h1 className="text-lg font-bold">Energy use report</h1>
 
-                <div className="flex gap-2">
-                    <div className="flex flex-col items-center justify-center bg-green-500 px-2.5 py-2 rounded-lg">
-                        <p className="text-3xl font-bold text-white">{watts.toFixed(2)} W</p>
-                    </div>
+                    <div className="flex gap-2">
+                        <div className="flex flex-col items-center justify-center bg-green-500 p-3 rounded-lg">
+                            <p className="text-3xl font-bold text-white">{watts.toFixed(2)} W</p>
+                        </div>
 
-                    <div className="flex flex-col items-center justify-center bg-sky-500 px-2.5 py-2 rounded-lg text-center">
-                        <p className="text-lg font-bold text-white">
-                            {kilowattHoursAtScaleForMonth.toFixed(0)} kWh
-                        </p>
+                        <div className="flex flex-col items-center justify-center bg-sky-500 p-3 rounded-lg text-center">
+                            <p className="text-lg font-bold text-white">
+                                {kilowattHoursAtScaleForMonth.toFixed(0)} kWh
+                            </p>
 
-                        <p className="text-xs text-white text-opacity-70">1000 computers/mo</p>
+                            <p className="text-xs text-white text-opacity-70">1000 computers/mo</p>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div className="flex flex-col gap-4 w-full">
-                <h1 className="text-lg font-bold">Compare energy sources</h1>
+                <div className="flex flex-col gap-4 w-full">
+                    <h1 className="text-lg font-bold">Compare energy sources</h1>
 
-                <ul className="flex flex-col gap-4 w-full">
-                    {energySources.map((energySource) => (
-                        <EnergySourceInfo
-                            key={energySource.name}
-                            energySource={energySource}
-                            kilowattHoursAtScaleForMonth={kilowattHoursAtScaleForMonth}
-                        />
-                    ))}
-                </ul>
+                    <ul className="flex flex-col w-full">
+                        {energySources.map((energySource) => (
+                            <EnergySourceInfo
+                                key={energySource.name}
+                                energySource={energySource}
+                                kilowattHoursAtScaleForMonth={kilowattHoursAtScaleForMonth}
+                            />
+                        ))}
+                    </ul>
+                </div>
+
+                <p className="text-xs text-gray-700 dark:text-gray-500">
+                    Made by Wilson Gramer and Demetrios Kennedy at{" "}
+                    <a href="https://wpi.edu" target="_blank" className="font-bold">
+                        Worcester Polytechnic Institute
+                    </a>
+                </p>
             </div>
         </div>
     );

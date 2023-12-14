@@ -17,9 +17,9 @@ locked: true
 
 Someday, the code you write could run on thousands or millions of computers around the world. In data centers, computers run 24 hours a way, 7 days a week to serve websites and apps. These computers consume a _lot_ of energy, so if you can make your code more energy efficient, you can save money and the environment!
 
-Wipple has a tool that can measure how much power your computer consumes while it's running your code. To continue, please download the Wipple Playground app using the link below, and re-open this lesson there. If you see **Begin measuring**, you're all set!
+Wipple has a tool that can measure how much power your computer consumes while it's running your code. To continue, please download the Wipple Playground app using the link below, and re-open this lesson there. If you see **Begin Measuring**, you're all set!
 
-Let's start with a simple program to get a baseline reading of your computer's power consumption. Go ahead and click **Begin measuring** below. You'll need to enter your password so Wipple can access the system's power metrics. Make sure you don't have any other resource-intensive programs running.
+Let's start with a simple program to get a baseline reading of your computer's power consumption. Go ahead and click **Begin Measuring** below. You'll need to enter your password so Wipple can access the system's power metrics. Make sure you don't have any other resource-intensive programs running.
 
 ---
 id: XPb2kkL0
