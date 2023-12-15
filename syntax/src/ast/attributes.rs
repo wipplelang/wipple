@@ -1,8 +1,8 @@
 use crate::{
     ast::{
         format::Format, AllowOverlappingInstancesStatementAttribute, ContextualStatementAttribute,
-        ConvertFromStatementAttribute, DiagnosticAliasStatementAttribute,
-        DiagnosticItemStatementAttribute, EntrypointStatementAttribute,
+        DiagnosticAliasStatementAttribute, DiagnosticItemStatementAttribute,
+        EntrypointStatementAttribute, HelpConvertFromStatementAttribute,
         HelpGroupStatementAttribute, HelpPlaygroundStatementAttribute,
         HelpShowCodeStatementAttribute, HelpStatementAttribute, HelpUrlFileAttribute,
         KeywordStatementAttribute, LanguageItemStatementAttribute, NoImplicitUseFileAttribute,
@@ -68,7 +68,7 @@ pub struct StatementAttributes<D: Driver> {
     pub operator_precedence: Option<OperatorPrecedenceStatementAttribute<D>>,
     pub keyword: Option<KeywordStatementAttribute<D>>,
     pub contextual: Option<ContextualStatementAttribute<D>>,
-    pub convert_from: Vec<ConvertFromStatementAttribute<D>>,
+    pub help_convert_from: Vec<HelpConvertFromStatementAttribute<D>>,
     pub private: Option<PrivateStatementAttribute<D>>,
     pub sealed: Option<SealedStatementAttribute<D>>,
     pub entrypoint: Option<EntrypointStatementAttribute<D>>,
@@ -94,7 +94,7 @@ impl<D: Driver> Default for StatementAttributes<D> {
             operator_precedence: Default::default(),
             keyword: Default::default(),
             contextual: Default::default(),
-            convert_from: Default::default(),
+            help_convert_from: Default::default(),
             private: Default::default(),
             sealed: Default::default(),
             entrypoint: Default::default(),

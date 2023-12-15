@@ -222,7 +222,7 @@ pub enum TypeDeclarationKind {
 pub struct TypeAttributes {
     pub decl_attributes: DeclarationAttributes,
     pub on_mismatch: Vec<(Option<TypeParameterId>, InternedString)>,
-    pub convert_from: Vec<(TypeAnnotation, wipple_syntax::parse::Expr<Analysis>)>,
+    pub help_convert_from: Vec<(TypeAnnotation, wipple_syntax::parse::Expr<Analysis>)>,
     pub sealed: bool,
 }
 
@@ -4544,8 +4544,8 @@ impl Lowerer {
                     Some((param, attribute.message))
                 })
                 .collect::<Vec<_>>(),
-            convert_from: attributes
-                .convert_from
+            help_convert_from: attributes
+                .help_convert_from
                 .iter()
                 .map(|attribute| {
                     let ty = match &attribute.ty {

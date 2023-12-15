@@ -1,6 +1,6 @@
 [[help-url "https://wipple.dev/doc/turtle.html"]]
 
-[convert-from Number ('value degrees)]
+[help-convert-from Number ('value degrees)]
 Angle : type { deg :: Number }
 
 degrees' :: Number -> Angle
@@ -17,7 +17,7 @@ radians' : radians -> degrees' (radians * 180 / 3.14159)
 [help-group "Turtle Graphics"]
 radians : syntax { 'n radians -> radians' 'n }
 
-[convert-from Number ('value pixels)]
+[help-convert-from Number ('value pixels)]
 Pixels : type { px :: Number }
 
 pixels' :: Number -> Pixels

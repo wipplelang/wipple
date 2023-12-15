@@ -115,7 +115,7 @@ pub struct TypeDecl {
     pub span: SpanList,
     pub params: Vec<TypeParameterId>,
     pub kind: TypeDeclKind,
-    pub convert_from: Vec<(Type, wipple_syntax::parse::Expr<super::Analysis>)>,
+    pub help_convert_from: Vec<(Type, wipple_syntax::parse::Expr<super::Analysis>)>,
     pub attributes: lower::TypeAttributes,
     pub uses: HashSet<SpanList>,
 }
@@ -4579,10 +4579,10 @@ impl Typechecker {
                     ))
                 }
             },
-            convert_from: decl
+            help_convert_from: decl
                 .value
                 .attributes
-                .convert_from
+                .help_convert_from
                 .iter()
                 .cloned()
                 .map(|(annotation, replacement)| {
@@ -6298,7 +6298,7 @@ impl Typechecker {
                         .single_line_source_code_for_span(error.span.first())
                     {
                         if let Some(replacement) =
-                            ty.convert_from.iter().find_map(|(ty, replacement)| {
+                            ty.help_convert_from.iter().find_map(|(ty, replacement)| {
                                 let prev_ctx = self.ctx.snapshot();
 
                                 let result = self.ctx
