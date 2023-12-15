@@ -17,9 +17,9 @@ Show : (A : Text) => trait (A -> Text)
 [help-group "Input and Output"]
 [help-playground "https://wipple.dev/std/examples/show.txt"]
 [diagnostic "accepts-text"]
-[diagnostic-alias "print"]
-[diagnostic-alias "println"]
-[diagnostic-alias "display"]
+[help-alias "print"]
+[help-alias "println"]
+[help-alias "display"]
 [on-unresolved "`show` expects a value to be displayed"]
 [resolve "insert a value to display" (show {%value%})]
 show :: (A : Text) where (Show A) => A -> ()

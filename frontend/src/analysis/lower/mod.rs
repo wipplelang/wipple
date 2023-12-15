@@ -425,7 +425,7 @@ pub struct FileInfo {
     pub language_items: LanguageItems,
     pub entrypoint: Option<ConstantId>,
     pub diagnostic_items: DiagnosticItems,
-    pub diagnostic_aliases: DiagnosticAliases,
+    pub help_aliases: HelpAliases,
 }
 
 impl FileInfo {
@@ -442,7 +442,7 @@ impl FileInfo {
 
         self.diagnostic_items.merge(other.diagnostic_items);
 
-        self.diagnostic_aliases.merge(other.diagnostic_aliases);
+        self.help_aliases.merge(other.help_aliases);
     }
 }
 
@@ -481,12 +481,12 @@ impl DiagnosticItems {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
-pub struct DiagnosticAliases {
+pub struct HelpAliases {
     pub aliases: BTreeMap<InternedString, Vec<InternedString>>,
 }
 
-impl DiagnosticAliases {
-    fn merge(&mut self, other: DiagnosticAliases) {
+impl HelpAliases {
+    fn merge(&mut self, other: HelpAliases) {
         for (name, aliases) in other.aliases {
             self.aliases.entry(name).or_default().extend(aliases);
         }
@@ -2009,27 +2009,27 @@ impl Lowerer {
                 }
             }
 
-            'diagnostic_aliases: {
-                if !decl.attributes.diagnostic_aliases.is_empty() {
+            'help_aliases: {
+                if !decl.attributes.help_aliases.is_empty() {
                     let constant = match scope_value {
                         Some(AnyDeclaration::Constant(id, _)) => id,
                         _ => {
                             self.compiler.add_error(
                                 decl.span,
-                                "`diagnostic-alias` expects a constant",
+                                "`help-alias` expects a constant",
                                 "",
                             );
 
-                            break 'diagnostic_aliases;
+                            break 'help_aliases;
                         }
                     };
 
                     if let Some(name) = self.declarations.constants.get(&constant).unwrap().name {
-                        for attr in &decl.attributes.diagnostic_aliases {
+                        for attr in &decl.attributes.help_aliases {
                             self.file_info
-                                .diagnostic_aliases
+                                .help_aliases
                                 .aliases
-                                .entry(attr.diagnostic_alias)
+                                .entry(attr.help_alias)
                                 .or_default()
                                 .push(name);
                         }
@@ -5106,7 +5106,7 @@ impl Lowerer {
         scope: &ScopeSet,
     ) -> Option<Fix> {
         self.file_info
-            .diagnostic_aliases
+            .help_aliases
             .aliases
             .get(&name)
             .and_then(|aliases| {

@@ -9,33 +9,33 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct DiagnosticAliasStatementAttribute<D: Driver> {
+pub struct HelpAliasStatementAttribute<D: Driver> {
     pub span: D::Span,
     pub diagnostic_span: D::Span,
-    pub diagnostic_alias_span: D::Span,
-    pub diagnostic_alias: D::InternedString,
+    pub help_alias_span: D::Span,
+    pub help_alias: D::InternedString,
 }
 
-impl<D: Driver> DiagnosticAliasStatementAttribute<D> {
+impl<D: Driver> HelpAliasStatementAttribute<D> {
     pub fn span(&self) -> D::Span {
         self.span
     }
 }
 
-impl<D: Driver> Format<D> for DiagnosticAliasStatementAttribute<D> {
+impl<D: Driver> Format<D> for HelpAliasStatementAttribute<D> {
     fn format(self) -> Result<String, SyntaxError<D>> {
         unimplemented!("call `StatementAttributes::format` instead")
     }
 }
 
-pub struct DiagnosticAliasStatementAttributeSyntax;
+pub struct HelpAliasStatementAttributeSyntax;
 
-impl<D: Driver> Syntax<D> for DiagnosticAliasStatementAttributeSyntax {
+impl<D: Driver> Syntax<D> for HelpAliasStatementAttributeSyntax {
     type Context = StatementAttributeSyntaxContext<D>;
 
     fn rules() -> SyntaxRules<D, Self> {
         SyntaxRules::new().with(SyntaxRule::<D, Self>::function(
-            "diagnostic-alias",
+            "help-alias",
             |context, span, diagnostic_span, mut exprs, _scope| async move {
                 if exprs.len() != 1 {
                     context
@@ -47,7 +47,7 @@ impl<D: Driver> Syntax<D> for DiagnosticAliasStatementAttributeSyntax {
                 }
 
                 let expr = exprs.pop().unwrap();
-                let diagnostic_alias = match expr.kind {
+                let help_alias = match expr.kind {
                     parse::ExprKind::Text(text) => text.ignoring_escaped_underscores(),
                     _ => {
                         context
@@ -59,18 +59,18 @@ impl<D: Driver> Syntax<D> for DiagnosticAliasStatementAttributeSyntax {
                     }
                 };
 
-                let attribute = DiagnosticAliasStatementAttribute {
+                let attribute = HelpAliasStatementAttribute {
                     span,
                     diagnostic_span,
-                    diagnostic_alias_span: expr.span,
-                    diagnostic_alias,
+                    help_alias_span: expr.span,
+                    help_alias,
                 };
 
                 context
                     .statement_attributes
                     .unwrap()
                     .lock()
-                    .diagnostic_aliases
+                    .help_aliases
                     .push(attribute.clone());
 
                 Ok(attribute.into())

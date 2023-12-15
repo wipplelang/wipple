@@ -2,7 +2,7 @@ definitions! {
     mod allow_overlapping_instances;
     mod contextual;
     mod help_convert_from;
-    mod diagnostic_alias;
+    mod help_alias;
     mod diagnostic_item;
     mod entrypoint;
     mod help;
@@ -40,7 +40,7 @@ syntax_group! {
             AllowOverlappingInstances,
             Contextual,
             HelpConvertFrom,
-            DiagnosticAlias,
+            HelpAlias,
             DiagnosticItem,
             Entrypoint,
             Help,

@@ -1,8 +1,8 @@
 use crate::{
     ast::{
         format::Format, AllowOverlappingInstancesStatementAttribute, ContextualStatementAttribute,
-        DiagnosticAliasStatementAttribute, DiagnosticItemStatementAttribute,
-        EntrypointStatementAttribute, HelpConvertFromStatementAttribute,
+        DiagnosticItemStatementAttribute, EntrypointStatementAttribute,
+        HelpAliasStatementAttribute, HelpConvertFromStatementAttribute,
         HelpGroupStatementAttribute, HelpPlaygroundStatementAttribute,
         HelpShowCodeStatementAttribute, HelpStatementAttribute, HelpUrlFileAttribute,
         KeywordStatementAttribute, LanguageItemStatementAttribute, NoImplicitUseFileAttribute,
@@ -57,7 +57,7 @@ pub struct StatementAttributes<D: Driver> {
     pub raw: Vec<parse::Attribute<D>>,
     pub language_item: Option<LanguageItemStatementAttribute<D>>,
     pub diagnostic_item: Option<DiagnosticItemStatementAttribute<D>>,
-    pub diagnostic_aliases: Vec<DiagnosticAliasStatementAttribute<D>>,
+    pub help_aliases: Vec<HelpAliasStatementAttribute<D>>,
     pub help: Vec<HelpStatementAttribute<D>>,
     pub help_group: Option<HelpGroupStatementAttribute<D>>,
     pub help_playground: Option<HelpPlaygroundStatementAttribute<D>>,
@@ -83,7 +83,7 @@ impl<D: Driver> Default for StatementAttributes<D> {
             raw: Default::default(),
             language_item: Default::default(),
             diagnostic_item: Default::default(),
-            diagnostic_aliases: Default::default(),
+            help_aliases: Default::default(),
             help: Default::default(),
             help_group: Default::default(),
             help_playground: Default::default(),
