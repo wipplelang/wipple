@@ -3,7 +3,7 @@ import { useEffect, useMemo } from "react";
 import ReactDOM from "react-dom/client";
 import * as Sentry from "@sentry/react";
 import { Globals as SpringGlobals } from "react-spring";
-import App from "./App";
+import App from "./app";
 import { wipple } from "./languages";
 import "./styles/globals.css";
 import "./styles/language-wipple.css";

@@ -1,0 +1,1301 @@
+---
+page: Type functions and traits
+type: text
+locked: true
+---
+
+If you're familiar with other languages like JavaScript or Python, you might have noticed that Wipple lacks classes and methods. Wipple takes a different approach to defining a "blueprint" for a type's functionality, in the form of type functions and traits.
+
+Have you noticed that `show` accepts text, numbers, Booleans, and so on? Normal functions can only accept an input of a single type, but `show` works a bit differently. Let's make another function called `my-show` that emulates the `show` function. `my-show` will use `show` under the hood so that we can see the output, but it will always convert its input to `Text` first.
+
+We can start with the simplest form of `my-show` — just have it always accept `Text`:
+
+---
+page: Type functions and traits
+type: code
+---
+
+my-show :: Text -> ()
+my-show : text -> show text
+
+---
+page: Type functions and traits
+type: text
+locked: true
+---
+
+And yes, you can put the variable's type on its own line, right above the value! We'll be using this syntax from now on because we'll be writing more powerful functions that Wipple's type system will need a bit of help with.
+
+Alright, now let's introduce a **type function**, which uses a double arrow `=>`:
+
+---
+page: Type functions and traits
+type: code
+---
+
+my-show :: A => A -> ()
+my-show : value -> show value
+
+---
+page: Type functions and traits
+type: text
+locked: true
+---
+
+Ignore the error for a second. In the same way a function introduces _some value_ into scope, a type function introduces _some type_ into scope. The `A` is a **type parameter**!
+
+For now, let's just pretend that `show` only accepts `Text` as its input (since we know that will make the error go away), so we need to convert the `A` value into `Text` somehow. Let's use `where` to add a **bound** to our type function!
+
+---
+page: Type functions and traits
+type: code
+---
+
+my-show :: A where (My-Show A) => A -> ()
+my-show : value -> show (My-Show value)
+
+---
+page: Type functions and traits
+type: text
+locked: true
+---
+
+Now let's define `My-Show`!
+
+---
+page: Type functions and traits
+type: code
+---
+
+My-Show : A => trait (A -> Text)
+
+---
+page: Type functions and traits
+type: text
+locked: true
+---
+
+The `trait` function accepts a type and produces a **trait**, which is in this case defined to hold a function that converts from _some type_ `A` to `Text`. Then, we can call the function implemented by `My-Show` inside `my-show` to get a `Text` value, which we finally pass to `show`.
+
+Next, we need to implement that `My-Show` function for various types!
+
+---
+page: Type functions and traits
+type: code
+---
+
+My-Show : A => trait (A -> Text)
+
+instance (My-Show Text) : text -> text
+
+instance (My-Show Boolean) : bool -> when bool {
+  True -> "True"
+  False -> "False"
+}
+
+---
+page: Type functions and traits
+type: text
+locked: true
+---
+
+The `instance` syntax goes on the left-hand side of a variable assignment `:`. It works by generating a new, unnamed variable and adding it to the list of available instances for the specified trait. So, whenever `My-Show` is called with a `Boolean`, that `instance` variable will be used.
+
+Let's put it all together!
+
+---
+page: Type functions and traits
+type: code
+---
+
+My-Show : A => trait (A -> Text)
+
+instance (My-Show Text) : text -> text
+
+instance (My-Show Boolean) : bool -> when bool {
+  True -> "True"
+  False -> "False"
+}
+
+my-show :: A where (My-Show A) => A -> ()
+my-show : value -> show (My-Show value)
+
+my-show "Hello, world!"
+my-show True
+
+---
+page: Type functions and traits
+type: text
+locked: true
+---
+
+Awesome! Now that you know how `My-Show` works, we can extend the idea to the regular `show` function, which, in fact, uses the `Show` trait!
+
+---
+page: Type functions and traits
+type: code
+---
+
+Sport : type {
+  name :: Text
+  players :: Number
+}
+
+instance (Show Sport) : sport -> "_ has _ players per team" (name of sport) (players of sport)
+
+basketball : Sport {
+  name : "Basketball"
+  players : 5
+}
+
+show basketball
+
+---
+page: Type functions and traits
+type: text
+locked: true
+---
+
+As you can hopefully see, Wipple's traits are very powerful. They let you define new functionality for existing functions like `show`! Wipple uses traits extensively, from `Add` for addition using `+`, to `Equal` for equality using `=`, to `Show` for displaying something on the screen using `show`.
+
+Traits in Wipple are so powerful that you can write entire programs using nothing but types and traits, all done at compile time. If you're interested in how that works, check out the accompanying Expert lesson!
+
+
+---
+page: Advanced functions
+type: text
+locked: true
+---
+
+Wipple is a **functional programming language**, which means that Wipple encourages creating and composing functions over other methods of programming, like class-based inheritance and mutable state. In this lesson, we'll learn how to write idiomatic, functional Wipple code.
+
+## Partial application
+
+Up until now, we've declared functions that accept multiple inputs like this:
+
+---
+page: Advanced functions
+type: code
+---
+
+add : a b -> a + b
+show (add 1 2)
+
+---
+page: Advanced functions
+type: text
+locked: true
+---
+
+But if you've looked at the type of `add`, you may have noticed that it's not `Number Number -> Number`, but `Number -> Number -> Number`! What's going on?
+
+Well, it turns out that `a b -> a + b` is actually shorthand for `a -> b -> a + b`. Wipple functions actually only accept **one input at a time**, so `add 1 2` is the same as writing `(add 1) 2`. Essentially, the `add` function returns _another_ function!
+
+There's nothing special about the function `add` returns, so we can assign it to a variable:
+
+---
+page: Advanced functions
+type: code
+---
+
+add : a -> b -> a + b
+increment : add 1
+show (increment 2)
+
+---
+page: Advanced functions
+type: text
+locked: true
+---
+
+This idea of calling a function with only one input at a time is called **partial application**, and if used correctly, it can make your code much easier to read. It can take a while to really embrace partial application, but when you do, it just makes sense — _"increment is add one"_ is almost an English sentence!
+
+In other languages, you might have a function `score` that sets the number of points a `Team` object has scored. But in functional languages like Wipple, you usually create a new, updated `Team` value instead of mutating the original:
+
+---
+page: Advanced functions
+type: code
+---
+
+Team : type {
+  points :: Number
+}
+
+score :: Team -> Number -> Team
+score : team points-to-add -> Team {
+  points : (points of team) + points-to-add
+}
+
+celtics : Team { points : 80 }
+celtics : score celtics 2
+show (points of celtics)
+
+---
+page: Advanced functions
+type: text
+locked: true
+---
+
+This makes programs easier to reason about and debug, because you can always look back at the original value to see what has changed. It also means that changes are localized to wherever they are applied — you're always dealing with your own copy of a value instead of having to worry about changing a copy somewhere else in the program.
+
+Also, notice how we redeclare the `celtics` variable after changing the number of points. Wipple allows you to reuse variable names if you don't need the original anymore. In this case, we only want to deal with the updated `celtics`, so we can overwrite that variable. If you want to learn more about how this works, check out the Expert lesson on scope!
+
+OK, now let's say we want to add a `basket` function that increments the team's score by 2:
+
+---
+page: Advanced functions
+type: code
+---
+
+Team : type {
+  points :: Number
+}
+
+score :: Team -> Number -> Team
+score : team points-to-add -> Team {
+  points : (points of team) + points-to-add
+}
+
+basket :: Team -> Team
+basket : team -> score team 2
+
+celtics : Team { points : 80 }
+celtics : basket celtics
+show (points of celtics)
+
+---
+page: Advanced functions
+type: text
+locked: true
+---
+
+This code is probably how you'd do it in other languages, but watch what happens if we swap the order of `points-to-add` and `team`:
+
+---
+page: Advanced functions
+type: code
+---
+
+Team : type {
+  points :: Number
+}
+
+score :: Number -> Team -> Team
+score : points-to-add team -> Team {
+  points : (points of team) + points-to-add
+}
+
+basket :: Team -> Team
+basket : team -> score 2 team
+
+celtics : Team { points : 80 }
+celtics : basket celtics
+show (points of celtics)
+
+---
+page: Advanced functions
+type: text
+locked: true
+---
+
+And now we can use partial application to simplify `birthday`!
+
+---
+page: Advanced functions
+type: code
+---
+
+Team : type {
+  points :: Number
+}
+
+score :: Number -> Team -> Team
+score : points-to-add team -> Team {
+  points : (points of team) + points-to-add
+}
+
+basket :: Team -> Team
+basket : score 2
+
+celtics : Team { points : 80 }
+celtics : basket celtics
+show (points of celtics)
+
+---
+page: Advanced functions
+type: text
+locked: true
+---
+
+Much nicer — all of the above examples produce the same output! Now `basket` doesn't have to deal with passing a `Team` around, it can just focus on what it's really trying to do — increment the score by 2. In general, any time you see `x -> f x`, you can replace it with `f`.
+
+## Dot syntax
+
+Dot syntax allows you to provide the input to the left of the function, so you can chain function calls:
+
+---
+page: Advanced functions
+type: code
+---
+
+add : a b -> a + b
+0 . add 1 . add 2 . add 3 . show
+
+---
+page: Advanced functions
+type: text
+locked: true
+---
+
+## Higher-order functions
+
+`times` is what's called a **higher-order function** because it accepts a function as input. There's nothing special about doing this, you just call the function as normal! For example:
+
+---
+page: Advanced functions
+type: code
+---
+
+call-with : f x -> f x
+4 . call-with show
+
+---
+page: Advanced functions
+type: text
+locked: true
+---
+
+You don't even need a type signature here — Wipple figures out what you're trying to do and gives `f` the type `Number -> ()`!
+
+We can also make `call-with` generic over the input and output types using a type function:
+
+---
+page: Advanced functions
+type: code
+---
+
+call-with :: Input Output => (Input -> Output) -> Input -> Output
+call-with : f x -> f x
+
+increment :: Number -> Number
+increment : x -> x + 1
+
+4 . call-with increment . call-with show
+
+---
+page: Advanced functions
+type: text
+locked: true
+---
+
+And of course, that's just equivalent to writing:
+
+---
+page: Advanced functions
+type: code
+---
+
+increment :: Number -> Number
+increment : x -> x + 1
+
+4 . increment . show
+
+---
+page: Advanced functions
+type: text
+locked: true
+---
+
+Now you know how function calling is implemented!
+
+
+---
+page: Advanced patterns
+type: text
+locked: true
+---
+
+In other programming languages, you typically use `null` or `None` to indicate the absence of a value. But what's the type of `null`? Is it `null :: A => A`?
+
+Not quite. It would be impossible for the implementation of `null` to create an `A` value because it doesn't know what `A` is! `A` could be a `Number` (`0`?), or `Text` (`""`?), or a `Person` (`alice`?), or anything at all! In fact, because there's no way to produce an `A` value, the only way to proceed is to **exit the program**, returning no value at all. Let's try it!
+
+---
+page: Advanced patterns
+type: code
+---
+
+always-one : when 1 {
+    1 -> 1
+    _ -> error "not 1!"
+}
+
+show always-one
+
+---
+page: Advanced patterns
+type: text
+locked: true
+---
+
+Hover over `error` and you'll see that, indeed, it returns an `A` value. Change `1` to `2` in the `when` expression, and you'll see that the `show` is never even executed.
+
+The key problem here is that Wipple doesn't allow us to express the absence of a value because there's no meaningful way to give every type its own `null` value. Indeed, in languages like Java you have to put checks everywhere to ensure that a value is _not_ `null` before attempting to use it.
+
+Wipple sidesteps this issue entirely by introducing a new type specifically for handling `null` values named `Maybe`. Let's learn how it works by building our own `My-Maybe` from scratch!
+
+---
+page: Advanced patterns
+type: code
+---
+
+My-Maybe : type {
+    Some Number
+    None
+}
+
+---
+page: Advanced patterns
+type: text
+locked: true
+---
+
+Inside `My-Maybe`, we've introduced two patterns: a `None` and a `Some` with a `Number` declared after it. When you introduce a type after a pattern, you're telling Wipple that that pattern can **hold a value**! Essentially, you're creating a **function** that accepts a `Number` and produces a `My-Maybe`. Hover over `Some` to confirm!
+
+If `Some` is just a function, that means we can call it:
+
+---
+page: Advanced patterns
+type: code
+lint: false
+---
+
+My-Maybe : type {
+    Some Number
+    None
+}
+
+maybe-a-number :: My-Maybe
+maybe-a-number : Some 42
+
+---
+page: Advanced patterns
+type: text
+locked: true
+---
+
+By wrapping the number in a `My-Maybe`, we have **removed information** from our program — to the outside world, `maybe-a-number` could be `Some 42` or it could just as well be `None`. That means that in order to get the number back out, we need to handle **both cases**. That sounds like a job for `when`!
+
+---
+page: Advanced patterns
+type: code
+---
+
+My-Maybe : type {
+    Some Number
+    None
+}
+
+maybe-a-number :: My-Maybe
+maybe-a-number : Some 42
+
+when maybe-a-number {
+    Some n -> show ("The number is _" n)
+    None -> show "There is no number"
+}
+
+---
+page: Advanced patterns
+type: text
+locked: true
+---
+
+Try changing `maybe-a-number` to `None` and watch how the output changes!
+
+Right now, `My-Maybe` only works with numbers, but we can fix that by using a type function:
+
+---
+page: Advanced patterns
+type: code
+---
+
+My-Maybe : A => type {
+    Some A
+    None
+}
+
+-- Change these values and watch how the output changes!
+maybe-a-number : Some 42
+maybe-a-text : Some "Hello!"
+maybe-a-maybe : Some (Some 1) -- yes, you can put a My-Maybe inside a My-Maybe!
+
+when maybe-a-number {
+    Some number -> show ("maybe-a-number holds _" number)
+    None -> show "maybe-a-number holds nothing"
+}
+
+when maybe-a-text {
+    Some text -> show ("maybe-a-text holds _" text)
+    None -> show "maybe-a-text holds nothing"
+}
+
+when maybe-a-maybe {
+    Some (Some number) -> show ("maybe-a-maybe holds a maybe holding _" number)
+    Some None -> show "maybe-a-maybe holds a maybe holding nothing"
+    None -> show "maybe-a-maybe holds nothing"
+}
+
+---
+page: Advanced patterns
+type: text
+locked: true
+---
+
+Ideally, we just want to be able to `show` the `My-Maybe` directly. Let's implement `Show` using an `instance`!
+
+---
+page: Advanced patterns
+type: code
+---
+
+My-Maybe : A => type {
+    Some A
+    None
+}
+
+instance (Show (My-Maybe Number)) : maybe -> when maybe {
+    Some x -> "(Some _)" x
+    None -> "None"
+}
+
+instance (Show (My-Maybe Text)) : maybe -> when maybe {
+    Some x -> "(Some _)" x
+    None -> "None"
+}
+
+instance (Show (My-Maybe (My-Maybe Number))) : maybe -> when maybe {
+    Some (Some x) -> "(Some (Some _))" x
+    Some None -> "(Some None)"
+    None -> "None"
+}
+
+maybe-a-number : Some 42
+maybe-a-text : Some "Hello!"
+maybe-a-maybe : Some (Some 1)
+
+show maybe-a-number
+show maybe-a-text
+show maybe-a-maybe
+
+---
+page: Advanced patterns
+type: text
+locked: true
+---
+
+Hmm, all those `instance`s seem quite similar. Maybe we can use a type function to make a single `instance` work with all `Maybe`s?
+
+---
+page: Advanced patterns
+type: code
+---
+
+My-Maybe : A => type {
+    Some A
+    None
+}
+
+A => instance (Show (My-Maybe A)) : maybe -> when maybe {
+    Some x -> "(Some _)" x
+    None -> "None"
+}
+
+---
+page: Advanced patterns
+type: text
+locked: true
+---
+
+...error! `A` doesn't necessarily implement `Show`, so we can't do this. Can you figure out how to solve the problem in the space below?
+
+---
+page: Advanced patterns
+type: code
+---
+
+
+
+---
+page: Advanced patterns
+type: text
+locked: true
+---
+
+Hopefully you had a go at it — what we need to do is add a **bound**!
+
+---
+page: Advanced patterns
+type: code
+---
+
+My-Maybe : A => type {
+    Some A
+    None
+}
+
+A where (Show A) => instance (Show (My-Maybe A)) : maybe -> when maybe {
+    Some x ->  "(Some _)" x
+    None -> "None"
+}
+
+show (Some 42)
+show (Some "Hello!")
+show (Some (Some 1))
+
+---
+page: Advanced patterns
+type: text
+locked: true
+---
+
+Awesome! We just wrote something extremely powerful: a piece of code that works for _any value_ of `My-Maybe`.
+
+In your own programs, you don't need to reimplement `My-Maybe` every single time — Wipple has a built-in `Maybe` type that does the same thing! If you want to check out all of the ways `Maybe` can be used, click the `+` icon on the right-hand side of the code editor and scroll down to the Utilities section.
+
+
+---
+page: Tuples
+type: text
+locked: true
+---
+
+A **tuple** is a way to group together multiple values without needing to create a whole new type. You can create a tuple using the semicolon (`;`) operator:
+
+---
+page: Tuples
+type: code
+lint: false
+---
+
+point : 3 ; 2
+
+---
+page: Tuples
+type: text
+locked: true
+---
+
+To get the values back out of the tuple, you can use a tuple pattern:
+
+---
+page: Tuples
+type: code
+---
+
+point : 3 ; 2
+x ; y : point
+show x
+show y
+
+---
+page: Tuples
+type: text
+locked: true
+---
+
+The type of a tuple also uses the semicolon syntax:
+
+---
+page: Tuples
+type: code
+---
+
+origin :: Number ; Number
+origin : 0 ; 0
+
+---
+page: Tuples
+type: text
+locked: true
+---
+
+You can also make functions that accept and return tuples!
+
+---
+page: Tuples
+type: code
+---
+
+origin : 0 ; 0
+
+translate : (dx ; dy) (x ; y) -> (x + dx) ; (y + dy)
+up : dy -> translate (0 ; dy)
+
+x ; y : origin . up 3
+
+show ("(_, _)" x y)
+
+---
+page: Tuples
+type: text
+locked: true
+---
+
+Try changing the example to support 3-dimensional points!
+
+
+---
+page: Numeric types
+type: text
+locked: true
+---
+
+So far, we've only used the `Number` type to represent numbers. But Wipple has several other numeric types as well! The most commonly used numeric type other than `Number` is `Natural`, which can hold the natural numbers (0, 1, 2, 3, ...).
+
+For example, `times` accepts a `Natural` instead of a `Number`, since it only makes sense to repeat something a whole number of times:
+
+---
+page: Numeric types
+type: code
+---
+
+repeat (0.5 times) { ... }
+
+---
+page: Numeric types
+type: text
+locked: true
+---
+
+Hover over the error and you'll see that Wipple prevents us from passing a fractional number to `times`!
+
+If you need to convert between numeric types, you can use `as` and `as?`:
+
+---
+page: Numeric types
+type: code
+---
+
+number :: Number
+number : 0.5
+
+natural :: Natural
+natural : 3
+
+show (natural as Number)
+show (number as? Natural)
+
+
+---
+page: Mutability
+type: text
+locked: true
+---
+
+Wipple doesn't allow you to change the value of a variable after you create it. If you want to update a value, you should make a function and return a new value instead. However, sometimes it's necessary to have mutable state, and Wipple offers the `Mutable` type to accommodate this.
+
+`Mutable` is essentially a box containing a value. The actual box never changes (so you can share it between variables), and to observe the value inside you need to open the box. You can use the `mutable` function to create a new box, `get` to look inside, and `set!` to change the contents:
+
+---
+page: Mutability
+type: code
+---
+
+counter : {
+    -- Enclose `count` in a block to prevent it from being accessible outside
+    -- the `counter` function
+    count : mutable 1
+
+    () -> {
+        value : get count
+        show value
+        count . set! (value + 1)
+    }
+}
+
+counter ()
+counter ()
+counter ()
+counter ()
+counter ()
+
+---
+page: Mutability
+type: text
+locked: true
+---
+
+By convention, functions that change a `Mutable` value that could potentially be observed by other parts of the program end in an exclamation point `!`. You don't need to use `!` for functions that only mutate "internal" state (like `count`).
+
+You can make your own functions that deal with `Mutable` values, too!
+
+---
+page: Mutability
+type: code
+---
+
+increment! :: Mutable Natural -> ()
+increment! : n -> n . set! (get n + 1)
+
+---
+page: Mutability
+type: text
+locked: true
+---
+
+Mutability will come in handy in our next lesson!
+
+
+---
+page: Lists and sequences
+type: text
+locked: true
+---
+
+Often, you'll be writing programs that deal with a list of items instead of individual variables. Let's learn how to use lists in Wipple!
+
+To construct a list, you separate each element with a comma (`,`):
+
+---
+page: Lists and sequences
+type: code
+lint: false
+---
+
+my-list : 1 , 2 , 3
+
+---
+page: Lists and sequences
+type: text
+locked: true
+---
+
+All of the items in a list must be the same type. If you need to have elements of different types, you can wrap them in a custom type like so:
+
+---
+page: Lists and sequences
+type: code
+lint: false
+---
+
+Item : type {
+    Number-Item Number
+    Text-Item Text
+}
+
+my-list : Number-Item 1 , Text-Item "hi"
+
+---
+page: Lists and sequences
+type: text
+locked: true
+---
+
+You can get the items back out of a list in many ways. For example, `first` retrieves the first item in the list, and `last` retrieves the last item:
+
+---
+page: Lists and sequences
+type: code
+---
+
+my-list : 1 , 2 , 3
+show (my-list . first)
+show (my-list . last)
+
+---
+page: Lists and sequences
+type: text
+locked: true
+---
+
+You can use `nth` to get the item at a particular index (starting from zero):
+
+---
+page: Lists and sequences
+type: code
+---
+
+my-list : 1 , 2 , 3
+show (my-list . nth 1)
+
+---
+page: Lists and sequences
+type: text
+locked: true
+---
+
+## Sequences
+
+A **sequence** is anything that produces values on demand. Wipple provides several functions that let you transform one sequence into another. These functions either take an sequence or produce one, or both! Lists are one kind of sequence (producing each item inside the list in order), but there are many others.
+
+`each` takes a sequence and calls a function for each item in the sequence:
+
+---
+page: Lists and sequences
+type: code
+---
+
+my-list : 1 , 2 , 3
+my-list . each show
+
+---
+page: Lists and sequences
+type: text
+locked: true
+---
+
+`transform` produces a sequence that transforms the contents of the provided sequence. `transform` is useful for converting a list of one type into a list of a different type:
+
+---
+page: Lists and sequences
+type: code
+---
+
+Sport : type {
+  name :: Text
+  players :: Number
+}
+
+basketball : Sport {
+  name : "Basketball"
+  players : 5
+}
+
+soccer : Sport {
+  name : "Soccer"
+  players : 11
+}
+
+golf : Sport {
+  name : "Golf"
+  players : 1
+}
+
+sports : basketball , soccer , golf
+
+names : sports . transform (sport -> name of sport)
+names . each show
+
+---
+page: Lists and sequences
+type: text
+locked: true
+---
+
+`filter` takes a sequence and only produces the items that satisfy the condition:
+
+---
+page: Lists and sequences
+type: code
+---
+
+languages : "C" , "Python" , "Java" , "JavaScript" , "Wipple"
+
+short-names : languages . filter (name -> count name < 5)
+short-names . each show
+
+---
+page: Lists and sequences
+type: text
+locked: true
+---
+
+You can make your own sequences by implementing the `As-Sequence` trait:
+
+---
+page: Lists and sequences
+type: code
+---
+
+Counter : type {
+    min :: Natural
+    max :: Natural
+}
+
+instance (As-Sequence Counter Natural) : counter -> {
+    count : mutable (min of counter)
+
+    sequence {
+        n : get count
+        if (n = (max of counter)) {
+            None
+        } {
+            increment! count
+            Some n
+        }
+    }
+}
+
+count :: Natural -> Natural -> Counter
+count : min max -> Counter { min max }
+
+count 0 10 . each show
+
+
+---
+page: Randomness
+type: text
+locked: true
+---
+
+Adding a bit of randomness to your programs can make them much more interesting. Let's learn how to generate random numbers in Wipple!
+
+In Wipple, you can produce random numbers using the `random` function, which accepts a range:
+
+---
+page: Randomness
+type: code
+---
+
+show (random (1 to 10))
+
+---
+page: Randomness
+type: text
+locked: true
+---
+
+By default, the random number will have the same "scale" as the numbers in the range. So if you provide a number with accuracy to the tenths, the random number will also have accuracy to the tenths:
+
+---
+page: Randomness
+type: code
+---
+
+show (random (0.1 to 0.5))
+
+---
+page: Randomness
+type: text
+locked: true
+---
+
+If you provide a list instead of a range to `random`, you get back a random item in the list!
+
+---
+page: Randomness
+type: code
+---
+
+letters : "A" , "B" , "C" , "D"
+show (random letters . expect "list was empty")
+
+---
+page: Randomness
+type: text
+locked: true
+---
+
+Note that you need `expect` in the above example because the list could be empty, so `random` could return `None`. But since we know the list has items in it, the program will never actually crash.
+
+Under the hood, `random` uses the `Random` trait, which you can implement on your own types just like `Show`:
+
+---
+page: Randomness
+type: code
+setup: turtle
+---
+
+Command : type {
+  Move Pixels
+  Turn Angle
+  Color Text
+}
+
+instance (Random () Command) : () -> when (random (0 to 3) :: Natural) {
+  0 -> Move ((random (5 to 25)) pixels)
+  1 -> Turn ((random (0 to 360)) degrees)
+  2 -> Color (random (`red` , `green` , `blue`) . unwrap)
+  _ -> error "unreachable"
+}
+
+speed 100
+
+repeat (100 times) {
+  when (random ()) {
+    Move distance -> forward distance
+    Turn angle -> left angle
+    Color c -> color c
+  }
+}
+
+---
+page: Randomness
+type: text
+locked: true
+---
+
+If you want a challenge, try using `random` to make a password generator below!
+
+---
+page: Randomness
+type: code
+---
+
+
+---
+page: Making a video game
+type: text
+locked: true
+---
+
+It's time for our most challenging project yet — making a video game! Wipple has a built-in, arcade-style game engine available if you make a Game program:
+
+---
+page: Making a video game
+type: code
+setup: game
+---
+
+render-line "Hello, world!"
+
+---
+page: Making a video game
+type: text
+locked: true
+---
+
+The game engine is inspired by [SmileBASIC](http://smilebasic.com/en/e-manual/) and uses the same layout and character set. SmileBASIC contains many special characters to be used as sprites; you can find the list of characters [here](http://smilebasic.com/en/supplements/unicode/). For example, the brick character has code 3:
+
+---
+page: Making a video game
+type: code
+setup: game
+---
+
+-- width and height are defined in the game engine
+repeat ((width * height) times) {
+  render-glyph 3
+}
+
+---
+page: Making a video game
+type: text
+locked: true
+---
+
+If you want to fill a line with a character without having to hack your way around placeholder text or lists, you can use the `render-fill` and `render-line-fill` functions. And `bg` and `fg` let you control the color of each character:
+
+---
+page: Making a video game
+type: code
+setup: game
+---
+
+bg `#263238`
+fg `#689f38`
+render-line-fill "H H EEE L   L   OOO" 6
+render-line-fill "H H E   L   L   O O" 6
+render-line-fill "HHH EEE L   L   O O" 6
+render-line-fill "H H E   L   L   O O" 6
+render-line-fill "H H EEE LLL LLL OOO" 6
+
+---
+page: Making a video game
+type: text
+locked: true
+---
+
+Otherwise, everything is up to you! The whole program is evaluated every frame, so you can use a `mutable` constant to store any state you might need. (Make sure you use a constant – otherwise the variable will be reset every frame!) [Here](https://wipple.dev/playground/?file=https://raw.githubusercontent.com/wipplelang/playground-examples/main/road-rage.txt) is a complex game you can use for inspiration (click "Expand" under the `•••` menu to see the code). The full documentation for the game engine is available [here](https://wipple.dev/doc/game.html). Have fun!
+
+
+---
+page: Fractal graphics
+type: text
+locked: true
+---
+
+For our final Advanced lesson, let's go back to turtle graphics, with a twist. Let's take all our knowledge of functional programming and build a **fractal**!
+
+To build our fractal, we need to define a function that calls itself some of the time. This process is called _recursion_, and the recursion ends when the turtle runs out of space (ie. when the repeated part of the fractal gets too small or too large). In the following example, the recursion ends when the `size` of the triangle is smaller than 5.
+
+---
+page: Fractal graphics
+type: code
+setup: turtle
+---
+
+triangle :: Number -> ()
+triangle : size -> if (size > 5) {
+    half : size / 2
+
+    triangle half
+    forward (half pixels)
+
+    triangle half
+    forward (half pixels)
+    left (120 degrees)
+    forward (half pixels)
+
+    triangle half
+    forward (half pixels)
+    left (120 degrees)
+    forward (size pixels)
+    left (120 degrees)
+}
+
+speed 10
+
+-- Set up
+position (30 pixels ; 30 pixels)
+left (30 degrees)
+
+-- Draw the fractal
+triangle 100
+
+---
+page: Fractal graphics
+type: text
+locked: true
+---
+
+Here's another example!
+
+---
+page: Fractal graphics
+type: code
+setup: turtle
+---
+
+scale :: Number
+scale : 0.8
+
+tree :: Number -> ()
+tree : size -> if (size > 5) {
+    forward (size pixels)
+    right (30 degrees)
+    tree (size * scale)
+    left (60 degrees)
+    tree (size * scale)
+    right (30 degrees)
+    backward (size pixels)
+}
+
+speed 10
+position (0 pixels ; 50 pixels)
+tree 25
+
+---
+page: Fractal graphics
+type: text
+locked: true
+---
+
+Try creating your own fractal graphics in the space below! Adding color might be interesting...
+
+---
+page: Fractal graphics
+type: code
+setup: turtle
+---
+
+
+
+---
+page: Fractal graphics
+type: text
+locked: true
+---
+
+## Great work!
+
+Congratulations, you’ve made it to the end of the Advanced lessons! 🤯 By this point, you've learned enough Wipple to write any program you want. If you need some inspiration, click the + icon on the right side of any code box to bring up the list of built-in functions. If you want to learn how Wipple works at the language level, and harness Wipple's power to create your own domain-specific languages like `turtle` and `music`, check out the Expert lessons!

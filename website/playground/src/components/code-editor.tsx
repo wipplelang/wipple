@@ -45,7 +45,7 @@ import { githubLightInit, githubDarkInit } from "@uiw/codemirror-theme-github";
 import { styleTags, tags as t } from "@lezer/highlight";
 import { LRLanguage, LanguageSupport } from "@codemirror/language";
 import { parser } from "../languages/wipple.grammar";
-import { EditCommands, Settings } from "../App";
+import { EditCommands, Settings } from "../app";
 import { ListItemIcon, Popover } from "@mui/material";
 import { SwatchesPicker } from "react-color";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
@@ -549,8 +549,14 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
     const [containsTemplates, setContainsTemplates] = useRefState(false);
 
+    // Avoid capturing 'props.onChange' that references old version of data
+    const changeHandler = useRef(props.onChange);
+    useEffect(() => {
+        changeHandler.current = props.onChange;
+    }, [props.onChange]);
+
     const onChange = (update: ViewUpdate) => {
-        props.onChange(update.state.doc.toString());
+        changeHandler.current(update.state.doc.toString());
 
         let containsTemplates = false;
         syntaxTree(update.view.state).iterate({
@@ -815,7 +821,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
             await collaboration.sendToHost({
                 cursor: range
                     ? {
-                          name: settings.current!.name || "Anonymous",
                           from: range.from,
                           to: range.to,
                           anchor: range.anchor,
@@ -836,7 +841,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
             await collaboration.sendToPeer(user, {
                 cursor: range
                     ? {
-                          name: settings.current!.name || "Anonymous",
                           from: range.from,
                           to: range.to,
                           anchor: range.anchor,
@@ -858,7 +862,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 {
                     cursor: range
                         ? {
-                              name: settings.current!.name || "Anonymous",
                               from: range.from,
                               to: range.to,
                               anchor: range.anchor,
@@ -1392,13 +1395,15 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         )}
 
                         <Tooltip title="Format">
-                            <button
-                                className="code-editor-button -mx-0.5"
-                                disabled={props.code.length === 0}
-                                onMouseDown={() => formatCode(props.code)}
-                            >
-                                <SubjectRounded sx={buttonIconStyles} />
-                            </button>
+                            <span>
+                                <button
+                                    className="code-editor-button -mx-0.5"
+                                    disabled={props.code.length === 0}
+                                    onMouseDown={() => formatCode(props.code)}
+                                >
+                                    <SubjectRounded sx={buttonIconStyles} />
+                                </button>
+                            </span>
                         </Tooltip>
 
                         <PopupState variant="popover">
@@ -1574,11 +1579,11 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 )}
             </div>
 
-            {contextMenuOpen.current ? (
+            {contextMenuOpen.current && hover.current ? (
                 <FloatingPortal>
                     <div ref={setFloating} style={floatingStyles} {...getFloatingProps()}>
                         <HoverContent
-                            hover={hover.current!.output}
+                            hover={hover.current.output}
                             onSelectAlternative={(alternative) => {
                                 view.current!.dispatch({
                                     changes: {

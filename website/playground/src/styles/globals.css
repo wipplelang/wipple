@@ -65,7 +65,7 @@ code {
 }
 
 .welcome-button {
-    @apply bg-gray-200 dark:bg-gray-400 text-gray-600 dark:text-gray-800 rounded-lg px-3 py-2;
+    @apply bg-sky-500 bg-opacity-10 text-sky-500 rounded-lg px-3 py-2;
 }
 
 .disable-scrollbars::-webkit-scrollbar {

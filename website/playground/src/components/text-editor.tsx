@@ -6,7 +6,7 @@ import rehypeKatex from "rehype-katex";
 import remarkSmartypants from "remark-smartypants";
 import rehypeRaw from "rehype-raw";
 import { TextareaAutosize } from "@mui/material";
-import { EditCommands } from "../App";
+import { EditCommands } from "../app";
 import { useRefState } from "shared";
 
 export interface TextEditorProps {
@@ -19,17 +19,13 @@ export interface TextEditorProps {
 
 export const TextEditor = (props: TextEditorProps) => {
     const [isEditing, setEditing] = useRefState(false);
-    const [buffer, setBuffer] = useState<string | undefined>();
 
     const containerRef = useRef<HTMLDivElement>(null);
     const editorRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         if (isEditing.current) {
-            setBuffer(props.content);
             editorRef.current!.focus();
-        } else if (buffer != null) {
-            props.onChange(buffer);
         }
     }, [isEditing.current]);
 
@@ -91,8 +87,10 @@ export const TextEditor = (props: TextEditorProps) => {
                         fontFamily: "'JetBrains Mono', monospace",
                         fontVariantLigatures: "none",
                     }}
-                    value={buffer}
-                    onChange={(e) => setBuffer(e.target.value)}
+                    value={props.content}
+                    onChange={(e) => {
+                        props.onChange(e.target.value);
+                    }}
                     onBlur={(e) => {
                         props.onBlur(e.nativeEvent);
                         setEditing(false);

@@ -4,6 +4,9 @@ module.exports = {
     darkMode: "media",
     theme: {
         extend: {
+            screens: {
+                "editor-breakpoint": "calc(896px + 24px + 288px)",
+            },
             typography: (theme) => ({
                 DEFAULT: {
                     css: {

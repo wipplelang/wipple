@@ -1,0 +1,876 @@
+---
+page: Functions
+type: text
+locked: true
+---
+
+In Wipple, a **function** is a way to take a piece of code and use it multiple times without having to copy-paste the code over and over again. For example, let's say we wanted to make a program that displays the sports you can play:
+
+---
+page: Functions
+type: code
+---
+
+basketball : "basketball"
+plays-basketball : "I can play _!" basketball
+show plays-basketball
+
+soccer : "soccer"
+plays-soccer : "I can play _!" soccer
+show plays-soccer
+
+golf : "golf"
+plays-golf : "I can play _!" golf
+show plays-golf
+
+---
+page: Functions
+type: text
+locked: true
+---
+
+This code is getting a bit repetitive, but it has a pattern — the text only differs by the name of the sport. That means we can make a function that accepts a sport and displays the text!
+
+---
+page: Functions
+type: code
+---
+
+plays : sport -> {
+  plays-sport : "I can play _!" sport
+  show plays-sport
+}
+
+plays "basketball"
+plays "soccer"
+plays "golf"
+
+---
+page: Functions
+type: text
+locked: true
+---
+
+As you can see, functions are written using an arrow (`->`, a dash followed by a greater-than sign). The input is on the left, and the output is on the right.
+
+Functions can have a single input or multiple inputs. Just list them all before the arrow:
+
+---
+page: Functions
+type: code
+---
+
+add : a b -> a + b
+sum : add 1 2
+show sum
+
+---
+page: Functions
+type: text
+locked: true
+---
+
+Let's go back to turtle graphics and add some functions. We can make a `draw-square` function whose input is `size`, and now we can draw a square of any size!
+
+---
+page: Functions
+type: code
+setup: turtle
+---
+
+draw-square : size -> repeat (4 times) {
+  forward size
+  left (90 degrees)
+}
+
+speed 2
+draw-square (10 pixels)
+draw-square (20 pixels)
+draw-square (30 pixels)
+draw-square (40 pixels)
+draw-square (50 pixels)
+
+---
+page: Functions
+type: text
+locked: true
+---
+
+Learning how to use functions is one of the most important skills you can have as a programmer. Over time, you'll figure out when it's a good idea to split your code into functions. For now, though, a good rule of thumb is that any time you have multiple pieces of code that do the same thing, you can make your code easier to read and change by using functions instead. The majority of the remaining Learn Wipple lessons are focused on making your code less repetitive by using and composing functions!
+
+Now for something fun... in the next lesson!
+
+
+---
+page: Making music
+type: text
+locked: true
+---
+
+Let's look at how we can use Wipple to make music! If we create a Music program, we get access to `note`:
+
+---
+page: Making music
+type: code
+setup: music
+---
+
+note `C4` (4 beats)
+
+---
+page: Making music
+type: text
+locked: true
+---
+
+Press Play and you should hear a note!
+
+To add another note, press the `+` button in the top right of the code editor and select "Insert a note". Click on the note to bring up a keyboard, and click on a key to change the note.
+
+To play music on a particular instrument, write the instrument's name followed by a block of code. You can look at the list of instruments by clicking the + icon on the right of the code editor and scrolling down to the Music section.
+
+---
+page: Making music
+type: code
+setup: music
+---
+
+orchestra-hit {
+  note `C4` (4 beats)
+}
+
+---
+page: Making music
+type: text
+locked: true
+---
+
+You can have multiple instruments and they will all play simultaneously, so you can make your own orchestra!
+
+---
+page: Making music
+type: code
+setup: music
+---
+
+tempo 144
+
+violin {
+  note `G4` ((1 / 2) beats)
+  note `G4` ((1 / 2) beats)
+  note `G4` ((1 / 2) beats)
+  note `Eb4` (4 beats)
+  rest (2 beats)
+
+  note `F4` ((1 / 2) beats)
+  note `F4` ((1 / 2) beats)
+  note `F4` ((1 / 2) beats)
+  note `D4` (4 beats)
+}
+
+viola {
+  note `G3` ((1 / 2) beats)
+  note `G3` ((1 / 2) beats)
+  note `G3` ((1 / 2) beats)
+  note `Eb3` (4 beats)
+  rest (2 beats)
+
+  note `F3` ((1 / 2) beats)
+  note `F3` ((1 / 2) beats)
+  note `F3` ((1 / 2) beats)
+  note `D3` (4 beats)
+}
+
+cello {
+  note `G2` ((1 / 2) beats)
+  note `G2` ((1 / 2) beats)
+  note `G2` ((1 / 2) beats)
+  note `Eb2` (4 beats)
+  rest (2 beats)
+
+  note `F2` ((1 / 2) beats)
+  note `F2` ((1 / 2) beats)
+  note `F2` ((1 / 2) beats)
+  note `D2` (4 beats)
+}
+
+contrabass {
+  note `G2` ((1 / 2) beats)
+  note `G2` ((1 / 2) beats)
+  note `G2` ((1 / 2) beats)
+  note `Eb2` (4 beats)
+  rest (2 beats)
+
+  note `F2` ((1 / 2) beats)
+  note `F2` ((1 / 2) beats)
+  note `F2` ((1 / 2) beats)
+  note `D2` (4 beats)
+}
+
+---
+page: Making music
+type: text
+locked: true
+---
+
+You can use `repeat` to make repeating sections of music, and you can use `notes` to play a list of notes at the same time:
+
+---
+page: Making music
+type: code
+setup: music
+---
+
+tempo 140
+
+marimba {
+  repeat (4 times) {
+    notes (`C5` , `C4`) ((1 / 4) beats)
+    note `Bb4` ((1 / 4) beats)
+    note `G4` ((1 / 2) beats)
+    note `C5` ((1 / 2) beats)
+    notes (`F4` , `Bb3`) ((1 / 2) beats)
+    note `C5` ((1 / 2) beats)
+    note `Bb4` ((1 / 2) beats)
+    note `C5` ((1 / 2) beats)
+    notes (`F4` , `A3`) ((1 / 2) beats)
+    rest ((3 / 2) beats)
+    notes (`G4` , `Eb4`) (1 beats)
+    notes (`G4` , `C4`) ((1 / 2) beats)
+    notes (`Bb4` , `Eb4`) ((1 / 2) beats)
+    notes (`C5` , `F4`) ((1 / 2) beats)
+  }
+}
+
+---
+page: Making music
+type: text
+locked: true
+---
+
+Try writing your own music below!
+
+---
+page: Making music
+type: code
+setup: music
+---
+
+
+---
+page: The type system
+type: text
+locked: true
+---
+
+Underlying the Wipple programming language is an advanced algorithm called the **type system**. Wipple uses the type system to determine what you mean, and that influences how the code is run. For example, if we `prompt` the user for a number...
+
+---
+page: The type system
+type: code
+---
+
+n : prompt "Enter a number"
+show ("The next number after _ is _" n (n + 1))
+
+---
+page: The type system
+type: text
+locked: true
+---
+
+...you'll notice that we can only type numbers into the text box, because it only makes sense to add `1` to a number. So how does it _know?_
+
+Essentially, the type system works by giving every piece of code a **type**, which represents the "kind of thing" that code produces. Types begin with a capital letter, and in the same way variables are denoted with a single colon `:`, types are denoted with a double colon `::`. So we can say that `1` is a `Number`, or `1 :: Number`. Likewise, `"hello" :: Text`.
+
+Let's try making a mistake and see if Wipple catches it:
+
+---
+page: The type system
+type: code
+lint: false
+---
+
+"hello" :: Number
+
+---
+page: The type system
+type: text
+locked: true
+---
+
+If you hover over the highlighted piece of code, you'll see "expected `Number`, but found `Text`"! Why? Well, we've told Wipple that `"hello"` is a number, but Wipple determined that it's actually text. Whenever there's a mismatch, Wipple issues an error.
+
+Sometimes you might get an error that says "could not determine the type of this expression". All that means is that you did something Wipple's algorithm couldn't figure out on its own, and you need to manually specify the type. You can do that with `::` as shown above!
+
+But how does Wipple know that `n` is a `Number` in `n + 1`? Well, the full explanation is its own Advanced lesson, but for now, just know that Wipple keeps track of all the variables and how they are used throughout the program. When you pass a variable to a function or an operator like `+`, Wipple looks through the code of the function and infers what the input must be. If you use a single variable in two places that require different types, you'll get an error — a variable can't hold both a number and a piece of text at the same time!
+
+Types are also used to enforce providing units for numbers, like in turtle graphics:
+
+---
+page: The type system
+type: code
+setup: turtle
+---
+
+forward 50 -- hover over 50 to fix the error!
+
+---
+page: The type system
+type: text
+locked: true
+---
+
+There are many types built in to Wipple — here are a few:
+
+  -  `Number` and `Text` represent numbers and text
+  -  In `turtle`, `Pixels` represents a number of `pixels`
+  -  In `music`, `Note-Length` represents a note length in `beats` or `secs`
+  -  `List` represents a list of items
+  -  `()` represents "nothing"
+
+By the way, you can hover your mouse over any piece of code and the Wipple Playground will show you its type. There are many other types, particularly `->` for functions, that are covered in the Advanced lessons, so don't worry if you see a type you aren't familiar with yet!
+
+In the next lesson, we'll learn how to make our own types!
+
+
+---
+page: Making your own types
+type: text
+locked: true
+---
+
+Let's say we want to store some information about a sport. We can do that with multiple variables, like so:
+
+---
+page: Making your own types
+type: code
+---
+
+show-sport : name emoji players -> show ("_ _ has _ players per team" name emoji players)
+
+basketball-name : "Basketball"
+basketball-emoji : `🏀`
+basketball-players : 5
+show-sport basketball-name basketball-emoji basketball-players
+
+soccer-name : "Soccer"
+soccer-emoji : `⚽️`
+soccer-players : 11
+show-sport soccer-name soccer-emoji soccer-players
+
+---
+page: Making your own types
+type: text
+locked: true
+---
+
+That code is pretty difficult to read, and every time we want to add a new sport, we need three more variables. What if we could "package up" all that information into a single variable?
+
+Well good news, because Wipple has something specifically designed for this problem — custom types!
+
+To define a custom type, you use the `type` command and list out all the variables that go inside, along with their types:
+
+---
+page: Making your own types
+type: code
+---
+
+Sport : type {
+  name :: Text
+  emoji :: Text
+  players :: Number
+}
+
+---
+page: Making your own types
+type: text
+locked: true
+---
+
+If you're confused about what `::` means, make sure you read the previous lesson on Wipple's type system!
+
+Alright, now we can make a new sport by giving each of those variables a value:
+
+---
+page: Making your own types
+type: code
+lint: false
+---
+
+Sport : type {
+  name :: Text
+  emoji :: Text
+  players :: Number
+}
+
+basketball : Sport {
+  name : "Basketball"
+  emoji : `🏀`
+  players : 5
+}
+
+soccer : Sport {
+  name : "Soccer"
+  emoji : `⚽️`
+  players : 11
+}
+
+---
+page: Making your own types
+type: text
+locked: true
+---
+
+Great! Notice the distinction between the double colon `::` and the single colon `:` — you always use the single colon when you're making a _value_ (like `"Basketball"` or `5`), and you only use the double colon when you're providing a _type_ (like `Text` or `Number`).
+
+So now that we've packaged up our information into a single variable for each person, how do we get the information back out? Just use the `of` operator:
+
+---
+page: Making your own types
+type: code
+---
+
+Sport : type {
+  name :: Text
+  emoji :: Text
+  players :: Number
+}
+
+basketball : Sport {
+  name : "Basketball"
+  emoji : `🏀`
+  players : 5
+}
+
+show (emoji of basketball)
+
+---
+page: Making your own types
+type: text
+locked: true
+---
+
+With all that in mind, we can rewrite the original example as follows:
+
+---
+page: Making your own types
+type: code
+---
+
+Sport : type {
+  name :: Text
+  emoji :: Text
+  players :: Number
+}
+
+show-sport : sport -> show ("_ _ has _ players per team" (name of sport) (emoji of sport) (players of sport))
+
+basketball : Sport {
+  name : "Basketball"
+  emoji : `🏀`
+  players : 5
+}
+
+soccer : Sport {
+  name : "Soccer"
+  emoji : `⚽️`
+  players : 11
+}
+
+show-sport basketball
+show-sport soccer
+
+---
+page: Making your own types
+type: text
+locked: true
+---
+
+Cool! Can you think of any other situations where a custom type is useful? Experiment in the space below!
+
+---
+page: Making your own types
+type: code
+---
+
+
+---
+page: Patterns
+type: text
+locked: true
+---
+
+`if` is great for making simple decisions about your input, but for more complicated cases it can get unwieldy:
+
+---
+page: Patterns
+type: code
+---
+
+n : prompt "Enter a number"
+show (if (n = 0) "zero" (if (n = 1) "one" (if (n = 2) "two" "error")))
+
+---
+page: Patterns
+type: text
+locked: true
+---
+
+Luckily, Wipple has another function called `when` for this exact purpose! `when` accepts an input and a bunch of **patterns** to match. The first pattern that matches has its body executed. Let's see it in action:
+
+---
+page: Patterns
+type: code
+---
+
+n : prompt "Enter a number"
+
+show (when n {
+    0 -> "zero"
+    1 -> "one"
+    2 -> "two"
+    _ -> "error"
+})
+
+---
+page: Patterns
+type: text
+locked: true
+---
+
+In fact, `if` is actually `when` under the hood, matching on `True` and `False`!
+
+Let's go through this code more thoroughly. First, we provide the input to `when`. Then, we list all the cases we want to handle. The last case, the underscore `_`, serves as a "catch-all" pattern that handles any number that's not 0, 1 or 2. The right-hand side of a function is only run if the input matches the pattern on the left-hand side. Only the first function to match is called; after that, `when` exits.
+
+`when` also works for text!
+
+---
+page: Patterns
+type: code
+---
+
+key : prompt "Enter the secret key"
+show (when key {
+    "Wipple" -> "access granted"
+    _ -> "access denied"
+})
+
+---
+page: Patterns
+type: text
+locked: true
+---
+
+A pattern can also be a variable:
+
+---
+page: Patterns
+type: code
+lint: false
+---
+
+when "hi" {
+    x -> show ("x is _" x)
+    y -> show ("y is _" y)
+}
+
+---
+page: Patterns
+type: text
+locked: true
+---
+
+Notice that only one of the functions (the one for `x`) is called, and the input is assigned to the `x` variable and displayed.
+
+Also, it's important to note that `x` is only available on the right-hand side of the function — you can't use it after the function finishes! This is different from other languages like Python, where you can assign a variable in each branch of an `if` statement and use it afterward. But this isn't usually a problem in Wipple, because `when` is just a function that returns a value, which you can assign to a variable right away!
+
+---
+page: Patterns
+type: code
+---
+
+name : "Wipple"
+
+greeting : when name {
+    "Wipple" -> "My favorite language!"
+    _ -> "Hello, _!" name
+}
+
+show greeting
+
+---
+page: Patterns
+type: text
+locked: true
+---
+
+You can also use `or` to match one of two or more patterns in the same function:
+
+---
+page: Patterns
+type: code
+---
+
+name : "Wipple"
+
+greeting : when name {
+    "Wipple" -> "My favorite language!"
+    "Python" or "JavaScript" -> "_ is cool too!" name
+    _ -> "Hello, _!" name
+}
+
+show greeting
+
+---
+page: Patterns
+type: text
+locked: true
+---
+
+If you want to run multiple lines of code inside a `when`, you can use braces:
+
+---
+page: Patterns
+type: code
+---
+
+when (1 + 1) {
+    2 -> {
+        show "Woohoo!"
+        show "Math works!"
+    }
+    _ -> show "Uh oh..."
+}
+
+---
+page: Patterns
+type: text
+locked: true
+---
+
+Thanks to Wipple's type system, using `when` instead of `if` is actually a better choice in most cases, because `when` ensures that you handle all possible cases. How does that work? Let's take a look in the next lesson!
+
+
+---
+page: Making your own patterns
+type: text
+locked: true
+---
+
+In the last lesson, we learned how to use `when` to match an input to one of several patterns. But `when` doesn't just work with `Numbers` and `Text` — we can define our own patterns!
+
+Let's say we want to build a program that creates a report card given a grade. We can represent the grades using text...
+
+---
+page: Making your own patterns
+type: code
+---
+
+grade : "A"
+
+report-card : when grade {
+    "A" -> "Top of the class"
+    "B" -> "Good work"
+    "C" -> "Getting there"
+    "D" or "F" -> "Need to study"
+    _ -> "Invalid grade"
+}
+
+show report-card
+
+---
+page: Making your own patterns
+type: text
+locked: true
+---
+
+Notice that we need to have the `_` catch-all pattern at the end to handle the case where `grade` isn't `"A"` through `"F"`. But can we do better?
+
+In fact, we can! We can declare our own patterns and put them in a `type`, and then Wipple can _guarantee_ that all grades are valid grades.
+
+---
+page: Making your own patterns
+type: code
+---
+
+Grade : type { A B C D F }
+
+---
+page: Making your own patterns
+type: text
+locked: true
+---
+
+Notice that instead of putting variables inside the `type`, we're putting _patterns_. Custom patterns begin with an uppercase letter (whereas variables are lowercase).
+
+And now we can build a new `report-card` function!
+
+---
+page: Making your own patterns
+type: code
+---
+
+Grade : type { A B C D F }
+
+grade : A
+
+report-card : when grade {
+    A -> "Top of the class"
+    B -> "Good work"
+    C -> "Getting there"
+    D or F -> "Need to study"
+}
+
+show report-card
+
+---
+page: Making your own patterns
+type: text
+locked: true
+---
+
+Look closely — we don't have the `_` catch-all pattern anymore. We don't need to have it, because if we try to make an invalid grade, we get an error!
+
+---
+page: Making your own patterns
+type: code
+---
+
+Grade : type { A B C D F }
+
+grade : E
+
+---
+page: Making your own patterns
+type: text
+locked: true
+---
+
+And now that we've told Wipple all the possible `Grade`s, Wipple tells us if we forgot to handle one of them!
+
+---
+page: Making your own patterns
+type: code
+---
+
+Grade : type { A B C D F }
+
+grade : A
+
+report-card : when grade {
+    A -> "Top of the class"
+    B -> "Good work"
+    D -> "Need to study"
+}
+
+show report-card
+
+---
+page: Making your own patterns
+type: text
+locked: true
+---
+
+Wipple's patterns are powerful and expressive, and there's a lot more to them than this. If you're curious about more advanced patterns, check out the Advanced lessons!
+
+
+---
+page: Graphing functions
+type: text
+locked: true
+---
+
+Let's end the Intermediate lessons with another practical use for Wipple — plotting mathematical functions on a graph! If you create a Math program, you can use `plot` to plot a function:
+
+---
+page: Graphing functions
+type: code
+setup: graphing
+---
+
+plot (x -> x ^ 2)
+
+---
+page: Graphing functions
+type: text
+locked: true
+---
+
+The graph looks like that by default. But we can change the bounds as well as the color!
+
+---
+page: Graphing functions
+type: code
+setup: graphing
+---
+
+min-y 0
+max-y 100
+color `blue`
+plot (x -> x ^ 2)
+
+---
+page: Graphing functions
+type: text
+locked: true
+---
+
+You can also graph multiple functions at the same time, each with its own color:
+
+---
+page: Graphing functions
+type: code
+setup: graphing
+---
+
+color `red`
+plot (x -> x)
+
+color `green`
+plot (x -> x ^ 2)
+
+color `blue`
+plot (x -> x ^ 3)
+
+---
+page: Graphing functions
+type: text
+locked: true
+---
+
+This next example makes a zig-zag by using `mod`, which returns the remainder of dividing the two numbers. For example, `10 mod 4` is `2` and `2 mod 2` is `0`.
+
+---
+page: Graphing functions
+type: code
+setup: graphing
+---
+
+plot (x -> x mod 2)
+
+---
+page: Graphing functions
+type: text
+locked: true
+---
+
+Go ahead and graph your own functions in the space below!
+
+---
+page: Graphing functions
+type: code
+setup: graphing
+---
+
+
+
+---
+page: Graphing functions
+type: text
+locked: true
+---
+
+## Great work!
+
+Congratulations, you've made it to the end of the Intermediate lessons! 😎 Feel free to explore the Wipple Playground and write your own programs. (To open a fresh editor, click on New at the top of the page.) If you want to learn more, try moving on to the Advanced lessons.
