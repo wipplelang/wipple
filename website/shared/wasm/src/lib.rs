@@ -88,6 +88,7 @@ struct HoverOutput {
     code: String,
     help: String,
     url: Option<String>,
+    alternatives: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -970,7 +971,7 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
 }
 
 #[wasm_bindgen]
-pub fn hover(start: usize, end: usize) -> JsValue {
+pub fn hover(start: usize, end: usize, name_only: bool) -> JsValue {
     use wipple_frontend::{
         analysis::Span,
         analysis::{
@@ -1051,6 +1052,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                         code: format_type(expr.ty.clone(), Format::default()),
                         help: String::new(),
                         url: None,
+                        alternatives: Vec::new(),
                     },
                 ));
 
@@ -1060,17 +1062,19 @@ pub fn hover(start: usize, end: usize) -> JsValue {
         )
     };
 
-    for item in analysis.program.generic_items.values() {
-        traverse(&item.expr);
-    }
+    if !name_only {
+        for item in analysis.program.generic_items.values() {
+            traverse(&item.expr);
+        }
 
-    if let Some(top_level) = analysis
-        .program
-        .top_level
-        .and_then(|id| analysis.program.items.get(&id))
-    {
-        let (_, expr) = &*top_level.read();
-        traverse(expr);
+        if let Some(top_level) = analysis
+            .program
+            .top_level
+            .and_then(|id| analysis.program.items.get(&id))
+        {
+            let (_, expr) = &*top_level.read();
+            traverse(expr);
+        }
     }
 
     fn find_nearest_help_url(
@@ -1117,35 +1121,56 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                         continue;
                     }
 
+                    let (help, alternatives) = type_decls!(@help decl, $($help)?);
+
                     hovers.push((
                         span.original(),
                         HoverOutput {
-                            code: format!("{} : {}", decl.name, $str),
-                            help: type_decls!(@help decl, $($help)?),
+                            code: if name_only {
+                                decl.name.to_string()
+                            } else {
+                                format!("{} : {}", decl.name, $str)
+                            },
+                            help,
                             url: help_url!(id, &format!("{}.{}", $str, decl.name)),
+                            alternatives,
                         },
                     ));
                 }
             }
         };
-        (@help $decl:ident, $help:expr) => {
-            $help($decl)
-                .into_iter()
-                .map(|line| line.to_string())
-                .collect::<Vec<_>>()
-                .join("\n")
-        };
+        (@help $decl:ident, $help:expr) => {{
+            let (help, alternatives) = $help($decl);
+
+            (
+                help
+                    .into_iter()
+                    .map(|line| line.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+                alternatives
+                    .into_iter()
+                    .map(|alternative| alternative.to_string())
+                    .collect::<Vec<_>>(),
+            )
+        }};
         (@help $decl:ident) => {
             String::new()
         }
     }
 
     type_decls!(types, "type", |decl: &TypeDecl| {
-        decl.attributes.decl_attributes.help.clone()
+        (
+            decl.attributes.decl_attributes.help.clone(),
+            decl.attributes.decl_attributes.help_alternatives.clone(),
+        )
     });
 
     type_decls!(traits, "trait", |decl: &TraitDecl| {
-        decl.attributes.decl_attributes.help.clone()
+        (
+            decl.attributes.decl_attributes.help.clone(),
+            decl.attributes.decl_attributes.help_alternatives.clone(),
+        )
     });
 
     for (&id, decl) in &analysis.program.declarations.constants {
@@ -1169,14 +1194,18 @@ pub fn hover(start: usize, end: usize) -> JsValue {
             hovers.push((
                 span.original(),
                 HoverOutput {
-                    code: format!(
-                        "{} :: {}",
-                        decl.name,
-                        format_type(
-                            item.reduced_ty.clone().unwrap_or_else(|| decl.ty.clone()),
-                            format
+                    code: if name_only {
+                        decl.name.to_string()
+                    } else {
+                        format!(
+                            "{} :: {}",
+                            decl.name,
+                            format_type(
+                                item.reduced_ty.clone().unwrap_or_else(|| decl.ty.clone()),
+                                format
+                            )
                         )
-                    ),
+                    },
                     help: decl
                         .attributes
                         .decl_attributes
@@ -1193,6 +1222,13 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                             decl.name
                         )
                     ),
+                    alternatives: decl
+                        .attributes
+                        .decl_attributes
+                        .help_alternatives
+                        .iter()
+                        .map(|line| line.to_string())
+                        .collect::<Vec<_>>(),
                 },
             ));
         }
@@ -1212,13 +1248,18 @@ pub fn hover(start: usize, end: usize) -> JsValue {
             hovers.push((
                 span.original(),
                 HoverOutput {
-                    code: format!(
-                        "{} :: {}",
-                        name,
-                        format_type(decl.ty.clone(), Format::default())
-                    ),
+                    code: if name_only {
+                        name.to_string()
+                    } else {
+                        format!(
+                            "{} :: {}",
+                            name,
+                            format_type(decl.ty.clone(), Format::default())
+                        )
+                    },
                     help: String::new(),
                     url: None,
+                    alternatives: Vec::new(),
                 },
             ));
         }
@@ -1233,7 +1274,11 @@ pub fn hover(start: usize, end: usize) -> JsValue {
             hovers.push((
                 span.original(),
                 HoverOutput {
-                    code: format!("{} : syntax", decl.definition.name),
+                    code: if name_only {
+                        decl.name.to_string()
+                    } else {
+                        format!("{} : syntax", decl.definition.name)
+                    },
                     help: decl.definition.help.to_string(),
                     url: Some(format!(
                         "https://wipple.dev/doc/std.html#{}.{}",
@@ -1244,6 +1289,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                         },
                         decl.name
                     )),
+                    alternatives: Vec::new(),
                 },
             ));
         }
@@ -1258,7 +1304,11 @@ pub fn hover(start: usize, end: usize) -> JsValue {
             hovers.push((
                 span.original(),
                 HoverOutput {
-                    code: format!("{} : syntax", decl.name),
+                    code: if name_only {
+                        decl.name.to_string()
+                    } else {
+                        format!("{} : syntax", decl.name)
+                    },
                     help: decl
                         .attributes
                         .decl_attributes
@@ -1281,6 +1331,13 @@ pub fn hover(start: usize, end: usize) -> JsValue {
                             decl.name
                         )
                     ),
+                    alternatives: decl
+                        .attributes
+                        .decl_attributes
+                        .help_alternatives
+                        .iter()
+                        .map(|line| line.to_string())
+                        .collect::<Vec<_>>(),
                 },
             ));
         }

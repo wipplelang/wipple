@@ -61,7 +61,7 @@ export interface PlaygroundRunner {
     isRunning: () => boolean;
     format: (code: string) => Promise<string | undefined>;
     completion: (prefix: string) => Promise<string | undefined>;
-    hover: (start: number, end: number) => Promise<HoverOutput | null>;
+    hover: (start: number, end: number, nameOnly: boolean) => Promise<HoverOutput | null>;
     clearOutput: () => void;
     expandSnippet: (
         snippet: { file: any; counter: number },

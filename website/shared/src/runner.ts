@@ -46,6 +46,7 @@ export interface HoverOutput {
     code: string;
     help: string;
     url?: string;
+    alternatives: string[];
 }
 
 export interface AnalysisOutputSnippets {
@@ -297,7 +298,7 @@ export const useRunner = (context: any) => {
 
                 runner.current!.postMessage({ operation: "run", context });
             }),
-        hover: (start: number, end: number) =>
+        hover: (start: number, end: number, nameOnly: boolean) =>
             new Promise<HoverOutput | null>(async (resolve, reject) => {
                 const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = (event) => {
@@ -310,7 +311,7 @@ export const useRunner = (context: any) => {
                     reset();
                 };
 
-                runner.current!.postMessage({ operation: "hover", start, end, context });
+                runner.current!.postMessage({ operation: "hover", start, end, nameOnly, context });
             }),
         snippets: (position: number) =>
             new Promise<AnalysisOutputSnippets>(async (resolve, reject) => {

@@ -120,8 +120,8 @@ onmessage = async (event) => {
                 break;
             }
             case "hover": {
-                const { start, end } = event.data;
-                const hover = runner.hover(start, end);
+                const { start, end, nameOnly } = event.data;
+                const hover = runner.hover(start, end, nameOnly);
                 postMessage(hover);
                 break;
             }

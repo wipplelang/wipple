@@ -71,6 +71,14 @@ import * as commands from "@codemirror/commands";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import CodeIcon from "@mui/icons-material/Code";
 import KeyboardReturnIcon from "@mui/icons-material/KeyboardReturn";
+import {
+    FloatingPortal,
+    offset,
+    useClick,
+    useFloating,
+    useHover,
+    useInteractions,
+} from "@floating-ui/react";
 
 export interface CodeEditorProps {
     id: string;
@@ -119,40 +127,130 @@ export const CodeEditor = (props: CodeEditorProps) => {
     const [analysis, setAnalysis] = useRefState<AnalysisOutput | undefined>(undefined);
     const [output, setOutput] = useState<Output | undefined>();
 
-    const [hoverPos, setHoverPos] = useRefState<[number, number] | undefined>(undefined);
-
-    const hover = hoverTooltip(async (view, pos, side) => {
-        if (outputRef.current!.isRunning()) {
-            return null;
-        }
-
-        const { from, to } = syntaxTree(view.state).cursorAt(pos, side);
-
-        // Disable hovering in beginner mode, except for diagnostics
-        const hoverOutput =
-            settings.current!.beginner ?? true ? null : await outputRef.current!.hover(from, to);
-
-        if (!hoverOutput) {
-            setHoverPos(undefined);
-            return null;
-        }
-
-        setHoverPos([from, to]);
-
-        return {
-            pos: from,
-            end: to,
-            create: () => {
-                const dom = document.createElement("div");
-                ReactDOM.createRoot(dom).render(<Hover hover={hoverOutput} />);
-
-                return {
-                    dom,
-                    destroy: () => setHoverPos(undefined),
-                };
-            },
+    const [ctrlPressed, setCtrlPressed] = useRefState(false);
+    useEffect(() => {
+        const handler = (down: boolean) => (e: KeyboardEvent) => {
+            if (
+                (e.key === "Control" && !navigator.userAgent.includes("Macintosh")) ||
+                e.key === "Meta"
+            ) {
+                setCtrlPressed(down);
+            }
         };
+
+        const handleKeydown = handler(true);
+        const handleKeyup = handler(false);
+
+        window.addEventListener("keydown", handleKeydown);
+        window.addEventListener("keyup", handleKeyup);
+
+        return () => {
+            window.removeEventListener("keydown", handleKeydown);
+            window.removeEventListener("keyup", handleKeyup);
+        };
+    }, []);
+
+    useEffect(() => {
+        view.current?.dispatch({});
+    }, [ctrlPressed.current]);
+
+    const [hover, setHover_] = useRefState<
+        { pos: [number, number]; output: HoverOutput } | undefined
+    >(undefined);
+
+    const setHover = (newHover: (typeof hover)["current"]) => {
+        if (!contextMenuOpen.current) {
+            setHover_(newHover);
+        }
+    };
+
+    const hoverPlugin = hoverTooltip(
+        async (view, pos, side) => {
+            if (!ctrlPressed.current || outputRef.current!.isRunning()) {
+                return null;
+            }
+
+            const { from, to } = syntaxTree(view.state).cursorAt(pos, side);
+
+            const output = await outputRef.current!.hover(
+                from,
+                to,
+                props.settings.beginner ?? true
+            );
+
+            if (!output) {
+                setHover(undefined);
+                return null;
+            }
+
+            setHover({ pos: [from, to], output });
+
+            return {
+                pos: from,
+                end: to,
+                create: () => ({
+                    dom: document.createElement("div"),
+                    destroy: () => setHover(undefined),
+                }),
+            };
+        },
+        {
+            hoverTime: 1,
+        }
+    );
+
+    const [contextMenuOpen, setContextMenuOpen] = useRefState(false);
+
+    useEffect(() => {
+        if (!view.current) return;
+
+        if (contextMenuOpen.current) {
+            view.current.contentDOM.blur();
+        } else {
+            view.current.contentDOM.focus();
+        }
+    }, [view.current, contextMenuOpen.current]);
+
+    useEffect(() => {
+        const handleMousedown = (e: MouseEvent) => {
+            if (
+                floatingReference.current &&
+                !floatingReference.current.contains(e.target as HTMLElement)
+            ) {
+                setContextMenuOpen(false);
+                setHover(undefined);
+                view.current!.dispatch({});
+            }
+        };
+
+        document.addEventListener("mousedown", handleMousedown);
+
+        return () => {
+            document.removeEventListener("mousedown", handleMousedown);
+        };
+    }, []);
+
+    const {
+        refs: { floating: floatingReference, setReference, setFloating },
+        floatingStyles,
+        context,
+    } = useFloating({
+        open: contextMenuOpen.current,
+        onOpenChange: (open, _event, reason) => {
+            if (reason === "click") {
+                setContextMenuOpen(open);
+            }
+        },
+        placement: "bottom-start",
+        middleware: [offset(8)],
     });
+
+    const hoverInteraction = useHover(context);
+    const clickInteraction = useClick(context);
+    const { getReferenceProps, getFloatingProps } = useInteractions([
+        hoverInteraction,
+        clickInteraction,
+    ]);
 
     const [syntaxHighlighting, setSyntaxHighlighting] = useRefState<
         AnalysisOutputSyntaxHighlightingItem[]
@@ -164,6 +262,22 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 class: `token ${kind}`,
             },
         });
+
+    const clickDecoration = (from: number, to: number) => {
+        const text = view.current!.state.sliceDoc(from, to);
+        const width = (to - from) * view.current!.defaultCharacterWidth;
+        const height = view.current!.defaultLineHeight;
+
+        return Decoration.widget({
+            widget: new ClickDecoration(from, to, text, width, height, () => ({
+                visible: hover.current != null,
+                active: contextMenuOpen.current,
+                setReference,
+                getReferenceProps,
+            })),
+            side: 1,
+        });
+    };
 
     const groupDecoration = (color: string) =>
         Decoration.mark({
@@ -280,11 +394,13 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     }
                 }
 
-                if (hoverPos.current) {
-                    const [start, end] = hoverPos.current;
+                if (hover.current) {
+                    const {
+                        pos: [start, end],
+                    } = hover.current;
 
-                    if (start === from && end === to) {
-                        decorations.push(highlightDecoration("hover").range(from, to));
+                    if (ctrlPressed && start === from && end === to) {
+                        decorations.push(clickDecoration(from, to).range(from, from));
                     }
                 }
 
@@ -436,10 +552,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
     const onChange = (update: ViewUpdate) => {
         props.onChange(update.state.doc.toString());
 
-        const tree = syntaxTree(update.view.state);
-
         let containsTemplates = false;
-        tree.iterate({
+        syntaxTree(update.view.state).iterate({
             enter: (node) => {
                 containsTemplates ||= node.type.name === "Placeholder";
                 return !containsTemplates;
@@ -1058,7 +1172,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     }),
                     themeConfig.of(prefersDarkMode ? githubDark : githubLight),
                     placeholder("Write your code here!"),
-                    hover,
+                    hoverPlugin,
                     highlight,
                     insertButton,
                     keymap.of([...defaultKeymap, indentWithTab]),
@@ -1363,7 +1477,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 </div>
 
                 <div
-                    className="code-editor-outlined rounded-lg shadow-lg shadow-transparent"
+                    className="code-editor-outlined rounded-lg shadow-lg shadow-transparent overflow-visible"
                     style={collaborationStyles}
                 >
                     <animated.div style={firstLayout ? undefined : animatedCodeEditorStyle}>
@@ -1396,8 +1510,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
                             await formatCode(view.current!.state.doc.toString());
 
-                            setHoverPos(undefined);
-
+                            setHover(undefined);
                             view.current!.dispatch({ effects: closeHoverTooltips });
                         }}
                         onError={onError}
@@ -1460,46 +1573,167 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     </Menu>
                 )}
             </div>
+
+            {contextMenuOpen.current ? (
+                <FloatingPortal>
+                    <div ref={setFloating} style={floatingStyles} {...getFloatingProps()}>
+                        <HoverContent
+                            hover={hover.current!.output}
+                            onSelectAlternative={(alternative) => {
+                                view.current!.dispatch({
+                                    changes: {
+                                        from: hover.current!.pos[0],
+                                        to: hover.current!.pos[1],
+                                        insert: alternative,
+                                    },
+                                });
+
+                                setContextMenuOpen(false);
+                                setHover(undefined);
+                            }}
+                        />
+                    </div>
+                </FloatingPortal>
+            ) : null}
         </div>
     );
 };
 
-const Hover = (props: { hover: HoverOutput }) => (
-    <div className="mt-2 p-2 overflow-clip bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-lg text-black dark:text-white">
-        {props.hover.code ? (
-            <div className="pointer-events-none">
-                <SimpleCodeEditor
-                    className="code-editor dark:caret-white"
-                    textareaClassName="outline-0"
-                    preClassName="language-wipple"
-                    style={{
-                        fontFamily: "'JetBrains Mono', monospace",
-                        fontVariantLigatures: "none",
-                        wordWrap: "break-word",
-                    }}
-                    value={props.hover.code}
-                    highlight={(code) => prism.highlight(code, prism.languages.wipple, "wipple")}
-                    onValueChange={() => {}}
-                    contentEditable={false}
-                />
+const HoverContent = (props: {
+    hover: HoverOutput;
+    onSelectAlternative: (alternative: string) => void;
+}) => (
+    <div className="flex flex-col gap-2 items-start">
+        <div className="hover-content">
+            {props.hover.code ? (
+                <div>
+                    <div className="pointer-events-none">
+                        <SimpleCodeEditor
+                            className="code-editor dark:caret-white"
+                            textareaClassName="outline-0"
+                            preClassName="language-wipple"
+                            style={{
+                                fontFamily: "'JetBrains Mono', monospace",
+                                fontVariantLigatures: "none",
+                                wordWrap: "break-word",
+                            }}
+                            value={props.hover.code}
+                            highlight={(code) =>
+                                prism.highlight(code, prism.languages.wipple, "wipple")
+                            }
+                            onValueChange={() => {}}
+                            contentEditable={false}
+                        />
+                    </div>
 
-                {props.hover.help ? <Markdown>{props.hover.help}</Markdown> : null}
-            </div>
-        ) : null}
+                    {props.hover.help ? <Markdown>{props.hover.help}</Markdown> : null}
 
-        {props.hover.url ? (
-            <div className="mt-1.5">
-                <a
-                    href={props.hover.url}
-                    target="_blank"
-                    className="px-1.5 py-0.5 rounded-md bg-blue-500 text-white"
-                >
-                    Documentation
-                </a>
-            </div>
-        ) : null}
+                    {props.hover.alternatives.length > 0 ? (
+                        <div className="flex flex-row gap-1">
+                            <p className="font-semibold">Also try:</p>
+                            {props.hover.alternatives.map((alternative, index) => (
+                                <button
+                                    key={index}
+                                    className="px-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 code-font"
+                                    onClick={() => props.onSelectAlternative(alternative)}
+                                >
+                                    <p>{alternative}</p>
+                                </button>
+                            ))}
+                        </div>
+                    ) : null}
+                </div>
+            ) : null}
+        </div>
     </div>
 );
+
+class ClickDecoration extends WidgetType {
+    constructor(
+        private from: number,
+        private to: number,
+        private text: string,
+        private width: number,
+        private height: number,
+        private contextMenu: () => {
+            visible: boolean;
+            active: boolean;
+            setReference: any;
+            getReferenceProps: () => any;
+        }
+    ) {
+        super();
+    }
+
+    eq(widget: this): boolean {
+        return (
+            this.from === widget.from &&
+            this.to === widget.to &&
+            this.text === widget.text &&
+            this.width === widget.width &&
+            this.height === widget.height
+        );
+    }
+
+    toDOM() {
+        const container = document.createElement("span");
+        ReactDOM.createRoot(container).render(
+            <Click
+                width={this.width}
+                height={this.height}
+                text={this.text}
+                contextMenu={this.contextMenu}
+            />
+        );
+
+        return container;
+    }
+}
+
+const Click = (props: {
+    width: number;
+    height: number;
+    text: string;
+    contextMenu: () => {
+        visible: boolean;
+        active: boolean;
+        setReference: any;
+        getReferenceProps: () => any;
+    };
+}) => {
+    const contextMenu = props.contextMenu();
+    const [internalActive, setInternalActive] = useState(contextMenu.active);
+
+    return (
+        <div
+            className="inline-block relative"
+            onClick={() => {
+                if (contextMenu.visible) {
+                    setInternalActive(true);
+                }
+            }}
+        >
+            <div
+                className={`absolute ${
+                    contextMenu.visible ? "opacity-100" : "opacity-0"
+                } transition-opacity inset-x-[-4px]`}
+                ref={contextMenu.setReference}
+                {...contextMenu.getReferenceProps()}
+            >
+                <div
+                    className={`mt-[-14pt] border-2 border-gray-100 dark:border-gray-700 rounded-lg overflow-clip ${
+                        internalActive ? "bg-blue-500" : "bg-gray-400 bg-opacity-5"
+                    }`}
+                    style={{ width: props.width + 8, height: props.height + 4 }}
+                >
+                    {internalActive ? (
+                        <div className="text-white ml-[1.5pt]">{props.text}</div>
+                    ) : null}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 class InsertButtonDecoration extends WidgetType {
     constructor(

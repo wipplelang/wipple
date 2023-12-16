@@ -3,6 +3,7 @@ definitions! {
     mod contextual;
     mod help_convert_from;
     mod help_alias;
+    mod help_alternative;
     mod diagnostic_item;
     mod entrypoint;
     mod help;
@@ -41,6 +42,7 @@ syntax_group! {
             Contextual,
             HelpConvertFrom,
             HelpAlias,
+            HelpAlternative,
             DiagnosticItem,
             Entrypoint,
             Help,

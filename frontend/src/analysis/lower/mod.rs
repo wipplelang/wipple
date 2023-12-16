@@ -180,6 +180,7 @@ impl<T> Declaration<T> {
 #[non_exhaustive]
 pub struct DeclarationAttributes {
     pub help: Vec<InternedString>,
+    pub help_alternatives: Vec<parse::Expr<Analysis>>,
     pub help_group: Option<InternedString>,
     pub help_playground: Option<InternedString>,
     pub help_show_code: bool,
@@ -4437,8 +4438,9 @@ impl Lowerer {
     }
 
     fn lower_decl_attributes(
-        &self,
+        &mut self,
         statement_attributes: &ast::StatementAttributes<Analysis>,
+        _ctx: &Context,
     ) -> DeclarationAttributes {
         // TODO: Raise errors for misused attributes
 
@@ -4448,6 +4450,12 @@ impl Lowerer {
                 .clone()
                 .into_iter()
                 .map(|attribute| attribute.help_text)
+                .collect(),
+            help_alternatives: statement_attributes
+                .help_alternatives
+                .clone()
+                .into_iter()
+                .map(|attribute| attribute.help_alternative)
                 .collect(),
             help_group: statement_attributes
                 .help_group
@@ -4465,10 +4473,10 @@ impl Lowerer {
     fn lower_syntax_attributes(
         &mut self,
         statement_attributes: &ast::StatementAttributes<Analysis>,
-        _ctx: &Context,
+        ctx: &Context,
     ) -> SyntaxAttributes {
         SyntaxAttributes {
-            decl_attributes: self.lower_decl_attributes(statement_attributes),
+            decl_attributes: self.lower_decl_attributes(statement_attributes, ctx),
         }
     }
 
@@ -4481,7 +4489,7 @@ impl Lowerer {
         // TODO: Raise errors for misused attributes
 
         TypeAttributes {
-            decl_attributes: self.lower_decl_attributes(attributes),
+            decl_attributes: self.lower_decl_attributes(attributes, ctx),
             on_mismatch: attributes
                 .on_mismatch
                 .clone()
@@ -4572,7 +4580,7 @@ impl Lowerer {
         // TODO: Raise errors for misused attributes
 
         TraitAttributes {
-            decl_attributes: self.lower_decl_attributes(attributes),
+            decl_attributes: self.lower_decl_attributes(attributes, ctx),
             on_unimplemented: attributes.on_unimplemented.as_ref().and_then(|attribute| {
                 self.lower_interpolated_attribute_message(
                     attribute
@@ -4599,7 +4607,7 @@ impl Lowerer {
         // TODO: Raise errors for misused attributes
 
         ConstantAttributes {
-            decl_attributes: self.lower_decl_attributes(attributes),
+            decl_attributes: self.lower_decl_attributes(attributes, ctx),
             on_unresolved: attributes.on_unresolved.as_ref().and_then(|attribute| {
                 self.lower_interpolated_attribute_message(
                     attribute

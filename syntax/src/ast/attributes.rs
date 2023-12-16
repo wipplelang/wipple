@@ -1,25 +1,14 @@
 use crate::{
-    ast::{
-        format::Format, AllowOverlappingInstancesStatementAttribute, ContextualStatementAttribute,
-        DiagnosticItemStatementAttribute, EntrypointStatementAttribute,
-        HelpAliasStatementAttribute, HelpConvertFromStatementAttribute,
-        HelpGroupStatementAttribute, HelpPlaygroundStatementAttribute,
-        HelpShowCodeStatementAttribute, HelpStatementAttribute, HelpUrlFileAttribute,
-        KeywordStatementAttribute, LanguageItemStatementAttribute, NoImplicitUseFileAttribute,
-        OnMismatchStatementAttribute, OnUnimplementedStatementAttribute,
-        OnUnresolvedStatementAttribute, OperatorPrecedenceStatementAttribute,
-        PrivateStatementAttribute, RecursionLimitFileAttribute, ResolveStatementAttribute,
-        SealedStatementAttribute, SpecializeStatementAttribute, SyntaxError,
-    },
+    ast::{self, format::Format, SyntaxError},
     parse, Driver,
 };
 
 #[derive(Debug, Clone)]
 pub struct FileAttributes<D: Driver> {
     pub raw: Vec<parse::Attribute<D>>,
-    pub help_url: Option<HelpUrlFileAttribute<D>>,
-    pub no_implicit_use: Option<NoImplicitUseFileAttribute<D>>,
-    pub recursion_limit: Option<RecursionLimitFileAttribute<D>>,
+    pub help_url: Option<ast::HelpUrlFileAttribute<D>>,
+    pub no_implicit_use: Option<ast::NoImplicitUseFileAttribute<D>>,
+    pub recursion_limit: Option<ast::RecursionLimitFileAttribute<D>>,
 }
 
 impl<D: Driver> Default for FileAttributes<D> {
@@ -55,26 +44,27 @@ impl<D: Driver> Format<D> for FileAttributes<D> {
 #[derive(Debug, Clone)]
 pub struct StatementAttributes<D: Driver> {
     pub raw: Vec<parse::Attribute<D>>,
-    pub language_item: Option<LanguageItemStatementAttribute<D>>,
-    pub diagnostic_item: Option<DiagnosticItemStatementAttribute<D>>,
-    pub help_aliases: Vec<HelpAliasStatementAttribute<D>>,
-    pub help: Vec<HelpStatementAttribute<D>>,
-    pub help_group: Option<HelpGroupStatementAttribute<D>>,
-    pub help_playground: Option<HelpPlaygroundStatementAttribute<D>>,
-    pub on_unimplemented: Option<OnUnimplementedStatementAttribute<D>>,
-    pub on_mismatch: Option<OnMismatchStatementAttribute<D>>,
-    pub specialize: Option<SpecializeStatementAttribute<D>>,
-    pub allow_overlapping_instances: Option<AllowOverlappingInstancesStatementAttribute<D>>,
-    pub operator_precedence: Option<OperatorPrecedenceStatementAttribute<D>>,
-    pub keyword: Option<KeywordStatementAttribute<D>>,
-    pub contextual: Option<ContextualStatementAttribute<D>>,
-    pub help_convert_from: Vec<HelpConvertFromStatementAttribute<D>>,
-    pub private: Option<PrivateStatementAttribute<D>>,
-    pub sealed: Option<SealedStatementAttribute<D>>,
-    pub entrypoint: Option<EntrypointStatementAttribute<D>>,
-    pub help_show_code: Option<HelpShowCodeStatementAttribute<D>>,
-    pub on_unresolved: Option<OnUnresolvedStatementAttribute<D>>,
-    pub resolve: Option<ResolveStatementAttribute<D>>,
+    pub language_item: Option<ast::LanguageItemStatementAttribute<D>>,
+    pub diagnostic_item: Option<ast::DiagnosticItemStatementAttribute<D>>,
+    pub help_aliases: Vec<ast::HelpAliasStatementAttribute<D>>,
+    pub help_alternatives: Vec<ast::HelpAlternativeStatementAttribute<D>>,
+    pub help: Vec<ast::HelpStatementAttribute<D>>,
+    pub help_group: Option<ast::HelpGroupStatementAttribute<D>>,
+    pub help_playground: Option<ast::HelpPlaygroundStatementAttribute<D>>,
+    pub on_unimplemented: Option<ast::OnUnimplementedStatementAttribute<D>>,
+    pub on_mismatch: Option<ast::OnMismatchStatementAttribute<D>>,
+    pub specialize: Option<ast::SpecializeStatementAttribute<D>>,
+    pub allow_overlapping_instances: Option<ast::AllowOverlappingInstancesStatementAttribute<D>>,
+    pub operator_precedence: Option<ast::OperatorPrecedenceStatementAttribute<D>>,
+    pub keyword: Option<ast::KeywordStatementAttribute<D>>,
+    pub contextual: Option<ast::ContextualStatementAttribute<D>>,
+    pub help_convert_from: Vec<ast::HelpConvertFromStatementAttribute<D>>,
+    pub private: Option<ast::PrivateStatementAttribute<D>>,
+    pub sealed: Option<ast::SealedStatementAttribute<D>>,
+    pub entrypoint: Option<ast::EntrypointStatementAttribute<D>>,
+    pub help_show_code: Option<ast::HelpShowCodeStatementAttribute<D>>,
+    pub on_unresolved: Option<ast::OnUnresolvedStatementAttribute<D>>,
+    pub resolve: Option<ast::ResolveStatementAttribute<D>>,
 }
 
 impl<D: Driver> Default for StatementAttributes<D> {
@@ -84,6 +74,7 @@ impl<D: Driver> Default for StatementAttributes<D> {
             language_item: Default::default(),
             diagnostic_item: Default::default(),
             help_aliases: Default::default(),
+            help_alternatives: Default::default(),
             help: Default::default(),
             help_group: Default::default(),
             help_playground: Default::default(),

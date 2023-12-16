@@ -6,6 +6,7 @@ pub mod optimize;
 pub mod span;
 pub mod typecheck;
 
+pub use lower::AnyDeclaration;
 pub use span::{Span, SpanList};
 pub use typecheck::{
     Arm, Bound, Expression, ExpressionKind, GenericItem, Intrinsic, LiteralKind, Pattern,

@@ -78,3 +78,7 @@ code {
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE 10+ */
 }
+
+.hover-content {
+    @apply p-2 overflow-clip bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-lg text-black dark:text-white;
+}

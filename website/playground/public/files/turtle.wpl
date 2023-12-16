@@ -3,29 +3,22 @@
 [help-convert-from Number ('value degrees)]
 Angle : type { deg :: Number }
 
-degrees' :: Number -> Angle
-degrees' : deg -> Angle { deg }
-
 [help "Specify an angle in degrees."]
 [help-group "Turtle Graphics"]
-degrees : syntax { 'n degrees -> degrees' 'n }
-
-radians' :: Number -> Angle
-radians' : radians -> degrees' (radians * 180 / 3.14159)
+[help-alternative radians]
+degrees : syntax { 'n degrees -> Angle { deg : 'n } }
 
 [help "Specify an angle in radians."]
 [help-group "Turtle Graphics"]
-radians : syntax { 'n radians -> radians' 'n }
+[help-alternative degrees]
+radians : syntax { 'n radians -> Angle { deg : 'n * 180 / 3.14159 } }
 
 [help-convert-from Number ('value pixels)]
 Pixels : type { px :: Number }
 
-pixels' :: Number -> Pixels
-pixels' : px -> Pixels { px }
-
 [help "Specify a distance in pixels."]
 [help-group "Turtle Graphics"]
-pixels : syntax { 'n pixels -> pixels' 'n }
+pixels : syntax { 'n pixels -> Pixels { px : 'n } }
 
 Turtle : type { handle :: UI }
 
@@ -35,15 +28,23 @@ turtle : error "use of turtle graphics outside `with-turtle`"
 
 [help "Create a new turtle drawing."]
 [help-group "Turtle Graphics"]
-with-turtle : syntax { with-turtle 'body -> { with-ui "/playground/ui/turtle/index.js" (handle -> { with (turtle : Turtle { handle }) 'body }) } }
+with-turtle : syntax {
+  with-turtle 'body -> {
+    with-ui "/playground/ui/turtle/index.js" (handle -> {
+      with (turtle : Turtle { handle }) 'body
+    })
+  }
+}
 
 [help "Set the width of the canvas."]
 [help-group "Turtle Graphics"]
+[help-alternative width]
 width :: Pixels -> ()
 width : { px } -> handle of turtle . message "width" px
 
 [help "Set the height of the canvas."]
 [help-group "Turtle Graphics"]
+[help-alternative height]
 height :: Pixels -> ()
 height : { px } -> handle of turtle . message "height" px
 
@@ -70,11 +71,13 @@ position : ({ px : x } ; { px : y }) -> {
 
 [help "Lift the pen up, allowing the turtle to move without drawing."]
 [help-group "Turtle Graphics"]
+[help-alternative pen-down]
 pen-up :: () -> ()
 pen-up : () -> handle of turtle . message "pen-up" ()
 
 [help "Put the pen back down so the turtle can draw again."]
 [help-group "Turtle Graphics"]
+[help-alternative pen-up]
 pen-down :: () -> ()
 pen-down : () -> handle of turtle . message "pen-down" ()
 
@@ -90,29 +93,37 @@ fill : color -> handle of turtle . message "fill" color
 
 [help "Move the turtle forward by the specified number of pixels."]
 [help-group "Turtle Graphics"]
+[help-alternative backward]
 forward :: Pixels -> ()
 forward : { px } -> handle of turtle . message "forward" px
 
 [help "Move the turtle backward by the specified number of pixels."]
 [help-group "Turtle Graphics"]
+[help-alternative forward]
 backward :: Pixels -> ()
 backward : { px } -> handle of turtle . message "backward" px
 
 [help "Turn the turtle left by the specified angle."]
 [help-group "Turtle Graphics"]
 [help-alias "turn"]
+[help-alternative right]
+[help-alternative rotate]
 left :: Angle -> ()
 left : { deg } -> handle of turtle . message "left" deg
 
 [help "Turn the turtle right by the specified angle."]
 [help-group "Turtle Graphics"]
 [help-alias "turn"]
+[help-alternative left]
+[help-alternative rotate]
 right :: Angle -> ()
 right : { deg } -> handle of turtle . message "right" deg
 
 [help "Rotate the turtle to the specified angle."]
 [help-group "Turtle Graphics"]
 [help-alias "turn"]
+[help-alternative left]
+[help-alternative right]
 rotate :: Angle -> ()
 rotate : { deg } -> handle of turtle . message "rotate" deg
 
