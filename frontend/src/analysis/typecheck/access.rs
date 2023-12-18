@@ -22,7 +22,7 @@ impl Typechecker {
                     analysis::ExpressionKind::Structure(_) => {
                         let id = match expr.ty.kind {
                             analysis::TypeKind::Named(id, _, _) => id,
-                            _ => unreachable!(),
+                            _ => return ControlFlow::Continue(()),
                         };
 
                         let (ty_decl_span, ty_is_sealed) = self
