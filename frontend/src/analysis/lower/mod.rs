@@ -2753,6 +2753,64 @@ impl Lowerer {
                             ),
                         }
                     }
+                    ast::Expression::Number(number) => {
+                        let number = Expression {
+                            id: self.compiler.new_expression_id(ctx.owner),
+                            span: number.span,
+                            kind: ExpressionKind::Number(number.number),
+                        };
+
+                        let unit = match expr.inputs.first() {
+                            Some(input) => input,
+                            None => {
+                                self.compiler.add_error(
+                                    function.span(),
+                                    "function received no input",
+                                    "",
+                                );
+
+                                return Expression {
+                                    id: self.compiler.new_expression_id(ctx.owner),
+                                    span: expr.span,
+                                    kind: ExpressionKind::error(&self.compiler),
+                                };
+                            }
+                        };
+
+                        let unit = match unit {
+                            Ok(expr) => self.lower_expr(expr, ctx),
+                            Err(error) => Expression {
+                                id: self.compiler.new_expression_id(ctx.owner),
+                                span: error.span,
+                                kind: ExpressionKind::error(&self.compiler),
+                            },
+                        };
+
+                        if expr.inputs.len() > 1 {
+                            for extra in &expr.inputs[1..] {
+                                let extra = match extra {
+                                    Ok(expr) => self.lower_expr(expr, ctx),
+                                    Err(error) => Expression {
+                                        id: self.compiler.new_expression_id(ctx.owner),
+                                        span: error.span,
+                                        kind: ExpressionKind::error(&self.compiler),
+                                    },
+                                };
+
+                                self.compiler.add_error(
+                                    extra.span,
+                                    "extra unit provided to number",
+                                    "syntax-error",
+                                );
+                            }
+                        }
+
+                        Expression {
+                            id: self.compiler.new_expression_id(ctx.owner),
+                            span: expr.span,
+                            kind: ExpressionKind::Call(Box::new(unit), Box::new(number), true),
+                        }
+                    }
                     ast::Expression::Name(ty_name) => {
                         let input = match expr.inputs.first() {
                             Some(input) => input,

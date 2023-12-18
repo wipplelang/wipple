@@ -41,3 +41,11 @@ error:
   │
   = for more information, see https://wipple.dev/playground/?lesson=errors/undefined-name
 
+error: 
+  ┌─ test:3:16
+  │
+3 │ sum : 1 + 2 // comment
+  │                ^^^^^^^ extra unit provided to number
+  │
+  = for more information, see https://wipple.dev/playground/?lesson=errors/syntax-error
+
