@@ -62,6 +62,14 @@ clock :: () -> Number
 clock : () -> handle of physics . message "clock" ()
 
 [private]
+within-bounds-threshold :: Number
+within-bounds-threshold : 100
+
+[private]
+within-bounds? :: () -> Boolean
+within-bounds? : () -> handle of physics . message "within-bounds" within-bounds-threshold
+
+[private]
 Body : type { index :: Number }
 
 [private]
@@ -92,7 +100,7 @@ rectangle : syntax {
   rectangle 'init -> {
     { width height x y } : (Default :: Rectangle) where 'init
     body : create-rectangle (x (0 seconds) ; y (0 seconds)) (width ; height)
-    repeat forever {
+    repeat (while (within-bounds? ())) {
       t : clock () . seconds
       body . set-position (x t ; y t)
     }

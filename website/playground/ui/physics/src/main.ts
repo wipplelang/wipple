@@ -6,6 +6,9 @@ export const initialize = async (id: string, container: HTMLElement) => {
     const element = document.createElement("div");
     container.appendChild(element);
 
+    const width = 800;
+    const height = 600;
+
     const engine = matter.Engine.create({
         gravity: { y: 0 }, // let the user define gravity!
     });
@@ -14,6 +17,8 @@ export const initialize = async (id: string, container: HTMLElement) => {
         element,
         engine,
         options: {
+            width,
+            height,
             background: "white",
             wireframes: false,
         },
@@ -33,6 +38,14 @@ export const initialize = async (id: string, container: HTMLElement) => {
             switch (message) {
                 case "clock":
                     return (new Date().valueOf() - start.valueOf()) / 1000;
+                case "within-bounds":
+                    return engine.world.bodies.every(
+                        (body) =>
+                            body.position.x >= -value &&
+                            body.position.x <= width + value &&
+                            body.position.y >= -value &&
+                            body.position.y <= height + value
+                    );
                 case "create-rectangle": {
                     const [x, y, width, height] = value;
 

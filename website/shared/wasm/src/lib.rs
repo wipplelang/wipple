@@ -1517,6 +1517,11 @@ fn js_to_wipple(
         }
     } else if let Some(s) = value.as_string() {
         wipple_interpreter_backend::Value::Text(Arc::from(s))
+    } else if let Some(b) = value.as_bool() {
+        wipple_interpreter_backend::Value::Variant(
+            wipple_frontend::VariantIndex(b as usize),
+            Vec::new(),
+        )
     } else if let Some(f) = value.dyn_ref::<js_sys::Function>() {
         let f = Arc::new(Mutex::new(SendWrapper::new(f.clone())));
         let interpreter = Arc::new(Mutex::new(SendWrapper::new(interpreter.clone())));

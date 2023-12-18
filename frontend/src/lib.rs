@@ -283,7 +283,7 @@ macro_rules! indexes {
             $(
                 $(#[$meta])*
                 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-                pub struct [<$id:camel Index>](usize);
+                pub struct [<$id:camel Index>](pub usize);
 
                 impl [<$id:camel Index>] {
                     pub fn new(n: usize) -> Self {
