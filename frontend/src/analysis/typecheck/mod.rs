@@ -1145,28 +1145,29 @@ impl Typechecker {
                 break;
             }
 
-            // Substitute defaults one expression at a time, working from the
-            // innermost expression out
-            let mut substituted_defaults = false;
-            expr.traverse_mut(
-                |_| ControlFlow::Continue(()),
-                |expr| {
-                    if expr.ty.substitute_defaults(&self.ctx, false) {
-                        substituted_defaults = true;
-                        ControlFlow::Break(false)
-                    } else {
-                        ControlFlow::Continue(())
-                    }
-                },
-            );
-
             let has_resolved_expr = *info.has_resolved_expr.lock();
 
-            // Stop if we've made no progress and there are no more defaults to
-            // substitute
-            if !prev_has_resolved_expr && !has_resolved_expr && !substituted_defaults {
-                eprintln!("no progress, stopping");
-                break;
+            if !prev_has_resolved_expr && !has_resolved_expr {
+                // Substitute defaults one expression at a time, working from the
+                // innermost expression out
+                let mut substituted_defaults = false;
+                expr.traverse_mut(
+                    |_| ControlFlow::Continue(()),
+                    |expr| {
+                        if expr.ty.substitute_defaults(&self.ctx, false) {
+                            substituted_defaults = true;
+                            ControlFlow::Break(false)
+                        } else {
+                            ControlFlow::Continue(())
+                        }
+                    },
+                );
+
+                // Stop if we've made no progress and there are no more defaults to
+                // substitute
+                if !substituted_defaults {
+                    break;
+                }
             }
 
             prev_has_resolved_expr = has_resolved_expr;
