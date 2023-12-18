@@ -33,29 +33,54 @@ Distance : type { pixels :: Number }
 
 instance (Show Distance) : { pixels } -> "_ px" pixels
 
+[help "Specify a distance in pixels."]
+[help-group "Physics"]
+pixels :: Number -> Distance
+pixels : pixels -> Distance { pixels }
+
 [sealed]
 [help-convert-from Number ('value (pixels / seconds))]
 Velocity : type { pixels-per-second :: Number }
 
 instance (Show Velocity) : { pixels-per-second } -> "_ px/s" pixels-per-second
 
-[help "Specify a distance in pixels."]
-[help-group "Physics"]
-pixels :: Number -> Distance
-pixels : pixels -> Distance { pixels }
+[sealed]
+[help-convert-from Number ('value (pixels / seconds / seconds))]
+Acceleration : type { pixels-per-second-per-second :: Number }
+
+instance (Show Acceleration) : { pixels-per-second-per-second } -> "_ px/s^2" pixels-per-second-per-second
+
+[sealed]
+[help-convert-from A ('value ^ 2)]
+Squared : A => type { value :: A }
+
+instance (Multiply Time Number Time) : c time -> Time { seconds : (seconds of time) * c }
+instance (Multiply Number Time Time) : time c -> Time { seconds : (seconds of time) * c }
 
 instance (Add Distance Distance Distance) : b a -> Distance { pixels : (pixels of a) + (pixels of b) }
 instance (Subtract Distance Distance Distance) : b a -> Distance { pixels : (pixels of a) - (pixels of b) }
 instance (Multiply Distance Number Distance) : c distance -> Distance { pixels : (pixels of distance) * c }
 instance (Multiply Number Distance Distance) : distance c -> Distance { pixels : (pixels of distance) * c }
-instance (Multiply Time Number Time) : c time -> Time { seconds : (seconds of time) * c }
-instance (Multiply Number Time Time) : time c -> Time { seconds : (seconds of time) * c }
+
 instance (Multiply Velocity Number Velocity) : c velocity -> Velocity { pixels-per-second : (pixels-per-second of velocity) * c }
 instance (Multiply Number Velocity Velocity) : velocity c -> Velocity { pixels-per-second : (pixels-per-second of velocity) * c }
 instance (Multiply Velocity Time Distance) : time velocity -> Distance { pixels : (pixels-per-second of velocity) * (seconds of time) }
 instance (Multiply Time Velocity Distance) : velocity time -> Distance { pixels : (pixels-per-second of velocity) * (seconds of time) }
 instance (Divide Distance Time Velocity) : time distance -> Velocity { pixels-per-second : (pixels of distance) / (seconds of time) }
 instance (Divide (Number -> Distance) (Number -> Time) (Number -> Velocity)) : _ _ pixels-per-second -> Velocity { pixels-per-second }
+
+instance (Multiply Acceleration Number Acceleration) : c acceleration ->
+  Acceleration { pixels-per-second-per-second : (pixels-per-second-per-second of acceleration) * c }
+instance (Multiply Number Acceleration Acceleration) : acceleration c ->
+  Acceleration { pixels-per-second-per-second : (pixels-per-second-per-second of acceleration) * c }
+instance (Multiply Acceleration Time Velocity) : time acceleration ->
+  Velocity { pixels-per-second : (pixels-per-second-per-second of acceleration) * (seconds of time) }
+instance (Multiply Time Acceleration Velocity) : acceleration time ->
+  Velocity { pixels-per-second : (pixels-per-second-per-second of acceleration) * (seconds of time) }
+instance (Divide Velocity Time Acceleration) : time velocity ->
+  Acceleration { pixels-per-second-per-second : (pixels-per-second of velocity) / (seconds of time) }
+instance (Divide (Number -> Velocity) (Number -> Time) (Number -> Acceleration)) : _ _ pixels-per-second-per-second ->
+  Acceleration { pixels-per-second-per-second }
 
 [private]
 clock :: () -> Number
