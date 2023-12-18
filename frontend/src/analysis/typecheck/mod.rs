@@ -1085,6 +1085,7 @@ impl Typechecker {
             .unwrap_or(Compiler::DEFAULT_RECURSION_LIMIT);
 
         let mut expr = MonomorphizedExpression::from(expr);
+        let mut prev_has_resolved_expr = true;
         loop {
             if info.recursion_stack.len() > recursion_limit {
                 self.report_recursion_limit_reached(expr.span, &info.recursion_stack);
@@ -1106,8 +1107,8 @@ impl Typechecker {
                     pattern.traverse(|pattern| {
                         is_resolved &= !matches!(
                             pattern.kind,
-                            MonomorphizedPatternKind::UnresolvedDestructure(_, _)
-                                | MonomorphizedPatternKind::UnresolvedVariant(_, _, _)
+                            MonomorphizedPatternKind::UnresolvedDestructure(..)
+                                | MonomorphizedPatternKind::UnresolvedVariant(..)
                         )
                     });
 
@@ -1118,9 +1119,9 @@ impl Typechecker {
                 expr.traverse(
                     |expr| {
                         is_resolved &= match &expr.kind {
-                            MonomorphizedExpressionKind::UnresolvedTrait(_, _)
-                            | MonomorphizedExpressionKind::UnresolvedConstant(_, _)
-                            | MonomorphizedExpressionKind::UnresolvedExtend(_, _) => false,
+                            MonomorphizedExpressionKind::UnresolvedTrait(..)
+                            | MonomorphizedExpressionKind::UnresolvedConstant(..)
+                            | MonomorphizedExpressionKind::UnresolvedExtend(..) => false,
                             MonomorphizedExpressionKind::Function(pattern, _, _)
                             | MonomorphizedExpressionKind::Initialize(pattern, _) => {
                                 pattern_is_resolved(pattern)
@@ -1159,12 +1160,16 @@ impl Typechecker {
                 },
             );
 
+            let has_resolved_expr = *info.has_resolved_expr.lock();
+
             // Stop if we've made no progress and there are no more defaults to
             // substitute
-            if !*info.has_resolved_expr.lock() && !substituted_defaults {
+            if !prev_has_resolved_expr && !has_resolved_expr && !substituted_defaults {
+                eprintln!("no progress, stopping");
                 break;
             }
 
+            prev_has_resolved_expr = has_resolved_expr;
             info.recursion_stack.push(expr.span);
         }
 
@@ -3208,7 +3213,13 @@ impl Typechecker {
                     MonomorphizedExpressionKind::Extend(Box::new(value), fields)
                 }
                 MonomorphizedExpressionKind::Extend(value, fields) => {
-                    MonomorphizedExpressionKind::Extend(value, fields)
+                    MonomorphizedExpressionKind::Extend(
+                        Box::new(self.monomorphize_expr(*value, info)),
+                        fields
+                            .into_iter()
+                            .map(|(index, expr)| (index, self.monomorphize_expr(expr, info)))
+                            .collect(),
+                    )
                 }
                 MonomorphizedExpressionKind::Semantics(semantics, expr) => {
                     MonomorphizedExpressionKind::Semantics(
