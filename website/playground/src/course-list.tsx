@@ -11,6 +11,11 @@ const courses = [
             "Explore how to use functions, patterns and types to write more complex programs.",
     },
     {
+        id: "learn-physics",
+        title: "Learn physics",
+        description: "Learn physics by building your own demonstrations.",
+    },
+    {
         id: "advanced-wipple",
         title: "Advanced Wipple",
         description:

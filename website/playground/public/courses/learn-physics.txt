@@ -1,0 +1,135 @@
+---
+page: Units
+type: text
+locked: true
+---
+
+Welcome! In this course, you'll learn mechanics by building your own physics demonstrations in Wipple. But before we dive into formulas, let's look at how to use units to make sure our calculations make sense.
+
+There are four main quantities we're going to deal with in our first lesson: **time** (seconds), **distance** (pixels), **velocity** (pixels per second), and **acceleration** (pixels per second, per second). In every calculation we do with these quantities, we'll need to specify the units. Not only does it help us make sense of the relationships between the numbers, but it also helps Wipple identify any incompatible units and flag bugs in the code!
+
+### Standing still
+
+Every formula we write in this lesson is going to be a **function** of time (`t`). In Wipple, you define a function using an arrow (`->`), where the input (`t`) goes on the left and the output (the position at time `t`) goes on the right.
+
+Let's model an object standing still. If we think about it mathematically, all this means is that the position never changes; it doesn't depend on time at all!
+
+---
+page: Units
+type: code
+setup: physics
+lint: false
+---
+
+rectangle {
+  x : t -> 400 pixels
+}
+
+---
+page: Units
+type: text
+locked: true
+---
+
+You should see a rectangle in the middle of the screen!
+
+---
+page: Constant motion
+type: text
+locked: true
+---
+
+Next, let's look at an object moving in a straight line. That means the object has a **velocity** (speed). But how do we express that in code?
+
+Let's work out this problem with units. We know velocity has units of **pixels per second**, and position has units of **pixels**. So to cancel out the denominator, we need to multiply velocity by something that has units of **seconds**. Well, we already have something in seconds — the current time `t`!
+
+---
+page: Constant motion
+type: code
+setup: physics
+---
+
+rectangle {
+  x : t -> 100 (pixels / seconds) * t
+}
+
+---
+page: Constant motion
+type: text
+locked: true
+---
+
+If you don't see the rectangle above, click **Run again** to restart the demonstration.
+
+Right now, the rectangle starts at the left edge of the screen. That's because the demonstration starts at time 0, and multiplying our velocity by 0 produces 0. How do you think we change the starting position? Try changing the code below!
+
+---
+page: Constant motion
+type: code
+setup: physics
+---
+
+rectangle {
+  x : t -> 100 (pixels / seconds) * t
+}
+
+---
+page: Constant motion
+type: text
+locked: true
+---
+
+The solution is to **add** an initial distance. Let's put it back in the middle of the screen to start:
+
+---
+page: Constant motion
+type: code
+setup: physics
+---
+
+rectangle {
+  x : t -> 400 pixels + 100 (pixels / seconds) * t
+}
+
+---
+page: Constant motion
+type: text
+locked: true
+---
+
+Awesome!
+
+Let's make one more change to our code — we can give names to our numbers:
+
+---
+page: Constant motion
+type: code
+setup: physics
+---
+
+initial : 400 pixels
+velocity : 100 (pixels / seconds)
+
+rectangle {
+  x : t -> initial + velocity * t
+}
+
+---
+page: Constant motion
+type: text
+locked: true
+---
+
+And with that, we have our **first kinematic equation** to model an object moving at a constant speed:
+
+$x(t) = x_0 + v_0t$
+
+Where $x_0$ corresponds to `initial`, and $v_0$ corresponds to `velocity`.
+
+You can practice building your own demonstrations in the space below!
+
+---
+page: Constant motion
+type: code
+setup: physics
+---
