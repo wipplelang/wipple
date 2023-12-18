@@ -10,7 +10,15 @@ export const initialize = async (id: string, container: HTMLElement) => {
         gravity: { y: 0 }, // let the user define gravity!
     });
 
-    const render = matter.Render.create({ element, engine });
+    const render = matter.Render.create({
+        element,
+        engine,
+        options: {
+            background: "white",
+            wireframes: false,
+        },
+    });
+
     matter.Render.run(render);
 
     const runner = matter.Runner.create();
@@ -18,21 +26,13 @@ export const initialize = async (id: string, container: HTMLElement) => {
 
     const bodies: matter.Body[] = [];
 
+    const start = new Date();
+
     onMessage[id] = async (message, value) => {
         try {
             switch (message) {
-                case "run": {
-                    const run = () => {
-                        const start = new Date();
-                        requestAnimationFrame(() => {
-                            if (value((new Date().valueOf() - start.valueOf()) / 1000)) {
-                                run();
-                            }
-                        });
-                    };
-
-                    break;
-                }
+                case "clock":
+                    return (new Date().valueOf() - start.valueOf()) / 1000;
                 case "create-rectangle": {
                     const [x, y, width, height] = value;
 

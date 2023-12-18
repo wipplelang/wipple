@@ -58,8 +58,8 @@ instance (Divide Distance Time Velocity) : time distance -> Velocity { pixels-pe
 instance (Divide (Number -> Distance) (Number -> Time) (Number -> Velocity)) : _ _ pixels-per-second -> Velocity { pixels-per-second }
 
 [private]
-run :: (Number -> Boolean) -> ()
-run : demo -> handle of physics . message "run" demo
+clock :: () -> Number
+clock : () -> handle of physics . message "clock" ()
 
 [private]
 Body : type { index :: Number }
@@ -90,12 +90,12 @@ instance (Default Rectangle) : Rectangle {
 
 rectangle : syntax {
   rectangle 'init -> {
-    { x y width height position } : (Default :: Rectangle) where 'init
-    body : create-rectangle (x ; y) (width ; height)
-    run (t -> {
-      body . set-position (position (t seconds))
-      True
-    })
+    { width height x y } : (Default :: Rectangle) where 'init
+    body : create-rectangle (x (0 seconds) ; y (0 seconds)) (width ; height)
+    repeat forever {
+      t : clock () . seconds
+      body . set-position (x t ; y t)
+    }
   }
 }
 

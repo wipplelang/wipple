@@ -7,7 +7,7 @@ import CalculateRounded from "@mui/icons-material/CalculateRounded";
 import SportsEsportsRounded from "@mui/icons-material/SportsEsportsRounded";
 import EditNoteRounded from "@mui/icons-material/EditNoteRounded";
 import ElectricBoltRounded from "@mui/icons-material/ElectricBoltRounded";
-import HubRounded from "@mui/icons-material/HubRounded";
+import atomIcon from "../../ui/physics/src/assets/atom.png";
 
 export interface PickerProps {
     onSelect: (section: { type: "code"; setup?: string } | { type: "text" }) => void;
@@ -154,7 +154,12 @@ export const SetupIcon = (props: { setup: string | undefined; size: "medium" | "
             );
         case "physics":
             return (
-                <HubRounded fontSize={props.size} color="inherit" className="text-red-500 pb-0.5" />
+                <img
+                    src={atomIcon}
+                    className={`${
+                        props.size === "large" ? "w-[31px]" : "w-[24px]"
+                    } p-[2px] aspect-square`}
+                />
             );
         case "energy":
             return (
