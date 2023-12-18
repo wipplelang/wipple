@@ -904,7 +904,7 @@ impl Typechecker {
                     );
                 }
 
-                self.typecheck_constant_expr(
+                let _ = self.typecheck_constant_expr(
                     None,
                     entrypoint,
                     None,
@@ -912,8 +912,7 @@ impl Typechecker {
                     Some(decl.ty.into()),
                     Some(entrypoint),
                     Default::default(),
-                )
-                .expect("entrypoint must not contain bounds");
+                );
             }
         }
 
