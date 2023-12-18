@@ -497,7 +497,10 @@ impl LanguageServer for Backend {
         });
 
         for (&id, decl) in &document.program.declarations.constants {
-            let item = document.program.generic_items.get(&id).unwrap();
+            let item = match document.program.generic_items.get(&id) {
+                Some(item) => item,
+                None => continue,
+            };
 
             for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
                 if !within_hover(span.original()) {
