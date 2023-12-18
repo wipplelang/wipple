@@ -33,6 +33,8 @@ export const initialize = async (id: string, container: HTMLElement) => {
 
     const start = new Date();
 
+    const flip = () => matter.Composite.scale(engine.world, 1, -1, { x: width / 2, y: height / 2 });
+
     onMessage[id] = async (message, value) => {
         try {
             switch (message) {
@@ -52,6 +54,8 @@ export const initialize = async (id: string, container: HTMLElement) => {
                     const rectangle = matter.Bodies.rectangle(x, y, width, height);
                     matter.Composite.add(engine.world, [rectangle]);
 
+                    flip();
+
                     const bodyIndex = bodies.length;
                     bodies.push(rectangle);
 
@@ -62,6 +66,8 @@ export const initialize = async (id: string, container: HTMLElement) => {
 
                     const body = bodies[bodyIndex];
                     matter.Body.setPosition(body, { x, y });
+
+                    flip();
 
                     break;
                 }
