@@ -1,0 +1,104 @@
+[[help-url "https://wipple.dev/doc/physics.html"]]
+
+Physics : type { handle :: UI }
+
+[context]
+physics :: Physics
+physics : error "use of physics handle outside `with-physics`"
+
+[help "Create a new physics demonstration."]
+[help-group "Physics"]
+with-physics : syntax {
+  with-physics 'body -> {
+    with-ui "/playground/ui/physics/index.js" (handle -> {
+      with (physics : Physics { handle }) 'body
+    })
+  }
+}
+
+[sealed]
+[help-convert-from Number ('value seconds)]
+Time : type { seconds :: Number }
+
+instance (Show Time) : { seconds } -> "_ s" seconds
+
+[help "Specify a duration in seconds."]
+[help-group "Physics"]
+seconds :: Number -> Time
+seconds : seconds -> Time { seconds }
+
+[sealed]
+[help-convert-from Number ('value pixels)]
+Distance : type { pixels :: Number }
+
+instance (Show Distance) : { pixels } -> "_ px" pixels
+
+[sealed]
+[help-convert-from Number ('value (pixels / seconds))]
+Velocity : type { pixels-per-second :: Number }
+
+instance (Show Velocity) : { pixels-per-second } -> "_ px/s" pixels-per-second
+
+[help "Specify a distance in pixels."]
+[help-group "Physics"]
+pixels :: Number -> Distance
+pixels : pixels -> Distance { pixels }
+
+instance (Add Distance Distance Distance) : b a -> Distance { pixels : (pixels of a) + (pixels of b) }
+instance (Subtract Distance Distance Distance) : b a -> Distance { pixels : (pixels of a) - (pixels of b) }
+instance (Multiply Distance Number Distance) : c distance -> Distance { pixels : (pixels of distance) * c }
+instance (Multiply Number Distance Distance) : distance c -> Distance { pixels : (pixels of distance) * c }
+instance (Multiply Time Number Time) : c time -> Time { seconds : (seconds of time) * c }
+instance (Multiply Number Time Time) : time c -> Time { seconds : (seconds of time) * c }
+instance (Multiply Velocity Number Velocity) : c velocity -> Velocity { pixels-per-second : (pixels-per-second of velocity) * c }
+instance (Multiply Number Velocity Velocity) : velocity c -> Velocity { pixels-per-second : (pixels-per-second of velocity) * c }
+instance (Multiply Velocity Time Distance) : time velocity -> Distance { pixels : (pixels-per-second of velocity) * (seconds of time) }
+instance (Multiply Time Velocity Distance) : velocity time -> Distance { pixels : (pixels-per-second of velocity) * (seconds of time) }
+instance (Divide Distance Time Velocity) : time distance -> Velocity { pixels-per-second : (pixels of distance) / (seconds of time) }
+instance (Divide (Number -> Distance) (Number -> Time) (Number -> Velocity)) : _ _ pixels-per-second -> Velocity { pixels-per-second }
+
+[private]
+run :: (Number -> Boolean) -> ()
+run : demo -> handle of physics . message "run" demo
+
+[private]
+Body : type { index :: Number }
+
+[private]
+create-rectangle :: (Distance ; Distance) -> (Distance ; Distance) -> Body
+create-rectangle : (x ; y) (width ; height) -> Body {
+  index : handle of physics . message "create-rectangle" (pixels of x ; pixels of y ; pixels of width ; pixels of height)
+}
+
+[private]
+set-position :: (Distance ; Distance) -> Body -> ()
+set-position : (x ; y) body -> handle of physics . message "set-position" (index of body ; pixels of x ; pixels of y)
+
+Rectangle : type {
+  width :: Distance
+  height :: Distance
+  x :: Time -> Distance
+  y :: Time -> Distance
+}
+
+instance (Default Rectangle) : Rectangle {
+  width : 50 pixels
+  height : 50 pixels
+  x : just (400 pixels)
+  y : just (300 pixels)
+}
+
+rectangle : syntax {
+  rectangle 'init -> {
+    { x y width height position } : (Default :: Rectangle) where 'init
+    body : create-rectangle (x ; y) (width ; height)
+    run (t -> {
+      body . set-position (position (t seconds))
+      True
+    })
+  }
+}
+
+[entrypoint]
+entrypoint :: Entrypoint
+entrypoint : program -> with-physics { program () }

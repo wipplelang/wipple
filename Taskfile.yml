@@ -135,6 +135,8 @@ tasks:
             - task: website-playground-ui
               vars: { NAME: music }
             - task: website-playground-ui
+              vars: { NAME: physics }
+            - task: website-playground-ui
               vars: { NAME: turtle }
 
     website-playground-app:
