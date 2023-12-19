@@ -114,6 +114,42 @@ impl Interpreter {
             };
         }
 
+        macro_rules! runtime_trig_fn {
+            (Value::Number, $f:ident) => {
+                runtime_fn!((Value::Variant(index, values)) => async {
+                    let n = match values.into_iter().next().unwrap() {
+                        Value::Number(Number::Decimal(n)) => n,
+                        Value::Number(Number::Undefined) => return Ok(Value::Number(Number::Undefined)),
+                        _ => unreachable!(),
+                    };
+
+                    let radians = match index.0 {
+                        0 => n,
+                        1 => n * Decimal::PI / Decimal::from_u8(180).unwrap(),
+                        _ => unreachable!(),
+                    };
+
+                    Ok(Value::Number(radians.$f().map_or(Number::Undefined, Number::Decimal)))
+                })
+            };
+            (Value::$ty:ident($n:ident), $f:ident) => {
+                runtime_fn!((Value::Variant(index, values)) => async {
+                    let n = match values.into_iter().next().unwrap() {
+                        Value::$ty(n) => n,
+                        _ => unreachable!(),
+                    };
+
+                    let radians = match index.0 {
+                        0 => n,
+                        1 => n * std::$n::consts::PI / 180.,
+                        _ => unreachable!(),
+                    };
+
+                    Ok(Value::$ty(radians.$f()))
+                })
+            };
+        }
+
         macro_rules! runtime_text_fn {
             (($($input:pat),*) => $result:expr) => {
                 runtime_fn!(($($input),*) => async { Ok(Value::Text(Arc::from($result.await))) })
@@ -577,6 +613,9 @@ impl Interpreter {
                         })
                     })
                 }
+                ir::Intrinsic::SinNumber => runtime_trig_fn!(Value::Number, checked_sin),
+                ir::Intrinsic::CosNumber => runtime_trig_fn!(Value::Number, checked_cos),
+                ir::Intrinsic::TanNumber => runtime_trig_fn!(Value::Number, checked_tan),
                 ir::Intrinsic::NegateNumber => {
                     runtime_math_fn!(Value::Number, (n) => async {
                         Ok(match n {
@@ -760,6 +799,9 @@ impl Interpreter {
                         Ok(n.sqrt())
                     })
                 }
+                ir::Intrinsic::SinFloat => runtime_trig_fn!(Value::Float(f32), sin),
+                ir::Intrinsic::CosFloat => runtime_trig_fn!(Value::Float(f32), cos),
+                ir::Intrinsic::TanFloat => runtime_trig_fn!(Value::Float(f32), tan),
                 ir::Intrinsic::NegateFloat => runtime_negate_fn!(Value::Float),
                 ir::Intrinsic::AddDouble => {
                     runtime_math_fn!(Value::Double, (lhs, rhs) => async {
@@ -806,6 +848,9 @@ impl Interpreter {
                         Ok(n.sqrt())
                     })
                 }
+                ir::Intrinsic::SinDouble => runtime_trig_fn!(Value::Double(f64), sin),
+                ir::Intrinsic::CosDouble => runtime_trig_fn!(Value::Double(f64), cos),
+                ir::Intrinsic::TanDouble => runtime_trig_fn!(Value::Double(f64), tan),
                 ir::Intrinsic::NegateDouble => runtime_negate_fn!(Value::Double),
                 ir::Intrinsic::TextEquality => runtime_eq_fn!(Value::Text),
                 ir::Intrinsic::NumberEquality => runtime_eq_fn!(Value::Number),

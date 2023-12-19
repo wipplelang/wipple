@@ -227,6 +227,50 @@ instance (Sqrt Number) : n -> semantics "pure" (intrinsic "sqrt-number" n)
 instance (Sqrt Float) : n -> semantics "pure" (intrinsic "sqrt-float" n)
 instance (Sqrt Double) : n -> semantics "pure" (intrinsic "sqrt-double" n)
 
+[help "An angle, represented in degrees or radians."]
+[help-group "Math"]
+Angle : N => type {
+  Radians N
+  Degrees N
+}
+
+[help "An angle in radians."]
+[help-group "Math"]
+radians :: N => N -> Angle N
+radians : Radians
+
+[help "An angle in degrees."]
+[help-group "Math"]
+degrees :: N => N -> Angle N
+degrees : Degrees
+
+[help "Calculates the sine of a number."]
+[help-group "Math"]
+Sin : A => trait (Angle A -> A)
+sin :: (A : Number) where (Sin A) => Angle A -> A
+sin : Sin
+instance (Sin Number) : angle -> semantics "pure" (intrinsic "sin-number" angle)
+instance (Sin Float) : angle -> semantics "pure" (intrinsic "sin-float" angle)
+instance (Sin Double) : angle -> semantics "pure" (intrinsic "sin-double" angle)
+
+[help "Calculates the cosine of a number."]
+[help-group "Math"]
+Cos : A => trait (Angle A -> A)
+cos :: (A : Number) where (Cos A) => Angle A -> A
+cos : Cos
+instance (Cos Number) : angle -> semantics "pure" (intrinsic "cos-number" angle)
+instance (Cos Float) : angle -> semantics "pure" (intrinsic "cos-float" angle)
+instance (Cos Double) : angle -> semantics "pure" (intrinsic "cos-double" angle)
+
+[help "Calculates the tangent of a number."]
+[help-group "Math"]
+Tan : A => trait (Angle A -> A)
+tan :: (A : Number) where (Tan A) => Angle A -> A
+tan : Tan
+instance (Tan Number) : angle -> semantics "pure" (intrinsic "tan-number" angle)
+instance (Tan Float) : angle -> semantics "pure" (intrinsic "tan-float" angle)
+instance (Tan Double) : angle -> semantics "pure" (intrinsic "tan-double" angle)
+
 [help "Negates the sign of a number."]
 [help-group "Math"]
 Negate : N => trait (N -> N)
