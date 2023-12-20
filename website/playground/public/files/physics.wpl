@@ -1,6 +1,10 @@
 [[help-url "https://wipple.dev/doc/physics.html"]]
 
-Physics : type { handle :: UI }
+Physics : type {
+  handle :: UI
+  objects :: Mutable (List Object)
+  timers :: Mutable (List (Time ; (() -> ())))
+}
 
 [context]
 physics :: Physics
@@ -11,48 +15,92 @@ physics : error "use of physics handle outside `with-physics`"
 with-physics : syntax {
   with-physics 'body -> {
     with-ui "/playground/ui/physics/index.js" (handle -> {
-      with (physics : Physics { handle }) 'body
+      objects : mutable Default
+      timers : mutable Default
+      with (physics : Physics { handle objects timers }) 'body
     })
   }
 }
 
+[help "An duration in seconds."]
+[help-group "Physics"]
 [sealed]
 [help-convert-from Number ('value seconds)]
 Time : type { seconds :: Number }
 
-instance (Show Time) : { seconds } -> "_ s" seconds
+instance (Equal Time) : b a -> (seconds of a) = (seconds of b)
+instance (Order Time) : b a -> (seconds of a) . Order (seconds of b)
+instance (Show Time) : { seconds } -> "$_ \\text{s}$" seconds
 
 [help "Specify a duration in seconds."]
 [help-group "Physics"]
 seconds :: Number -> Time
 seconds : seconds -> Time { seconds }
 
+[help "A distance in pixels."]
+[help-group "Physics"]
 [sealed]
 [help-convert-from Number ('value pixels)]
 Distance : type { pixels :: Number }
 
-instance (Show Distance) : { pixels } -> "_ px" pixels
+instance (Equal Distance) : b a -> (pixels of a) = (pixels of b)
+instance (Order Distance) : b a -> (pixels of a) . Order (pixels of b)
+instance (Show Distance) : { pixels } -> "$_ \\text{px}$" pixels
 
 [help "Specify a distance in pixels."]
 [help-group "Physics"]
 pixels :: Number -> Distance
 pixels : pixels -> Distance { pixels }
 
+[help "A velocity in pixels per second."]
+[help-group "Physics"]
 [sealed]
 [help-convert-from Number ('value (pixels / seconds))]
 Velocity : type { pixels-per-second :: Number }
 
-instance (Show Velocity) : { pixels-per-second } -> "_ px/s" pixels-per-second
+instance (Equal Velocity) : b a -> (pixels-per-second of a) = (pixels-per-second of b)
+instance (Order Velocity) : b a -> (pixels-per-second of a) . Order (pixels-per-second of b)
+instance (Show Velocity) : { pixels-per-second } -> "$_ \\frac{\\text{px}}{\\text{s}}$" pixels-per-second
 
+[help "An acceleration in pixels per second, per second."]
+[help-group "Physics"]
 [sealed]
 [help-convert-from Number ('value (pixels / seconds / seconds))]
 Acceleration : type { pixels-per-second-per-second :: Number }
 
-instance (Show Acceleration) : { pixels-per-second-per-second } -> "_ px/s^2" pixels-per-second-per-second
+instance (Equal Acceleration) : b a -> (pixels-per-second-per-second of a) = (pixels-per-second-per-second of b)
+instance (Order Acceleration) : b a -> (pixels-per-second-per-second of a) . Order (pixels-per-second-per-second of b)
+instance (Show Acceleration) : { pixels-per-second-per-second } -> "$_ \\frac{\\text{px}}{\\text{s}^2}$" pixels-per-second-per-second
 
+[help "A mass in kilograms."]
+[help-group "Physics"]
 [sealed]
-[help-convert-from A ('value ^ 2)]
-Squared : A => type { value :: A }
+[help-convert-from Number ('value kilograms)]
+Mass : type { kilograms :: Number }
+
+instance (Equal Mass) : b a -> (kilograms of a) = (kilograms of b)
+instance (Order Mass) : b a -> (kilograms of a) . Order (kilograms of b)
+instance (Show Mass) : { kilograms } -> "_ kg" kilograms
+
+[help "Specify a mass in kilograms."]
+[help-group "Physics"]
+kilograms :: Number -> Mass
+kilograms : kilograms -> Mass { kilograms }
+
+[help "A very large mass, making the object immovable. Use this instead of setting a large mass yourself to prevent glitches in the demonstration."]
+[help-group "Physics"]
+static :: Mass
+static : undefined . kilograms
+
+[help "A force in kilograms per unit of acceleration."]
+[help-group "Physics"]
+[sealed]
+[help-convert-from Number ('value (kilograms / pixels / seconds / seconds))]
+Force : type { kilograms-per-pixels-per-second-per-second :: Number }
+
+instance (Equal Force) : b a -> (kilograms-per-pixels-per-second-per-second of a) = (kilograms-per-pixels-per-second-per-second of b)
+instance (Order Force) : b a -> (kilograms-per-pixels-per-second-per-second of a) . Order (kilograms-per-pixels-per-second-per-second of b)
+instance (Show Force) : { kilograms-per-pixels-per-second-per-second } -> "$_ \\text{kg} \\cdot \\frac{\\text{px}}{\\text{s}^2}$" kilograms-per-pixels-per-second-per-second
 
 instance (Multiply Time Number Time) : c time -> Time { seconds : (seconds of time) * c }
 instance (Multiply Number Time Time) : time c -> Time { seconds : (seconds of time) * c }
@@ -82,6 +130,19 @@ instance (Divide Velocity Time Acceleration) : time velocity ->
 instance (Divide (Number -> Velocity) (Number -> Time) (Number -> Acceleration)) : _ _ pixels-per-second-per-second ->
   Acceleration { pixels-per-second-per-second }
 
+instance (Multiply Force Number Force) : c force ->
+  Force { kilograms-per-pixels-per-second-per-second : (kilograms-per-pixels-per-second-per-second of force) * c }
+instance (Multiply Number Force Force) : force c ->
+  Force { kilograms-per-pixels-per-second-per-second : (kilograms-per-pixels-per-second-per-second of force) * c }
+instance (Divide Force Mass Acceleration) : mass force ->
+  Acceleration { pixels-per-second-per-second : (kilograms-per-pixels-per-second-per-second of force) / (kilograms of mass) }
+instance (Multiply Mass Acceleration Force) : acceleration mass ->
+  Force { kilograms-per-pixels-per-second-per-second : (kilograms of mass) * (pixels-per-second-per-second of acceleration) }
+instance (Multiply Acceleration Mass Force) : mass acceleration ->
+  Force { kilograms-per-pixels-per-second-per-second : (kilograms of mass) * (pixels-per-second-per-second of acceleration) }
+instance (Multiply (Number -> Mass) (Number -> Acceleration) (Number -> Force)) : _ _ kilograms-per-pixels-per-second-per-second ->
+  Force { kilograms-per-pixels-per-second-per-second }
+
 [private]
 clock :: () -> Number
 clock : () -> handle of physics . message "clock" ()
@@ -94,44 +155,181 @@ within-bounds-threshold : 100
 within-bounds? :: () -> Boolean
 within-bounds? : () -> handle of physics . message "within-bounds" within-bounds-threshold
 
-[private]
-Body : type { index :: Number }
-
-[private]
-create-rectangle :: (Distance ; Distance) -> (Distance ; Distance) -> Body
-create-rectangle : (x ; y) (width ; height) -> Body {
-  index : handle of physics . message "create-rectangle" (pixels of x ; pixels of y ; pixels of width ; pixels of height)
+[help "A direction represented as $x$ and $y$ components between 0 and 1. In addition to the preset directions like `top` and `center`, you can create a direction from an angle with `(x degrees) as Direction`."]
+[help-group "Physics"]
+Direction : type {
+  x :: Number
+  y :: Number
 }
 
-[private]
-set-position :: (Distance ; Distance) -> Body -> ()
-set-position : (x ; y) body -> handle of physics . message "set-position" (index of body ; pixels of x ; pixels of y)
+instance (As (Number ; Number) Direction) : (x ; y) -> Direction { x y }
 
-Rectangle : type {
-  width :: Distance
-  height :: Distance
+instance (As (Angle Number) Direction) : angle -> Direction {
+  x : cos angle
+  y : sin angle
+}
+
+[help "A direction facing toward the top of the screen."]
+[help-group "Physics"]
+top :: Direction
+top : (0 ; 1) as Direction
+
+[help "A direction facing toward the top left of the screen."]
+[help-group "Physics"]
+top-left :: Direction
+top-left : (-1 ; 1) as Direction
+
+[help "A direction facing toward the top right of the screen."]
+[help-group "Physics"]
+top-right :: Direction
+top-right : (1 ; 1) as Direction
+
+[help "Alias for `top`."]
+[help-group "Physics"]
+up :: Direction
+up : top
+
+[help "No particular direction."]
+[help-group "Physics"]
+center :: Direction
+center : (0 ; 0) as Direction
+
+[help "A direction facing toward the left of the screen."]
+[help-group "Physics"]
+left :: Direction
+left : (-1 ; 0) as Direction
+
+[help "A direction facing toward the right of the screen."]
+[help-group "Physics"]
+right :: Direction
+right : (1 ; 0) as Direction
+
+[help "A direction facing toward the bottom of the screen."]
+[help-group "Physics"]
+bottom :: Direction
+bottom : (0 ; -1) as Direction
+
+[help "A direction facing toward the bottom left of the screen."]
+[help-group "Physics"]
+bottom-left :: Direction
+bottom-left : (-1 ; -1) as Direction
+
+[help "A direction facing toward the bottom right of the screen."]
+[help-group "Physics"]
+bottom-right :: Direction
+bottom-right : (1 ; -1) as Direction
+
+[help "Alias for `bottom`."]
+[help-group "Physics"]
+down :: Direction
+down : bottom
+
+instance (Default Direction) : center
+
+[sealed]
+Object : type {
+  index :: Number
   x :: Time -> Distance
   y :: Time -> Distance
 }
 
-instance (Default Rectangle) : Rectangle {
-  width : 50 pixels
-  height : 50 pixels
-  x : just (400 pixels)
-  y : just (300 pixels)
+[private]
+create-object :: Text -> Object-Config -> Object
+create-object : shape config -> {
+  initial-x : (x of config) (0 seconds)
+  initial-y : (y of config) (0 seconds)
+
+  handle : Object {
+    index : handle of physics . message "create-object" (shape ; (color of config) ; (pixels of width of config) ; (pixels of height of config) ; (x of center of config) ; (y of center of config) ; (kilograms of mass of config) ; if (elastic of config) 1 0 ; (pixels of initial-x) ; (pixels of initial-y))
+    x : x of config
+    y : y of config
+  }
+
+  objects of physics . append! handle
+
+  handle
 }
 
-rectangle : syntax {
-  rectangle 'init -> {
-    { width height x y } : (Default :: Rectangle) where 'init
-    body : create-rectangle (x (0 seconds) ; y (0 seconds)) (width ; height)
-    repeat (while (within-bounds? ())) {
-      t : clock () . seconds
-      body . set-position (x t ; y t)
-    }
-  }
+[private]
+update-position :: Time -> Object -> ()
+update-position : t { index x y } -> handle of physics . message "set-position" (index ; pixels of (x t) ; pixels of (y t))
+
+force :: D where (As D Direction) => D -> Force -> Object -> ()
+force : direction force { index } -> {
+  direction : As direction
+  handle of physics . message "apply-force" (index ; (kilograms-per-pixels-per-second-per-second of force) * (x of direction) ; (kilograms-per-pixels-per-second-per-second of force) * (y of direction))
+}
+
+Object-Config : type {
+  color :: Text
+  width :: Distance
+  height :: Distance
+  center :: Direction
+  mass :: Mass
+  elastic :: Boolean
+  x :: Time -> Distance
+  y :: Time -> Distance
+}
+
+[help "Utility that returns the provided distance at `0 seconds`, but `undefined` otherwise. Useful for setting the initial position of an object and then allowing its position to be controlled by `force`."]
+[help-group "Physics"]
+initially :: Distance -> Time -> Distance
+initially : distance { seconds } -> if (seconds = 0) distance (undefined . pixels)
+
+instance (Default Object-Config) : Object-Config {
+  color : ""
+  width : 50 pixels
+  height : 50 pixels
+  center : Default
+  mass : 1 kilograms
+  elastic : False
+  x : just (undefined . pixels)
+  y : just (undefined . pixels)
+}
+
+[help "Create a box on the screen with the specified properties."]
+[help-group "Physics"]
+box : syntax {
+  box 'config -> create-object "box" ((Default :: Object-Config) where 'config)
+}
+
+[help "Set the acceleration due to gravity."]
+[help-group "Physics"]
+gravity :: Direction -> Acceleration -> ()
+gravity : direction acceleration -> handle of physics . message "set-gravity" ((pixels-per-second-per-second of acceleration) * (x of direction) ; (pixels-per-second-per-second of acceleration) * (y of direction))
+
+[help "Perform an action when the simulation reaches the specified time."]
+[help-group "Physics"]
+at : syntax {
+  at 'time 'action -> (timers of physics) . insert-at! 0 ('time ; (() -> 'action))
 }
 
 [entrypoint]
 entrypoint :: Entrypoint
-entrypoint : program -> with-physics { program () }
+entrypoint : program -> with-physics {
+  program ()
+
+  repeat (while (within-bounds? ())) {
+    t : clock () . seconds
+
+    timers : (timers of physics) . get . As-Sequence
+    new-timers : mutable (,)
+    repeat {
+      when (next timers) {
+        Some (duration ; action) -> {
+          if (duration <= t) {
+            action ()
+            Continue
+          } {
+            new-timers . append! (duration ; action)
+            Break () -- relies on actions being inserted at the front each time
+          }
+        }
+        None -> Break ()
+      }
+    }
+    (timers of physics) . set! (get new-timers)
+
+    get (objects of physics) . each (update-position t)
+  }
+}
