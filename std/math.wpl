@@ -229,6 +229,7 @@ instance (Sqrt Double) : n -> semantics "pure" (intrinsic "sqrt-double" n)
 
 [help "An angle, represented in degrees or radians."]
 [help-group "Math"]
+[help-convert-from N ('value degrees)]
 Angle : N => type {
   Radians N
   Degrees N
