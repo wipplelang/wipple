@@ -19,7 +19,7 @@ use diagnostics::*;
 use helpers::{InternedString, Shared};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{HashMap, HashSet},
     fmt::{self, Debug},
     hash::Hash,
     mem,
@@ -75,11 +75,6 @@ impl fmt::Display for FilePath {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct Store {
-    pub(crate) generic_items: BTreeMap<ConstantId, analysis::typecheck::GenericItem>,
-}
-
 #[derive(Debug, Clone)]
 pub struct Compiler {
     pub loader: Arc<dyn Loader>,
@@ -88,8 +83,6 @@ pub struct Compiler {
     node_ids: NodeIds,
     ids: Ids,
     pub(crate) cache: Shared<indexmap::IndexMap<InternedString, Arc<analysis::lower::File>>>,
-    pub(crate) changed_files: Shared<Option<Vec<InternedString>>>,
-    pub(crate) store: Shared<Store>,
     #[cfg(debug_assertions)]
     pub(crate) backtrace_enabled: bool,
 }
@@ -310,18 +303,9 @@ impl Compiler {
             node_ids: Default::default(),
             ids: Default::default(),
             cache: Default::default(),
-            changed_files: Default::default(),
-            store: Default::default(),
             #[cfg(debug_assertions)]
             backtrace_enabled: false,
         }
-    }
-
-    pub fn set_changed_files(
-        &self,
-        changed_files: Option<impl IntoIterator<Item = InternedString>>,
-    ) {
-        *self.changed_files.lock() = changed_files.map(Vec::from_iter);
     }
 
     #[cfg(debug_assertions)]

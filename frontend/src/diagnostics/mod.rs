@@ -434,6 +434,10 @@ impl FinalizedDiagnostics {
                 Box::new(rest.last().into_iter())
             };
 
+            if first == Span::builtin() {
+                continue;
+            }
+
             let labels = make_note(
                 LabelStyle::Primary,
                 first,
@@ -443,6 +447,11 @@ impl FinalizedDiagnostics {
             .into_iter()
             .chain(diagnostic.notes.into_iter().flat_map(|note| {
                 let (first, _) = note.location.span.split_iter();
+
+                if first == Span::builtin() {
+                    return None;
+                }
+
                 make_note(
                     note.level.into(),
                     first,
@@ -453,6 +462,10 @@ impl FinalizedDiagnostics {
             .collect::<Vec<_>>()
             .into_iter()
             .chain(rest.flat_map(|span| {
+                if span == Span::builtin() {
+                    return None;
+                }
+
                 make_note(
                     LabelStyle::Secondary,
                     span,
@@ -484,11 +497,12 @@ impl FinalizedDiagnostics {
             let diagnostic = Diagnostic::new(diagnostic.level.into())
                 .with_message((|| {
                     #[cfg(debug_assertions)]
-                    if include_trace {
-                        if let Some(trace) = diagnostic.trace.into_inner() {
-                            return diagnostic.message
-                                + &format!("\nat span {:#?}\n{:#?}", primary_location.span, trace);
-                        }
+                    if include_trace && diagnostic.trace.has_trace() {
+                        return diagnostic.message
+                            + &format!(
+                                "\nat span {:#?}\n{:#?}",
+                                primary_location.span, diagnostic.trace
+                            );
                     }
 
                     String::new()

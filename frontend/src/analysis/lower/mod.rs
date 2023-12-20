@@ -254,6 +254,7 @@ pub struct TraitDeclaration {
     pub parameters: Vec<TypeParameterId>,
     pub ty: Option<TypeAnnotation>,
     pub attributes: TraitAttributes,
+    pub wrapper: Option<ConstantId>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
@@ -299,6 +300,7 @@ pub struct ConstantDeclaration {
     pub ty: TypeAnnotation,
     pub value: Expression,
     pub enumeration_ty: Option<TypeId>,
+    pub wrapped_trait: Option<(TraitId, BTreeMap<TypeParameterId, TypeParameterId>)>,
     pub attributes: ConstantAttributes,
 }
 
@@ -309,6 +311,7 @@ pub struct UnresolvedConstantDeclaration {
     pub ty: TypeAnnotation,
     pub value: Shared<Option<Expression>>,
     pub enumeration_ty: Option<TypeId>,
+    pub wrapped_trait: Option<(TraitId, BTreeMap<TypeParameterId, TypeParameterId>)>,
     pub attributes: ConstantAttributes,
 }
 
@@ -320,6 +323,7 @@ impl From<ConstantDeclaration> for UnresolvedConstantDeclaration {
             ty: decl.ty,
             value: Shared::new(Some(decl.value)),
             enumeration_ty: decl.enumeration_ty,
+            wrapped_trait: decl.wrapped_trait,
             attributes: decl.attributes,
         }
     }
@@ -336,6 +340,7 @@ impl Resolve<ConstantDeclaration> for UnresolvedConstantDeclaration {
                 .try_into_unique()
                 .expect("uninitialized constant"),
             enumeration_ty: self.enumeration_ty,
+            wrapped_trait: self.wrapped_trait,
             attributes: self.attributes,
         }
     }
@@ -1768,10 +1773,88 @@ impl Lowerer {
                         pattern_scope.as_ref().unwrap_or(&scope),
                     );
 
+                    let wrapper = ty.as_ref().map(|ty| {
+                        let wrapper = self.compiler.new_constant_id_in(self.file);
+
+                        // Create fresh type parameters for the wrapper (these will be substituted
+                        // in by the typechecker)
+                        let substitutions = parameters
+                            .clone()
+                            .into_iter()
+                            .map(|param| {
+                                let mut decl = self
+                                    .declarations
+                                    .type_parameters
+                                    .get(&param)
+                                    .unwrap()
+                                    .clone();
+
+                                // Inferred type parameters in traits aren't properly handled
+                                // by the typechecker (TODO: Add a separate 'unique' keyword to
+                                // better describe what 'infer' in traits means)
+                                decl.value.infer = false;
+
+                                let new_param =
+                                    self.compiler.new_type_parameter_id_with(param.file);
+
+                                self.declarations.type_parameters.insert(new_param, decl);
+
+                                (param, new_param)
+                            })
+                            .collect::<BTreeMap<_, _>>();
+
+                        self.declarations.constants.insert(
+                            wrapper,
+                            Declaration::resolved(
+                                None,
+                                decl.span,
+                                UnresolvedConstantDeclaration {
+                                    parameters: parameters.clone(),
+                                    bounds: vec![Bound {
+                                        tr: id,
+                                        tr_span: Span::builtin().into(),
+                                        parameters: parameters
+                                            .clone()
+                                            .into_iter()
+                                            .map(|param| {
+                                                let span = self
+                                                    .declarations
+                                                    .type_parameters
+                                                    .get(&param)
+                                                    .unwrap()
+                                                    .clone()
+                                                    .span;
+
+                                                TypeAnnotation {
+                                                    span,
+                                                    kind: TypeAnnotationKind::Parameter(param),
+                                                }
+                                            })
+                                            .collect(),
+                                        span: Span::builtin().into(),
+                                    }],
+                                    ty: ty.clone(),
+                                    value: Shared::new(Some(Expression {
+                                        id: self.compiler.new_expression_id(wrapper),
+                                        span: Span::builtin().into(),
+                                        kind: ExpressionKind::Trait(id),
+                                    })),
+                                    enumeration_ty: None,
+                                    wrapped_trait: Some((id, substitutions)),
+                                    attributes: Default::default(),
+                                },
+                            )
+                            .make_unresolved(),
+                        );
+
+                        wrapper
+                    });
+
                     self.declarations.traits.get_mut(&id).unwrap().value = Some(TraitDeclaration {
                         parameters,
                         ty,
                         attributes,
+                        wrapper,
                     });
 
                     Some(AnyDeclaration::Trait(id))
@@ -1788,6 +1871,7 @@ impl Lowerer {
                             ty,
                             value: Default::default(),
                             enumeration_ty: None,
+                            wrapped_trait: None,
                             attributes,
                         });
 
@@ -5023,6 +5107,7 @@ impl Lowerer {
                     ty: constructor_ty,
                     value: Shared::new(Some(constructor)),
                     enumeration_ty: Some(id),
+                    wrapped_trait: None,
                     attributes: Default::default(),
                 },
             )

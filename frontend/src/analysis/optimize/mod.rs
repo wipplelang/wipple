@@ -540,6 +540,8 @@ pub mod unused {
                                 },
                                 |_| ControlFlow::Continue(()),
                             );
+                        } else {
+                            used.insert(item);
                         }
                     }
 
@@ -692,18 +694,13 @@ mod util {
                 return None;
             }
 
-            info.stack.push(*constant);
-
-            let item = match program.items.get(constant) {
-                Some(item) => item,
-                None => return None,
-            };
+            let item = program.items.get(constant)?;
 
             let item = item.read();
             let (_, body) = &*item;
 
+            info.stack.push(*constant);
             let body = body.is_pure_inner(program, info).then(|| body.clone());
-
             info.stack.pop();
 
             body

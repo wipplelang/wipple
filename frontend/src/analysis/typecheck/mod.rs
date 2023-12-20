@@ -20,9 +20,8 @@ use crate::{
     analysis::{lower, Analysis, SpanList},
     diagnostics::{DiagnosticLocation, Fix, FixRange, Note},
     helpers::{Backtrace, InternedString},
-    BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, ExpressionId, FieldIndex, FilePath,
-    ItemId, PatternId, SnippetId, SyntaxId, TraitId, TypeId, TypeParameterId, VariableId,
-    VariantIndex,
+    BuiltinSyntaxId, BuiltinTypeId, Compiler, ConstantId, ExpressionId, FieldIndex, ItemId,
+    PatternId, SnippetId, SyntaxId, TraitId, TypeId, TypeParameterId, VariableId, VariantIndex,
 };
 use itertools::Itertools;
 use parking_lot::RwLock;
@@ -39,7 +38,11 @@ use wipple_util::{NotNanF32, NotNanF64, Shared};
 #[derive(Debug)]
 pub enum Progress {
     CollectingTypes,
-    ResolvingDeclarations { count: usize, remaining: usize },
+    ResolvingDeclarations {
+        current: String,
+        count: usize,
+        remaining: usize,
+    },
 }
 
 #[derive(Debug, Default)]
@@ -141,6 +144,7 @@ pub struct TraitDecl {
     pub params: Vec<TypeParameterId>,
     pub ty_annotation: Option<TypeAnnotation>,
     pub ty: Option<engine::Type>,
+    pub wrapper: Option<ConstantId>,
     pub attributes: lower::TraitAttributes,
     pub uses: HashSet<SpanList>,
 }
@@ -151,11 +155,11 @@ pub struct ConstantDecl {
     pub span: SpanList,
     pub params: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
-    pub bound_annotations: Vec<(TraitId, Vec<TypeAnnotation>)>,
     pub ty_annotation: TypeAnnotation,
     pub ty: engine::Type,
     pub specializations: Vec<ConstantId>,
     pub enumeration_ty: Option<TypeId>,
+    pub wrapped_trait: Option<TraitId>,
     pub attributes: lower::ConstantAttributes,
     pub uses: im::HashSet<SpanList>,
     body: lower::Expression,
@@ -166,10 +170,10 @@ pub struct InstanceDecl {
     pub span: SpanList,
     pub params: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
-    pub bound_annotations: Vec<(TraitId, Vec<TypeAnnotation>)>,
     pub trait_id: TraitId,
     pub trait_params: Vec<engine::Type>,
     pub trait_param_annotations: Vec<lower::TypeAnnotation>,
+    pub overlaps: bool,
     body: Option<lower::Expression>,
 }
 
@@ -317,7 +321,7 @@ expr!(, "Monomorphized", engine::UnresolvedType, {
     BoundInstance(TraitId),
     ErrorConstant(ConstantId),
     UnresolvedConstant(ConstantId, #[serde(skip)] Vec<engine::InstanceCandidate>),
-    UnresolvedTrait(TraitId, #[serde(skip)] Vec<engine::InstanceCandidate>),
+    UnresolvedTrait(TraitId, #[serde(skip)] Vec<engine::InstanceCandidate>, #[serde(skip)] Backtrace),
     Constant(ItemId),
     UnresolvedExtend(Box<MonomorphizedExpression>, Vec<((SpanList, InternedString), MonomorphizedExpression)>),
     Extend(Box<MonomorphizedExpression>, BTreeMap<FieldIndex, MonomorphizedExpression>),
@@ -406,7 +410,7 @@ impl From<UnresolvedExpression> for MonomorphizedExpression {
                     MonomorphizedExpressionKind::Number(number)
                 }
                 UnresolvedExpressionKind::Trait(id) => {
-                    MonomorphizedExpressionKind::UnresolvedTrait(id, Vec::new())
+                    MonomorphizedExpressionKind::UnresolvedTrait(id, Vec::new(), Backtrace::empty())
                 }
                 UnresolvedExpressionKind::Constant(id) => {
                     MonomorphizedExpressionKind::UnresolvedConstant(id, Vec::new())
@@ -604,6 +608,7 @@ impl Expression {
 
 #[derive(Debug, Clone)]
 pub struct Error {
+    pub source: Option<SpanList>,
     pub error: Box<engine::TypeError>,
     pub expr: Option<ExpressionId>,
     pub span: SpanList,
@@ -631,8 +636,12 @@ impl Compiler {
         typechecker.collect_types();
 
         typechecker
-            .resolve(complete, |count, remaining| {
-                progress(Progress::ResolvingDeclarations { count, remaining });
+            .resolve(complete, |current, count, remaining| {
+                progress(Progress::ResolvingDeclarations {
+                    current,
+                    count,
+                    remaining,
+                });
             })
             .await
     }
@@ -679,7 +688,7 @@ impl Typechecker {
             engine::TypeInfo {
                 span: span.into(),
                 reason: None,
-                trace: self.compiler.backtrace(),
+                history: vec![self.compiler.backtrace()],
             },
         )
     }
@@ -690,18 +699,20 @@ impl Typechecker {
             engine::TypeInfo {
                 span: span.into(),
                 reason: None,
-                trace: self.compiler.backtrace(),
+                history: vec![self.compiler.backtrace()],
             },
         )
     }
 
     fn error(
         &self,
+        source: impl Into<Option<SpanList>>,
         error: impl Into<Box<engine::TypeError>>,
         expr: impl Into<Option<ExpressionId>>,
         span: SpanList,
     ) -> Error {
         Error {
+            source: source.into(),
             error: error.into(),
             expr: expr.into(),
             span,
@@ -724,8 +735,6 @@ impl Typechecker {
             .map(|(name, values)| (name, values.into_iter().map(|(_, value)| value).collect()))
             .collect::<HashMap<_, _>>();
 
-        let generic_items = im::OrdMap::from(compiler.store.lock().generic_items.clone());
-
         Typechecker {
             compiler,
             top_level: top_level_file,
@@ -739,7 +748,7 @@ impl Typechecker {
             monomorphization_cache: Default::default(),
             item_queue: Default::default(),
             items: Default::default(),
-            generic_items,
+            generic_items: Default::default(),
             top_level_expr: Default::default(),
             top_level_item: None,
             errors: Default::default(),
@@ -753,7 +762,7 @@ impl Typechecker {
     pub async fn resolve(
         mut self,
         lowering_is_complete: bool,
-        mut progress: impl FnMut(usize, usize),
+        mut progress: impl FnMut(String, usize, usize),
     ) -> Program {
         macro_rules! process_queue {
             () => {{
@@ -764,7 +773,7 @@ impl Typechecker {
                     queue.pop_back()
                 } {
                     count += 1;
-                    progress(count, total);
+                    progress(item.info.name.clone(), count, total);
 
                     let is_generic = item.info.is_generic;
                     let is_top_level_or_generic = item.top_level || is_generic;
@@ -809,37 +818,34 @@ impl Typechecker {
 
         // Typecheck generic constants
 
-        let changed_files = self.compiler.changed_files.lock();
-
-        for (tr, id) in (self
+        for (tr, id, span) in (self
             .top_level
             .declarations
             .constants
-            .keys()
-            .copied()
-            .map(|id| (None, id)))
+            .iter()
+            .map(|(id, decl)| (None, *id, decl.span)))
         .chain(
             self.top_level
                 .declarations
                 .instances
                 .iter()
-                .map(|(id, decl)| (Some(decl.value.tr), *id)),
+                .map(|(id, decl)| (Some(decl.value.tr), *id, decl.span)),
         )
         .collect::<Vec<_>>()
         {
-            if let Some(changed_files) = changed_files.as_deref() {
-                if let Some(FilePath::File(path)) = id.file {
-                    if !changed_files.contains(&path) {
-                        continue;
-                    }
-                }
-            }
-
             let prev_ctx = self.ctx.snapshot();
 
-            if let Err(Some(error)) =
-                self.typecheck_constant_expr(tr, id, None, None, None, Some(id), Default::default())
-            {
+            if let Err(Some(error)) = self.typecheck_constant_expr(
+                tr,
+                id,
+                None,
+                None,
+                None,
+                Some(id),
+                Some(span),
+                Default::default(),
+                Default::default(),
+            ) {
                 self.add_error(error);
             }
 
@@ -851,8 +857,6 @@ impl Typechecker {
             self.contexts.borrow_mut().clear();
         }
 
-        drop(changed_files);
-
         // Typecheck the top level
 
         let top_level_item = mem::take(&mut self.top_level_expr).map(|top_level| {
@@ -862,7 +866,7 @@ impl Typechecker {
                 generic_id: None,
                 id: top_level_id,
                 expr: top_level,
-                info: MonomorphizeInfo::new(None, Default::default()),
+                info: MonomorphizeInfo::new("top level", None, None, false, Default::default()),
                 contextual: false,
                 top_level: true,
             });
@@ -911,6 +915,8 @@ impl Typechecker {
                     decl.span,
                     Some(decl.ty.into()),
                     Some(entrypoint),
+                    None,
+                    Default::default(),
                     Default::default(),
                 );
             }
@@ -1050,8 +1056,6 @@ impl Typechecker {
         // Build the final program
 
         let generic_items = self.generic_items.into_iter().collect::<BTreeMap<_, _>>();
-
-        self.compiler.store.lock().generic_items = generic_items.clone();
 
         Program {
             items: items
@@ -1197,7 +1201,7 @@ impl Typechecker {
 
 impl Typechecker {
     pub fn collect_types(&mut self) {
-        let mut info = ConvertInfo::new(None);
+        let mut info = ConvertInfo::new(None, None);
         let expr = self.convert_expr(self.lowered_top_level_expr.clone(), &mut info);
         self.top_level_expr = Some(expr);
 
@@ -1270,49 +1274,74 @@ impl Typechecker {
         use_span: impl Into<Option<SpanList>>,
         use_ty: impl Into<Option<engine::UnresolvedType>>,
         source: Option<ConstantId>,
-        known_bounds: BoundInstances,
+        source_span: Option<SpanList>,
+        known_params: Vec<TypeParameterId>,
+        outside_bounds: BoundInstances,
     ) -> Result<Option<ItemId>, Option<Error>> {
         let use_id = use_id.into();
         let use_span = use_span.into();
         let use_ty = use_ty.into();
 
-        let mut info = MonomorphizeInfo::new(source, known_bounds.clone());
-        info.is_generic = use_ty.is_none();
+        let (name, generic_span, params, constant_generic_ty, generic_bounds) =
+            if trait_id.is_some() {
+                let (tr, params, trait_params, span, bounds) = self
+                    .with_instance_decl(id, |decl| {
+                        (
+                            decl.trait_id,
+                            decl.params.clone(),
+                            decl.trait_params.clone(),
+                            decl.span,
+                            decl.bounds.clone(),
+                        )
+                    })
+                    .unwrap();
 
-        let (generic_span, params, constant_generic_ty, generic_bounds) = if trait_id.is_some() {
-            let (tr, params, trait_params, span, bounds) = self
-                .with_instance_decl(id, |decl| {
+                let name = format!(
+                    "`instance ({})`",
+                    self.debug_string_for_bound(
+                        tr,
+                        trait_params
+                            .clone()
+                            .into_iter()
+                            .map(engine::UnresolvedType::from)
+                            .collect()
+                    )
+                );
+
+                let ty = self.substitute_trait_params(
+                    tr,
+                    trait_params.clone().into_iter().map(From::from).collect(),
+                    span,
+                );
+
+                let (finalized_ty, resolved) = ty.finalize(&self.ctx);
+                assert!(resolved);
+
+                (name, span, params, finalized_ty, bounds)
+            } else {
+                self.with_constant_decl(id, |decl| {
                     (
-                        decl.trait_id,
-                        decl.params.clone(),
-                        decl.trait_params.clone(),
+                        format!("`{}`", decl.name),
                         decl.span,
+                        decl.params.clone(),
+                        decl.ty.clone(),
                         decl.bounds.clone(),
                     )
                 })
-                .unwrap();
+                .unwrap()
+            };
 
-            let ty = self.substitute_trait_params(
-                tr,
-                trait_params.clone().into_iter().map(From::from).collect(),
-                span,
-            );
-
-            let (finalized_ty, resolved) = ty.finalize(&self.ctx);
-            assert!(resolved);
-
-            (span, params, finalized_ty, bounds)
-        } else {
-            self.with_constant_decl(id, |decl| {
-                (
-                    decl.span,
-                    decl.params.clone(),
-                    decl.ty.clone(),
-                    decl.bounds.clone(),
-                )
-            })
-            .unwrap()
-        };
+        let mut info = MonomorphizeInfo::new(
+            name,
+            source,
+            source_span,
+            use_ty.is_none(),
+            known_params
+                .clone()
+                .into_iter()
+                .chain(params.clone())
+                .collect(),
+        );
 
         let use_span = use_span.unwrap_or(generic_span);
 
@@ -1378,7 +1407,7 @@ impl Typechecker {
                 .unify(instantiated_generic_ty.clone(), constant_generic_ty)
             {
                 self.ctx.reset_to(prev_ctx);
-                return Err(Some(self.error(error, use_id, use_span)));
+                return Err(Some(self.error(None, error, use_id, use_span)));
             }
         }
 
@@ -1387,12 +1416,14 @@ impl Typechecker {
             .unify(instantiated_generic_ty.clone(), use_ty.clone())
         {
             self.ctx.reset_to(prev_ctx);
-            return Err(Some(self.error(error, use_id, use_span)));
+            return Err(Some(self.error(None, error, use_id, use_span)));
         }
 
         // Check bounds
 
         for (bound_index, bound) in instantiated_bounds.clone().into_iter().enumerate() {
+            let prev_bound_instances = info.bound_instances.clone();
+
             if let Err(error) = self.instance_for_params(
                 bound.trait_id,
                 bound.params.clone(),
@@ -1403,6 +1434,7 @@ impl Typechecker {
             ) {
                 match error {
                     Some(FindInstanceError::RecursionLimitReached) => {
+                        info.bound_instances = prev_bound_instances;
                         return Err(None);
                     }
                     Some(FindInstanceError::TypeError(error)) => {
@@ -1412,16 +1444,20 @@ impl Typechecker {
                                 .unify(instantiated_generic_ty.clone(), use_ty.clone())
                             {
                                 self.ctx.reset_to(prev_ctx);
-                                return Err(Some(self.error(error, use_id, use_span)));
+                                info.bound_instances = prev_bound_instances;
+                                return Err(Some(self.error(None, error, use_id, use_span)));
                             } else {
                                 self.ctx.reset_to(prev_ctx);
+                                info.bound_instances = prev_bound_instances;
                                 return Err(Some(error));
                             }
                         }
                     }
-                    Some(FindInstanceError::MultipleCandidates(_)) | None => {}
+                    Some(FindInstanceError::MultipleCandidates(..)) | None => {}
                 };
             }
+
+            info.bound_instances = prev_bound_instances;
         }
 
         // Turn the opaque type variables into regular type variables
@@ -1444,6 +1480,8 @@ impl Typechecker {
         // determine the types of the inferred parameters by re-evaluating the bounds
 
         for (bound_index, bound) in instantiated_bounds.clone().into_iter().enumerate() {
+            let prev_bound_instances = info.bound_instances.clone();
+
             if let Err(error) = self.instance_for_params(
                 bound.trait_id,
                 bound.params.clone(),
@@ -1454,30 +1492,37 @@ impl Typechecker {
             ) {
                 match error {
                     Some(FindInstanceError::RecursionLimitReached) => {
+                        info.bound_instances = prev_bound_instances;
                         return Err(None);
                     }
                     Some(FindInstanceError::TypeError(error)) => {
                         if !matches!(error.error.as_ref(), engine::TypeError::MissingInstance(..)) {
                             if let Err(error) = self.unify(
+                                source_span,
                                 use_id,
                                 use_span,
                                 instantiated_generic_ty.clone(),
                                 use_ty.clone(),
                             ) {
                                 self.ctx.reset_to(prev_ctx);
+                                info.bound_instances = prev_bound_instances;
                                 return Err(Some(error));
                             } else {
                                 self.ctx.reset_to(prev_ctx);
+                                info.bound_instances = prev_bound_instances;
                                 return Err(Some(error));
                             }
                         }
                     }
-                    Some(FindInstanceError::MultipleCandidates(_)) | None => {}
-                };
+                    Some(FindInstanceError::MultipleCandidates(..)) | None => {}
+                }
             }
+
+            info.bound_instances = prev_bound_instances;
         }
 
         if let Err(error) = self.unify(
+            source_span,
             use_id,
             use_span,
             instantiated_generic_ty.clone(),
@@ -1497,6 +1542,7 @@ impl Typechecker {
 
         if info.is_generic {
             if let Err(error) = self.unify(
+                source_span,
                 use_id,
                 use_span,
                 instantiated_generic_ty.clone(),
@@ -1514,9 +1560,13 @@ impl Typechecker {
                     .into_iter()
                     .zip(generic_bound.params)
                 {
-                    if let Err(error) =
-                        self.unify(use_id, instantiated_bound.span, instantiated_ty, generic_ty)
-                    {
+                    if let Err(error) = self.unify(
+                        source_span,
+                        use_id,
+                        instantiated_bound.span,
+                        instantiated_ty,
+                        generic_ty,
+                    ) {
                         self.ctx.reset_to(prev_ctx);
                         return Err(Some(error));
                     }
@@ -1529,7 +1579,6 @@ impl Typechecker {
             use_ty.apply(&self.ctx);
             assert!(!use_ty.contains_opaque());
 
-            info.bound_instances = known_bounds.clone();
             info.bound_instances.push(Default::default());
             for bound in &mut instantiated_bounds {
                 for param in &mut bound.params {
@@ -1549,10 +1598,14 @@ impl Typechecker {
                     ));
             }
         } else {
+            info.bound_instances = outside_bounds;
+
             let resolved_bounds = instantiated_bounds
                 .into_iter()
                 .enumerate()
                 .map(|(bound_index, bound)| {
+                    let prev_bound_instances = info.bound_instances.clone();
+
                     let instance = match self.instance_for_params(
                         bound.trait_id,
                         bound.params.clone(),
@@ -1565,12 +1618,20 @@ impl Typechecker {
                         Err(error) => match error {
                             Some(
                                 FindInstanceError::RecursionLimitReached
-                                | FindInstanceError::MultipleCandidates(_),
+                                | FindInstanceError::MultipleCandidates(..),
                             )
-                            | None => return Err(None),
-                            Some(FindInstanceError::TypeError(error)) => return Err(Some(error)),
+                            | None => {
+                                info.bound_instances = prev_bound_instances;
+                                return Err(None);
+                            }
+                            Some(FindInstanceError::TypeError(error)) => {
+                                info.bound_instances = prev_bound_instances;
+                                return Err(Some(error));
+                            }
                         },
                     };
+
+                    info.bound_instances = prev_bound_instances;
 
                     *info.has_resolved_expr.lock() = true;
 
@@ -1578,7 +1639,6 @@ impl Typechecker {
                 })
                 .collect::<Result<Vec<_>, _>>()?;
 
-            info.bound_instances = known_bounds.clone();
             info.bound_instances.push(Default::default());
             for (instance, mut bound) in resolved_bounds {
                 for param in &mut bound.params {
@@ -1611,10 +1671,11 @@ impl Typechecker {
 
         let body = match body {
             Some(body) => {
-                let mut convert_info = ConvertInfo::new(id);
+                let mut convert_info = ConvertInfo::new(id, source_span);
                 let body = self.convert_expr(body, &mut convert_info);
 
                 if let Err(error) = self.unify(
+                    source_span,
                     use_id,
                     body.span,
                     body.ty.clone(),
@@ -1636,6 +1697,7 @@ impl Typechecker {
         };
 
         if let Err(error) = self.unify(
+            source_span,
             use_id,
             use_span,
             instantiated_generic_ty.clone(),
@@ -1650,6 +1712,16 @@ impl Typechecker {
 
         use_ty.apply(&self.ctx);
         assert!(!use_ty.contains_opaque());
+
+        if !info.is_generic {
+            if let Some(param) = use_ty
+                .params()
+                .into_iter()
+                .find(|param| !known_params.contains(param))
+            {
+                panic!("type parameter {param:?} leaked outside constant");
+            }
+        }
 
         // Register the monomorphized constant, or use an existing one from the
         // cache
@@ -1715,13 +1787,12 @@ impl Typechecker {
                 .ctx
                 .unify(candidate_ty.clone().into(), generic_ty.clone())
             {
-                self.add_error(
-                    self.error(error, None, candidate_span)
-                        .with_note(Note::secondary(
+                self.add_error(self.error(None, error, None, candidate_span).with_note(
+                    Note::secondary(
                         candidate_span,
                         "this constant must have a more specific type than the original constant",
-                    )),
-                );
+                    ),
+                ));
 
                 self.ctx.reset_to(prev_ctx);
                 return None;
@@ -1729,6 +1800,7 @@ impl Typechecker {
 
             if self
                 .unify(
+                    None,
                     use_id,
                     use_span,
                     use_ty.clone().into(),
@@ -1752,6 +1824,8 @@ impl Typechecker {
                     use_span,
                     Some(use_ty.clone().into()),
                     Some(generic_id),
+                    None,
+                    Default::default(),
                     Default::default(),
                 )
                 .expect("specialized constants may not contain bounds")
@@ -1792,19 +1866,19 @@ impl Typechecker {
 
 struct ConvertInfo {
     id: Option<ConstantId>,
+    source_span: Option<SpanList>,
     substitutions: engine::GenericSubstitutions,
     variables: BTreeMap<VariableId, engine::UnresolvedType>,
-    existing_types: BTreeMap<ExpressionId, engine::UnresolvedType>,
     function_end_value: Option<UnresolvedExpression>,
 }
 
 impl ConvertInfo {
-    fn new(id: impl Into<Option<ConstantId>>) -> Self {
+    fn new(id: impl Into<Option<ConstantId>>, source_span: impl Into<Option<SpanList>>) -> Self {
         ConvertInfo {
             id: id.into(),
+            source_span: source_span.into(),
             substitutions: Default::default(),
             variables: Default::default(),
-            existing_types: Default::default(),
             function_end_value: Default::default(),
         }
     }
@@ -1875,7 +1949,7 @@ impl Typechecker {
                 UnresolvedExpression {
                     id: expr.id,
                     span: expr.span,
-                    ty: info.existing_types.get(&expr.id).cloned().unwrap_or(ty),
+                    ty,
                     kind: if contextual {
                         UnresolvedExpressionKind::ContextualConstant(id)
                     } else {
@@ -1921,12 +1995,17 @@ impl Typechecker {
                 }
             }
             lower::ExpressionKind::Variable(var) => {
-                let mut ty = info.variables.get(&var).cloned().unwrap_or_else(|| {
-                    self.unresolved_ty(
-                        engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None)),
-                        None,
-                    )
-                });
+                let mut ty = info
+                    .variables
+                    .get(&var)
+                    .cloned()
+                    .unwrap_or_else(|| {
+                        self.unresolved_ty(
+                            engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None)),
+                            None,
+                        )
+                    })
+                    .with_reason(Some(engine::TypeReason::Variable(expr.span)));
 
                 ty.info.span = Some(expr.span);
 
@@ -1986,21 +2065,6 @@ impl Typechecker {
                     )
                     .with_reason(Some(engine::TypeReason::FunctionOutput(function.span)));
 
-                if let Err(error) = self.unify(
-                    function.id,
-                    function.span,
-                    function.ty.clone(),
-                    self.unresolved_ty(
-                        engine::UnresolvedTypeKind::Function(
-                            Box::new(input.ty.clone()),
-                            Box::new(output_ty.clone()),
-                        ),
-                        function.span,
-                    ),
-                ) {
-                    self.add_error(error);
-                }
-
                 UnresolvedExpression {
                     id: expr.id,
                     span: expr.span,
@@ -2027,6 +2091,7 @@ impl Typechecker {
                     mem::replace(&mut info.function_end_value, prev_function_end_value)
                 {
                     if let Err(error) = self.unify(
+                        info.source_span,
                         end_value_expr.id,
                         end_value_expr.span,
                         end_value_expr.ty,
@@ -2077,6 +2142,7 @@ impl Typechecker {
                     if let Some(first_type) = arms.first().map(|arm| arm.body.ty.clone()) {
                         for arm in &arms {
                             if let Err(error) = self.unify(
+                                info.source_span,
                                 arm.body.id,
                                 arm.body.span,
                                 arm.body.ty.clone(),
@@ -2142,7 +2208,9 @@ impl Typechecker {
 
                 let value = self.convert_expr(*value, info);
 
-                if let Err(error) = self.unify(value.id, value.span, value.ty, ty.clone()) {
+                if let Err(error) =
+                    self.unify(info.source_span, value.id, value.span, value.ty, ty.clone())
+                {
                     self.add_error(error);
                 }
 
@@ -2264,9 +2332,13 @@ impl Typechecker {
 
                     let mut value = self.convert_expr(expr, info);
 
-                    if let Err(error) =
-                        self.unify(value.id, value.span, value.ty.clone(), ty.clone())
-                    {
+                    if let Err(error) = self.unify(
+                        info.source_span,
+                        value.id,
+                        value.span,
+                        value.ty.clone(),
+                        ty.clone(),
+                    ) {
                         self.add_error(error);
                     }
 
@@ -2419,9 +2491,13 @@ impl Typechecker {
                     .map(|(expr, ty)| {
                         let mut value = self.convert_expr(expr, info);
 
-                        if let Err(error) =
-                            self.unify(value.id, value.span, value.ty.clone(), ty.clone())
-                        {
+                        if let Err(error) = self.unify(
+                            info.source_span,
+                            value.id,
+                            value.span,
+                            value.ty.clone(),
+                            ty.clone(),
+                        ) {
                             self.add_error(error);
                         }
 
@@ -2477,7 +2553,11 @@ impl Typechecker {
                     }
                 };
 
-                self.with_trait_decl(show_trait, |_| {});
+                let show_id = self
+                    .with_trait_decl(show_trait, |decl| {
+                        decl.wrapper.expect("`show` trait must have value")
+                    })
+                    .unwrap();
 
                 let segments = segments
                     .into_iter()
@@ -2485,7 +2565,7 @@ impl Typechecker {
                         let expr = self.convert_expr(expr, info);
 
                         let ty = self.unresolved_ty(
-                            engine::UnresolvedTypeKind::Variable(self.ctx.new_variable(None)),
+                            engine::UnresolvedTypeKind::Builtin(engine::BuiltinType::Text),
                             expr.span,
                         );
 
@@ -2504,7 +2584,7 @@ impl Typechecker {
                                         ),
                                         expr.span,
                                     ),
-                                    kind: UnresolvedExpressionKind::Trait(show_trait),
+                                    kind: UnresolvedExpressionKind::Constant(show_id),
                                 }),
                                 Box::new(expr),
                                 true,
@@ -2537,7 +2617,9 @@ impl Typechecker {
 
                     self.instantiate_generics(&mut ty);
 
-                    if let Err(error) = self.unify(value.id, value.span, value.ty.clone(), ty) {
+                    if let Err(error) =
+                        self.unify(info.source_span, value.id, value.span, value.ty.clone(), ty)
+                    {
                         self.add_error(error);
                     }
                 }
@@ -2555,9 +2637,13 @@ impl Typechecker {
                 let value = self.convert_expr(*value, info);
 
                 if let Some(existing_value) = info.function_end_value.replace(value.clone()) {
-                    if let Err(error) =
-                        self.unify(value.id, value.span, value.ty.clone(), existing_value.ty)
-                    {
+                    if let Err(error) = self.unify(
+                        info.source_span,
+                        value.id,
+                        value.span,
+                        value.ty.clone(),
+                        existing_value.ty,
+                    ) {
                         self.add_error(error);
                     }
                 }
@@ -2637,7 +2723,9 @@ impl Typechecker {
                         pattern.span,
                     );
 
-                    if let Err(error) = self.unify(None, pattern.span, ty, numeric_ty) {
+                    if let Err(error) =
+                        self.unify(info.source_span, None, pattern.span, ty, numeric_ty)
+                    {
                         self.add_error(error);
                     }
 
@@ -2645,6 +2733,7 @@ impl Typechecker {
                 }
                 lower::PatternKind::Text(text) => {
                     if let Err(error) = self.unify(
+                        info.source_span,
                         None,
                         pattern.span,
                         ty,
@@ -2746,7 +2835,9 @@ impl Typechecker {
                         pattern.span,
                     );
 
-                    if let Err(error) = self.unify(None, pattern.span, ty, enumeration_ty) {
+                    if let Err(error) =
+                        self.unify(info.source_span, None, pattern.span, ty, enumeration_ty)
+                    {
                         self.add_error(error);
                     }
 
@@ -2770,7 +2861,9 @@ impl Typechecker {
                         target_ty,
                     );
 
-                    if let Err(error) = self.unify(None, pattern.span, ty, target_ty.clone()) {
+                    if let Err(error) =
+                        self.unify(info.source_span, None, pattern.span, ty, target_ty.clone())
+                    {
                         self.add_error(error);
                     }
 
@@ -2792,6 +2885,7 @@ impl Typechecker {
                         .collect::<Vec<_>>();
 
                     if let Err(error) = self.unify(
+                        info.source_span,
                         None,
                         pattern.span,
                         ty,
@@ -2830,9 +2924,12 @@ type BoundInstances = Vec<
 
 #[derive(Debug, Clone)]
 struct MonomorphizeInfo {
+    name: String,
     source: Option<ConstantId>,
-    bound_instances: BoundInstances,
+    source_span: Option<SpanList>,
     is_generic: bool,
+    params: Vec<TypeParameterId>,
+    bound_instances: BoundInstances,
     instance_stack:
         BTreeMap<TraitId, Vec<(ConstantId, usize, Vec<engine::UnresolvedType>, Vec<Bound>)>>,
     recursion_stack: Vec<SpanList>,
@@ -2840,11 +2937,20 @@ struct MonomorphizeInfo {
 }
 
 impl MonomorphizeInfo {
-    fn new(source: Option<ConstantId>, bound_instances: BoundInstances) -> Self {
+    fn new(
+        name: impl ToString,
+        source: Option<ConstantId>,
+        source_span: Option<SpanList>,
+        is_generic: bool,
+        params: Vec<TypeParameterId>,
+    ) -> Self {
         MonomorphizeInfo {
+            name: name.to_string(),
             source,
-            bound_instances,
-            is_generic: false,
+            source_span,
+            is_generic,
+            params,
+            bound_instances: Default::default(),
             instance_stack: Default::default(),
             recursion_stack: Default::default(),
             has_resolved_expr: Default::default(),
@@ -2865,7 +2971,6 @@ impl Typechecker {
         MonomorphizedExpression {
             id: expr.id,
             span: expr.span,
-            ty: expr.ty.clone(),
             kind: (|| match expr.kind {
                 MonomorphizedExpressionKind::Error(trace) => {
                     MonomorphizedExpressionKind::Error(trace)
@@ -2885,6 +2990,8 @@ impl Typechecker {
                         expr.span,
                         expr.ty.clone(),
                         info.source,
+                        info.source_span,
+                        info.params.clone(),
                         info.bound_instances.clone(),
                     ) {
                         Ok(id) => {
@@ -2909,7 +3016,7 @@ impl Typechecker {
                     };
 
                     expr.ty.apply(&self.ctx);
-                    assert!(!expr.ty.contains_opaque());
+                    assert!(!expr.ty.contains_opaque(), "{:#?}", expr.ty);
 
                     kind
                 }
@@ -2932,23 +3039,90 @@ impl Typechecker {
                         top_level,
                     )
                 }
-                MonomorphizedExpressionKind::Call(func, input, first) => {
-                    let input = self.monomorphize_expr(*input, info);
-                    let func = self.monomorphize_expr(*func, info);
+                MonomorphizedExpressionKind::Call(mut func, input, first) => {
+                    func.ty.apply(&self.ctx);
 
-                    MonomorphizedExpressionKind::Call(Box::new(func), Box::new(input), first)
+                    let is_numeric = matches!(
+                        &func.ty.kind,
+                        engine::UnresolvedTypeKind::NumericVariable(_)
+                    ) || matches!(&func.ty.kind, engine::UnresolvedTypeKind::Builtin(ty) if ty.is_numeric());
+
+                    if is_numeric {
+                        let unit = self.monomorphize_expr(*input, info);
+                        let number = self.monomorphize_expr(*func, info);
+
+                        MonomorphizedExpressionKind::Call(Box::new(unit), Box::new(number), first)
+                    } else if let engine::UnresolvedTypeKind::Function(input_ty, output_ty) =
+                        &func.ty.kind
+                    {
+                        if let Err(error) = self.unify(
+                            info.source_span,
+                            input.id,
+                            input.span,
+                            input.ty.clone(),
+                            input_ty.as_ref().clone(),
+                        ) {
+                            self.add_error(error);
+                        }
+
+                        if let Err(error) = self.unify(
+                            info.source_span,
+                            expr.id,
+                            expr.span,
+                            output_ty.as_ref().clone(),
+                            expr.ty.clone(),
+                        ) {
+                            self.add_error(error);
+                        }
+
+                        let input = self.monomorphize_expr(*input, info);
+                        let func = self.monomorphize_expr(*func, info);
+
+                        MonomorphizedExpressionKind::Call(Box::new(func), Box::new(input), first)
+                    } else {
+                        let func_ty = self.unresolved_ty(
+                            engine::UnresolvedTypeKind::Function(
+                                Box::new(input.ty.clone().with_reason(Some(
+                                    engine::TypeReason::FunctionInput(input.span),
+                                ))),
+                                Box::new(expr.ty.clone().with_reason(Some(
+                                    engine::TypeReason::FunctionOutput(func.span),
+                                ))),
+                            ),
+                            func.span,
+                        );
+
+                        if let Err(error) = self.unify(
+                            info.source_span,
+                            func.id,
+                            func.span,
+                            func.ty.clone(),
+                            func_ty.clone(),
+                        ) {
+                            self.add_error(error);
+                        }
+
+                        func.ty = func_ty;
+
+                        *info.has_resolved_expr.lock() = true;
+
+                        // Don't monomorphize func and input right away; give the typechecker a
+                        // chance to collect new information now that func is a function
+                        MonomorphizedExpressionKind::Call(func, input, first)
+                    }
                 }
                 MonomorphizedExpressionKind::Function(pattern, body, captures) => {
-                    let pattern = match expr.ty.kind {
+                    let pattern = match &expr.ty.kind {
                         engine::UnresolvedTypeKind::Function(input_ty, _) => {
-                            let mut input_ty = *input_ty;
+                            let mut input_ty = input_ty.as_ref().clone();
                             input_ty.apply(&self.ctx);
 
-                            self.monomorphize_pattern(pattern, input_ty.clone())
+                            self.monomorphize_pattern(pattern, input_ty.clone(), info)
                         }
                         _ => self.monomorphize_pattern(
                             pattern,
                             self.unresolved_ty(engine::UnresolvedTypeKind::Error, expr.span),
+                            info,
                         ),
                     };
 
@@ -2991,7 +3165,7 @@ impl Typechecker {
                     let mut value = self.monomorphize_expr(*value, info);
                     value.ty.apply(&self.ctx);
 
-                    let pattern = self.monomorphize_pattern(pattern, value.ty.clone());
+                    let pattern = self.monomorphize_pattern(pattern, value.ty.clone(), info);
 
                     MonomorphizedExpressionKind::Initialize(pattern, Box::new(value))
                 }
@@ -3012,7 +3186,7 @@ impl Typechecker {
                             .collect(),
                     )
                 }
-                MonomorphizedExpressionKind::UnresolvedTrait(tr, _) => {
+                MonomorphizedExpressionKind::UnresolvedTrait(tr, _, _) => {
                     let instance_id =
                         match self.instance_for_ty(tr, expr.ty.clone(), expr.id, expr.span, info) {
                             Ok(Some(instance)) => instance,
@@ -3036,15 +3210,16 @@ impl Typechecker {
                                     self.add_error(error);
                                     return MonomorphizedExpressionKind::error(&self.compiler);
                                 }
-                                Some(FindInstanceError::MultipleCandidates(candidates)) => {
+                                Some(FindInstanceError::MultipleCandidates(candidates, trace)) => {
                                     return MonomorphizedExpressionKind::UnresolvedTrait(
-                                        tr, candidates,
+                                        tr, candidates, trace,
                                     );
                                 }
                                 None => {
                                     return MonomorphizedExpressionKind::UnresolvedTrait(
                                         tr,
                                         Vec::new(),
+                                        self.compiler.backtrace(),
                                     );
                                 }
                             },
@@ -3060,6 +3235,8 @@ impl Typechecker {
                         expr.span,
                         expr.ty.clone(),
                         info.source,
+                        info.source_span,
+                        info.params.clone(),
                         info.bound_instances.clone(),
                     );
 
@@ -3105,6 +3282,8 @@ impl Typechecker {
                         expr.span,
                         expr.ty.clone(),
                         info.source,
+                        info.source_span,
+                        info.params.clone(),
                         info.bound_instances.clone(),
                     ) {
                         Ok(_) => {
@@ -3129,6 +3308,12 @@ impl Typechecker {
                     let value = self.monomorphize_expr(*value, info);
 
                     let (id, structure_field_tys) = match &value.ty.kind {
+                        engine::UnresolvedTypeKind::Variable(_) => {
+                            return MonomorphizedExpressionKind::UnresolvedExtend(
+                                Box::new(value),
+                                fields,
+                            );
+                        }
                         engine::UnresolvedTypeKind::Named(
                             id,
                             _,
@@ -3198,9 +3383,13 @@ impl Typechecker {
 
                             let ty = structure_field_tys[index.into_inner()].clone();
 
-                            if let Err(error) =
-                                self.unify(value.id, value.span, expr.ty, ty.clone())
-                            {
+                            if let Err(error) = self.unify(
+                                info.source_span,
+                                value.id,
+                                value.span,
+                                expr.ty,
+                                ty.clone(),
+                            ) {
                                 self.add_error(error);
                             }
 
@@ -3228,6 +3417,7 @@ impl Typechecker {
                     )
                 }
             })(),
+            ty: expr.ty,
         }
     }
 
@@ -3241,12 +3431,13 @@ impl Typechecker {
 
         MonomorphizedArm {
             span: arm.span,
-            pattern: self.monomorphize_pattern(arm.pattern, ty),
+            pattern: self.monomorphize_pattern(arm.pattern, ty, info),
             guard: arm.guard.map(|guard| {
                 let guard = self.monomorphize_expr(guard, info);
 
                 if let Some(boolean_ty) = self.top_level.info.language_items.boolean {
                     if let Err(error) = self.unify(
+                        info.source_span,
                         guard.id,
                         guard.span,
                         guard.ty.clone(),
@@ -3281,6 +3472,7 @@ impl Typechecker {
         &self,
         pattern: impl Into<MonomorphizedPattern>,
         mut ty: engine::UnresolvedType,
+        info: &mut MonomorphizeInfo,
     ) -> MonomorphizedPattern {
         let pattern: MonomorphizedPattern = pattern.into();
 
@@ -3294,7 +3486,8 @@ impl Typechecker {
                     pattern.span,
                 );
 
-                if let Err(error) = self.unify(None, pattern.span, ty, numeric_ty) {
+                if let Err(error) = self.unify(info.source_span, None, pattern.span, ty, numeric_ty)
+                {
                     self.add_error(error);
                 }
 
@@ -3302,6 +3495,7 @@ impl Typechecker {
             }
             MonomorphizedPatternKind::Text(text) => {
                 if let Err(error) = self.unify(
+                    info.source_span,
                     None,
                     pattern.span,
                     ty,
@@ -3318,8 +3512,13 @@ impl Typechecker {
             MonomorphizedPatternKind::Wildcard => MonomorphizedPatternKind::Wildcard,
             MonomorphizedPatternKind::Variable(var) => MonomorphizedPatternKind::Variable(var),
             MonomorphizedPatternKind::UnresolvedDestructure(structure_ty, fields) => {
-                if let Err(error) = self.unify(None, pattern.span, ty.clone(), structure_ty.clone())
-                {
+                if let Err(error) = self.unify(
+                    info.source_span,
+                    None,
+                    pattern.span,
+                    ty.clone(),
+                    structure_ty.clone(),
+                ) {
                     self.add_error(error);
                 }
 
@@ -3439,11 +3638,13 @@ impl Typechecker {
 
                         member_ty.instantiate_with(&self.ctx, &substitutions);
 
-                        if let Err(error) = self.unify(None, pattern.span, ty, member_ty.clone()) {
+                        if let Err(error) =
+                            self.unify(info.source_span, None, pattern.span, ty, member_ty.clone())
+                        {
                             self.add_error(error);
                         }
 
-                        let pattern = self.monomorphize_pattern(pattern, member_ty);
+                        let pattern = self.monomorphize_pattern(pattern, member_ty, info);
 
                         Some((index, pattern))
                     })
@@ -3512,6 +3713,7 @@ impl Typechecker {
                 }
 
                 if let Err(error) = self.unify(
+                    info.source_span,
                     None,
                     pattern.span,
                     ty.clone(),
@@ -3536,7 +3738,9 @@ impl Typechecker {
                 let values = values
                     .into_iter()
                     .zip(variant_tys)
-                    .map(|(pattern, variant_ty)| self.monomorphize_pattern(pattern, variant_ty))
+                    .map(|(pattern, variant_ty)| {
+                        self.monomorphize_pattern(pattern, variant_ty, info)
+                    })
                     .collect();
 
                 MonomorphizedPatternKind::Variant(id, variant, values)
@@ -3545,8 +3749,8 @@ impl Typechecker {
                 MonomorphizedPatternKind::Variant(id, variant, values)
             }
             MonomorphizedPatternKind::Or(lhs, rhs) => MonomorphizedPatternKind::Or(
-                Box::new(self.monomorphize_pattern(*lhs, ty.clone())),
-                Box::new(self.monomorphize_pattern(*rhs, ty)),
+                Box::new(self.monomorphize_pattern(*lhs, ty.clone(), info)),
+                Box::new(self.monomorphize_pattern(*rhs, ty, info)),
             ),
             MonomorphizedPatternKind::Tuple(patterns) => {
                 let tys = patterns
@@ -3560,6 +3764,7 @@ impl Typechecker {
                     .collect::<Vec<_>>();
 
                 if let Err(error) = self.unify(
+                    info.source_span,
                     None,
                     pattern.span,
                     ty.clone(),
@@ -3575,7 +3780,7 @@ impl Typechecker {
                     patterns
                         .into_iter()
                         .zip(tys)
-                        .map(|(pattern, ty)| self.monomorphize_pattern(pattern, ty))
+                        .map(|(pattern, ty)| self.monomorphize_pattern(pattern, ty, info))
                         .collect(),
                 )
             }
@@ -3593,7 +3798,7 @@ impl Typechecker {
 enum FindInstanceError {
     RecursionLimitReached,
     TypeError(Error),
-    MultipleCandidates(Vec<engine::InstanceCandidate>),
+    MultipleCandidates(Vec<engine::InstanceCandidate>, Backtrace),
 }
 
 impl Typechecker {
@@ -3605,6 +3810,8 @@ impl Typechecker {
         use_span: SpanList,
         info: &mut MonomorphizeInfo,
     ) -> Result<Option<ConstantId>, Option<FindInstanceError>> {
+        let prev_bound_instances = info.bound_instances.clone();
+
         let instance = self.instance_for_inner(
             tr,
             Ok(ty.clone()),
@@ -3613,6 +3820,8 @@ impl Typechecker {
             Vec::new(),
             info,
         )?;
+
+        info.bound_instances = prev_bound_instances;
 
         Ok(instance.map(|(id, _)| id))
     }
@@ -3680,7 +3889,13 @@ impl Typechecker {
                 let mut trait_ty = engine::UnresolvedType::from(generic_trait_ty);
                 self.add_substitutions(&mut trait_ty, &mut substitutions);
 
-                if let Err(error) = self.unify(use_id, use_span, ty.clone(), trait_ty.clone()) {
+                if let Err(error) = self.unify(
+                    info.source_span,
+                    use_id,
+                    use_span,
+                    ty.clone(),
+                    trait_ty.clone(),
+                ) {
                     return Err(Some(FindInstanceError::TypeError(error)));
                 }
 
@@ -3736,7 +3951,7 @@ impl Typechecker {
                 }
 
                 if !error {
-                    if params.clone().into_iter().zip(params.clone()).any(
+                    if instance_params.clone().into_iter().zip(params.clone()).any(
                         |(param, param_for_caching)| {
                             // Ensure that applying the instance recursively
                             // actually makes progress on determining the type
@@ -3764,7 +3979,7 @@ impl Typechecker {
                     // ...if there is a single candidate, return it.
                     Some(Ok(candidate)) => return Ok(candidate),
                     // ...if there are multiple candidates, try again finalizing numeric variables.
-                    Some(Err(Some(FindInstanceError::MultipleCandidates(_)) | None)) => {
+                    Some(Err(Some(FindInstanceError::MultipleCandidates(..)) | None)) => {
                         let params = params
                             .clone()
                             .into_iter()
@@ -3791,38 +4006,57 @@ impl Typechecker {
                 match candidates.len() {
                     0 => None,
                     1 => {
-                        let (ctx, candidate, _) = candidates.pop().unwrap();
+                        let (ctx, candidate, _, _) = candidates.pop().unwrap();
+
                         self.ctx.reset_to(ctx);
+
+                        if let Some((_, bounds)) = &candidate {
+                            for bound in bounds {
+                                if let Some(bound_instances) = info.bound_instances.last_mut() {
+                                    bound_instances
+                                        .entry(bound.trait_id)
+                                        .or_default()
+                                        .push((
+                                            bound.params.clone(),
+                                            None,
+                                            bound.span,
+                                            self.compiler.backtrace(),
+                                        ));
+                                    }
+                            }
+                        }
+
                         Some(Ok(candidate))
                     }
                     _ => Some(Err(Some(FindInstanceError::MultipleCandidates(
-                        bound_stack
-                            .iter()
-                            .map(|(_, _, trait_id, span, params)| engine::InstanceCandidate {
-                                span: *span,
-                                trait_id: *trait_id,
-                                params: params.clone(),
+                        candidates
+                            .into_iter()
+                            .map(|(_, _, params, span)| engine::InstanceCandidate {
+                                span,
+                                trait_id: tr,
+                                params,
                             })
                             .collect(),
+                        self.compiler.backtrace(),
                     )))),
                 }
             }};
         }
 
         macro_rules! unify_instance_params {
-            ($label:lifetime, $candidates:expr, $unify:expr, $params:expr, $instance_params:expr, $prev_ctx:expr $(,)?) => {{
+            ($exit:expr, $candidates:expr, $unify:expr, $params:expr, $instance_params:expr, $prev_ctx:expr $(,)?) => {{
                 for (instance_param_ty, param_ty) in
                     $instance_params.clone().into_iter().zip($params.clone())
                 {
                     if $unify(instance_param_ty.clone(), param_ty.clone()).is_err() {
-                        self.ctx.reset_to($prev_ctx.snapshot());
-                        continue $label;
+                        self.ctx.reset_to($prev_ctx);
+                        $exit;
                     }
                 }
             }};
         }
 
-        for bound_instances in info.bound_instances.iter().rev() {
+        for bound_instances in info.bound_instances.clone().into_iter().rev() {
             let bound_instances = bound_instances.get(&tr).cloned().unwrap_or_default();
 
             find_instance!(|params: Vec<engine::UnresolvedType>| {
@@ -3833,7 +4067,7 @@ impl Typechecker {
                     let prev_ctx = self.ctx.snapshot();
 
                     unify_instance_params!(
-                        'check,
+                        continue 'check,
                         candidates,
                         |left, right| self.ctx.unify_generic(left, right),
                         params,
@@ -3842,7 +4076,7 @@ impl Typechecker {
                     );
 
                     let ctx = self.ctx.reset_to(prev_ctx);
-                    candidates.push((ctx, candidate, span));
+                    candidates.push((ctx, candidate, instance_params, span));
                 }
 
                 Ok::<_, Option<FindInstanceError>>(candidates)
@@ -3856,9 +4090,13 @@ impl Typechecker {
             .cloned()
             .unwrap_or_default()
             .into_iter()
-            .map(|id| {
+            .filter_map(|id| {
                 self.with_instance_decl(id, |instance| {
-                    (
+                    if instance.overlaps {
+                        return None;
+                    }
+
+                    Some((
                         id,
                         instance
                             .trait_params
@@ -3868,7 +4106,7 @@ impl Typechecker {
                             .collect::<Vec<_>>(),
                         instance.span,
                         instance.bounds.clone(),
-                    )
+                    ))
                 })
                 .unwrap()
             })
@@ -3876,18 +4114,19 @@ impl Typechecker {
 
         find_instance!(|params: Vec<engine::UnresolvedType>| {
             let mut candidates = Vec::new();
-            'check: for (id, mut instance_params, instance_span, instance_bounds) in
+            'check: for (id, generic_instance_params, instance_span, instance_bounds) in
                 declared_instances.clone()
             {
                 let prev_ctx = self.ctx.snapshot();
 
+                let mut instance_params = generic_instance_params.clone();
                 let mut substitutions = engine::GenericSubstitutions::new();
                 for ty in &mut instance_params {
                     self.add_substitutions(ty, &mut substitutions);
                 }
 
                 unify_instance_params!(
-                    'check,
+                    continue 'check,
                     candidates,
                     |left, right| self.ctx.unify(right, left),
                     params,
@@ -3895,24 +4134,31 @@ impl Typechecker {
                     prev_ctx,
                 );
 
-                if let Some(&(id, Some(bound_index), _, _, _)) = bound_stack.last() {
-                    info.instance_stack.entry(tr).or_default().push((
+                let mut bound_stack = bound_stack.clone();
+                if bound_stack.is_empty() {
+                    bound_stack.push((
                         id,
-                        bound_index,
-                        instance_params.clone(),
-                        instance_bounds.clone(),
+                        None,
+                        tr,
+                        instance_span,
+                        generic_instance_params.clone(),
                     ));
                 }
 
-                let mut bound_stack = bound_stack.clone();
-                if bound_stack.is_empty() {
-                    bound_stack.push((id, None, tr, instance_span, instance_params.clone()));
-                }
-
                 for (index, mut instance_bound) in instance_bounds.clone().into_iter().enumerate() {
+                    let generic_instance_bound_params = instance_bound.params.clone();
+
+                    // let prev_substitutions = substitutions.clone();
                     for ty in &mut instance_bound.params {
                         self.add_substitutions(ty, &mut substitutions);
                     }
+
+                    info.instance_stack.entry(tr).or_default().push((
+                        id,
+                        index,
+                        instance_params.clone(),
+                        instance_bounds.clone(),
+                    ));
 
                     info.recursion_stack.push(instance_bound.span);
 
@@ -3923,7 +4169,7 @@ impl Typechecker {
                             Some(index),
                             instance_bound.trait_id,
                             instance_bound.span,
-                            instance_bound.params.clone(),
+                            generic_instance_bound_params.clone(),
                         ));
 
                         self.instance_for_inner(
@@ -3937,6 +4183,7 @@ impl Typechecker {
                     };
 
                     info.recursion_stack.pop();
+                    info.instance_stack.entry(tr).or_default().pop();
 
                     if let Err(error) = result {
                         self.ctx.reset_to(prev_ctx);
@@ -3945,28 +4192,30 @@ impl Typechecker {
                             info.instance_stack.entry(tr).or_default().pop();
                         }
 
-                        let (target, stack) = match error {
+                        let (target, stack, trace) = match error {
                             // TODO: Display multiple bounds
                             Some(FindInstanceError::TypeError(error)) => match *error.error {
                                 engine::TypeError::MissingInstance(target, reason) => {
                                     match reason {
-                                        engine::MissingInstanceReason::MultipleCandidates(_) => {
-                                            (target, Vec::new())
-                                        }
-                                        engine::MissingInstanceReason::UnsatisfiedBound(stack) => {
-                                            (target, stack)
-                                        }
+                                        engine::MissingInstanceReason::MultipleCandidates(
+                                            stack,
+                                        ) => (target, stack, error.trace),
+                                        engine::MissingInstanceReason::UnsatisfiedBound(
+                                            stack,
+                                            trace,
+                                        ) => (target, stack, trace),
                                     }
                                 }
                                 _ => return Err(Some(FindInstanceError::TypeError(error))),
                             },
-                            Some(FindInstanceError::MultipleCandidates(candidates)) => (
+                            Some(FindInstanceError::MultipleCandidates(candidates, trace)) => (
                                 engine::InstanceCandidate {
                                     span: instance_bound.span,
                                     trait_id: instance_bound.trait_id,
                                     params: instance_bound.params.clone(),
                                 },
                                 candidates,
+                                trace,
                             ),
                             None => (
                                 engine::InstanceCandidate {
@@ -3975,22 +4224,24 @@ impl Typechecker {
                                     params: instance_bound.params.clone(),
                                 },
                                 Vec::new(),
+                                self.compiler.backtrace(),
                             ),
                             Some(error) => return Err(Some(error)),
                         };
 
-                        error_candidates.push((target, stack));
+                        error_candidates.push((target, stack, trace));
 
                         continue 'check;
                     }
                 }
 
-                if !bound_stack.is_empty() {
-                    info.instance_stack.entry(tr).or_default().pop();
-                }
-
                 let ctx = self.ctx.reset_to(prev_ctx);
-                candidates.push((ctx, Some((id, instance_bounds)), instance_span));
+                candidates.push((
+                    ctx,
+                    Some((id, instance_bounds)),
+                    instance_params,
+                    instance_span,
+                ));
 
                 if tr_decl.attributes.allow_overlapping_instances {
                     break 'check; // use the first available instance
@@ -4010,6 +4261,7 @@ impl Typechecker {
                 };
 
                 self.error(
+                    info.source_span,
                     engine::TypeError::MissingInstance(
                         engine::InstanceCandidate {
                             span,
@@ -4030,6 +4282,7 @@ impl Typechecker {
                                     params,
                                 }))
                                 .collect(),
+                            self.compiler.backtrace(),
                         ),
                     ),
                     use_id,
@@ -4037,18 +4290,20 @@ impl Typechecker {
                 )
             }
             1 => {
-                let (target, stack) = error_candidates.pop().unwrap();
+                let (target, stack, trace) = error_candidates.pop().unwrap();
 
                 self.error(
+                    info.source_span,
                     engine::TypeError::MissingInstance(
                         target,
-                        engine::MissingInstanceReason::UnsatisfiedBound(stack),
+                        engine::MissingInstanceReason::UnsatisfiedBound(stack, trace),
                     ),
                     use_id,
                     use_span,
                 )
             }
             _ => self.error(
+                info.source_span,
                 engine::TypeError::MissingInstance(
                     engine::InstanceCandidate {
                         span: use_span,
@@ -4058,7 +4313,7 @@ impl Typechecker {
                     engine::MissingInstanceReason::MultipleCandidates(
                         error_candidates
                             .into_iter()
-                            .map(|(candidate, _)| candidate)
+                            .map(|(candidate, _, _)| candidate)
                             .collect(),
                     ),
                 ),
@@ -4130,6 +4385,7 @@ impl Typechecker {
         let (ty, resolved) = expr.ty.finalize(&self.ctx);
         if !resolved && report_error_if_unresolved {
             self.add_error(self.error(
+                None,
                 engine::TypeError::UnresolvedType(expr.ty.clone(), Vec::new()),
                 expr.id,
                 expr.span,
@@ -4141,17 +4397,23 @@ impl Typechecker {
             MonomorphizedExpressionKind::Marker => ExpressionKind::Marker,
             MonomorphizedExpressionKind::BoundInstance(id) => ExpressionKind::BoundInstance(id),
             MonomorphizedExpressionKind::ErrorConstant(id) => ExpressionKind::ErrorConstant(id),
-            MonomorphizedExpressionKind::UnresolvedTrait(id, candidates) => {
-                self.add_error(self.error(
+            MonomorphizedExpressionKind::UnresolvedTrait(id, candidates, trace) => {
+                let mut error = self.error(
+                    None,
                     engine::TypeError::UnresolvedType(expr.ty, candidates),
                     expr.id,
                     expr.span,
-                ));
+                );
+
+                error.trace = trace;
+
+                self.add_error(error);
 
                 ExpressionKind::UnresolvedTrait(id)
             }
             MonomorphizedExpressionKind::UnresolvedConstant(id, candidates) => {
                 self.add_error(self.error(
+                    None,
                     engine::TypeError::UnresolvedType(expr.ty, candidates),
                     expr.id,
                     expr.span,
@@ -4166,11 +4428,12 @@ impl Typechecker {
                 match parse_number!(number, ExpressionKind, &ty, TypeKind) {
                     Some(Ok(number)) => number,
                     Some(Err(error)) => {
-                        self.add_error(self.error(error, expr.id, expr.span));
+                        self.add_error(self.error(None, error, expr.id, expr.span));
                         ExpressionKind::error(&self.compiler)
                     }
                     None => {
                         self.add_error(self.error(
+                            None,
                             engine::TypeError::Mismatch(
                                 self.unresolved_ty(
                                     engine::UnresolvedTypeKind::Builtin(
@@ -4310,6 +4573,7 @@ impl Typechecker {
             )),
             MonomorphizedExpressionKind::UnresolvedExtend(_, _) => {
                 self.add_error(self.error(
+                    None,
                     engine::TypeError::UnresolvedType(expr.ty, Vec::new()),
                     expr.id,
                     expr.span,
@@ -4354,11 +4618,12 @@ impl Typechecker {
                     match parse_number!(number, PatternKind, input_ty, TypeKind) {
                         Some(Ok(number)) => number,
                         Some(Err(error)) => {
-                            self.add_error(self.error(error, None, pattern.span));
+                            self.add_error(self.error(None, error, None, pattern.span));
                             PatternKind::error(&self.compiler)
                         }
                         None => {
                             self.add_error(self.error(
+                                None,
                                 engine::TypeError::Mismatch(
                                     self.unresolved_ty(
                                         engine::UnresolvedTypeKind::Builtin(
@@ -4383,6 +4648,7 @@ impl Typechecker {
                 }
                 MonomorphizedPatternKind::UnresolvedDestructure(_, _) => {
                     self.add_error(self.error(
+                        None,
                         engine::TypeError::UnresolvedType(input_ty.clone().into(), Vec::new()),
                         None,
                         pattern.span,
@@ -4423,6 +4689,7 @@ impl Typechecker {
                 }
                 MonomorphizedPatternKind::UnresolvedVariant(_, _, _) => {
                     self.add_error(self.error(
+                        None,
                         engine::TypeError::UnresolvedType(input_ty.clone().into(), Vec::new()),
                         None,
                         pattern.span,
@@ -4632,6 +4899,7 @@ impl Typechecker {
             ty: decl.value.ty.map(|ty| {
                 self.convert_finalized_type_annotation(Some(engine::TypeReason::Trait(ty.span)), ty)
             }),
+            wrapper: decl.value.wrapper,
             attributes: decl.value.attributes,
             uses: decl.uses.into_iter().collect(),
         };
@@ -4657,38 +4925,79 @@ impl Typechecker {
 
         let mut params = decl.value.parameters;
 
-        let ty = self.convert_generic_type_annotation(
+        let mut ty = self.convert_generic_type_annotation(
             Some(engine::TypeReason::Annotation(decl.span)),
             decl.value.ty.clone(),
             &mut params,
         );
 
-        macro_rules! convert_bounds {
-            ($bounds:expr) => {
-                $bounds
-                    .clone()
+        let mut bounds = decl
+            .value
+            .bounds
+            .clone()
+            .into_iter()
+            .map(|bound| Bound {
+                span: bound.span,
+                trait_id: bound.tr,
+                params: bound
+                    .parameters
                     .into_iter()
-                    .map(|bound| Bound {
-                        span: bound.span,
-                        trait_id: bound.tr,
-                        params: bound
-                            .parameters
-                            .into_iter()
-                            .map(|ty| {
-                                self.convert_generic_type_annotation(
-                                    Some(engine::TypeReason::Bound(ty.span)),
-                                    ty,
-                                    &mut params,
-                                )
-                                .into()
-                            })
-                            .collect(),
+                    .map(|ty| {
+                        self.convert_generic_type_annotation(
+                            Some(engine::TypeReason::Bound(ty.span)),
+                            ty,
+                            &mut params,
+                        )
+                        .into()
                     })
-                    .collect::<Vec<_>>()
-            };
-        }
+                    .collect(),
+            })
+            .collect::<Vec<_>>();
 
-        let bounds = convert_bounds!(decl.value.bounds);
+        let wrapped_trait = decl.value.wrapped_trait.map(|(trait_id, substitutions)| {
+            let new_params = substitutions.values().copied().collect::<Vec<_>>();
+
+            for param in &mut params {
+                *param = *substitutions.get(param).unwrap();
+            }
+
+            let substitutions = substitutions
+                .into_iter()
+                .map(|(param, new_param)| {
+                    (param, self.ty(engine::TypeKind::Parameter(new_param), None))
+                })
+                .collect::<engine::FinalizedGenericSubstitutions>();
+
+            ty.instantiate_with(&substitutions);
+
+            for param in new_params {
+                self.with_type_parameter_decl(param, |_| {});
+
+                if let Some(ty) = &mut self
+                    .declarations
+                    .borrow_mut()
+                    .type_parameters
+                    .get_mut(&param)
+                    .unwrap()
+                    .default
+                {
+                    ty.instantiate_with(&substitutions);
+                }
+            }
+
+            let substitutions = substitutions
+                .into_iter()
+                .map(|(param, ty)| (param, engine::UnresolvedType::from(ty)))
+                .collect::<engine::GenericSubstitutions>();
+
+            for bound in &mut bounds {
+                for param in &mut bound.params {
+                    param.instantiate_with(&self.ctx, &substitutions);
+                }
+            }
+
+            trait_id
+        });
 
         let decl = ConstantDecl {
             name: decl
@@ -4697,12 +5006,6 @@ impl Typechecker {
             span: decl.span,
             params,
             bounds,
-            bound_annotations: decl
-                .value
-                .bounds
-                .into_iter()
-                .map(|bound| (bound.tr, bound.parameters))
-                .collect(),
             ty_annotation: decl.value.ty,
             ty,
             specializations: self
@@ -4712,6 +5015,7 @@ impl Typechecker {
                 .cloned()
                 .unwrap_or_default(),
             enumeration_ty: decl.value.enumeration_ty,
+            wrapped_trait,
             attributes: decl.value.attributes,
             body: decl.value.value,
             uses: decl.uses.into_iter().collect(),
@@ -4821,6 +5125,7 @@ impl Typechecker {
 
         let bounds = convert_bounds!(decl.value.bounds);
 
+        let mut overlaps = false;
         if !tr.attributes.allow_overlapping_instances {
             // Check if the instance collides with any other instances -- there's no
             // need to check the bounds because there's no way to ensure a type
@@ -4895,6 +5200,8 @@ impl Typechecker {
                 }
 
                 self.compiler.add_diagnostic(error);
+
+                overlaps = true;
             }
         }
 
@@ -4902,15 +5209,10 @@ impl Typechecker {
             span: decl.span,
             params: decl_params,
             bounds,
-            bound_annotations: decl
-                .value
-                .bounds
-                .into_iter()
-                .map(|bound| (bound.tr, bound.parameters))
-                .collect(),
             trait_id,
             trait_params: params.into_iter().map(|(param, _)| param).collect(),
             trait_param_annotations: decl.value.tr_parameters,
+            overlaps,
             body: decl.value.value.map(|value| value.value),
         };
 
@@ -5077,6 +5379,7 @@ impl Typechecker {
 impl Typechecker {
     fn unify(
         &self,
+        source_span: impl Into<Option<SpanList>>,
         id: impl Into<Option<ExpressionId>>,
         span: impl Into<SpanList>,
         actual: engine::UnresolvedType,
@@ -5084,7 +5387,7 @@ impl Typechecker {
     ) -> Result<(), Error> {
         self.ctx
             .unify(actual, expected)
-            .map_err(|e| self.error(e, id, span.into()))
+            .map_err(|e| self.error(source_span, e, id, span.into()))
     }
 
     fn add_substitutions(
@@ -5191,6 +5494,7 @@ impl Typechecker {
         let (finalized_ty, resolved) = ty.finalize(&self.ctx);
         if !resolved {
             self.add_error(self.error(
+                None,
                 engine::TypeError::UnresolvedType(ty, Vec::new()),
                 None,
                 span,
@@ -5217,6 +5521,7 @@ impl Typechecker {
         let (finalized_ty, resolved) = ty.finalize(&self.ctx);
         if !resolved {
             self.add_error(self.error(
+                None,
                 engine::TypeError::UnresolvedType(ty, Vec::new()),
                 None,
                 span,
@@ -5644,7 +5949,7 @@ impl Typechecker {
                         stack,
                     )),
                     Box::new(self.convert_type_annotation_inner(
-                        Some(engine::TypeReason::FunctionInput(output.span)),
+                        Some(engine::TypeReason::FunctionOutput(output.span)),
                         *output,
                         convert_placeholder,
                         stack,
@@ -6064,7 +6369,7 @@ impl Typechecker {
                 let mut fix = None;
 
                 if let Some(reason) = expected.info.reason {
-                    let note = match reason {
+                    let mut note = match reason {
                         engine::TypeReason::Pattern(span) => Note::secondary(
                             span,
                             format!(
@@ -6138,9 +6443,123 @@ impl Typechecker {
                                 self.format_type(expected.clone(), format)
                             ),
                         ),
+                        engine::TypeReason::Variable(span) => Note::secondary(
+                            span,
+                            format!(
+                                "expected because this variable has type {}",
+                                self.format_type(expected.clone(), format)
+                            ),
+                        ),
+                        engine::TypeReason::TypeParameter(span) => Note::secondary(
+                            span,
+                            format!(
+                                "expected because this type parameter has type {}",
+                                self.format_type(expected.clone(), format)
+                            ),
+                        ),
                     };
 
+                    if actual.info.reason.is_some() {
+                        note.message.push_str("...");
+                    }
+
                     notes.push(note);
+                }
+
+                if expected.info.reason.is_some() {
+                    if let Some(reason) = actual.info.reason {
+                        let note = match reason {
+                            engine::TypeReason::Pattern(span) => Note::secondary(
+                                span,
+                                format!(
+                                    "...but the pattern here actually matches type {}",
+                                    self.format_type(actual.clone(), format)
+                                ),
+                            ),
+                            engine::TypeReason::Annotation(span) => {
+                                Note::secondary(span, "...but the actual type was annotated here")
+                            }
+                            engine::TypeReason::TypeAlias(span) => Note::secondary(
+                                span,
+                                format!(
+                                    "...but using the type here actually produces type {}",
+                                    self.format_type(actual.clone(), format)
+                                ),
+                            ),
+                            engine::TypeReason::Trait(span) => Note::secondary(
+                                span,
+                                format!(
+                                    "...but using the trait here actually produces type {}",
+                                    self.format_type(actual.clone(), format)
+                                ),
+                            ),
+                            engine::TypeReason::Instance(span) => Note::secondary(
+                                span,
+                                format!(
+                                    "...but this instance here actually has type {}",
+                                    self.format_type(actual.clone(), format)
+                                ),
+                            ),
+                            engine::TypeReason::StructureField(span) => Note::secondary(
+                                span,
+                                format!(
+                                    "...but this field was actually given type {}",
+                                    self.format_type(actual.clone(), format)
+                                ),
+                            ),
+                            engine::TypeReason::VariantElement(span) => Note::secondary(
+                                span,
+                                format!(
+                                    "...but this element of the variant was actually given type {}",
+                                    self.format_type(actual.clone(), format)
+                                ),
+                            ),
+                            engine::TypeReason::FunctionInput(span) => Note::secondary(
+                                span,
+                                format!(
+                                    "...but the input to the function here actually has type {}",
+                                    self.format_type(actual.clone(), format)
+                                ),
+                            ),
+                            engine::TypeReason::FunctionOutput(span) => Note::secondary(
+                                span,
+                                format!(
+                                    "...but calling the function here actually produces type {}",
+                                    self.format_type(actual.clone(), format)
+                                ),
+                            ),
+                            engine::TypeReason::Bound(span) => Note::secondary(
+                                span,
+                                format!(
+                                    "...but this bound here is actually type {}",
+                                    self.format_type(actual.clone(), format)
+                                ),
+                            ),
+                            engine::TypeReason::DefaultType(span) => Note::secondary(
+                                span,
+                                format!(
+                                    "...but the type actually defaulted to {}",
+                                    self.format_type(actual.clone(), format)
+                                ),
+                            ),
+                            engine::TypeReason::Variable(span) => Note::secondary(
+                                span,
+                                format!(
+                                    "...but this variable actually has type {}",
+                                    self.format_type(actual.clone(), format)
+                                ),
+                            ),
+                            engine::TypeReason::TypeParameter(span) => Note::secondary(
+                                span,
+                                format!(
+                                    "...but this type parameter actually has type {}",
+                                    self.format_type(actual.clone(), format)
+                                ),
+                            ),
+                        };
+
+                        notes.push(note);
+                    }
                 }
 
                 {
@@ -6510,7 +6929,9 @@ impl Typechecker {
                             ));
                         }
                     },
-                    engine::MissingInstanceReason::UnsatisfiedBound(stack) => {
+                    engine::MissingInstanceReason::UnsatisfiedBound(stack, trace) => {
+                        error.trace = trace;
+
                         let format = format::Format {
                             surround_in_backticks: true,
                             ..Default::default()
@@ -6544,7 +6965,7 @@ impl Typechecker {
 
                 let default_error_message = format!(
                     "could not find instance {}",
-                    self.format_type(format::FormattableType::r#trait(candidate.trait_id, candidate.params.clone()), format)
+                    self.format_type(format::FormattableType::r#trait(candidate.trait_id, candidate.params.clone()), format),
                 );
 
                 let error_message = match trait_attributes.on_unimplemented {
@@ -6650,16 +7071,10 @@ impl Typechecker {
 
                 let mut notes = note.into_iter().collect::<Vec<_>>();
 
-                // // TODO: List candidates in a smarter way to not overwhelm the user
-                // if let Some((bound, candidates)) = _candidates {
-                //     if let Some(bound) = bound {
-                //         notes.push(Note::secondary(bound, "...as required by this bound"));
-                //     }
-
-                //     for candidate in candidates {
-                //         notes.push(Note::secondary(candidate, if bound.is_some() { "this instance could potentially apply..." } else { "this instance could potentially apply" }));
-                //     }
-                // }
+                // TODO: List candidates in a smarter way to not overwhelm the user
+                for candidate in _candidates {
+                    notes.push(Note::secondary(candidate.span, "this instance could potentially apply"));
+                }
 
                 let default_error_message = String::from("could not determine the type of this expression");
 
@@ -6709,6 +7124,15 @@ impl Typechecker {
         };
 
         diagnostic.notes.append(&mut error.notes);
+
+        #[cfg(debug_assertions)]
+        if self.compiler.backtrace_enabled {
+            if let Some(span) = error.source {
+                diagnostic
+                    .notes
+                    .push(Note::secondary(span, "[debug] while monomorphizing this"));
+            }
+        }
 
         self.compiler.diagnostics.add(diagnostic);
     }

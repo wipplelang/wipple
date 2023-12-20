@@ -68,7 +68,12 @@ impl fmt::Display for Program {
 }
 
 impl Expression {
-    fn display_with(&self, f: &mut impl fmt::Write, file: &Program, indent: usize) -> fmt::Result {
+    pub(crate) fn display_with(
+        &self,
+        f: &mut impl fmt::Write,
+        file: &Program,
+        indent: usize,
+    ) -> fmt::Result {
         match &self.kind {
             ExpressionKind::Error(_) | ExpressionKind::ErrorConstant(_) => {
                 write!(f, "<error expression>")?

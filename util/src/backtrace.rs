@@ -4,10 +4,17 @@ use crate::Shared;
 #[derive(Clone, Default)]
 pub struct Backtrace {
     #[cfg(debug_assertions)]
-    pub trace: Option<Shared<backtrace::Backtrace>>,
+    trace: Option<Shared<backtrace::Backtrace>>,
 }
 
 impl Backtrace {
+    pub fn capture() -> Self {
+        Backtrace {
+            #[cfg(debug_assertions)]
+            trace: Some(Shared::new(backtrace::Backtrace::new_unresolved())),
+        }
+    }
+
     pub fn empty() -> Self {
         Backtrace {
             #[cfg(debug_assertions)]
@@ -15,18 +22,16 @@ impl Backtrace {
         }
     }
 
-    #[cfg(debug_assertions)]
-    pub fn into_inner(self) -> Option<backtrace::Backtrace> {
-        self.trace.map(|trace| {
-            let mut trace = trace.lock().clone();
-            trace.resolve();
-            trace
-        })
-    }
+    pub fn has_trace(&self) -> bool {
+        #[cfg(debug_assertions)]
+        {
+            self.trace.is_some()
+        }
 
-    #[cfg(not(debug_assertions))]
-    pub fn into_inner(self) -> Option<backtrace::Backtrace> {
-        None
+        #[cfg(not(debug_assertions))]
+        {
+            false
+        }
     }
 }
 
@@ -42,10 +47,31 @@ impl From<backtrace::Backtrace> for Backtrace {
 impl std::fmt::Debug for Backtrace {
     #[cfg(debug_assertions)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use std::path::Path;
+
         if let Some(trace) = &self.trace {
             let mut trace = trace.lock().clone();
             trace.resolve();
-            trace.fmt(f)
+
+            // Only show lines that are part of the Wipple source code, unless
+            // RUST_BACKTRACE is enabled
+            if std::env::var("RUST_BACKTRACE").is_ok() {
+                trace.fmt(f)
+            } else {
+                let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .parent()
+                    .unwrap()
+                    .to_str()
+                    .unwrap();
+
+                let s = format!("{trace:#?}")
+                    .lines()
+                    .filter(|line| line.contains("wipple") || line.contains(dir))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+
+                f.write_str(&s)
+            }
         } else {
             f.debug_tuple("Backtrace").finish()
         }

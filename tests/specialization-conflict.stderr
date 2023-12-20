@@ -2,14 +2,15 @@ error:
    ┌─ test:16:1
    │
  3 │ greet :: A where (Greet A) => A -> Text
-   │ ----- expected because the type was annotated here
+   │ ----- expected because the type was annotated here...
    ·
 16 │ greet :: Bar -> Number
    │ ^^^^^
    │ │
    │ function returns `Number`, but it should return `Text`
-   │ this constant must have a more specific type than the original constant
    │ expected `A -> Text` for any type `A`, but found `Bar -> Number`
+   │ this constant must have a more specific type than the original constant
+   │ ...but the actual type was annotated here
    │
    = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types
 

@@ -4,11 +4,11 @@ error:
  6 │ A where (U A) => instance (T A) : ()
    │         -----    -------------- this instance could apply, but...
    │         │         
-   │         ...this bound is needed to satisfy `T _`
+   │         ...this bound is needed to satisfy `T A`
  7 │ A where (V A) => instance (U A) : ()
-   │         ----- ...this bound is needed to satisfy `U _`
+   │         ----- ...this bound is needed to satisfy `U A`
  8 │ A where (W A) => instance (V A) : ()
-   │         ----- ...this bound is needed to satisfy `V _`
+   │         ----- ...this bound is needed to satisfy `V A`
  9 │ 
 10 │ T
    │ ^ could not find instance `W _`

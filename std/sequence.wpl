@@ -154,7 +154,7 @@ sum : reduce Default (+)
 [help-group "Collections"]
 [help-playground "https://wipple.dev/std/examples/collect.txt"]
 [on-unimplemented ("cannot create a _ from a sequence of _" Container Element)]
-From-Sequence : (infer Element) Container => trait (Sequence Element -> Container)
+From-Sequence : Element Container => trait (Sequence Element -> Container)
 
 [help "Collect a sequence into a single value, like a `List`."]
 [help-group "Collections"]
@@ -162,7 +162,7 @@ From-Sequence : (infer Element) Container => trait (Sequence Element -> Containe
 collect :: Input (infer Element) Output where (As-Sequence Input Element) (From-Sequence Element Output) => Input -> Output
 collect : As-Sequence | From-Sequence
 
-(infer Element) => instance (From-Sequence Element (List Element)) : seq -> {
+Element => instance (From-Sequence Element (List Element)) : seq -> {
   list : mutable Default
   repeat {
     when (next seq) {
@@ -177,7 +177,7 @@ collect : As-Sequence | From-Sequence
   get list
 }
 
-(infer Element) => instance (As-Sequence (List Element) Element) : l -> {
+Element => instance (As-Sequence (List Element) Element) : l -> {
   index : mutable 0
 
   sequence {
@@ -204,7 +204,10 @@ instance (From-Sequence () ()) : seq -> {
 [help-group "Collections"]
 [help-playground "https://wipple.dev/std/examples/each.txt"]
 each :: Container (infer Element) where (As-Sequence Container Element) => (Element -> ()) -> Container -> ()
-each : f container -> container . transform f . collect
+each : f container -> {
+  seq : container . transform f :: Sequence ()
+  seq . (collect :: (Sequence () -> ()))
+}
 
 [help "Split a sequence into groups of consecutive items satisfying a condition."]
 [help-group "Collections"]
@@ -400,7 +403,7 @@ Left (infer Left-Element) Right (infer Right-Element) where (Extend Left Left-El
 
 [help "Split a sequence that produces two values at a time into two separate collections."]
 [help-group "Collections"]
-unzip :: Collection (infer Left-Element) (infer Right-Element) Left Right where (As-Sequence Collection (Left-Element ; Right-Element)) (Default Left) (Extend Left Left-Element) (Default Right) (Extend Right Right-Element) => Collection -> (Left ; Right)
+unzip :: Collection (infer Left-Element) (infer Right-Element) Left Right where (As-Sequence Collection (Left-Element ; Right-Element)) (Extend Left Left-Element) (Extend Right Right-Element) (Default Left) (Default Right) => Collection -> (Left ; Right)
 unzip : collection -> extend (As-Sequence collection) (Default ; Default)
 
 [help "Implemented for collections for which the presence of an element can be checked."]

@@ -2,7 +2,7 @@ use crate::{analysis::SpanList, Compiler, TraitId, TypeId, TypeParameterId};
 use lazy_static::lazy_static;
 use serde::Serialize;
 use std::{
-    cell::{Cell, RefCell},
+    cell::RefCell,
     collections::{BTreeMap, HashSet},
     hash::Hash,
     sync::atomic::AtomicUsize,
@@ -11,6 +11,11 @@ use wipple_util::Backtrace;
 
 lazy_static! {
     static ref NEXT_CONTEXT_ID: AtomicUsize = Default::default();
+    static ref NEXT_TYPE_VARIABLE: AtomicUsize = Default::default();
+}
+
+fn next_type_variable() -> usize {
+    NEXT_TYPE_VARIABLE.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
 #[derive(Clone, Default, PartialEq, Eq)]
@@ -40,12 +45,13 @@ pub struct TypeInfo {
     pub reason: Option<TypeReason>,
 
     #[serde(skip)]
-    pub trace: Backtrace,
+    pub history: Vec<Backtrace>,
 }
 
 impl TypeInfo {
     pub fn merge(&mut self, other: Self) {
         self.span = self.span.or(other.span);
+        self.history = other.history;
         // Don't merge reasons
     }
 }
@@ -63,6 +69,8 @@ pub enum TypeReason {
     FunctionOutput(SpanList),
     Bound(SpanList),
     DefaultType(SpanList),
+    Variable(SpanList),
+    TypeParameter(SpanList),
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -122,7 +130,7 @@ impl Compiler {
             TypeInfo {
                 span: span.into(),
                 reason: None,
-                trace: self.backtrace(),
+                history: vec![self.backtrace()],
             },
         )
     }
@@ -172,7 +180,7 @@ impl Compiler {
             TypeInfo {
                 span: span.into(),
                 reason: None,
-                trace: self.backtrace(),
+                history: vec![self.backtrace()],
             },
         )
     }
@@ -301,7 +309,6 @@ pub type FinalizedGenericSubstitutions = BTreeMap<TypeParameterId, Type>;
 #[derive(Debug, Default)]
 pub struct Context {
     id: ContextId,
-    pub next_var: Cell<usize>,
     pub substitutions: RefCell<im::HashMap<usize, UnresolvedType>>,
     pub defaults: RefCell<im::HashMap<usize, UnresolvedType>>,
     pub numeric_substitutions: RefCell<im::HashMap<usize, UnresolvedType>>,
@@ -311,7 +318,6 @@ impl Context {
     pub fn snapshot(&self) -> Self {
         Context {
             id: self.id.child(),
-            next_var: self.next_var.clone(),
             substitutions: self.substitutions.clone(),
             defaults: self.defaults.clone(),
             numeric_substitutions: self.numeric_substitutions.clone(),
@@ -339,7 +345,7 @@ pub struct InstanceCandidate {
 #[derive(Debug, Clone)]
 pub enum MissingInstanceReason {
     MultipleCandidates(Vec<InstanceCandidate>),
-    UnsatisfiedBound(Vec<InstanceCandidate>),
+    UnsatisfiedBound(Vec<InstanceCandidate>, Backtrace),
 }
 
 pub type Result<T> = std::result::Result<T, Box<TypeError>>;
@@ -352,7 +358,6 @@ impl Context {
     pub fn reset_to(&self, snapshot: Self) -> Self {
         Context {
             id: snapshot.id,
-            next_var: self.next_var.replace(snapshot.next_var.into_inner()).into(),
             substitutions: self
                 .substitutions
                 .replace(snapshot.substitutions.into_inner())
@@ -373,7 +378,7 @@ impl Context {
     }
 
     pub fn new_variable(&self, default: Option<UnresolvedType>) -> TypeVariable {
-        let next_var = self.next_var.get();
+        let next_var = next_type_variable();
         let var = TypeVariable {
             id: self.id.clone(),
             counter: next_var,
@@ -384,8 +389,6 @@ impl Context {
                 .borrow_mut()
                 .insert(var.counter_in(self), default);
         }
-
-        self.next_var.set(next_var + 1);
 
         var
     }
@@ -642,7 +645,7 @@ impl Context {
         }
     }
 
-    fn unify_var(&self, var: TypeVariable, ty: UnresolvedType) -> Result<()> {
+    fn unify_var(&self, var: TypeVariable, mut ty: UnresolvedType) -> Result<()> {
         if let UnresolvedTypeKind::Variable(other) = &ty.kind {
             assert!(other.id.has_ancestor(&var.id));
 
@@ -663,6 +666,8 @@ impl Context {
                     defaults.insert(other.counter_in(self), default);
                 }
             }
+
+            ty.info.history.push(Backtrace::capture());
 
             self.substitutions
                 .borrow_mut()
@@ -1348,7 +1353,7 @@ impl Type {
 }
 
 impl<Ty> BuiltinType<Ty> {
-    fn is_numeric(&self) -> bool {
+    pub fn is_numeric(&self) -> bool {
         matches!(
             self,
             BuiltinType::Number

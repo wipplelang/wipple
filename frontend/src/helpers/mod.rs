@@ -9,12 +9,11 @@ pub use wipple_util::*;
 
 impl Compiler {
     pub(crate) fn backtrace(&self) -> Backtrace {
-        Backtrace {
-            #[cfg(debug_assertions)]
-            trace: self
-                .backtrace_enabled
-                .then(backtrace::Backtrace::new_unresolved)
-                .map(Shared::new),
+        #[cfg(debug_assertions)]
+        if self.backtrace_enabled {
+            return Backtrace::capture();
         }
+
+        Backtrace::empty()
     }
 }

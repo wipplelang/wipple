@@ -22,7 +22,7 @@ Show : (A : Text) => trait (A -> Text)
 [help-alias "display"]
 [on-unresolved "`show` expects a value to be displayed"]
 [resolve "insert a value to display" (show {%value%})]
-show :: (A : Text) where (Show A) => A -> ()
+show :: A where (Show A) => A -> ()
 show : x -> intrinsic "display" (Show x)
 
 snippet "Show" : show 'value
@@ -40,7 +40,7 @@ instance (Show Boolean) : x? -> if x? "True" "False"
 instance (Show None-Error) : just "found `None`"
 
 Value where (Show Value) => instance (Show (Maybe Value)) : x? -> when x? {
-  Some x -> "Some _" (Show x)
+  Some x -> "Some _" x
   None -> "None"
 }
 
@@ -77,7 +77,7 @@ instance (Read Double) : text -> semantics "pure" (intrinsic "text-to-double" te
 [help-group "Input and Output"]
 [help "Read a value from the user with the provided prompt."]
 prompt :: A where (Read A) => Text -> A
-prompt : prompt -> intrinsic "prompt" prompt (Read :: (Text -> Maybe A))
+prompt : prompt -> intrinsic "prompt" prompt Read
 
 [help "Ask the user to pick from a set of options."]
 [help-group "Input and Output"]

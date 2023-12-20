@@ -26,9 +26,6 @@ struct Args {
     optimize: bool,
 
     #[clap(long)]
-    no_incremental: bool,
-
-    #[clap(long)]
     show_expansion_history: bool,
 
     #[cfg(debug_assertions)]
@@ -63,7 +60,7 @@ async fn main() -> anyhow::Result<()> {
     let update_count = AtomicUsize::new(0);
     let results = Mutex::new(Vec::new());
 
-    let run_path = |src_path: PathBuf, incremental: bool| {
+    let run_path = |src_path: PathBuf| {
         let pass_count = &pass_count;
         let fail_count = &fail_count;
         let update_count = &update_count;
@@ -90,7 +87,6 @@ async fn main() -> anyhow::Result<()> {
                 stdout: stdout.as_deref(),
                 stderr: stderr.as_deref(),
                 compiler: compiler.clone(),
-                incremental,
                 optimize: args.optimize,
                 show_expansion_history: args.show_expansion_history,
                 #[cfg(debug_assertions)]
@@ -131,21 +127,17 @@ async fn main() -> anyhow::Result<()> {
                     test_name.bold()
                 );
 
-                if let Some(output_diff) = result.output_diff.as_ref() {
-                    if !output_diff.is_empty() {
-                        eprintln!("\nOutput:\n");
-                        output_diff.print();
-                    }
+                if !result.output_diff.is_empty() {
+                    eprintln!("\nOutput:\n");
+                    result.output_diff.print();
                 }
 
-                if let Some(diagnostics_diff) = result.diagnostics_diff.as_ref() {
-                    if !diagnostics_diff.is_empty() {
-                        eprintln!("\nDiagnostics:\n");
-                        diagnostics_diff.print();
-                    }
+                if !result.diagnostics_diff.is_empty() {
+                    eprintln!("\nDiagnostics:\n");
+                    result.diagnostics_diff.print();
                 }
 
-                if result.output_diff.is_some() || result.diagnostics_diff.is_some() {
+                if !result.output_diff.is_empty() || !result.diagnostics_diff.is_empty() {
                     eprintln!();
                 }
             }
@@ -156,8 +148,8 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    for (index, file) in args.files.into_iter().enumerate() {
-        run_path(file, !args.no_incremental && index > 0).await?;
+    for file in args.files {
+        run_path(file).await?;
     }
 
     let pass_count = pass_count.into_inner();
@@ -186,18 +178,14 @@ async fn main() -> anyhow::Result<()> {
                         } else {
                             let mut buf = Vec::new();
 
-                            if let Some(output_diff) = result.output_diff {
-                                if !output_diff.is_empty() {
-                                    writeln!(buf, "\nOutput:\n").unwrap();
-                                    output_diff.write_to(&mut buf, false);
-                                }
+                            if !result.output_diff.is_empty() {
+                                writeln!(buf, "\nOutput:\n").unwrap();
+                                result.output_diff.write_to(&mut buf, false);
                             }
 
-                            if let Some(diagnostics_diff) = result.diagnostics_diff {
-                                if !diagnostics_diff.is_empty() {
-                                    writeln!(buf, "\nDiagnostics:\n").unwrap();
-                                    diagnostics_diff.write_to(&mut buf, false);
-                                }
+                            if !result.diagnostics_diff.is_empty() {
+                                writeln!(buf, "\nDiagnostics:\n").unwrap();
+                                result.diagnostics_diff.write_to(&mut buf, false);
                             }
 
                             let msg = String::from_utf8(buf).unwrap();
@@ -221,6 +209,7 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[derive(Debug)]
 struct Diff(Vec<(similar::ChangeTag, String)>);
 
 impl Diff {
@@ -258,18 +247,17 @@ impl Diff {
     }
 }
 
+#[derive(Debug)]
 struct TestResult {
-    output_diff: Option<Diff>,
+    output_diff: Diff,
     output: String,
-    diagnostics_diff: Option<Diff>,
+    diagnostics_diff: Diff,
     diagnostics: String,
 }
 
 impl TestResult {
     fn passed(&self) -> bool {
-        (self.output.is_empty() || self.output_diff.as_ref().is_some_and(Diff::is_empty))
-            && (self.diagnostics.is_empty()
-                || self.diagnostics_diff.as_ref().is_some_and(Diff::is_empty))
+        self.output_diff.is_empty() && self.diagnostics_diff.is_empty()
     }
 }
 
@@ -278,7 +266,6 @@ struct RunOptions<'a> {
     stdout: Option<&'a str>,
     stderr: Option<&'a str>,
     compiler: wipple_frontend::Compiler,
-    incremental: bool,
     optimize: bool,
     show_expansion_history: bool,
     #[cfg(debug_assertions)]
@@ -292,10 +279,6 @@ async fn run(options: RunOptions<'_>) -> anyhow::Result<TestResult> {
         .compiler
         .loader
         .insert_virtual(test_path, Arc::from(options.src));
-
-    options
-        .compiler
-        .set_changed_files(options.incremental.then_some([test_path]));
 
     let (program, diagnostics) = options
         .compiler
@@ -367,9 +350,9 @@ async fn run(options: RunOptions<'_>) -> anyhow::Result<TestResult> {
     diagnostics = diagnostics.replace(env!("CARGO_WORKSPACE_DIR"), "<dir>/");
 
     Ok(TestResult {
-        output_diff: options.stdout.map(|expected| diff(expected, &output)),
+        output_diff: diff(options.stdout.unwrap_or_default(), &output),
         output,
-        diagnostics_diff: options.stderr.map(|expected| diff(expected, &diagnostics)),
+        diagnostics_diff: diff(options.stderr.unwrap_or_default(), &diagnostics),
         diagnostics,
     })
 }

@@ -570,12 +570,14 @@ async fn build_with_passes<P>(
                             progress_bar.set_message("Collecting types")
                         }
                         analysis::typecheck::Progress::ResolvingDeclarations {
+                            current,
                             count,
                             remaining,
                         } => progress_bar.set_message(format!(
-                            "({}/{}) Resolving declarations",
+                            "({}/{}) Resolving {}",
                             count,
-                            count + remaining
+                            count + remaining,
+                            current,
                         )),
                     },
                 }
