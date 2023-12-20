@@ -28,7 +28,7 @@ import { produce } from "immer";
 import { Editor } from "./editor";
 
 export interface Page {
-    title: string;
+    title?: string;
     sections: Section[];
 }
 
@@ -64,7 +64,7 @@ const App = () => {
 
     const pageSlug = (page: Page) =>
         page.title
-            .toLowerCase()
+            ?.toLowerCase()
             .replaceAll(/[^A-Za-z0-9]/g, "-")
             .replace(/^\-+/, "")
             .replace(/\-+$/, "")

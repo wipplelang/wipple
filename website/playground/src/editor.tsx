@@ -223,7 +223,7 @@ const Page = (props: {
                                         produce(props.page, (page) => {
                                             page.sections.push({
                                                 id: nanoid(8),
-                                                page: page.title,
+                                                page: page.title ?? "",
                                                 type,
                                                 value: "",
                                                 locked: type === "text" ? false : undefined,
