@@ -57,18 +57,28 @@ export const initialize = async (id: string, container: HTMLElement) => {
                                 body.position.y <= worldHeight + value
                         );
                 case "create-object": {
-                    let [shape, color, width, height, centerX, centerY, mass, restitution, x, y] =
-                        value;
+                    let [
+                        shape,
+                        color,
+                        width,
+                        height,
+                        centerX,
+                        centerY,
+                        mass,
+                        restitution,
+                        rotates,
+                        x,
+                        y,
+                    ] = value;
 
                     const options: matter.IChamferableBodyDefinition = {
                         render: { fillStyle: color },
 
-                        mass: isNaN(mass) ? undefined : mass * massScale,
                         isStatic: isNaN(mass),
                         restitution,
 
                         // TODO: Let user specify these
-                        inertia: Infinity,
+                        inertia: rotates ? undefined : Infinity,
                         friction: 0,
                         frictionAir: 0,
                         frictionStatic: 0,
@@ -92,6 +102,10 @@ export const initialize = async (id: string, container: HTMLElement) => {
                         { x: centerX * (width / 2), y: -centerY * (height / 2) },
                         true
                     );
+
+                    if (!isNaN(mass)) {
+                        matter.Body.setMass(body, mass * massScale);
+                    }
 
                     const bodyIndex = bodies.length;
                     bodies.push(body);

@@ -240,7 +240,7 @@ create-object : shape config -> {
   initial-y : (y of config) (0 seconds)
 
   handle : Object {
-    index : handle of physics . message "create-object" (shape ; (color of config) ; (pixels of width of config) ; (pixels of height of config) ; (x of center of config) ; (y of center of config) ; (kilograms of mass of config) ; if (elastic of config) 1 0 ; (pixels of initial-x) ; (pixels of initial-y))
+    index : handle of physics . message "create-object" (shape ; (color of config) ; (pixels of width of config) ; (pixels of height of config) ; (x of center of config) ; (y of center of config) ; (kilograms of mass of config) ; if (elastic of config) 1 0 ; if (rotates of config) 1 0 ; (pixels of initial-x) ; (pixels of initial-y))
     x : x of config
     y : y of config
   }
@@ -267,6 +267,7 @@ Object-Config : type {
   center :: Direction
   mass :: Mass
   elastic :: Boolean
+  rotates :: Boolean
   x :: Time -> Distance
   y :: Time -> Distance
 }
@@ -283,6 +284,7 @@ instance (Default Object-Config) : Object-Config {
   center : Default
   mass : 1 kilograms
   elastic : False
+  rotates : False
   x : just (undefined . pixels)
   y : just (undefined . pixels)
 }
