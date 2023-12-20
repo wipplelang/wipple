@@ -513,7 +513,7 @@ const SectionContainer = (props: {
                 <CodeEditor
                     id={props.section.id}
                     code={props.section.value}
-                    lint={props.section.lint ?? true}
+                    lint={!(props.settings.beginner ?? true) && (props.section.lint ?? true)}
                     setup={props.section.setup}
                     autoRun={props.section.autoRun ?? true}
                     onChangeAutoRun={(autoRun) => {
