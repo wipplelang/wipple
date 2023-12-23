@@ -5,25 +5,14 @@ use "list"
 use "util"
 use "sequence"
 
-[help "Implements the `random` function."]
-[help-group "Random"]
-[on-unimplemented ("cannot produce a random _ from a _" Value Range)]
-Random : Range Value => trait (Range -> Value)
-
-random :: Range Value where (Random Range Value) => Range -> Value
-random : Random
-
-instance (Random (Range Number) Number) : { min max } -> {
+random-between :: Range Number -> Number
+random-between : { min max } -> {
   (max >= min) . expect "`max` must be greater than `min`"
   intrinsic "random-number" min max
 }
 
-Element => instance (Random (List Element) (Maybe Element)) : l ->
-  l . nth (random (0 to (count l)))
+random-element :: Element => List Element -> Maybe Element
+random-element : l -> l . nth (random-between (0 to (count l)))
 
-instance (Random () Boolean) : () -> (random (0 to 2)) = 1
-
-[help "Produce a sequence of random values."]
-[help-group "Random"]
-sample :: Range Value where (Random Range Value) => Range -> Sequence Value
-sample : range -> sequence (Some (random range))
+random? :: () -> Boolean
+random? : () -> random-between (0 to 2) = 1
