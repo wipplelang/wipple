@@ -337,9 +337,7 @@ pub fn analyze(code: String, lint: bool, setup: Option<String>, callback: js_sys
                         .lock()
                         .get(&path)
                         .map_or_else(String::new, |code| code.to_string()),
-                    wipple_frontend::FilePath::Builtin => {
-                        panic!("cannot get code from builtin path")
-                    }
+                    wipple_frontend::FilePath::Builtin => String::new(),
                 };
 
                 for note in diagnostic.notes {
