@@ -136,9 +136,9 @@ cdr : lisp -> when lisp {
   Cons _ rest -> rest
 }
 
-nth :: A => Natural -> Lisp A -> A
+nth :: A => Number -> Lisp A -> A
 nth : index lisp -> {
-  nth-recursive :: A => Natural -> Natural -> Lisp A -> A
+  nth-recursive :: A => Number -> Number -> Lisp A -> A
   nth-recursive : index current lisp -> if (index = current) (car lisp) (nth-recursive index (current + 1) (cdr lisp))
 
   lisp . nth-recursive index 0

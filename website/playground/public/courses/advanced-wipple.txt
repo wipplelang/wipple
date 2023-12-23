@@ -742,49 +742,6 @@ locked: true
 
 Try changing the example to support 3-dimensional points!
 
-
----
-page: Numeric types
-type: text
-locked: true
----
-
-So far, we've only used the `Number` type to represent numbers. But Wipple has several other numeric types as well! The most commonly used numeric type other than `Number` is `Natural`, which can hold the natural numbers (0, 1, 2, 3, ...).
-
-For example, `times` accepts a `Natural` instead of a `Number`, since it only makes sense to repeat something a whole number of times:
-
----
-page: Numeric types
-type: code
----
-
-repeat (0.5 times) { ... }
-
----
-page: Numeric types
-type: text
-locked: true
----
-
-Hover over the error and you'll see that Wipple prevents us from passing a fractional number to `times`!
-
-If you need to convert between numeric types, you can use `as` and `as?`:
-
----
-page: Numeric types
-type: code
----
-
-number :: Number
-number : 0.5
-
-natural :: Natural
-natural : 3
-
-show (natural as Number)
-show (number as? Natural)
-
-
 ---
 page: Mutability
 type: text
@@ -833,7 +790,7 @@ page: Mutability
 type: code
 ---
 
-increment! :: Mutable Natural -> ()
+increment! :: Mutable Number -> ()
 increment! : n -> n . set! (get n + 1)
 
 ---
@@ -1007,11 +964,11 @@ type: code
 ---
 
 Counter : type {
-    min :: Natural
-    max :: Natural
+    min :: Number
+    max :: Number
 }
 
-instance (As-Sequence Counter Natural) : counter -> {
+instance (As-Sequence Counter Number) : counter -> {
     count : mutable (min of counter)
 
     sequence {
@@ -1025,7 +982,7 @@ instance (As-Sequence Counter Natural) : counter -> {
     }
 }
 
-count :: Natural -> Natural -> Counter
+count :: Number -> Number -> Counter
 count : min max -> Counter { min max }
 
 count 0 10 . each show
@@ -1101,7 +1058,7 @@ Command : type {
   Color Text
 }
 
-instance (Random () Command) : () -> when (random (0 to 3) :: Natural) {
+instance (Random () Command) : () -> when (random (0 to 3) :: Number) {
   0 -> Move ((random (5 to 25)) pixels)
   1 -> Turn ((random (0 to 360)) degrees)
   2 -> Color (random (`red` , `green` , `blue`) . unwrap)

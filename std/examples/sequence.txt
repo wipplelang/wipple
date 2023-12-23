@@ -16,7 +16,7 @@ type: code
 [help "A sequence that produces a value the specified number of times."]
 Repeat : A => type {
   value :: A
-  count :: Natural
+  count :: Number
 }
 
 A => instance (As-Sequence (Repeat A) A) : { value count } -> {

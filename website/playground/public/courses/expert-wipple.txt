@@ -217,11 +217,11 @@ type: code
 ---
 
 Counter : type {
-    count :: Mutable Natural
-    max :: Natural
+    count :: Mutable Number
+    max :: Number
 }
 
-instance (As-Sequence Counter Natural) : { count max } -> {
+instance (As-Sequence Counter Number) : { count max } -> {
     sequence {
         n : get count
         if (n = max) {
@@ -233,7 +233,7 @@ instance (As-Sequence Counter Natural) : { count max } -> {
     }
 }
 
-count-up-to :: Natural -> Counter
+count-up-to :: Number -> Counter
 count-up-to : max -> Counter {
     count : mutable 0
     max
@@ -247,7 +247,7 @@ type: text
 locked: true
 ---
 
-The built-in `count` function takes a sequence and counts how many items there are in the sequence. It essentially works by incrementing a `Mutable Natural` for `each` time the sequence produces a new value. But our custom `Counter` sequence already knows its `count`, so iterating through each item is a lot of extra work! In computer science lingo, we can theoretically reduce `count`'s time complexity from $O(n)$ to $O(1)$.
+The built-in `count` function takes a sequence and counts how many items there are in the sequence. It essentially works by incrementing a `Mutable Number` for `each` time the sequence produces a new value. But our custom `Counter` sequence already knows its `count`, so iterating through each item is a lot of extra work! In computer science lingo, we can theoretically reduce `count`'s time complexity from $O(n)$ to $O(1)$.
 
 Unfortunately, we can't change the `count` function because it's built in to Wipple. But since `count` is generic, what we can do is **specialize** it using the `[specialize]` attribute!
 
@@ -257,13 +257,13 @@ type: code
 ---
 
 Counter : type {
-    max :: Natural -- we only care about `max` in this example
+    max :: Number -- we only care about `max` in this example
 }
 
-instance (As-Sequence Counter Natural) : ...
+instance (As-Sequence Counter Number) : ...
 
 [specialize]
-count :: Counter -> Natural
+count :: Counter -> Number
 count : { max } -> max
 
 ---
@@ -987,7 +987,7 @@ type: code
 setup: energy
 ---
 
-fibonacci :: Natural -> Natural
+fibonacci :: Number -> Number
 fibonacci : n -> when n {
   0 or 1 -> 1
   n -> fibonacci (n - 2) + fibonacci (n - 1)
@@ -1009,9 +1009,9 @@ type: code
 setup: energy
 ---
 
-fibonacci :: Natural -> Natural
+fibonacci :: Number -> Number
 fibonacci : {
-  fibonacci-cached :: Mutable (Dictionary Natural Natural) -> Natural -> Natural
+  fibonacci-cached :: Mutable (Dictionary Number Number) -> Number -> Number
   fibonacci-cached : cache n -> when (get cache . entry n) {
     Some cached -> cached
     None -> {
@@ -1048,7 +1048,7 @@ setup: energy
 lint: false
 ---
 
-fibonacci :: Natural -> Natural
+fibonacci :: Number -> Number
 fibonacci : n -> when n {
   0 or 1 -> 1
   n -> {
