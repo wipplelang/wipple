@@ -256,7 +256,7 @@ update-position : t { index x y } -> handle of physics . message "set-position" 
 
 force :: D where (As D Direction) => D -> Force -> Object -> ()
 force : direction force { index } -> {
-  direction : As direction
+  direction : direction as Direction
   handle of physics . message "apply-force" (index ; (kilograms-per-pixels-per-second-per-second of force) * (x of direction) ; (kilograms-per-pixels-per-second-per-second of force) * (y of direction))
 }
 
