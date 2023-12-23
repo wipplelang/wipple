@@ -15,10 +15,7 @@ use crate::{
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::{
-    collections::BTreeMap,
-    os::raw::{c_int, c_uint},
-};
+use std::collections::BTreeMap;
 
 pub use ssa::Type;
 pub use typecheck::Intrinsic;
@@ -83,13 +80,6 @@ pub enum Expression {
     Marker,
     Text(InternedString),
     Number(rust_decimal::Decimal),
-    Integer(i64),
-    Natural(u64),
-    Byte(u8),
-    Signed(c_int),
-    Unsigned(c_uint),
-    Float(f32),
-    Double(f64),
     Variable(usize),
     Constant(usize),
     Function(usize),
@@ -349,36 +339,6 @@ impl<'a> IrGen<'a> {
             ssa::ExpressionKind::Number(number) => {
                 self.statements_for(label, *pos)
                     .push(Statement::Expression(expr.ty, Expression::Number(number)));
-            }
-            ssa::ExpressionKind::Integer(integer) => {
-                self.statements_for(label, *pos)
-                    .push(Statement::Expression(expr.ty, Expression::Integer(integer)));
-            }
-            ssa::ExpressionKind::Natural(natural) => {
-                self.statements_for(label, *pos)
-                    .push(Statement::Expression(expr.ty, Expression::Natural(natural)));
-            }
-            ssa::ExpressionKind::Byte(byte) => {
-                self.statements_for(label, *pos)
-                    .push(Statement::Expression(expr.ty, Expression::Byte(byte)));
-            }
-            ssa::ExpressionKind::Signed(signed) => {
-                self.statements_for(label, *pos)
-                    .push(Statement::Expression(expr.ty, Expression::Signed(signed)));
-            }
-            ssa::ExpressionKind::Unsigned(unsigned) => {
-                self.statements_for(label, *pos).push(Statement::Expression(
-                    expr.ty,
-                    Expression::Unsigned(unsigned),
-                ));
-            }
-            ssa::ExpressionKind::Float(float) => {
-                self.statements_for(label, *pos)
-                    .push(Statement::Expression(expr.ty, Expression::Float(float)));
-            }
-            ssa::ExpressionKind::Double(double) => {
-                self.statements_for(label, *pos)
-                    .push(Statement::Expression(expr.ty, Expression::Double(double)));
             }
             ssa::ExpressionKind::Block(exprs) => {
                 if exprs.is_empty() {
@@ -762,27 +722,6 @@ impl<'a> IrGen<'a> {
             }
             ssa::PatternKind::Number(number) => {
                 match_number!(Number(number), Intrinsic::NumberEquality);
-            }
-            ssa::PatternKind::Integer(integer) => {
-                match_number!(Integer(integer), Intrinsic::IntegerEquality);
-            }
-            ssa::PatternKind::Natural(natural) => {
-                match_number!(Natural(natural), Intrinsic::NaturalEquality);
-            }
-            ssa::PatternKind::Byte(byte) => {
-                match_number!(Byte(byte), Intrinsic::ByteEquality);
-            }
-            ssa::PatternKind::Signed(signed) => {
-                match_number!(Signed(signed), Intrinsic::SignedEquality);
-            }
-            ssa::PatternKind::Unsigned(unsigned) => {
-                match_number!(Unsigned(unsigned), Intrinsic::UnsignedEquality);
-            }
-            ssa::PatternKind::Float(float) => {
-                match_number!(Float(float), Intrinsic::FloatEquality);
-            }
-            ssa::PatternKind::Double(double) => {
-                match_number!(Double(double), Intrinsic::DoubleEquality);
             }
             ssa::PatternKind::Text(text) => {
                 self.statements_for(label, *pos).push(Statement::Expression(

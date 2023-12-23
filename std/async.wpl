@@ -28,16 +28,16 @@ in-background' : f -> intrinsic "in-background" f
 [help-group "Control Flow"]
 in-background : syntax { in-background 'body -> in-background' (() -> 'body) }
 
-Duration : type { ms :: Natural }
+Duration : type { ms :: Number }
 
 [help "Create a duration in milliseconds."]
 [help-group "Control Flow"]
-ms :: Natural -> Duration
+ms :: Number -> Duration
 ms : ms -> Duration { ms }
 
 [help "Create a duration in seconds."]
 [help-group "Control Flow"]
-secs :: Natural -> Duration
+secs :: Number -> Duration
 secs : secs -> (secs * 1000) . ms
 
 [help "Wait for the specified duration to elapse before continuing the program."]

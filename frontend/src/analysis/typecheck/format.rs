@@ -219,9 +219,6 @@ fn format_type_with(
         let formatted = match ty.kind {
             FormattableTypeKind::Type(ty) => match ty.kind {
                 UnresolvedTypeKind::Variable(var) => var_names(var),
-                UnresolvedTypeKind::NumericVariable(_) => {
-                    format_named_type!("Number", Vec::new())
-                }
                 UnresolvedTypeKind::Opaque(_) => String::from("<opaque type>"),
                 UnresolvedTypeKind::Parameter(param) => param_names(param),
                 UnresolvedTypeKind::Error => String::from("_"),
@@ -230,13 +227,6 @@ fn format_type_with(
                 }
                 UnresolvedTypeKind::Builtin(ty) => match ty {
                     BuiltinType::Number => format_named_type!("Number", Vec::new()),
-                    BuiltinType::Integer => format_named_type!("Integer", Vec::new()),
-                    BuiltinType::Natural => format_named_type!("Natural", Vec::new()),
-                    BuiltinType::Byte => format_named_type!("Byte", Vec::new()),
-                    BuiltinType::Signed => format_named_type!("Signed", Vec::new()),
-                    BuiltinType::Unsigned => format_named_type!("Unsigned", Vec::new()),
-                    BuiltinType::Float => format_named_type!("Float", Vec::new()),
-                    BuiltinType::Double => format_named_type!("Double", Vec::new()),
                     BuiltinType::Text => format_named_type!("Text", Vec::new()),
                     BuiltinType::List(ty) => format_named_type!("List", vec![*ty]),
                     BuiltinType::Reference(ty) => format_named_type!("Reference", vec![*ty]),

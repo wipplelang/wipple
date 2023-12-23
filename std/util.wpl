@@ -97,8 +97,6 @@ as : syntax {
 }
 
 A => instance (As A A) : it
-instance (As Natural Number) : n -> semantics "pure" (intrinsic "natural-to-number" n)
-instance (As Natural Integer) : n -> semantics "pure" (intrinsic "natural-to-integer" n)
 Success => instance (As (Result Success _) (Maybe Success)) : result -> when result {
   OK x -> Some x
   Error _ -> None
@@ -117,8 +115,6 @@ as? : syntax {
 }
 
 A => instance (As? A A) : Some
-instance (As? Number Natural) : n -> semantics "pure" (intrinsic "number-to-natural" n)
-instance (As? Integer Natural) : n -> semantics "pure" (intrinsic "integer-to-natural" n)
 
 [help "Convert a value of one type into a value of a different type, or exit if the conversion fails."]
 [help-group "Utilities"]
@@ -134,13 +130,6 @@ as! : syntax {
 [on-unimplemented ("_ has no default value" Value)]
 Default : Value => trait Value
 instance (Default Number) : 0
-instance (Default Integer) : 0
-instance (Default Natural) : 0
-instance (Default Byte) : 0
-instance (Default Signed) : 0
-instance (Default Unsigned) : 0
-instance (Default Float) : 0
-instance (Default Double) : 0
 instance (Default Text) : ""
 instance (Default Boolean) : False
 A => instance (Default (Maybe A)) : None

@@ -7,12 +7,7 @@ pub use ir::Program;
 use async_recursion::async_recursion;
 use futures::future::BoxFuture;
 use parking_lot::Mutex;
-use std::{
-    cell::RefCell,
-    collections::BTreeMap,
-    os::raw::{c_int, c_uint},
-    sync::Arc,
-};
+use std::{cell::RefCell, collections::BTreeMap, sync::Arc};
 use tokio::sync::mpsc::{Receiver, Sender};
 use wipple_frontend::{helpers::Shared, ir, VariantIndex};
 
@@ -134,13 +129,6 @@ pub enum Number {
 pub enum Value {
     Marker,
     Number(Number),
-    Integer(i64),
-    Natural(u64),
-    Byte(u8),
-    Signed(c_int),
-    Unsigned(c_uint),
-    Float(f32),
-    Double(f64),
     Text(Arc<str>),
     Function(Scope, usize),
     NativeFunction(Arc<dyn Fn(Value) -> BoxFuture<'static, Result<Value, Error>> + Send + Sync>),
@@ -159,13 +147,6 @@ impl std::fmt::Debug for Value {
         match self {
             Self::Marker => write!(f, "Marker"),
             Self::Number(n) => f.debug_tuple("Number").field(n).finish(),
-            Self::Integer(n) => f.debug_tuple("Integer").field(n).finish(),
-            Self::Natural(n) => f.debug_tuple("Natural").field(n).finish(),
-            Self::Byte(n) => f.debug_tuple("Byte").field(n).finish(),
-            Self::Signed(n) => f.debug_tuple("Signed").field(n).finish(),
-            Self::Unsigned(n) => f.debug_tuple("Unsigned").field(n).finish(),
-            Self::Float(n) => f.debug_tuple("Float").field(n).finish(),
-            Self::Double(n) => f.debug_tuple("Double").field(n).finish(),
             Self::Text(s) => f.debug_tuple("Text").field(s).finish(),
             Self::Function(_, _) => write!(f, "Function"),
             Self::NativeFunction(_) => write!(f, "NativeFunction"),
@@ -428,15 +409,6 @@ impl Interpreter {
                         ir::Expression::Number(number) => {
                             stack.push(Value::Number(Number::Decimal(*number)))
                         }
-                        ir::Expression::Integer(integer) => stack.push(Value::Integer(*integer)),
-                        ir::Expression::Natural(natural) => stack.push(Value::Natural(*natural)),
-                        ir::Expression::Byte(byte) => stack.push(Value::Byte(*byte)),
-                        ir::Expression::Signed(signed) => stack.push(Value::Signed(*signed)),
-                        ir::Expression::Unsigned(unsigned) => {
-                            stack.push(Value::Unsigned(*unsigned))
-                        }
-                        ir::Expression::Float(float) => stack.push(Value::Float(*float)),
-                        ir::Expression::Double(double) => stack.push(Value::Double(*double)),
                         ir::Expression::Variable(var) => stack.push(scope.borrow_mut().get(*var)),
                         ir::Expression::Constant(label) => {
                             let value = self.evaluate_constant(*label, context).await?;

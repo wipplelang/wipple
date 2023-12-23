@@ -1,5 +1,5 @@
 Container : type {
-  value :: Natural
+  value :: Number
 }
 
 container : mutable (Container { value : 42 })

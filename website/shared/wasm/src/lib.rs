@@ -1405,15 +1405,6 @@ fn wipple_to_js(
                 JsValue::from_f64(n.try_into().expect("number out of bounds"))
             }
         },
-        wipple_interpreter_backend::Value::Integer(_)
-        | wipple_interpreter_backend::Value::Natural(_)
-        | wipple_interpreter_backend::Value::Byte(_)
-        | wipple_interpreter_backend::Value::Signed(_)
-        | wipple_interpreter_backend::Value::Unsigned(_)
-        | wipple_interpreter_backend::Value::Float(_)
-        | wipple_interpreter_backend::Value::Double(_) => {
-            panic!("only numbers of type `Number` may be sent to JavaScript")
-        }
         wipple_interpreter_backend::Value::Text(s) => JsValue::from_str(&s),
         wipple_interpreter_backend::Value::Function(scope, label) => {
             let interpreter = interpreter.clone();

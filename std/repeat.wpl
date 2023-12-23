@@ -58,7 +58,7 @@ while : syntax { while 'p -> While { continue? : () -> 'p } }
 [help-group "Control Flow"]
 until : syntax { until 'p -> while (not 'p) }
 
-Times : type { count :: Natural }
+Times : type { count :: Number }
 instance (Repeat-Predicate Times ()) : { count } -> {
   counter : mutable 0
 

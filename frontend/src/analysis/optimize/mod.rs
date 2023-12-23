@@ -594,16 +594,9 @@ mod util {
                 | ExpressionKind::UnresolvedConstant(_)
                 | ExpressionKind::UnresolvedTrait(_)
                 | ExpressionKind::UnresolvedExtend => false,
-                ExpressionKind::Marker
-                | ExpressionKind::Text(_)
-                | ExpressionKind::Number(_)
-                | ExpressionKind::Integer(_)
-                | ExpressionKind::Natural(_)
-                | ExpressionKind::Byte(_)
-                | ExpressionKind::Signed(_)
-                | ExpressionKind::Unsigned(_)
-                | ExpressionKind::Float(_)
-                | ExpressionKind::Double(_) => true,
+                ExpressionKind::Marker | ExpressionKind::Text(_) | ExpressionKind::Number(_) => {
+                    true
+                }
                 ExpressionKind::Variable(var) => info
                     .function_call
                     .as_ref()

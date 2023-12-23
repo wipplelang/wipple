@@ -1,6 +1,6 @@
 Person : type {
   name :: Text
-  age :: Natural
+  age :: Number
 }
 
 instance (Show Person) : { name age } -> "_ is _ years old" name age

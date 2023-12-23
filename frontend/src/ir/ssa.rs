@@ -3,10 +3,7 @@ use crate::{
     FieldIndex, ItemId, StructureId, TypeId, VariableId, VariantIndex,
 };
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::BTreeMap,
-    os::raw::{c_int, c_uint},
-};
+use std::collections::BTreeMap;
 
 pub use crate::analysis::Intrinsic;
 
@@ -33,13 +30,6 @@ pub struct Expression {
 pub enum Type {
     Marker,
     Number,
-    Integer,
-    Natural,
-    Byte,
-    Signed,
-    Unsigned,
-    Float,
-    Double,
     Ui,
     TaskGroup,
     Hasher,
@@ -70,13 +60,6 @@ pub enum ExpressionKind {
     Tuple(Vec<Expression>),
     Format(Vec<(InternedString, Expression)>, Option<InternedString>),
     Number(rust_decimal::Decimal),
-    Integer(i64),
-    Natural(u64),
-    Byte(u8),
-    Signed(c_int),
-    Unsigned(c_uint),
-    Float(f32),
-    Double(f64),
     Constant(ItemId),
     With((ConstantId, Box<Expression>), Box<Expression>),
     ContextualConstant(ConstantId),
@@ -104,13 +87,6 @@ pub enum PatternKind {
     Variable(VariableId),
     Text(InternedString),
     Number(rust_decimal::Decimal),
-    Integer(i64),
-    Natural(u64),
-    Byte(u8),
-    Signed(c_int),
-    Unsigned(c_uint),
-    Float(f32),
-    Double(f64),
     Tuple(Vec<Pattern>),
     Destructure(BTreeMap<FieldIndex, Pattern>),
     Variant(VariantIndex, Vec<Pattern>),
@@ -282,13 +258,6 @@ impl Converter<'_> {
                     )
                 }
                 analysis::ExpressionKind::Number(number) => ExpressionKind::Number(*number),
-                analysis::ExpressionKind::Integer(integer) => ExpressionKind::Integer(*integer),
-                analysis::ExpressionKind::Natural(natural) => ExpressionKind::Natural(*natural),
-                analysis::ExpressionKind::Byte(byte) => ExpressionKind::Byte(*byte),
-                analysis::ExpressionKind::Signed(signed) => ExpressionKind::Signed(*signed),
-                analysis::ExpressionKind::Unsigned(unsigned) => ExpressionKind::Unsigned(*unsigned),
-                analysis::ExpressionKind::Float(float) => ExpressionKind::Float(float.0),
-                analysis::ExpressionKind::Double(double) => ExpressionKind::Double(double.0),
                 analysis::ExpressionKind::Constant(constant)
                 | analysis::ExpressionKind::ExpandedConstant(constant) => {
                     ExpressionKind::Constant(*constant)
@@ -394,13 +363,6 @@ impl Converter<'_> {
                 analysis::PatternKind::Variable(var) => PatternKind::Variable(*var),
                 analysis::PatternKind::Text(text) => PatternKind::Text(*text),
                 analysis::PatternKind::Number(number) => PatternKind::Number(*number),
-                analysis::PatternKind::Integer(integer) => PatternKind::Integer(*integer),
-                analysis::PatternKind::Natural(natural) => PatternKind::Natural(*natural),
-                analysis::PatternKind::Byte(byte) => PatternKind::Byte(*byte),
-                analysis::PatternKind::Signed(signed) => PatternKind::Signed(*signed),
-                analysis::PatternKind::Unsigned(unsigned) => PatternKind::Unsigned(*unsigned),
-                analysis::PatternKind::Float(float) => PatternKind::Float(float.0),
-                analysis::PatternKind::Double(double) => PatternKind::Double(double.0),
                 analysis::PatternKind::Tuple(patterns) => PatternKind::Tuple(
                     patterns
                         .iter()
@@ -480,13 +442,6 @@ impl Converter<'_> {
             }
             analysis::TypeKind::Builtin(ty) => match ty {
                 analysis::typecheck::BuiltinType::Number => Type::Number,
-                analysis::typecheck::BuiltinType::Integer => Type::Integer,
-                analysis::typecheck::BuiltinType::Natural => Type::Natural,
-                analysis::typecheck::BuiltinType::Byte => Type::Byte,
-                analysis::typecheck::BuiltinType::Signed => Type::Signed,
-                analysis::typecheck::BuiltinType::Unsigned => Type::Unsigned,
-                analysis::typecheck::BuiltinType::Float => Type::Float,
-                analysis::typecheck::BuiltinType::Double => Type::Double,
                 analysis::typecheck::BuiltinType::Text => Type::TextReference,
                 analysis::typecheck::BuiltinType::List(ty) => {
                     Type::ListReference(Box::new(self.convert_type(ty)))

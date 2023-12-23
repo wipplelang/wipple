@@ -244,7 +244,7 @@ split : separator -> split-by (x -> x = separator)
 
 [help "Count the number of items in a sequence."]
 [help-group "Collections"]
-count :: Collection (infer Element) where (As-Sequence Collection Element) => Collection -> Natural
+count :: Collection (infer Element) where (As-Sequence Collection Element) => Collection -> Number
 count : collection -> {
   seq : As-Sequence collection
 
@@ -268,7 +268,7 @@ join :: A B (infer Element) (C : A) where (As-Sequence A Element) (As-Sequence B
 join : b a -> collect (flatten ((Default :: List _) . append (As-Sequence a) . append (As-Sequence b)))
 
 [specialize]
-count :: Element => List Element -> Natural
+count :: Element => List Element -> Number
 count : list -> semantics "pure" (intrinsic "list-count" list)
 
 [specialize]
@@ -277,7 +277,7 @@ join : l -> reduce l append
 
 [help "Take up to a fixed number of values from a sequence."]
 [help-group "Collections"]
-take :: Collection (infer Element) where (As-Sequence Collection Element) => Natural -> Collection -> Sequence Element
+take :: Collection (infer Element) where (As-Sequence Collection Element) => Number -> Collection -> Sequence Element
 take : count collection -> {
   seq : As-Sequence collection
 
@@ -308,7 +308,7 @@ find : found? collection -> {
 
 [help "Find the index of the first item in a sequence that satisfies a condition."]
 [help-group "Collections"]
-find-index :: Collection Element where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Maybe Natural
+find-index :: Collection Element where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Maybe Number
 find-index : found? collection -> {
   seq : As-Sequence collection
   counter : mutable 0

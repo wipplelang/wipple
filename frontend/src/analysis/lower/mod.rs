@@ -278,13 +278,6 @@ pub struct BuiltinTypeDeclaration {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BuiltinTypeDeclarationKind {
     Number,
-    Integer,
-    Natural,
-    Byte,
-    Signed,
-    Unsigned,
-    Float,
-    Double,
     Text,
     List,
     Reference,
@@ -511,6 +504,7 @@ pub enum ExpressionKind {
     Error(#[serde(skip)] Backtrace),
     Marker(TypeId),
     Constant(ConstantId),
+    WrappedTrait(TraitId),
     Trait(TraitId),
     Variable(VariableId),
     Text(InternedString),
@@ -554,6 +548,7 @@ impl Expression {
             ExpressionKind::Error(_)
             | ExpressionKind::Marker(_)
             | ExpressionKind::Constant(_)
+            | ExpressionKind::WrappedTrait(_)
             | ExpressionKind::Trait(_)
             | ExpressionKind::Variable(_)
             | ExpressionKind::Text(_)
@@ -770,26 +765,7 @@ pub enum Intrinsic {
     InBackground,
     Delay,
     NumberToText,
-    IntegerToText,
-    NaturalToText,
-    ByteToText,
-    SignedToText,
-    UnsignedToText,
-    FloatToText,
-    DoubleToText,
     TextToNumber,
-    TextToInteger,
-    TextToNatural,
-    TextToByte,
-    TextToSigned,
-    TextToUnsigned,
-    TextToFloat,
-    TextToDouble,
-    // TODO: All the conversions
-    NaturalToNumber,
-    NumberToNatural,
-    NaturalToInteger,
-    IntegerToNatural,
     AddNumber,
     SubtractNumber,
     MultiplyNumber,
@@ -803,82 +779,10 @@ pub enum Intrinsic {
     CosNumber,
     TanNumber,
     NegateNumber,
-    AddInteger,
-    SubtractInteger,
-    MultiplyInteger,
-    DivideInteger,
-    ModuloInteger,
-    PowerInteger,
-    NegateInteger,
-    AddNatural,
-    SubtractNatural,
-    MultiplyNatural,
-    DivideNatural,
-    ModuloNatural,
-    PowerNatural,
-    AddByte,
-    SubtractByte,
-    MultiplyByte,
-    DivideByte,
-    ModuloByte,
-    PowerByte,
-    AddSigned,
-    SubtractSigned,
-    MultiplySigned,
-    DivideSigned,
-    ModuloSigned,
-    PowerSigned,
-    NegateSigned,
-    AddUnsigned,
-    SubtractUnsigned,
-    MultiplyUnsigned,
-    DivideUnsigned,
-    ModuloUnsigned,
-    PowerUnsigned,
-    AddFloat,
-    SubtractFloat,
-    MultiplyFloat,
-    DivideFloat,
-    ModuloFloat,
-    PowerFloat,
-    FloorFloat,
-    CeilFloat,
-    SqrtFloat,
-    SinFloat,
-    CosFloat,
-    TanFloat,
-    NegateFloat,
-    AddDouble,
-    SubtractDouble,
-    MultiplyDouble,
-    DivideDouble,
-    ModuloDouble,
-    PowerDouble,
-    FloorDouble,
-    CeilDouble,
-    SqrtDouble,
-    SinDouble,
-    CosDouble,
-    TanDouble,
-    NegateDouble,
     TextEquality,
     NumberEquality,
-    IntegerEquality,
-    NaturalEquality,
-    ByteEquality,
-    SignedEquality,
-    UnsignedEquality,
-    FloatEquality,
-    DoubleEquality,
     TextOrdering,
     NumberOrdering,
-    IntegerOrdering,
-    NaturalOrdering,
-    ByteOrdering,
-    SignedOrdering,
-    UnsignedOrdering,
-    FloatOrdering,
-    DoubleOrdering,
     MakeReference,
     GetReference,
     SetReference,
@@ -896,24 +800,10 @@ pub enum Intrinsic {
     ListSlice,
     TextCharacters,
     RandomNumber,
-    RandomInteger,
-    RandomNatural,
-    RandomByte,
-    RandomSigned,
-    RandomUnsigned,
-    RandomFloat,
-    RandomDouble,
     UndefinedNumber,
     MakeHasher,
     HashIntoHasher,
     ValueOfHasher,
-    HashNumber,
-    HashInteger,
-    HashByte,
-    HashSigned,
-    HashUnsigned,
-    HashFloat,
-    HashDouble,
     HashText,
 }
 
@@ -1782,17 +1672,12 @@ impl Lowerer {
                             .clone()
                             .into_iter()
                             .map(|param| {
-                                let mut decl = self
+                                let decl = self
                                     .declarations
                                     .type_parameters
                                     .get(&param)
                                     .unwrap()
                                     .clone();
-
-                                // Inferred type parameters in traits aren't properly handled
-                                // by the typechecker (TODO: Add a separate 'unique' keyword to
-                                // better describe what 'infer' in traits means)
-                                decl.value.infer = false;
 
                                 let new_param =
                                     self.compiler.new_type_parameter_id_with(param.file);
@@ -4968,7 +4853,7 @@ impl Lowerer {
                 .uses
                 .insert(span);
 
-            Ok(Some(ExpressionKind::Trait(id)))
+            Ok(Some(ExpressionKind::WrappedTrait(id)))
         } else if let Some(id) = get!(builtin_types, AnyDeclaration::as_builtin_type) {
             self.declarations
                 .builtin_types

@@ -28,7 +28,7 @@ tail : l -> semantics "pure" (intrinsic "list-tail" l)
 
 [help "Retrieve the value in a `List` at a particular index, if it exists."]
 [help-group "Collections"]
-nth :: A => Natural -> List A -> Maybe A
+nth :: A => Number -> List A -> Maybe A
 nth : index l -> semantics "pure" (intrinsic "list-nth" l index)
 
 [help "Add a new item to the end of a `List`."]
@@ -44,12 +44,12 @@ append! : new l -> l . set! (l . get . append new)
 
 [help "Insert a new item at a particular index inside a `List`."]
 [help-group "Collections"]
-insert-at :: A => Natural -> A -> List A -> Maybe (List A)
+insert-at :: A => Number -> A -> List A -> Maybe (List A)
 insert-at : index new l -> semantics "pure" (intrinsic "list-insert-at" l index new)
 
 [help "Insert a new item at a particular index inside a `Mutable List`."]
 [help-group "Collections"]
-insert-at! :: A => Natural -> A -> Mutable (List A) -> Boolean
+insert-at! :: A => Number -> A -> Mutable (List A) -> Boolean
 insert-at! : index new l -> when (l . get . insert-at index new) {
   Some new-list -> {
     l . set! new-list
@@ -60,12 +60,12 @@ insert-at! : index new l -> when (l . get . insert-at index new) {
 
 [help "Remove the item at a particular index inside a `List`."]
 [help-group "Collections"]
-remove-at :: A => Natural -> List A -> Maybe (List A)
+remove-at :: A => Number -> List A -> Maybe (List A)
 remove-at : index l -> semantics "pure" (intrinsic "list-remove-at" l index)
 
 [help "Remove the item at a particular index inside a `Mutable List`."]
 [help-group "Collections"]
-remove-at! :: Natural -> Mutable (List _) -> Boolean
+remove-at! :: Number -> Mutable (List _) -> Boolean
 remove-at! : index l -> when (l . get . remove-at index) {
   Some new-list -> {
     l . set! new-list

@@ -152,13 +152,6 @@ impl Expression {
             }
             ExpressionKind::Text(value) => write!(f, "{value:?}")?,
             ExpressionKind::Number(value) => write!(f, "{value}")?,
-            ExpressionKind::Integer(value) => write!(f, "{value}")?,
-            ExpressionKind::Natural(value) => write!(f, "{value}")?,
-            ExpressionKind::Byte(value) => write!(f, "{value}")?,
-            ExpressionKind::Signed(value) => write!(f, "{value}")?,
-            ExpressionKind::Unsigned(value) => write!(f, "{value}")?,
-            ExpressionKind::Float(value) => write!(f, "{value}")?,
-            ExpressionKind::Double(value) => write!(f, "{value}")?,
             ExpressionKind::Block(exprs, _) => {
                 writeln!(f, "{{")?;
                 for expr in exprs {
@@ -439,13 +432,6 @@ impl Pattern {
             PatternKind::Wildcard => write!(f, "_")?,
             PatternKind::Text(value) => write!(f, "{value:?}")?,
             PatternKind::Number(value) => write!(f, "{value}")?,
-            PatternKind::Integer(value) => write!(f, "{value}")?,
-            PatternKind::Natural(value) => write!(f, "{value}")?,
-            PatternKind::Byte(value) => write!(f, "{value}")?,
-            PatternKind::Signed(value) => write!(f, "{value}")?,
-            PatternKind::Unsigned(value) => write!(f, "{value}")?,
-            PatternKind::Float(value) => write!(f, "{value}")?,
-            PatternKind::Double(value) => write!(f, "{value}")?,
             PatternKind::Variable(id) => {
                 let name = file
                     .declarations

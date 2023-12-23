@@ -315,55 +315,6 @@ impl Typechecker {
                 )),
                 Vec::new(),
             ),
-            analysis::PatternKind::Integer(_) => Pattern::Constructor(
-                Constructor::Unbounded(self.ty(
-                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Integer),
-                    None,
-                )),
-                Vec::new(),
-            ),
-            analysis::PatternKind::Natural(_) => Pattern::Constructor(
-                Constructor::Unbounded(self.ty(
-                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Natural),
-                    None,
-                )),
-                Vec::new(),
-            ),
-            analysis::PatternKind::Byte(_) => Pattern::Constructor(
-                Constructor::Unbounded(self.ty(
-                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Byte),
-                    None,
-                )),
-                Vec::new(),
-            ),
-            analysis::PatternKind::Signed(_) => Pattern::Constructor(
-                Constructor::Unbounded(self.ty(
-                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Signed),
-                    None,
-                )),
-                Vec::new(),
-            ),
-            analysis::PatternKind::Unsigned(_) => Pattern::Constructor(
-                Constructor::Unbounded(self.ty(
-                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Unsigned),
-                    None,
-                )),
-                Vec::new(),
-            ),
-            analysis::PatternKind::Float(_) => Pattern::Constructor(
-                Constructor::Unbounded(self.ty(
-                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Float),
-                    None,
-                )),
-                Vec::new(),
-            ),
-            analysis::PatternKind::Double(_) => Pattern::Constructor(
-                Constructor::Unbounded(self.ty(
-                    analysis::TypeKind::Builtin(analysis::typecheck::BuiltinType::Double),
-                    None,
-                )),
-                Vec::new(),
-            ),
         })
     }
 

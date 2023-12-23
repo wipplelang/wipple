@@ -3,7 +3,7 @@
 use crate::{Context, Error, Interpreter, IoRequest, Number, Stack, TaskGroup, UiHandle, Value};
 use futures::channel::oneshot;
 use itertools::Itertools;
-use num_traits::{pow::Pow, FromPrimitive, ToPrimitive};
+use num_traits::{FromPrimitive, ToPrimitive};
 use parking_lot::Mutex;
 use rand::{Rng, SeedableRng};
 use rust_decimal::{Decimal, MathematicalOps};
@@ -82,38 +82,6 @@ impl Interpreter {
             };
         }
 
-        macro_rules! runtime_div_fn {
-            (Value::$ty:ident, $zero:expr) => {
-                runtime_math_fn!(Value::$ty, (lhs, rhs) => async {
-                    if rhs != $zero {
-                        Ok(lhs / rhs)
-                    } else {
-                        Err(Error::from("cannot divide by zero"))
-                    }
-                })
-            };
-        }
-
-        macro_rules! runtime_mod_fn {
-            (Value::$ty:ident, $zero:expr) => {
-                runtime_math_fn!(Value::$ty, (lhs, rhs) => async {
-                    if rhs != $zero {
-                        Ok(lhs % rhs)
-                    } else {
-                        Err(Error::from("cannot divide by zero"))
-                    }
-                })
-            };
-        }
-
-        macro_rules! runtime_negate_fn {
-            (Value::$ty:ident) => {
-                runtime_fn!((Value::$ty(x)) => async {
-                    Ok(Value::$ty(-x))
-                })
-            };
-        }
-
         macro_rules! runtime_trig_fn {
             (Value::Number, $f:ident) => {
                 runtime_fn!((Value::Variant(index, values)) => async {
@@ -132,22 +100,6 @@ impl Interpreter {
                     Ok(Value::Number(radians.$f().map_or(Number::Undefined, Number::Decimal)))
                 })
             };
-            (Value::$ty:ident($n:ident), $f:ident) => {
-                runtime_fn!((Value::Variant(index, values)) => async {
-                    let n = match values.into_iter().next().unwrap() {
-                        Value::$ty(n) => n,
-                        _ => unreachable!(),
-                    };
-
-                    let radians = match index.0 {
-                        0 => n,
-                        1 => n * std::$n::consts::PI / 180.,
-                        _ => unreachable!(),
-                    };
-
-                    Ok(Value::$ty(radians.$f()))
-                })
-            };
         }
 
         macro_rules! runtime_text_fn {
@@ -156,12 +108,6 @@ impl Interpreter {
             };
             (Value::$ty:ident) => {
                 runtime_text_fn!((Value::$ty(x)) => async { x.to_string() })
-            };
-        }
-
-        macro_rules! runtime_parse_fn {
-            (Value::$ty:ident) => {
-                runtime_fn!((Value::Text(text)) => async { Ok(maybe(text.parse().ok().map(Value::$ty))) })
             };
         }
 
@@ -190,22 +136,6 @@ impl Interpreter {
             };
         }
 
-        macro_rules! runtime_rand_fn {
-            (Value::$ty:ident) => {
-                runtime_fn!((Value::$ty(min), Value::$ty(max)) => async {
-                    if min == max {
-                        return Ok(Value::$ty(min));
-                    }
-
-                    let mut seed = [0; 32];
-                    getrandom::getrandom(&mut seed).expect("failed to seed random number generator");
-                    let mut rng = rand::rngs::StdRng::from_seed(seed);
-
-                    Ok(Value::$ty(rng.gen_range(min..max)))
-                })
-            };
-        }
-
         macro_rules! runtime_hash_fn {
             (Value::$ty:ident) => {
                 runtime_fn!((Value::$ty(x)) => async {
@@ -215,21 +145,7 @@ impl Interpreter {
                     x.hash(&mut hasher);
                     let value = hasher.finish();
 
-                    Ok(Value::Natural(value))
-                })
-            };
-        }
-
-        macro_rules! runtime_float_hash_fn {
-            (Value::$ty:ident) => {
-                runtime_fn!((Value::$ty(x)) => async {
-                    use std::hash::{Hash, Hasher};
-
-                    let mut hasher = std::collections::hash_map::DefaultHasher::default();
-                    x.to_ne_bytes().hash(&mut hasher);
-                    let value = hasher.finish();
-
-                    Ok(Value::Natural(value))
+                    Ok(Value::Number(Number::Decimal(Decimal::from_u64(value).unwrap())))
                 })
             };
         }
@@ -313,7 +229,7 @@ impl Interpreter {
 
                     let index = completion_rx.await.map_err(|_| Error::from("program exited"))?;
 
-                    Ok(Value::Natural(index as u64))
+                    Ok(Value::Number(Number::Decimal(Decimal::from_usize(index).unwrap())))
                 }),
                 ir::Intrinsic::WithUi => runtime_fn!((Value::Text(url), Value::Function(scope, label)) => async {
                     let io = self.lock().io.clone();
@@ -469,7 +385,12 @@ impl Interpreter {
 
                     Ok(Value::Tuple(Vec::new()))
                 }),
-                ir::Intrinsic::Delay => runtime_fn!((Value::Natural(ms)) => async {
+                ir::Intrinsic::Delay => runtime_fn!((Value::Number(ms)) => async {
+                    let ms = match ms {
+                        Number::Decimal(n) => n.to_u64().ok_or_else(|| Error::from("expected a whole number"))?,
+                        Number::Undefined => return Err(Error::from("unexpected `undefined`")),
+                    };
+
                     let duration = std::time::Duration::from_millis(ms);
 
                     let io = self.lock().io.clone();
@@ -491,43 +412,8 @@ impl Interpreter {
                         }
                     })
                 }
-                ir::Intrinsic::IntegerToText => runtime_text_fn!(Value::Integer),
-                ir::Intrinsic::NaturalToText => runtime_text_fn!(Value::Natural),
-                ir::Intrinsic::ByteToText => runtime_text_fn!(Value::Byte),
-                ir::Intrinsic::SignedToText => runtime_text_fn!(Value::Signed),
-                ir::Intrinsic::UnsignedToText => runtime_text_fn!(Value::Unsigned),
-                ir::Intrinsic::FloatToText => runtime_text_fn!(Value::Float),
-                ir::Intrinsic::DoubleToText => runtime_text_fn!(Value::Double),
                 ir::Intrinsic::TextToNumber => runtime_fn!((Value::Text(text)) => async {
                     Ok(maybe(text.parse().ok().map(Number::Decimal).map(Value::Number)))
-                }),
-                ir::Intrinsic::TextToInteger => runtime_parse_fn!(Value::Integer),
-                ir::Intrinsic::TextToNatural => runtime_parse_fn!(Value::Natural),
-                ir::Intrinsic::TextToByte => runtime_parse_fn!(Value::Byte),
-                ir::Intrinsic::TextToSigned => runtime_parse_fn!(Value::Signed),
-                ir::Intrinsic::TextToUnsigned => runtime_parse_fn!(Value::Unsigned),
-                ir::Intrinsic::TextToFloat => runtime_parse_fn!(Value::Float),
-                ir::Intrinsic::TextToDouble => runtime_parse_fn!(Value::Double),
-                ir::Intrinsic::NaturalToNumber => runtime_fn!((Value::Natural(n)) => async {
-                    Ok(Value::Number(Decimal::from_u64(n).map_or(Number::Undefined, Number::Decimal)))
-                }),
-                ir::Intrinsic::NumberToNatural => runtime_fn!((Value::Number(n)) => async {
-                    match n {
-                        Number::Decimal(n) if n >= Decimal::ZERO && n.is_integer() => {
-                            Ok(some(Value::Natural(n.to_u64().unwrap())))
-                        }
-                        _ => Ok(none()),
-                    }
-                }),
-                ir::Intrinsic::NaturalToInteger => runtime_fn!((Value::Natural(n)) => async {
-                    Ok(Value::Integer(i64::from_u64(n).expect("overflow")))
-                }),
-                ir::Intrinsic::IntegerToNatural => runtime_fn!((Value::Integer(n)) => async {
-                    if n >= 0 {
-                        Ok(some(Value::Natural(n.to_u64().unwrap())))
-                    } else {
-                        Ok(none())
-                    }
                 }),
                 ir::Intrinsic::AddNumber => {
                     runtime_math_fn!(Value::Number, (lhs, rhs) => async {
@@ -624,264 +510,14 @@ impl Interpreter {
                         })
                     })
                 }
-                ir::Intrinsic::AddInteger => {
-                    runtime_math_fn!(Value::Integer, (lhs, rhs) => async {
-                        Ok(lhs + rhs)
-                    })
-                }
-                ir::Intrinsic::SubtractInteger => {
-                    runtime_math_fn!(Value::Integer, (lhs, rhs) => async {
-                        Ok(lhs - rhs)
-                    })
-                }
-                ir::Intrinsic::MultiplyInteger => {
-                    runtime_math_fn!(Value::Integer, (lhs, rhs) => async {
-                        Ok(lhs * rhs)
-                    })
-                }
-                ir::Intrinsic::DivideInteger => runtime_div_fn!(Value::Integer, 0),
-                ir::Intrinsic::ModuloInteger => runtime_mod_fn!(Value::Integer, 0),
-                ir::Intrinsic::PowerInteger => {
-                    runtime_math_fn!(Value::Integer, (lhs, rhs) => async {
-                        if lhs == 0 && rhs == 0 {
-                            Err(Error::from("cannot raise zero to the power of zero"))
-                        } else {
-                            Ok(lhs.pow(rhs as u32))
-                        }
-                    })
-                }
-                ir::Intrinsic::NegateInteger => runtime_negate_fn!(Value::Integer),
-                ir::Intrinsic::AddNatural => {
-                    runtime_math_fn!(Value::Natural, (lhs, rhs) => async {
-                        Ok(lhs + rhs)
-                    })
-                }
-                ir::Intrinsic::SubtractNatural => {
-                    runtime_math_fn!(Value::Natural, (lhs, rhs) => async {
-                        Ok(lhs - rhs)
-                    })
-                }
-                ir::Intrinsic::MultiplyNatural => {
-                    runtime_math_fn!(Value::Natural, (lhs, rhs) => async {
-                        Ok(lhs * rhs)
-                    })
-                }
-                ir::Intrinsic::DivideNatural => runtime_div_fn!(Value::Natural, 0),
-                ir::Intrinsic::ModuloNatural => runtime_mod_fn!(Value::Natural, 0),
-                ir::Intrinsic::PowerNatural => {
-                    runtime_math_fn!(Value::Natural, (lhs, rhs) => async {
-                        if lhs == 0 && rhs == 0 {
-                            Err(Error::from("cannot raise zero to the power of zero"))
-                        } else {
-                            Ok(lhs.pow(rhs as u32))
-                        }
-                    })
-                }
-                ir::Intrinsic::AddByte => {
-                    runtime_math_fn!(Value::Byte, (lhs, rhs) => async {
-                        Ok(lhs + rhs)
-                    })
-                }
-                ir::Intrinsic::SubtractByte => {
-                    runtime_math_fn!(Value::Byte, (lhs, rhs) => async {
-                        Ok(lhs - rhs)
-                    })
-                }
-                ir::Intrinsic::MultiplyByte => {
-                    runtime_math_fn!(Value::Byte, (lhs, rhs) => async {
-                        Ok(lhs * rhs)
-                    })
-                }
-                ir::Intrinsic::DivideByte => runtime_div_fn!(Value::Byte, 0),
-                ir::Intrinsic::ModuloByte => runtime_mod_fn!(Value::Byte, 0),
-                ir::Intrinsic::PowerByte => {
-                    runtime_math_fn!(Value::Byte, (lhs, rhs) => async {
-                        if lhs == 0 && rhs == 0 {
-                            Err(Error::from("cannot raise zero to the power of zero"))
-                        } else {
-                            Ok(lhs.pow(rhs as u32))
-                        }
-                    })
-                }
-                ir::Intrinsic::AddSigned => {
-                    runtime_math_fn!(Value::Signed, (lhs, rhs) => async {
-                        Ok(lhs + rhs)
-                    })
-                }
-                ir::Intrinsic::SubtractSigned => {
-                    runtime_math_fn!(Value::Signed, (lhs, rhs) => async {
-                        Ok(lhs - rhs)
-                    })
-                }
-                ir::Intrinsic::MultiplySigned => {
-                    runtime_math_fn!(Value::Signed, (lhs, rhs) => async {
-                        Ok(lhs * rhs)
-                    })
-                }
-                ir::Intrinsic::DivideSigned => runtime_div_fn!(Value::Signed, 0),
-                ir::Intrinsic::ModuloSigned => runtime_mod_fn!(Value::Signed, 0),
-                ir::Intrinsic::PowerSigned => runtime_math_fn!(Value::Signed, (lhs, rhs) => async {
-                    if lhs == 0 && rhs == 0 {
-                        Err(Error::from("cannot raise zero to the power of zero"))
-                    } else {
-                        Ok(lhs.pow(rhs as u32))
-                    }
-                }),
-                ir::Intrinsic::NegateSigned => runtime_negate_fn!(Value::Signed),
-                ir::Intrinsic::AddUnsigned => {
-                    runtime_math_fn!(Value::Unsigned, (lhs, rhs) => async {
-                        Ok(lhs + rhs)
-                    })
-                }
-                ir::Intrinsic::SubtractUnsigned => {
-                    runtime_math_fn!(Value::Unsigned, (lhs, rhs) => async {
-                        Ok(lhs - rhs)
-                    })
-                }
-                ir::Intrinsic::MultiplyUnsigned => {
-                    runtime_math_fn!(Value::Unsigned, (lhs, rhs) => async {
-                        Ok(lhs * rhs)
-                    })
-                }
-                ir::Intrinsic::DivideUnsigned => runtime_div_fn!(Value::Unsigned, 0),
-                ir::Intrinsic::ModuloUnsigned => runtime_mod_fn!(Value::Unsigned, 0),
-                ir::Intrinsic::PowerUnsigned => {
-                    runtime_math_fn!(Value::Unsigned, (lhs, rhs) => async {
-                        if lhs == 0 && rhs == 0 {
-                            Err(Error::from("cannot raise zero to the power of zero"))
-                        } else {
-                            Ok(lhs.pow(rhs))
-                        }
-                    })
-                }
-                ir::Intrinsic::AddFloat => {
-                    runtime_math_fn!(Value::Float, (lhs, rhs) => async {
-                        Ok(lhs + rhs)
-                    })
-                }
-                ir::Intrinsic::SubtractFloat => {
-                    runtime_math_fn!(Value::Float, (lhs, rhs) => async {
-                        Ok(lhs - rhs)
-                    })
-                }
-                ir::Intrinsic::MultiplyFloat => {
-                    runtime_math_fn!(Value::Float, (lhs, rhs) => async {
-                        Ok(lhs * rhs)
-                    })
-                }
-                ir::Intrinsic::DivideFloat => {
-                    runtime_math_fn!(Value::Float, (lhs, rhs) => async {
-                        Ok(lhs / rhs)
-                    })
-                }
-                ir::Intrinsic::ModuloFloat => {
-                    runtime_math_fn!(Value::Float, (lhs, rhs) => async {
-                        Ok(lhs % rhs)
-                    })
-                }
-                ir::Intrinsic::PowerFloat => {
-                    runtime_math_fn!(Value::Float, (lhs, rhs) => async {
-                        Ok(lhs.pow(rhs))
-                    })
-                }
-                ir::Intrinsic::FloorFloat => {
-                    runtime_math_fn!(Value::Double, (n) => async {
-                        Ok(n.floor())
-                    })
-                }
-                ir::Intrinsic::CeilFloat => {
-                    runtime_math_fn!(Value::Double, (n) => async {
-                        Ok(n.ceil())
-                    })
-                }
-                ir::Intrinsic::SqrtFloat => {
-                    runtime_math_fn!(Value::Double, (n) => async {
-                        Ok(n.sqrt())
-                    })
-                }
-                ir::Intrinsic::SinFloat => runtime_trig_fn!(Value::Float(f32), sin),
-                ir::Intrinsic::CosFloat => runtime_trig_fn!(Value::Float(f32), cos),
-                ir::Intrinsic::TanFloat => runtime_trig_fn!(Value::Float(f32), tan),
-                ir::Intrinsic::NegateFloat => runtime_negate_fn!(Value::Float),
-                ir::Intrinsic::AddDouble => {
-                    runtime_math_fn!(Value::Double, (lhs, rhs) => async {
-                        Ok(lhs + rhs)
-                    })
-                }
-                ir::Intrinsic::SubtractDouble => {
-                    runtime_math_fn!(Value::Double, (lhs, rhs) => async {
-                        Ok(lhs - rhs)
-                    })
-                }
-                ir::Intrinsic::MultiplyDouble => {
-                    runtime_math_fn!(Value::Double, (lhs, rhs) => async {
-                        Ok(lhs * rhs)
-                    })
-                }
-                ir::Intrinsic::DivideDouble => {
-                    runtime_math_fn!(Value::Double, (lhs, rhs) => async {
-                        Ok(lhs / rhs)
-                    })
-                }
-                ir::Intrinsic::ModuloDouble => {
-                    runtime_math_fn!(Value::Double, (lhs, rhs) => async {
-                        Ok(lhs % rhs)
-                    })
-                }
-                ir::Intrinsic::PowerDouble => {
-                    runtime_math_fn!(Value::Double, (lhs, rhs) => async {
-                        Ok(lhs.pow(rhs))
-                    })
-                }
-                ir::Intrinsic::FloorDouble => {
-                    runtime_math_fn!(Value::Double, (n) => async {
-                        Ok(n.floor())
-                    })
-                }
-                ir::Intrinsic::CeilDouble => {
-                    runtime_math_fn!(Value::Double, (n) => async {
-                        Ok(n.ceil())
-                    })
-                }
-                ir::Intrinsic::SqrtDouble => {
-                    runtime_math_fn!(Value::Double, (n) => async {
-                        Ok(n.sqrt())
-                    })
-                }
-                ir::Intrinsic::SinDouble => runtime_trig_fn!(Value::Double(f64), sin),
-                ir::Intrinsic::CosDouble => runtime_trig_fn!(Value::Double(f64), cos),
-                ir::Intrinsic::TanDouble => runtime_trig_fn!(Value::Double(f64), tan),
-                ir::Intrinsic::NegateDouble => runtime_negate_fn!(Value::Double),
                 ir::Intrinsic::TextEquality => runtime_eq_fn!(Value::Text),
                 ir::Intrinsic::NumberEquality => runtime_eq_fn!(Value::Number),
-                ir::Intrinsic::IntegerEquality => runtime_eq_fn!(Value::Integer),
-                ir::Intrinsic::NaturalEquality => runtime_eq_fn!(Value::Natural),
-                ir::Intrinsic::ByteEquality => runtime_eq_fn!(Value::Byte),
-                ir::Intrinsic::SignedEquality => runtime_eq_fn!(Value::Signed),
-                ir::Intrinsic::UnsignedEquality => runtime_eq_fn!(Value::Unsigned),
-                ir::Intrinsic::FloatEquality => runtime_eq_fn!(Value::Float),
-                ir::Intrinsic::DoubleEquality => runtime_eq_fn!(Value::Double),
                 ir::Intrinsic::TextOrdering => runtime_cmp_fn!(Value::Text),
                 ir::Intrinsic::NumberOrdering => {
                     runtime_cmp_fn!((Value::Number(lhs), Value::Number(rhs)) => async {
                         lhs.cmp(&rhs)
                     })
                 },
-                ir::Intrinsic::IntegerOrdering => runtime_cmp_fn!(Value::Integer),
-                ir::Intrinsic::NaturalOrdering => runtime_cmp_fn!(Value::Natural),
-                ir::Intrinsic::ByteOrdering => runtime_cmp_fn!(Value::Byte),
-                ir::Intrinsic::SignedOrdering => runtime_cmp_fn!(Value::Signed),
-                ir::Intrinsic::UnsignedOrdering => runtime_cmp_fn!(Value::Unsigned),
-                ir::Intrinsic::FloatOrdering => {
-                    runtime_cmp_fn!((Value::Float(lhs), Value::Float(rhs)) => async {
-                        lhs.partial_cmp(&rhs).unwrap_or(std::cmp::Ordering::Equal)
-                    })
-                }
-                ir::Intrinsic::DoubleOrdering => {
-                    runtime_cmp_fn!((Value::Double(lhs), Value::Double(rhs)) => async {
-                        lhs.partial_cmp(&rhs).unwrap_or(std::cmp::Ordering::Equal)
-                    })
-                }
                 ir::Intrinsic::MakeReference => runtime_fn!((value) => async {
                     Ok(Value::Reference(Shared::new(value)))
                 }),
@@ -931,8 +567,13 @@ impl Interpreter {
                     })
                 }
                 ir::Intrinsic::ListNth => {
-                    runtime_fn!((Value::List(list), Value::Natural(index)) => async {
-                        Ok(match list.get(index as usize) {
+                    runtime_fn!((Value::List(list), Value::Number(index)) => async {
+                        let index = match index {
+                            Number::Decimal(n) => n.to_usize().ok_or_else(|| Error::from("expected a whole number"))?,
+                            Number::Undefined => return Err(Error::from("unexpected `undefined`")),
+                        };
+
+                        Ok(match list.get(index) {
                             Some(value) => some(value.clone()),
                             None => none(),
                         })
@@ -951,8 +592,12 @@ impl Interpreter {
                     })
                 }
                 ir::Intrinsic::ListInsertAt => {
-                    runtime_fn!((Value::List(mut list), Value::Natural(index), value) => async {
-                        let index = index as usize;
+                    runtime_fn!((Value::List(mut list), Value::Number(index), value) => async {
+                        let index = match index {
+                            Number::Decimal(n) => n.to_usize().ok_or_else(|| Error::from("expected a whole number"))?,
+                            Number::Undefined => return Err(Error::from("unexpected `undefined`")),
+                        };
+
                         let index = if (0..=list.len()).contains(&index) {
                             index
                         } else {
@@ -965,8 +610,12 @@ impl Interpreter {
                     })
                 }
                 ir::Intrinsic::ListRemoveAt => {
-                    runtime_fn!((Value::List(mut list), Value::Natural(index)) => async {
-                        let index = index as usize;
+                    runtime_fn!((Value::List(mut list), Value::Number(index)) => async {
+                        let index = match index {
+                            Number::Decimal(n) => n.to_usize().ok_or_else(|| Error::from("expected a whole number"))?,
+                            Number::Undefined => return Err(Error::from("unexpected `undefined`")),
+                        };
+
                         let index = if (0..list.len()).contains(&index) {
                             index
                         } else {
@@ -980,12 +629,22 @@ impl Interpreter {
                 }
                 ir::Intrinsic::ListCount => {
                     runtime_fn!((Value::List(list)) => async {
-                        Ok(Value::Natural(list.len() as u64))
+                        Ok(Value::Number(Number::Decimal(Decimal::from_usize(list.len()).unwrap())))
                     })
                 }
                 ir::Intrinsic::ListSlice => {
-                    runtime_fn!((Value::List(mut list), Value::Natural(start), Value::Natural(end)) => async {
-                        Ok(Value::List(list.slice((start as usize)..(end as usize))))
+                    runtime_fn!((Value::List(mut list), Value::Number(start), Value::Number(end)) => async {
+                        let start = match start {
+                            Number::Decimal(n) => n.to_usize().ok_or_else(|| Error::from("expected a whole number"))?,
+                            Number::Undefined => return Err(Error::from("unexpected `undefined`")),
+                        };
+
+                        let end = match end {
+                            Number::Decimal(n) => n.to_usize().ok_or_else(|| Error::from("expected a whole number"))?,
+                            Number::Undefined => return Err(Error::from("unexpected `undefined`")),
+                        };
+
+                        Ok(Value::List(list.slice(start..end)))
                     })
                 }
                 ir::Intrinsic::TextCharacters => {
@@ -1015,34 +674,20 @@ impl Interpreter {
                         Ok(Value::Number(Number::Decimal(rng.gen_range(min..max))))
                     })
                 }
-                ir::Intrinsic::RandomInteger => runtime_rand_fn!(Value::Integer),
-                ir::Intrinsic::RandomNatural => runtime_rand_fn!(Value::Natural),
-                ir::Intrinsic::RandomByte => runtime_rand_fn!(Value::Byte),
-                ir::Intrinsic::RandomSigned => runtime_rand_fn!(Value::Signed),
-                ir::Intrinsic::RandomUnsigned => runtime_rand_fn!(Value::Unsigned),
-                ir::Intrinsic::RandomFloat => runtime_rand_fn!(Value::Float),
-                ir::Intrinsic::RandomDouble => runtime_rand_fn!(Value::Double),
                 ir::Intrinsic::UndefinedNumber => runtime_fn!(() => async {
                     Ok(Value::Number(Number::Undefined))
                 }),
                 ir::Intrinsic::MakeHasher => runtime_fn!(() => async {
                     Ok(Value::Hasher(Default::default()))
                 }),
-                ir::Intrinsic::HashIntoHasher => runtime_fn!((Value::Hasher(mut hasher), Value::Natural(new)) => async {
+                ir::Intrinsic::HashIntoHasher => runtime_fn!((Value::Hasher(mut hasher), Value::Number(new)) => async {
                     std::hash::Hash::hash(&new, &mut hasher.0);
                     Ok(Value::Hasher(hasher))
                 }),
                 ir::Intrinsic::ValueOfHasher => runtime_fn!((Value::Hasher(hasher)) => async {
                     let hash = std::hash::Hasher::finish(&hasher.0);
-                    Ok(Value::Natural(hash))
+                    Ok(Value::Number(Number::Decimal(Decimal::from_u64(hash).unwrap())))
                 }),
-                ir::Intrinsic::HashNumber => runtime_hash_fn!(Value::Number),
-                ir::Intrinsic::HashInteger => runtime_hash_fn!(Value::Integer),
-                ir::Intrinsic::HashByte => runtime_hash_fn!(Value::Byte),
-                ir::Intrinsic::HashSigned => runtime_hash_fn!(Value::Signed),
-                ir::Intrinsic::HashUnsigned => runtime_hash_fn!(Value::Unsigned),
-                ir::Intrinsic::HashFloat => runtime_float_hash_fn!(Value::Float),
-                ir::Intrinsic::HashDouble => runtime_float_hash_fn!(Value::Double),
                 ir::Intrinsic::HashText => runtime_hash_fn!(Value::Text),
             }
         })().await?;

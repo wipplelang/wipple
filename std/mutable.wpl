@@ -98,9 +98,9 @@ toggle! : b -> b . set! (b . get . not)
 add! :: Left Right where (Add Left Right Left) => Right -> Mutable Left -> ()
 add! : x m -> m . set! (get m + x)
 
-[help "Increment a `Mutable` value."]
+[help "Increment a `Mutable` value by one."]
 [help-group "Math"]
-increment! :: Value where (Add Value Natural Value) => Mutable Value -> ()
+increment! :: Value where (Add Value Number Value) => Mutable Value -> ()
 increment! : add! 1
 
 [help "Remove the value contained inside a `Mutable` value, replacing it with `Default`."]

@@ -22,13 +22,6 @@ macro_rules! parse_number {
 
             match builtin {
                 BuiltinType::Number => parse!(Number),
-                BuiltinType::Integer => parse!(Integer),
-                BuiltinType::Natural => parse!(Natural),
-                BuiltinType::Byte => parse!(Byte),
-                BuiltinType::Signed => parse!(Signed),
-                BuiltinType::Unsigned => parse!(Unsigned),
-                BuiltinType::Float => parse!(Float),
-                BuiltinType::Double => parse!(Double),
                 _ => return None,
             }
         })()

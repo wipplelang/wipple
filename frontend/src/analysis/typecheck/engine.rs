@@ -105,7 +105,6 @@ pub enum UnresolvedTypeKind {
     Variable(TypeVariable),
     Opaque(TypeVariable),
     Parameter(TypeParameterId),
-    NumericVariable(TypeVariable),
     Named(TypeId, Vec<UnresolvedType>, TypeStructure<UnresolvedType>),
     Function(Box<UnresolvedType>, Box<UnresolvedType>),
     Tuple(Vec<UnresolvedType>),
@@ -220,13 +219,6 @@ impl From<Type> for UnresolvedType {
                 }
                 TypeKind::Builtin(builtin) => UnresolvedTypeKind::Builtin(match builtin {
                     BuiltinType::Number => BuiltinType::Number,
-                    BuiltinType::Integer => BuiltinType::Integer,
-                    BuiltinType::Natural => BuiltinType::Natural,
-                    BuiltinType::Byte => BuiltinType::Byte,
-                    BuiltinType::Signed => BuiltinType::Signed,
-                    BuiltinType::Unsigned => BuiltinType::Unsigned,
-                    BuiltinType::Float => BuiltinType::Float,
-                    BuiltinType::Double => BuiltinType::Double,
                     BuiltinType::Text => BuiltinType::Text,
                     BuiltinType::List(ty) => BuiltinType::List(Box::new((*ty).into())),
                     BuiltinType::Reference(ty) => BuiltinType::Reference(Box::new((*ty).into())),
@@ -282,13 +274,6 @@ impl TypeVariable {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum BuiltinType<Ty> {
     Number,
-    Integer,
-    Natural,
-    Byte,
-    Signed,
-    Unsigned,
-    Float,
-    Double,
     Text,
     List(Ty),
     Reference(Ty),
@@ -432,7 +417,10 @@ impl Context {
         };
 
         match (actual.kind.clone(), expected.kind.clone()) {
-            (UnresolvedTypeKind::Opaque(_), _) | (_, UnresolvedTypeKind::Opaque(_)) => Ok(()),
+            (UnresolvedTypeKind::Opaque(_), _)
+            | (_, UnresolvedTypeKind::Opaque(_))
+            | (UnresolvedTypeKind::Error, _)
+            | (_, UnresolvedTypeKind::Error) => Ok(()),
             (
                 UnresolvedTypeKind::Parameter(actual_param),
                 UnresolvedTypeKind::Parameter(expected_param),
@@ -457,47 +445,6 @@ impl Context {
                 }
             }
             (_, UnresolvedTypeKind::Parameter(_)) => Ok(()),
-            (UnresolvedTypeKind::NumericVariable(var), expected_kind) => {
-                match expected_kind {
-                    UnresolvedTypeKind::NumericVariable(other) => {
-                        if var == other {
-                            return Ok(());
-                        }
-                    }
-                    UnresolvedTypeKind::Builtin(ty) if ty.is_numeric() => {}
-                    _ => return Err(mismatch()),
-                }
-
-                if expected.contains(&var) {
-                    Err(Box::new(TypeError::Recursive(var)))
-                } else {
-                    self.numeric_substitutions
-                        .borrow_mut()
-                        .insert(var.counter_in(self), expected);
-
-                    Ok(())
-                }
-            }
-            (actual_kind, UnresolvedTypeKind::NumericVariable(var)) => {
-                match actual_kind {
-                    UnresolvedTypeKind::NumericVariable(other) => {
-                        if var == other {
-                            return Ok(());
-                        }
-                    }
-                    UnresolvedTypeKind::Builtin(ty) if ty.is_numeric() => {}
-                    _ => return Err(mismatch()),
-                }
-
-                if actual.contains(&var) {
-                    Err(Box::new(TypeError::Recursive(var)))
-                } else {
-                    self.numeric_substitutions
-                        .borrow_mut()
-                        .insert(var.counter_in(self), actual);
-                    Ok(())
-                }
-            }
             (
                 UnresolvedTypeKind::Named(actual_id, actual_params, _),
                 UnresolvedTypeKind::Named(expected_id, expected_params, _),
@@ -592,13 +539,6 @@ impl Context {
                 UnresolvedTypeKind::Builtin(expected_builtin),
             ) => match (actual_builtin, expected_builtin) {
                 (BuiltinType::Number, BuiltinType::Number)
-                | (BuiltinType::Integer, BuiltinType::Integer)
-                | (BuiltinType::Natural, BuiltinType::Natural)
-                | (BuiltinType::Byte, BuiltinType::Byte)
-                | (BuiltinType::Signed, BuiltinType::Signed)
-                | (BuiltinType::Unsigned, BuiltinType::Unsigned)
-                | (BuiltinType::Float, BuiltinType::Float)
-                | (BuiltinType::Double, BuiltinType::Double)
                 | (BuiltinType::Text, BuiltinType::Text)
                 | (BuiltinType::Ui, BuiltinType::Ui)
                 | (BuiltinType::TaskGroup, BuiltinType::TaskGroup)
@@ -640,7 +580,6 @@ impl Context {
                 }
                 _ => Err(mismatch()),
             },
-            (_, UnresolvedTypeKind::Error) | (UnresolvedTypeKind::Error, _) => Ok(()),
             _ => Err(mismatch()),
         }
     }
@@ -688,7 +627,7 @@ impl UnresolvedType {
 
     pub fn contains(&self, var: &TypeVariable) -> bool {
         match &self.kind {
-            UnresolvedTypeKind::Variable(v) | UnresolvedTypeKind::NumericVariable(v) => v == var,
+            UnresolvedTypeKind::Variable(v) => v == var,
             UnresolvedTypeKind::Function(input, output) => {
                 input.contains(var) || output.contains(var)
             }
@@ -742,7 +681,7 @@ impl UnresolvedType {
 
     pub fn contains_vars(&self) -> bool {
         match &self.kind {
-            UnresolvedTypeKind::Variable(_) | UnresolvedTypeKind::NumericVariable(_) => true,
+            UnresolvedTypeKind::Variable(_) => true,
             UnresolvedTypeKind::Function(input, output) => {
                 input.contains_vars() || output.contains_vars()
             }
@@ -782,18 +721,6 @@ impl UnresolvedType {
                     self.apply_inner(ctx, stack);
 
                     stack.pop();
-                }
-            }
-            UnresolvedTypeKind::NumericVariable(var) => {
-                if let Some(ty) = ctx
-                    .numeric_substitutions
-                    .borrow()
-                    .get(&var.counter_in(ctx))
-                    .cloned()
-                {
-                    self.kind = ty.kind;
-                    self.info.merge(ty.info);
-                    self.apply_inner(ctx, stack);
                 }
             }
             UnresolvedTypeKind::Function(input, output) => {
@@ -939,7 +866,7 @@ impl UnresolvedType {
 
     pub fn all_vars(&self) -> Vec<TypeVariable> {
         match &self.kind {
-            UnresolvedTypeKind::Variable(var) | UnresolvedTypeKind::NumericVariable(var) => {
+            UnresolvedTypeKind::Variable(var) => {
                 vec![var.clone()]
             }
             UnresolvedTypeKind::Function(input, output) => {
@@ -1011,20 +938,6 @@ impl UnresolvedType {
                     }
                 }
             }
-            UnresolvedTypeKind::NumericVariable(var) => {
-                if let Some(ty) = ctx
-                    .numeric_substitutions
-                    .borrow()
-                    .get(&var.counter_in(ctx))
-                    .cloned()
-                {
-                    self.kind = ty.kind;
-                    *substituted = true;
-                    self.substitute_defaults_inner(ctx, numeric_only, substituted);
-                } else {
-                    self.kind = UnresolvedTypeKind::Builtin(BuiltinType::Number);
-                }
-            }
             UnresolvedTypeKind::Function(input, output) => {
                 input.substitute_defaults_inner(ctx, numeric_only, substituted);
                 output.substitute_defaults_inner(ctx, numeric_only, substituted);
@@ -1070,7 +983,7 @@ impl UnresolvedType {
                     TypeKind::Error
                 }
                 UnresolvedTypeKind::Parameter(param) => TypeKind::Parameter(param),
-                UnresolvedTypeKind::Opaque(_) | UnresolvedTypeKind::NumericVariable(_) => {
+                UnresolvedTypeKind::Opaque(_) => {
                     unreachable!()
                 }
                 UnresolvedTypeKind::Named(id, params, structure) => TypeKind::Named(
@@ -1092,13 +1005,6 @@ impl UnresolvedType {
                 ),
                 UnresolvedTypeKind::Builtin(builtin) => TypeKind::Builtin(match builtin {
                     BuiltinType::Number => BuiltinType::Number,
-                    BuiltinType::Integer => BuiltinType::Integer,
-                    BuiltinType::Natural => BuiltinType::Natural,
-                    BuiltinType::Byte => BuiltinType::Byte,
-                    BuiltinType::Signed => BuiltinType::Signed,
-                    BuiltinType::Unsigned => BuiltinType::Unsigned,
-                    BuiltinType::Float => BuiltinType::Float,
-                    BuiltinType::Double => BuiltinType::Double,
                     BuiltinType::Text => BuiltinType::Text,
                     BuiltinType::List(ty) => {
                         BuiltinType::List(Box::new(ty.finalize_inner(ctx, resolved)))
@@ -1354,16 +1260,6 @@ impl Type {
 
 impl<Ty> BuiltinType<Ty> {
     pub fn is_numeric(&self) -> bool {
-        matches!(
-            self,
-            BuiltinType::Number
-                | BuiltinType::Integer
-                | BuiltinType::Natural
-                | BuiltinType::Byte
-                | BuiltinType::Signed
-                | BuiltinType::Unsigned
-                | BuiltinType::Float
-                | BuiltinType::Double
-        )
+        matches!(self, BuiltinType::Number)
     }
 }

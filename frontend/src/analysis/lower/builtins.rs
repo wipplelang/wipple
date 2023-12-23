@@ -34,111 +34,6 @@ impl Lowerer {
         add!(
             builtin_type,
             Span::builtin(),
-            "Integer",
-            BuiltinTypeDeclaration {
-                kind: BuiltinTypeDeclarationKind::Integer,
-                attributes: DeclarationAttributes {
-                    help: vec![InternedString::new(
-                        "Represents a whole number that can be positive or negative.",
-                    )],
-                    ..Default::default()
-                }
-            },
-        );
-
-        add!(
-            builtin_type,
-            Span::builtin(),
-            "Natural",
-            BuiltinTypeDeclaration {
-                kind: BuiltinTypeDeclarationKind::Natural,
-                attributes: DeclarationAttributes {
-                    help: vec![InternedString::new(
-                        "Represents a whole number that can only be positive.",
-                    )],
-                    ..Default::default()
-                }
-            },
-        );
-
-        add!(
-            builtin_type,
-            Span::builtin(),
-            "Byte",
-            BuiltinTypeDeclaration {
-                kind: BuiltinTypeDeclarationKind::Byte,
-                attributes: DeclarationAttributes {
-                    help: vec![InternedString::new(
-                        "Represents a byte of data, specifically an 8-bit unsigned integer.",
-                    )],
-                    ..Default::default()
-                }
-            },
-        );
-
-        add!(
-            builtin_type,
-            Span::builtin(),
-            "Signed",
-            BuiltinTypeDeclaration {
-                kind: BuiltinTypeDeclarationKind::Signed,
-                attributes: DeclarationAttributes {
-                    help: vec![InternedString::new(
-                        "Represents a platform-sized signed integer, equivalent to the `signed int` type in C.",
-                    )],
-                    ..Default::default()
-                }
-            },
-        );
-
-        add!(
-            builtin_type,
-            Span::builtin(),
-            "Unsigned",
-            BuiltinTypeDeclaration {
-                kind: BuiltinTypeDeclarationKind::Unsigned,
-                attributes: DeclarationAttributes {
-                    help: vec![InternedString::new(
-                        "Represents a platform-sized unsigned integer, equivalent to the `unsigned int` type in C.",
-                    )],
-                    ..Default::default()
-                }
-            },
-        );
-
-        add!(
-            builtin_type,
-            Span::builtin(),
-            "Float",
-            BuiltinTypeDeclaration {
-                kind: BuiltinTypeDeclarationKind::Float,
-                attributes: DeclarationAttributes {
-                    help: vec![InternedString::new(
-                        "Represents a 32-bit floating-point number, equivalent to the `float` type in C.",
-                    )],
-                    ..Default::default()
-                }
-            },
-        );
-
-        add!(
-            builtin_type,
-            Span::builtin(),
-            "Double",
-            BuiltinTypeDeclaration {
-                kind: BuiltinTypeDeclarationKind::Double,
-                attributes: DeclarationAttributes {
-                    help: vec![InternedString::new(
-                        "Represents a 64-bit floating-point number, equivalent to the `double` type in C.",
-                    )],
-                    ..Default::default()
-                }
-            },
-        );
-
-        add!(
-            builtin_type,
-            Span::builtin(),
             "Text",
             BuiltinTypeDeclaration {
                 kind: BuiltinTypeDeclarationKind::Text,
@@ -216,7 +111,9 @@ impl Lowerer {
             BuiltinTypeDeclaration {
                 kind: BuiltinTypeDeclarationKind::Hasher,
                 attributes: DeclarationAttributes {
-                    help: vec![InternedString::new("Contains the hashed components of a value implementing `Hash`.")],
+                    help: vec![InternedString::new(
+                        "Contains the hashed components of a value implementing `Hash`."
+                    )],
                     ..Default::default()
                 }
             },

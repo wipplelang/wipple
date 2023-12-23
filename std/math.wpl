@@ -12,265 +12,175 @@ undefined : semantics "pure" (intrinsic "undefined-number")
 [help-group "Math"]
 [help-show-code]
 [on-unimplemented ("cannot add _ to _" Right Left)]
-Add : Left Right (infer Sum) => trait (Right -> Left -> Sum)
-
-[private]
-add :: (Left : Number) (Right : Number) (infer Sum) where (Add Left Right Sum) => Right -> Left -> Sum
-add : Add
+Add : (Left : Number) (Right : Number) (infer Sum) => trait (Right -> Left -> Sum)
 
 [help "Add two values together, returning the sum."]
 [help-group "Math"]
 [operator Addition-Precedence]
 + : syntax {
-  ('a + 'b) -> add 'b 'a
+  ('a + 'b) -> Add 'b 'a
   ('a +) -> {
     a : 'a
-    b -> add b a
+    b -> Add b a
   }
-  (+ 'b) -> add 'b
-  (+) -> add
+  (+ 'b) -> Add 'b
+  (+) -> Add
 }
 
 instance (Add Number Number Number) : b a -> semantics "pure" (intrinsic "add-number" a b)
-instance (Add Integer Integer Integer) : b a -> semantics "pure" (intrinsic "add-integer" a b)
-instance (Add Natural Natural Natural) : b a -> semantics "pure" (intrinsic "add-natural" a b)
-instance (Add Byte Byte Byte) : b a -> semantics "pure" (intrinsic "add-byte" a b)
-instance (Add Signed Signed Signed) : b a -> semantics "pure" (intrinsic "add-signed" a b)
-instance (Add Unsigned Unsigned Unsigned) : b a -> semantics "pure" (intrinsic "add-unsigned" a b)
-instance (Add Float Float Float) : b a -> semantics "pure" (intrinsic "add-float" a b)
-instance (Add Double Double Double) : b a -> semantics "pure" (intrinsic "add-double" a b)
 
 [help "Implements the `-` operator."]
 [help-group "Math"]
 [help-show-code]
 [on-unimplemented ("cannot subtract _ from _" Right Left)]
-Subtract : Left Right (infer Difference) => trait (Right -> Left -> Difference)
-
-[private]
-subtract :: (Left : Number) (Right : Number) (infer Difference) where (Subtract Left Right Difference) => Right -> Left -> Difference
-subtract : Subtract
+Subtract : (Left : Number) (Right : Number) (infer Difference) => trait (Right -> Left -> Difference)
 
 [help "Subtract the right side from the left side, returning the difference."]
 [help-group "Math"]
 [operator Addition-Precedence]
 - : syntax {
-  ('a - 'b) -> subtract 'b 'a
+  ('a - 'b) -> Subtract 'b 'a
   ('a -) -> {
     a : 'a
-    b -> subtract b a
+    b -> Subtract b a
   }
-  (- 'b) -> subtract 'b
-  (-) -> subtract
+  (- 'b) -> Subtract 'b
+  (-) -> Subtract
 }
 
 instance (Subtract Number Number Number) : b a -> semantics "pure" (intrinsic "subtract-number" a b)
-instance (Subtract Integer Integer Integer) : b a -> semantics "pure" (intrinsic "subtract-integer" a b)
-instance (Subtract Natural Natural Natural) : b a -> semantics "pure" (intrinsic "subtract-natural" a b)
-instance (Subtract Byte Byte Byte) : b a -> semantics "pure" (intrinsic "subtract-byte" a b)
-instance (Subtract Signed Signed Signed) : b a -> semantics "pure" (intrinsic "subtract-signed" a b)
-instance (Subtract Unsigned Unsigned Unsigned) : b a -> semantics "pure" (intrinsic "subtract-unsigned" a b)
-instance (Subtract Float Float Float) : b a -> semantics "pure" (intrinsic "subtract-float" a b)
-instance (Subtract Double Double Double) : b a -> semantics "pure" (intrinsic "subtract-double" a b)
 
 [help "Implements the `*` operator."]
 [help-group "Math"]
 [help-show-code]
 [on-unimplemented ("cannot multiply _ by _" Left Right)]
-Multiply : Left Right (infer Product) => trait (Right -> Left -> Product)
-
-[private]
-multiply :: (Left : Number) (Right : Number) (infer Product) where (Multiply Left Right Product) => Right -> Left -> Product
-multiply : Multiply
+Multiply : (Left : Number) (Right : Number) (infer Product) => trait (Right -> Left -> Product)
 
 [help "Multiply two values together, returning the product."]
 [help-group "Math"]
 [operator Multiplication-Precedence]
 * : syntax {
-  ('a * 'b) -> multiply 'b 'a
+  ('a * 'b) -> Multiply 'b 'a
   ('a *) -> {
     a : 'a
-    b -> multiply b a
+    b -> Multiply b a
   }
-  (* 'b) -> multiply 'b
-  (*) -> multiply
+  (* 'b) -> Multiply 'b
+  (*) -> Multiply
 }
 
 instance (Multiply Number Number Number) : b a -> semantics "pure" (intrinsic "multiply-number" a b)
-instance (Multiply Integer Integer Integer) : b a -> semantics "pure" (intrinsic "multiply-integer" a b)
-instance (Multiply Natural Natural Natural) : b a -> semantics "pure" (intrinsic "multiply-natural" a b)
-instance (Multiply Byte Byte Byte) : b a -> semantics "pure" (intrinsic "multiply-byte" a b)
-instance (Multiply Signed Signed Signed) : b a -> semantics "pure" (intrinsic "multiply-signed" a b)
-instance (Multiply Unsigned Unsigned Unsigned) : b a -> semantics "pure" (intrinsic "multiply-unsigned" a b)
-instance (Multiply Float Float Float) : b a -> semantics "pure" (intrinsic "multiply-float" a b)
-instance (Multiply Double Double Double) : b a -> semantics "pure" (intrinsic "multiply-double" a b)
 
 [help "Implements the `/` operator."]
 [help-group "Math"]
 [help-show-code]
 [on-unimplemented ("cannot divide _ by _" Left Right)]
-Divide : Left Right (infer Quotient) => trait (Right -> Left -> Quotient)
-
-[private]
-divide :: (Left : Number) (Right : Number) (infer Quotient) where (Divide Left Right Quotient) => Right -> Left -> Quotient
-divide : Divide
+Divide : (Left : Number) (Right : Number) (infer Quotient) => trait (Right -> Left -> Quotient)
 
 [help "Divide the left side by the right side, returning the quotient."]
 [help-group "Math"]
 [operator Multiplication-Precedence]
 / : syntax {
-  ('a / 'b) -> divide 'b 'a
+  ('a / 'b) -> Divide 'b 'a
   ('a /) -> {
     a : 'a
-    b -> divide b a
+    b -> Divide b a
   }
-  (/ 'b) -> divide 'b
-  (/) -> divide
+  (/ 'b) -> Divide 'b
+  (/) -> Divide
 }
 
 instance (Divide Number Number Number) : b a -> semantics "pure" (intrinsic "divide-number" a b)
-instance (Divide Integer Integer Integer) : b a -> semantics "pure" (intrinsic "divide-integer" a b)
-instance (Divide Natural Natural Natural) : b a -> semantics "pure" (intrinsic "divide-natural" a b)
-instance (Divide Byte Byte Byte) : b a -> semantics "pure" (intrinsic "divide-byte" a b)
-instance (Divide Signed Signed Signed) : b a -> semantics "pure" (intrinsic "divide-signed" a b)
-instance (Divide Unsigned Unsigned Unsigned) : b a -> semantics "pure" (intrinsic "divide-unsigned" a b)
-instance (Divide Float Float Float) : b a -> semantics "pure" (intrinsic "divide-float" a b)
-instance (Divide Double Double Double) : b a -> semantics "pure" (intrinsic "divide-double" a b)
 
 [help "Implements the `mod` operator."]
 [help-group "Math"]
 [help-show-code]
 [on-unimplemented ("cannot divide _ by _" Left Right)]
-Modulo : Left Right (infer Remainder) => trait (Right -> Left -> Remainder)
-
-[private]
-modulo :: (Left : Number) (Right : Number) (infer Remainder) where (Modulo Left Right Remainder) => Right -> Left -> Remainder
-modulo : Modulo
+Modulo : (Left : Number) (Right : Number) (infer Remainder) => trait (Right -> Left -> Remainder)
 
 [help "Divide the left side by the right side, returning the remainder."]
 [help-group "Math"]
 [operator Multiplication-Precedence]
 mod : syntax {
-  ('a mod 'b) -> modulo 'b 'a
+  ('a mod 'b) -> Modulo 'b 'a
   ('a mod) -> {
     a : 'a
-    b -> modulo b a
+    b -> Modulo b a
   }
-  (mod 'b) -> modulo 'b
-  (mod) -> modulo
+  (mod 'b) -> Modulo 'b
+  (mod) -> Modulo
 }
 
 instance (Modulo Number Number Number) : b a -> semantics "pure" (intrinsic "modulo-number" a b)
-instance (Modulo Integer Integer Integer) : b a -> semantics "pure" (intrinsic "modulo-integer" a b)
-instance (Modulo Natural Natural Natural) : b a -> semantics "pure" (intrinsic "modulo-natural" a b)
-instance (Modulo Byte Byte Byte) : b a -> semantics "pure" (intrinsic "modulo-byte" a b)
-instance (Modulo Signed Signed Signed) : b a -> semantics "pure" (intrinsic "modulo-signed" a b)
-instance (Modulo Unsigned Unsigned Unsigned) : b a -> semantics "pure" (intrinsic "modulo-unsigned" a b)
-instance (Modulo Float Float Float) : b a -> semantics "pure" (intrinsic "modulo-float" a b)
-instance (Modulo Double Double Double) : b a -> semantics "pure" (intrinsic "modulo-double" a b)
 
 [help "Implements the `^` operator."]
 [help-group "Math"]
 [help-show-code]
 [on-unimplemented ("cannot raise _ to the power of _" Left Right)]
-Power : Left Right (infer Pow) => trait (Right -> Left -> Pow)
-
-[private]
-power :: (Left : Number) (Right : Number) (infer Pow) where (Power Left Right Pow) => Right -> Left -> Pow
-power : Power
+Power : (Left : Number) (Right : Number) (infer Pow) => trait (Right -> Left -> Pow)
 
 [help "Raise the left side to the power of the right side."]
 [help-group "Math"]
 [operator Exponentiation-Precedence]
 ^ : syntax {
-  ('a ^ 'b) -> power 'b 'a
+  ('a ^ 'b) -> Power 'b 'a
   ('a ^) -> {
     a : 'a
-    b -> power b a
+    b -> Power b a
   }
-  (^ 'b) -> power 'b
-  (^) -> power
+  (^ 'b) -> Power 'b
+  (^) -> Power
 }
 
 instance (Power Number Number Number) : b a -> semantics "pure" (intrinsic "power-number" a b)
-instance (Power Integer Integer Integer) : b a -> semantics "pure" (intrinsic "power-integer" a b)
-instance (Power Natural Natural Natural) : b a -> semantics "pure" (intrinsic "power-natural" a b)
-instance (Power Byte Byte Byte) : b a -> semantics "pure" (intrinsic "power-byte" a b)
-instance (Power Signed Signed Signed) : b a -> semantics "pure" (intrinsic "power-signed" a b)
-instance (Power Unsigned Unsigned Unsigned) : b a -> semantics "pure" (intrinsic "power-unsigned" a b)
-instance (Power Float Float Float) : b a -> semantics "pure" (intrinsic "power-float" a b)
-instance (Power Double Double Double) : b a -> semantics "pure" (intrinsic "power-double" a b)
 
 [help "Rounds down a number to the nearest integer."]
 [help-group "Math"]
-Floor : N => trait (N -> N)
-floor :: N where (Floor N) => N -> N
-floor : Floor
-instance (Floor Number) : n -> semantics "pure" (intrinsic "floor-number" n)
-instance (Floor Float) : n -> semantics "pure" (intrinsic "floor-float" n)
-instance (Floor Double) : n -> semantics "pure" (intrinsic "floor-double" n)
+floor :: Number -> Number
+floor : n -> semantics "pure" (intrinsic "floor-number" n)
 
 [help "Rounds up a number to the nearest integer."]
 [help-group "Math"]
-Ceil : N => trait (N -> N)
-ceil :: (N : Number) where (Ceil N) => N -> N
-ceil : Ceil
-instance (Ceil Number) : n -> semantics "pure" (intrinsic "ceil-number" n)
-instance (Ceil Float) : n -> semantics "pure" (intrinsic "ceil-float" n)
-instance (Ceil Double) : n -> semantics "pure" (intrinsic "ceil-double" n)
+ceil :: Number -> Number
+ceil : n -> semantics "pure" (intrinsic "ceil-number" n)
 
 [help "Calculates the square root of a number."]
 [help-group "Math"]
-Sqrt : N => trait (N -> N)
-sqrt :: (N : Number) where (Sqrt N) => N -> N
-sqrt : Sqrt
-instance (Sqrt Number) : n -> semantics "pure" (intrinsic "sqrt-number" n)
-instance (Sqrt Float) : n -> semantics "pure" (intrinsic "sqrt-float" n)
-instance (Sqrt Double) : n -> semantics "pure" (intrinsic "sqrt-double" n)
+sqrt :: Number -> Number
+sqrt : n -> semantics "pure" (intrinsic "sqrt-number" n)
 
 [help "An angle, represented in degrees or radians."]
 [help-group "Math"]
-[help-convert-from N ('value degrees)]
-Angle : N => type {
-  Radians N
-  Degrees N
+[help-convert-from Number ('value degrees)]
+Angle : type {
+  Radians Number
+  Degrees Number
 }
 
 [help "An angle in radians."]
 [help-group "Math"]
-radians :: N => N -> Angle N
+radians :: Number -> Angle
 radians : Radians
 
 [help "An angle in degrees."]
 [help-group "Math"]
-degrees :: N => N -> Angle N
+degrees :: Number -> Angle
 degrees : Degrees
 
 [help "Calculates the sine of a number."]
 [help-group "Math"]
-Sin : A => trait (Angle A -> A)
-sin :: (A : Number) where (Sin A) => Angle A -> A
-sin : Sin
-instance (Sin Number) : angle -> semantics "pure" (intrinsic "sin-number" angle)
-instance (Sin Float) : angle -> semantics "pure" (intrinsic "sin-float" angle)
-instance (Sin Double) : angle -> semantics "pure" (intrinsic "sin-double" angle)
+sin :: Angle -> Number
+sin : angle -> semantics "pure" (intrinsic "sin-number" angle)
 
 [help "Calculates the cosine of a number."]
 [help-group "Math"]
-Cos : A => trait (Angle A -> A)
-cos :: (A : Number) where (Cos A) => Angle A -> A
-cos : Cos
-instance (Cos Number) : angle -> semantics "pure" (intrinsic "cos-number" angle)
-instance (Cos Float) : angle -> semantics "pure" (intrinsic "cos-float" angle)
-instance (Cos Double) : angle -> semantics "pure" (intrinsic "cos-double" angle)
+cos :: Angle -> Number
+cos : angle -> semantics "pure" (intrinsic "cos-number" angle)
 
 [help "Calculates the tangent of a number."]
 [help-group "Math"]
-Tan : A => trait (Angle A -> A)
-tan :: (A : Number) where (Tan A) => Angle A -> A
-tan : Tan
-instance (Tan Number) : angle -> semantics "pure" (intrinsic "tan-number" angle)
-instance (Tan Float) : angle -> semantics "pure" (intrinsic "tan-float" angle)
-instance (Tan Double) : angle -> semantics "pure" (intrinsic "tan-double" angle)
+tan :: Angle -> Number
+tan : angle -> semantics "pure" (intrinsic "tan-number" angle)
 
 [help "Negates the sign of a number."]
 [help-group "Math"]
@@ -278,12 +188,8 @@ Negate : N => trait (N -> N)
 negate :: (N : Number) where (Negate N) => N -> N
 negate : Negate
 instance (Negate Number) : n -> semantics "pure" (intrinsic "negate-number" n)
-instance (Negate Integer) : n -> semantics "pure" (intrinsic "negate-integer" n)
-instance (Negate Signed) : n -> semantics "pure" (intrinsic "negate-signed" n)
-instance (Negate Float) : n -> semantics "pure" (intrinsic "negate-float" n)
-instance (Negate Double) : n -> semantics "pure" (intrinsic "negate-double" n)
 
 [help "Check if a number is divisible by another number."]
 [help-group "Math"]
-divisible-by? :: (N : Number) where (Modulo N N N) (Equal N) (Default N) => N -> N -> Boolean
-divisible-by? : a b -> a mod b = Default
+divisible-by? :: Number -> Number -> Boolean
+divisible-by? : b a -> a mod b = Default

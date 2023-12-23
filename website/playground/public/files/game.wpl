@@ -26,17 +26,17 @@ with-game : syntax {
 
 [help "The width of the game window."]
 [help-group "Game Engine"]
-width :: Natural
+width :: Number
 width : 32
 
 [help "The height of the game window."]
 [help-group "Game Engine"]
-height :: Natural
+height :: Number
 height : 24
 
 [help "Move the cursor to a particular x-y location."]
 [help-group "Game Engine"]
-locate :: (Natural ; Natural) -> ()
+locate :: (Number ; Number) -> ()
 locate : (x ; y) -> handle of game . message "locate" (x as Number ; y as Number)
 
 [help "Set the foreground color."]
@@ -51,11 +51,11 @@ bg : c -> handle of game . message "bg" c
 
 Glyph : type {
   Character-Glyph Text
-  Numeric-Glyph Natural
+  Numeric-Glyph Number
 }
 
 instance (As Text Glyph) : Character-Glyph
-instance (As Natural Glyph) : Numeric-Glyph
+instance (As Number Glyph) : Numeric-Glyph
 
 [help "Render a single glyph at the cursor's current position."]
 [help-group "Game Engine"]
@@ -70,11 +70,11 @@ render-glyph : glyph -> {
 
 Glyph-Sequence : type {
   Text-Glyph-Sequence Text
-  Numeric-Glyph-Sequence (List Natural)
+  Numeric-Glyph-Sequence (List Number)
 }
 
 instance (As Text Glyph-Sequence) : Text-Glyph-Sequence
-instance (As (List Natural) Glyph-Sequence) : Numeric-Glyph-Sequence
+instance (As (List Number) Glyph-Sequence) : Numeric-Glyph-Sequence
 
 [help "Render a line of glpyhs and advance to the next line."]
 [help-group "Game Engine"]
