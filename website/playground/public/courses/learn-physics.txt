@@ -133,3 +133,79 @@ page: Constant motion
 type: code
 setup: physics
 ---
+
+
+
+---
+page: Force, mass, and acceleration
+type: text
+locked: true
+---
+
+Let's say we want to slide a box across the floor. When you push a box, you're applying a **force**. You already know that if you push two boxes of different weights, the lighter box is going to speed up more quickly, but how do we measure that speed? Let's experiment!
+
+We'll start by creating two boxes on the screen, `light` and `heavy`. You use the `:` symbol (pronounced "is") to give each object a name, like so:
+
+---
+page: Force, mass, and acceleration
+type: code
+setup: physics
+lint: false
+---
+
+light : box {
+  mass : 1 kilograms
+  x : initially (200 pixels)
+  y : initially (350 pixels)
+}
+
+heavy : box {
+  mass : 2 kilograms
+  x : initially (200 pixels)
+  y : initially (250 pixels)
+}
+
+---
+page: Force, mass, and acceleration
+type: text
+locked: true
+---
+
+There are a couple of new commands here: first, we set the `mass` of both boxes in `kilograms`. This is done in the same way as `x` and `y`. The second new command, `initially`, is really important — it tells the computer the boxes' _initial positions_, but for the rest of the simulation, the positions will be determined by applying forces.
+
+(By the way, the $y$-axis goes from the bottom of the screen to the top; $y = 0$ is at the bottom of the screen. So in this demonstration, the lighter box is on top.)
+
+Alright, let's push the boxes!
+
+---
+page: Force, mass, and acceleration
+type: code
+setup: physics
+---
+
+light : box {
+  mass : 1 kilograms
+  x : initially (200 pixels)
+  y : initially (350 pixels)
+}
+
+heavy : box {
+  mass : 2 kilograms
+  x : initially (200 pixels)
+  y : initially (250 pixels)
+}
+
+light . force right (100 (kilograms * (pixels / seconds / seconds)))
+heavy . force right (100 (kilograms * (pixels / seconds / seconds)))
+
+---
+page: Force, mass, and acceleration
+type: text
+locked: true
+---
+
+...and sure enough, the heavy box moves more slowly! If you don't see the boxes, they went off the screen — try clicking **Run Again**.
+
+The `force` command has two inputs: the first is the direction of the force, and the second is the magnitude of the force. Together, these two quantities form a **vector**, a fundamental concept in physics. We'll talk about vectors more later on, but it should make intuitive sense that force requires a direction whereas mass does not. You can't just _have_ a force, you need to _apply_ it to the object on one side!
+
+Try changing the above example from `right` to `left` (or `up` or `down`) and see what happens!
