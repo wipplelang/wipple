@@ -21,7 +21,7 @@ setup: physics
 lint: false
 ---
 
-rectangle {
+box {
   x : t -> 400 pixels
 }
 
@@ -31,7 +31,7 @@ type: text
 locked: true
 ---
 
-You should see a rectangle in the middle of the screen!
+You should see a box in the middle of the screen!
 
 ---
 page: Constant motion
@@ -49,7 +49,7 @@ type: code
 setup: physics
 ---
 
-rectangle {
+box {
   x : t -> 100 (pixels / seconds) * t
 }
 
@@ -59,9 +59,9 @@ type: text
 locked: true
 ---
 
-If you don't see the rectangle above, click **Run again** to restart the demonstration.
+If you don't see the box above, click **Run again** to restart the demonstration.
 
-Right now, the rectangle starts at the left edge of the screen. That's because the demonstration starts at time 0, and multiplying our velocity by 0 produces 0. How do you think we change the starting position? Try changing the code below!
+Right now, the box starts at the left edge of the screen. That's because the demonstration starts at time 0, and multiplying our velocity by 0 produces 0. How do you think we change the starting position? Try changing the code below!
 
 ---
 page: Constant motion
@@ -69,7 +69,7 @@ type: code
 setup: physics
 ---
 
-rectangle {
+box {
   x : t -> 100 (pixels / seconds) * t
 }
 
@@ -87,7 +87,7 @@ type: code
 setup: physics
 ---
 
-rectangle {
+box {
   x : t -> 400 pixels + 100 (pixels / seconds) * t
 }
 
@@ -110,7 +110,7 @@ setup: physics
 initial : 400 pixels
 velocity : 100 (pixels / seconds)
 
-rectangle {
+box {
   x : t -> initial + velocity * t
 }
 
