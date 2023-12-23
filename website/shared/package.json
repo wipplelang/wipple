@@ -15,6 +15,7 @@
     "dependencies": {
         "immer": "^10.0.3",
         "line-column": "^1.0.2",
+        "nanoid": "^5.0.4",
         "react-markdown": "^8.0.5",
         "react-spring": "^9.7.0",
         "react-use-measure": "^2.1.1",

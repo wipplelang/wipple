@@ -1508,6 +1508,15 @@ fn js_to_wipple(
             wipple_frontend::VariantIndex(b as usize),
             Vec::new(),
         )
+    } else if value.is_array() {
+        let array = value.dyn_into::<js_sys::Array>().unwrap();
+
+        wipple_interpreter_backend::Value::Tuple(
+            array
+                .into_iter()
+                .map(|element| js_to_wipple(interpreter, context, element))
+                .collect(),
+        )
     } else if let Some(f) = value.dyn_ref::<js_sys::Function>() {
         let f = Arc::new(Mutex::new(SendWrapper::new(f.clone())));
         let interpreter = Arc::new(Mutex::new(SendWrapper::new(interpreter.clone())));

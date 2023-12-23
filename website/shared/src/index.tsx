@@ -6,7 +6,7 @@ import {
     HoverOutput,
     useRunner,
 } from "./runner";
-import { useMemo, useState, useEffect, forwardRef, useImperativeHandle } from "react";
+import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { useSpring, animated } from "react-spring";
 import {
     Button,
@@ -28,13 +28,12 @@ import SubjectRounded from "@mui/icons-material/SubjectRounded";
 import lineColumn from "line-column";
 import useMeasure from "react-use-measure";
 import ReactMarkdown from "react-markdown";
-import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
-import rehypeKatex from "rehype-katex";
 import remarkSmartypants from "remark-smartypants";
 import rehypeRaw from "rehype-raw";
 import "./styles/globals.css";
 import { produce } from "immer";
+import { nanoid } from "nanoid";
 
 export interface Output {
     isEmpty: boolean;
@@ -47,10 +46,16 @@ interface OutputInternal {
 }
 
 type OutputItem =
-    | { type: "output"; text: string }
-    | { type: "prompt"; prompt: string; onSubmit: (text: string) => Promise<boolean> }
-    | { type: "choice"; prompt: string; choices: string[]; onSubmit: (index: number) => void }
-    | { type: "custom"; id: string };
+    | { id: string; type: "output"; text: string }
+    | { id: string; type: "prompt"; prompt: string; onSubmit: (text: string) => Promise<boolean> }
+    | {
+          id: string;
+          type: "choice";
+          prompt: string;
+          choices: string[];
+          onSubmit: (index: number) => void;
+      }
+    | { id: string; type: "custom" };
 
 interface UiElement {
     onMessage: Record<string, (message: string, value: any) => Promise<any>>;
@@ -92,12 +97,15 @@ export const PlaygroundRunner = forwardRef<
 
     const [isRunning, setRunning] = useRefState(false);
     const [output, setOutput] = useRefState<OutputInternal | undefined>(undefined);
-    const appendToOutput = (code: string, item: OutputItem) =>
-        setOutput((output) =>
-            output
-                ? { code, items: [...output.items, item], diagnostics: output.diagnostics }
-                : { code, items: [item], diagnostics: [] }
-        );
+    const appendToOutput = (code: string, item: OutputItem) => {
+        requestAnimationFrame(() => {
+            setOutput((output) =>
+                output
+                    ? { code, items: [...output.items, item], diagnostics: output.diagnostics }
+                    : { code, items: [item], diagnostics: [] }
+            );
+        });
+    };
 
     useEffect(() => {
         props.onChangeOutput?.({
@@ -107,7 +115,7 @@ export const PlaygroundRunner = forwardRef<
 
     const [fatalError, setFatalError] = useState(false);
 
-    const [uiElements, setUiElements] = useRefState<UiElement[]>([]);
+    const [uiElements, setUiElements] = useRefState<Record<string, UiElement>>({});
     const [currentUiElementId, setCurrentUiElementId] = useRefState("");
 
     const [showTemplatesWarning, setShowTemplatesWarning] = useState(false);
@@ -145,11 +153,11 @@ export const PlaygroundRunner = forwardRef<
                     });
 
                     if (analysis.diagnostics.length === 0) {
-                        for (const el of uiElements.current) {
+                        for (const el of Object.values(uiElements.current)) {
                             await el.cleanup();
                         }
 
-                        setUiElements([]);
+                        setUiElements({});
                     }
 
                     setOpenOutputs(new Array(analysis.diagnostics.length).fill(false));
@@ -162,6 +170,7 @@ export const PlaygroundRunner = forwardRef<
                                 switch (request.type) {
                                     case "display":
                                         appendToOutput(code, {
+                                            id: nanoid(),
                                             type: "output",
                                             text: request.text,
                                         });
@@ -171,6 +180,7 @@ export const PlaygroundRunner = forwardRef<
                                         break;
                                     case "prompt":
                                         appendToOutput(code, {
+                                            id: nanoid(),
                                             type: "prompt",
                                             prompt: request.prompt,
                                             onSubmit: async (text) => {
@@ -188,6 +198,7 @@ export const PlaygroundRunner = forwardRef<
                                         break;
                                     case "choice":
                                         appendToOutput(code, {
+                                            id: nanoid(),
                                             type: "choice",
                                             prompt: request.prompt,
                                             choices: request.choices,
@@ -200,11 +211,10 @@ export const PlaygroundRunner = forwardRef<
                                             /* @vite-ignore */ request.url
                                         );
 
-                                        const index = uiElements.current.length;
+                                        const id = nanoid();
 
-                                        const id = `${props.id}-${index}`;
                                         setCurrentUiElementId(id);
-                                        appendToOutput(code, { type: "custom", id });
+                                        appendToOutput(code, { id, type: "custom" });
 
                                         requestAnimationFrame(() => {
                                             requestAnimationFrame(async () => {
@@ -218,13 +228,13 @@ export const PlaygroundRunner = forwardRef<
 
                                                 await uiElement.initialize(id, container);
 
-                                                setUiElements([
+                                                setUiElements({
                                                     ...uiElements.current,
-                                                    {
+                                                    [id]: {
                                                         onMessage: uiElement.onMessage,
                                                         cleanup: () => uiElement.cleanup?.(id),
                                                     },
-                                                ]);
+                                                });
 
                                                 request.callback();
                                             });
@@ -233,12 +243,13 @@ export const PlaygroundRunner = forwardRef<
                                         break;
                                     }
                                     case "messageUi": {
-                                        const id = currentUiElementId.current.split("-");
-                                        const index = parseInt(id[id.length - 1]);
-                                        const uiElement = uiElements.current[index];
+                                        const uiElement =
+                                            uiElements.current[currentUiElementId.current];
 
                                         if (!uiElement) {
-                                            throw new Error(`invalid UI element ${index}`);
+                                            throw new Error(
+                                                `invalid UI element ${currentUiElementId.current}`
+                                            );
                                         }
 
                                         const onMessage =
@@ -246,7 +257,7 @@ export const PlaygroundRunner = forwardRef<
 
                                         if (!onMessage) {
                                             console.warn(
-                                                `sent message to UI element ${index} after calling 'cleanup'`
+                                                `sent message to UI element ${currentUiElementId.current} after calling 'cleanup'`
                                             );
                                             break;
                                         }
@@ -454,7 +465,7 @@ export const PlaygroundRunner = forwardRef<
                                             case "output":
                                                 return (
                                                     <Markdown
-                                                        key={index}
+                                                        key={item.id}
                                                         className="prose prose-sky dark:prose-invert max-w-none"
                                                     >
                                                         {item.text}
@@ -463,7 +474,7 @@ export const PlaygroundRunner = forwardRef<
                                             case "prompt":
                                                 return (
                                                     <InputField
-                                                        key={index}
+                                                        key={item.id}
                                                         index={index}
                                                         onSubmit={item.onSubmit}
                                                     >
@@ -473,7 +484,7 @@ export const PlaygroundRunner = forwardRef<
                                             case "choice":
                                                 return (
                                                     <DropdownField
-                                                        key={index}
+                                                        key={item.id}
                                                         index={index}
                                                         choices={item.choices}
                                                         onSubmit={item.onSubmit}
@@ -482,7 +493,7 @@ export const PlaygroundRunner = forwardRef<
                                                     </DropdownField>
                                                 );
                                             case "custom":
-                                                return <div key={index} id={item.id} />;
+                                                return <div key={item.id} id={item.id} />;
                                         }
                                     })}
 
@@ -672,16 +683,19 @@ const DropdownField = (props: {
     );
 };
 
-export const Markdown = (props: { children: string; className?: string }) => (
-    <span className={"code-editor-markdown " + props.className ?? ""}>
-        <ReactMarkdown
-            remarkPlugins={[remarkMath, remarkGfm, remarkSmartypants]}
-            rehypePlugins={[rehypeRaw, rehypeKatex]}
-            linkTarget="_blank"
-        >
-            {props.children}
-        </ReactMarkdown>
-    </span>
+export const Markdown = React.memo(
+    (props: { children: string; className?: string }) => (
+        <span className={"code-editor-markdown " + props.className ?? ""}>
+            <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkSmartypants]}
+                rehypePlugins={[rehypeRaw]}
+                linkTarget="_blank"
+            >
+                {props.children}
+            </ReactMarkdown>
+        </span>
+    ),
+    (prev, next) => prev.children === next.children && prev.className === next.className
 );
 
 export * from "./runner";
