@@ -6,7 +6,7 @@ locked: true
 
 Welcome! In this course, you'll learn mechanics by building your own physics demonstrations in Wipple. But before we dive into formulas, let's look at how to use units to make sure our calculations make sense.
 
-There are four main quantities we're going to deal with in our first lesson: **time** (seconds), **distance** (pixels), **velocity** (pixels per second), and **acceleration** (pixels per second, per second). In every calculation we do with these quantities, we'll need to specify the units. Not only does it help us make sense of the relationships between the numbers, but it also helps Wipple identify any incompatible units and flag bugs in the code!
+There are four main quantities we're going to deal with in our first lesson: **time** (seconds), **distance** (meters), **velocity** (meters per second), and **acceleration** (meters per second, per second). In every calculation we do with these quantities, we'll need to specify the units. Not only does it help us make sense of the relationships between the numbers, but it also helps Wipple identify any incompatible units and flag bugs in the code!
 
 ### Standing still
 
@@ -22,7 +22,7 @@ lint: false
 ---
 
 box {
-  x : t -> 400 pixels
+  x : t -> 400 meters
 }
 
 ---
@@ -41,7 +41,7 @@ locked: true
 
 Next, let's look at an object moving in a straight line. That means the object has a **velocity** (speed). But how do we express that in code?
 
-Let's work out this problem with units. We know velocity has units of **pixels per second**, and position has units of **pixels**. So to cancel out the denominator, we need to multiply velocity by something that has units of **seconds**. Well, we already have something in seconds — the current time `t`!
+Let's work out this problem with units. We know velocity has units of **meters per second**, and position has units of **meters**. So to cancel out the denominator, we need to multiply velocity by something that has units of **seconds**. Well, we already have something in seconds — the current time `t`!
 
 ---
 page: Constant motion
@@ -50,7 +50,7 @@ setup: physics
 ---
 
 box {
-  x : t -> 100 (pixels / seconds) * t
+  x : t -> 100 (meters / seconds) * t
 }
 
 ---
@@ -70,7 +70,7 @@ setup: physics
 ---
 
 box {
-  x : t -> 100 (pixels / seconds) * t
+  x : t -> 100 (meters / seconds) * t
 }
 
 ---
@@ -88,7 +88,7 @@ setup: physics
 ---
 
 box {
-  x : t -> 400 pixels + 100 (pixels / seconds) * t
+  x : t -> 400 meters + 100 (meters / seconds) * t
 }
 
 ---
@@ -107,8 +107,8 @@ type: code
 setup: physics
 ---
 
-initial : 400 pixels
-velocity : 100 (pixels / seconds)
+initial : 400 meters
+velocity : 100 (meters / seconds)
 
 box {
   x : t -> initial + velocity * t
@@ -122,7 +122,9 @@ locked: true
 
 And with that, we have our **first kinematic equation** to model an object moving at a constant speed:
 
-$x(t) = x_0 + v_0t$
+$$$
+x(t) = x_0 + v_0t
+$$$
 
 Where $x_0$ corresponds to `initial`, and $v_0$ corresponds to `velocity`.
 
@@ -155,14 +157,14 @@ lint: false
 
 light : box {
   mass : 1 kilograms
-  x : initially (200 pixels)
-  y : initially (350 pixels)
+  x : initially (0 meters)
+  y : initially (1 meters)
 }
 
 heavy : box {
   mass : 2 kilograms
-  x : initially (200 pixels)
-  y : initially (250 pixels)
+  x : initially (0 meters)
+  y : initially (-1 meters)
 }
 
 ---
@@ -173,7 +175,7 @@ locked: true
 
 There are a couple of new commands here: first, we set the `mass` of both boxes in `kilograms`. This is done in the same way as `x` and `y`. The second new command, `initially`, is really important — it tells the computer the boxes' _initial positions_, but for the rest of the simulation, the positions will be determined by applying forces.
 
-(By the way, the $y$-axis goes from the bottom of the screen to the top; $y = 0$ is at the bottom of the screen. So in this demonstration, the lighter box is on top.)
+(By the way, the $y$-axis goes from the bottom of the screen to the top; `0 meters` is in the middle of the screen, `-3 meters` is at the bottom, and `3 meters` is at the top. So in this demonstration, the lighter box is on top.)
 
 Alright, let's push the boxes!
 
@@ -185,18 +187,20 @@ setup: physics
 
 light : box {
   mass : 1 kilograms
-  x : initially (200 pixels)
-  y : initially (350 pixels)
+  x : initially (0 meters)
+  y : initially (1 meters)
 }
 
 heavy : box {
   mass : 2 kilograms
-  x : initially (200 pixels)
-  y : initially (250 pixels)
+  x : initially (0 meters)
+  y : initially (-1 meters)
 }
 
-light . force right (100 (kilograms * (pixels / seconds / seconds)))
-heavy . force right (100 (kilograms * (pixels / seconds / seconds)))
+at ((0 seconds) to (1 seconds)) {
+  light . force right (1 (kilograms * (meters / seconds / seconds)))
+  heavy . force right (1 (kilograms * (meters / seconds / seconds)))
+}
 
 ---
 page: Force, mass, and acceleration
@@ -208,4 +212,79 @@ locked: true
 
 The `force` command has two inputs: the first is the direction of the force, and the second is the magnitude of the force. Together, these two quantities form a **vector**, a fundamental concept in physics. We'll talk about vectors more later on, but it should make intuitive sense that force requires a direction whereas mass does not. You can't just _have_ a force, you need to _apply_ it to the object on one side!
 
+In addition, we apply the force over a **duration** of one second. Forces need to be applied over time for their effects to be observable.
+
 Try changing the above example from `right` to `left` (or `up` or `down`) and see what happens!
+
+### Measuring acceleration
+
+Try running the simulation above again, and pay attention to the boxes' motion — notice they speed up over time! This is called **acceleration** — applying a force to an object causes it to accelerate. Let's try to measure this acceleration ourselves.
+
+---
+page: Force, mass, and acceleration
+type: code
+setup: physics
+---
+
+light : box {
+  mass : 1 kilograms
+  x : initially (0 meters)
+  y : initially (1 meters)
+}
+
+heavy : box {
+  mass : 2 kilograms
+  x : initially (0 meters)
+  y : initially (-1 meters)
+}
+
+at ((0 seconds) to (1 seconds)) {
+  light . force right (1 (kilograms * (meters / seconds / seconds)))
+  heavy . force right (1 (kilograms * (meters / seconds / seconds)))
+}
+
+at (1 seconds) {
+  t : time ()
+
+  light-acceleration : velocity-x light / t
+  show ("light: _" light-acceleration)
+
+  heavy-acceleration : velocity-x heavy / t
+  show ("heavy: _" heavy-acceleration)
+}
+
+---
+page: Force, mass, and acceleration
+type: text
+locked: true
+---
+
+We'll discuss the math in a moment, but for now, take a look at the numbers displayed on the screen — you might notice that the heavier box has **half** the acceleration of the light box! This leads us to **Newton's Second Law**:
+
+$$$
+F = m \cdot a
+$$$
+
+In words, "force is mass times acceleration". We can also write the equation like this:
+
+$$$
+a = \frac{F}{m}
+$$$
+
+This tells us that the acceleration of an object is _proportional_ to the force being applied to it over some duration of time. That should make sense — the more force, the more the object speeds up! And similarly, the acceleration is _inversely proportional_ to the mass of the object, so the greater the mass, the less the object speeds up.
+
+In our example, we applied the same force to both objects, so we can use Newton's Second Law like so:
+
+$$$
+m_\text{light} \cdot a_\text{light} = m_\text{heavy} \cdot a_\text{heavy}
+$$$
+
+$$$
+1 \ \text{kg} \cdot 1.00 \ \frac{\text{m}}{\text{s}^2} = 2 \ \text{kg} \cdot 0.50 \ \frac{\text{m}}{\text{s}^2}
+$$$
+
+$$$
+1.00 \ \text{kg} \cdot \frac{\text{m}}{\text{s}^2} = 1.00 \ \text{kg} \cdot \frac{\text{m}}{\text{s}^2}
+$$$
+
+They're equal! If your numbers aren't exactly the same, don't worry — there will always be some error when you're running simulations. It's OK to round to two or three significant digits.

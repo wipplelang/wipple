@@ -2,8 +2,24 @@
 
 Physics : type {
   handle :: UI
+  time :: Mutable Time
   objects :: Mutable (List Object)
-  timers :: Mutable (List (Time ; (() -> ())))
+  timers :: Mutable (List (Trigger ; (() -> ())))
+}
+
+Trigger : type {
+  start-time :: Time
+  end-time :: Time
+}
+
+instance (As Time Trigger) : t -> Trigger {
+  start-time : t
+  end-time : t
+}
+
+instance (As (Range Time) Trigger) : { min max } -> Trigger {
+  start-time : min
+  end-time : max
 }
 
 [context]
@@ -15,9 +31,10 @@ physics : error "use of physics handle outside `with-physics`"
 with-physics : syntax {
   with-physics 'body -> {
     with-ui "/playground/ui/physics/index.js" (handle -> {
+      time : mutable (0 seconds)
       objects : mutable Default
       timers : mutable Default
-      with (physics : Physics { handle objects timers }) 'body
+      with (physics : Physics { handle time objects timers }) 'body
     })
   }
 }
@@ -30,47 +47,47 @@ Time : type { seconds :: Number }
 
 instance (Equal Time) : b a -> (seconds of a) = (seconds of b)
 instance (Order Time) : b a -> (seconds of a) . Order (seconds of b)
-instance (Show Time) : { seconds } -> "$_ \\text{s}$" seconds
+instance (Show Time) : { seconds } -> "_ s" seconds
 
 [help "Specify a duration in seconds."]
 [help-group "Physics"]
 seconds :: Number -> Time
 seconds : seconds -> Time { seconds }
 
-[help "A distance in pixels."]
+[help "A distance in meters."]
 [help-group "Physics"]
 [sealed]
-[help-convert-from Number ('value pixels)]
-Distance : type { pixels :: Number }
+[help-convert-from Number ('value meters)]
+Distance : type { meters :: Number }
 
-instance (Equal Distance) : b a -> (pixels of a) = (pixels of b)
-instance (Order Distance) : b a -> (pixels of a) . Order (pixels of b)
-instance (Show Distance) : { pixels } -> "$_ \\text{px}$" pixels
+instance (Equal Distance) : b a -> (meters of a) = (meters of b)
+instance (Order Distance) : b a -> (meters of a) . Order (meters of b)
+instance (Show Distance) : { meters } -> "_ m" meters
 
-[help "Specify a distance in pixels."]
+[help "Specify a distance in meters."]
 [help-group "Physics"]
-pixels :: Number -> Distance
-pixels : pixels -> Distance { pixels }
+meters :: Number -> Distance
+meters : meters -> Distance { meters }
 
-[help "A velocity in pixels per second."]
-[help-group "Physics"]
-[sealed]
-[help-convert-from Number ('value (pixels / seconds))]
-Velocity : type { pixels-per-second :: Number }
-
-instance (Equal Velocity) : b a -> (pixels-per-second of a) = (pixels-per-second of b)
-instance (Order Velocity) : b a -> (pixels-per-second of a) . Order (pixels-per-second of b)
-instance (Show Velocity) : { pixels-per-second } -> "$_ \\frac{\\text{px}}{\\text{s}}$" pixels-per-second
-
-[help "An acceleration in pixels per second, per second."]
+[help "A velocity in meters per second."]
 [help-group "Physics"]
 [sealed]
-[help-convert-from Number ('value (pixels / seconds / seconds))]
-Acceleration : type { pixels-per-second-per-second :: Number }
+[help-convert-from Number ('value (meters / seconds))]
+Velocity : type { meters-per-second :: Number }
 
-instance (Equal Acceleration) : b a -> (pixels-per-second-per-second of a) = (pixels-per-second-per-second of b)
-instance (Order Acceleration) : b a -> (pixels-per-second-per-second of a) . Order (pixels-per-second-per-second of b)
-instance (Show Acceleration) : { pixels-per-second-per-second } -> "$_ \\frac{\\text{px}}{\\text{s}^2}$" pixels-per-second-per-second
+instance (Equal Velocity) : b a -> (meters-per-second of a) = (meters-per-second of b)
+instance (Order Velocity) : b a -> (meters-per-second of a) . Order (meters-per-second of b)
+instance (Show Velocity) : { meters-per-second } -> "_ m/s" meters-per-second
+
+[help "An acceleration in meters per second, per second."]
+[help-group "Physics"]
+[sealed]
+[help-convert-from Number ('value (meters / seconds / seconds))]
+Acceleration : type { meters-per-second-per-second :: Number }
+
+instance (Equal Acceleration) : b a -> (meters-per-second-per-second of a) = (meters-per-second-per-second of b)
+instance (Order Acceleration) : b a -> (meters-per-second-per-second of a) . Order (meters-per-second-per-second of b)
+instance (Show Acceleration) : { meters-per-second-per-second } -> "_ m/s/s" meters-per-second-per-second
 
 [help "A mass in kilograms."]
 [help-group "Physics"]
@@ -95,65 +112,76 @@ static : undefined . kilograms
 [help "A force in kilograms per unit of acceleration."]
 [help-group "Physics"]
 [sealed]
-[help-convert-from Number ('value (kilograms / pixels / seconds / seconds))]
-Force : type { kilograms-per-pixels-per-second-per-second :: Number }
+[help-convert-from Number ('value (kilograms / meters / seconds / seconds))]
+Force : type { kilograms-per-meter-per-second-per-second :: Number }
 
-instance (Equal Force) : b a -> (kilograms-per-pixels-per-second-per-second of a) = (kilograms-per-pixels-per-second-per-second of b)
-instance (Order Force) : b a -> (kilograms-per-pixels-per-second-per-second of a) . Order (kilograms-per-pixels-per-second-per-second of b)
-instance (Show Force) : { kilograms-per-pixels-per-second-per-second } -> "$_ \\text{kg} \\cdot \\frac{\\text{px}}{\\text{s}^2}$" kilograms-per-pixels-per-second-per-second
+instance (Equal Force) : b a -> (kilograms-per-meter-per-second-per-second of a) = (kilograms-per-meter-per-second-per-second of b)
+instance (Order Force) : b a -> (kilograms-per-meter-per-second-per-second of a) . Order (kilograms-per-meter-per-second-per-second of b)
+instance (Show Force) : { kilograms-per-meter-per-second-per-second } -> "_ kg*m/s/s" kilograms-per-meter-per-second-per-second
 
+instance (Add Time Time Time) : b a -> Time { seconds : (seconds of a) + (seconds of b) }
+instance (Subtract Time Time Time) : b a -> Time { seconds : (seconds of a) - (seconds of b) }
 instance (Multiply Time Number Time) : c time -> Time { seconds : (seconds of time) * c }
 instance (Multiply Number Time Time) : time c -> Time { seconds : (seconds of time) * c }
 
-instance (Add Distance Distance Distance) : b a -> Distance { pixels : (pixels of a) + (pixels of b) }
-instance (Subtract Distance Distance Distance) : b a -> Distance { pixels : (pixels of a) - (pixels of b) }
-instance (Multiply Distance Number Distance) : c distance -> Distance { pixels : (pixels of distance) * c }
-instance (Multiply Number Distance Distance) : distance c -> Distance { pixels : (pixels of distance) * c }
+instance (Add Distance Distance Distance) : b a -> Distance { meters : (meters of a) + (meters of b) }
+instance (Subtract Distance Distance Distance) : b a -> Distance { meters : (meters of a) - (meters of b) }
+instance (Multiply Distance Number Distance) : c distance -> Distance { meters : (meters of distance) * c }
+instance (Multiply Number Distance Distance) : distance c -> Distance { meters : (meters of distance) * c }
 
-instance (Multiply Velocity Number Velocity) : c velocity -> Velocity { pixels-per-second : (pixels-per-second of velocity) * c }
-instance (Multiply Number Velocity Velocity) : velocity c -> Velocity { pixels-per-second : (pixels-per-second of velocity) * c }
-instance (Multiply Velocity Time Distance) : time velocity -> Distance { pixels : (pixels-per-second of velocity) * (seconds of time) }
-instance (Multiply Time Velocity Distance) : velocity time -> Distance { pixels : (pixels-per-second of velocity) * (seconds of time) }
-instance (Divide Distance Time Velocity) : time distance -> Velocity { pixels-per-second : (pixels of distance) / (seconds of time) }
-instance (Divide (Number -> Distance) (Number -> Time) (Number -> Velocity)) : _ _ pixels-per-second -> Velocity { pixels-per-second }
+instance (Add Velocity Velocity Velocity) : b a -> Velocity { meters-per-second : (meters-per-second of a) + (meters-per-second of b) }
+instance (Subtract Velocity Velocity Velocity) : b a -> Velocity { meters-per-second : (meters-per-second of a) - (meters-per-second of b) }
+instance (Multiply Velocity Number Velocity) : c velocity -> Velocity { meters-per-second : (meters-per-second of velocity) * c }
+instance (Multiply Number Velocity Velocity) : velocity c -> Velocity { meters-per-second : (meters-per-second of velocity) * c }
+instance (Multiply Velocity Time Distance) : time velocity -> Distance { meters : (meters-per-second of velocity) * (seconds of time) }
+instance (Multiply Time Velocity Distance) : velocity time -> Distance { meters : (meters-per-second of velocity) * (seconds of time) }
+instance (Divide Distance Time Velocity) : time distance -> Velocity { meters-per-second : (meters of distance) / (seconds of time) }
+instance (Divide (Number -> Distance) (Number -> Time) (Number -> Velocity)) : _ _ meters-per-second -> Velocity { meters-per-second }
 
+instance (Add Acceleration Acceleration Acceleration) : b a ->
+  Acceleration { meters-per-second-per-second : (meters-per-second-per-second of a) + (meters-per-second-per-second of b) }
+instance (Subtract Acceleration Acceleration Acceleration) : b a ->
+  Acceleration { meters-per-second-per-second : (meters-per-second-per-second of a) - (meters-per-second-per-second of b) }
 instance (Multiply Acceleration Number Acceleration) : c acceleration ->
-  Acceleration { pixels-per-second-per-second : (pixels-per-second-per-second of acceleration) * c }
+  Acceleration { meters-per-second-per-second : (meters-per-second-per-second of acceleration) * c }
 instance (Multiply Number Acceleration Acceleration) : acceleration c ->
-  Acceleration { pixels-per-second-per-second : (pixels-per-second-per-second of acceleration) * c }
+  Acceleration { meters-per-second-per-second : (meters-per-second-per-second of acceleration) * c }
 instance (Multiply Acceleration Time Velocity) : time acceleration ->
-  Velocity { pixels-per-second : (pixels-per-second-per-second of acceleration) * (seconds of time) }
+  Velocity { meters-per-second : (meters-per-second-per-second of acceleration) * (seconds of time) }
 instance (Multiply Time Acceleration Velocity) : acceleration time ->
-  Velocity { pixels-per-second : (pixels-per-second-per-second of acceleration) * (seconds of time) }
+  Velocity { meters-per-second : (meters-per-second-per-second of acceleration) * (seconds of time) }
 instance (Divide Velocity Time Acceleration) : time velocity ->
-  Acceleration { pixels-per-second-per-second : (pixels-per-second of velocity) / (seconds of time) }
-instance (Divide (Number -> Velocity) (Number -> Time) (Number -> Acceleration)) : _ _ pixels-per-second-per-second ->
-  Acceleration { pixels-per-second-per-second }
+  Acceleration { meters-per-second-per-second : (meters-per-second of velocity) / (seconds of time) }
+instance (Divide (Number -> Velocity) (Number -> Time) (Number -> Acceleration)) : _ _ meters-per-second-per-second ->
+  Acceleration { meters-per-second-per-second }
 
 instance (Multiply Force Number Force) : c force ->
-  Force { kilograms-per-pixels-per-second-per-second : (kilograms-per-pixels-per-second-per-second of force) * c }
+  Force { kilograms-per-meter-per-second-per-second : (kilograms-per-meter-per-second-per-second of force) * c }
 instance (Multiply Number Force Force) : force c ->
-  Force { kilograms-per-pixels-per-second-per-second : (kilograms-per-pixels-per-second-per-second of force) * c }
+  Force { kilograms-per-meter-per-second-per-second : (kilograms-per-meter-per-second-per-second of force) * c }
 instance (Divide Force Mass Acceleration) : mass force ->
-  Acceleration { pixels-per-second-per-second : (kilograms-per-pixels-per-second-per-second of force) / (kilograms of mass) }
+  Acceleration { meters-per-second-per-second : (kilograms-per-meter-per-second-per-second of force) / (kilograms of mass) }
 instance (Multiply Mass Acceleration Force) : acceleration mass ->
-  Force { kilograms-per-pixels-per-second-per-second : (kilograms of mass) * (pixels-per-second-per-second of acceleration) }
+  Force { kilograms-per-meter-per-second-per-second : (kilograms of mass) * (meters-per-second-per-second of acceleration) }
 instance (Multiply Acceleration Mass Force) : mass acceleration ->
-  Force { kilograms-per-pixels-per-second-per-second : (kilograms of mass) * (pixels-per-second-per-second of acceleration) }
-instance (Multiply (Number -> Mass) (Number -> Acceleration) (Number -> Force)) : _ _ kilograms-per-pixels-per-second-per-second ->
-  Force { kilograms-per-pixels-per-second-per-second }
+  Force { kilograms-per-meter-per-second-per-second : (kilograms of mass) * (meters-per-second-per-second of acceleration) }
+instance (Multiply (Number -> Mass) (Number -> Acceleration) (Number -> Force)) : _ _ kilograms-per-meter-per-second-per-second ->
+  Force { kilograms-per-meter-per-second-per-second }
 
 [private]
-clock :: () -> Number
-clock : () -> handle of physics . message "clock" ()
+clock :: () -> Time
+clock : () -> Time { seconds : handle of physics . message "clock" () }
 
 [private]
 within-bounds-threshold :: Number
-within-bounds-threshold : 100
+within-bounds-threshold : 1
 
 [private]
 within-bounds? :: () -> Boolean
 within-bounds? : () -> handle of physics . message "within-bounds" within-bounds-threshold
+
+time :: () -> Time
+time : () -> get (time of physics)
 
 [help "A direction represented as $x$ and $y$ components between 0 and 1. In addition to the preset directions like `top` and `center`, you can create a direction from an angle with `(x degrees) as Direction`."]
 [help-group "Physics"]
@@ -240,7 +268,7 @@ create-object : shape config -> {
   initial-y : (y of config) (0 seconds)
 
   handle : Object {
-    index : handle of physics . message "create-object" (shape ; (color of config) ; (pixels of width of config) ; (pixels of height of config) ; (x of center of config) ; (y of center of config) ; (kilograms of mass of config) ; if (elastic of config) 1 0 ; if (rotates of config) 1 0 ; (pixels of initial-x) ; (pixels of initial-y))
+    index : handle of physics . message "create-object" (shape ; (color of config) ; (meters of width of config) ; (meters of height of config) ; (x of center of config) ; (y of center of config) ; (kilograms of mass of config) ; if (elastic of config) 1 0 ; if (rotates of config) 1 0 ; if (solid of config) 1 0 ; (meters of initial-x) ; (meters of initial-y))
     x : x of config
     y : y of config
   }
@@ -252,13 +280,34 @@ create-object : shape config -> {
 
 [private]
 update-position :: Time -> Object -> ()
-update-position : t { index x y } -> handle of physics . message "set-position" (index ; pixels of (x t) ; pixels of (y t))
+update-position : t { index x y } -> handle of physics . message "set-position" (index ; meters of (x t) ; meters of (y t))
 
 force :: D where (As D Direction) => D -> Force -> Object -> ()
 force : direction force { index } -> {
   direction : direction as Direction
-  handle of physics . message "apply-force" (index ; (kilograms-per-pixels-per-second-per-second of force) * (x of direction) ; (kilograms-per-pixels-per-second-per-second of force) * (y of direction))
+  handle of physics . message "apply-force" (index ; (kilograms-per-meter-per-second-per-second of force) * (x of direction) ; (kilograms-per-meter-per-second-per-second of force) * (y of direction))
 }
+
+position-x :: Object -> Distance
+position-x : { index } -> Distance { meters : handle of physics . message "position-x" index }
+
+position-y :: Object -> Distance
+position-y : { index } -> Distance { meters : handle of physics . message "position-y" index }
+
+velocity-x :: Object -> Velocity
+velocity-x : { index } -> Velocity { meters-per-second : handle of physics . message "velocity-x" index }
+
+velocity-y :: Object -> Velocity
+velocity-y : { index } -> Velocity { meters-per-second : handle of physics . message "velocity-y" index }
+
+speed :: Object -> Velocity
+speed : { index } -> Velocity { meters-per-second : handle of physics . message "speed" index }
+
+force-x :: Object -> Force
+force-x : { index } -> Force { kilograms-per-meter-per-second-per-second : handle of physics . message "force-x" index }
+
+force-y :: Object -> Force
+force-y : { index } -> Force { kilograms-per-meter-per-second-per-second : handle of physics . message "force-y" index }
 
 Object-Config : type {
   color :: Text
@@ -268,6 +317,7 @@ Object-Config : type {
   mass :: Mass
   elastic :: Boolean
   rotates :: Boolean
+  solid :: Boolean
   x :: Time -> Distance
   y :: Time -> Distance
 }
@@ -275,18 +325,19 @@ Object-Config : type {
 [help "Utility that returns the provided distance at `0 seconds`, but `undefined` otherwise. Useful for setting the initial position of an object and then allowing its position to be controlled by `force`."]
 [help-group "Physics"]
 initially :: Distance -> Time -> Distance
-initially : distance { seconds } -> if (seconds = 0) distance (undefined . pixels)
+initially : distance { seconds } -> if (seconds = 0) distance (undefined . meters)
 
 instance (Default Object-Config) : Object-Config {
   color : ""
-  width : 50 pixels
-  height : 50 pixels
+  width : 1 meters
+  height : 1 meters
   center : Default
   mass : 1 kilograms
   elastic : False
   rotates : False
-  x : just (undefined . pixels)
-  y : just (undefined . pixels)
+  solid : False
+  x : just (undefined meters)
+  y : just (undefined meters)
 }
 
 [help "Create a box on the screen with the specified properties."]
@@ -298,12 +349,14 @@ box : syntax {
 [help "Set the acceleration due to gravity."]
 [help-group "Physics"]
 gravity :: Direction -> Acceleration -> ()
-gravity : direction acceleration -> handle of physics . message "set-gravity" ((pixels-per-second-per-second of acceleration) * (x of direction) ; (pixels-per-second-per-second of acceleration) * (y of direction))
+gravity : direction acceleration -> handle of physics . message "set-gravity" ((meters-per-second-per-second of acceleration) * (x of direction) ; (meters-per-second-per-second of acceleration) * (y of direction))
 
 [help "Perform an action when the simulation reaches the specified time."]
 [help-group "Physics"]
 at : syntax {
-  at 'time 'action -> (timers of physics) . insert-at! 0 ('time ; (() -> 'action))
+  at 'time 'action -> {
+    _ : (timers of physics) . insert-at! 0 ('time as Trigger ; (() -> 'action))
+  }
 }
 
 [entrypoint]
@@ -312,26 +365,24 @@ entrypoint : program -> with-physics {
   program ()
 
   repeat (while (within-bounds? ())) {
-    t : clock () . seconds
+    t : clock ()
+    (time of physics) . set! t
 
-    timers : (timers of physics) . get . As-Sequence
-    new-timers : mutable (,)
-    repeat {
-      when (next timers) {
-        Some (duration ; action) -> {
-          if (duration <= t) {
-            action ()
-            Continue
-          } {
-            new-timers . append! (duration ; action)
-            Break () -- relies on actions being inserted at the front each time
-          }
+    new-timers :
+      get (timers of physics)
+      . filter (({ start-time end-time } ; action) -> {
+        if (t >= start-time) {
+          action ()
         }
-        None -> Break ()
-      }
-    }
-    (timers of physics) . set! (get new-timers)
+
+        t < end-time
+      })
+      . collect
+
+    (timers of physics) . set! new-timers
 
     get (objects of physics) . each (update-position t)
+
+    handle of physics . message "tick" ()
   }
 }

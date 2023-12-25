@@ -796,43 +796,45 @@ impl Typechecker {
 
         // Typecheck generic constants
 
-        for (tr, id, span) in (self
-            .top_level
-            .declarations
-            .constants
-            .iter()
-            .map(|(id, decl)| (None, *id, decl.span)))
-        .chain(
-            self.top_level
+        if lowering_is_complete {
+            for (tr, id, span) in (self
+                .top_level
                 .declarations
-                .instances
+                .constants
                 .iter()
-                .map(|(id, decl)| (Some(decl.value.tr), *id, decl.span)),
-        )
-        .collect::<Vec<_>>()
-        {
-            let prev_ctx = self.ctx.snapshot();
+                .map(|(id, decl)| (None, *id, decl.span)))
+            .chain(
+                self.top_level
+                    .declarations
+                    .instances
+                    .iter()
+                    .map(|(id, decl)| (Some(decl.value.tr), *id, decl.span)),
+            )
+            .collect::<Vec<_>>()
+            {
+                let prev_ctx = self.ctx.snapshot();
 
-            if let Err(Some(error)) = self.typecheck_constant_expr(
-                tr,
-                id,
-                None,
-                None,
-                None,
-                Some(id),
-                Some(span),
-                Default::default(),
-                Default::default(),
-            ) {
-                self.add_error(error);
+                if let Err(Some(error)) = self.typecheck_constant_expr(
+                    tr,
+                    id,
+                    None,
+                    None,
+                    None,
+                    Some(id),
+                    Some(span),
+                    Default::default(),
+                    Default::default(),
+                ) {
+                    self.add_error(error);
+                }
+
+                process_queue!();
+
+                self.ctx.reset_to(prev_ctx);
+                self.monomorphization_cache.borrow_mut().clear();
+                self.items.borrow_mut().clear();
+                self.contexts.borrow_mut().clear();
             }
-
-            process_queue!();
-
-            self.ctx.reset_to(prev_ctx);
-            self.monomorphization_cache.borrow_mut().clear();
-            self.items.borrow_mut().clear();
-            self.contexts.borrow_mut().clear();
         }
 
         // Typecheck the top level
