@@ -22,7 +22,7 @@ lint: false
 ---
 
 box {
-  x : t -> 400 meters
+  x : t -> 0 meters
 }
 
 ---
@@ -50,7 +50,7 @@ setup: physics
 ---
 
 box {
-  x : t -> 100 (meters / seconds) * t
+  x : t -> 1 (meters / seconds) * t
 }
 
 ---
@@ -70,7 +70,7 @@ setup: physics
 ---
 
 box {
-  x : t -> 100 (meters / seconds) * t
+  x : t -> 1 (meters / seconds) * t
 }
 
 ---
@@ -79,7 +79,7 @@ type: text
 locked: true
 ---
 
-The solution is to **add** an initial distance. Let's put it back in the middle of the screen to start:
+The solution is to **add** an initial distance. Let's make it start a bit to the right:
 
 ---
 page: Constant motion
@@ -88,7 +88,7 @@ setup: physics
 ---
 
 box {
-  x : t -> 400 meters + 100 (meters / seconds) * t
+  x : t -> 1 meters + 1 (meters / seconds) * t
 }
 
 ---
@@ -107,8 +107,8 @@ type: code
 setup: physics
 ---
 
-initial : 400 meters
-velocity : 100 (meters / seconds)
+initial : 1 meters
+velocity : 1 (meters / seconds)
 
 box {
   x : t -> initial + velocity * t
@@ -120,7 +120,7 @@ type: text
 locked: true
 ---
 
-And with that, we have our **first kinematic equation** to model an object moving at a constant speed:
+And with that, we have our first **kinematic equation** to model an object moving at a constant speed:
 
 $$$
 x(t) = x_0 + v_0t
