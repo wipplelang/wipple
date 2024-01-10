@@ -60,7 +60,8 @@ Now only `turtle.wipple` will be parsed and compiled — the results of `base` 
 Finally, we can compile our main program against `turtle` and `base` to get an executable:
 
 ```shell
-$ wipple compile main.wipple --library main.wipplelibrary
+$ wipple compile main.wipple base.wippleinterface turtle.wippleinterface \
+    --library main.wipplelibrary
 $ wipple link *.wipplelibrary -o main
 $ ./main
 ```
