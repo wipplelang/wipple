@@ -1,8 +1,0 @@
-warning: 
-  ┌─ test:3:3
-  │
-3 │   Some _ -> "b"
-  │   ^^^^^^^^^^^^^ redundant case in `when`
-  │
-  = for more information, see https://wipple.dev/playground/?lesson=errors/redundant-case
-

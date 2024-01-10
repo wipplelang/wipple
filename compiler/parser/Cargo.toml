@@ -1,0 +1,21 @@
+[package]
+name = "wipple-parser"
+version = "0.0.0"
+edition = "2021"
+
+[lints]
+workspace = true
+
+[features]
+default = ["wipple-syntax"]
+wipple-syntax = ["dep:wipple-syntax", "dep:wipple-util", "dep:pretty"]
+
+[dependencies]
+itertools = "0.12"
+lazy_static = "1"
+logos = "0.13"
+pretty = { version = "0.12", optional = true }
+serde = { version = "1", features = ["derive"] }
+serde-lexpr = "0.1"
+wipple-syntax = { path = "../analysis/syntax", optional = true }
+wipple-util = { path = "../util", optional = true }

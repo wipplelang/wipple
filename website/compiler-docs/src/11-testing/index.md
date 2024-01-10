@@ -1,3 +1,0 @@
-# Testing
-
-Work in progress!

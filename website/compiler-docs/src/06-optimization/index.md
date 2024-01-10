@@ -1,3 +1,0 @@
-# Optimization
-
-Work in progress!

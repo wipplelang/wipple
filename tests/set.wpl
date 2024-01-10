@@ -1,6 +1,0 @@
-sports : "Basketball" , "Soccer" , "Golf" :: Set _
-
-show (sports . contains? "Basketball")
-show (sports . contains? "Soccer")
-show (sports . contains? "Golf")
-show (sports . contains? "Baseball")

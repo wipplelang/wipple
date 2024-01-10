@@ -1,0 +1,15 @@
+[package]
+name = "wipple-cli"
+version = "0.0.0"
+edition = "2021"
+
+[[bin]]
+name = "wipple"
+path = "src/main.rs"
+
+[dependencies]
+wipple-lower = { path = "../compiler/analysis/lower" }
+wipple-parser = { path = "../compiler/parser" }
+wipple-syntax = { path = "../compiler/analysis/syntax" }
+wipple-typecheck = { path = "../compiler/analysis/typecheck" }
+wipple-util = { path = "../compiler/util"}

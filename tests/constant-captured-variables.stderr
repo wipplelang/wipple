@@ -1,8 +1,0 @@
-error: 
-  ┌─ test:5:13
-  │
-5 │   f : () -> n
-  │             ^ constant cannot refer to outside variable `n`
-  │
-  = for more information, see https://wipple.dev/playground/?lesson=errors/constant-captured-variables
-

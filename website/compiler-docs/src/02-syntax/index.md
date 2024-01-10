@@ -1,3 +1,0 @@
-# Syntax
-
-Work in progress!

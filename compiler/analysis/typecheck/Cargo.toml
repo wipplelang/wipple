@@ -1,0 +1,11 @@
+[package]
+name = "wipple-typecheck"
+version = "0.0.0"
+edition = "2021"
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+wipple-util = { path = "../../util" }

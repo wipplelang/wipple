@@ -1,2 +1,0 @@
--- Here, 'it' is our unit for simplicity
-show (42 it = it 42)
