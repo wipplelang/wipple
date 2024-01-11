@@ -1,5 +1,8 @@
+//! Use the Wipple compiler from the command line.
+
 use std::{env, fs};
 use wipple_parser::reader::ReadOptions;
+use wipple_typecheck::Driver;
 use wipple_util::WithInfo;
 
 fn main() {
@@ -31,14 +34,15 @@ fn main() {
 
     let lower_result = wipple_lower::resolve(
         &lower_driver,
-        lower::convert(parse_result.top_level),
+        vec![lower::convert(parse_result.top_level)],
         Vec::new(),
     );
 
     dbg!(&lower_result);
 
     let typecheck_driver = typecheck::Driver {
-        module: lower_result.module,
+        interface: lower_result.interface,
+        library: lower_result.library,
     };
 
     for typecheck_result in std::iter::once(wipple_typecheck::resolve(
@@ -46,7 +50,7 @@ fn main() {
         WithInfo {
             info: typecheck::Info { span: 0..0 },
             item: typecheck_driver
-                .module
+                .library
                 .code
                 .iter()
                 .cloned()
@@ -56,27 +60,25 @@ fn main() {
     ))
     .chain(
         typecheck_driver
-            .module
+            .interface
             .constant_declarations
-            .values()
-            .cloned()
-            .map(|constant_declaration| {
+            .keys()
+            .map(|path| {
                 wipple_typecheck::resolve(
                     &typecheck_driver,
-                    typecheck::convert_constant_declaration(constant_declaration),
+                    typecheck_driver.get_constant_declaration(path),
                 )
             }),
     )
     .chain(
         typecheck_driver
-            .module
+            .interface
             .instance_declarations
-            .iter()
-            .cloned()
-            .map(|instance_declaration| {
+            .keys()
+            .map(|path| {
                 wipple_typecheck::resolve(
                     &typecheck_driver,
-                    typecheck::convert_instance_declaration(instance_declaration),
+                    typecheck_driver.get_instance_declaration(path),
                 )
             }),
     ) {
@@ -475,7 +477,8 @@ mod typecheck {
 
     #[derive(Debug, Clone)]
     pub struct Driver {
-        pub module: wipple_lower::Module<lower::Driver>,
+        pub interface: wipple_lower::Interface<lower::Driver>,
+        pub library: wipple_lower::Library<lower::Driver>,
     }
 
     impl wipple_typecheck::Driver for Driver {
@@ -493,7 +496,7 @@ mod typecheck {
 
         fn path_for_language_type(&self, language_item: &'static str) -> Option<Self::Path> {
             Some(
-                self.module
+                self.interface
                     .language_declarations
                     .get(language_item)?
                     .item
@@ -503,7 +506,7 @@ mod typecheck {
 
         fn path_for_language_trait(&self, language_item: &'static str) -> Option<Self::Path> {
             Some(
-                self.module
+                self.interface
                     .language_declarations
                     .get(language_item)?
                     .item
@@ -520,7 +523,7 @@ mod typecheck {
             path: &Self::Path,
         ) -> WithInfo<Self::Info, wipple_typecheck::TypeDeclaration<Self>> {
             convert_type_declaration(
-                self.module
+                self.interface
                     .type_declarations
                     .get(path)
                     .expect("missing type declaration")
@@ -533,7 +536,7 @@ mod typecheck {
             path: &Self::Path,
         ) -> WithInfo<Self::Info, wipple_typecheck::TraitDeclaration<Self>> {
             convert_trait_declaration(
-                self.module
+                self.interface
                     .trait_declarations
                     .get(path)
                     .expect("missing trait declaration")
@@ -546,7 +549,7 @@ mod typecheck {
             path: &Self::Path,
         ) -> WithInfo<Self::Info, wipple_typecheck::TypeParameterDeclaration<Self>> {
             convert_type_parameter_declaration(
-                self.module
+                self.interface
                     .type_parameter_declarations
                     .get(path)
                     .expect("missing type parameter declaration")
@@ -558,25 +561,50 @@ mod typecheck {
             &self,
             path: &Self::Path,
         ) -> WithInfo<Self::Info, wipple_typecheck::ConstantDeclaration<Self>> {
+            let constant_declaration = self
+                .interface
+                .constant_declarations
+                .get(path)
+                .expect("missing constant declaration")
+                .clone();
+
             convert_constant_declaration(
-                self.module
-                    .constant_declarations
+                constant_declaration,
+                self.library
+                    .items
                     .get(path)
                     .expect("missing constant declaration")
                     .clone(),
             )
         }
 
-        fn get_instances_for_trait(
+        fn get_instance_declaration(
             &self,
             path: &Self::Path,
-        ) -> Vec<WithInfo<Self::Info, wipple_typecheck::InstanceDeclaration<Self>>> {
-            self.module
+        ) -> WithInfo<Self::Info, wipple_typecheck::InstanceDeclaration<Self>> {
+            let instance_declaration = self
+                .interface
+                .instance_declarations
+                .get(path)
+                .expect("missing instance declaration")
+                .clone();
+
+            convert_instance_declaration(
+                instance_declaration,
+                self.library
+                    .items
+                    .get(path)
+                    .expect("missing instance declaration")
+                    .clone(),
+            )
+        }
+
+        fn get_instances_for_trait(&self, r#trait: &Self::Path) -> Vec<Self::Path> {
+            self.interface
                 .instance_declarations
                 .iter()
-                .filter(|instance| instance.item.instance.item.r#trait.item == *path)
-                .cloned()
-                .map(convert_instance_declaration)
+                .filter(|(_, instance)| instance.item.instance.item.r#trait.item == *r#trait)
+                .map(|(path, _)| path.clone())
                 .collect()
         }
 
@@ -680,6 +708,7 @@ mod typecheck {
             lower::Info,
             wipple_lower::ConstantDeclaration<lower::Driver>,
         >,
+        body: WithInfo<lower::Info, wipple_lower::Expression<lower::Driver>>,
     ) -> WithInfo<Info, wipple_typecheck::ConstantDeclaration<Driver>> {
         constant_declaration.map(
             |constant_declaration| wipple_typecheck::ConstantDeclaration {
@@ -694,7 +723,7 @@ mod typecheck {
                     .map(convert_instance)
                     .collect(),
                 r#type: convert_type(constant_declaration.r#type),
-                body: convert_expression(constant_declaration.body),
+                body: convert_expression(body),
             },
         )
     }
@@ -704,6 +733,7 @@ mod typecheck {
             lower::Info,
             wipple_lower::InstanceDeclaration<lower::Driver>,
         >,
+        body: WithInfo<lower::Info, wipple_lower::Expression<lower::Driver>>,
     ) -> WithInfo<Info, wipple_typecheck::InstanceDeclaration<Driver>> {
         instance_declaration.map(
             |instance_declaration| wipple_typecheck::InstanceDeclaration {
@@ -718,7 +748,7 @@ mod typecheck {
                     .map(convert_instance)
                     .collect(),
                 instance: convert_instance(instance_declaration.instance),
-                body: convert_expression(instance_declaration.body),
+                body: convert_expression(body),
             },
         )
     }

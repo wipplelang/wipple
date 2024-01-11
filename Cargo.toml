@@ -17,5 +17,7 @@ elided_lifetimes_in_paths = "deny"
 missing_docs = "warn"
 
 [workspace.lints.clippy]
+dbg_macro = "warn"
+print_stderr = "warn"
 redundant_clone = "warn"
 type_complexity = "allow"

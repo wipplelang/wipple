@@ -5,50 +5,49 @@ use wipple_util::WithInfo;
 
 /// Resolve a list of files into an interface and a library.
 pub fn resolve<D: Driver>(
-    file: crate::UnresolvedFile<D>,
-    mut module: crate::Module<D>,
+    files: impl IntoIterator<Item = WithInfo<D::Info, crate::UnresolvedFile<D>>>,
+    mut dependencies: crate::Interface<D>,
 ) -> crate::Result<D> {
     let mut info = Info::default();
     info.scopes.push_block_scope();
 
-    macro_rules! wrap {
-        ($declarations:ident($($kind:ident)|*)) => {
-            for (path, declaration) in mem::take(&mut module.$declarations) {
+    macro_rules! add_from_dependencies {
+        ($declarations:ident) => {
+            for (path, declaration) in mem::take(&mut dependencies.$declarations) {
                 info.$declarations.insert(path.clone(), declaration.map(Some));
 
+                // Only add top-level declarations to the scope
                 if path.len() == 1 {
-                    let name = match path.first().unwrap().clone() {
-                        $(crate::PathComponent::$kind(name))|* => name,
-                        _ => panic!("wrong path type"),
-                    };
+                    let name = path
+                        .first()
+                        .unwrap()
+                        .clone()
+                        .name()
+                        .expect("declaration has no name")
+                        .to_string();
 
                     info.scopes.define(name, path);
                 }
-
             }
         };
-        ($($declarations:ident($($kind:ident)|*)),* $(,)?) => {
-            $(wrap!($declarations($($kind)|*));)*
+        ($($declarations:ident),* $(,)?) => {
+            $(add_from_dependencies!($declarations);)*
         }
     }
 
-    wrap!(
-        type_declarations(Type),
-        trait_declarations(Trait),
-        constant_declarations(Constant | Constructor | Variant),
-        type_parameter_declarations(TypeParameter),
-    );
+    add_from_dependencies!(type_declarations, trait_declarations, constant_declarations);
 
-    info.instance_declarations
-        .extend(mem::take(&mut module.instance_declarations));
+    for file in files {
+        let statements = resolve_statements(file.item.statements, &mut info);
+        info.library.code.extend(statements);
+    }
 
-    let statements = resolve_statements(file.statements, &mut info);
-    module.code.extend(statements);
+    let mut interface = crate::Interface::default();
 
     macro_rules! unwrap {
         ($declarations:ident) => {
             for (name, declaration) in info.$declarations {
-                module.$declarations.insert(name, declaration.map(Option::unwrap));
+                interface.$declarations.insert(name, declaration.map(Option::unwrap));
             }
         };
         ($($declarations:ident),* $(,)?) => {
@@ -59,22 +58,20 @@ pub fn resolve<D: Driver>(
     unwrap!(
         type_declarations,
         trait_declarations,
-        type_parameter_declarations,
         constant_declarations,
+        type_parameter_declarations,
+        instance_declarations,
     );
 
-    module
-        .instance_declarations
-        .extend(info.instance_declarations);
-
-    module.language_declarations.extend(
+    interface.language_declarations.extend(
         info.language_declarations
             .into_iter()
             .map(|(name, path)| (name, path.unwrap())),
     );
 
     crate::Result {
-        module,
+        interface,
+        library: info.library,
         errors: info.errors,
     }
 }
@@ -83,6 +80,7 @@ pub fn resolve<D: Driver>(
 #[derivative(Default(bound = ""))]
 struct Info<D: Driver> {
     errors: Vec<WithInfo<D::Info, crate::Error<D>>>,
+    dependencies: crate::Interface<D>,
     type_declarations: HashMap<crate::Path, WithInfo<D::Info, Option<crate::TypeDeclaration<D>>>>,
     trait_declarations: HashMap<crate::Path, WithInfo<D::Info, Option<crate::TraitDeclaration<D>>>>,
     constant_declarations:
@@ -90,10 +88,13 @@ struct Info<D: Driver> {
     type_parameter_declarations:
         HashMap<crate::Path, WithInfo<D::Info, Option<crate::TypeParameterDeclaration<D>>>>,
     language_declarations: HashMap<String, Option<WithInfo<D::Info, crate::Path>>>,
-    instance_declarations: Vec<WithInfo<D::Info, crate::InstanceDeclaration<D>>>,
+    instance_declarations:
+        HashMap<crate::Path, WithInfo<D::Info, Option<crate::InstanceDeclaration<D>>>>,
+    library: crate::Library<D>,
     path: crate::Path,
     scopes: Scopes,
     next_variable: u32,
+    next_instance: u32,
 }
 
 impl<D: Driver> Info<D> {
@@ -345,17 +346,17 @@ fn resolve_statements<D: Driver>(
                 info.next_variable = prev_next_variable;
                 info.scopes.pop_scope();
 
-                let declaration = info
-                    .constant_declarations
-                    .get_mut(&info.make_path(crate::PathComponent::Constant(name.item)))
-                    .unwrap();
+                let path = info.make_path(crate::PathComponent::Constant(name.item));
+
+                let declaration = info.constant_declarations.get_mut(&path).unwrap();
 
                 declaration.item = Some(crate::ConstantDeclaration {
                     parameters,
                     bounds,
                     r#type,
-                    body,
                 });
+
+                info.library.items.insert(path, body);
 
                 None
             }
@@ -392,15 +393,23 @@ fn resolve_statements<D: Driver>(
                 info.next_variable = prev_next_variable;
                 info.scopes.pop_scope();
 
-                info.instance_declarations.push(WithInfo {
-                    info: statement.info,
-                    item: crate::InstanceDeclaration {
-                        parameters,
-                        bounds,
-                        instance,
-                        body,
+                let path = info.make_path(crate::PathComponent::Instance(info.next_instance));
+
+                info.next_instance += 1;
+
+                info.instance_declarations.insert(
+                    path.clone(),
+                    WithInfo {
+                        info: statement.info,
+                        item: Some(crate::InstanceDeclaration {
+                            parameters,
+                            bounds,
+                            instance,
+                        }),
                     },
-                });
+                );
+
+                info.library.items.insert(path, body);
 
                 None
             }
@@ -872,8 +881,6 @@ fn resolve_type<D: Driver>(
         crate::UnresolvedType::Error => crate::Type::Error,
         crate::UnresolvedType::Placeholder => crate::Type::Placeholder,
         crate::UnresolvedType::Declared { name, parameters } => {
-            eprintln!("resolving name: {}, scope: {:#?}", name.item, info.scopes);
-
             let path = match resolve_name(name, info, |candidates| {
                 candidates
                     .iter()
@@ -1089,10 +1096,18 @@ fn resolve_language_item<D: Driver>(
     name: WithInfo<D::Info, String>,
     info: &mut Info<D>,
 ) -> Option<WithInfo<D::Info, crate::Path>> {
-    match info.language_declarations.get(&name.item) {
+    match info
+        .language_declarations
+        .get(&name.item)
+        .map(|declaration| declaration.as_ref())
+        .or_else(|| {
+            info.dependencies
+                .language_declarations
+                .get(&name.item)
+                .map(Some)
+        }) {
         Some(item) => Some(
-            item.as_ref()
-                .expect("language items are resolved before everything else")
+            item.expect("language items are resolved before everything else")
                 .clone(),
         ),
         None => {

@@ -16,11 +16,11 @@ pub trait Driver: Sized {
     type Number: Debug + Clone + Serialize + DeserializeOwned;
 }
 
-/// A module.
-#[derive(Serialize, Derivative)]
+/// Contains the definitions of items in a file.
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""), Default(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub struct Module<D: Driver> {
+pub struct Interface<D: Driver> {
     /// The type declarations in the module.
     pub type_declarations: HashMap<Path, WithInfo<D::Info, TypeDeclaration<D>>>,
 
@@ -34,89 +34,83 @@ pub struct Module<D: Driver> {
     pub type_parameter_declarations: HashMap<Path, WithInfo<D::Info, TypeParameterDeclaration<D>>>,
 
     /// The instance declarations in the module.
-    pub instance_declarations: Vec<WithInfo<D::Info, InstanceDeclaration<D>>>,
+    pub instance_declarations: HashMap<Path, WithInfo<D::Info, InstanceDeclaration<D>>>,
 
     /// The language declarations in the module.
     pub language_declarations: HashMap<String, WithInfo<D::Info, Path>>,
+}
+
+impl<D: Driver> Interface<D> {
+    fn merge(&mut self, other: Self, errors: &mut Vec<WithInfo<D::Info, Error<D>>>) {
+        // TODO: Check for conflicts
+
+        self.type_declarations.extend(other.type_declarations);
+        self.trait_declarations.extend(other.trait_declarations);
+        self.constant_declarations
+            .extend(other.constant_declarations);
+        self.type_parameter_declarations
+            .extend(other.type_parameter_declarations);
+        self.instance_declarations
+            .extend(other.instance_declarations);
+        self.language_declarations
+            .extend(other.language_declarations);
+    }
+}
+
+/// Contains the implementations of items in a file.
+#[derive(Serialize, Deserialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""), Default(bound = ""))]
+#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+pub struct Library<D: Driver> {
+    /// The implementations of constants and instances.
+    pub items: HashMap<Path, WithInfo<D::Info, crate::Expression<D>>>,
 
     /// Any code to be run when the program starts.
     pub code: Vec<WithInfo<D::Info, Expression<D>>>,
 }
 
-impl<D: Driver> Module<D> {
-    fn merge(&mut self, other: Self, errors: &mut Vec<WithInfo<D::Info, Error<D>>>) {
-        macro_rules! try_merge {
-            ($decls:ident) => {
-                for (name, declaration) in other.$decls {
-                    use std::collections::hash_map::Entry;
-
-                    match self.$decls.entry(name) {
-                        Entry::Vacant(entry) => {
-                            entry.insert(declaration);
-                        }
-                        Entry::Occupied(entry) => {
-                            errors.push(declaration.replace(Error::AlreadyDefined {
-                                path: entry.key().clone(),
-                                info: entry.get().info.clone(),
-                            }));
-                        }
-                    }
-                }
-            };
-            ($($decls:ident),* $(,)?) => {{
-                $(try_merge!($decls);)*
-            }};
-        }
-
-        try_merge!(type_declarations, trait_declarations, constant_declarations);
-
-        // Conflicting instances are checked during typechecking
-        self.instance_declarations
-            .extend(other.instance_declarations);
-
-        self.code.extend(other.code);
-    }
-}
-
 /// Resolve a list of files into a module.
 pub fn resolve<D: Driver>(
     _driver: &D,
-    file: WithInfo<D::Info, UnresolvedFile<D>>,
-    dependencies: Vec<Module<D>>,
+    files: impl IntoIterator<Item = WithInfo<D::Info, UnresolvedFile<D>>>,
+    dependencies: impl IntoIterator<Item = Interface<D>>,
 ) -> Result<D> {
     let mut errors = Vec::new();
 
     let dependencies = dependencies
         .into_iter()
-        .fold(Module::default(), |mut current, next| {
+        .fold(Interface::default(), |mut current, next| {
             current.merge(next, &mut errors);
             current
         });
 
-    let result = resolve::resolve(file.item, dependencies);
+    let result = resolve::resolve(files, dependencies);
     errors.extend(result.errors);
 
     Result {
-        module: result.module,
+        interface: result.interface,
+        library: result.library,
         errors,
     }
 }
 
 /// The result of [`resolve`].
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct Result<D: Driver> {
-    /// The resolved module.
-    pub module: Module<D>,
+    /// The resolved [`Interface`].
+    pub interface: Interface<D>,
 
-    /// Any errors encountered while resolving the module or merging its
-    /// dependencies.
+    /// The resolved [`Library`].
+    pub library: Library<D>,
+
+    /// Any errors encountered while resolving the files.
     pub errors: Vec<WithInfo<D::Info, Error<D>>>,
 }
 
 /// An error occurring during lowering.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum Error<D: Driver> {
@@ -641,6 +635,9 @@ pub enum PathComponent {
     /// A variant in an enumeration.
     Variant(String),
 
+    /// An instance declaration.
+    Instance(u32),
+
     /// A language declaration.
     Language(String),
 
@@ -660,10 +657,25 @@ impl PathComponent {
             PathComponent::Variable(_) | PathComponent::TypeParameter(_)
         )
     }
+
+    /// Returns the name of the declaration the path component refers to, or
+    /// `None` if the declaration has no name.
+    pub fn name(&self) -> Option<&str> {
+        match self {
+            PathComponent::Type(name)
+            | PathComponent::Trait(name)
+            | PathComponent::Constant(name)
+            | PathComponent::Constructor(name)
+            | PathComponent::Variant(name)
+            | PathComponent::Language(name)
+            | PathComponent::TypeParameter(name) => Some(name),
+            PathComponent::Instance(_) | PathComponent::Variable(_) => None,
+        }
+    }
 }
 
 /// A resolved type declaration.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct TypeDeclaration<D: Driver> {
@@ -675,7 +687,7 @@ pub struct TypeDeclaration<D: Driver> {
 }
 
 /// A resolved trait declaration.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct TraitDeclaration<D: Driver> {
@@ -687,7 +699,7 @@ pub struct TraitDeclaration<D: Driver> {
 }
 
 /// A resolved constant declaration.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct ConstantDeclaration<D: Driver> {
@@ -699,13 +711,10 @@ pub struct ConstantDeclaration<D: Driver> {
 
     /// The constant's type.
     pub r#type: WithInfo<D::Info, crate::Type<D>>,
-
-    /// The constant's body.
-    pub body: WithInfo<D::Info, crate::Expression<D>>,
 }
 
 /// A resolved instance declaration.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct InstanceDeclaration<D: Driver> {
@@ -717,13 +726,10 @@ pub struct InstanceDeclaration<D: Driver> {
 
     /// The trait and parameters that this instance satisfies.
     pub instance: WithInfo<D::Info, crate::Instance<D>>,
-
-    /// The instance's body.
-    pub body: WithInfo<D::Info, crate::Expression<D>>,
 }
 
 /// A resolved type parameter.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct TypeParameterDeclaration<D: Driver> {
@@ -738,7 +744,7 @@ pub struct TypeParameterDeclaration<D: Driver> {
 }
 
 /// A resolved expression.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum Expression<D: Driver> {
@@ -856,7 +862,7 @@ pub enum Expression<D: Driver> {
 }
 
 /// A resolved type representation.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum TypeRepresentation<D: Driver> {
@@ -871,7 +877,7 @@ pub enum TypeRepresentation<D: Driver> {
 }
 
 /// A resolved structure field.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct Field<D: Driver> {
@@ -883,7 +889,7 @@ pub struct Field<D: Driver> {
 }
 
 /// A resolved enumeration variant.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct Variant<D: Driver> {
@@ -895,7 +901,7 @@ pub struct Variant<D: Driver> {
 }
 
 /// A resolved type.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum Type<D: Driver> {
@@ -933,7 +939,7 @@ pub enum Type<D: Driver> {
 }
 
 /// A resolved instance.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct Instance<D: Driver> {
@@ -956,7 +962,7 @@ pub struct FormatSegment<T> {
 }
 
 /// A resolved pattern.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum Pattern<D: Driver> {
@@ -1002,7 +1008,7 @@ pub enum Pattern<D: Driver> {
 }
 
 /// A field in a destructuring pattern.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct FieldPattern<D: Driver> {
@@ -1014,7 +1020,7 @@ pub struct FieldPattern<D: Driver> {
 }
 
 /// An arm in a `when` expression.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct Arm<D: Driver> {
@@ -1029,7 +1035,7 @@ pub struct Arm<D: Driver> {
 }
 
 /// A field-value pair in a structure construction expression.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct FieldValue<D: Driver> {

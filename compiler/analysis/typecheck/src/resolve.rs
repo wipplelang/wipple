@@ -2548,7 +2548,9 @@ fn resolve_trait<D: Driver>(
 
         // Next, check if there are any declared instances that match
         let mut candidates = Vec::new();
-        for instance_declaration in context.driver.get_instances_for_trait(&r#trait) {
+        for path in context.driver.get_instances_for_trait(&r#trait) {
+            let instance_declaration = context.driver.get_instance_declaration(&path);
+
             let (new_type_context, type_context_change) = context.type_context.deep_clone();
 
             let mut query = query

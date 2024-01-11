@@ -57,11 +57,14 @@ pub trait Driver: Sized {
         path: &Self::Path,
     ) -> WithInfo<Self::Info, ConstantDeclaration<Self>>;
 
-    /// Retrieve the instances available for the trait at the given path.
-    fn get_instances_for_trait(
+    /// Retrieve the instance declaration at the given path.
+    fn get_instance_declaration(
         &self,
         path: &Self::Path,
-    ) -> Vec<WithInfo<Self::Info, InstanceDeclaration<Self>>>;
+    ) -> WithInfo<Self::Info, InstanceDeclaration<Self>>;
+
+    /// Retrieve the instances available for the trait at the given path.
+    fn get_instances_for_trait(&self, r#trait: &Self::Path) -> Vec<Self::Path>;
 
     /// Retrieve the enumeration for the variant at the given path.
     fn get_enumeration_for_variant(&self, variant: &Self::Path) -> Self::Path;
