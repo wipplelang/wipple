@@ -3,7 +3,7 @@
 use itertools::Itertools;
 use logos::Logos;
 use serde::Serialize;
-use std::{collections::VecDeque, iter::Peekable, mem, ops::Range};
+use std::{borrow::Cow, collections::VecDeque, iter::Peekable, mem, ops::Range};
 
 /// A token in the source code.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
@@ -18,7 +18,7 @@ pub struct Token<'src> {
 
 /// The kind of [`Token`].
 #[allow(missing_docs)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Logos, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Logos, Serialize)]
 #[logos(skip r#"[\t ]+"#)]
 #[serde(rename_all = "camelCase")]
 pub enum TokenKind<'src> {
@@ -31,20 +31,20 @@ pub enum TokenKind<'src> {
     #[regex(r#"\n"#)]
     LineBreak,
 
-    #[regex(r#"\[[^\]\\]*(?s:\\.[^\]\\]*)*\]"#, |lex| &lex.slice()[1..(lex.slice().len() - 1)])]
-    Comment(&'src str),
+    #[regex(r#"\[[^\]\\]*(?s:\\.[^\]\\]*)*\]"#, |lex| Cow::Borrowed(&lex.slice()[1..(lex.slice().len() - 1)]))]
+    Comment(Cow<'src, str>),
 
-    #[regex(r#"[~`!@#$%^&*\-+=\\\|:;<,>.?/]+|[A-Za-z0-9\-_]+[!?']?"#, |lex| lex.slice())]
-    Symbol(&'src str),
+    #[regex(r#"[~`!@#$%^&*\-+=\\\|:;<,>.?/]+|[A-Za-z0-9\-_]+[!?']?"#, |lex| Cow::Borrowed(lex.slice()))]
+    Symbol(Cow<'src, str>),
 
-    #[regex(r#""[^"\\]*(?s:\\.[^"\\]*)*"|'[^'\\]*(?s:\\.[^'\\]*)*'"#, |lex| &lex.slice()[1..(lex.slice().len() - 1)])]
-    Text(&'src str),
+    #[regex(r#""[^"\\]*(?s:\\.[^"\\]*)*"|'[^'\\]*(?s:\\.[^'\\]*)*'"#, |lex| Cow::Borrowed(&lex.slice()[1..(lex.slice().len() - 1)]))]
+    Text(Cow<'src, str>),
 
-    #[regex(r#"-?[0-9]+(\.[0-9]+)?"#, |lex| lex.slice(), priority = 2)]
-    Number(&'src str),
+    #[regex(r#"-?[0-9]+(\.[0-9]+)?"#, |lex| Cow::Borrowed(lex.slice()), priority = 2)]
+    Number(Cow<'src, str>),
 
-    #[regex(r#"`[^`]*`"#, |lex| &lex.slice()[1..(lex.slice().len() - 1)])]
-    Asset(&'src str),
+    #[regex(r#"`[^`]*`"#, |lex| Cow::Borrowed(&lex.slice()[1..(lex.slice().len() - 1)]))]
+    Asset(Cow<'src, str>),
 }
 
 #[allow(missing_docs)]
@@ -59,7 +59,7 @@ pub mod tokenize {
         pub tokens: Vec<Token<'src>>,
 
         /// Any errors encountered while parsing the source code.
-        pub errors: Vec<Error<'src>>,
+        pub errors: Vec<Error>,
     }
 }
 
@@ -170,33 +170,33 @@ impl<'src> Node<'src> {
 
 /// An error occurring during [`tokenize`] or [`read`].
 #[derive(Debug, Clone, Serialize)]
-pub struct Error<'src> {
+pub struct Error {
     /// The location in the source code where the error occurred.
     pub span: Range<u32>,
 
     /// The kind of error.
-    pub kind: ErrorKind<'src>,
+    pub kind: ErrorKind,
 }
 
-impl<'src> Error<'src> {
-    pub(crate) fn new(span: Range<u32>, kind: ErrorKind<'src>) -> Self {
+impl Error {
+    pub(crate) fn new(span: Range<u32>, kind: ErrorKind) -> Self {
         Error { span, kind }
     }
 }
 
 /// The kind of [`Error`].
 #[derive(Debug, Clone, Serialize)]
-pub enum ErrorKind<'src> {
+pub enum ErrorKind {
     /// The tokenizer encountered an invalid token.
     InvalidToken,
 
     /// The tokenizer expected one token, but a different one was found.
     Mismatch {
         /// The expected token, or `None` if the end of the file was expected.
-        expected: Option<TokenKind<'src>>,
+        expected: Option<TokenKind<'static>>,
 
         /// The provided token, or `None` if the end of the file was provided.
-        found: Option<TokenKind<'src>>,
+        found: Option<TokenKind<'static>>,
     },
 
     /// A non-associative operator was used multiple times in the same list.
@@ -228,7 +228,7 @@ pub mod read {
         pub top_level: Node<'src>,
 
         /// Any errors encountered while parsing the sequence of tokens.
-        pub errors: Vec<Error<'src>>,
+        pub errors: Vec<Error>,
     }
 }
 
@@ -258,7 +258,7 @@ pub fn read(tokens: Vec<Token<'_>>, options: ReadOptions) -> read::Result<'_> {
 
 impl<'src> Node<'src> {
     /// Remove all comments from this node.
-    fn strip_comments(self, errors: &mut Vec<Error<'src>>) -> Option<Self> {
+    fn strip_comments(self, errors: &mut Vec<Error>) -> Option<Self> {
         match self {
             Node::Empty => Some(Node::Empty),
             Node::Token(token) => {
@@ -322,7 +322,7 @@ impl<'src> Node<'src> {
 }
 
 impl<'src> BinaryOperatorInput<'src> {
-    fn strip_comments(self, errors: &mut Vec<Error<'src>>) -> Self {
+    fn strip_comments(self, errors: &mut Vec<Error>) -> Self {
         match self {
             BinaryOperatorInput::Unapplied => BinaryOperatorInput::Unapplied,
             BinaryOperatorInput::PartiallyAppliedLeft(input) => {
@@ -356,7 +356,7 @@ impl<'src> BinaryOperatorInput<'src> {
 }
 
 impl<'src> VariadicOperatorInput<'src> {
-    fn strip_comments(self, span: &Range<u32>, errors: &mut Vec<Error<'src>>) -> Option<Self> {
+    fn strip_comments(self, span: &Range<u32>, errors: &mut Vec<Error>) -> Option<Self> {
         match self {
             VariadicOperatorInput::Unapplied => Some(VariadicOperatorInput::Unapplied),
             VariadicOperatorInput::Applied(inputs) => {
@@ -370,8 +370,7 @@ impl<'src> VariadicOperatorInput<'src> {
                             })
                             .unwrap_or_else(|| {
                                 Error::new(span.clone(), ErrorKind::MissingOperatorInputOnRight)
-                            })
-                            .clone();
+                            });
 
                         let input = input.strip_comments(errors);
 
@@ -430,7 +429,7 @@ fn is_operator(symbol: &str) -> bool {
 fn read_list<'src>(
     tokens: &mut Peekable<impl Iterator<Item = Token<'src>>>,
     last_span: &mut Range<u32>,
-    errors: &mut Vec<Error<'src>>,
+    errors: &mut Vec<Error>,
 ) -> Vec<Node<'src>> {
     let mut contents = Vec::new();
     loop {
@@ -475,7 +474,7 @@ fn read_block<'src>(
     tokens: &mut Peekable<impl Iterator<Item = Token<'src>>>,
     top_level: bool,
     last_span: &mut Range<u32>,
-    errors: &mut Vec<Error<'src>>,
+    errors: &mut Vec<Error>,
 ) -> Vec<Node<'src>> {
     let contents = (|| {
         let mut contents = Vec::new();
@@ -490,7 +489,7 @@ fn read_block<'src>(
 
                     *last_span = next.span.clone();
 
-                    match next.kind {
+                    match &next.kind {
                         TokenKind::LeftParenthesis => {
                             if let Some(Token {
                                 kind: TokenKind::LineBreak,
@@ -554,7 +553,7 @@ fn read_block<'src>(
                                     tokens.next();
                                     continue;
                                 } else {
-                                    if let TokenKind::Symbol(symbol) = next.kind {
+                                    if let TokenKind::Symbol(symbol) = &next.kind {
                                         if is_operator(symbol) {
                                             let next = tokens.next().unwrap();
                                             *last_span = next.span.clone();
@@ -610,7 +609,7 @@ fn read_block<'src>(
         .collect()
 }
 
-fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error<'src>>) -> Node<'src> {
+fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src> {
     match node {
         Node::Empty => Node::Empty,
         Node::Token(token) => Node::Token(token),
@@ -638,10 +637,10 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error<'src>>) -> Node
                         _ => return None,
                     };
 
-                    match token.kind {
+                    match &token.kind {
                         TokenKind::Symbol(symbol) => PRECEDENCES
                             .iter()
-                            .find_position(|(_, operators)| operators.contains(&symbol))
+                            .find_position(|(_, operators)| operators.contains(&symbol.as_ref()))
                             .map(|(precedence, (associativity, _))| {
                                 (index, token.clone(), precedence, associativity)
                             }),
@@ -653,7 +652,7 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error<'src>>) -> Node
                 .map(|(index, token, _, associativity)| (index, token, associativity))
                 .collect::<Vec<_>>();
 
-            let inputs = |mut side: Vec<Node<'src>>, errors: &mut Vec<Error<'src>>| {
+            let inputs = |mut side: Vec<Node<'src>>, errors: &mut Vec<Error>| {
                 read_operators(
                     Node::List(
                         side.first_mut().unwrap().span_mut().unwrap().start
@@ -664,7 +663,7 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error<'src>>) -> Node
                 )
             };
 
-            let input = |mut elements: Vec<_>, index: usize, errors: &mut Vec<Error<'src>>| {
+            let input = |mut elements: Vec<_>, index: usize, errors: &mut Vec<Error>| {
                 let right = elements
                     .split_off(index)
                     .into_iter()
@@ -689,7 +688,7 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error<'src>>) -> Node
             };
 
             let variadic_input = |operators: Vec<(usize, Token<'src>, &Associativity)>,
-                                  errors: &mut Vec<Error<'src>>| {
+                                  errors: &mut Vec<Error>| {
                 let (_, first_operator_token, _) = operators.first().unwrap().clone();
                 let mut operators = VecDeque::from(operators);
 
@@ -865,7 +864,7 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error<'src>>) -> Node
 
 impl std::fmt::Display for Token<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.kind {
+        match &self.kind {
             TokenKind::LeftParenthesis => write!(f, "`(`"),
             TokenKind::RightParenthesis => write!(f, "`)`"),
             TokenKind::LineBreak => write!(f, "line break"),
@@ -924,7 +923,7 @@ impl std::fmt::Display for Node<'_> {
 
 impl Token<'_> {
     fn to_lexpr_value(&self) -> SExp {
-        match self.kind {
+        match &self.kind {
             TokenKind::LeftParenthesis => SExp::string("("),
             TokenKind::RightParenthesis => SExp::string(")"),
             TokenKind::LineBreak => SExp::symbol("line-break"),

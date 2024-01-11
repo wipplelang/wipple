@@ -5,3 +5,13 @@ edition = "2021"
 
 [lints]
 workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+wipple-codegen = { path = "../codegen" }
+wipple-lower = { path = "../analysis/lower" }
+wipple-parser = { path = "../parser" }
+wipple-query = { path = "../analysis/query" }
+wipple-syntax = { path = "../analysis/syntax" }
+wipple-typecheck = { path = "../analysis/typecheck" }
+wipple-util = { path = "../util" }

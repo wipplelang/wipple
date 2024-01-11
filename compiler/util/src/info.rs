@@ -24,6 +24,14 @@ impl<I, T> WithInfo<I, T> {
         }
     }
 
+    /// Convert the info contained within the [`WithInfo`].
+    pub fn map_info<J>(self, f: impl FnOnce(I) -> J) -> WithInfo<J, T> {
+        WithInfo {
+            info: f(self.info),
+            item: self.item,
+        }
+    }
+
     /// Like [`map`], but returns `None` if the conversion fails,
     pub fn filter_map<U>(self, f: impl FnOnce(T) -> Option<U>) -> Option<WithInfo<I, U>> {
         Some(WithInfo {

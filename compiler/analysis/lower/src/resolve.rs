@@ -87,7 +87,7 @@ struct Info<D: Driver> {
         HashMap<crate::Path, WithInfo<D::Info, Option<crate::ConstantDeclaration<D>>>>,
     type_parameter_declarations:
         HashMap<crate::Path, WithInfo<D::Info, Option<crate::TypeParameterDeclaration<D>>>>,
-    language_declarations: HashMap<String, Option<WithInfo<D::Info, crate::Path>>>,
+    language_declarations: HashMap<String, Option<crate::Path>>,
     instance_declarations:
         HashMap<crate::Path, WithInfo<D::Info, Option<crate::InstanceDeclaration<D>>>>,
     library: crate::Library<D>,
@@ -423,7 +423,7 @@ fn resolve_statements<D: Driver>(
                 })?;
 
                 let declaration = info.language_declarations.get_mut(&name.item).unwrap();
-                *declaration = Some(path);
+                *declaration = Some(path.item);
 
                 None
             }
@@ -607,7 +607,7 @@ fn resolve_expression<D: Driver>(
 
             let operator_trait =
                 operator.replace(match resolve_language_item(operator.clone(), info) {
-                    Some(path) => crate::Expression::Trait(path.item),
+                    Some(path) => crate::Expression::Trait(path),
                     None => crate::Expression::Error,
                 });
 
@@ -631,7 +631,7 @@ fn resolve_expression<D: Driver>(
             };
 
             let true_value = r#true.replace(match resolve_language_item(r#true.clone(), info) {
-                Some(path) => crate::Expression::Constant(path.item),
+                Some(path) => crate::Expression::Constant(path),
                 None => crate::Expression::Error,
             });
 
@@ -641,7 +641,7 @@ fn resolve_expression<D: Driver>(
             };
 
             let false_value = r#false.replace(match resolve_language_item(r#false.clone(), info) {
-                Some(path) => crate::Expression::Constant(path.item),
+                Some(path) => crate::Expression::Constant(path),
                 None => crate::Expression::Error,
             });
 
@@ -881,7 +881,7 @@ fn resolve_type<D: Driver>(
         crate::UnresolvedType::Error => crate::Type::Error,
         crate::UnresolvedType::Placeholder => crate::Type::Placeholder,
         crate::UnresolvedType::Declared { name, parameters } => {
-            let path = match resolve_name(name, info, |candidates| {
+            match resolve_name(name, info, |candidates| {
                 candidates
                     .iter()
                     .filter_map(|path| match path.last().unwrap() {
@@ -892,16 +892,18 @@ fn resolve_type<D: Driver>(
                     })
                     .collect::<Vec<_>>()
             }) {
-                Some(path) => path,
-                None => return crate::Type::Error,
-            };
-
-            crate::Type::Declared {
-                path,
-                parameters: parameters
-                    .into_iter()
-                    .map(|parameter| resolve_type(parameter, info))
-                    .collect(),
+                Some(path) => match path.item.last().unwrap() {
+                    crate::PathComponent::Type(_) => crate::Type::Declared {
+                        path,
+                        parameters: parameters
+                            .into_iter()
+                            .map(|parameter| resolve_type(parameter, info))
+                            .collect(),
+                    },
+                    crate::PathComponent::TypeParameter(_) => crate::Type::Parameter(path.item),
+                    _ => unreachable!(),
+                },
+                None => crate::Type::Error,
             }
         }
         crate::UnresolvedType::Function { input, output } => crate::Type::Function {
@@ -923,36 +925,34 @@ fn resolve_type<D: Driver>(
 fn resolve_type_parameter<D: Driver>(
     type_parameter: WithInfo<D::Info, crate::UnresolvedTypeParameter<D>>,
     info: &mut Info<D>,
-) -> WithInfo<D::Info, crate::Path> {
+) -> crate::Path {
     let type_parameter_info = type_parameter.info.clone();
 
-    type_parameter.map(|type_parameter| {
-        let mut path = info.path.clone();
-        path.push(crate::PathComponent::TypeParameter(
-            type_parameter.name.item.clone(),
-        ));
+    let mut path = info.path.clone();
+    path.push(crate::PathComponent::TypeParameter(
+        type_parameter.item.name.item.clone(),
+    ));
 
-        info.scopes
-            .define(type_parameter.name.item.clone(), path.clone());
+    info.scopes
+        .define(type_parameter.item.name.item, path.clone());
 
-        let type_parameter_declaration = crate::TypeParameterDeclaration {
-            name: type_parameter.name,
-            infer: type_parameter.infer,
-            default: type_parameter
-                .default
-                .map(|default| resolve_type(default, info)),
-        };
+    let type_parameter_declaration = crate::TypeParameterDeclaration {
+        infer: type_parameter.item.infer,
+        default: type_parameter
+            .item
+            .default
+            .map(|default| resolve_type(default, info)),
+    };
 
-        info.type_parameter_declarations.insert(
-            path.clone(),
-            WithInfo {
-                info: type_parameter_info,
-                item: Some(type_parameter_declaration),
-            },
-        );
+    info.type_parameter_declarations.insert(
+        path.clone(),
+        WithInfo {
+            info: type_parameter_info,
+            item: Some(type_parameter_declaration),
+        },
+    );
 
-        path
-    })
+    path
 }
 
 fn resolve_instance<D: Driver>(
@@ -1047,7 +1047,7 @@ fn resolve_binary_operator<D: Driver>(
 ) -> crate::Expression<D> {
     let operator_trait = operator.replace(
         match resolve_language_item(operator.as_ref().map(ToString::to_string), info) {
-            Some(path) => crate::Expression::Trait(path.item),
+            Some(path) => crate::Expression::Trait(path),
             None => crate::Expression::Error,
         },
     );
@@ -1095,7 +1095,7 @@ fn resolve_binary_operator<D: Driver>(
 fn resolve_language_item<D: Driver>(
     name: WithInfo<D::Info, String>,
     info: &mut Info<D>,
-) -> Option<WithInfo<D::Info, crate::Path>> {
+) -> Option<crate::Path> {
     match info
         .language_declarations
         .get(&name.item)

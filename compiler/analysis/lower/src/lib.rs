@@ -27,17 +27,17 @@ pub struct Interface<D: Driver> {
     /// The trait declarations in the module.
     pub trait_declarations: HashMap<Path, WithInfo<D::Info, TraitDeclaration<D>>>,
 
-    /// The constant declarations in the module.
-    pub constant_declarations: HashMap<Path, WithInfo<D::Info, ConstantDeclaration<D>>>,
-
     /// The type parameters in the module.
     pub type_parameter_declarations: HashMap<Path, WithInfo<D::Info, TypeParameterDeclaration<D>>>,
 
+    /// The language declarations in the module.
+    pub language_declarations: HashMap<String, Path>,
+
+    /// The constant declarations in the module.
+    pub constant_declarations: HashMap<Path, WithInfo<D::Info, ConstantDeclaration<D>>>,
+
     /// The instance declarations in the module.
     pub instance_declarations: HashMap<Path, WithInfo<D::Info, InstanceDeclaration<D>>>,
-
-    /// The language declarations in the module.
-    pub language_declarations: HashMap<String, WithInfo<D::Info, Path>>,
 }
 
 impl<D: Driver> Interface<D> {
@@ -46,14 +46,14 @@ impl<D: Driver> Interface<D> {
 
         self.type_declarations.extend(other.type_declarations);
         self.trait_declarations.extend(other.trait_declarations);
-        self.constant_declarations
-            .extend(other.constant_declarations);
         self.type_parameter_declarations
             .extend(other.type_parameter_declarations);
-        self.instance_declarations
-            .extend(other.instance_declarations);
         self.language_declarations
             .extend(other.language_declarations);
+        self.constant_declarations
+            .extend(other.constant_declarations);
+        self.instance_declarations
+            .extend(other.instance_declarations);
     }
 }
 
@@ -680,7 +680,7 @@ impl PathComponent {
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct TypeDeclaration<D: Driver> {
     /// The type's parameters.
-    pub parameters: Vec<WithInfo<D::Info, crate::Path>>,
+    pub parameters: Vec<crate::Path>,
 
     /// The type's representation.
     pub representation: WithInfo<D::Info, TypeRepresentation<D>>,
@@ -692,7 +692,7 @@ pub struct TypeDeclaration<D: Driver> {
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct TraitDeclaration<D: Driver> {
     /// The trait's parameters.
-    pub parameters: Vec<WithInfo<D::Info, crate::Path>>,
+    pub parameters: Vec<crate::Path>,
 
     /// The trait's type.
     pub r#type: WithInfo<D::Info, crate::Type<D>>,
@@ -704,7 +704,7 @@ pub struct TraitDeclaration<D: Driver> {
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct ConstantDeclaration<D: Driver> {
     /// The constant's parameters.
-    pub parameters: Vec<WithInfo<D::Info, crate::Path>>,
+    pub parameters: Vec<crate::Path>,
 
     /// The constant's bounds.
     pub bounds: Vec<WithInfo<D::Info, crate::Instance<D>>>,
@@ -719,7 +719,7 @@ pub struct ConstantDeclaration<D: Driver> {
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct InstanceDeclaration<D: Driver> {
     /// The instance's parameters.
-    pub parameters: Vec<WithInfo<D::Info, crate::Path>>,
+    pub parameters: Vec<crate::Path>,
 
     /// The instance's bounds.
     pub bounds: Vec<WithInfo<D::Info, crate::Instance<D>>>,
@@ -733,9 +733,6 @@ pub struct InstanceDeclaration<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct TypeParameterDeclaration<D: Driver> {
-    /// The name of the type parameter.
-    pub name: WithInfo<D::Info, String>,
-
     /// Whether the type parameter was marked as `infer`.
     pub infer: Option<WithInfo<D::Info, ()>>,
 
@@ -920,6 +917,9 @@ pub enum Type<D: Driver> {
         /// The parameters provided to the type.
         parameters: Vec<WithInfo<D::Info, Type<D>>>,
     },
+
+    /// A type parameter.
+    Parameter(Path),
 
     /// A function type.
     #[serde(rename_all = "camelCase")]

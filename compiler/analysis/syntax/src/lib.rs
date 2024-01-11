@@ -16,6 +16,9 @@ pub trait Driver: Sized {
     /// Represents a number value.
     type Number: Debug + Clone + PartialEq + Eq + FromStr + Serialize + DeserializeOwned;
 
+    /// Retrieve the path of the file being parsed.
+    fn file_path(&self) -> String;
+
     /// Merge two [`Info`](Driver::Info) values together.
     fn merge_info(left: Self::Info, right: Self::Info) -> Self::Info;
 }

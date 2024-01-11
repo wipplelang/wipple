@@ -237,7 +237,7 @@ mod tests {
     fn test_variable() {
         let input = Node::Token(Token {
             span: 0..0,
-            kind: TokenKind::Text("Hello, world!"),
+            kind: TokenKind::Text("Hello, world!".into()),
         });
 
         test_grammar!(
@@ -257,15 +257,15 @@ mod tests {
             0..0,
             Token {
                 span: 0..0,
-                kind: TokenKind::Symbol(":"),
+                kind: TokenKind::Symbol(":".into()),
             },
             Box::new(Node::Token(Token {
                 span: 0..0,
-                kind: TokenKind::Symbol("number"),
+                kind: TokenKind::Symbol("number".into()),
             })),
             Box::new(Node::Token(Token {
                 span: 0..0,
-                kind: TokenKind::Number("42"),
+                kind: TokenKind::Number("42".into()),
             })),
         );
 
@@ -280,11 +280,11 @@ mod tests {
             {
                 "name" => vec![Node::Token(Token {
                     span: 0..0,
-                    kind: TokenKind::Symbol("number"),
+                    kind: TokenKind::Symbol("number".into()),
                 })],
                 "value" => vec![Node::Token(Token {
                     span: 0..0,
-                    kind: TokenKind::Number("42"),
+                    kind: TokenKind::Number("42".into()),
                 })],
             }
         );

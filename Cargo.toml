@@ -18,6 +18,7 @@ missing_docs = "warn"
 
 [workspace.lints.clippy]
 dbg_macro = "warn"
+new_without_default = "allow"
 print_stderr = "warn"
 redundant_clone = "warn"
 type_complexity = "allow"

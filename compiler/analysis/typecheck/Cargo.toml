@@ -7,5 +7,6 @@ edition = "2021"
 workspace = true
 
 [dependencies]
+derivative = "2"
 serde = { version = "1", features = ["derive"] }
 wipple-util = { path = "../../util" }

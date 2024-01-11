@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::{Driver, Role};
 use std::{
     cell::{Cell, RefCell},
@@ -10,92 +8,120 @@ use std::{
 use wipple_util::WithInfo;
 
 pub struct ItemDeclarationInner<D: Driver> {
-    parameters: Vec<D::Path>,
     bounds: Vec<WithInfo<D::Info, Instance<D>>>,
     r#type: Type<D>,
     body: WithInfo<D::Info, crate::UntypedExpression<D>>,
 }
 
-impl<D: Driver> crate::IntoItemDeclaration<D> for crate::ConstantDeclaration<D> {
-    fn into_item_declaration(self, _driver: &D) -> crate::ItemDeclaration<D> {
-        let r#type = infer_type(&self.r#type.item, self.r#type.replace(Role::Annotation));
+impl<D: Driver> crate::IntoItemDeclaration<D>
+    for (
+        WithInfo<D::Info, crate::ConstantDeclaration<D>>,
+        WithInfo<D::Info, crate::UntypedExpression<D>>,
+    )
+{
+    fn into_item_declaration(self, _driver: &D) -> WithInfo<D::Info, crate::ItemDeclaration<D>> {
+        let (declaration, body) = self;
 
-        let bounds = self.bounds.into_iter().map(infer_bound).collect::<Vec<_>>();
+        declaration.map(|declaration| {
+            let r#type = infer_type(
+                &declaration.r#type.item,
+                declaration.r#type.replace(Role::Annotation),
+            );
 
-        crate::ItemDeclaration(ItemDeclarationInner {
-            parameters: self.parameters,
-            bounds,
-            r#type,
-            body: self.body,
-        })
-    }
-}
+            let bounds = declaration
+                .bounds
+                .into_iter()
+                .map(infer_bound)
+                .collect::<Vec<_>>();
 
-impl<D: Driver> crate::IntoItemDeclaration<D> for crate::InstanceDeclaration<D> {
-    fn into_item_declaration(self, driver: &D) -> crate::ItemDeclaration<D> {
-        let trait_declaration = driver.get_trait_declaration(&self.instance.item.r#trait);
-
-        let body_info = self.body.info.clone();
-
-        let role = trait_declaration.replace(Role::Trait);
-
-        let type_context = TypeContext::new();
-        let errors: RefCell<Vec<_>> = Default::default();
-
-        let instantiation_context = InstantiationContext::from_parameters(
-            driver,
-            trait_declaration.item.parameters,
-            &type_context,
-            &body_info,
-            &errors,
-        );
-
-        let r#type = infer_type(&trait_declaration.item.r#type, role)
-            .instantiate(driver, &instantiation_context);
-
-        assert!(errors.into_inner().is_empty());
-
-        let bounds = self.bounds.into_iter().map(infer_bound).collect::<Vec<_>>();
-
-        crate::ItemDeclaration(ItemDeclarationInner {
-            parameters: self.parameters,
-            bounds,
-            r#type,
-            body: self.body,
+            crate::ItemDeclaration(ItemDeclarationInner {
+                bounds,
+                r#type,
+                body,
+            })
         })
     }
 }
 
 impl<D: Driver> crate::IntoItemDeclaration<D>
-    for Vec<WithInfo<D::Info, crate::UntypedExpression<D>>>
+    for (
+        WithInfo<D::Info, crate::InstanceDeclaration<D>>,
+        WithInfo<D::Info, crate::UntypedExpression<D>>,
+    )
 {
-    fn into_item_declaration(self, driver: &D) -> crate::ItemDeclaration<D> {
-        crate::ItemDeclaration(ItemDeclarationInner {
-            parameters: Vec::new(),
-            bounds: Vec::new(),
-            r#type: Type::new(TypeKind::Tuple(Vec::new()), Vec::new()),
-            body: WithInfo {
-                info: driver.top_level_info(),
-                item: crate::UntypedExpression::Block(self),
-            },
+    fn into_item_declaration(self, driver: &D) -> WithInfo<D::Info, crate::ItemDeclaration<D>> {
+        let (declaration, body) = self;
+
+        declaration.map(|declaration| {
+            let trait_declaration =
+                driver.get_trait_declaration(&declaration.instance.item.r#trait);
+
+            let body_info = body.info.clone();
+
+            let role = trait_declaration.replace(Role::Trait);
+
+            let type_context = TypeContext::new();
+            let errors: RefCell<Vec<_>> = Default::default();
+
+            let instantiation_context = InstantiationContext::from_parameters(
+                driver,
+                trait_declaration.item.parameters,
+                &type_context,
+                &body_info,
+                &errors,
+            );
+
+            let r#type = infer_type(&trait_declaration.item.r#type.item, role)
+                .instantiate(driver, &instantiation_context);
+
+            assert!(errors.into_inner().is_empty());
+
+            let bounds = declaration
+                .bounds
+                .into_iter()
+                .map(infer_bound)
+                .collect::<Vec<_>>();
+
+            crate::ItemDeclaration(ItemDeclarationInner {
+                bounds,
+                r#type,
+                body,
+            })
+        })
+    }
+}
+
+impl<D: Driver> crate::IntoItemDeclaration<D>
+    for WithInfo<D::Info, Vec<WithInfo<D::Info, crate::UntypedExpression<D>>>>
+{
+    fn into_item_declaration(self, driver: &D) -> WithInfo<D::Info, crate::ItemDeclaration<D>> {
+        self.map(|code| {
+            crate::ItemDeclaration(ItemDeclarationInner {
+                bounds: Vec::new(),
+                r#type: Type::new(TypeKind::Tuple(Vec::new()), Vec::new()),
+                body: WithInfo {
+                    info: driver.top_level_info(),
+                    item: crate::UntypedExpression::Block(code),
+                },
+            })
         })
     }
 }
 
 pub fn resolve<D: Driver>(
     driver: &D,
-    item_declaration: WithInfo<D::Info, impl crate::IntoItemDeclaration<D>>,
+    item_declaration: impl crate::IntoItemDeclaration<D>,
 ) -> crate::Result<D> {
     struct Queued<D: Driver> {
-        item: u32,
         use_info: D::Info,
         type_context: TypeContext<D>,
         bounds: RefCell<Vec<Vec<WithInfo<D::Info, Instance<D>>>>>,
         body: WithInfo<D::Info, Expression<D>>,
     }
 
-    let item_declaration =
-        item_declaration.map(|declaration| declaration.into_item_declaration(driver).0);
+    let item_declaration = item_declaration
+        .into_item_declaration(driver)
+        .map(|declaration| declaration.0);
 
     let recursion_stack: RefCell<Vec<_>> = Default::default();
     let recursion_limit = driver.recursion_limit();
@@ -120,7 +146,6 @@ pub fn resolve<D: Driver>(
     let bounds = vec![item_declaration.item.bounds];
 
     let mut queued = Queued {
-        item: 0,
         use_info: item_declaration.info,
         type_context,
         bounds: RefCell::new(bounds),
@@ -503,13 +528,13 @@ impl<'a, D: Driver> InstantiationContext<'a, D> {
                             .as_ref()
                             .map(|r#type| {
                                 infer_type(
-                                    r#type,
+                                    &r#type.item,
                                     parameter_declaration.replace(Role::TypeParameter),
                                 )
                             }),
                     );
 
-                    let kind = if parameter_declaration.item.infer
+                    let kind = if parameter_declaration.item.infer.is_some()
                         && options.instantiate_inferred_parameters_as_opaque
                     {
                         TypeKind::Opaque(variable)
@@ -887,20 +912,6 @@ fn unify_parameters_with_options<D: Driver>(
     }
 
     unified
-}
-
-#[must_use]
-fn unify_parameters<D: Driver>(
-    driver: &D,
-    parameters: &mut [Type<D>],
-    expected_parameters: &[Type<D>],
-) -> bool {
-    unify_parameters_with_options(
-        driver,
-        parameters,
-        expected_parameters,
-        UnifyOptions::default(),
-    )
 }
 
 #[must_use]
@@ -1327,7 +1338,7 @@ fn infer_expression<D: Driver>(
             );
 
             let r#type = infer_type(
-                &trait_declaration.item.r#type,
+                &trait_declaration.item.r#type.item,
                 trait_declaration.replace(Role::Trait),
             )
             .instantiate(context.driver, &instantiation_context);
@@ -1613,7 +1624,7 @@ fn infer_expression<D: Driver>(
                 context.errors,
             );
 
-            let values = match type_declaration.item.representation {
+            let values = match type_declaration.item.representation.item {
                 crate::TypeRepresentation::Enumeration(declared_variants) => {
                     let declared_variant = match declared_variants.get(&variant) {
                         Some(variant) => variant,
@@ -1625,7 +1636,7 @@ fn infer_expression<D: Driver>(
                         .zip(&declared_variant.item.value_types)
                         .map(|(value, declared_type)| {
                             let declared_type = infer_type(
-                                declared_type,
+                                &declared_type.item,
                                 declared_variant.replace(Role::VariantElement),
                             )
                             .instantiate(context.driver, &instantiation_context);
@@ -1854,7 +1865,7 @@ fn infer_pattern<D: Driver>(
                 );
 
                 TypeKind::Declared {
-                    path: enumeration.clone(),
+                    path: enumeration,
                     parameters: type_declaration
                         .item
                         .parameters
@@ -2376,26 +2387,6 @@ fn resolve_item<D: Driver>(
         return Ok(false); // try again in the next iteration
     }
 
-    // Enqueue the constant's body to be resolved with the evaluated bounds in
-    // scope
-
-    let infer_context = InferContext {
-        driver: context.driver,
-        type_context: context.type_context,
-        error_queue: context.error_queue,
-        errors: context.errors,
-        variables: Default::default(),
-    };
-
-    let mut body = infer_expression(item_declaration.item.body, &infer_context);
-
-    try_unify_expression(
-        context.driver,
-        body.as_mut(),
-        &instantiated_declared_ty,
-        context.error_queue,
-    );
-
     Ok(true)
 }
 
@@ -2418,7 +2409,7 @@ fn resolve_trait_parameters_from_type<D: Driver>(
         context.errors,
     );
 
-    let trait_type = infer_type(&trait_declaration.item.r#type, role)
+    let trait_type = infer_type(&trait_declaration.item.r#type.item, role)
         .instantiate(context.driver, &instantiation_context);
 
     try_unify_expression(
