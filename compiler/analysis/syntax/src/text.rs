@@ -77,7 +77,7 @@ pub(crate) fn parse_format_expression<D: Driver>(
     ParseFormatExpressionResult { segments, trailing }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct TextLiteralError {
     start: u32,
     end: u32,

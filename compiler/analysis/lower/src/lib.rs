@@ -41,7 +41,7 @@ pub struct Interface<D: Driver> {
 }
 
 impl<D: Driver> Interface<D> {
-    fn merge(&mut self, other: Self, errors: &mut Vec<WithInfo<D::Info, Error<D>>>) {
+    fn merge(&mut self, other: Self, errors: &mut Vec<WithInfo<D::Info, Error>>) {
         // TODO: Check for conflicts
 
         self.type_declarations.extend(other.type_declarations);
@@ -106,14 +106,20 @@ pub struct Result<D: Driver> {
     pub library: Library<D>,
 
     /// Any errors encountered while resolving the files.
-    pub errors: Vec<WithInfo<D::Info, Error<D>>>,
+    pub errors: Vec<WithInfo<D::Info, Error>>,
 }
 
 /// An error occurring during lowering.
 #[derive(Serialize, Deserialize, Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub enum Error<D: Driver> {
+pub enum Error {
     /// The expression refers to a name that is not defined in the current
     /// scope.
     UnresolvedName(String),
@@ -144,13 +150,7 @@ pub enum Error<D: Driver> {
     },
 
     /// This name is already defined in the current scope.
-    AlreadyDefined {
-        /// The path to the declaration that's already defined.
-        path: Path,
-
-        /// The info of the existing declaration.
-        info: D::Info,
-    },
+    AlreadyDefined(Path),
 
     /// Language declarations must be at the top level.
     NestedLanguageDeclaration,

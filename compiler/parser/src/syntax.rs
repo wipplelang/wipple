@@ -93,7 +93,7 @@ fn test_grammar<T: std::fmt::Debug + PartialEq>(
 }
 
 /// The [`wipple_syntax::Driver::Info`] returned by [`parse_top_level`].
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Info {
     /// The path to the source file.
     pub path: String,
@@ -103,7 +103,7 @@ pub struct Info {
 }
 
 /// An error occurring during [`parse`].
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct Error {
     /// The location in the source code where the error occurred.
     pub span: Range<u32>,
@@ -114,7 +114,7 @@ pub struct Error {
 
 /// The kind of [`Error`].
 #[allow(missing_docs)]
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum SyntaxKind {
     Name,
     Text,
@@ -507,21 +507,16 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
         };
 
         let constant_declaration = |parser: &mut Self| {
-            CONSTANT_DECLARATION.parse(&node).map(|mut vars| {
+            CONSTANT_DECLARATION.parse(&node).and_then(|mut vars| {
                 let name = vars.remove("name").unwrap().pop().unwrap();
                 let parameters = vars.remove("parameter").unwrap_or_default();
                 let bounds = vars.remove("bound").unwrap_or_default();
                 let r#type = vars.remove("type").unwrap().pop().unwrap();
 
                 let name = match name {
-                    Node::List(span, mut elements) => {
+                    Node::List(_, mut elements) => {
                         if elements.len() != 1 {
-                            parser.errors.push(Error {
-                                span,
-                                expected: SyntaxKind::Name,
-                            });
-
-                            return syntax::Statement::Error;
+                            return None;
                         }
 
                         let token = elements.pop().unwrap();
@@ -536,33 +531,12 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                     .into(),
                                     item: name.to_string(),
                                 },
-                                _ => {
-                                    parser.errors.push(Error {
-                                        span: token.span,
-                                        expected: SyntaxKind::Name,
-                                    });
-
-                                    return syntax::Statement::Error;
-                                }
+                                _ => return None,
                             },
-                            _ => {
-                                parser.errors.push(Error {
-                                    span: token.span().cloned().unwrap_or(span),
-                                    expected: SyntaxKind::Name,
-                                });
-
-                                return syntax::Statement::Error;
-                            }
+                            _ => return None,
                         }
                     }
-                    _ => {
-                        parser.errors.push(Error {
-                            span: span.clone(),
-                            expected: SyntaxKind::Name,
-                        });
-
-                        return syntax::Statement::Error;
-                    }
+                    _ => return None,
                 };
 
                 let parameters = parser.parse_type_function(span.clone(), parameters, bounds);
@@ -572,11 +546,11 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     r#type,
                 );
 
-                syntax::Statement::ConstantDeclaration {
+                Some(syntax::Statement::ConstantDeclaration {
                     name,
                     parameters,
                     r#type,
-                }
+                })
             })
         };
 
@@ -774,12 +748,11 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
 
             static STRUCTURE_EXPRESSION = r#"
             (repeat-block .
-                (or
-                    (non-associative-binary-operator
-                        ":"
-                        (variable . "field")
-                        (variable . "value"))
-                    (variable . "name")))
+                (non-associative-binary-operator
+                    ":"
+                    (list
+                        (variable . "field"))
+                    (variable . "value")))
         "#;
 
             static INTRINSIC_EXPRESSION = r#"
@@ -946,11 +919,10 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
 
         let structure = |parser: &mut Self| {
             STRUCTURE_EXPRESSION.parse(&node).and_then(|mut vars| {
-                let names = vars.remove("name").unwrap_or_default();
                 let fields = vars.remove("field").unwrap_or_default();
                 let values = vars.remove("value").unwrap_or_default();
 
-                if names.is_empty() && fields.is_empty() {
+                if fields.is_empty() {
                     return None;
                 }
 
@@ -961,40 +933,10 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     }
                     .into(),
                     item: syntax::Expression::Structure(
-                        names
+                        fields
                             .into_iter()
-                            .map(|name| match name {
-                                Node::Token(token) => match token.kind {
-                                    TokenKind::Symbol(name) => Some(WithInfo {
-                                        info: Info {
-                                            path: parser.driver.file_path(),
-                                            span: token.span.clone(),
-                                        }
-                                        .into(),
-                                        item: syntax::FieldValue {
-                                            name: WithInfo {
-                                                info: Info {
-                                                    path: parser.driver.file_path(),
-                                                    span: token.span.clone(),
-                                                }
-                                                .into(),
-                                                item: name.to_string(),
-                                            },
-                                            value: WithInfo {
-                                                info: Info {
-                                                    path: parser.driver.file_path(),
-                                                    span: token.span,
-                                                }
-                                                .into(),
-                                                item: syntax::Expression::Name(name.to_string()),
-                                            },
-                                        },
-                                    }),
-                                    _ => None,
-                                },
-                                _ => None,
-                            })
-                            .chain(fields.into_iter().zip(values).map(|(field, value)| {
+                            .zip(values)
+                            .map(|(field, value)| {
                                 let name = match field {
                                     Node::Token(token) => match token.kind {
                                         TokenKind::Symbol(name) => WithInfo {
@@ -1023,7 +965,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                     .into(),
                                     item: syntax::FieldValue { name, value },
                                 })
-                            }))
+                            })
                             .collect::<Option<Vec<_>>>()?,
                     ),
                 })
@@ -2087,16 +2029,20 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         span: token.span.clone(),
                     }
                     .into(),
-                    item: syntax::Type::Declared {
-                        name: WithInfo {
-                            info: Info {
-                                path: parser.driver.file_path(),
-                                span: token.span.clone(),
-                            }
-                            .into(),
-                            item: name.to_string(),
-                        },
-                        parameters: Vec::new(),
+                    item: if name == "_" {
+                        syntax::Type::Placeholder
+                    } else {
+                        syntax::Type::Declared {
+                            name: WithInfo {
+                                info: Info {
+                                    path: parser.driver.file_path(),
+                                    span: token.span.clone(),
+                                }
+                                .into(),
+                                item: name.to_string(),
+                            },
+                            parameters: Vec::new(),
+                        }
                     },
                 },
                 _ => {
@@ -2412,7 +2358,11 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         span: token.span.clone(),
                     }
                     .into(),
-                    item: syntax::Pattern::VariantOrName(name.to_string()),
+                    item: if name == "_" {
+                        syntax::Pattern::Wildcard
+                    } else {
+                        syntax::Pattern::VariantOrName(name.to_string())
+                    },
                 },
                 TokenKind::Number(number) => WithInfo {
                     info: Info {

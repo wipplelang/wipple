@@ -79,7 +79,7 @@ pub fn resolve<D: Driver>(
 #[derive(Debug, Derivative)]
 #[derivative(Default(bound = ""))]
 struct Info<D: Driver> {
-    errors: Vec<WithInfo<D::Info, crate::Error<D>>>,
+    errors: Vec<WithInfo<D::Info, crate::Error>>,
     dependencies: crate::Interface<D>,
     type_declarations: HashMap<crate::Path, WithInfo<D::Info, Option<crate::TypeDeclaration<D>>>>,
     trait_declarations: HashMap<crate::Path, WithInfo<D::Info, Option<crate::TraitDeclaration<D>>>>,
@@ -154,11 +154,10 @@ fn resolve_statements<D: Driver>(
 
                     match info.$declarations.entry(path.clone()) {
                         Entry::Occupied(entry) => {
-                            info.errors
-                                .push(statement.replace(crate::Error::AlreadyDefined {
-                                    path: entry.key().clone(),
-                                    info: entry.get().info.clone(),
-                                }));
+                            info.errors.push(
+                                statement
+                                    .replace(crate::Error::AlreadyDefined(entry.key().clone())),
+                            );
 
                             None
                         }
@@ -227,6 +226,8 @@ fn resolve_statements<D: Driver>(
                 parameters,
                 representation,
             } => {
+                info.path.push(crate::PathComponent::Type(name.item));
+
                 info.scopes.push_constant_scope();
 
                 let parameters = parameters
@@ -282,15 +283,14 @@ fn resolve_statements<D: Driver>(
 
                 info.scopes.pop_scope();
 
-                let declaration = info
-                    .type_declarations
-                    .get_mut(&info.make_path(crate::PathComponent::Type(name.item)))
-                    .unwrap();
+                let declaration = info.type_declarations.get_mut(&info.path).unwrap();
 
                 declaration.item = Some(crate::TypeDeclaration {
                     parameters,
                     representation,
                 });
+
+                info.path.pop().unwrap();
 
                 None
             }
@@ -299,6 +299,8 @@ fn resolve_statements<D: Driver>(
                 parameters,
                 r#type,
             } => {
+                info.path.push(crate::PathComponent::Trait(name.item));
+
                 info.scopes.push_constant_scope();
 
                 let parameters = parameters
@@ -310,12 +312,11 @@ fn resolve_statements<D: Driver>(
 
                 info.scopes.pop_scope();
 
-                let declaration = info
-                    .trait_declarations
-                    .get_mut(&info.make_path(crate::PathComponent::Trait(name.item)))
-                    .unwrap();
+                let declaration = info.trait_declarations.get_mut(&info.path).unwrap();
 
                 declaration.item = Some(crate::TraitDeclaration { parameters, r#type });
+
+                info.path.pop().unwrap();
 
                 None
             }
@@ -326,6 +327,8 @@ fn resolve_statements<D: Driver>(
                 r#type,
                 body,
             } => {
+                info.path.push(crate::PathComponent::Constant(name.item));
+
                 info.scopes.push_constant_scope();
                 let prev_next_variable = info.reset_next_variable();
 
@@ -346,9 +349,7 @@ fn resolve_statements<D: Driver>(
                 info.next_variable = prev_next_variable;
                 info.scopes.pop_scope();
 
-                let path = info.make_path(crate::PathComponent::Constant(name.item));
-
-                let declaration = info.constant_declarations.get_mut(&path).unwrap();
+                let declaration = info.constant_declarations.get_mut(&info.path).unwrap();
 
                 declaration.item = Some(crate::ConstantDeclaration {
                     parameters,
@@ -356,7 +357,9 @@ fn resolve_statements<D: Driver>(
                     r#type,
                 });
 
-                info.library.items.insert(path, body);
+                info.library.items.insert(info.path.clone(), body);
+
+                info.path.pop().unwrap();
 
                 None
             }
@@ -366,6 +369,10 @@ fn resolve_statements<D: Driver>(
                 instance,
                 body,
             } => {
+                info.path
+                    .push(crate::PathComponent::Instance(info.next_instance));
+                info.next_instance += 1;
+
                 info.scopes.push_constant_scope();
                 let prev_next_variable = info.reset_next_variable();
 
@@ -393,12 +400,10 @@ fn resolve_statements<D: Driver>(
                 info.next_variable = prev_next_variable;
                 info.scopes.pop_scope();
 
-                let path = info.make_path(crate::PathComponent::Instance(info.next_instance));
-
                 info.next_instance += 1;
 
                 info.instance_declarations.insert(
-                    path.clone(),
+                    info.path.clone(),
                     WithInfo {
                         info: statement.info,
                         item: Some(crate::InstanceDeclaration {
@@ -409,7 +414,9 @@ fn resolve_statements<D: Driver>(
                     },
                 );
 
-                info.library.items.insert(path, body);
+                info.library.items.insert(info.path.clone(), body);
+
+                info.path.pop().unwrap();
 
                 None
             }

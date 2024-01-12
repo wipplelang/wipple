@@ -5,7 +5,7 @@ use std::{
 };
 
 /// An item with information from the driver attached.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WithInfo<I, T> {
     /// Additional information about the item provided by the driver.

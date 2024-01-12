@@ -169,7 +169,7 @@ impl<'src> Node<'src> {
 }
 
 /// An error occurring during [`tokenize`] or [`read`].
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct Error {
     /// The location in the source code where the error occurred.
     pub span: Range<u32>,
@@ -185,7 +185,7 @@ impl Error {
 }
 
 /// The kind of [`Error`].
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum ErrorKind {
     /// The tokenizer encountered an invalid token.
     InvalidToken,

@@ -2,9 +2,10 @@
 
 mod convert;
 
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-
 use std::collections::HashMap;
+
 pub use wipple_codegen as codegen;
 pub use wipple_lower as lower;
 pub use wipple_parser as parser;
@@ -41,7 +42,7 @@ impl Driver {
 
 /// The information contained within items produced by the compiler.
 #[non_exhaustive]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Info {
     /// Information produced by the parser.
@@ -123,12 +124,12 @@ pub struct Result {
 
 /// Errors produced by the compiler.
 #[allow(missing_docs)]
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Error {
     Read(parser::reader::Error),
     Parse(parser::syntax::Error),
     Syntax(syntax::Error),
-    Lower(lower::Error<Driver>),
+    Lower(lower::Error),
     Typecheck(typecheck::Error<Driver>),
 }
 
@@ -357,7 +358,7 @@ impl Driver {
         Result {
             interface: self.interface,
             library: self.library,
-            errors,
+            errors: errors.into_iter().unique().collect(),
         }
     }
 }

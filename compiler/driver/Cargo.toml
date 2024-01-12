@@ -7,6 +7,7 @@ edition = "2021"
 workspace = true
 
 [dependencies]
+itertools = "0.12"
 serde = { version = "1", features = ["derive"] }
 wipple-codegen = { path = "../codegen" }
 wipple-lower = { path = "../analysis/lower" }

@@ -11,7 +11,7 @@ use wipple_util::WithInfo;
 /// Provides the typechecker with information about the program.
 pub trait Driver: Sized {
     /// Additional information attached to every item.
-    type Info: Debug + Clone + Serialize + DeserializeOwned;
+    type Info: Debug + Clone + Eq + Hash + Serialize + DeserializeOwned;
 
     /// Represents a path used to resolve declarations.
     type Path: Debug + Clone + Eq + Hash + Serialize + DeserializeOwned;
@@ -104,7 +104,13 @@ pub struct Result<D: Driver> {
 
 /// An error occurring during typechecking.
 #[derive(Serialize, Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum Error<D: Driver> {
     /// The typechecker hit the recursion limit while attempting to resolve the
@@ -170,11 +176,23 @@ pub enum Error<D: Driver> {
         /// [`ErrorKind::UnresolvedInstance::trait`].
         stack: Vec<D::Info>,
     },
+
+    /// A structure expression was missing fields.
+    MissingFields(Vec<String>),
+
+    /// A structure expression contained an extra field.
+    ExtraField,
 }
 
 /// The type of an expression.
 #[derive(Serialize, Deserialize, Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum Type<D: Driver> {
     /// A type to be inferred or that could not be resolved.
@@ -589,7 +607,7 @@ pub enum TypedExpressionKind<D: Driver> {
         structure: D::Path,
 
         /// The values of the structure's fields.
-        fields: Vec<TypedStructureFieldValue<D>>,
+        fields: Vec<WithInfo<D::Info, TypedStructureFieldValue<D>>>,
     },
 
     /// Create a variant of an enumeration.
@@ -732,7 +750,7 @@ pub struct FieldPattern<D: Driver> {
 
 /// The role of a type.
 #[allow(missing_docs)]
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Role {
     Pattern,
