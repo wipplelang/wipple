@@ -748,13 +748,19 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src>
             };
 
             match operators.len() {
-                0 => Node::List(
-                    span,
-                    elements
-                        .into_iter()
-                        .map(|element| read_operators(element, errors))
-                        .collect(),
-                ),
+                0 => {
+                    if elements.len() == 1 {
+                        elements.pop().unwrap()
+                    } else {
+                        Node::List(
+                            span,
+                            elements
+                                .into_iter()
+                                .map(|element| read_operators(element, errors))
+                                .collect(),
+                        )
+                    }
+                }
                 1 => {
                     let (index, token, associativity) = operators.last().unwrap();
 
@@ -975,7 +981,7 @@ impl Node<'_> {
             ),
 
             Node::NonAssociativeBinaryOperator(_, operator, left, right) => SExp::list([
-                SExp::symbol("binary-operator"),
+                SExp::symbol("non-associative-binary-operator"),
                 SExp::list([SExp::symbol("token"), operator.to_lexpr_value()]),
                 SExp::list([SExp::symbol("left"), left.to_lexpr_value()]),
                 SExp::list([SExp::symbol("right"), right.to_lexpr_value()]),

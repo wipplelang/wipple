@@ -16,9 +16,6 @@ pub trait Driver: Sized {
     /// Represents a path used to resolve declarations.
     type Path: Debug + Clone + Eq + Hash + Serialize + DeserializeOwned;
 
-    /// Represents a number value.
-    type Number: Debug + Clone + Serialize + DeserializeOwned;
-
     /// The recursion limit.
     fn recursion_limit(&self) -> u32;
 
@@ -90,7 +87,7 @@ pub fn resolve<D: Driver>(
     resolve::resolve(driver, item_declaration)
 }
 
-/// The result of [`resolve_item`].
+/// The result of [`resolve`].
 #[derive(Serialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
@@ -288,7 +285,7 @@ pub enum TypeRepresentation<D: Driver> {
     Structure(HashMap<String, WithInfo<D::Info, StructureField<D>>>),
 
     /// The type can be one of several variants.
-    Enumeration(HashMap<String, WithInfo<D::Info, EnumerationVariant<D>>>),
+    Enumeration(HashMap<D::Path, WithInfo<D::Info, EnumerationVariant<D>>>),
 }
 
 /// A single field in a type represented as a structure.
@@ -369,7 +366,7 @@ pub enum UntypedExpression<D: Driver> {
     Trait(D::Path),
 
     /// A number literal.
-    Number(D::Number),
+    Number(String),
 
     /// A text literal.
     Text(String),
@@ -433,11 +430,8 @@ pub enum UntypedExpression<D: Driver> {
     /// Create a variant of an enumeration.
     #[serde(rename_all = "camelCase")]
     Variant {
-        /// The enumeration this value refers to.
-        enumeration: D::Path,
-
         /// The variant this value creates.
-        variant: String,
+        variant: WithInfo<D::Info, D::Path>,
 
         /// The variant's associated values.
         values: Vec<WithInfo<D::Info, UntypedExpression<D>>>,
@@ -543,7 +537,7 @@ pub enum TypedExpressionKind<D: Driver> {
     Trait(D::Path),
 
     /// A number literal.
-    Number(D::Number),
+    Number(String),
 
     /// A text literal.
     Text(String),
@@ -613,11 +607,8 @@ pub enum TypedExpressionKind<D: Driver> {
     /// Create a variant of an enumeration.
     #[serde(rename_all = "camelCase")]
     Variant {
-        /// The enumeration this value refers to.
-        enumeration: D::Path,
-
         /// The variant this value creates.
-        variant: String,
+        variant: WithInfo<D::Info, D::Path>,
 
         /// The variant's associated values.
         values: Vec<WithInfo<D::Info, TypedExpression<D>>>,
@@ -702,7 +693,7 @@ pub enum Pattern<D: Driver> {
     Wildcard,
 
     /// A number pattern.
-    Number(D::Number),
+    Number(String),
 
     /// A text pattern.
     Text(String),

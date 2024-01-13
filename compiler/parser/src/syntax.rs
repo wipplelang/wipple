@@ -15,7 +15,6 @@ pub struct Driver;
 
 impl wipple_syntax::Driver for Driver {
     type Info = self::Info;
-    type Number = String;
 
     fn file_path(&self) -> String {
         String::from("test")
@@ -125,7 +124,6 @@ pub enum SyntaxKind {
     Statement,
     Pattern,
     Expression,
-    Number,
     Type,
     TypeMember,
     Arm,
@@ -211,24 +209,6 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
         D::Info: From<Info>,
     {
         grammar! {
-            static TYPE_OR_TRAIT_DECLARATION = r#"
-                (non-associative-binary-operator
-                    ":"
-                    (list
-                        (variable . "name"))
-                    (or
-                        (non-associative-binary-operator
-                            "=>"
-                            (or
-                                (non-associative-binary-operator
-                                    "where"
-                                    (repeat-list . (variable . "parameter"))
-                                    (repeat-list . (variable . "bound")))
-                                (repeat-list . (variable . "parameter")))
-                            (variable . "declaration"))
-                        (variable . "declaration")))
-            "#;
-
             static INSTANCE_DECLARATION = r#"
                 (non-associative-binary-operator
                     ":"
@@ -257,8 +237,24 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     (list
                         (symbol . "language")
                         (variable . "name"))
-                    (list
-                        (variable . "item")))
+                    (variable . "item"))
+            "#;
+
+            static TYPE_OR_TRAIT_DECLARATION = r#"
+                (non-associative-binary-operator
+                    ":"
+                    (variable . "name")
+                    (or
+                        (non-associative-binary-operator
+                            "=>"
+                            (or
+                                (non-associative-binary-operator
+                                    "where"
+                                    (repeat-list . (variable . "parameter"))
+                                    (repeat-list . (variable . "bound")))
+                                (repeat-list . (variable . "parameter")))
+                            (variable . "declaration"))
+                        (variable . "declaration")))
             "#;
 
             static CONSTANT_DECLARATION = r#"
@@ -285,131 +281,6 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     (variable . "value"))
             "#;
         }
-
-        let type_or_trait_declaration = |parser: &mut Self| {
-            TYPE_OR_TRAIT_DECLARATION.parse(&node).and_then(|mut vars| {
-                let name = vars.remove("name").unwrap().pop().unwrap();
-                let parameters = vars.remove("parameter").unwrap_or_default();
-                let bounds = vars.remove("bound").unwrap_or_default();
-                let declaration = vars.remove("declaration").unwrap().pop().unwrap();
-
-                grammar! {
-                    static TYPE_DECLARATION = r#"
-                    (or
-                        (list
-                            (symbol . "type"))
-                        (list
-                            (symbol . "type")
-                            (variable . "representation")))
-                "#;
-
-                    static TRAIT_DECLARATION = r#"
-                    (or
-                        (list
-                            (symbol . "trait"))
-                        (list
-                            (symbol . "trait")
-                            (variable . "type")))
-                "#;
-                }
-
-                let name = match name {
-                    Node::Token(token) => match token.kind {
-                        TokenKind::Symbol(name) => WithInfo {
-                            info: Info {
-                                path: parser.driver.file_path(),
-                                span: token.span,
-                            }
-                            .into(),
-                            item: name.to_string(),
-                        },
-                        _ => {
-                            parser.errors.push(Error {
-                                span: token.span,
-                                expected: SyntaxKind::Name,
-                            });
-
-                            return Some(syntax::Statement::Error);
-                        }
-                    },
-                    _ => {
-                        parser.errors.push(Error {
-                            span: name.span().cloned().unwrap_or_else(|| span.clone()),
-                            expected: SyntaxKind::Name,
-                        });
-
-                        return Some(syntax::Statement::Error);
-                    }
-                };
-
-                let parameters = parser.parse_type_function(span.clone(), parameters, bounds);
-
-                let type_declaration = |parser: &mut Self| {
-                    TYPE_DECLARATION.parse(&declaration).map(|mut vars| {
-                        let representation = match vars
-                            .remove("representation")
-                            .map(|mut value| value.pop().unwrap())
-                        {
-                            Some(representation) => parser.parse_type_representation(
-                                representation
-                                    .span()
-                                    .cloned()
-                                    .unwrap_or_else(|| span.clone()),
-                                representation,
-                            ),
-                            None => WithInfo {
-                                info: Info {
-                                    path: parser.driver.file_path(),
-                                    span: declaration
-                                        .span()
-                                        .cloned()
-                                        .unwrap_or_else(|| span.clone()),
-                                }
-                                .into(),
-                                item: syntax::TypeRepresentation::Marker,
-                            },
-                        };
-
-                        syntax::Statement::TypeDeclaration {
-                            name: name.clone(),
-                            parameters: parameters.clone(),
-                            representation,
-                        }
-                    })
-                };
-
-                let trait_declaration = |parser: &mut Self| {
-                    TRAIT_DECLARATION.parse(&declaration).map(|mut vars| {
-                        let r#type = match vars.remove("type").map(|mut value| value.pop().unwrap())
-                        {
-                            Some(r#type) => parser.parse_type(
-                                r#type.span().cloned().unwrap_or_else(|| span.clone()),
-                                r#type,
-                            ),
-                            None => WithInfo {
-                                info: Info {
-                                    path: self.driver.file_path(),
-                                    span: declaration
-                                        .span()
-                                        .cloned()
-                                        .unwrap_or_else(|| span.clone()),
-                                }
-                                .into(),
-                                item: syntax::Type::Error,
-                            },
-                        };
-
-                        syntax::Statement::TraitDeclaration {
-                            name: name.clone(),
-                            parameters: parameters.clone(),
-                            r#type,
-                        }
-                    })
-                };
-
-                type_declaration(parser).or_else(|| trait_declaration(parser))
-            })
-        };
 
         let instance_declaration = |parser: &mut Self| {
             INSTANCE_DECLARATION.parse(&node).map(|mut vars| {
@@ -506,6 +377,115 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
             })
         };
 
+        let type_or_trait_declaration = |parser: &mut Self| {
+            TYPE_OR_TRAIT_DECLARATION.parse(&node).and_then(|mut vars| {
+                let name = vars.remove("name").unwrap().pop().unwrap();
+                let parameters = vars.remove("parameter").unwrap_or_default();
+                let bounds = vars.remove("bound").unwrap_or_default();
+                let declaration = vars.remove("declaration").unwrap().pop().unwrap();
+
+                grammar! {
+                    static TYPE_DECLARATION = r#"
+                    (or
+                        (symbol . "type")
+                        (list
+                            (symbol . "type")
+                            (variable . "representation")))
+                "#;
+
+                    static TRAIT_DECLARATION = r#"
+                    (or
+                        (symbol . "trait")
+                        (list
+                            (symbol . "trait")
+                            (variable . "type")))
+                "#;
+                }
+
+                let name = match name {
+                    Node::Token(token) => match token.kind {
+                        TokenKind::Symbol(name) => WithInfo {
+                            info: Info {
+                                path: parser.driver.file_path(),
+                                span: token.span,
+                            }
+                            .into(),
+                            item: name.to_string(),
+                        },
+                        _ => return None,
+                    },
+                    _ => return None,
+                };
+
+                let parameters = parser.parse_type_function(span.clone(), parameters, bounds);
+
+                let type_declaration = |parser: &mut Self| {
+                    TYPE_DECLARATION.parse(&declaration).map(|mut vars| {
+                        let representation = match vars
+                            .remove("representation")
+                            .map(|mut value| value.pop().unwrap())
+                        {
+                            Some(representation) => parser.parse_type_representation(
+                                representation
+                                    .span()
+                                    .cloned()
+                                    .unwrap_or_else(|| span.clone()),
+                                representation,
+                            ),
+                            None => WithInfo {
+                                info: Info {
+                                    path: parser.driver.file_path(),
+                                    span: declaration
+                                        .span()
+                                        .cloned()
+                                        .unwrap_or_else(|| span.clone()),
+                                }
+                                .into(),
+                                item: syntax::TypeRepresentation::Marker,
+                            },
+                        };
+
+                        syntax::Statement::TypeDeclaration {
+                            name: name.clone(),
+                            parameters: parameters.clone(),
+                            representation,
+                        }
+                    })
+                };
+
+                let trait_declaration = |parser: &mut Self| {
+                    TRAIT_DECLARATION.parse(&declaration).map(|mut vars| {
+                        let r#type = match vars.remove("type").map(|mut value| value.pop().unwrap())
+                        {
+                            Some(r#type) => parser.parse_type(
+                                r#type.span().cloned().unwrap_or_else(|| span.clone()),
+                                r#type,
+                            ),
+                            None => WithInfo {
+                                info: Info {
+                                    path: self.driver.file_path(),
+                                    span: declaration
+                                        .span()
+                                        .cloned()
+                                        .unwrap_or_else(|| span.clone()),
+                                }
+                                .into(),
+                                item: syntax::Type::Error,
+                            },
+                        };
+
+                        syntax::Statement::TraitDeclaration {
+                            name: name.clone(),
+                            parameters: parameters.clone(),
+                            r#type,
+                        }
+                    })
+                };
+
+                type_declaration(parser).or_else(|| trait_declaration(parser))
+            })
+        };
+
         let constant_declaration = |parser: &mut Self| {
             CONSTANT_DECLARATION.parse(&node).and_then(|mut vars| {
                 let name = vars.remove("name").unwrap().pop().unwrap();
@@ -514,28 +494,17 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 let r#type = vars.remove("type").unwrap().pop().unwrap();
 
                 let name = match name {
-                    Node::List(_, mut elements) => {
-                        if elements.len() != 1 {
-                            return None;
-                        }
-
-                        let token = elements.pop().unwrap();
-
-                        match token {
-                            Node::Token(token) => match token.kind {
-                                TokenKind::Symbol(name) => WithInfo {
-                                    info: Info {
-                                        path: parser.driver.file_path(),
-                                        span: token.span,
-                                    }
-                                    .into(),
-                                    item: name.to_string(),
-                                },
-                                _ => return None,
-                            },
-                            _ => return None,
-                        }
-                    }
+                    Node::Token(token) => match token.kind {
+                        TokenKind::Symbol(name) => WithInfo {
+                            info: Info {
+                                path: parser.driver.file_path(),
+                                span: token.span,
+                            }
+                            .into(),
+                            item: name.to_string(),
+                        },
+                        _ => return None,
+                    },
                     _ => return None,
                 };
 
@@ -571,10 +540,10 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
             })
         };
 
-        let statement = type_or_trait_declaration(self)
-            .or_else(|| instance_declaration(self))
-            .or_else(|| constant_declaration(self))
+        let statement = instance_declaration(self)
             .or_else(|| language_declaration(self))
+            .or_else(|| type_or_trait_declaration(self))
+            .or_else(|| constant_declaration(self))
             .or_else(|| assignment(self))
             .unwrap_or_else(|| {
                 syntax::Statement::Expression(self.parse_expression(span.clone(), node))
@@ -750,8 +719,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
             (repeat-block .
                 (non-associative-binary-operator
                     ":"
-                    (list
-                        (variable . "field"))
+                    (variable . "field")
                     (variable . "value")))
         "#;
 
@@ -1316,17 +1284,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         span: token.span.clone(),
                     }
                     .into(),
-                    item: match number.parse() {
-                        Ok(number) => syntax::Expression::Number(number),
-                        Err(_) => {
-                            parser.errors.push(Error {
-                                span: span.clone(),
-                                expected: SyntaxKind::Number,
-                            });
-
-                            syntax::Expression::Error
-                        }
-                    },
+                    item: syntax::Expression::Number(number.to_string()),
                 },
                 TokenKind::Text(text) | TokenKind::Asset(text) => WithInfo {
                     info: Info {
@@ -1488,8 +1446,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         (list
                             (match "infer" (symbol . "infer"))
                             (variable . "name"))
-                        (list
-                            (variable . "name")))
+                        (variable . "name"))
                     (variable . "default"))
                 (list
                     (match "infer" (symbol . "infer"))
@@ -1802,17 +1759,15 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
             static FIELD_EXPRESSION = r#"
             (non-associative-binary-operator
                 "::"
-                (list
-                    (variable . "name"))
+                (variable . "name")
                 (variable . "type"))
         "#;
 
             static VARIANT_EXPRESSION = r#"
             (or
-                (list
-                    (variable . "name"))
                 (prefix-list
-                    (variable . "name")))
+                    (variable . "name"))
+                (variable . "name"))
         "#;
         }
 
@@ -2172,28 +2127,16 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 (binary-operator
                     "or"
                     (partially-applied-left .
-                        (or
-                            (list
-                                (variable . "left"))
-                            (variable . "left"))))
+                        (variable . "left")))
                 (binary-operator
                     "or"
                     (partially-applied-right .
-                        (or
-                            (list
-                                (variable . "right"))
-                            (variable . "right"))))
+                        (variable . "right")))
                 (binary-operator
                     "or"
                     (applied
-                        (or
-                            (list
-                                (variable . "left"))
-                            (variable . "left"))
-                        (or
-                            (list
-                                (variable . "right"))
-                            (variable . "right")))))
+                        (variable . "left")
+                        (variable . "right"))))
         "#;
 
             static DESTRUCTURE_PATTERN = r#"
@@ -2370,17 +2313,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         span: token.span.clone(),
                     }
                     .into(),
-                    item: match number.parse() {
-                        Ok(number) => syntax::Pattern::Number(number),
-                        Err(_) => {
-                            parser.errors.push(Error {
-                                span: span.clone(),
-                                expected: SyntaxKind::Number,
-                            });
-
-                            syntax::Pattern::Error
-                        }
-                    },
+                    item: syntax::Pattern::Number(number.to_string()),
                 },
                 TokenKind::Text(text) | TokenKind::Asset(text) => WithInfo {
                     info: Info {

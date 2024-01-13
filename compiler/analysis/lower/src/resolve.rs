@@ -66,7 +66,7 @@ pub fn resolve<D: Driver>(
     interface.language_declarations.extend(
         info.language_declarations
             .into_iter()
-            .map(|(name, path)| (name, path.unwrap())),
+            .filter_map(|(name, path)| Some((name, path?))),
     );
 
     crate::Result {
@@ -210,12 +210,12 @@ fn resolve_statements<D: Driver>(
     // Ensure that executable code is resolved after type and trait definitions,
     // so that references to types and traits can use the resolved definition
     statements.sort_by_key(|statement| match statement.item {
-        crate::UnresolvedStatement::Language { .. } => 0,
-        crate::UnresolvedStatement::Type { .. } | crate::UnresolvedStatement::Trait { .. } => 1,
-        crate::UnresolvedStatement::Constant { .. }
-        | crate::UnresolvedStatement::Instance { .. }
-        | crate::UnresolvedStatement::Assignment { .. }
-        | crate::UnresolvedStatement::Expression(_) => 2,
+        crate::UnresolvedStatement::Type { .. } | crate::UnresolvedStatement::Trait { .. } => 0,
+        crate::UnresolvedStatement::Constant { .. } => 1,
+        crate::UnresolvedStatement::Instance { .. }
+        | crate::UnresolvedStatement::Language { .. } => 2,
+        crate::UnresolvedStatement::Assignment { .. }
+        | crate::UnresolvedStatement::Expression(_) => 3,
     });
 
     statements
@@ -226,7 +226,8 @@ fn resolve_statements<D: Driver>(
                 parameters,
                 representation,
             } => {
-                info.path.push(crate::PathComponent::Type(name.item));
+                info.path
+                    .push(crate::PathComponent::Type(name.item.clone()));
 
                 info.scopes.push_constant_scope();
 
@@ -235,24 +236,31 @@ fn resolve_statements<D: Driver>(
                     .map(|type_parameter| resolve_type_parameter(type_parameter, info))
                     .collect::<Vec<_>>();
 
+                let mut constructors = Vec::new();
                 let representation = representation.map(|representation| match representation {
                     crate::UnresolvedTypeRepresentation::Marker => {
-                        // TODO: Add constructor
+                        constructors.push(generate_marker_constructor(
+                            name,
+                            parameters.clone(),
+                            info,
+                        ));
 
                         crate::TypeRepresentation::Marker
                     }
                     crate::UnresolvedTypeRepresentation::Structure(fields) => {
+                        constructors.push(generate_structure_constructor(
+                            name,
+                            parameters.clone(),
+                            info,
+                        ));
+
                         crate::TypeRepresentation::Structure(
                             fields
                                 .into_iter()
                                 .map(|field| {
-                                    field.map(|field| {
-                                        // TODO: Add constructor
-
-                                        crate::Field {
-                                            name: field.name,
-                                            r#type: resolve_type(field.r#type, info),
-                                        }
+                                    field.map(|field| crate::Field {
+                                        name: field.name,
+                                        r#type: resolve_type(field.r#type, info),
                                     })
                                 })
                                 .collect(),
@@ -264,15 +272,27 @@ fn resolve_statements<D: Driver>(
                                 .into_iter()
                                 .map(|variant| {
                                     variant.map(|variant| {
-                                        // TODO: Add constructor
+                                        let variant_path = variant.name.clone().map(|name| {
+                                            info.make_path(crate::PathComponent::Variant(name))
+                                        });
+
+                                        let value_types = variant
+                                            .types
+                                            .into_iter()
+                                            .map(|r#type| resolve_type(r#type, info))
+                                            .collect::<Vec<_>>();
+
+                                        constructors.push(generate_variant_constructor(
+                                            variant.name,
+                                            parameters.clone(),
+                                            variant_path.clone(),
+                                            value_types.clone(),
+                                            info,
+                                        ));
 
                                         crate::Variant {
-                                            name: variant.name,
-                                            types: variant
-                                                .types
-                                                .into_iter()
-                                                .map(|r#type| resolve_type(r#type, info))
-                                                .collect(),
+                                            name: variant_path,
+                                            types: value_types,
                                         }
                                     })
                                 })
@@ -291,6 +311,12 @@ fn resolve_statements<D: Driver>(
                 });
 
                 info.path.pop().unwrap();
+
+                dbg!(&constructors);
+
+                for (name, path) in constructors {
+                    info.scopes.define(name, path);
+                }
 
                 None
             }
@@ -422,11 +448,24 @@ fn resolve_statements<D: Driver>(
             }
             crate::UnresolvedStatement::Language { name, item } => {
                 let path = resolve_name(item, info, |candidates| {
-                    candidates
+                    let mut candidates = candidates
                         .iter()
                         .filter(|path| !path.last().unwrap().is_local())
                         .cloned()
-                        .collect::<Vec<_>>()
+                        .collect::<Vec<_>>();
+
+                    candidates.sort_by_key(|path| match path.last().unwrap() {
+                        crate::PathComponent::Type(_) | crate::PathComponent::Trait(_) => 0,
+                        crate::PathComponent::Constant(_)
+                        | crate::PathComponent::Constructor(_)
+                        | crate::PathComponent::Variant(_) => 1,
+                        crate::PathComponent::Instance(_)
+                        | crate::PathComponent::Language(_)
+                        | crate::PathComponent::TypeParameter(_)
+                        | crate::PathComponent::Variable(_) => 2,
+                    });
+
+                    vec![candidates.into_iter().next().unwrap()]
                 })?;
 
                 let declaration = info.language_declarations.get_mut(&name.item).unwrap();
@@ -451,6 +490,233 @@ fn resolve_statements<D: Driver>(
             }
         })
         .collect()
+}
+
+fn generate_marker_constructor<D: Driver>(
+    name: WithInfo<D::Info, String>,
+    parameters: Vec<Vec<crate::PathComponent>>,
+    info: &mut Info<D>,
+) -> (String, crate::Path) {
+    let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
+
+    let constructor_declaration = crate::ConstantDeclaration {
+        parameters: parameters.clone(),
+        bounds: Vec::new(),
+        r#type: WithInfo {
+            info: name.info.clone(),
+            item: crate::Type::Declared {
+                path: WithInfo {
+                    info: name.info.clone(),
+                    item: info.path.clone(),
+                },
+                parameters: parameters
+                    .into_iter()
+                    .map(|parameter| WithInfo {
+                        info: name.info.clone(),
+                        item: crate::Type::Parameter(parameter),
+                    })
+                    .collect(),
+            },
+        },
+    };
+
+    let constructor_body = WithInfo {
+        info: name.info.clone(),
+        item: crate::Expression::Marker(info.path.clone()),
+    };
+
+    info.constant_declarations.insert(
+        constructor_path.clone(),
+        WithInfo {
+            info: name.info,
+            item: Some(constructor_declaration),
+        },
+    );
+
+    info.library
+        .items
+        .insert(constructor_path.clone(), constructor_body);
+
+    (name.item, constructor_path)
+}
+
+fn generate_structure_constructor<D: Driver>(
+    name: WithInfo<D::Info, String>,
+    parameters: Vec<Vec<crate::PathComponent>>,
+    info: &mut Info<D>,
+) -> (String, crate::Path) {
+    let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
+
+    let constructor_declaration = crate::ConstantDeclaration {
+        parameters: parameters.clone(),
+        bounds: Vec::new(),
+        r#type: WithInfo {
+            info: name.info.clone(),
+            item: crate::Type::Function {
+                input: WithInfo {
+                    info: name.info.clone(),
+                    item: crate::Type::Declared {
+                        path: WithInfo {
+                            info: name.info.clone(),
+                            item: info.path.clone(),
+                        },
+                        parameters: parameters
+                            .clone()
+                            .into_iter()
+                            .map(|parameter| WithInfo {
+                                info: name.info.clone(),
+                                item: crate::Type::Parameter(parameter),
+                            })
+                            .collect(),
+                    },
+                }
+                .boxed(),
+                output: WithInfo {
+                    info: name.info.clone(),
+                    item: crate::Type::Declared {
+                        path: WithInfo {
+                            info: name.info.clone(),
+                            item: info.path.clone(),
+                        },
+                        parameters: parameters
+                            .into_iter()
+                            .map(|parameter| WithInfo {
+                                info: name.info.clone(),
+                                item: crate::Type::Parameter(parameter),
+                            })
+                            .collect(),
+                    },
+                }
+                .boxed(),
+            },
+        },
+    };
+
+    let constructor_body = {
+        let input_variable = info.next_variable;
+        info.next_variable += 1;
+        let input_variable = info.make_path(crate::PathComponent::Variable(input_variable));
+
+        WithInfo {
+            info: name.info.clone(),
+            item: crate::Expression::Function {
+                pattern: WithInfo {
+                    info: name.info.clone(),
+                    item: crate::Pattern::Variable(input_variable.clone()),
+                },
+                body: WithInfo {
+                    info: name.info.clone(),
+                    item: crate::Expression::Variable(input_variable),
+                }
+                .boxed(),
+            },
+        }
+    };
+
+    info.constant_declarations.insert(
+        constructor_path.clone(),
+        WithInfo {
+            info: name.info,
+            item: Some(constructor_declaration),
+        },
+    );
+
+    info.library
+        .items
+        .insert(constructor_path.clone(), constructor_body);
+
+    (name.item, constructor_path)
+}
+
+fn generate_variant_constructor<D: Driver>(
+    name: WithInfo<D::Info, String>,
+    parameters: Vec<Vec<crate::PathComponent>>,
+    variant_path: WithInfo<D::Info, crate::Path>,
+    value_types: Vec<WithInfo<D::Info, crate::Type<D>>>,
+    info: &mut Info<D>,
+) -> (String, crate::Path) {
+    let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
+
+    let constructor_declaration = crate::ConstantDeclaration {
+        parameters: parameters.clone(),
+        bounds: Vec::new(),
+        r#type: value_types.clone().into_iter().rfold(
+            WithInfo {
+                info: name.info.clone(),
+                item: crate::Type::Declared {
+                    path: WithInfo {
+                        info: name.info.clone(),
+                        item: info.path.clone(),
+                    },
+                    parameters: parameters
+                        .into_iter()
+                        .map(|parameter| WithInfo {
+                            info: name.info.clone(),
+                            item: crate::Type::Parameter(parameter),
+                        })
+                        .collect(),
+                },
+            },
+            |result, next| WithInfo {
+                info: name.info.clone(),
+                item: crate::Type::Function {
+                    input: next.boxed(),
+                    output: result.boxed(),
+                },
+            },
+        ),
+    };
+
+    let constructor_body = {
+        let input_variables = value_types
+            .iter()
+            .map(|_| {
+                let input_variable = info.next_variable;
+                info.next_variable += 1;
+                info.make_path(crate::PathComponent::Variable(input_variable))
+            })
+            .collect::<Vec<_>>();
+
+        input_variables.clone().into_iter().rfold(
+            WithInfo {
+                info: name.info.clone(),
+                item: crate::Expression::Variant {
+                    variant: variant_path,
+                    values: input_variables
+                        .into_iter()
+                        .map(|input_variable| WithInfo {
+                            info: name.info.clone(),
+                            item: crate::Expression::Variable(input_variable),
+                        })
+                        .collect(),
+                },
+            },
+            |result, next| WithInfo {
+                info: name.info.clone(),
+                item: crate::Expression::Function {
+                    pattern: WithInfo {
+                        info: name.info.clone(),
+                        item: crate::Pattern::Variable(next),
+                    },
+                    body: result.boxed(),
+                },
+            },
+        )
+    };
+
+    info.constant_declarations.insert(
+        constructor_path.clone(),
+        WithInfo {
+            info: name.info,
+            item: Some(constructor_declaration),
+        },
+    );
+
+    info.library
+        .items
+        .insert(constructor_path.clone(), constructor_body);
+
+    (name.item, constructor_path)
 }
 
 fn resolve_expression<D: Driver>(
@@ -1032,6 +1298,7 @@ fn try_resolve_name<D: Driver, T>(
                 }
                 1 => return Some(name.replace(candidates.pop().unwrap())),
                 _ => {
+                    panic!();
                     info.errors.push(name.replace(crate::Error::AmbiguousName {
                         name: name.item.clone(),
                         candidates: paths,

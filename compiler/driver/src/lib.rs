@@ -55,9 +55,6 @@ impl From<parser::syntax::Info> for Info {
     }
 }
 
-/// Represents a number.
-pub type Number = String; // TODO: Use rust_decimal
-
 /// A file provided to [`Driver::compile`].
 #[derive(Debug, Clone)]
 pub struct File {
@@ -102,10 +99,21 @@ pub struct Interface {
 #[derive(Debug, Default)]
 pub struct Library {
     /// The implementations of constants and instances.
-    pub items: HashMap<lower::Path, util::WithInfo<Info, typecheck::TypedExpression<Driver>>>,
+    pub items: HashMap<lower::Path, Item>,
 
     /// Any code to be run when the program starts.
-    pub code: Vec<util::WithInfo<Info, typecheck::TypedExpression<Driver>>>,
+    pub code: Vec<Item>,
+}
+
+/// An analyzed expression along with its compiled IR.
+#[non_exhaustive]
+#[derive(Debug)]
+pub struct Item {
+    /// The analyzed expression.
+    pub expression: util::WithInfo<Info, typecheck::TypedExpression<Driver>>,
+
+    /// The compiled IR.
+    pub ir: Option<Vec<Vec<codegen::Instruction<Driver>>>>,
 }
 
 /// The result of [`Driver::compile`].
@@ -283,7 +291,7 @@ impl Driver {
             let declaration = convert::typecheck::convert_constant_declaration(item);
             let body = lower_result.library.items.get(&path).unwrap().clone();
 
-            let result = wipple_typecheck::resolve(
+            let typecheck_result = wipple_typecheck::resolve(
                 &self,
                 (
                     declaration.clone(),
@@ -292,7 +300,7 @@ impl Driver {
             );
 
             errors.extend(
-                result
+                typecheck_result
                     .errors
                     .into_iter()
                     .map(|error| error.map(Error::Typecheck)),
@@ -302,14 +310,22 @@ impl Driver {
                 .constant_declarations
                 .insert(path.clone(), declaration);
 
-            self.library.items.insert(path, result.item);
+            let codegen_result = codegen::compile(&self, typecheck_result.item.as_ref());
+
+            self.library.items.insert(
+                path,
+                Item {
+                    expression: typecheck_result.item,
+                    ir: codegen_result.map(|result| result.labels),
+                },
+            );
         }
 
         for (path, item) in lower_result.interface.instance_declarations {
             let declaration = convert::typecheck::convert_instance_declaration(item);
             let body = lower_result.library.items.get(&path).unwrap().clone();
 
-            let result = wipple_typecheck::resolve(
+            let typecheck_result = wipple_typecheck::resolve(
                 &self,
                 (
                     declaration.clone(),
@@ -318,7 +334,7 @@ impl Driver {
             );
 
             errors.extend(
-                result
+                typecheck_result
                     .errors
                     .into_iter()
                     .map(|error| error.map(Error::Typecheck)),
@@ -328,11 +344,19 @@ impl Driver {
                 .instance_declarations
                 .insert(path.clone(), declaration);
 
-            self.library.items.insert(path, result.item);
+            let codegen_result = codegen::compile(&self, typecheck_result.item.as_ref());
+
+            self.library.items.insert(
+                path,
+                Item {
+                    expression: typecheck_result.item,
+                    ir: codegen_result.map(|result| result.labels),
+                },
+            );
         }
 
         {
-            let result = wipple_typecheck::resolve(
+            let typecheck_result = wipple_typecheck::resolve(
                 &self,
                 wipple_util::WithInfo {
                     info: <Self as wipple_typecheck::Driver>::top_level_info(&self),
@@ -346,13 +370,18 @@ impl Driver {
             );
 
             errors.extend(
-                result
+                typecheck_result
                     .errors
                     .into_iter()
                     .map(|error| error.map(Error::Typecheck)),
             );
 
-            self.library.code.push(result.item);
+            let codegen_result = codegen::compile(&self, typecheck_result.item.as_ref());
+
+            self.library.code.push(Item {
+                expression: typecheck_result.item,
+                ir: codegen_result.map(|result| result.labels),
+            });
         }
 
         Result {
@@ -369,7 +398,6 @@ struct SyntaxDriver {
 
 impl wipple_syntax::Driver for SyntaxDriver {
     type Info = Info;
-    type Number = Number;
 
     fn file_path(&self) -> String {
         self.file_path.clone()
@@ -387,12 +415,10 @@ impl wipple_syntax::Driver for SyntaxDriver {
 
 impl wipple_lower::Driver for Driver {
     type Info = Info;
-    type Number = Number;
 }
 
 impl wipple_typecheck::Driver for Driver {
     type Info = Info;
-    type Number = Number;
     type Path = wipple_lower::Path;
 
     fn recursion_limit(&self) -> u32 {
@@ -496,5 +522,19 @@ impl wipple_typecheck::Driver for Driver {
     fn get_enumeration_for_variant(&self, variant: &Self::Path) -> Self::Path {
         // The parent of a variant is its enumeration
         variant[0..variant.len() - 1].to_vec()
+    }
+}
+
+impl wipple_codegen::Driver for Driver {
+    fn true_variant(&self) -> Option<Self::Path> {
+        self.interface.language_declarations.get("true").cloned()
+    }
+
+    fn number_equality_intrinsic(&self) -> Option<String> {
+        Some(String::from("number-equality"))
+    }
+
+    fn text_equality_intrinsic(&self) -> Option<String> {
+        Some(String::from("text-equality"))
     }
 }

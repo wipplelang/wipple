@@ -105,7 +105,7 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
         self.map(|code| {
             crate::ItemDeclaration(ItemDeclarationInner {
                 bounds: Vec::new(),
-                r#type: Type::new(TypeKind::Tuple(Vec::new()), Vec::new()),
+                r#type: Type::new(TypeKind::Unknown, Vec::new()), // the top level can be any type
                 body: WithInfo {
                     info: driver.top_level_info(),
                     item: crate::UntypedExpression::Block(code),
@@ -159,7 +159,6 @@ pub fn resolve<D: Driver>(
         body,
     };
 
-    let progress = Cell::new(false);
     let item = loop {
         if recursion_stack.borrow().len() as u32 > recursion_limit {
             errors.borrow_mut().push(WithInfo {
@@ -172,9 +171,8 @@ pub fn resolve<D: Driver>(
             break finalize_expression(queued.body, &finalize_context);
         }
 
-        progress.set(false);
-
         let fully_resolved = Cell::new(true);
+        let progress = Cell::new(false);
         let resolve_context = ResolveContext {
             driver,
             type_context: &queued.type_context,
@@ -200,14 +198,12 @@ pub fn resolve<D: Driver>(
 
         queued.body = resolve_expression(queued.body, &resolve_context);
 
-        if fully_resolved.get() {
+        if fully_resolved.get() || !progress.get() {
             let finalize_context = FinalizeContext {
                 errors: Some(&errors),
             };
 
             break finalize_expression(queued.body, &finalize_context);
-        } else if progress.get() {
-            continue;
         } else {
             recursion_stack.borrow_mut().push(queued.use_info.clone());
         }
@@ -1161,7 +1157,7 @@ enum ExpressionKind<D: Driver> {
     UnresolvedTrait(D::Path),
     ResolvedConstant(D::Path),
     ResolvedTrait(D::Path),
-    Number(D::Number),
+    Number(String),
     Text(String),
     Block(Vec<WithInfo<D::Info, Expression<D>>>),
     Function {
@@ -1190,8 +1186,7 @@ enum ExpressionKind<D: Driver> {
         fields: Vec<WithInfo<D::Info, StructureFieldValue<D>>>,
     },
     Variant {
-        enumeration: D::Path,
-        variant: String,
+        variant: WithInfo<D::Info, D::Path>,
         values: Vec<WithInfo<D::Info, Expression<D>>>,
     },
     Tuple(Vec<WithInfo<D::Info, Expression<D>>>),
@@ -1621,11 +1616,8 @@ fn infer_expression<D: Driver>(
                     .collect(),
             ),
         },
-        crate::UntypedExpression::Variant {
-            enumeration,
-            variant,
-            values,
-        } => {
+        crate::UntypedExpression::Variant { variant, values } => {
+            let enumeration = context.driver.get_enumeration_for_variant(&variant.item);
             let type_declaration = context.driver.get_type_declaration(&enumeration);
 
             let instantiation_context = InstantiationContext::from_parameters(
@@ -1638,7 +1630,7 @@ fn infer_expression<D: Driver>(
 
             let values = match type_declaration.item.representation.item {
                 crate::TypeRepresentation::Enumeration(declared_variants) => {
-                    let declared_variant = match declared_variants.get(&variant) {
+                    let declared_variant = match declared_variants.get(&variant.item) {
                         Some(variant) => variant,
                         None => todo!("report error"),
                     };
@@ -1672,7 +1664,7 @@ fn infer_expression<D: Driver>(
 
             let r#type = Type::new(
                 TypeKind::Declared {
-                    path: enumeration.clone(),
+                    path: enumeration,
                     parameters: type_declaration
                         .item
                         .parameters
@@ -1685,11 +1677,7 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
-                kind: ExpressionKind::Variant {
-                    enumeration,
-                    variant,
-                    values,
-                },
+                kind: ExpressionKind::Variant { variant, values },
             }
         }
         crate::UntypedExpression::Tuple(elements) => {
@@ -2374,12 +2362,7 @@ fn resolve_expression<D: Driver>(
                     .collect(),
             }
         }
-        ExpressionKind::Variant {
-            enumeration,
-            variant,
-            values,
-        } => ExpressionKind::Variant {
-            enumeration,
+        ExpressionKind::Variant { variant, values } => ExpressionKind::Variant {
             variant,
             values: values
                 .into_iter()
@@ -2955,12 +2938,7 @@ fn finalize_expression<D: Driver>(
                     .collect(),
             }
         }
-        ExpressionKind::Variant {
-            enumeration,
-            variant,
-            values,
-        } => crate::TypedExpressionKind::Variant {
-            enumeration,
+        ExpressionKind::Variant { variant, values } => crate::TypedExpressionKind::Variant {
             variant,
             values: values
                 .into_iter()

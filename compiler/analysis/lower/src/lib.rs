@@ -11,9 +11,6 @@ use wipple_util::WithInfo;
 pub trait Driver: Sized {
     /// Additional information attached to every item.
     type Info: Debug + Clone + Serialize + DeserializeOwned;
-
-    /// Represents a number value.
-    type Number: Debug + Clone + Serialize + DeserializeOwned;
 }
 
 /// Contains the definitions of items in a file.
@@ -277,7 +274,7 @@ pub enum UnresolvedExpression<D: Driver> {
     Name(String),
 
     /// A number literal.
-    Number(D::Number),
+    Number(String),
 
     /// A text literal.
     Text(String),
@@ -536,7 +533,7 @@ pub enum UnresolvedPattern<D: Driver> {
     Wildcard,
 
     /// A number pattern.
-    Number(D::Number),
+    Number(String),
 
     /// A text pattern.
     Text(String),
@@ -771,7 +768,7 @@ pub enum Expression<D: Driver> {
     Variable(Path),
 
     /// A number literal.
-    Number(D::Number),
+    Number(String),
 
     /// A text literal.
     Text(String),
@@ -846,6 +843,15 @@ pub enum Expression<D: Driver> {
     /// Structure construction.
     Structure(Vec<WithInfo<D::Info, FieldValue<D>>>),
 
+    /// Variant construction.
+    Variant {
+        /// The variant to construct.
+        variant: WithInfo<D::Info, Path>,
+
+        /// The variant's associated values.
+        values: Vec<WithInfo<D::Info, Expression<D>>>,
+    },
+
     /// Provide additional information about the semantics of an expression to
     /// the compiler.
     #[serde(rename_all = "camelCase")]
@@ -891,7 +897,7 @@ pub struct Field<D: Driver> {
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct Variant<D: Driver> {
     /// The name of the variant.
-    pub name: WithInfo<D::Info, String>,
+    pub name: WithInfo<D::Info, Path>,
 
     /// The types of the variant's associated values.
     pub types: Vec<WithInfo<D::Info, Type<D>>>,
@@ -973,7 +979,7 @@ pub enum Pattern<D: Driver> {
     Wildcard,
 
     /// A number pattern.
-    Number(D::Number),
+    Number(String),
 
     /// A text pattern.
     Text(String),

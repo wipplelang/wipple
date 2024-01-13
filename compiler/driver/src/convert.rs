@@ -872,6 +872,12 @@ pub mod typecheck {
                         .collect(),
                 )
             }
+            wipple_lower::Expression::Variant { variant, values } => {
+                wipple_typecheck::UntypedExpression::Variant {
+                    variant,
+                    values: values.into_iter().map(convert_expression).collect(),
+                }
+            }
             wipple_lower::Expression::Semantics { name, body } => {
                 wipple_typecheck::UntypedExpression::Semantics {
                     name: name.item,

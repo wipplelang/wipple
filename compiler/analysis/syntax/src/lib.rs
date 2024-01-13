@@ -5,16 +5,13 @@ mod text;
 
 use derivative::Derivative;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::{fmt::Debug, str::FromStr};
+use std::fmt::Debug;
 use wipple_util::WithInfo;
 
 /// Provides the parser with information about the program.
 pub trait Driver: Sized {
     /// Additional information attached to every item.
     type Info: Debug + Clone + Serialize + DeserializeOwned;
-
-    /// Represents a number value.
-    type Number: Debug + Clone + PartialEq + Eq + FromStr + Serialize + DeserializeOwned;
 
     /// Retrieve the path of the file being parsed.
     fn file_path(&self) -> String;
@@ -353,7 +350,7 @@ pub mod syntax {
         Name(String),
 
         /// A number literal.
-        Number(D::Number),
+        Number(String),
 
         /// A text literal.
         Text(String),
@@ -542,7 +539,7 @@ pub mod syntax {
         Unit,
 
         /// A number pattern.
-        Number(D::Number),
+        Number(String),
 
         /// A text pattern.
         Text(String),
@@ -756,7 +753,7 @@ pub enum Expression<D: Driver> {
     Name(String),
 
     /// A number literal.
-    Number(D::Number),
+    Number(String),
 
     /// A text literal.
     Text(String),
@@ -1003,7 +1000,7 @@ pub enum Pattern<D: Driver> {
     Wildcard,
 
     /// A number pattern.
-    Number(D::Number),
+    Number(String),
 
     /// A text pattern.
     Text(String),

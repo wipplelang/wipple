@@ -5,3 +5,9 @@ edition = "2021"
 
 [lints]
 workspace = true
+
+[dependencies]
+derivative = "2"
+serde = { version = "1", features = ["derive"] }
+wipple-util = { path = "../util" }
+wipple-typecheck = { path = "../analysis/typecheck" }
