@@ -99,6 +99,14 @@ pub struct Result<D: Driver> {
     pub errors: Vec<WithInfo<D::Info, Error<D>>>,
 }
 
+/// Check that none of the provided instances overlap.
+pub fn instances_overlap<D: Driver>(
+    driver: &D,
+    instances: impl IntoIterator<Item = D::Path>,
+) -> Vec<WithInfo<D::Info, Error<D>>> {
+    resolve::instances_overlap(driver, instances)
+}
+
 /// An error occurring during typechecking.
 #[derive(Serialize, Derivative)]
 #[derivative(
@@ -179,6 +187,15 @@ pub enum Error<D: Driver> {
 
     /// A structure expression contained an extra field.
     ExtraField,
+
+    /// Two instances overlap.
+    OverlappingInstances {
+        /// The instance that overlaps with [`Error::OverlappingInstances::other`].
+        instance: D::Path,
+
+        /// The instance that overlaps with [`Error::OverlappingInstances::instance`].
+        other: D::Path,
+    },
 }
 
 /// The type of an expression.
@@ -505,7 +522,7 @@ pub struct UntypedArm<D: Driver> {
 }
 
 /// A typed expression.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct TypedExpression<D: Driver> {
@@ -517,7 +534,7 @@ pub struct TypedExpression<D: Driver> {
 }
 
 /// The kind of [`TypedExpression`].
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum TypedExpressionKind<D: Driver> {
@@ -643,7 +660,7 @@ pub enum TypedExpressionKind<D: Driver> {
 }
 
 /// A segment in a string interpolation expression.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct TypedFormatSegment<D: Driver> {
@@ -655,7 +672,7 @@ pub struct TypedFormatSegment<D: Driver> {
 }
 
 /// The value of a structure field.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct TypedStructureFieldValue<D: Driver> {
@@ -667,7 +684,7 @@ pub struct TypedStructureFieldValue<D: Driver> {
 }
 
 /// An arm in a `when` expression.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct TypedArm<D: Driver> {

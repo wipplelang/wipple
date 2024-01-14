@@ -218,9 +218,15 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             (or
                                 (non-associative-binary-operator
                                     "where"
+                                    (or
+                                        (repeat-list . (variable . "parameter"))
+                                        (variable . "parameter"))
+                                    (or
+                                        (repeat-list . (variable . "bound"))
+                                        (variable . "bound")))
+                                (or
                                     (repeat-list . (variable . "parameter"))
-                                    (repeat-list . (variable . "bound")))
-                                (repeat-list . (variable . "parameter")))
+                                    (variable . "parameter")))
                             (list
                                 (symbol . "instance")
                                 (variable . "instance")))
@@ -250,9 +256,15 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             (or
                                 (non-associative-binary-operator
                                     "where"
+                                    (or
+                                        (repeat-list . (variable . "parameter"))
+                                        (variable . "parameter"))
+                                    (or
+                                        (repeat-list . (variable . "bound"))
+                                        (variable . "bound")))
+                                (or
                                     (repeat-list . (variable . "parameter"))
-                                    (repeat-list . (variable . "bound")))
-                                (repeat-list . (variable . "parameter")))
+                                    (variable . "parameter")))
                             (variable . "declaration"))
                         (variable . "declaration")))
             "#;
@@ -267,9 +279,15 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             (or
                                 (non-associative-binary-operator
                                     "where"
+                                    (or
+                                        (repeat-list . (variable . "parameter"))
+                                        (variable . "parameter"))
+                                    (or
+                                        (repeat-list . (variable . "bound"))
+                                        (variable . "bound")))
+                                (or
                                     (repeat-list . (variable . "parameter"))
-                                    (repeat-list . (variable . "bound")))
-                                (repeat-list . (variable . "parameter")))
+                                    (variable . "parameter")))
                             (variable . "type"))
                         (variable . "type")))
             "#;
@@ -461,17 +479,27 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                 r#type.span().cloned().unwrap_or_else(|| span.clone()),
                                 r#type,
                             ),
-                            None => WithInfo {
-                                info: Info {
-                                    path: self.driver.file_path(),
+                            None => {
+                                parser.errors.push(Error {
                                     span: declaration
                                         .span()
                                         .cloned()
                                         .unwrap_or_else(|| span.clone()),
+                                    expected: SyntaxKind::Type,
+                                });
+
+                                WithInfo {
+                                    info: Info {
+                                        path: self.driver.file_path(),
+                                        span: declaration
+                                            .span()
+                                            .cloned()
+                                            .unwrap_or_else(|| span.clone()),
+                                    }
+                                    .into(),
+                                    item: syntax::Type::Error,
                                 }
-                                .into(),
-                                item: syntax::Type::Error,
-                            },
+                            }
                         };
 
                         syntax::Statement::TraitDeclaration {
@@ -1413,6 +1441,13 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
             .into_iter()
             .filter_map(|element| self.parse_type_parameter(span.clone(), element))
             .collect();
+
+        // Special case for a single bound wrapped in parentheses
+        let bounds = if !bounds.is_empty() && !matches!(bounds.first().unwrap(), Node::List(..)) {
+            vec![Node::List(span.clone(), bounds)]
+        } else {
+            bounds
+        };
 
         let bounds = bounds
             .into_iter()

@@ -312,8 +312,6 @@ fn resolve_statements<D: Driver>(
 
                 info.path.pop().unwrap();
 
-                dbg!(&constructors);
-
                 for (name, path) in constructors {
                     info.scopes.define(name, path);
                 }
@@ -425,8 +423,6 @@ fn resolve_statements<D: Driver>(
 
                 info.next_variable = prev_next_variable;
                 info.scopes.pop_scope();
-
-                info.next_instance += 1;
 
                 info.instance_declarations.insert(
                     info.path.clone(),
@@ -1173,7 +1169,7 @@ fn resolve_type<D: Driver>(
                             .map(|parameter| resolve_type(parameter, info))
                             .collect(),
                     },
-                    crate::PathComponent::TypeParameter(_) => crate::Type::Parameter(path.item),
+                    crate::PathComponent::TypeParameter(_) => crate::Type::Parameter(path.item), // FIXME: disallow parameters passed to type parameters
                     _ => unreachable!(),
                 },
                 None => crate::Type::Error,
@@ -1298,7 +1294,6 @@ fn try_resolve_name<D: Driver, T>(
                 }
                 1 => return Some(name.replace(candidates.pop().unwrap())),
                 _ => {
-                    panic!();
                     info.errors.push(name.replace(crate::Error::AmbiguousName {
                         name: name.item.clone(),
                         candidates: paths,

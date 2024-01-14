@@ -34,6 +34,13 @@ pub fn compile<D: Driver>(
     Some(Result { labels })
 }
 
+/// Generate a type descriptor from a type.
+pub fn type_descriptor<D: crate::Driver>(
+    r#type: &wipple_typecheck::Type<D>,
+) -> Option<crate::TypeDescriptor<D>> {
+    compile::type_descriptor(r#type)
+}
+
 /// The result of [`compile`].
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""))]

@@ -1,5 +1,5 @@
 [package]
-name = "wipple-driver"
+name = "wipple-linker"
 version = "0.0.0"
 edition = "2021"
 
@@ -7,13 +7,8 @@ edition = "2021"
 workspace = true
 
 [dependencies]
-itertools = "0.12"
+derivative = "2"
 serde = { version = "1", features = ["derive"] }
 wipple-codegen = { path = "../codegen" }
-wipple-linker = { path = "../linker" }
-wipple-lower = { path = "../analysis/lower" }
-wipple-parser = { path = "../parser" }
-wipple-query = { path = "../analysis/query" }
-wipple-syntax = { path = "../analysis/syntax" }
 wipple-typecheck = { path = "../analysis/typecheck" }
 wipple-util = { path = "../util" }

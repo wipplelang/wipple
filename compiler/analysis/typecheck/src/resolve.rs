@@ -2,7 +2,7 @@ use crate::{Driver, Role};
 use derivative::Derivative;
 use std::{
     cell::{Cell, RefCell},
-    collections::{btree_map, BTreeMap, HashMap},
+    collections::{btree_map, BTreeMap, HashMap, HashSet},
     fmt::Debug,
     mem,
     rc::Rc,
@@ -10,8 +10,8 @@ use std::{
 use wipple_util::WithInfo;
 
 pub struct ItemDeclarationInner<D: Driver> {
-    bounds: Vec<WithInfo<D::Info, Instance<D>>>,
-    r#type: Type<D>,
+    bounds: Vec<WithInfo<D::Info, crate::Instance<D>>>,
+    r#type: WithInfo<D::Info, crate::Type<D>>,
     body: WithInfo<D::Info, crate::UntypedExpression<D>>,
 }
 
@@ -25,21 +25,9 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
         let (declaration, body) = self;
 
         declaration.map(|declaration| {
-            let r#type = infer_type(
-                &declaration.r#type.item,
-                declaration.r#type.replace(Role::Annotation),
-                None,
-            );
-
-            let bounds = declaration
-                .bounds
-                .into_iter()
-                .map(infer_bound)
-                .collect::<Vec<_>>();
-
             crate::ItemDeclaration(ItemDeclarationInner {
-                bounds,
-                r#type,
+                bounds: declaration.bounds,
+                r#type: declaration.r#type,
                 body,
             })
         })
@@ -68,11 +56,27 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
 
             let instantiation_context = InstantiationContext::from_parameters(
                 driver,
-                trait_declaration.item.parameters,
+                trait_declaration.item.parameters.clone(),
                 &type_context,
                 &body_info,
                 &errors,
             );
+
+            for (trait_parameter, instance_parameter) in trait_declaration
+                .item
+                .parameters
+                .into_iter()
+                .zip(declaration.instance.item.parameters)
+            {
+                let mut r#type = instantiation_context.type_for_parameter(driver, &trait_parameter);
+
+                assert!(unify(
+                    driver,
+                    &mut r#type,
+                    &infer_type(&instance_parameter, role.clone(), None),
+                )
+                .is_some());
+            }
 
             let r#type = infer_type(
                 &trait_declaration.item.r#type.item,
@@ -83,14 +87,16 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
 
             assert!(errors.into_inner().is_empty());
 
-            let bounds = declaration
-                .bounds
-                .into_iter()
-                .map(infer_bound)
-                .collect::<Vec<_>>();
+            let finalize_context = FinalizeContext { errors: None };
+
+            let r#type = trait_declaration.item.r#type.replace(finalize_type(
+                r#type,
+                &body_info,
+                &finalize_context,
+            ));
 
             crate::ItemDeclaration(ItemDeclarationInner {
-                bounds,
+                bounds: declaration.bounds,
                 r#type,
                 body,
             })
@@ -102,10 +108,15 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
     for WithInfo<D::Info, Vec<WithInfo<D::Info, crate::UntypedExpression<D>>>>
 {
     fn into_item_declaration(self, driver: &D) -> WithInfo<D::Info, crate::ItemDeclaration<D>> {
+        let info = self.info.clone();
+
         self.map(|code| {
             crate::ItemDeclaration(ItemDeclarationInner {
                 bounds: Vec::new(),
-                r#type: Type::new(TypeKind::Unknown, Vec::new()), // the top level can be any type
+                r#type: WithInfo {
+                    info: info.clone(),
+                    item: crate::Type::Unknown, // the top level can be any type
+                },
                 body: WithInfo {
                     info: driver.top_level_info(),
                     item: crate::UntypedExpression::Block(code),
@@ -146,11 +157,22 @@ pub fn resolve<D: Driver>(
         variables: Default::default(),
     };
 
+    let declared_type = infer_type(
+        &item_declaration.item.r#type.item,
+        item_declaration.replace(Role::Annotation),
+        Some(&type_context),
+    );
+
     let mut body = infer_expression(item_declaration.item.body, &infer_context);
-    let declared_type = item_declaration.item.r#type;
+
     try_unify_expression(driver, body.as_mut(), &declared_type, &error_queue);
 
-    let bounds = vec![item_declaration.item.bounds];
+    let bounds = vec![item_declaration
+        .item
+        .bounds
+        .into_iter()
+        .map(infer_instance)
+        .collect()];
 
     let mut queued = Queued {
         use_info: item_declaration.info,
@@ -213,6 +235,86 @@ pub fn resolve<D: Driver>(
     report_queued_errors(error_queue.into_inner(), &mut errors);
 
     crate::Result { item, errors }
+}
+
+pub fn instances_overlap<D: Driver>(
+    driver: &D,
+    instances: impl IntoIterator<Item = D::Path>,
+) -> Vec<WithInfo<D::Info, crate::Error<D>>> {
+    let instances = instances
+        .into_iter()
+        .map(|path| {
+            let declaration = driver.get_instance_declaration(&path);
+
+            (
+                path,
+                declaration.info,
+                declaration.item.parameters,
+                infer_instance(declaration.item.instance),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    let mut errors = Vec::new();
+    let mut overlapping = HashSet::new();
+
+    for (index, (path, info, parameters, instance)) in instances.iter().enumerate() {
+        for (other_index, (other_path, _, other_parameters, other_instance)) in
+            instances.iter().enumerate()
+        {
+            if index == other_index
+                || overlapping.contains(&(index, other_index))
+                || overlapping.contains(&(other_index, index))
+            {
+                continue;
+            }
+
+            let instantiate_instance =
+                |parameters: Vec<<D as Driver>::Path>,
+                 instance: WithInfo<D::Info, &mut Instance<D>>| {
+                    let type_context = TypeContext::new();
+                    let unused_errors = RefCell::default();
+
+                    let instantiation_context = InstantiationContext::from_parameters(
+                        driver,
+                        parameters,
+                        &type_context,
+                        &instance.info,
+                        &unused_errors,
+                    );
+
+                    instance
+                        .item
+                        .instantiate_mut(driver, &instantiation_context);
+                };
+
+            let mut instance = instance
+                .as_ref()
+                .map(|instance| instance.clone_in_current_context());
+
+            instantiate_instance(parameters.clone(), instance.as_mut());
+
+            let mut other_instance = other_instance
+                .as_ref()
+                .map(|instance| instance.clone_in_current_context());
+
+            instantiate_instance(other_parameters.clone(), other_instance.as_mut());
+
+            if unify_instance(driver, instance.as_mut(), other_instance.as_ref()) {
+                overlapping.insert((index, other_index));
+
+                errors.push(WithInfo {
+                    info: info.clone(),
+                    item: crate::Error::OverlappingInstances {
+                        instance: path.clone(),
+                        other: other_path.clone(),
+                    },
+                });
+            }
+        }
+    }
+
+    errors
 }
 
 // Instead of reporting unification errors immediately, queue them and then
@@ -322,6 +424,7 @@ impl<D: Driver> Type<D> {
                 {
                     self.kind = r#type.kind;
                     self.roles.extend(r#type.roles);
+                    self.apply_in_current_context_mut();
                 }
             }
             TypeKind::Opaque(_) => {}
@@ -1144,11 +1247,15 @@ impl<D: Driver> Instance<D> {
 
 // region: Resolution
 
+#[derive(Derivative)]
+#[derivative(Debug(bound = ""))]
 struct Expression<D: Driver> {
     r#type: Type<D>,
     kind: ExpressionKind<D>,
 }
 
+#[derive(Derivative)]
+#[derivative(Debug(bound = ""))]
 enum ExpressionKind<D: Driver> {
     Unknown(Option<D::Path>),
     Marker(D::Path),
@@ -1201,16 +1308,22 @@ enum ExpressionKind<D: Driver> {
     Lazy(WithInfo<D::Info, Box<Expression<D>>>),
 }
 
+#[derive(Derivative)]
+#[derivative(Debug(bound = ""))]
 struct FormatSegment<D: Driver> {
     text: String,
     value: WithInfo<D::Info, Expression<D>>,
 }
 
+#[derive(Derivative)]
+#[derivative(Debug(bound = ""))]
 struct StructureFieldValue<D: Driver> {
     name: String,
     value: WithInfo<D::Info, Expression<D>>,
 }
 
+#[derive(Derivative)]
+#[derivative(Debug(bound = ""))]
 struct Arm<D: Driver> {
     pattern: WithInfo<D::Info, crate::Pattern<D>>,
     condition: Option<WithInfo<D::Info, Expression<D>>>,
@@ -1264,12 +1377,12 @@ fn infer_type<D: Driver>(
     )
 }
 
-fn infer_bound<D: Driver>(
-    bound: WithInfo<D::Info, crate::Instance<D>>,
+fn infer_instance<D: Driver>(
+    instance: WithInfo<D::Info, crate::Instance<D>>,
 ) -> WithInfo<D::Info, Instance<D>> {
-    bound.map(|bound| Instance {
-        r#trait: bound.r#trait,
-        parameters: bound
+    instance.map(|instance| Instance {
+        r#trait: instance.r#trait,
+        parameters: instance
             .parameters
             .into_iter()
             .map(|r#type| infer_type(&r#type, None, None))
@@ -1993,6 +2106,16 @@ struct ResolveContext<'a, D: Driver> {
     bound_instances: RefCell<Vec<Vec<WithInfo<D::Info, Instance<D>>>>>,
 }
 
+impl<D: Driver> ResolveContext<'_, D> {
+    fn make_progress(&self) {
+        self.progress.set(true);
+    }
+
+    fn flag_not_fully_resolved(&self) {
+        self.fully_resolved.set(false);
+    }
+}
+
 fn resolve_expression<D: Driver>(
     mut expression: WithInfo<D::Info, Expression<D>>,
     context: &ResolveContext<'_, D>,
@@ -2006,11 +2129,11 @@ fn resolve_expression<D: Driver>(
 
             match resolve_item(&path, expression.as_mut(), context) {
                 Ok(true) => {
-                    context.progress.set(true);
+                    context.make_progress();
                     ExpressionKind::ResolvedConstant(path)
                 }
                 Ok(false) => {
-                    context.fully_resolved.set(false);
+                    context.flag_not_fully_resolved();
                     ExpressionKind::UnresolvedConstant(path) // try again with more type information
                 }
                 Err(error) => {
@@ -2032,8 +2155,7 @@ fn resolve_expression<D: Driver>(
 
             match resolve_trait(query.as_ref(), context) {
                 Ok(resolved_trait) => {
-                    context.fully_resolved.set(false);
-                    context.progress.set(true);
+                    context.make_progress();
 
                     expression
                         .item
@@ -2183,8 +2305,8 @@ fn resolve_expression<D: Driver>(
                 // Don't resolve `function` and `input` right away; allow them
                 // to be queued again so we can collect more type information
                 // now that we've unified `function` with a function type
-                context.fully_resolved.set(false);
-                context.progress.set(true);
+                context.flag_not_fully_resolved();
+                context.make_progress();
 
                 ExpressionKind::Call { function, input }
             }
@@ -2220,7 +2342,7 @@ fn resolve_expression<D: Driver>(
 
             match &expression.item.r#type.kind {
                 TypeKind::Variable(_) | TypeKind::Opaque(_) => {
-                    context.fully_resolved.set(false);
+                    context.flag_not_fully_resolved();
 
                     ExpressionKind::UnresolvedStructure(
                         fields
@@ -2337,8 +2459,7 @@ fn resolve_expression<D: Driver>(
                         }
                     }
 
-                    context.fully_resolved.set(false);
-                    context.progress.set(true);
+                    context.make_progress();
 
                     ExpressionKind::ResolvedStructure {
                         structure: path,
@@ -2440,7 +2561,7 @@ fn resolve_item<D: Driver>(
         .bounds
         .into_iter()
         .map(|bound| {
-            infer_bound(bound)
+            infer_instance(bound)
                 .map(|bound| bound.instantiate(context.driver, &instantiation_context))
         })
         .collect::<Vec<_>>();
@@ -2706,12 +2827,24 @@ fn resolve_trait<D: Driver>(
                 context.errors,
             );
 
+            let parameters = instance_declaration
+                .item
+                .instance
+                .item
+                .parameters
+                .iter()
+                .map(|parameter| {
+                    infer_type(parameter, None, None)
+                        .instantiate(context.driver, &instantiation_context)
+                })
+                .collect::<Vec<_>>();
+
             let bounds = instance_declaration
                 .item
                 .bounds
                 .into_iter()
                 .map(|bound| {
-                    infer_bound(bound)
+                    infer_instance(bound)
                         .map(|bound| bound.instantiate(context.driver, &instantiation_context))
                 })
                 .collect::<Vec<_>>();
@@ -2720,7 +2853,7 @@ fn resolve_trait<D: Driver>(
                 info: instance_declaration.info.clone(),
                 item: Instance {
                     r#trait: query.item.r#trait.clone(),
-                    parameters: instantiation_context.into_types_for_parameters(), // FIXME: This should refer to the parameters in the INSTANCE, not the instance's own parameters
+                    parameters,
                 },
             };
 

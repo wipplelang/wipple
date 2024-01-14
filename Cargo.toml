@@ -8,6 +8,7 @@ members = [
     "compiler/analysis/query",
     "compiler/codegen",
     "compiler/driver",
+    "compiler/linker",
     "compiler/parser",
     "compiler/util",
 ]
