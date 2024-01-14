@@ -4,10 +4,12 @@ use wipple_util::WithInfo;
 
 pub fn compile<D: crate::Driver>(
     driver: &D,
+    path: D::Path,
     expression: WithInfo<D::Info, &wipple_typecheck::TypedExpression<D>>,
 ) -> Option<Vec<Vec<crate::Instruction<D>>>> {
     let mut info = Info {
         driver,
+        path,
         labels: vec![Vec::new()],
         current_label: 0,
         variables: Vec::new(),
@@ -15,6 +17,7 @@ pub fn compile<D: crate::Driver>(
     };
 
     compile_expression(expression, &mut info)?;
+    info.push_instruction(crate::Instruction::Return);
 
     Some(info.labels)
 }
@@ -25,6 +28,7 @@ struct Info<'a, D: crate::Driver> {
     #[derivative(Debug = "ignore")]
     driver: &'a D,
 
+    path: D::Path,
     labels: Vec<Vec<crate::Instruction<D>>>,
     current_label: crate::Label,
     variables: Vec<D::Path>,
@@ -72,13 +76,22 @@ fn compile_expression<D: crate::Driver>(
             info.push_instruction(crate::Instruction::Constant(path.clone()))
         }
         wipple_typecheck::TypedExpressionKind::Trait(path) => {
-            info.push_instruction(crate::Instruction::Instance(path.clone()))
+            info.push_instruction(crate::Instruction::Typed(
+                type_descriptor(&expression.item.r#type)?,
+                crate::TypedInstruction::Instance(path.clone()),
+            ))
         }
         wipple_typecheck::TypedExpressionKind::Number(number) => {
-            info.push_instruction(crate::Instruction::Number(number.clone()))
+            info.push_instruction(crate::Instruction::Typed(
+                crate::TypeDescriptor::Named(info.driver.number_type()?, Vec::new()),
+                crate::TypedInstruction::Number(number.clone()),
+            ));
         }
         wipple_typecheck::TypedExpressionKind::Text(text) => {
-            info.push_instruction(crate::Instruction::Text(text.clone()))
+            info.push_instruction(crate::Instruction::Typed(
+                crate::TypeDescriptor::Named(info.driver.number_type()?, Vec::new()),
+                crate::TypedInstruction::Text(text.clone()),
+            ));
         }
         wipple_typecheck::TypedExpressionKind::Block(statements) => {
             if statements.is_empty() {
@@ -112,7 +125,7 @@ fn compile_expression<D: crate::Driver>(
 
             info.push_instruction(crate::Instruction::Typed(
                 type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Function(captures, function_label),
+                crate::TypedInstruction::Function(captures, info.path.clone(), function_label),
             ));
         }
         wipple_typecheck::TypedExpressionKind::Call { function, input } => {
@@ -179,7 +192,10 @@ fn compile_expression<D: crate::Driver>(
                 })
                 .collect::<Option<_>>()?;
 
-            info.push_instruction(crate::Instruction::Format(segments, trailing.clone()));
+            info.push_instruction(crate::Instruction::Typed(
+                type_descriptor(&expression.item.r#type)?,
+                crate::TypedInstruction::Format(segments, trailing.clone()),
+            ));
         }
         wipple_typecheck::TypedExpressionKind::Semantics { name, body } => {
             let _ = name; // semantics are only for compile-time analysis and have no effect at runtime
@@ -199,7 +215,7 @@ fn compile_expression<D: crate::Driver>(
 
             info.push_instruction(crate::Instruction::Typed(
                 type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Lazy(captures, lazy_label),
+                crate::TypedInstruction::Lazy(captures, info.path.clone(), lazy_label),
             ));
         }
     }
@@ -271,7 +287,12 @@ fn compile_pattern<D: crate::Driver>(
         wipple_typecheck::Pattern::Unknown => return None,
         wipple_typecheck::Pattern::Wildcard => {}
         wipple_typecheck::Pattern::Number(number) => {
-            info.push_instruction(crate::Instruction::Number(number.clone()));
+            info.push_instruction(crate::Instruction::Copy);
+
+            info.push_instruction(crate::Instruction::Typed(
+                crate::TypeDescriptor::Named(info.driver.number_type()?, Vec::new()),
+                crate::TypedInstruction::Number(number.clone()),
+            ));
 
             info.push_instruction(crate::Instruction::Intrinsic(
                 info.driver.number_equality_intrinsic()?,
@@ -284,7 +305,12 @@ fn compile_pattern<D: crate::Driver>(
             ));
         }
         wipple_typecheck::Pattern::Text(text) => {
-            info.push_instruction(crate::Instruction::Text(text.clone()));
+            info.push_instruction(crate::Instruction::Copy);
+
+            info.push_instruction(crate::Instruction::Typed(
+                crate::TypeDescriptor::Named(info.driver.text_type()?, Vec::new()),
+                crate::TypedInstruction::Text(text.clone()),
+            ));
 
             info.push_instruction(crate::Instruction::Intrinsic(
                 info.driver.text_equality_intrinsic()?,

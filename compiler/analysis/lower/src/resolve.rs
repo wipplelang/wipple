@@ -490,7 +490,7 @@ fn resolve_statements<D: Driver>(
 
 fn generate_marker_constructor<D: Driver>(
     name: WithInfo<D::Info, String>,
-    parameters: Vec<Vec<crate::PathComponent>>,
+    parameters: Vec<crate::Path>,
     info: &mut Info<D>,
 ) -> (String, crate::Path) {
     let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
@@ -538,7 +538,7 @@ fn generate_marker_constructor<D: Driver>(
 
 fn generate_structure_constructor<D: Driver>(
     name: WithInfo<D::Info, String>,
-    parameters: Vec<Vec<crate::PathComponent>>,
+    parameters: Vec<crate::Path>,
     info: &mut Info<D>,
 ) -> (String, crate::Path) {
     let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
@@ -626,7 +626,7 @@ fn generate_structure_constructor<D: Driver>(
 
 fn generate_variant_constructor<D: Driver>(
     name: WithInfo<D::Info, String>,
-    parameters: Vec<Vec<crate::PathComponent>>,
+    parameters: Vec<crate::Path>,
     variant_path: WithInfo<D::Info, crate::Path>,
     value_types: Vec<WithInfo<D::Info, crate::Type<D>>>,
     info: &mut Info<D>,

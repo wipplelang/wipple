@@ -107,6 +107,27 @@ pub fn instances_overlap<D: Driver>(
     resolve::instances_overlap(driver, instances)
 }
 
+/// Obtain the type of a trait expression matching the provided instance. For
+/// example:
+///
+/// ```wipple
+/// Show : A => trait (A -> Text)
+/// instance (Show Number) : ...
+/// ```
+///
+/// If this function is called with the above instance, it will return
+/// `Number -> Text`.
+///
+/// This function assumes that all of the trait's parameters are referenced in
+/// its type.
+// FIXME: Enforce the above
+pub fn resolve_trait_type_from_instance<D: Driver>(
+    driver: &D,
+    instance: WithInfo<D::Info, &crate::Instance<D>>,
+) -> WithInfo<D::Info, crate::Type<D>> {
+    resolve::resolve_trait_type_from_instance(driver, instance)
+}
+
 /// An error occurring during typechecking.
 #[derive(Serialize, Derivative)]
 #[derivative(
@@ -255,7 +276,7 @@ pub struct Instance<D: Driver> {
 }
 
 /// A type declaration.
-#[derive(Deserialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct TypeDeclaration<D: Driver> {
@@ -267,7 +288,7 @@ pub struct TypeDeclaration<D: Driver> {
 }
 
 /// A trait declaration.
-#[derive(Deserialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct TraitDeclaration<D: Driver> {
@@ -279,7 +300,7 @@ pub struct TraitDeclaration<D: Driver> {
 }
 
 /// A type parameter declaration.
-#[derive(Deserialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct TypeParameterDeclaration<D: Driver> {
@@ -291,7 +312,7 @@ pub struct TypeParameterDeclaration<D: Driver> {
 }
 
 /// The representation of a [`TypeDeclaration`].
-#[derive(Deserialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum TypeRepresentation<D: Driver> {
@@ -306,7 +327,7 @@ pub enum TypeRepresentation<D: Driver> {
 }
 
 /// A single field in a type represented as a structure.
-#[derive(Deserialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct StructureField<D: Driver> {
@@ -315,7 +336,7 @@ pub struct StructureField<D: Driver> {
 }
 
 /// A single variant in a type represented as an enumeration.
-#[derive(Deserialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct EnumerationVariant<D: Driver> {
@@ -324,7 +345,7 @@ pub struct EnumerationVariant<D: Driver> {
 }
 
 /// A constant declaration.
-#[derive(Deserialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct ConstantDeclaration<D: Driver> {
@@ -339,7 +360,7 @@ pub struct ConstantDeclaration<D: Driver> {
 }
 
 /// An instance declaration.
-#[derive(Deserialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct InstanceDeclaration<D: Driver> {
@@ -354,7 +375,7 @@ pub struct InstanceDeclaration<D: Driver> {
 }
 
 /// An untyped expression.
-#[derive(Deserialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum UntypedExpression<D: Driver> {
@@ -483,7 +504,7 @@ pub enum UntypedExpression<D: Driver> {
 }
 
 /// A segment in a string interpolation expression.
-#[derive(Deserialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct UntypedFormatSegment<D: Driver> {
@@ -495,7 +516,7 @@ pub struct UntypedFormatSegment<D: Driver> {
 }
 
 /// The value of a structure field.
-#[derive(Deserialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct UntypedStructureFieldValue<D: Driver> {
@@ -507,7 +528,7 @@ pub struct UntypedStructureFieldValue<D: Driver> {
 }
 
 /// An arm in a `when` expression.
-#[derive(Deserialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct UntypedArm<D: Driver> {

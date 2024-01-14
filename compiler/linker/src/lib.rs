@@ -3,6 +3,7 @@
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use wipple_codegen::TypeDescriptor;
 use wipple_util::WithInfo;
 
 /// Provides the linker with information about the program.
@@ -15,6 +16,12 @@ pub trait Driver: wipple_codegen::Driver {}
 pub struct UnlinkedLibrary<D: Driver> {
     /// The implementations of constants and instances.
     pub items: HashMap<D::Path, UnlinkedItem<D>>,
+
+    /// The type descriptors required for various intrinsics.
+    pub intrinsic_type_descriptors: HashMap<String, TypeDescriptor<D>>,
+
+    /// The variants required for various intrinsics.
+    pub intrinsic_variants: HashMap<String, D::Path>,
 
     /// The list of instances for each trait.
     pub instances: HashMap<D::Path, Vec<Instance<D>>>,
@@ -36,12 +43,19 @@ pub struct UnlinkedItem<D: Driver> {
 }
 
 /// A linked executable.
+#[non_exhaustive]
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Default(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct Executable<D: Driver> {
     /// The implementations of constants and instances.
     pub items: HashMap<D::Path, LinkedItem<D>>,
+
+    /// The type descriptors required for various intrinsics.
+    pub intrinsic_type_descriptors: HashMap<String, TypeDescriptor<D>>,
+
+    /// The variants required for various intrinsics.
+    pub intrinsic_variants: HashMap<String, D::Path>,
 
     /// The list of instances for each trait.
     pub instances: HashMap<D::Path, Vec<Instance<D>>>,
@@ -65,8 +79,8 @@ pub struct LinkedItem<D: Driver> {
 #[derivative(Debug(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct Instance<D: Driver> {
-    /// The type descriptors for the instance's parameters.
-    pub type_descriptors: Vec<wipple_codegen::TypeDescriptor<D>>,
+    /// The type descriptor for the trait if this instance matches.
+    pub type_descriptor: wipple_codegen::TypeDescriptor<D>,
 
     /// The path to the instance's implementation.
     pub item: D::Path,
@@ -74,7 +88,6 @@ pub struct Instance<D: Driver> {
 
 /// Link multiple [`UnlinkedLibrary`]s into a single [`Executable`].
 pub fn link<D: Driver>(
-    _driver: &D,
     libraries: impl IntoIterator<Item = UnlinkedLibrary<D>>,
 ) -> Option<Executable<D>> {
     libraries
@@ -83,6 +96,14 @@ pub fn link<D: Driver>(
             for (path, item) in library.items {
                 executable.items.insert(path, convert_item(item)?);
             }
+
+            executable
+                .intrinsic_type_descriptors
+                .extend(library.intrinsic_type_descriptors);
+
+            executable
+                .intrinsic_variants
+                .extend(library.intrinsic_variants);
 
             executable.instances.extend(library.instances);
 

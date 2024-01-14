@@ -1,0 +1,16 @@
+{
+    "name": "wipple-compiler",
+    "private": true,
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "scripts": {
+        "build": "cargo build --target wasm32-unknown-unknown --release && wasm-bindgen --keep-debug --out-dir pkg target/wasm32-unknown-unknown/release/wipple_compiler.wasm && node build.js"
+    },
+    "devDependencies": {
+        "@types/node": "^20.11.0",
+        "esbuild": "^0.19.11",
+        "esbuild-plugin-wasm": "^1.1.0",
+        "typescript": "^5.3.3"
+    }
+}

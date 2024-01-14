@@ -1,0 +1,19 @@
+{
+    "name": "wipple-cli",
+    "private": true,
+    "type": "module",
+    "main": "dist/index.js",
+    "scripts": {
+        "start": "node --enable-source-maps .",
+        "build": "node build.js"
+    },
+    "devDependencies": {
+        "@types/node": "^20.11.0",
+        "esbuild": "^0.19.11",
+        "typescript": "^5.3.3"
+    },
+    "dependencies": {
+        "wipple-compiler": "file:../compiler",
+        "wipple-interpreter": "file:../interpreter"
+    }
+}

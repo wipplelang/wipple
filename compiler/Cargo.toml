@@ -1,16 +1,15 @@
 [workspace]
 resolver = "2"
 members = [
-    "cli",
-    "compiler/analysis/lower",
-    "compiler/analysis/syntax",
-    "compiler/analysis/typecheck",
-    "compiler/analysis/query",
-    "compiler/codegen",
-    "compiler/driver",
-    "compiler/linker",
-    "compiler/parser",
-    "compiler/util",
+    "analysis/lower",
+    "analysis/syntax",
+    "analysis/typecheck",
+    "analysis/query",
+    "codegen",
+    "linker",
+    "main",
+    "parser",
+    "util",
 ]
 
 [workspace.lints.rust]
@@ -23,3 +22,7 @@ new_without_default = "allow"
 print_stderr = "warn"
 redundant_clone = "warn"
 type_complexity = "allow"
+
+[profile.release]
+opt-level = "s"
+lto = true

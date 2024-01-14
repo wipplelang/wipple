@@ -9,8 +9,14 @@ use wipple_util::WithInfo;
 
 /// Provides the code generation with information about the program.
 pub trait Driver: wipple_typecheck::Driver {
-    /// The name of the variant representing `True`.
+    /// The path of the variant representing `True`.
     fn true_variant(&self) -> Option<Self::Path>;
+
+    /// The path of the type representing `Number`.
+    fn number_type(&self) -> Option<Self::Path>;
+
+    /// The path of the type representing `Text`.
+    fn text_type(&self) -> Option<Self::Path>;
 
     /// The name of the intrinsic that compares numbers.
     fn number_equality_intrinsic(&self) -> Option<String>;
@@ -23,9 +29,10 @@ pub trait Driver: wipple_typecheck::Driver {
 /// typechecking the item produced no errors.
 pub fn compile<D: Driver>(
     driver: &D,
+    path: D::Path,
     expression: WithInfo<D::Info, &wipple_typecheck::TypedExpression<D>>,
 ) -> Option<Result<D>> {
-    let mut labels = compile::compile(driver, expression)?;
+    let mut labels = compile::compile(driver, path, expression)?;
 
     for instructions in &mut labels {
         tail_call::apply(instructions);
@@ -61,8 +68,16 @@ pub type Label = usize;
     Eq(bound = ""),
     Hash(bound = "")
 )]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(
+    tag = "type",
+    content = "value",
+    rename_all = "camelCase",
+    bound(serialize = "", deserialize = "")
+)]
 pub enum Instruction<D: Driver> {
+    /// (Stack management) Duplicate the top of the stack.
+    Copy,
+
     /// (Stack management) Discard the top of the stack.
     Drop,
 
@@ -84,9 +99,6 @@ pub enum Instruction<D: Driver> {
     /// A constant.
     Constant(D::Path),
 
-    /// An instance of a trait.
-    Instance(D::Path),
-
     /// (Consuming) Call the function on the top of the stack with the input on
     /// the top of the stack.
     Call,
@@ -96,15 +108,6 @@ pub enum Instruction<D: Driver> {
 
     /// (Consuming) An intrinsic provided by the runtime with _n_ inputs.
     Intrinsic(String, u32),
-
-    /// (Consuming) String interpolation.
-    Format(Vec<String>, String),
-
-    /// (Values) A text value.
-    Text(String),
-
-    /// (Values) A number value.
-    Number(String),
 
     /// (Values) A tuple.
     Tuple(u32),
@@ -141,10 +144,24 @@ pub enum Instruction<D: Driver> {
     Eq(bound = ""),
     Hash(bound = "")
 )]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(
+    tag = "type",
+    content = "value",
+    rename_all = "camelCase",
+    bound(serialize = "", deserialize = "")
+)]
 pub enum TypedInstruction<D: Driver> {
+    /// A text value.
+    Text(String),
+
+    /// A number value.
+    Number(String),
+
     /// A value of a marker type.
     Marker,
+
+    /// (Consuming) String interpolation.
+    Format(Vec<String>, String),
 
     /// Create a structure, mapping each field to the next value on the stack.
     Structure(Vec<String>),
@@ -153,10 +170,13 @@ pub enum TypedInstruction<D: Driver> {
     Variant(D::Path, u32),
 
     /// A function that can potentially capture variables.
-    Function(Vec<u32>, Label),
+    Function(Vec<u32>, D::Path, Label),
 
     /// A lazily-evaluated expression.
-    Lazy(Vec<u32>, Label),
+    Lazy(Vec<u32>, D::Path, Label),
+
+    /// An instance of a trait.
+    Instance(D::Path),
 }
 
 /// Used when finding a suitable instance for a trait at runtime.
@@ -168,7 +188,12 @@ pub enum TypedInstruction<D: Driver> {
     Eq(bound = ""),
     Hash(bound = "")
 )]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(
+    tag = "type",
+    content = "value",
+    rename_all = "camelCase",
+    bound(serialize = "", deserialize = "")
+)]
 pub enum TypeDescriptor<D: Driver> {
     /// A type parameter. This will only occur in the type descriptor for a
     /// generic item, never in a value.
@@ -193,27 +218,16 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Instruction::Copy => write!(f, "copy"),
             Instruction::Drop => write!(f, "drop"),
             Instruction::Initialize(variable) => write!(f, "initialize {variable}"),
             Instruction::Field(field) => write!(f, "field {field}"),
             Instruction::Element(element) => write!(f, "element {element}"),
             Instruction::Variable(variable) => write!(f, "variable {variable}"),
             Instruction::Constant(path) => write!(f, "constant {path}"),
-            Instruction::Instance(path) => write!(f, "instance {path}"),
             Instruction::Call => write!(f, "call"),
             Instruction::Evaluate => write!(f, "evaluate"),
             Instruction::Intrinsic(name, inputs) => write!(f, "intrinsic {name} {inputs}"),
-            Instruction::Format(segments, trailing) => write!(
-                f,
-                "format{} {trailing:?}",
-                segments.iter().fold(String::new(), |mut result, segment| {
-                    use std::fmt::Write;
-                    write!(&mut result, " {segment:?}").unwrap();
-                    result
-                }),
-            ),
-            Instruction::Text(text) => write!(f, "text {text:?}"),
-            Instruction::Number(number) => write!(f, "number {number:?}"),
             Instruction::Tuple(elements) => write!(f, "tuple {elements}"),
             Instruction::Typed(descriptor, instruction) => {
                 write!(f, "{instruction} :: {descriptor}")
@@ -229,18 +243,35 @@ where
     }
 }
 
-impl<D: Driver> std::fmt::Display for TypedInstruction<D> {
+impl<D: Driver> std::fmt::Display for TypedInstruction<D>
+where
+    D::Path: std::fmt::Display,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            TypedInstruction::Text(text) => write!(f, "text {text:?}"),
+            TypedInstruction::Number(number) => write!(f, "number {number:?}"),
             TypedInstruction::Marker => write!(f, "marker"),
+            TypedInstruction::Format(segments, trailing) => write!(
+                f,
+                "format{} {trailing:?}",
+                segments.iter().fold(String::new(), |mut result, segment| {
+                    use std::fmt::Write;
+                    write!(&mut result, " {segment:?}").unwrap();
+                    result
+                }),
+            ),
             TypedInstruction::Structure(fields) => write!(f, "structure {fields:?}"),
             TypedInstruction::Variant(variant, elements) => {
                 write!(f, "variant {variant:?} {elements}")
             }
-            TypedInstruction::Function(captures, label) => {
-                write!(f, "function {captures:?} {label}")
+            TypedInstruction::Function(captures, path, label) => {
+                write!(f, "function {captures:?} ({path}) {label}")
             }
-            TypedInstruction::Lazy(captures, label) => write!(f, "lazy {captures:?} {label}"),
+            TypedInstruction::Lazy(captures, path, label) => {
+                write!(f, "lazy {captures:?} ({path}) {label}")
+            }
+            TypedInstruction::Instance(path) => write!(f, "instance {path}"),
         }
     }
 }

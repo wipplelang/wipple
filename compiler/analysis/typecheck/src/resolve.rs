@@ -44,56 +44,7 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
         let (declaration, body) = self;
 
         declaration.map(|declaration| {
-            let trait_declaration =
-                driver.get_trait_declaration(&declaration.instance.item.r#trait);
-
-            let body_info = body.info.clone();
-
-            let role = trait_declaration.replace(Role::Trait);
-
-            let type_context = TypeContext::new();
-            let errors: RefCell<Vec<_>> = Default::default();
-
-            let instantiation_context = InstantiationContext::from_parameters(
-                driver,
-                trait_declaration.item.parameters.clone(),
-                &type_context,
-                &body_info,
-                &errors,
-            );
-
-            for (trait_parameter, instance_parameter) in trait_declaration
-                .item
-                .parameters
-                .into_iter()
-                .zip(declaration.instance.item.parameters)
-            {
-                let mut r#type = instantiation_context.type_for_parameter(driver, &trait_parameter);
-
-                assert!(unify(
-                    driver,
-                    &mut r#type,
-                    &infer_type(&instance_parameter, role.clone(), None),
-                )
-                .is_some());
-            }
-
-            let r#type = infer_type(
-                &trait_declaration.item.r#type.item,
-                role,
-                Some(&type_context),
-            )
-            .instantiate(driver, &instantiation_context);
-
-            assert!(errors.into_inner().is_empty());
-
-            let finalize_context = FinalizeContext { errors: None };
-
-            let r#type = trait_declaration.item.r#type.replace(finalize_type(
-                r#type,
-                &body_info,
-                &finalize_context,
-            ));
+            let r#type = resolve_trait_type_from_instance(driver, declaration.instance.as_ref());
 
             crate::ItemDeclaration(ItemDeclarationInner {
                 bounds: declaration.bounds,
@@ -315,6 +266,58 @@ pub fn instances_overlap<D: Driver>(
     }
 
     errors
+}
+
+pub fn resolve_trait_type_from_instance<D: Driver>(
+    driver: &D,
+    instance: WithInfo<D::Info, &crate::Instance<D>>,
+) -> WithInfo<D::Info, crate::Type<D>> {
+    let trait_declaration = driver.get_trait_declaration(&instance.item.r#trait);
+
+    let role = trait_declaration.replace(Role::Trait);
+
+    let type_context = TypeContext::new();
+    let errors: RefCell<Vec<_>> = Default::default();
+
+    let instantiation_context = InstantiationContext::from_parameters(
+        driver,
+        trait_declaration.item.parameters.clone(),
+        &type_context,
+        &instance.info,
+        &errors,
+    );
+
+    for (trait_parameter, instance_parameter) in trait_declaration
+        .item
+        .parameters
+        .into_iter()
+        .zip(&instance.item.parameters)
+    {
+        let mut r#type = instantiation_context.type_for_parameter(driver, &trait_parameter);
+
+        assert!(unify(
+            driver,
+            &mut r#type,
+            &infer_type(instance_parameter, role.clone(), None),
+        )
+        .is_some());
+    }
+
+    let r#type = infer_type(
+        &trait_declaration.item.r#type.item,
+        role,
+        Some(&type_context),
+    )
+    .instantiate(driver, &instantiation_context);
+
+    assert!(errors.into_inner().is_empty());
+
+    let finalize_context = FinalizeContext { errors: None };
+
+    trait_declaration
+        .item
+        .r#type
+        .replace(finalize_type(r#type, &instance.info, &finalize_context))
 }
 
 // Instead of reporting unification errors immediately, queue them and then

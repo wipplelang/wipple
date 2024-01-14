@@ -611,7 +611,61 @@ pub struct UnresolvedFieldValue<D: Driver> {
 }
 
 /// A path that uniquely identifies a declaration.
-pub type Path = Vec<PathComponent>;
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub struct Path(pub Vec<PathComponent>);
+
+impl Path {
+    /// The path of the top level (ie. the empty path).
+    pub fn top_level() -> Self {
+        Path(Vec::new())
+    }
+}
+
+impl std::ops::Deref for Path {
+    type Target = Vec<PathComponent>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Path {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl Serialize for Path {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.0
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(" / ")
+            .serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Path {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let components = String::deserialize(deserializer)?
+            .split(" / ")
+            .map(|component| {
+                component
+                    .parse()
+                    .map_err(|_| serde::de::Error::custom("invalid path component"))
+            })
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+
+        Ok(Path(components))
+    }
+}
 
 /// A component of a [`Path`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -667,6 +721,43 @@ impl PathComponent {
             | PathComponent::Language(name)
             | PathComponent::TypeParameter(name) => Some(name),
             PathComponent::Instance(_) | PathComponent::Variable(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for PathComponent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PathComponent::Type(name) => write!(f, "type {}", name),
+            PathComponent::Trait(name) => write!(f, "trait {}", name),
+            PathComponent::Constant(name) => write!(f, "constant {}", name),
+            PathComponent::Constructor(name) => write!(f, "constructor {}", name),
+            PathComponent::Variant(name) => write!(f, "variant {}", name),
+            PathComponent::Instance(index) => write!(f, "instance {}", index),
+            PathComponent::Language(name) => write!(f, "language {}", name),
+            PathComponent::TypeParameter(name) => write!(f, "type-parameter {}", name),
+            PathComponent::Variable(index) => write!(f, "variable {}", index),
+        }
+    }
+}
+
+impl std::str::FromStr for PathComponent {
+    type Err = ();
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let (prefix, name) = s.split_once(' ').ok_or(())?;
+
+        match prefix {
+            "type" => Ok(PathComponent::Type(name.to_string())),
+            "trait" => Ok(PathComponent::Trait(name.to_string())),
+            "constant" => Ok(PathComponent::Constant(name.to_string())),
+            "constructor" => Ok(PathComponent::Constructor(name.to_string())),
+            "variant" => Ok(PathComponent::Variant(name.to_string())),
+            "instance" => Ok(PathComponent::Instance(name.parse().map_err(|_| ())?)),
+            "language" => Ok(PathComponent::Language(name.to_string())),
+            "type-parameter" => Ok(PathComponent::TypeParameter(name.to_string())),
+            "variable" => Ok(PathComponent::Variable(name.parse().map_err(|_| ())?)),
+            _ => Err(()),
         }
     }
 }
