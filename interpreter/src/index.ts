@@ -1,7 +1,7 @@
 import { Decimal } from "decimal.js";
 import { intrinsics } from "./intrinsics.js";
 
-interface Executable {
+export interface Executable {
     items: Record<string, Item>;
     instances: Record<string, Instance[]>;
     intrinsicTypeDescriptors: Record<string, TypeDescriptor>;
@@ -9,23 +9,23 @@ interface Executable {
     code: Item[];
 }
 
-interface Item {
+export interface Item {
     ir: Instruction[][];
 }
 
-interface Instance {
+export interface Instance {
     typeDescriptor: TypeDescriptor;
     item: string;
 }
 
-type TypeDescriptor =
+export type TypeDescriptor =
     | { type: "parameter"; value: string }
     | { type: "named"; value: [string, TypeDescriptor[]] }
     | { type: "function"; value: [TypeDescriptor, TypeDescriptor] }
     | { type: "tuple"; value: TypeDescriptor[] }
     | { type: "lazy"; value: TypeDescriptor };
 
-type Instruction =
+export type Instruction =
     | { type: "copy"; value: undefined }
     | { type: "drop"; value: undefined }
     | { type: "initialize"; value: number }
@@ -45,7 +45,7 @@ type Instruction =
     | { type: "tailCall"; value: undefined }
     | { type: "unreachable"; value: undefined };
 
-type TypedInstruction =
+export type TypedInstruction =
     | { type: "text"; value: string }
     | { type: "number"; value: string }
     | { type: "format"; value: [string[], string] }
@@ -65,13 +65,18 @@ type Value =
     | { type: "nativeFunction"; value: (value: TypedValue) => Promise<TypedValue> }
     | { type: "lazy"; scope: Record<number, TypedValue>; path: string; label: number }
     | { type: "variant"; variant: string; values: TypedValue[] }
-    | { type: "reference"; value: { value: TypedValue } }
-    | { type: "list"; value: TypedValue[] }
+    | { type: "reference"; value: { current: TypedValue } }
+    | { type: "list"; values: TypedValue[] }
     | { type: "structure"; fields: Record<string, TypedValue> }
-    | { type: "tuple"; values: TypedValue[] };
+    | { type: "tuple"; values: TypedValue[] }
+    | { type: "uiHandle"; onMessage: (message: string, value: TypedValue) => Promise<TypedValue> }
+    | { type: "taskGroup"; value: TaskGroup };
 
 export interface Context {
     executable: Executable;
+    initializedItems: Record<string, TypedValue>;
+    io: (request: IoRequest) => void;
+    call: (func: TypedValue, input: TypedValue) => Promise<TypedValue>;
     error: (
         options:
             | string
@@ -85,11 +90,68 @@ export interface Context {
     ) => Error;
 }
 
+export type IoRequest =
+    | {
+          type: "display";
+          message: string;
+          completion: () => void;
+      }
+    | {
+          type: "prompt";
+          message: string;
+          validate: (message: string) => Promise<boolean>;
+      }
+    | {
+          type: "choice";
+          message: string;
+          choices: string[];
+          completion: (index: number) => void;
+      }
+    | {
+          type: "ui";
+          url: string;
+          completion: (
+              sendMessage: (message: string, value: TypedValue) => Promise<TypedValue>
+          ) => Promise<void>;
+      }
+    | {
+          type: "sleep";
+          ms: number;
+          completion: () => void;
+      };
+
+export type TaskGroup = (() => Promise<void>)[];
+
 export class InterpreterError extends Error {}
 
-export const evaluate = async (executable: Executable) => {
+export const evaluate = async (
+    executable: Executable,
+    options: {
+        io: (request: IoRequest) => Promise<void>;
+    }
+) => {
     const context: Context = {
         executable,
+        initializedItems: {},
+        io: options.io,
+        call: async (func, input) => {
+            switch (func.type) {
+                case "function": {
+                    return await evaluateItem(
+                        context.executable.items[func.path].ir,
+                        func.label,
+                        [input],
+                        func.scope,
+                        context
+                    );
+                }
+                case "nativeFunction": {
+                    return await func.value(input);
+                }
+                default:
+                    throw new InterpreterError("expected function");
+            }
+        },
         error: (options) => {
             if (typeof options === "string") {
                 return new InterpreterError(options);
@@ -201,28 +263,8 @@ const evaluateItem = async (
                     const input = pop();
                     const func = pop();
 
-                    switch (func.type) {
-                        case "function": {
-                            const value = await evaluateItem(
-                                context.executable.items[func.path].ir,
-                                func.label,
-                                [input],
-                                func.scope,
-                                context
-                            );
-
-                            stack.push(value);
-
-                            break;
-                        }
-                        case "nativeFunction": {
-                            const value = await func.value(input);
-                            stack.push(value);
-                            break;
-                        }
-                        default:
-                            throw error("expected function", func);
-                    }
+                    const result = await context.call(func, input);
+                    stack.push(result);
 
                     break;
                 }
