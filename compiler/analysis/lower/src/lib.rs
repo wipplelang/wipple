@@ -35,23 +35,9 @@ pub struct Interface<D: Driver> {
 
     /// The instance declarations in the module.
     pub instance_declarations: HashMap<Path, WithInfo<D::Info, InstanceDeclaration<D>>>,
-}
 
-impl<D: Driver> Interface<D> {
-    fn merge(&mut self, other: Self, errors: &mut Vec<WithInfo<D::Info, Error>>) {
-        // TODO: Check for conflicts
-
-        self.type_declarations.extend(other.type_declarations);
-        self.trait_declarations.extend(other.trait_declarations);
-        self.type_parameter_declarations
-            .extend(other.type_parameter_declarations);
-        self.language_declarations
-            .extend(other.language_declarations);
-        self.constant_declarations
-            .extend(other.constant_declarations);
-        self.instance_declarations
-            .extend(other.instance_declarations);
-    }
+    /// The names of top-level declarations in the module.
+    pub top_level: HashMap<String, Vec<Path>>,
 }
 
 /// Contains the implementations of items in a file.
@@ -70,16 +56,9 @@ pub struct Library<D: Driver> {
 pub fn resolve<D: Driver>(
     _driver: &D,
     files: impl IntoIterator<Item = WithInfo<D::Info, UnresolvedFile<D>>>,
-    dependencies: impl IntoIterator<Item = Interface<D>>,
+    dependencies: Interface<D>,
 ) -> Result<D> {
     let mut errors = Vec::new();
-
-    let dependencies = dependencies
-        .into_iter()
-        .fold(Interface::default(), |mut current, next| {
-            current.merge(next, &mut errors);
-            current
-        });
 
     let result = resolve::resolve(files, dependencies);
     errors.extend(result.errors);

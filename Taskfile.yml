@@ -14,7 +14,8 @@ tasks:
         msg: WIPPLE_DEV_PREFIX is not set
     cmds:
       - rm -rf $WIPPLE_DEV_PREFIX/.wipple
-      - wipple compile $WIPPLE_DEV_PREFIX/test.wipple --interface $WIPPLE_DEV_PREFIX/.wipple/test.wippleinterface --library $WIPPLE_DEV_PREFIX/.wipple/test.wipplelibrary
+      - wipple compile ../library/base/*.wipple --interface $WIPPLE_DEV_PREFIX/.wipple/base.wippleinterface --library $WIPPLE_DEV_PREFIX/.wipple/base.wipplelibrary
+      - wipple compile $WIPPLE_DEV_PREFIX/test.wipple --dependency $WIPPLE_DEV_PREFIX/.wipple/base.wippleinterface --interface $WIPPLE_DEV_PREFIX/.wipple/test.wippleinterface --library $WIPPLE_DEV_PREFIX/.wipple/test.wipplelibrary
       - wipple link $WIPPLE_DEV_PREFIX/.wipple/*.wipplelibrary --output $WIPPLE_DEV_PREFIX/.wipple/out
       - $WIPPLE_DEV_PREFIX/.wipple/out
 

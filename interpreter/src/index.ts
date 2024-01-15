@@ -147,6 +147,7 @@ const evaluateItem = async (
                 case "initialize": {
                     const value = pop();
                     scope[instruction.value] = value;
+                    stack.push(value);
                     break;
                 }
                 case "field": {

@@ -6,36 +6,43 @@ use wipple_util::WithInfo;
 /// Resolve a list of files into an interface and a library.
 pub fn resolve<D: Driver>(
     files: impl IntoIterator<Item = WithInfo<D::Info, crate::UnresolvedFile<D>>>,
-    mut dependencies: crate::Interface<D>,
+    dependencies: crate::Interface<D>,
 ) -> crate::Result<D> {
     let mut info = Info::default();
     info.scopes.push_block_scope();
 
-    macro_rules! add_from_dependencies {
+    macro_rules! add {
         ($declarations:ident) => {
-            for (path, declaration) in mem::take(&mut dependencies.$declarations) {
-                info.$declarations.insert(path.clone(), declaration.map(Some));
-
-                // Only add top-level declarations to the scope
-                if path.len() == 1 {
-                    let name = path
-                        .first()
-                        .unwrap()
-                        .clone()
-                        .name()
-                        .expect("declaration has no name")
-                        .to_string();
-
-                    info.scopes.define(name, path);
-                }
+            for (path, declaration) in dependencies.$declarations {
+                info.$declarations
+                    .insert(path.clone(), declaration.map(Some));
             }
         };
         ($($declarations:ident),* $(,)?) => {
-            $(add_from_dependencies!($declarations);)*
+            $(add!($declarations);)*
         }
     }
 
-    add_from_dependencies!(type_declarations, trait_declarations, constant_declarations);
+    add!(
+        type_declarations,
+        trait_declarations,
+        constant_declarations,
+        type_parameter_declarations,
+        instance_declarations,
+    );
+
+    info.language_declarations.extend(
+        dependencies
+            .language_declarations
+            .into_iter()
+            .map(|(item, path)| (item, Some(path))),
+    );
+
+    for (name, paths) in dependencies.top_level {
+        for path in paths {
+            info.scopes.define(name.clone(), path);
+        }
+    }
 
     for file in files {
         let statements = resolve_statements(file.item.statements, &mut info);
@@ -69,6 +76,17 @@ pub fn resolve<D: Driver>(
             .filter_map(|(name, path)| Some((name, path?))),
     );
 
+    assert!(info.scopes.0.len() == 1);
+    for (name, paths) in info.scopes.pop_scope().1 {
+        for path in paths {
+            interface
+                .top_level
+                .entry(name.clone())
+                .or_default()
+                .push(path);
+        }
+    }
+
     crate::Result {
         interface,
         library: info.library,
@@ -94,7 +112,6 @@ struct Info<D: Driver> {
     path: crate::Path,
     scopes: Scopes,
     next_variable: u32,
-    next_instance: u32,
 }
 
 impl<D: Driver> Info<D> {
@@ -393,9 +410,9 @@ fn resolve_statements<D: Driver>(
                 instance,
                 body,
             } => {
-                info.path
-                    .push(crate::PathComponent::Instance(info.next_instance));
-                info.next_instance += 1;
+                info.path.push(crate::PathComponent::Instance(
+                    info.instance_declarations.len() as u32,
+                ));
 
                 info.scopes.push_constant_scope();
                 let prev_next_variable = info.reset_next_variable();

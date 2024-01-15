@@ -1,0 +1,10 @@
+Number : type
+language "number" : Number
+
+Text : type
+language "text" : Text
+
+Boolean : type (False True)
+language "boolean" : Boolean
+language "false" : False
+language "true" : True

@@ -1,3 +1,4 @@
+import util from "util";
 import fs from "fs";
 import path from "path";
 import {
@@ -24,13 +25,13 @@ const app = subcommands({
         compile: command({
             name: "compile",
             args: {
-                dependencyPaths: multioption({ long: "dependencies", type: array(File) }),
+                dependencyPath: option({ long: "dependency", type: optional(File) }),
                 outputInterfacePath: option({ long: "interface", type: optional(string) }),
                 outputLibraryPath: option({ long: "library", type: optional(string) }),
                 sourcePaths: restPositionals({ type: File }),
             },
             handler: async ({
-                dependencyPaths,
+                dependencyPath,
                 outputInterfacePath,
                 outputLibraryPath,
                 sourcePaths,
@@ -40,14 +41,14 @@ const app = subcommands({
                     return { path, code };
                 });
 
-                const dependencies = dependencyPaths.map((path) =>
-                    JSON.parse(fs.readFileSync(path, "utf8"))
-                );
+                const dependencies = dependencyPath
+                    ? JSON.parse(fs.readFileSync(dependencyPath, "utf8"))
+                    : null;
 
                 const result = compile(sources, dependencies);
 
                 if (result.errors.length > 0) {
-                    console.error(result.errors);
+                    console.error(util.inspect(result.errors, { depth: Infinity, colors: true }));
                     process.exit(1);
                 }
 
