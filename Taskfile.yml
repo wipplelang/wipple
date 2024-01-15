@@ -1,1 +1,56 @@
-# TODO
+version: "3"
+
+tasks:
+  dev:
+    run: once
+    deps:
+      - cli:build
+    dir: cli
+    preconditions:
+      - sh: |
+          if [ -z "$WIPPLE_DEV_PREFIX" ]; then
+            exit 1
+          fi
+        msg: WIPPLE_DEV_PREFIX is not set
+    cmds:
+      - rm -rf $WIPPLE_DEV_PREFIX/.wipple
+      - wipple compile $WIPPLE_DEV_PREFIX/test.wipple --interface $WIPPLE_DEV_PREFIX/.wipple/test.wippleinterface --library $WIPPLE_DEV_PREFIX/.wipple/test.wipplelibrary
+      - wipple link $WIPPLE_DEV_PREFIX/.wipple/*.wipplelibrary --output $WIPPLE_DEV_PREFIX/.wipple/out
+      - $WIPPLE_DEV_PREFIX/.wipple/out
+
+  inspect:
+    run: once
+    preconditions:
+      - sh: |
+          if [ -z "$WIPPLE_DEV_PREFIX" ]; then
+            exit 1
+          fi
+        msg: WIPPLE_DEV_PREFIX is not set
+    cmds:
+      - code $WIPPLE_DEV_PREFIX/.wipple
+
+  cli:build:
+    run: once
+    deps:
+      - compiler:build
+      - interpreter:build
+    dir: cli
+    cmds:
+      - npm ci
+      - npm run build
+      - npm run package
+      - cp dist/wipple /usr/local/bin/wipple
+
+  compiler:build:
+    run: once
+    dir: compiler
+    cmds:
+      - npm ci
+      - npm run build
+
+  interpreter:build:
+    run: once
+    dir: interpreter
+    cmds:
+      - npm ci
+      - npm run build

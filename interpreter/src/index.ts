@@ -85,16 +85,18 @@ export interface Context {
     ) => Error;
 }
 
+export class InterpreterError extends Error {}
+
 export const evaluate = async (executable: Executable) => {
     const context: Context = {
         executable,
         error: (options) => {
             if (typeof options === "string") {
-                return new Error(options);
+                return new InterpreterError(options);
             } else {
                 const { label, instruction, message, stack, value } = options;
 
-                return new Error(
+                return new InterpreterError(
                     `${label}: ${JSON.stringify(instruction)}: ${message}\n${
                         value ? `while evaluating ${JSON.stringify(value, null, 4)}\n` : ""
                     }stack: ${JSON.stringify(stack, null, 4)}`

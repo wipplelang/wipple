@@ -4,8 +4,9 @@
     "type": "module",
     "main": "dist/index.js",
     "scripts": {
-        "start": "node --enable-source-maps .",
-        "build": "node build.js"
+        "start": "bun run .",
+        "build": "bun run build.js",
+        "package": "bun build . --compile --outfile dist/wipple"
     },
     "devDependencies": {
         "@types/node": "^20.11.0",
@@ -13,6 +14,7 @@
         "typescript": "^5.3.3"
     },
     "dependencies": {
+        "cmd-ts": "^0.13.0",
         "wipple-compiler": "file:../compiler",
         "wipple-interpreter": "file:../interpreter"
     }
