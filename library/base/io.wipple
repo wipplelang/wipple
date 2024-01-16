@@ -1,0 +1,27 @@
+[Convert a value into `Text` so it can be displayed using `show`.]
+[group : "Input and Output"]
+[show-code : True]
+[on-unimplemented : "cannot display _ on the screen" A]
+Show : (A : Text) => trait (A -> Text)
+
+language "show" : Show
+
+[Display a value on the screen.]
+[group : "Input and Output"]
+[playground : "https://wipple.dev/library/base/examples/show.txt"]
+[accepts-text : True]
+[alias : "print"]
+[alias : "println"]
+[alias : "display"]
+[on-unresolved : "`show` expects a value to be displayed"]
+[resolve : "insert a value to display" (show _)]
+show :: A where (Show A) => A -> ()
+show : value -> intrinsic "display" (Show value)
+
+instance (Show Text) : it
+instance (Show Number) : n -> semantics "pure" (intrinsic "number-to-text" n)
+instance (Show Boolean) : b -> if b "True" "False"
+Value where (Show Value) => instance (Show (Maybe Value)) : m -> when m (
+    Some value -> "Some _" value
+    None -> "None"
+)

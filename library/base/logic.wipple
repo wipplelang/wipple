@@ -1,0 +1,6 @@
+[Make a choice based on whether the input is `True` or `False`.]
+if :: A => Boolean -> lazy A -> lazy A -> A
+if : condition -> then -> else -> when condition (
+    True -> evaluate then
+    False -> evaluate else
+)

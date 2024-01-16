@@ -5,8 +5,6 @@ import {
     command,
     run,
     restPositionals,
-    multioption,
-    array,
     subcommands,
     option,
     string,
@@ -15,7 +13,7 @@ import {
 } from "cmd-ts";
 import { File } from "cmd-ts/batteries/fs";
 import { compile, link } from "wipple-compiler";
-import { evaluate, InterpreterError } from "wipple-interpreter";
+import { evaluate, InterpreterError, IoRequest } from "wipple-interpreter";
 
 const shebang = `#!/usr/bin/env wipple run\n`;
 
@@ -101,8 +99,35 @@ const app = subcommands({
                     fs.readFileSync(executablePath, "utf8").replace(shebang, "")
                 );
 
+                const handleIo = async (request: IoRequest) => {
+                    switch (request.type) {
+                        case "display": {
+                            console.log(request.message);
+                            request.completion();
+                            break;
+                        }
+                        case "prompt": {
+                            throw new Error("TODO");
+                        }
+                        case "choice": {
+                            throw new Error("TODO");
+                        }
+                        case "ui": {
+                            throw new InterpreterError(
+                                "UI is not supported outside the Wipple Playground"
+                            );
+                        }
+                        case "sleep": {
+                            setTimeout(request.completion, request.ms);
+                            break;
+                        }
+                    }
+                };
+
                 try {
-                    await evaluate(executable);
+                    await evaluate(executable, {
+                        io: handleIo,
+                    });
                 } catch (error) {
                     if (error instanceof InterpreterError) {
                         console.error(error.message);

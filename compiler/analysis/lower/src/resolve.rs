@@ -44,10 +44,13 @@ pub fn resolve<D: Driver>(
         }
     }
 
-    for file in files {
-        let statements = resolve_statements(file.item.statements, &mut info);
-        info.library.code.extend(statements);
-    }
+    let statements = files
+        .into_iter()
+        .flat_map(|file| file.item.statements)
+        .collect::<Vec<_>>();
+
+    let statements = resolve_statements(statements, &mut info);
+    info.library.code.extend(statements);
 
     let mut interface = crate::Interface::default();
 
@@ -229,9 +232,9 @@ fn resolve_statements<D: Driver>(
     statements.sort_by_key(|statement| match statement.item {
         crate::UnresolvedStatement::Type { .. } | crate::UnresolvedStatement::Trait { .. } => 0,
         crate::UnresolvedStatement::Constant { .. } => 1,
+        crate::UnresolvedStatement::Language { .. } => 2,
         crate::UnresolvedStatement::Instance { .. }
-        | crate::UnresolvedStatement::Language { .. } => 2,
-        crate::UnresolvedStatement::Assignment { .. }
+        | crate::UnresolvedStatement::Assignment { .. }
         | crate::UnresolvedStatement::Expression(_) => 3,
     });
 
@@ -300,12 +303,15 @@ fn resolve_statements<D: Driver>(
                                             .collect::<Vec<_>>();
 
                                         constructors.push(generate_variant_constructor(
-                                            variant.name,
+                                            variant.name.clone(),
                                             parameters.clone(),
                                             variant_path.clone(),
                                             value_types.clone(),
                                             info,
                                         ));
+
+                                        constructors
+                                            .push((variant.name.item, variant_path.item.clone()));
 
                                         crate::Variant {
                                             name: variant_path,

@@ -932,7 +932,6 @@ fn unify_with_options<D: Driver>(
         r#type: &mut Type<D>,
         expected_type: &Type<D>,
         options: UnifyOptions,
-        root: bool,
     ) -> bool {
         let mut r#type = r#type.apply_in_current_context();
         let expected_type = expected_type.apply_in_current_context();
@@ -966,7 +965,7 @@ fn unify_with_options<D: Driver>(
                 assert_eq!(parameters.len(), expected_parameters.len());
                 let mut unified = true;
                 for (r#type, expected_type) in parameters.iter_mut().zip(expected_parameters) {
-                    unified &= unify_type(driver, r#type, expected_type, options, false);
+                    unified &= unify_type(driver, r#type, expected_type, options);
                 }
 
                 unified
@@ -978,8 +977,8 @@ fn unify_with_options<D: Driver>(
                     output: expected_output,
                 },
             ) => {
-                unify_type(driver, input, expected_input, options, false)
-                    && unify_type(driver, output, expected_output, options, false)
+                unify_type(driver, input, expected_input, options)
+                    && unify_type(driver, output, expected_output, options)
             }
             (TypeKind::Tuple(elements), TypeKind::Tuple(expected_elements)) => {
                 if elements.len() != expected_elements.len() {
@@ -988,16 +987,16 @@ fn unify_with_options<D: Driver>(
 
                 let mut unified = true;
                 for (r#type, expected_type) in elements.iter_mut().zip(expected_elements) {
-                    unified &= unify_type(driver, r#type, expected_type, options, false);
+                    unified &= unify_type(driver, r#type, expected_type, options);
                 }
 
                 unified
             }
             (TypeKind::Lazy(r#type), TypeKind::Lazy(expected_type)) => {
-                unify_type(driver, r#type, expected_type, options, false)
+                unify_type(driver, r#type, expected_type, options)
             }
-            (_, TypeKind::Lazy(expected_type)) if root => {
-                unify_type(driver, &mut r#type, expected_type, options, false)
+            (_, TypeKind::Lazy(expected_type)) => {
+                unify_type(driver, &mut r#type, expected_type, options)
             }
             (TypeKind::Unknown, _) | (_, TypeKind::Unknown) => true,
             _ => false,
@@ -1017,8 +1016,7 @@ fn unify_with_options<D: Driver>(
         coercion
     }
 
-    unify_type(driver, r#type, expected_type, options, true)
-        .then(|| get_coercion(r#type, expected_type))
+    unify_type(driver, r#type, expected_type, options).then(|| get_coercion(r#type, expected_type))
 }
 
 #[must_use]
@@ -1451,7 +1449,7 @@ fn infer_expression<D: Driver>(
                 .variables
                 .borrow()
                 .get(&variable)
-                .unwrap()
+                .unwrap_or_else(|| panic!("variable {variable:?} not in context"))
                 .clone_in_current_context(),
             kind: ExpressionKind::Variable(variable),
         },
@@ -1623,13 +1621,13 @@ fn infer_expression<D: Driver>(
                 .into_iter()
                 .map(|arm| {
                     arm.map(|arm| {
+                        let mut input_type = infer_pattern(arm.pattern.as_ref(), context, None);
+
                         let mut arm = Arm {
                             pattern: arm.pattern,
                             condition: arm.condition.map(|guard| infer_expression(guard, context)),
                             body: infer_expression(arm.body, context),
                         };
-
-                        let mut input_type = infer_pattern(arm.pattern.as_ref(), context, None);
 
                         try_unify_pattern(
                             context.driver,
@@ -1976,8 +1974,21 @@ fn infer_pattern<D: Driver>(
 
                 r#type.kind
             }
-            crate::Pattern::Destructure(_) => TypeKind::Variable(context.type_context.variable()),
-            crate::Pattern::Variant { variant, .. } => {
+            crate::Pattern::Destructure(fields) => {
+                for field in fields {
+                    infer_pattern(field.item.pattern.as_ref(), context, None);
+                }
+
+                TypeKind::Variable(context.type_context.variable())
+            }
+            crate::Pattern::Variant {
+                variant,
+                value_patterns,
+            } => {
+                for pattern in value_patterns {
+                    infer_pattern(pattern.as_ref(), context, None);
+                }
+
                 let enumeration = context.driver.get_enumeration_for_variant(&variant.item);
                 let type_declaration = context.driver.get_type_declaration(&enumeration);
 

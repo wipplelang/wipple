@@ -8,3 +8,15 @@ Boolean : type (False True)
 language "boolean" : Boolean
 language "false" : False
 language "true" : True
+
+Maybe : A => type (
+    None
+    Some A
+)
+
+language "maybe" : Maybe
+language "none" : None
+language "some" : Some
+
+evaluate :: A => lazy A -> A
+evaluate : lazy -> intrinsic "evaluate" lazy

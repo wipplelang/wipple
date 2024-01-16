@@ -481,24 +481,33 @@ impl Driver {
             );
         }
 
-        if let Some(boolean_type) = self.interface.language_declarations.get("boolean") {
-            self.library.intrinsic_type_descriptors.insert(
-                String::from("boolean"),
-                wipple_codegen::TypeDescriptor::Named(boolean_type.clone(), Vec::new()),
-            );
+        macro_rules! insert_intrinsic {
+            ($name:literal, $intrinsics:ident) => {
+                if let Some(value) = self.interface.language_declarations.get($name) {
+                    self.library
+                        .$intrinsics
+                        .insert(String::from($name), value.clone());
+                }
+            };
         }
 
-        if let Some(true_variant) = self.interface.language_declarations.get("true") {
-            self.library
-                .intrinsic_variants
-                .insert(String::from("true"), true_variant.clone());
-        }
+        insert_intrinsic!("text", intrinsic_type_descriptors);
 
-        if let Some(false_variant) = self.interface.language_declarations.get("false") {
-            self.library
-                .intrinsic_variants
-                .insert(String::from("false"), false_variant.clone());
-        }
+        insert_intrinsic!("number", intrinsic_type_descriptors);
+
+        insert_intrinsic!("boolean", intrinsic_type_descriptors);
+        insert_intrinsic!("true", intrinsic_variants);
+        insert_intrinsic!("false", intrinsic_variants);
+
+        insert_intrinsic!("maybe", intrinsic_type_descriptors);
+        insert_intrinsic!("none", intrinsic_variants);
+        insert_intrinsic!("some", intrinsic_variants);
+
+        insert_intrinsic!("list", intrinsic_type_descriptors);
+
+        insert_intrinsic!("ui-handle", intrinsic_type_descriptors);
+
+        insert_intrinsic!("task-group", intrinsic_type_descriptors);
 
         Result {
             interface: self.interface,

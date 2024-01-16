@@ -162,7 +162,7 @@ where
                 statements: statements
                     .into_iter()
                     .map(|statement| {
-                        parser.parse_statement(statement.span().unwrap().clone(), statement)
+                        parser.parse_statement(statement.span().cloned().unwrap_or(0..0), statement)
                     })
                     .collect(),
             },
@@ -1953,6 +1953,14 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
         "#;
         }
 
+        grammar! {
+            static LAZY_TYPE = r#"
+                (list
+                    (symbol . "lazy")
+                    (variable . "type"))
+            "#;
+        }
+
         let function = |parser: &mut Self| {
             FUNCTION_TYPE.parse(&node).map(|mut vars| {
                 let input = match vars.remove("input").map(|mut value| value.pop().unwrap()) {
@@ -2007,6 +2015,26 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         input: input.boxed(),
                         output: output.boxed(),
                     },
+                }
+            })
+        };
+
+        let lazy = |parser: &mut Self| {
+            LAZY_TYPE.parse(&node).map(|mut vars| {
+                let r#type = vars.remove("type").unwrap().pop().unwrap();
+
+                let r#type = parser.parse_type(
+                    r#type.span().cloned().unwrap_or_else(|| span.clone()),
+                    r#type,
+                );
+
+                WithInfo {
+                    info: Info {
+                        path: parser.driver.file_path(),
+                        span: span.clone(),
+                    }
+                    .into(),
+                    item: syntax::Type::Lazy(r#type.boxed()),
                 }
             })
         };
@@ -2142,7 +2170,9 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
             }
         };
 
-        function(self).unwrap_or_else(|| terminal(self))
+        function(self)
+            .or_else(|| lazy(self))
+            .unwrap_or_else(|| terminal(self))
     }
 
     fn parse_pattern(

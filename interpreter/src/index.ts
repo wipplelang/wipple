@@ -1,3 +1,4 @@
+import util from "util";
 import { Decimal } from "decimal.js";
 import { intrinsics } from "./intrinsics.js";
 
@@ -33,9 +34,7 @@ export type Instruction =
     | { type: "element"; value: number }
     | { type: "variable"; value: number }
     | { type: "constant"; value: string }
-    | { type: "instance"; value: [string, TypeDescriptor] }
     | { type: "call"; value: undefined }
-    | { type: "evaluate"; value: undefined }
     | { type: "intrinsic"; value: [string, number] }
     | { type: "tuple"; value: number }
     | { type: "typed"; value: [TypeDescriptor, TypedInstruction] }
@@ -53,7 +52,8 @@ export type TypedInstruction =
     | { type: "structure"; value: string[] }
     | { type: "variant"; value: [string, number] }
     | { type: "function"; value: [number[], string, number] }
-    | { type: "lazy"; value: [number[], string, number] };
+    | { type: "lazy"; value: [number[], string, number] }
+    | { type: "instance"; value: string };
 
 export type TypedValue = Value & { typeDescriptor: TypeDescriptor };
 
@@ -77,6 +77,7 @@ export interface Context {
     initializedItems: Record<string, TypedValue>;
     io: (request: IoRequest) => void;
     call: (func: TypedValue, input: TypedValue) => Promise<TypedValue>;
+    evaluate: (lazy: TypedValue) => Promise<TypedValue>;
     error: (
         options:
             | string
@@ -152,6 +153,19 @@ export const evaluate = async (
                     throw new InterpreterError("expected function");
             }
         },
+        evaluate: async (lazy) => {
+            if (lazy.type !== "lazy") {
+                throw new InterpreterError("expected lazy value");
+            }
+
+            return await evaluateItem(
+                context.executable.items[lazy.path].ir,
+                lazy.label,
+                [],
+                lazy.scope,
+                context
+            );
+        },
         error: (options) => {
             if (typeof options === "string") {
                 return new InterpreterError(options);
@@ -194,6 +208,12 @@ const evaluateItem = async (
 
                 return value;
             };
+
+            if (process.env.WIPPLE_DEBUG_INTERPRETER) {
+                console.log(
+                    util.inspect({ label, instruction, stack }, { depth: Infinity, colors: true })
+                );
+            }
 
             switch (instruction.type) {
                 case "copy": {
@@ -240,21 +260,12 @@ const evaluateItem = async (
                     break;
                 }
                 case "constant": {
-                    const item = context.executable.items[instruction.value];
-                    const value = await evaluateItem(item.ir, 0, [], {}, context);
-                    stack.push(value);
-                    break;
-                }
-                case "instance": {
-                    const path = findInstance(
-                        instruction.value[0],
-                        instruction.value[1],
-                        context.executable
-                    );
+                    const value = (context.initializedItems[instruction.value] ??=
+                        await (async () => {
+                            const item = context.executable.items[instruction.value];
+                            return await evaluateItem(item.ir, 0, [], {}, context);
+                        })());
 
-                    const item = context.executable.items[path];
-
-                    const value = await evaluateItem(item.ir, 0, [], {}, context);
                     stack.push(value);
 
                     break;
@@ -265,25 +276,6 @@ const evaluateItem = async (
 
                     const result = await context.call(func, input);
                     stack.push(result);
-
-                    break;
-                }
-                case "evaluate": {
-                    const lazy = pop();
-
-                    if (lazy.type !== "lazy") {
-                        throw error("expected lazy value", lazy);
-                    }
-
-                    const value = await evaluateItem(
-                        context.executable.items[lazy.path].ir,
-                        lazy.label,
-                        [],
-                        lazy.scope,
-                        context
-                    );
-
-                    stack.push(value);
 
                     break;
                 }
@@ -428,6 +420,26 @@ const evaluateItem = async (
 
                             break;
                         }
+                        case "instance": {
+                            const path = findInstance(
+                                instruction.value[1].value,
+                                instruction.value[0],
+                                context.executable
+                            );
+
+                            const value = (context.initializedItems[path] ??= await (async () => {
+                                const item = context.executable.items[path];
+                                return await evaluateItem(item.ir, 0, [], {}, context);
+                            })());
+
+                            stack.push(value);
+
+                            break;
+                        }
+                        default: {
+                            instruction.value[1] satisfies never;
+                            throw error("unknown instruction");
+                        }
                     }
 
                     break;
@@ -478,6 +490,12 @@ const findInstance = (trait: string, typeDescriptor: TypeDescriptor, executable:
                 if (substitutions[right.value]) {
                     return unify(left, substitutions[right.value], substitutions);
                 } else {
+                    if (left.type === "parameter") {
+                        if (left.value !== right.value) {
+                            return false;
+                        }
+                    }
+
                     substitutions[right.value] = left;
                     return true;
                 }
@@ -508,14 +526,21 @@ const findInstance = (trait: string, typeDescriptor: TypeDescriptor, executable:
                 // Coercions are done at compile time, so at runtime `lazy` only
                 // unifies with `lazy`
                 return left.type === "lazy" && unify(left.value, right.value, substitutions);
+            default:
+                right satisfies never;
+                throw new InterpreterError(`unknown type descriptor ${JSON.stringify(right)}`);
         }
     };
 
-    for (const instance of executable.instances[trait]) {
+    for (const instance of executable.instances[trait] ?? []) {
         if (unify(typeDescriptor, instance.typeDescriptor, {})) {
             return instance.item;
         }
     }
 
-    throw new Error("no instance found");
+    throw new InterpreterError(
+        `no instance found for trait ${trait} with type descriptor ${JSON.stringify(
+            typeDescriptor
+        )}`
+    );
 };

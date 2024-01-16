@@ -1,0 +1,9 @@
+[Returns its input unmodified.]
+[group : "Utilities"]
+it :: A => A -> A
+it : x -> x
+
+[Returns a function that always returns the provided value instead of its own input.]
+[group : "Utilities"]
+just :: A B => A -> B -> A
+just : x -> _ -> x

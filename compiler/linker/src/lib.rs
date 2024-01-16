@@ -3,7 +3,6 @@
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use wipple_codegen::TypeDescriptor;
 use wipple_util::WithInfo;
 
 /// Provides the linker with information about the program.
@@ -18,7 +17,7 @@ pub struct UnlinkedLibrary<D: Driver> {
     pub items: HashMap<D::Path, UnlinkedItem<D>>,
 
     /// The type descriptors required for various intrinsics.
-    pub intrinsic_type_descriptors: HashMap<String, TypeDescriptor<D>>,
+    pub intrinsic_type_descriptors: HashMap<String, D::Path>,
 
     /// The variants required for various intrinsics.
     pub intrinsic_variants: HashMap<String, D::Path>,
@@ -52,7 +51,7 @@ pub struct Executable<D: Driver> {
     pub items: HashMap<D::Path, LinkedItem<D>>,
 
     /// The type descriptors required for various intrinsics.
-    pub intrinsic_type_descriptors: HashMap<String, TypeDescriptor<D>>,
+    pub intrinsic_type_descriptors: HashMap<String, D::Path>,
 
     /// The variants required for various intrinsics.
     pub intrinsic_variants: HashMap<String, D::Path>,

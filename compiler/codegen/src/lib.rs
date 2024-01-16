@@ -103,9 +103,6 @@ pub enum Instruction<D: Driver> {
     /// the top of the stack.
     Call,
 
-    /// (Consuming) Evaluate the lazy value on the top of the stack.
-    Evaluate,
-
     /// (Consuming) An intrinsic provided by the runtime with _n_ inputs.
     Intrinsic(String, u32),
 
@@ -226,7 +223,6 @@ where
             Instruction::Variable(variable) => write!(f, "variable {variable}"),
             Instruction::Constant(path) => write!(f, "constant {path}"),
             Instruction::Call => write!(f, "call"),
-            Instruction::Evaluate => write!(f, "evaluate"),
             Instruction::Intrinsic(name, inputs) => write!(f, "intrinsic {name} {inputs}"),
             Instruction::Tuple(elements) => write!(f, "tuple {elements}"),
             Instruction::Typed(descriptor, instruction) => {
