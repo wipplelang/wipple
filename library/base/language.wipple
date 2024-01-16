@@ -18,7 +18,7 @@ language "maybe" : Maybe
 language "none" : None
 language "some" : Some
 
-evaluate :: A => lazy A -> A
+evaluate :: A => (lazy A) -> A
 evaluate : lazy -> intrinsic "evaluate" lazy
 
 error :: (A : ()) => Text -> A

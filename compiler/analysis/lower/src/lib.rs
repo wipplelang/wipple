@@ -633,12 +633,19 @@ impl<'de> Deserialize<'de> for Path {
     where
         D: serde::Deserializer<'de>,
     {
-        let components = String::deserialize(deserializer)?
+        let path = String::deserialize(deserializer)?;
+        if path.is_empty() {
+            return Ok(Path(Vec::new()));
+        }
+
+        let components = path
             .split(" / ")
             .map(|component| {
-                component
-                    .parse()
-                    .map_err(|_| serde::de::Error::custom("invalid path component"))
+                component.parse().map_err(|_| {
+                    serde::de::Error::custom(format!(
+                        "invalid path component {component:?} in path {path:?}"
+                    ))
+                })
             })
             .collect::<std::result::Result<Vec<_>, _>>()?;
 

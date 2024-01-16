@@ -72,6 +72,7 @@ type Value =
           type: "function";
           scope: Record<number, TypedValue>;
           path: string;
+          ir: Instruction[][];
           label: number;
           substitutions: Record<string, TypeDescriptor>;
       }
@@ -83,6 +84,7 @@ type Value =
           type: "lazy";
           scope: Record<number, TypedValue>;
           path: string;
+          ir: Instruction[][];
           label: number;
           substitutions: Record<string, TypeDescriptor>;
       }
@@ -118,6 +120,7 @@ type Value =
 
 export interface Context {
     executable: Executable;
+    topLevel: Item[];
     initializedItems: Record<string, [Record<string, TypeDescriptor>, TypedValue][]>;
     io: (request: IoRequest) => void;
     call: (func: TypedValue, input: TypedValue) => Promise<TypedValue>;
@@ -178,6 +181,7 @@ export const evaluate = async (
 ) => {
     const context: Context = {
         executable,
+        topLevel: executable.code,
         initializedItems: {},
         io: options.io,
         call: async (func, input) => {
@@ -185,7 +189,7 @@ export const evaluate = async (
                 case "function": {
                     return (await evaluateItem(
                         func.path,
-                        context.executable.items[func.path].ir,
+                        func.ir,
                         func.label,
                         [input],
                         func.scope,
@@ -207,7 +211,7 @@ export const evaluate = async (
 
             return (await evaluateItem(
                 lazy.path,
-                context.executable.items[lazy.path].ir,
+                lazy.ir,
                 lazy.label,
                 [],
                 lazy.scope,
@@ -483,10 +487,13 @@ const evaluateItem = async (
                             break;
                         }
                         case "function": {
+                            const path = instruction.value[1].value[1];
+
                             stack.push({
                                 typeDescriptor,
                                 type: "function",
-                                path: instruction.value[1].value[1],
+                                path,
+                                ir: path ? context.executable.items[path].ir : item,
                                 label: instruction.value[1].value[2],
                                 substitutions,
                                 scope,
@@ -495,10 +502,13 @@ const evaluateItem = async (
                             break;
                         }
                         case "lazy": {
+                            const path = instruction.value[1].value[1];
+
                             stack.push({
                                 type: "lazy",
                                 typeDescriptor,
-                                path: instruction.value[1].value[1],
+                                path,
+                                ir: path ? context.executable.items[path].ir : item,
                                 label: instruction.value[1].value[2],
                                 substitutions,
                                 scope,
@@ -634,19 +644,6 @@ const unify = (
         default:
             right satisfies never;
             throw new InterpreterError(`unknown type descriptor ${JSON.stringify(right)}`);
-    }
-};
-
-const substitute = (ir: Instruction[][], substitutions: Record<string, TypeDescriptor>) => {
-    for (const instructions of ir) {
-        for (const instruction of instructions) {
-            if (instruction.type === "typed") {
-                instruction.value[0] = substituteTypeDescriptor(
-                    instruction.value[0],
-                    substitutions
-                );
-            }
-        }
     }
 };
 
