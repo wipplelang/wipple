@@ -2213,6 +2213,17 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         (variable . "pattern"))
                     (variable . "name")))
         "#;
+
+
+        static TUPLE_PATTERN = r#"
+            (or
+                (variadic-operator
+                    ";"
+                    (applied . (variable . "elements")))
+                (variadic-operator
+                    ";"
+                    unapplied))
+        "#;
         }
 
         let or = |parser: &mut Self| {
@@ -2357,6 +2368,31 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     }
                 })
             };
+
+        let tuple = |parser: &mut Self| {
+            TUPLE_PATTERN.parse(&node).map(|mut vars| {
+                let elements = vars
+                    .remove("elements")
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|element| {
+                        parser.parse_pattern(
+                            element.span().cloned().unwrap_or_else(|| span.clone()),
+                            element,
+                        )
+                    })
+                    .collect();
+
+                WithInfo {
+                    info: Info {
+                        path: parser.driver.file_path(),
+                        span: span.clone(),
+                    }
+                    .into(),
+                    item: syntax::Pattern::Tuple(elements),
+                }
+            })
+        };
 
         let terminal = |parser: &mut Self| match &node {
             Node::Token(token) => match &token.kind {
@@ -2504,6 +2540,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
 
         or(self)
             .or_else(|| destructure(self))
+            .or_else(|| tuple(self))
             .unwrap_or_else(|| terminal(self))
     }
 

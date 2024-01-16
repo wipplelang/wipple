@@ -764,8 +764,7 @@ fn resolve_expression<D: Driver>(
                             Some(crate::Expression::Trait(path.clone()))
                         }
                         crate::PathComponent::Constant(_)
-                        | crate::PathComponent::Constructor(_)
-                        | crate::PathComponent::Variant(_) => {
+                        | crate::PathComponent::Constructor(_) => {
                             Some(crate::Expression::Constant(path.clone()))
                         }
                         crate::PathComponent::Variable(_) => {

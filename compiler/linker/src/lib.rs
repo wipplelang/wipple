@@ -23,7 +23,7 @@ pub struct UnlinkedLibrary<D: Driver> {
     pub intrinsic_variants: HashMap<String, D::Path>,
 
     /// The list of instances for each trait.
-    pub instances: HashMap<D::Path, Vec<Instance<D>>>,
+    pub instances: HashMap<D::Path, Vec<D::Path>>,
 
     /// Any code to be run when the program starts.
     pub code: Vec<UnlinkedItem<D>>,
@@ -57,7 +57,7 @@ pub struct Executable<D: Driver> {
     pub intrinsic_variants: HashMap<String, D::Path>,
 
     /// The list of instances for each trait.
-    pub instances: HashMap<D::Path, Vec<Instance<D>>>,
+    pub instances: HashMap<D::Path, Vec<D::Path>>,
 
     /// Any code to be run when the program starts.
     pub code: Vec<LinkedItem<D>>,
@@ -69,20 +69,11 @@ pub struct Executable<D: Driver> {
 #[derivative(Debug(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct LinkedItem<D: Driver> {
-    /// The compiled IR.
-    pub ir: Vec<Vec<wipple_codegen::Instruction<D>>>,
-}
-
-/// An instance.
-#[derive(Serialize, Deserialize, Derivative)]
-#[derivative(Debug(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub struct Instance<D: Driver> {
-    /// The type descriptor for the trait if this instance matches.
+    /// The item's type descriptor.
     pub type_descriptor: wipple_codegen::TypeDescriptor<D>,
 
-    /// The path to the instance's implementation.
-    pub item: D::Path,
+    /// The compiled IR.
+    pub ir: Vec<Vec<wipple_codegen::Instruction<D>>>,
 }
 
 /// Link multiple [`UnlinkedLibrary`]s into a single [`Executable`].
@@ -115,5 +106,8 @@ pub fn link<D: Driver>(
 }
 
 fn convert_item<D: Driver>(item: UnlinkedItem<D>) -> Option<LinkedItem<D>> {
-    Some(LinkedItem { ir: item.ir? })
+    Some(LinkedItem {
+        type_descriptor: wipple_codegen::type_descriptor(&item.expression.item.r#type)?,
+        ir: item.ir?,
+    })
 }

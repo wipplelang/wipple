@@ -6,6 +6,7 @@ pub fn compile<D: crate::Driver>(
     driver: &D,
     path: D::Path,
     expression: WithInfo<D::Info, &wipple_typecheck::TypedExpression<D>>,
+    top_level: bool,
 ) -> Option<Vec<Vec<crate::Instruction<D>>>> {
     let mut info = Info {
         driver,
@@ -17,7 +18,11 @@ pub fn compile<D: crate::Driver>(
     };
 
     compile_expression(expression, &mut info)?;
-    info.push_instruction(crate::Instruction::Return);
+    info.push_instruction(if top_level {
+        crate::Instruction::End
+    } else {
+        crate::Instruction::Return
+    });
 
     Some(info.labels)
 }
@@ -73,7 +78,10 @@ fn compile_expression<D: crate::Driver>(
             info.push_instruction(crate::Instruction::Variable(variable));
         }
         wipple_typecheck::TypedExpressionKind::Constant(path) => {
-            info.push_instruction(crate::Instruction::Constant(path.clone()))
+            info.push_instruction(crate::Instruction::Typed(
+                type_descriptor(&expression.item.r#type)?,
+                crate::TypedInstruction::Constant(path.clone()),
+            ))
         }
         wipple_typecheck::TypedExpressionKind::Trait(path) => {
             info.push_instruction(crate::Instruction::Typed(
@@ -89,7 +97,7 @@ fn compile_expression<D: crate::Driver>(
         }
         wipple_typecheck::TypedExpressionKind::Text(text) => {
             info.push_instruction(crate::Instruction::Typed(
-                crate::TypeDescriptor::Named(info.driver.number_type()?, Vec::new()),
+                crate::TypeDescriptor::Named(info.driver.text_type()?, Vec::new()),
                 crate::TypedInstruction::Text(text.clone()),
             ));
         }
@@ -120,8 +128,7 @@ fn compile_expression<D: crate::Driver>(
             compile_expression(body.as_deref(), info)?;
             info.push_instruction(crate::Instruction::Return);
             let captures = mem::replace(&mut info.captures, prev_captures);
-
-            let function_label = mem::replace(&mut info.current_label, previous_label);
+            info.current_label = previous_label;
 
             info.push_instruction(crate::Instruction::Typed(
                 type_descriptor(&expression.item.r#type)?,

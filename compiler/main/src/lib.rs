@@ -360,7 +360,7 @@ impl Driver {
             );
 
             let codegen_result =
-                codegen::compile(&self, path.clone(), typecheck_result.item.as_ref());
+                codegen::compile(&self, path.clone(), typecheck_result.item.as_ref(), false);
 
             self.library.items.insert(
                 path,
@@ -395,7 +395,7 @@ impl Driver {
             );
 
             let codegen_result =
-                codegen::compile(&self, path.clone(), typecheck_result.item.as_ref());
+                codegen::compile(&self, path.clone(), typecheck_result.item.as_ref(), false);
 
             self.library.items.insert(
                 path,
@@ -431,6 +431,7 @@ impl Driver {
                 &self,
                 lower::Path::top_level(),
                 typecheck_result.item.as_ref(),
+                true,
             );
 
             self.library.code.push(Item {
@@ -446,10 +447,12 @@ impl Driver {
             .into_group_map_by(|(_, instance)| instance.item.instance.item.r#trait.clone());
 
         for (r#trait, instances) in instances_by_trait {
-            let overlap_errors = typecheck::instances_overlap(
-                &self,
-                instances.iter().map(|&(path, _)| path.clone()),
-            );
+            let instances = instances
+                .into_iter()
+                .map(|(path, _)| path.clone())
+                .collect::<Vec<_>>();
+
+            let overlap_errors = typecheck::instances_overlap(&self, instances.clone());
 
             errors.extend(
                 overlap_errors
@@ -457,28 +460,7 @@ impl Driver {
                     .map(|error| error.map(Error::Typecheck)),
             );
 
-            self.library.instances.insert(
-                r#trait.clone(),
-                instances
-                    .into_iter()
-                    .filter_map(
-                        |(path, instance): (
-                            &lower::Path,
-                            &util::WithInfo<Info, typecheck::InstanceDeclaration<Driver>>,
-                        )| {
-                            let r#type = typecheck::resolve_trait_type_from_instance(
-                                &self,
-                                instance.item.instance.as_ref(),
-                            );
-
-                            Some(linker::Instance {
-                                type_descriptor: codegen::type_descriptor(&r#type.item)?,
-                                item: path.clone(),
-                            })
-                        },
-                    )
-                    .collect(),
-            );
+            self.library.instances.insert(r#trait.clone(), instances);
         }
 
         macro_rules! insert_intrinsic {

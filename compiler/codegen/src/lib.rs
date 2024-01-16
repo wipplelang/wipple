@@ -31,8 +31,9 @@ pub fn compile<D: Driver>(
     driver: &D,
     path: D::Path,
     expression: WithInfo<D::Info, &wipple_typecheck::TypedExpression<D>>,
+    top_level: bool,
 ) -> Option<Result<D>> {
-    let mut labels = compile::compile(driver, path, expression)?;
+    let mut labels = compile::compile(driver, path, expression, top_level)?;
 
     for instructions in &mut labels {
         tail_call::apply(instructions);
@@ -96,9 +97,6 @@ pub enum Instruction<D: Driver> {
     /// A variable.
     Variable(u32),
 
-    /// A constant.
-    Constant(D::Path),
-
     /// (Consuming) Call the function on the top of the stack with the input on
     /// the top of the stack.
     Call,
@@ -115,6 +113,9 @@ pub enum Instruction<D: Driver> {
     /// (Control flow) Go to another label if the variant on the top of the
     /// stack does not match the variant in the condition.
     JumpIfNot(D::Path, Label),
+
+    /// (Control flow) End the program.
+    End,
 
     /// (Control flow) Return the top of the stack as the result of this
     /// function.
@@ -172,6 +173,9 @@ pub enum TypedInstruction<D: Driver> {
     /// A lazily-evaluated expression.
     Lazy(Vec<u32>, D::Path, Label),
 
+    /// A constant.
+    Constant(D::Path),
+
     /// An instance of a trait.
     Instance(D::Path),
 }
@@ -221,7 +225,6 @@ where
             Instruction::Field(field) => write!(f, "field {field}"),
             Instruction::Element(element) => write!(f, "element {element}"),
             Instruction::Variable(variable) => write!(f, "variable {variable}"),
-            Instruction::Constant(path) => write!(f, "constant {path}"),
             Instruction::Call => write!(f, "call"),
             Instruction::Intrinsic(name, inputs) => write!(f, "intrinsic {name} {inputs}"),
             Instruction::Tuple(elements) => write!(f, "tuple {elements}"),
@@ -231,6 +234,7 @@ where
             Instruction::JumpIfNot(variant, label) => {
                 write!(f, "jump if not {variant:?} {label}")
             }
+            Instruction::End => write!(f, "end"),
             Instruction::Return => write!(f, "return"),
             Instruction::Jump(label) => write!(f, "jump {label}"),
             Instruction::TailCall => write!(f, "tail call"),
@@ -267,6 +271,7 @@ where
             TypedInstruction::Lazy(captures, path, label) => {
                 write!(f, "lazy {captures:?} ({path}) {label}")
             }
+            TypedInstruction::Constant(path) => write!(f, "constant {path}"),
             TypedInstruction::Instance(path) => write!(f, "instance {path}"),
         }
     }

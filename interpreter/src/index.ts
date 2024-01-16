@@ -1,22 +1,19 @@
 import util from "util";
 import { Decimal } from "decimal.js";
 import { intrinsics } from "./intrinsics.js";
+import { produce } from "immer";
 
 export interface Executable {
     items: Record<string, Item>;
-    instances: Record<string, Instance[]>;
+    instances: Record<string, string[]>;
     intrinsicTypeDescriptors: Record<string, TypeDescriptor>;
     intrinsicVariants: Record<string, string>;
     code: Item[];
 }
 
 export interface Item {
-    ir: Instruction[][];
-}
-
-export interface Instance {
     typeDescriptor: TypeDescriptor;
-    item: string;
+    ir: Instruction[][];
 }
 
 export type TypeDescriptor =
@@ -33,12 +30,12 @@ export type Instruction =
     | { type: "field"; value: number }
     | { type: "element"; value: number }
     | { type: "variable"; value: number }
-    | { type: "constant"; value: string }
     | { type: "call"; value: undefined }
     | { type: "intrinsic"; value: [string, number] }
     | { type: "tuple"; value: number }
     | { type: "typed"; value: [TypeDescriptor, TypedInstruction] }
     | { type: "jumpIfNot"; value: [string, number] }
+    | { type: "end"; value: undefined }
     | { type: "return"; value: undefined }
     | { type: "jump"; value: number }
     | { type: "tailCall"; value: undefined }
@@ -53,31 +50,79 @@ export type TypedInstruction =
     | { type: "variant"; value: [string, number] }
     | { type: "function"; value: [number[], string, number] }
     | { type: "lazy"; value: [number[], string, number] }
+    | { type: "constant"; value: string }
     | { type: "instance"; value: string };
 
 export type TypedValue = Value & { typeDescriptor: TypeDescriptor };
 
 type Value =
-    | { type: "marker"; value: undefined }
-    | { type: "number"; value: Decimal }
-    | { type: "text"; value: string }
-    | { type: "function"; scope: Record<number, TypedValue>; path: string; label: number }
-    | { type: "nativeFunction"; value: (value: TypedValue) => Promise<TypedValue> }
-    | { type: "lazy"; scope: Record<number, TypedValue>; path: string; label: number }
-    | { type: "variant"; variant: string; values: TypedValue[] }
-    | { type: "reference"; value: { current: TypedValue } }
-    | { type: "list"; values: TypedValue[] }
-    | { type: "structure"; fields: Record<string, TypedValue> }
-    | { type: "tuple"; values: TypedValue[] }
-    | { type: "uiHandle"; onMessage: (message: string, value: TypedValue) => Promise<TypedValue> }
-    | { type: "taskGroup"; value: TaskGroup };
+    | {
+          type: "marker";
+          value: undefined;
+      }
+    | {
+          type: "number";
+          value: Decimal;
+      }
+    | {
+          type: "text";
+          value: string;
+      }
+    | {
+          type: "function";
+          scope: Record<number, TypedValue>;
+          path: string;
+          label: number;
+          substitutions: Record<string, TypeDescriptor>;
+      }
+    | {
+          type: "nativeFunction";
+          value: (value: TypedValue) => Promise<TypedValue>;
+      }
+    | {
+          type: "lazy";
+          scope: Record<number, TypedValue>;
+          path: string;
+          label: number;
+          substitutions: Record<string, TypeDescriptor>;
+      }
+    | {
+          type: "variant";
+          variant: string;
+          values: TypedValue[];
+      }
+    | {
+          type: "reference";
+          value: { current: TypedValue };
+      }
+    | {
+          type: "list";
+          values: TypedValue[];
+      }
+    | {
+          type: "structure";
+          fields: Record<string, TypedValue>;
+      }
+    | {
+          type: "tuple";
+          values: TypedValue[];
+      }
+    | {
+          type: "uiHandle";
+          onMessage: (message: string, value: TypedValue) => Promise<TypedValue>;
+      }
+    | {
+          type: "taskGroup";
+          value: TaskGroup;
+      };
 
 export interface Context {
     executable: Executable;
-    initializedItems: Record<string, TypedValue>;
+    initializedItems: Record<string, [Record<string, TypeDescriptor>, TypedValue][]>;
     io: (request: IoRequest) => void;
     call: (func: TypedValue, input: TypedValue) => Promise<TypedValue>;
     evaluate: (lazy: TypedValue) => Promise<TypedValue>;
+    getItem: (path: string, typeDescriptor: TypeDescriptor) => Promise<TypedValue>;
     error: (
         options:
             | string
@@ -138,13 +183,15 @@ export const evaluate = async (
         call: async (func, input) => {
             switch (func.type) {
                 case "function": {
-                    return await evaluateItem(
+                    return (await evaluateItem(
+                        func.path,
                         context.executable.items[func.path].ir,
                         func.label,
                         [input],
                         func.scope,
+                        func.substitutions,
                         context
-                    );
+                    ))!;
                 }
                 case "nativeFunction": {
                     return await func.value(input);
@@ -158,13 +205,43 @@ export const evaluate = async (
                 throw new InterpreterError("expected lazy value");
             }
 
-            return await evaluateItem(
+            return (await evaluateItem(
+                lazy.path,
                 context.executable.items[lazy.path].ir,
                 lazy.label,
                 [],
                 lazy.scope,
+                lazy.substitutions,
                 context
-            );
+            ))!;
+        },
+        getItem: async (path, typeDescriptor) => {
+            for (const [substitutions, value] of context.initializedItems[path] ?? []) {
+                if (!unify(typeDescriptor, value.typeDescriptor, { ...substitutions })) {
+                    continue;
+                }
+
+                return value;
+            }
+
+            const item = context.executable.items[path];
+
+            const substitutions: Record<string, TypeDescriptor> = {};
+            if (!unify(typeDescriptor, item.typeDescriptor, substitutions)) {
+                throw context.error("incompatible constant type");
+            }
+
+            if (process.env.WIPPLE_DEBUG_INTERPRETER) {
+                console.error(
+                    "## initializing constant:",
+                    util.inspect({ path, typeDescriptor }, { depth: Infinity, colors: true })
+                );
+            }
+
+            const value = (await evaluateItem(path, item.ir, 0, [], {}, substitutions, context))!;
+            (context.initializedItems[path] ??= []).push([substitutions, value]);
+
+            return value;
         },
         error: (options) => {
             if (typeof options === "string") {
@@ -182,15 +259,17 @@ export const evaluate = async (
     };
 
     for (const item of executable.code) {
-        await evaluateItem(item.ir, 0, [], {}, context);
+        await evaluateItem("top-level", item.ir, 0, [], {}, {}, context);
     }
 };
 
 const evaluateItem = async (
+    path: string,
     item: Instruction[][],
     label: number,
     stack: TypedValue[] = [],
     scope: Record<number, TypedValue>,
+    substitutions: Record<string, TypeDescriptor>,
     context: Context
 ) => {
     outer: while (true) {
@@ -199,6 +278,15 @@ const evaluateItem = async (
         for (const instruction of instructions) {
             const error = (message: string, value?: TypedValue) =>
                 context.error({ label, instruction, message, stack, value });
+
+            const peek = () => {
+                const value = stack[stack.length - 1];
+                if (!value) {
+                    throw error("stack is empty");
+                }
+
+                return value;
+            };
 
             const pop = () => {
                 const value = stack.pop();
@@ -210,15 +298,18 @@ const evaluateItem = async (
             };
 
             if (process.env.WIPPLE_DEBUG_INTERPRETER) {
-                console.log(
-                    util.inspect({ label, instruction, stack }, { depth: Infinity, colors: true })
+                console.error(
+                    "## evaluating:",
+                    util.inspect(
+                        { path, label, instruction, stack, scope },
+                        { depth: Infinity, colors: true }
+                    )
                 );
             }
 
             switch (instruction.type) {
                 case "copy": {
-                    const value = pop();
-                    stack.push(value);
+                    const value = peek();
                     stack.push(value);
                     break;
                 }
@@ -227,13 +318,12 @@ const evaluateItem = async (
                     break;
                 }
                 case "initialize": {
-                    const value = pop();
+                    const value = peek();
                     scope[instruction.value] = value;
-                    stack.push(value);
                     break;
                 }
                 case "field": {
-                    const value = stack[stack.length - 1];
+                    const value = peek();
                     if (value.type !== "structure") {
                         throw error("expected structure", value);
                     }
@@ -244,7 +334,7 @@ const evaluateItem = async (
                     break;
                 }
                 case "element": {
-                    const value = stack[stack.length - 1];
+                    const value = peek();
                     if (value.type !== "variant" && value.type !== "tuple") {
                         throw error("expected variant or tuple", value);
                     }
@@ -257,17 +347,6 @@ const evaluateItem = async (
                 case "variable": {
                     const value = scope[instruction.value];
                     stack.push(value);
-                    break;
-                }
-                case "constant": {
-                    const value = (context.initializedItems[instruction.value] ??=
-                        await (async () => {
-                            const item = context.executable.items[instruction.value];
-                            return await evaluateItem(item.ir, 0, [], {}, context);
-                        })());
-
-                    stack.push(value);
-
                     break;
                 }
                 case "call": {
@@ -313,10 +392,14 @@ const evaluateItem = async (
                     break;
                 }
                 case "typed": {
+                    const typeDescriptor = produce(instruction.value[0], (typeDescriptor) =>
+                        substituteTypeDescriptor(typeDescriptor, substitutions)
+                    );
+
                     switch (instruction.value[1].type) {
                         case "number": {
                             stack.push({
-                                typeDescriptor: instruction.value[0],
+                                typeDescriptor,
                                 type: "number",
                                 value: new Decimal(instruction.value[1].value),
                             });
@@ -325,7 +408,7 @@ const evaluateItem = async (
                         }
                         case "text": {
                             stack.push({
-                                typeDescriptor: instruction.value[0],
+                                typeDescriptor,
                                 type: "text",
                                 value: instruction.value[1].value,
                             });
@@ -334,6 +417,7 @@ const evaluateItem = async (
                         }
                         case "format": {
                             const inputs = instruction.value[1].value.map(() => pop());
+                            inputs.reverse();
 
                             let result = "";
                             for (const segment of instruction.value[1].value[0]) {
@@ -345,10 +429,10 @@ const evaluateItem = async (
                                 result += segment + value.value;
                             }
 
-                            result += instruction.value[1];
+                            result += instruction.value[1].value[1];
 
                             stack.push({
-                                typeDescriptor: instruction.value[0],
+                                typeDescriptor,
                                 type: "text",
                                 value: result,
                             });
@@ -357,7 +441,7 @@ const evaluateItem = async (
                         }
                         case "marker": {
                             stack.push({
-                                typeDescriptor: instruction.value[0],
+                                typeDescriptor,
                                 type: "marker",
                                 value: undefined,
                             });
@@ -376,7 +460,7 @@ const evaluateItem = async (
                             }
 
                             stack.push({
-                                typeDescriptor: instruction.value[0],
+                                typeDescriptor,
                                 type: "structure",
                                 fields,
                             });
@@ -390,7 +474,7 @@ const evaluateItem = async (
                             }
 
                             stack.push({
-                                typeDescriptor: instruction.value[0],
+                                typeDescriptor,
                                 type: "variant",
                                 variant: instruction.value[1].value[0],
                                 values: elements.reverse(),
@@ -400,10 +484,11 @@ const evaluateItem = async (
                         }
                         case "function": {
                             stack.push({
-                                typeDescriptor: instruction.value[0],
+                                typeDescriptor,
                                 type: "function",
                                 path: instruction.value[1].value[1],
                                 label: instruction.value[1].value[2],
+                                substitutions,
                                 scope,
                             });
 
@@ -412,26 +497,29 @@ const evaluateItem = async (
                         case "lazy": {
                             stack.push({
                                 type: "lazy",
-                                typeDescriptor: instruction.value[0],
+                                typeDescriptor,
                                 path: instruction.value[1].value[1],
                                 label: instruction.value[1].value[2],
+                                substitutions,
                                 scope,
                             });
 
                             break;
                         }
+                        case "constant": {
+                            const path = instruction.value[1].value;
+                            const value = await context.getItem(path, typeDescriptor);
+                            stack.push(value);
+                            break;
+                        }
                         case "instance": {
                             const path = findInstance(
                                 instruction.value[1].value,
-                                instruction.value[0],
+                                typeDescriptor,
                                 context.executable
                             );
 
-                            const value = (context.initializedItems[path] ??= await (async () => {
-                                const item = context.executable.items[path];
-                                return await evaluateItem(item.ir, 0, [], {}, context);
-                            })());
-
+                            const value = await context.getItem(path, typeDescriptor);
                             stack.push(value);
 
                             break;
@@ -445,7 +533,7 @@ const evaluateItem = async (
                     break;
                 }
                 case "jumpIfNot": {
-                    const value = pop();
+                    const value = peek();
                     if (value.type !== "variant") {
                         throw error("expected variant", value);
                     }
@@ -456,6 +544,9 @@ const evaluateItem = async (
                     }
 
                     break;
+                }
+                case "end": {
+                    return undefined;
                 }
                 case "return": {
                     return pop();
@@ -480,61 +571,10 @@ const evaluateItem = async (
 };
 
 const findInstance = (trait: string, typeDescriptor: TypeDescriptor, executable: Executable) => {
-    const unify = (
-        left: TypeDescriptor,
-        right: TypeDescriptor,
-        substitutions: Record<string, TypeDescriptor>
-    ): boolean => {
-        switch (right.type) {
-            case "parameter":
-                if (substitutions[right.value]) {
-                    return unify(left, substitutions[right.value], substitutions);
-                } else {
-                    if (left.type === "parameter") {
-                        if (left.value !== right.value) {
-                            return false;
-                        }
-                    }
-
-                    substitutions[right.value] = left;
-                    return true;
-                }
-            case "function":
-                return (
-                    left.type === "function" &&
-                    unify(left.value[0], right.value[0], substitutions) &&
-                    unify(left.value[1], right.value[1], substitutions)
-                );
-            case "named":
-                return (
-                    left.type === "named" &&
-                    left.value[0] === right.value[0] &&
-                    left.value[1].length === right.value[1].length &&
-                    left.value[1].every((typeDescriptor, index) =>
-                        unify(typeDescriptor, right.value[1][index], substitutions)
-                    )
-                );
-            case "tuple":
-                return (
-                    left.type === "tuple" &&
-                    left.value.length === right.value.length &&
-                    left.value.every((typeDescriptor, index) =>
-                        unify(typeDescriptor, right.value[index], substitutions)
-                    )
-                );
-            case "lazy":
-                // Coercions are done at compile time, so at runtime `lazy` only
-                // unifies with `lazy`
-                return left.type === "lazy" && unify(left.value, right.value, substitutions);
-            default:
-                right satisfies never;
-                throw new InterpreterError(`unknown type descriptor ${JSON.stringify(right)}`);
-        }
-    };
-
-    for (const instance of executable.instances[trait] ?? []) {
+    for (const path of executable.instances[trait] ?? []) {
+        const instance = executable.items[path];
         if (unify(typeDescriptor, instance.typeDescriptor, {})) {
-            return instance.item;
+            return path;
         }
     }
 
@@ -543,4 +583,118 @@ const findInstance = (trait: string, typeDescriptor: TypeDescriptor, executable:
             typeDescriptor
         )}`
     );
+};
+
+const unify = (
+    left: TypeDescriptor,
+    right: TypeDescriptor,
+    substitutions: Record<string, TypeDescriptor>
+): boolean => {
+    switch (right.type) {
+        case "parameter":
+            if (substitutions[right.value]) {
+                return unify(left, substitutions[right.value], substitutions);
+            } else {
+                if (left.type === "parameter") {
+                    if (left.value !== right.value) {
+                        return false;
+                    }
+                }
+
+                substitutions[right.value] = left;
+                return true;
+            }
+        case "function":
+            return (
+                left.type === "function" &&
+                unify(left.value[0], right.value[0], substitutions) &&
+                unify(left.value[1], right.value[1], substitutions)
+            );
+        case "named":
+            return (
+                left.type === "named" &&
+                left.value[0] === right.value[0] &&
+                left.value[1].length === right.value[1].length &&
+                left.value[1].every((typeDescriptor, index) =>
+                    unify(typeDescriptor, right.value[1][index], substitutions)
+                )
+            );
+        case "tuple":
+            return (
+                left.type === "tuple" &&
+                left.value.length === right.value.length &&
+                left.value.every((typeDescriptor, index) =>
+                    unify(typeDescriptor, right.value[index], substitutions)
+                )
+            );
+        case "lazy":
+            // Coercions are done at compile time, so at runtime `lazy` only
+            // unifies with `lazy`
+            return left.type === "lazy" && unify(left.value, right.value, substitutions);
+        default:
+            right satisfies never;
+            throw new InterpreterError(`unknown type descriptor ${JSON.stringify(right)}`);
+    }
+};
+
+const substitute = (ir: Instruction[][], substitutions: Record<string, TypeDescriptor>) => {
+    for (const instructions of ir) {
+        for (const instruction of instructions) {
+            if (instruction.type === "typed") {
+                instruction.value[0] = substituteTypeDescriptor(
+                    instruction.value[0],
+                    substitutions
+                );
+            }
+        }
+    }
+};
+
+const substituteTypeDescriptor = (
+    typeDescriptor: TypeDescriptor,
+    substitutions: Record<string, TypeDescriptor>
+): TypeDescriptor => {
+    switch (typeDescriptor.type) {
+        case "function":
+            return {
+                type: "function",
+                value: [
+                    substituteTypeDescriptor(typeDescriptor.value[0], substitutions),
+                    substituteTypeDescriptor(typeDescriptor.value[1], substitutions),
+                ],
+            };
+        case "parameter":
+            if (!substitutions[typeDescriptor.value]) {
+                throw new InterpreterError(
+                    `no substitution for type parameter ${typeDescriptor.value}`
+                );
+            }
+
+            return substitutions[typeDescriptor.value];
+        case "named":
+            return {
+                type: "named",
+                value: [
+                    typeDescriptor.value[0],
+                    typeDescriptor.value[1].map((typeDescriptor) =>
+                        substituteTypeDescriptor(typeDescriptor, substitutions)
+                    ),
+                ],
+            };
+        case "tuple":
+            return {
+                type: "tuple",
+                value: typeDescriptor.value.map((typeDescriptor) =>
+                    substituteTypeDescriptor(typeDescriptor, substitutions)
+                ),
+            };
+        case "lazy":
+            return {
+                type: "lazy",
+                value: substituteTypeDescriptor(typeDescriptor.value, substitutions),
+            };
+        default:
+            typeDescriptor satisfies never;
+            throw new InterpreterError(`unknown type descriptor ${JSON.stringify(typeDescriptor)}`);
+    }
 };
