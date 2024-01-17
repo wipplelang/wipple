@@ -2511,7 +2511,6 @@ fn resolve_expression<D: Driver>(
                 // Don't resolve `function` and `input` right away; allow them
                 // to be queued again so we can collect more type information
                 // now that we've unified `function` with a function type
-                context.flag_not_fully_resolved();
                 context.make_progress();
 
                 ExpressionKind::Call { function, input }

@@ -750,7 +750,7 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src>
             match operators.len() {
                 0 => {
                     if elements.len() == 1 {
-                        elements.pop().unwrap()
+                        read_operators(elements.pop().unwrap(), errors)
                     } else {
                         Node::List(
                             span,

@@ -1,4 +1,5 @@
 use crate::{syntax, Driver};
+use derivative::Derivative;
 use wipple_util::WithInfo;
 
 pub fn top_level<D: Driver>(
@@ -16,6 +17,8 @@ pub fn top_level<D: Driver>(
     }
 }
 
+#[derive(Derivative)]
+#[derivative(Debug(bound = ""))]
 struct PartialConstant<D: Driver> {
     name: WithInfo<D::Info, String>,
     parameters: Vec<WithInfo<D::Info, crate::TypeParameter<D>>>,
@@ -181,15 +184,18 @@ fn statements<D: Driver>(
         .chain(std::iter::once(None))
         .filter_map({
             |statement_syntax| {
-                let expected_constant_value =
-                    |statement_info: Option<D::Info>, info: &mut Info<D>| {
-                        if let Some(constant) = info.current_constant.take() {
+                let current_constant = info.current_constant.take();
+
+                macro_rules! expected_constant_value {
+                    ($statement_info:expr) => {
+                        if let Some(constant) = current_constant.as_ref() {
                             info.errors.push(WithInfo {
-                                info: statement_info.unwrap_or(constant.name.info),
+                                info: $statement_info.unwrap_or(constant.name.info.clone()),
                                 item: crate::Error::ExpectedConstantValue,
                             });
                         }
                     };
+                }
 
                 let disallow_bounds = |bounds: Vec<WithInfo<D::Info, crate::Instance<D>>>,
                                        info: &mut Info<D>| {
@@ -204,16 +210,13 @@ fn statements<D: Driver>(
                         let statement_info = statement_syntax.info.clone();
 
                         statement_syntax.filter_map(|statement_syntax| match statement_syntax {
-                            syntax::Statement::Error => {
-                                info.current_constant.take();
-                                None
-                            }
+                            syntax::Statement::Error => None,
                             syntax::Statement::TypeDeclaration {
                                 name,
                                 parameters: type_function_syntax,
                                 representation: representation_syntax,
                             } => {
-                                expected_constant_value(Some(statement_info), info);
+                                expected_constant_value!(Some(statement_info));
 
                                 let (parameters, bounds) =
                                     type_function(type_function_syntax, info);
@@ -360,7 +363,7 @@ fn statements<D: Driver>(
                                 parameters: type_function_syntax,
                                 r#type: type_syntax,
                             } => {
-                                expected_constant_value(Some(statement_info), info);
+                                expected_constant_value!(Some(statement_info));
 
                                 let (parameters, bounds) =
                                     type_function(type_function_syntax, info);
@@ -380,7 +383,7 @@ fn statements<D: Driver>(
                                 instance: instance_syntax,
                                 body: body_syntax,
                             } => {
-                                expected_constant_value(Some(statement_info), info);
+                                expected_constant_value!(Some(statement_info));
 
                                 let (parameters, bounds) =
                                     type_function(type_function_syntax, info);
@@ -401,7 +404,7 @@ fn statements<D: Driver>(
                                 parameters: type_function_syntax,
                                 r#type: type_syntax,
                             } => {
-                                expected_constant_value(Some(statement_info), info);
+                                expected_constant_value!(Some(statement_info));
 
                                 let (parameters, bounds) =
                                     type_function(type_function_syntax, info);
@@ -418,6 +421,8 @@ fn statements<D: Driver>(
                                 None
                             }
                             syntax::Statement::LanguageDeclaration { item, name } => {
+                                expected_constant_value!(Some(statement_info));
+
                                 Some(crate::Statement::Language { item, name })
                             }
                             syntax::Statement::Assignment {
@@ -426,7 +431,7 @@ fn statements<D: Driver>(
                             } => {
                                 let value = expression(value_syntax, info);
 
-                                if let Some(constant) = info.current_constant.take() {
+                                if let Some(constant) = current_constant {
                                     if let syntax::Pattern::VariantOrName(name) =
                                         &pattern_syntax.item
                                     {
@@ -452,7 +457,7 @@ fn statements<D: Driver>(
                                 Some(crate::Statement::Assignment { pattern, value })
                             }
                             syntax::Statement::Expression(expression_syntax) => {
-                                expected_constant_value(Some(statement_info), info);
+                                expected_constant_value!(Some(statement_info));
 
                                 let expression = expression(expression_syntax, info);
 
@@ -461,7 +466,8 @@ fn statements<D: Driver>(
                         })
                     }
                     None => {
-                        expected_constant_value(None, info);
+                        expected_constant_value!(None);
+
                         None
                     }
                 }

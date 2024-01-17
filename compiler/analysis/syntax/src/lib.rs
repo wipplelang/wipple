@@ -633,8 +633,8 @@ pub mod syntax {
 }
 
 /// The parsed top-level program.
-#[derive(Debug, Serialize, Derivative)]
-#[derivative(Clone(bound = ""))]
+#[derive(Serialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct TopLevel<D: Driver> {
     /// The top-level statements in the program.
@@ -642,8 +642,8 @@ pub struct TopLevel<D: Driver> {
 }
 
 /// A parsed statement.
-#[derive(Debug, Serialize, Derivative)]
-#[derivative(Clone(bound = ""))]
+#[derive(Serialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum Statement<D: Driver> {
     /// A type declaration.
@@ -732,8 +732,8 @@ pub enum Statement<D: Driver> {
 }
 
 /// A parsed expression.
-#[derive(Debug, Serialize, Derivative)]
-#[derivative(Clone(bound = ""))]
+#[derive(Serialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum Expression<D: Driver> {
     /// An expression that could not be parsed.
@@ -874,8 +874,8 @@ pub enum Expression<D: Driver> {
 }
 
 /// A parsed type parameter.
-#[derive(Debug, Serialize, Derivative)]
-#[derivative(Clone(bound = ""))]
+#[derive(Serialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct TypeParameter<D: Driver> {
     /// The name of the type parameter.
@@ -889,8 +889,8 @@ pub struct TypeParameter<D: Driver> {
 }
 
 /// A parsed type representation.
-#[derive(Debug, Serialize, Derivative)]
-#[derivative(Clone(bound = ""))]
+#[derive(Serialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum TypeRepresentation<D: Driver> {
     /// A marker type.
@@ -904,8 +904,8 @@ pub enum TypeRepresentation<D: Driver> {
 }
 
 /// A parsed structure field.
-#[derive(Debug, Serialize, Derivative)]
-#[derivative(Clone(bound = ""))]
+#[derive(Serialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct Field<D: Driver> {
     /// The name of the field.
@@ -916,8 +916,8 @@ pub struct Field<D: Driver> {
 }
 
 /// A parsed enumeration variant.
-#[derive(Debug, Serialize, Derivative)]
-#[derivative(Clone(bound = ""))]
+#[derive(Serialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct Variant<D: Driver> {
     /// The name of the variant.
@@ -928,8 +928,8 @@ pub struct Variant<D: Driver> {
 }
 
 /// A parsed type.
-#[derive(Debug, Serialize, Derivative)]
-#[derivative(Clone(bound = ""))]
+#[derive(Serialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum Type<D: Driver> {
     /// A type that could not be parsed.
@@ -966,8 +966,8 @@ pub enum Type<D: Driver> {
 }
 
 /// A parsed instance.
-#[derive(Debug, Serialize, Derivative)]
-#[derivative(Clone(bound = ""))]
+#[derive(Serialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct Instance<D: Driver> {
     /// The trait this instance refers to.
@@ -989,8 +989,8 @@ pub struct FormatSegment<T> {
 }
 
 /// A parsed pattern.
-#[derive(Debug, Serialize, Derivative)]
-#[derivative(Clone(bound = ""))]
+#[derive(Serialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum Pattern<D: Driver> {
     /// A pattern that could not be parsed.
@@ -1039,8 +1039,8 @@ pub enum Pattern<D: Driver> {
 }
 
 /// A field in a destructuring pattern.
-#[derive(Debug, Serialize, Derivative)]
-#[derivative(Clone(bound = ""))]
+#[derive(Serialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct FieldPattern<D: Driver> {
     /// The name of the field.
@@ -1051,8 +1051,8 @@ pub struct FieldPattern<D: Driver> {
 }
 
 /// An arm in a `when` expression.
-#[derive(Debug, Serialize, Derivative)]
-#[derivative(Clone(bound = ""))]
+#[derive(Serialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct Arm<D: Driver> {
     /// The pattern to match on the input.
@@ -1066,8 +1066,8 @@ pub struct Arm<D: Driver> {
 }
 
 /// A field-value pair in a structure construction expression.
-#[derive(Debug, Serialize, Derivative)]
-#[derivative(Clone(bound = ""))]
+#[derive(Serialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct FieldValue<D: Driver> {
     /// The name of the field.
