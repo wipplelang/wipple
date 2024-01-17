@@ -204,8 +204,20 @@ pub fn resolve<D: Driver>(
 
 pub fn instances_overlap<D: Driver>(
     driver: &D,
+    r#trait: &D::Path,
     instances: impl IntoIterator<Item = D::Path>,
 ) -> Vec<WithInfo<D::Info, crate::Error<D>>> {
+    let trait_declaration = driver.get_trait_declaration(r#trait);
+    let opaque_parameters = trait_declaration
+        .item
+        .parameters
+        .iter()
+        .filter_map(|parameter| {
+            let parameter_declaration = driver.get_type_parameter_declaration(parameter);
+            parameter_declaration.item.infer.map(|_| parameter)
+        })
+        .collect::<HashSet<_>>();
+
     let instances = instances
         .into_iter()
         .map(|path| {
@@ -252,6 +264,18 @@ pub fn instances_overlap<D: Driver>(
                     instance
                         .item
                         .instantiate_mut(driver, &instantiation_context);
+
+                    // Only count non-inferred parameters in the overlap check
+                    for (trait_parameter, instance_parameter) in trait_declaration
+                        .item
+                        .parameters
+                        .iter()
+                        .zip(&mut instance.item.parameters)
+                    {
+                        if opaque_parameters.contains(trait_parameter) {
+                            instance_parameter.kind = TypeKind::Opaque(type_context.variable());
+                        }
+                    }
                 };
 
             let mut instance = instance
@@ -956,6 +980,7 @@ fn unify_with_options<D: Driver>(
         let expected_type = expected_type.apply_in_current_context();
 
         match (&mut r#type.kind, &expected_type.kind) {
+            (TypeKind::Opaque(_), _) | (_, TypeKind::Opaque(_)) => true,
             (TypeKind::Variable(variable), _) => {
                 unify_variable(variable, &expected_type);
                 r#type.apply_in_current_context_mut();
@@ -966,7 +991,6 @@ fn unify_with_options<D: Driver>(
                 r#type.apply_in_current_context_mut();
                 true
             }
-            (TypeKind::Opaque(_), _) | (_, TypeKind::Opaque(_)) => true,
             (TypeKind::Parameter(parameter), TypeKind::Parameter(expected_parameter)) => {
                 driver.paths_are_equal(parameter, expected_parameter)
                     || !options.require_equal_type_parameters
@@ -1133,6 +1157,27 @@ fn try_unify_without_coercion<D: Driver>(
     }
 }
 
+/// Copy over any new information from `change` while preserving the type's
+/// current context.
+fn apply_from_context_change<D: Driver>(
+    driver: &D,
+    r#type: WithInfo<D::Info, &mut Type<D>>,
+    change: &TypeContextChange<D>,
+    current_context: &TypeContext<D>,
+) {
+    let new_type = infer_type(
+        &finalize_type(
+            r#type.item.clone_in_context(change),
+            &r#type.info,
+            &FinalizeContext { errors: None },
+        ),
+        None,
+        Some(current_context),
+    );
+
+    assert!(unify(driver, r#type.item, &new_type).is_some())
+}
+
 // region: Merging and reification
 
 pub struct TypeContextChange<D: Driver> {
@@ -1227,6 +1272,8 @@ impl<D: Driver> Type<D> {
     }
 
     pub fn set_context(&mut self, change: &TypeContextChange<D>) {
+        self.apply_in_current_context_mut();
+
         match &mut self.kind {
             TypeKind::Variable(variable) => variable.set_context(change),
             TypeKind::Opaque(variable) => variable.set_context(change),
@@ -2858,7 +2905,7 @@ fn resolve_item<D: Driver>(
                     });
 
                     match resolve_trait(query.as_ref(), context) {
-                        Ok(_) => Ok(Some(())),
+                        Ok(resolved_trait) => Ok(Some(resolved_trait.item.type_context_change)),
                         Err(WithInfo {
                             item: QueuedError::UnresolvedInstance { .. },
                             ..
@@ -2886,17 +2933,25 @@ fn resolve_item<D: Driver>(
                 })
                 .collect::<Result<Vec<_>, _>>()?
                 .into_iter()
-                .collect::<Option<()>>()
-                .is_some())
+                .collect::<Option<Vec<_>>>())
         }
     };
 
-    evaluate_bounds(&instantiated_bounds, true)?;
+    if let Some(changes) = evaluate_bounds(&instantiated_bounds, true)? {
+        for change in changes {
+            apply_from_context_change(
+                context.driver,
+                use_expression.replace(&mut instantiated_declared_type),
+                &change,
+                context.type_context,
+            );
+        }
+    }
 
     // Turn the opaque type variables back into regular type variables so they
     // can be inferred now that we've checked the bounds
 
-    let instantiated_declared_type = instantiated_declared_type.instantiate_opaque();
+    let mut instantiated_declared_type = instantiated_declared_type.instantiate_opaque();
 
     let instantiated_bounds = instantiated_bounds
         .into_iter()
@@ -2906,7 +2961,16 @@ fn resolve_item<D: Driver>(
     // Now that we've determined the types of the non-inferred parameters from the bounds,
     // determine the types of the inferred parameters by re-evaluating the bounds
 
-    evaluate_bounds(&instantiated_bounds, true)?;
+    if let Some(changes) = evaluate_bounds(&instantiated_bounds, false)? {
+        for change in changes {
+            apply_from_context_change(
+                context.driver,
+                use_expression.replace(&mut instantiated_declared_type),
+                &change,
+                context.type_context,
+            );
+        }
+    }
 
     try_unify_expression(
         context.driver,
@@ -2914,12 +2978,6 @@ fn resolve_item<D: Driver>(
         &instantiated_declared_type,
         context.error_queue,
     );
-
-    // Evaluate the bounds one more time
-
-    if !evaluate_bounds(&instantiated_bounds, false)? {
-        return Ok(false); // try again in the next iteration
-    }
 
     Ok(true)
 }

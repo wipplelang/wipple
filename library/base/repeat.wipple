@@ -8,10 +8,10 @@ Control-Flow : Value => type (
 Repeat-Predicate : Predicate Body Result => trait (Predicate -> Body -> Control-Flow Result)
 
 [Repeat using the `Control-Flow` produced by the `repeat` body.]
-with-control-flow :: Result => With-Control-Flow Result
+with-control-flow :: With-Control-Flow
 with-control-flow : With-Control-Flow
 
-With-Control-Flow : Result => type
+With-Control-Flow : type
 
 Result => instance (Repeat-Predicate With-Control-Flow (Control-Flow Result) Result) : _ body -> body
 
@@ -32,7 +32,7 @@ Forever : type
 Body Result => instance (Repeat-Predicate Forever Body Result) : _ _ -> Continue
 
 [Execute a block of code repeatedly.]
-repeat :: Predicate Body Result where (Repeat-Predicate Predicate Body Result) => Predicate -> lazy Body -> Result
+repeat :: Predicate (infer Body) (infer Result) where (Repeat-Predicate Predicate Body Result) => Predicate -> lazy Body -> Result
 repeat : predicate body -> (
     [The predicate and body are grouped together in a tuple to allow for tail-call optimization.]
     repeat' :: Body Result => ((Body -> Control-Flow Result) ; (lazy Body)) -> Result

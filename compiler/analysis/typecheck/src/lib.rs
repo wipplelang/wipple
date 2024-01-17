@@ -102,9 +102,10 @@ pub struct Result<D: Driver> {
 /// Check that none of the provided instances overlap.
 pub fn instances_overlap<D: Driver>(
     driver: &D,
+    r#trait: &D::Path,
     instances: impl IntoIterator<Item = D::Path>,
 ) -> Vec<WithInfo<D::Info, Error<D>>> {
-    resolve::instances_overlap(driver, instances)
+    resolve::instances_overlap(driver, r#trait, instances)
 }
 
 /// Obtain the type of a trait expression matching the provided instance. For

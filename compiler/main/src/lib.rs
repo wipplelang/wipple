@@ -452,7 +452,7 @@ impl Driver {
                 .map(|(path, _)| path.clone())
                 .collect::<Vec<_>>();
 
-            let overlap_errors = typecheck::instances_overlap(&self, instances.clone());
+            let overlap_errors = typecheck::instances_overlap(&self, &r#trait, instances.clone());
 
             errors.extend(
                 overlap_errors
