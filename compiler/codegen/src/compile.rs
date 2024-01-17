@@ -338,6 +338,7 @@ fn compile_pattern<D: crate::Driver>(
             for field in fields {
                 info.push_instruction(crate::Instruction::Field(field.item.name.clone()));
                 compile_pattern(field.item.pattern.as_ref(), break_label, info)?;
+                info.push_instruction(crate::Instruction::Drop);
             }
         }
         wipple_typecheck::Pattern::Variant {
@@ -352,12 +353,14 @@ fn compile_pattern<D: crate::Driver>(
             for (index, pattern) in value_patterns.iter().enumerate() {
                 info.push_instruction(crate::Instruction::Element(index as u32));
                 compile_pattern(pattern.as_ref(), break_label, info)?;
+                info.push_instruction(crate::Instruction::Drop);
             }
         }
         wipple_typecheck::Pattern::Tuple(elements) => {
             for (index, pattern) in elements.iter().enumerate() {
                 info.push_instruction(crate::Instruction::Element(index as u32));
                 compile_pattern(pattern.as_ref(), break_label, info)?;
+                info.push_instruction(crate::Instruction::Drop);
             }
         }
         wipple_typecheck::Pattern::Or { left, right } => {

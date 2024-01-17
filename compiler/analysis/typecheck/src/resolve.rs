@@ -13,6 +13,7 @@ pub struct ItemDeclarationInner<D: Driver> {
     bounds: Vec<WithInfo<D::Info, crate::Instance<D>>>,
     r#type: WithInfo<D::Info, crate::Type<D>>,
     body: WithInfo<D::Info, crate::UntypedExpression<D>>,
+    top_level: bool,
 }
 
 impl<D: Driver> crate::IntoItemDeclaration<D>
@@ -29,6 +30,7 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
                 bounds: declaration.bounds,
                 r#type: declaration.r#type,
                 body,
+                top_level: false,
             })
         })
     }
@@ -50,6 +52,7 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
                 bounds: declaration.bounds,
                 r#type,
                 body,
+                top_level: false,
             })
         })
     }
@@ -72,6 +75,7 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
                     info: driver.top_level_info(),
                     item: crate::UntypedExpression::Block(code),
                 },
+                top_level: true,
             })
         })
     }
@@ -115,8 +119,7 @@ pub fn resolve<D: Driver>(
         Some(&type_context),
     );
 
-    let mut body = infer_expression(item_declaration.item.body, infer_context);
-    try_unify_expression(driver, body.as_mut(), &declared_type, &error_queue);
+    let body = infer_expression(item_declaration.item.body, infer_context);
 
     let bounds = vec![item_declaration
         .item
@@ -170,10 +173,18 @@ pub fn resolve<D: Driver>(
             ),
         };
 
+        try_unify_expression(driver, queued.body.as_mut(), &declared_type, &error_queue);
         queued.body = resolve_expression(queued.body, &resolve_context);
 
         if fully_resolved.get() || !progress.get() {
-            try_unify_expression(driver, queued.body.as_mut(), &declared_type, &error_queue);
+            if item_declaration.item.top_level {
+                // The top level has type `()` by default, but any other type is OK
+                let _ = unify(
+                    driver,
+                    &mut queued.body.item.r#type,
+                    &Type::new(TypeKind::Tuple(Vec::new()), Vec::new()),
+                );
+            }
 
             let finalize_context = FinalizeContext {
                 errors: Some(&errors),
@@ -223,10 +234,11 @@ pub fn instances_overlap<D: Driver>(
                 continue;
             }
 
+            let type_context = TypeContext::new();
+
             let instantiate_instance =
                 |parameters: Vec<<D as Driver>::Path>,
                  instance: WithInfo<D::Info, &mut Instance<D>>| {
-                    let type_context = TypeContext::new();
                     let unused_errors = RefCell::default();
 
                     let instantiation_context = InstantiationContext::from_parameters(
@@ -541,6 +553,8 @@ impl<D: Driver> TypeVariable<D> {
     }
 }
 
+#[derive(Derivative)]
+#[derivative(Debug(bound = ""))]
 struct Instance<D: Driver> {
     r#trait: D::Path,
     parameters: Vec<Type<D>>,
@@ -912,7 +926,9 @@ fn unify_with_options<D: Driver>(
         if let TypeKind::Variable(other) = &r#type.kind {
             assert!(
                 TypeContext::ptr_eq(&variable.context, &other.context),
-                "cannot unify type variables from different contexts"
+                "cannot unify type variables from different contexts: {:x?} and {:x?}",
+                Rc::as_ptr(&variable.context.0),
+                Rc::as_ptr(&other.context.0),
             );
 
             if variable.counter == other.counter {
@@ -955,7 +971,8 @@ fn unify_with_options<D: Driver>(
                 driver.paths_are_equal(parameter, expected_parameter)
                     || !options.require_equal_type_parameters
             }
-            (TypeKind::Parameter(_), _) | (_, TypeKind::Parameter(_)) => false,
+            (_, TypeKind::Parameter(_)) => true,
+            (TypeKind::Parameter(_), _) => false,
             (
                 TypeKind::Declared { path, parameters },
                 TypeKind::Declared {
@@ -1145,7 +1162,17 @@ impl<D: Driver> TypeContext<D> {
     #[must_use]
     pub fn deep_clone(&self) -> (Self, TypeContextChange<D>) {
         let new_context = TypeContext(Rc::new(self.0.as_ref().clone_in_current_context()));
+
         let change = TypeContextChange::from_deep_cloned(&new_context);
+
+        for r#type in new_context.0.substitutions.borrow_mut().values_mut() {
+            r#type.set_context(&change);
+        }
+
+        for r#type in new_context.0.defaults.borrow_mut().values_mut() {
+            r#type.set_context(&change);
+        }
+
         (new_context, change)
     }
 
@@ -2081,7 +2108,7 @@ fn resolve_pattern<D: Driver>(
             };
 
             for (field, r#type) in fields.iter().zip(field_types) {
-                resolve_pattern(field.item.pattern.as_ref(), field.replace(&r#type), context)
+                resolve_pattern(field.item.pattern.as_ref(), field.replace(&r#type), context);
             }
         }
         crate::Pattern::Variant {
@@ -2203,6 +2230,23 @@ fn resolve_pattern<D: Driver>(
                     })
                     .collect::<Vec<_>>(),
             };
+
+            let mut tuple_type = Type::new(
+                TypeKind::Tuple(
+                    element_types
+                        .iter()
+                        .map(Type::clone_in_current_context)
+                        .collect(),
+                ),
+                Vec::new(),
+            );
+
+            try_unify_without_coercion(
+                context.driver,
+                r#type.replace(&mut tuple_type),
+                &r#type.item,
+                context.error_queue,
+            );
 
             for (element, r#type) in elements.iter().zip(element_types) {
                 resolve_pattern(element.as_ref(), element.replace(&r#type), context);

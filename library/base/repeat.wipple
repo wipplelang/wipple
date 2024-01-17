@@ -1,0 +1,46 @@
+[Used by `repeat` to determine whether to continue running or stop with a value.]
+Control-Flow : Value => type (
+    Continue
+    Stop Value
+)
+
+[Determines whether to evaluate a `repeat` body again.]
+Repeat-Predicate : Predicate Body Result => trait (Predicate -> Body -> Control-Flow Result)
+
+[Repeat using the `Control-Flow` produced by the `repeat` body.]
+with-control-flow :: Result => With-Control-Flow Result
+with-control-flow : With-Control-Flow
+
+With-Control-Flow : Result => type
+
+Result => instance (Repeat-Predicate With-Control-Flow (Control-Flow Result) Result) : _ body -> body
+
+[Repeat so long as the provided condition is `True`.]
+while :: lazy Boolean -> While
+while : condition -> (condition : condition)
+
+While : type (condition :: lazy Boolean)
+
+instance (Repeat-Predicate While () ()) : (condition : condition) body -> if (evaluate condition) Continue (Stop ())
+
+[Repeat forever.]
+forever :: Forever
+forever : Forever
+
+Forever : type
+
+Body Result => instance (Repeat-Predicate Forever Body Result) : _ _ -> Continue
+
+[Execute a block of code repeatedly.]
+repeat :: Predicate Body Result where (Repeat-Predicate Predicate Body Result) => Predicate -> lazy Body -> Result
+repeat : predicate body -> (
+    [The predicate and body are grouped together in a tuple to allow for tail-call optimization.]
+    repeat' :: Body Result => ((Body -> Control-Flow Result) ; (lazy Body)) -> Result
+    repeat' : (predicate ; body) -> when (predicate (evaluate body)) (
+        Continue -> repeat' (predicate ; body)
+        Stop result -> result
+    )
+
+    predicate : Repeat-Predicate predicate
+    repeat' (predicate ; body)
+)

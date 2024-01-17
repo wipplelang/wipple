@@ -684,7 +684,10 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 (binary-operator
                     "->"
                     (partially-applied-left .
-                        (variable . "pattern")))
+                        (or
+                            (match "pattern" (list))
+                            (repeat-list . (variable . "pattern"))
+                            (variable . "pattern"))))
                 (binary-operator
                     "->"
                     (partially-applied-right .
@@ -692,7 +695,10 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 (binary-operator
                     "->"
                     (applied
-                        (variable . "pattern")
+                        (or
+                            (match "pattern" (list))
+                            (repeat-list . (variable . "pattern"))
+                            (variable . "pattern"))
                         (variable . "body"))))
         "#;
 
@@ -744,11 +750,16 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
         "#;
 
             static STRUCTURE_EXPRESSION = r#"
-            (repeat-block .
+            (or
                 (non-associative-binary-operator
                     ":"
                     (variable . "field")
-                    (variable . "value")))
+                    (variable . "value"))
+                (repeat-block .
+                    (non-associative-binary-operator
+                        ":"
+                        (variable . "field")
+                        (variable . "value"))))
         "#;
 
             static INTRINSIC_EXPRESSION = r#"
@@ -805,25 +816,30 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
 
         let function = |parser: &mut Self| {
             FUNCTION_EXPRESSION.parse(&node).map(|mut vars| {
-                let pattern = match vars.remove("pattern").map(|mut value| value.pop().unwrap()) {
-                    Some(pattern) => parser.parse_pattern(
-                        pattern.span().cloned().unwrap_or_else(|| span.clone()),
-                        pattern,
-                    ),
+                let patterns = match vars.remove("pattern") {
+                    Some(patterns) => patterns
+                        .into_iter()
+                        .map(|pattern| {
+                            parser.parse_pattern(
+                                pattern.span().cloned().unwrap_or_else(|| span.clone()),
+                                pattern,
+                            )
+                        })
+                        .collect::<Vec<_>>(),
                     None => {
                         parser.errors.push(Error {
                             span: span.clone(),
                             expected: SyntaxKind::Pattern,
                         });
 
-                        WithInfo {
+                        vec![WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: span.clone(),
                             }
                             .into(),
                             item: syntax::Pattern::Error,
-                        }
+                        }]
                     }
                 };
 
@@ -855,10 +871,10 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         span: span.clone(),
                     }
                     .into(),
-                    item: syntax::Expression::Function {
-                        pattern,
-                        body: body.boxed(),
-                    },
+                    item: patterns.into_iter().rfold(body.item, |body, pattern| {
+                        let body = pattern.replace(body).boxed();
+                        syntax::Expression::Function { pattern, body }
+                    }),
                 }
             })
         };
@@ -1679,13 +1695,15 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
         grammar! {
             static SIMPLE_ENUMERATION_TYPE_REPRESENTATION = r#"
             (or
+                (repeat-list . (variable . "variant"))
                 (block
-                    (repeat-list . (variable . "variant")))
-                (repeat-list . (variable . "variant")))
+                    (repeat-list . (variable . "variant"))))
         "#;
 
             static COMPOUND_TYPE_REPRESENTATION = r#"
-            (repeat-block . (variable . "member"))
+            (or
+                (repeat-block . (variable . "member"))
+                (variable . "member"))
         "#;
         }
 
@@ -1951,9 +1969,17 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         (variable . "input")
                         (variable . "output"))))
         "#;
-        }
 
-        grammar! {
+            static TUPLE_TYPE = r#"
+                (or
+                    (variadic-operator
+                        ";"
+                        (applied . (variable . "elements")))
+                    (variadic-operator
+                        ";"
+                        unapplied))
+            "#;
+
             static LAZY_TYPE = r#"
                 (list
                     (symbol . "lazy")
@@ -2015,6 +2041,31 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         input: input.boxed(),
                         output: output.boxed(),
                     },
+                }
+            })
+        };
+
+        let tuple = |parser: &mut Self| {
+            TUPLE_TYPE.parse(&node).map(|mut vars| {
+                let elements = vars
+                    .remove("elements")
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|element| {
+                        parser.parse_type(
+                            element.span().cloned().unwrap_or_else(|| span.clone()),
+                            element,
+                        )
+                    })
+                    .collect();
+
+                WithInfo {
+                    info: Info {
+                        path: parser.driver.file_path(),
+                        span: span.clone(),
+                    }
+                    .into(),
+                    item: syntax::Type::Tuple(elements),
                 }
             })
         };
@@ -2171,6 +2222,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
         };
 
         function(self)
+            .or_else(|| tuple(self))
             .or_else(|| lazy(self))
             .unwrap_or_else(|| terminal(self))
     }
@@ -2204,14 +2256,17 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         (variable . "right"))))
         "#;
 
-            static DESTRUCTURE_PATTERN = r#"
-            (repeat-block .
-                (or
+        static DESTRUCTURE_PATTERN = r#"
+            (or
+                (non-associative-binary-operator
+                    ":"
+                    (variable . "field")
+                    (variable . "pattern"))
+                (repeat-block .
                     (non-associative-binary-operator
                         ":"
                         (variable . "field")
-                        (variable . "pattern"))
-                    (variable . "name")))
+                        (variable . "pattern"))))
         "#;
 
 
@@ -2284,90 +2339,70 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
             })
         };
 
-        let destructure =
-            |parser: &mut Self| {
-                DESTRUCTURE_PATTERN.parse(&node).map(|mut vars| {
-                    let names = vars.remove("name").unwrap_or_default();
-                    let fields = vars.remove("field").unwrap_or_default();
-                    let values = vars.remove("value").unwrap_or_default();
+        let destructure = |parser: &mut Self| {
+            DESTRUCTURE_PATTERN.parse(&node).map(|mut vars| {
+                let fields = vars.remove("field").unwrap_or_default();
+                let patterns = vars.remove("pattern").unwrap_or_default();
 
-                    WithInfo {
-                        info: Info {
-                            path: parser.driver.file_path(),
-                            span: span.clone(),
-                        }
-                        .into(),
-                        item: syntax::Pattern::Destructure(
-                            names
-                                .into_iter()
-                                .filter_map(|name| match name {
-                                    Node::Token(token) => match token.kind {
-                                        TokenKind::Symbol(name) => Some(WithInfo {
-                                            info: Info {
-                                                path: parser.driver.file_path(),
-                                                span: token.span.clone(),
-                                            }
-                                            .into(),
-                                            item: syntax::FieldPattern {
-                                                name: WithInfo {
-                                                    info: Info {
-                                                        path: parser.driver.file_path(),
-                                                        span: token.span.clone(),
-                                                    }
-                                                    .into(),
-                                                    item: name.to_string(),
-                                                },
-                                                pattern: WithInfo {
-                                                    info: Info {
-                                                        path: parser.driver.file_path(),
-                                                        span: token.span,
-                                                    }
-                                                    .into(),
-                                                    item: syntax::Pattern::Name(name.to_string()),
-                                                },
-                                            },
-                                        }),
-                                        _ => None,
-                                    },
-                                    _ => None,
-                                })
-                                .chain(fields.into_iter().zip(values).filter_map(
-                                    |(field, pattern)| {
-                                        let name = match field {
-                                            Node::Token(token) => match token.kind {
-                                                TokenKind::Symbol(name) => WithInfo {
-                                                    info: Info {
-                                                        path: parser.driver.file_path(),
-                                                        span: token.span,
-                                                    }
-                                                    .into(),
-                                                    item: name.to_string(),
-                                                },
-                                                _ => return None,
-                                            },
-                                            _ => return None,
-                                        };
-
-                                        let pattern = parser.parse_pattern(
-                                            pattern.span().cloned().unwrap_or_else(|| span.clone()),
-                                            pattern,
-                                        );
-
-                                        Some(WithInfo {
-                                            info: Info {
-                                                path: parser.driver.file_path(),
-                                                span: span.clone(),
-                                            }
-                                            .into(),
-                                            item: syntax::FieldPattern { name, pattern },
-                                        })
-                                    },
-                                ))
-                                .collect(),
-                        ),
+                WithInfo {
+                    info: Info {
+                        path: parser.driver.file_path(),
+                        span: span.clone(),
                     }
-                })
-            };
+                    .into(),
+                    item: syntax::Pattern::Destructure(
+                        fields
+                            .into_iter()
+                            .zip(patterns)
+                            .filter_map(|(field, pattern)| {
+                                let name = match field {
+                                    Node::Token(token) => match token.kind {
+                                        TokenKind::Symbol(name) => WithInfo {
+                                            info: Info {
+                                                path: parser.driver.file_path(),
+                                                span: token.span,
+                                            }
+                                            .into(),
+                                            item: name.to_string(),
+                                        },
+                                        _ => {
+                                            parser.errors.push(Error {
+                                                span: span.clone(),
+                                                expected: SyntaxKind::Name,
+                                            });
+
+                                            return None;
+                                        }
+                                    },
+                                    _ => {
+                                        parser.errors.push(Error {
+                                            span: span.clone(),
+                                            expected: SyntaxKind::Name,
+                                        });
+
+                                        return None;
+                                    }
+                                };
+
+                                let pattern = parser.parse_pattern(
+                                    pattern.span().cloned().unwrap_or_else(|| span.clone()),
+                                    pattern,
+                                );
+
+                                Some(WithInfo {
+                                    info: Info {
+                                        path: parser.driver.file_path(),
+                                        span: span.clone(),
+                                    }
+                                    .into(),
+                                    item: syntax::FieldPattern { name, pattern },
+                                })
+                            })
+                            .collect(),
+                    ),
+                }
+            })
+        };
 
         let tuple = |parser: &mut Self| {
             TUPLE_PATTERN.parse(&node).map(|mut vars| {

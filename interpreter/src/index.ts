@@ -384,13 +384,15 @@ const evaluateItem = async (
                         elements.push(pop());
                     }
 
+                    elements.reverse();
+
                     stack.push({
                         typeDescriptor: {
                             type: "tuple",
                             value: elements.map((element) => element.typeDescriptor),
                         },
                         type: "tuple",
-                        values: elements.reverse(),
+                        values: elements,
                     });
 
                     break;

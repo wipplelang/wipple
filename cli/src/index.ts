@@ -15,6 +15,8 @@ import { File } from "cmd-ts/batteries/fs";
 import { compile, link } from "wipple-compiler";
 import { evaluate, InterpreterError, IoRequest } from "wipple-interpreter";
 
+Error.stackTraceLimit = Infinity;
+
 const shebang = `#!/usr/bin/env wipple run\n`;
 
 const app = subcommands({

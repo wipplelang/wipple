@@ -620,8 +620,12 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src>
                     let node = elements.first_mut().unwrap();
 
                     if let Node::List(_, inner) = node {
-                        elements = mem::take(inner);
-                        continue;
+                        if inner.is_empty() {
+                            break;
+                        } else {
+                            elements = mem::take(inner);
+                            continue;
+                        }
                     }
                 }
 

@@ -155,7 +155,13 @@ impl Scopes {
 
     pub fn define(&mut self, name: String, path: crate::Path) {
         let (_, paths) = self.0.last_mut().unwrap();
-        paths.entry(name).or_default().push(path);
+        let paths = paths.entry(name).or_default();
+
+        if path.last().unwrap().is_local() {
+            paths.retain(|path| !path.last().unwrap().is_local());
+        }
+
+        paths.push(path);
     }
 }
 
@@ -493,8 +499,8 @@ fn resolve_statements<D: Driver>(
                 None
             }
             crate::UnresolvedStatement::Assignment { pattern, value } => {
-                let pattern = resolve_pattern(pattern, info);
                 let value = resolve_expression(value, info);
+                let pattern = resolve_pattern(pattern, info);
 
                 Some(WithInfo {
                     info: statement.info,
@@ -1060,6 +1066,22 @@ fn resolve_expression<D: Driver>(
 
 fn resolve_pattern<D: Driver>(
     pattern: WithInfo<D::Info, crate::UnresolvedPattern<D>>,
+
+    info: &mut Info<D>,
+) -> WithInfo<D::Info, crate::Pattern<D>> {
+    let mut defines = Vec::new();
+    let pattern = resolve_pattern_inner(pattern, &mut defines, info);
+
+    for (name, path) in defines {
+        info.scopes.define(name, path);
+    }
+
+    pattern
+}
+
+fn resolve_pattern_inner<D: Driver>(
+    pattern: WithInfo<D::Info, crate::UnresolvedPattern<D>>,
+    defines: &mut Vec<(String, crate::Path)>,
     info: &mut Info<D>,
 ) -> WithInfo<D::Info, crate::Pattern<D>> {
     let pattern_info = pattern.info.clone();
@@ -1073,10 +1095,8 @@ fn resolve_pattern<D: Driver>(
             let index = info.next_variable;
             info.next_variable += 1;
 
-            let mut path = info.path.clone();
-            path.push(crate::PathComponent::Variable(index));
-
-            info.scopes.define(name, path.clone());
+            let path = info.make_path(crate::PathComponent::Variable(index));
+            defines.push((name, path.clone()));
 
             crate::Pattern::Variable(path)
         }
@@ -1102,11 +1122,12 @@ fn resolve_pattern<D: Driver>(
                     value_patterns: Vec::new(),
                 },
                 None => {
-                    resolve_pattern(
+                    resolve_pattern_inner(
                         WithInfo {
                             info: pattern_info.clone(),
                             item: crate::UnresolvedPattern::Name(name),
                         },
+                        defines,
                         info,
                     )
                     .item
@@ -1119,7 +1140,7 @@ fn resolve_pattern<D: Driver>(
                 .map(|field| {
                     field.map(|field| crate::FieldPattern {
                         name: field.name,
-                        pattern: resolve_pattern(field.pattern, info),
+                        pattern: resolve_pattern_inner(field.pattern, defines, info),
                     })
                 })
                 .collect(),
@@ -1143,7 +1164,7 @@ fn resolve_pattern<D: Driver>(
 
             let value_patterns = value_patterns
                 .into_iter()
-                .map(|pattern| resolve_pattern(pattern, info))
+                .map(|pattern| resolve_pattern_inner(pattern, defines, info))
                 .collect::<Vec<_>>();
 
             crate::Pattern::Variant {
@@ -1154,12 +1175,12 @@ fn resolve_pattern<D: Driver>(
         crate::UnresolvedPattern::Tuple(patterns) => crate::Pattern::Tuple(
             patterns
                 .into_iter()
-                .map(|pattern| resolve_pattern(pattern, info))
+                .map(|pattern| resolve_pattern_inner(pattern, defines, info))
                 .collect(),
         ),
         crate::UnresolvedPattern::Or { left, right } => crate::Pattern::Or {
-            left: resolve_pattern(left.unboxed(), info).boxed(),
-            right: resolve_pattern(right.unboxed(), info).boxed(),
+            left: resolve_pattern_inner(left.unboxed(), defines, info).boxed(),
+            right: resolve_pattern_inner(right.unboxed(), defines, info).boxed(),
         },
     })
 }

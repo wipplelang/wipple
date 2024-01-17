@@ -23,3 +23,6 @@ evaluate : lazy -> intrinsic "evaluate" lazy
 
 error :: (A : ()) => Text -> A
 error : message -> intrinsic "crash" message
+
+... :: A => A
+... : error "not implemented"
