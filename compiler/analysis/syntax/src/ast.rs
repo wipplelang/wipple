@@ -191,7 +191,7 @@ fn statements<D: Driver>(
                         if let Some(constant) = current_constant.as_ref() {
                             info.errors.push(WithInfo {
                                 info: $statement_info.unwrap_or(constant.name.info.clone()),
-                                item: crate::Error::ExpectedConstantValue,
+                                item: crate::Error::ExpectedConstantValue(constant.name.item.clone()),
                             });
                         }
                     };
@@ -448,7 +448,7 @@ fn statements<D: Driver>(
 
                                     info.errors.push(WithInfo {
                                         info: statement_info,
-                                        item: crate::Error::ExpectedConstantValue,
+                                        item: crate::Error::ExpectedConstantValue(constant.name.item),
                                     });
                                 }
 

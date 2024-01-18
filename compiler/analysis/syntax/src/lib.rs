@@ -61,7 +61,7 @@ pub enum Error {
 
     /// The parser expected a constant's initializer to immediately follow the
     /// constant's declaration.
-    ExpectedConstantValue,
+    ExpectedConstantValue(String),
 
     /// A type representation must contain at least one field or variant.
     EmptyTypeRepresentation,

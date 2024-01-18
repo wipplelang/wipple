@@ -278,28 +278,28 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>) -> Error {
 
             let render_help = |kind: &wipple_parser::syntax::SyntaxKind| {
                 match kind {
-                wipple_parser::syntax::SyntaxKind::Name => {
-                    String::from("This code defines a new value and needs a name for that value. If you're trying to add parameters to a function, put them to the right of `:`, followed by an arrow.")
+                    wipple_parser::syntax::SyntaxKind::Name => {
+                        String::from("This code defines a new value and needs a name for that value. If you're trying to add parameters to a function, put them to the right of `:`, followed by an arrow.")
+                    }
+                    wipple_parser::syntax::SyntaxKind::Text => {
+                        String::from("You might be forgetting quotes here.")
+                    }
+                    wipple_parser::syntax::SyntaxKind::Block => {
+                        String::from("You might be forgetting parentheses here.")
+                    }
+                    wipple_parser::syntax::SyntaxKind::Instance => {
+                        String::from("An instance looks like `(Show Number)` or `(Add Text Text Text)`.")
+                    }
+                    wipple_parser::syntax::SyntaxKind::TypeParameter => String::from("A type parameter is a single name like `A` or `Value`."),
+                    wipple_parser::syntax::SyntaxKind::Trait => String::from("A trait is a single name like `Show` or `Add`."),
+                    wipple_parser::syntax::SyntaxKind::Pattern => String::from("A pattern looks like `x` (to assign to a variable), `Some value` (to match a variant), `(number : 5)` (to match a structure), or `_` (to match anything)."),
+                    wipple_parser::syntax::SyntaxKind::Expression => String::from("Try adding some more code here."),
+                    wipple_parser::syntax::SyntaxKind::Type => String::from("Try adding another type here."),
+                    wipple_parser::syntax::SyntaxKind::TypeMember => String::from("A type member looks like the field `name :: Text` (in a structure) or the variant `Blue` (in an enumeration)."),
+                    wipple_parser::syntax::SyntaxKind::Arm => String::from("`when` accepts a list of functions to match its input. Make sure you are using the `->` arrow to define a function."),
+                    wipple_parser::syntax::SyntaxKind::TypeRepresentation => String::from("`type` needs to know how to construct its values. Make sure you provide at least one field or variant."),
+                    wipple_parser::syntax::SyntaxKind::Nothing => String::from("Try removing this code or moving it to a new line."),
                 }
-                wipple_parser::syntax::SyntaxKind::Text => {
-                    String::from("You might be forgetting quotes here.")
-                }
-                wipple_parser::syntax::SyntaxKind::Block => {
-                    String::from("You might be forgetting parentheses here.")
-                }
-                wipple_parser::syntax::SyntaxKind::Instance => {
-                    String::from("An instance looks like `(Show Number)` or `(Add Text Text Text)`.")
-                }
-                wipple_parser::syntax::SyntaxKind::TypeParameter => String::from("A type parameter is a single name like `A` or `Value`."),
-                wipple_parser::syntax::SyntaxKind::Trait => String::from("A trait is a single name like `Show` or `Add`."),
-                wipple_parser::syntax::SyntaxKind::Pattern => String::from("A pattern looks like `x` (to assign to a variable), `Some value` (to match a variant), `(number : 5)` (to match a structure), or `_` (to match anything)."),
-                wipple_parser::syntax::SyntaxKind::Expression => String::from("Try adding some more code here."),
-                wipple_parser::syntax::SyntaxKind::Type => String::from("Try adding another type here."),
-                wipple_parser::syntax::SyntaxKind::TypeMember => String::from("A type member looks like the field `name :: Text` (in a structure) or the variant `Blue` (in an enumeration)."),
-                wipple_parser::syntax::SyntaxKind::Arm => String::from("`when` accepts a list of functions to match its input. Make sure you are using the `->` arrow to define a function."),
-                wipple_parser::syntax::SyntaxKind::TypeRepresentation => String::from("`type` needs to know how to construct its values. Make sure you provide at least one field or variant."),
-                wipple_parser::syntax::SyntaxKind::Nothing => String::from("Try removing this code or moving it to a new line."),
-            }
             };
 
             Error {
@@ -317,7 +317,101 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>) -> Error {
                 fix: None,
             }
         }
-        crate::Error::Syntax(_) => todo_error(),
+        crate::Error::Syntax(error) => {
+            let group = ErrorGroup {
+                name: String::from("Syntax error"),
+                explanation: String::from(
+                    "Wipple couldn't understand your code because some information is missing.",
+                ),
+                example: String::from("syntax-error"),
+            };
+
+            match error {
+                wipple_syntax::Error::UnexpectedBound => Error {
+                    group,
+                    primary_label: Label {
+                        file: info.parser_info.path,
+                        span: info.parser_info.span,
+                        message: String::from("unexpected bound here"),
+                    },
+                    secondary_labels: Vec::new(),
+                    help: String::from("Bounds aren't allowed in `type` and `trait` definitions. Instead, move the bounds to the functions that use the types and traits."),
+                    fix: None,
+                },
+                wipple_syntax::Error::ExpectedConstantValue(name) => Error {
+                    group,
+                    primary_label: Label {
+                        file: info.parser_info.path,
+                        span: info.parser_info.span,
+                        message: format!("`{name}`'s value must come immediately after its definition"),
+                    },
+                    secondary_labels: Vec::new(),
+                    help: format!("Here, you defined `{name}`'s type using `::`, but constants must also be assigned a value using `:`. Try giving `{name}` a value on the line below this one."),
+                    fix: Some(Fix::after(format!("give `{name}` a value"), format!("\n{name} : _"))),
+                },
+                wipple_syntax::Error::EmptyTypeRepresentation => Error {
+                    group,
+                    primary_label: Label {
+                        file: info.parser_info.path,
+                        span: info.parser_info.span,
+                        message: String::from("type definition must contain at least one field or variant"),
+                    },
+                    secondary_labels: Vec::new(),
+                    help: String::from("Try adding a field (`name :: Type`) or variant (`Name`) inside the parentheses. If you are trying to create a marker type, remove the parentheses."),
+                    fix: Some(Fix::replace("add a new field between the parentheses", "(\n  field :: Text\n)")),
+                },
+                wipple_syntax::Error::ExpectedField => Error {
+                    group,
+                    primary_label: Label {
+                        file: info.parser_info.path,
+                        span: info.parser_info.span,
+                        message: String::from("expected another field after the previous field in this structure definition"),
+                    },
+                    secondary_labels: Vec::new(),
+                    help: String::from("A type must contain all fields or all variants."),
+                    fix: None,
+                },
+                wipple_syntax::Error::ExpectedVariant => Error {
+                    group,
+                    primary_label: Label {
+                        file: info.parser_info.path,
+                        span: info.parser_info.span,
+                        message: String::from("expected another variant after the previous variant in this enumeration definition"),
+                    },
+                    secondary_labels: Vec::new(),
+                    help: String::from("A type must contain all fields or all variants."),
+                    fix: None,
+                },
+                wipple_syntax::Error::InvalidTextLiteral(text_literal_error) => Error {
+                    group,
+                    primary_label: Label {
+                        file: info.parser_info.path,
+                        span: (info.parser_info.span.start + text_literal_error.start)..(info.parser_info.span.start + text_literal_error.end),
+                        message: text_literal_error.error,
+                    },
+                    secondary_labels: Vec::new(),
+                    help: String::from("This piece of text contains an invalid character or escape sequence."),
+                    fix: Some(Fix::replace("remove the invalid piece of text", "")),
+                },
+                wipple_syntax::Error::InvalidPlaceholderText { expected, found } => Error {
+                    group,
+                    primary_label: Label {
+                        file: info.parser_info.path,
+                        span: info.parser_info.span,
+                        message: format!("expected {} values after the text because it has {} placeholders", expected, found),
+                    },
+                    secondary_labels: Vec::new(),
+                    help: String::from(
+                        if expected > found {
+                            "Try adding some more inputs here."
+                        } else {
+                            "Try removing some of these inputs or adding more placeholders to the text."
+                        }
+                    ),
+                    fix: None,
+                },
+            }
+        }
         crate::Error::Lower(_) => todo_error(),
         crate::Error::Typecheck(_) => todo_error(),
     }

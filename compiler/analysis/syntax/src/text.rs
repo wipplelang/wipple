@@ -79,9 +79,9 @@ pub(crate) fn parse_format_expression<D: Driver>(
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TextLiteralError {
-    start: u32,
-    end: u32,
-    error: String,
+    pub start: u32,
+    pub end: u32,
+    pub error: String,
 }
 
 const fn message_from_rustc(error: &EscapeError) -> &'static str {
