@@ -130,7 +130,7 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
 }
 
 /// An error occurring during typechecking.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(
     Debug(bound = ""),
     Clone(bound = ""),
@@ -145,7 +145,7 @@ pub enum Error<D: Driver> {
     RecursionLimit,
 
     /// The driver failed to provide a path for a required language item.
-    MissingLanguageItem(&'static str),
+    MissingLanguageItem(String),
 
     /// The type of the expression could not be determined.
     UnknownType(Type<D>),

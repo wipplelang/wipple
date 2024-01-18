@@ -102,7 +102,7 @@ pub struct Info {
 }
 
 /// An error occurring during [`parse`].
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Error {
     /// The location in the source code where the error occurred.
     pub span: Range<u32>,
@@ -113,7 +113,8 @@ pub struct Error {
 
 /// The kind of [`Error`].
 #[allow(missing_docs)]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum SyntaxKind {
     Name,
     Text,

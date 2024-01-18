@@ -53,7 +53,7 @@ pub enum ErrorContext {
 }
 
 /// An error occuring during parsing.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum Error {
     /// The parser found a bound, but bounds aren't allowed here.

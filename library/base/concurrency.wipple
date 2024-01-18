@@ -19,6 +19,6 @@ task : body group -> intrinsic "task" group (() -> evaluate body)
 [Execute code in the background without waiting for it to finish.]
 [group : "Concurrency"]
 in-background :: (lazy ()) -> ()
-in-background : body -> intrinsic "in-background" (() -> (evaluate body :: ()))
+in-background : body -> intrinsic "in-background" (() -> evaluate body)
 
 [TODO: Delay and duration units]

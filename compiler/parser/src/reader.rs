@@ -2,7 +2,7 @@
 
 use itertools::Itertools;
 use logos::Logos;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, collections::VecDeque, iter::Peekable, mem, ops::Range};
 
 /// A token in the source code.
@@ -18,7 +18,7 @@ pub struct Token<'src> {
 
 /// The kind of [`Token`].
 #[allow(missing_docs)]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Logos, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Logos, Serialize, Deserialize)]
 #[logos(skip r#"[\t ]+"#)]
 #[serde(rename_all = "camelCase")]
 pub enum TokenKind<'src> {
@@ -169,7 +169,7 @@ impl<'src> Node<'src> {
 }
 
 /// An error occurring during [`tokenize`] or [`read`].
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Error {
     /// The location in the source code where the error occurred.
     pub span: Range<u32>,
@@ -185,7 +185,7 @@ impl Error {
 }
 
 /// The kind of [`Error`].
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ErrorKind {
     /// The tokenizer encountered an invalid token.
     InvalidToken,
@@ -200,13 +200,19 @@ pub enum ErrorKind {
     },
 
     /// A non-associative operator was used multiple times in the same list.
-    MultipleNonAssociativeOperators,
+    MultipleNonAssociativeOperators {
+        /// The operator used.
+        operator: String,
+
+        /// The first use of the operator.
+        first_span: Range<u32>,
+    },
 
     /// The operator expected an input on the left side.
-    MissingOperatorInputOnLeft,
+    MissingOperatorInputOnLeft(String),
 
     /// The operator expected an input on the right side.
-    MissingOperatorInputOnRight,
+    MissingOperatorInputOnRight(String),
 }
 
 /// Options for [`read`].
@@ -288,10 +294,18 @@ impl<'src> Node<'src> {
                 input.strip_comments(errors),
             )),
             Node::NonAssociativeBinaryOperator(span, token, left, right) => {
+                let operator_name = match &token.kind {
+                    TokenKind::Symbol(symbol) => symbol,
+                    _ => unreachable!(),
+                };
+
                 let left = match left.strip_comments(errors) {
                     Some(input) => input,
                     None => {
-                        errors.push(Error::new(span, ErrorKind::MissingOperatorInputOnLeft));
+                        errors.push(Error::new(
+                            span,
+                            ErrorKind::MissingOperatorInputOnLeft(operator_name.to_string()),
+                        ));
 
                         return None;
                     }
@@ -300,7 +314,10 @@ impl<'src> Node<'src> {
                 let right = match right.strip_comments(errors) {
                     Some(input) => input,
                     None => {
-                        errors.push(Error::new(span, ErrorKind::MissingOperatorInputOnLeft));
+                        errors.push(Error::new(
+                            span,
+                            ErrorKind::MissingOperatorInputOnLeft(operator_name.to_string()),
+                        ));
 
                         return None;
                     }
@@ -314,7 +331,12 @@ impl<'src> Node<'src> {
                 ))
             }
             Node::VariadicOperator(span, token, input) => {
-                let input = input.strip_comments(&span, errors)?;
+                let operator_name = match &token.kind {
+                    TokenKind::Symbol(symbol) => symbol,
+                    _ => unreachable!(),
+                };
+
+                let input = input.strip_comments(operator_name, &span, errors)?;
                 Some(Node::VariadicOperator(span, token, input))
             }
         }
@@ -356,7 +378,12 @@ impl<'src> BinaryOperatorInput<'src> {
 }
 
 impl<'src> VariadicOperatorInput<'src> {
-    fn strip_comments(self, span: &Range<u32>, errors: &mut Vec<Error>) -> Option<Self> {
+    fn strip_comments(
+        self,
+        operator_name: &str,
+        span: &Range<u32>,
+        errors: &mut Vec<Error>,
+    ) -> Option<Self> {
         match self {
             VariadicOperatorInput::Unapplied => Some(VariadicOperatorInput::Unapplied),
             VariadicOperatorInput::Applied(inputs) => {
@@ -366,10 +393,20 @@ impl<'src> VariadicOperatorInput<'src> {
                         let error = input
                             .span_mut()
                             .map(|span| {
-                                Error::new(span.clone(), ErrorKind::MissingOperatorInputOnLeft)
+                                Error::new(
+                                    span.clone(),
+                                    ErrorKind::MissingOperatorInputOnLeft(
+                                        operator_name.to_string(),
+                                    ),
+                                )
                             })
                             .unwrap_or_else(|| {
-                                Error::new(span.clone(), ErrorKind::MissingOperatorInputOnRight)
+                                Error::new(
+                                    span.clone(),
+                                    ErrorKind::MissingOperatorInputOnRight(
+                                        operator_name.to_string(),
+                                    ),
+                                )
                             });
 
                         let input = input.strip_comments(errors);
@@ -731,9 +768,14 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src>
                             if let Some((next_operator, _)) = next {
                                 let (_, token) = next_operator.unwrap();
 
+                                let operator_name = match token.kind {
+                                    TokenKind::Symbol(symbol) => symbol.to_string(),
+                                    _ => unreachable!(),
+                                };
+
                                 errors.push(Error::new(
                                     token.span,
-                                    ErrorKind::MissingOperatorInputOnLeft,
+                                    ErrorKind::MissingOperatorInputOnLeft(operator_name),
                                 ));
 
                                 None
@@ -768,6 +810,11 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src>
                 1 => {
                     let (index, token, associativity) = operators.last().unwrap();
 
+                    let operator_name = match &token.kind {
+                        TokenKind::Symbol(symbol) => symbol,
+                        _ => unreachable!(),
+                    };
+
                     match associativity {
                         Associativity::None => {
                             let (left, right) = match input(elements, *index, errors) {
@@ -775,7 +822,9 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src>
                                 | BinaryOperatorInput::PartiallyAppliedRight(_) => {
                                     errors.push(Error::new(
                                         span,
-                                        ErrorKind::MissingOperatorInputOnLeft,
+                                        ErrorKind::MissingOperatorInputOnLeft(
+                                            operator_name.to_string(),
+                                        ),
                                     ));
 
                                     return Node::Empty;
@@ -783,7 +832,9 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src>
                                 BinaryOperatorInput::PartiallyAppliedLeft(_) => {
                                     errors.push(Error::new(
                                         span,
-                                        ErrorKind::MissingOperatorInputOnRight,
+                                        ErrorKind::MissingOperatorInputOnRight(
+                                            operator_name.to_string(),
+                                        ),
                                     ));
 
                                     return Node::Empty;
@@ -807,7 +858,9 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src>
                                 (true, false) => {
                                     errors.push(Error::new(
                                         token.span.clone(),
-                                        ErrorKind::MissingOperatorInputOnLeft,
+                                        ErrorKind::MissingOperatorInputOnLeft(
+                                            operator_name.to_string(),
+                                        ),
                                     ));
 
                                     return Node::Empty;
@@ -824,18 +877,21 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src>
                     }
                 }
                 _ => {
-                    let (_, _, associativity) = operators.first().unwrap();
+                    let (_, first_token, associativity) = operators.first().unwrap();
 
                     match associativity {
                         Associativity::None => {
-                            for span in operators
-                                .iter()
-                                .skip(1)
-                                .map(|(_, token, _)| token.span.clone())
+                            for token in operators.iter().skip(1).map(|(_, token, _)| token.clone())
                             {
                                 errors.push(Error::new(
-                                    span,
-                                    ErrorKind::MultipleNonAssociativeOperators,
+                                    token.span.clone(),
+                                    ErrorKind::MultipleNonAssociativeOperators {
+                                        operator: match token.kind {
+                                            TokenKind::Symbol(symbol) => symbol.to_string(),
+                                            _ => unreachable!(),
+                                        },
+                                        first_span: first_token.span.clone(),
+                                    },
                                 ));
                             }
 

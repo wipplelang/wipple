@@ -2338,7 +2338,7 @@ fn instantiated_language_type<D: Driver>(
         None => {
             errors.borrow_mut().push(WithInfo {
                 info: info.clone(),
-                item: crate::Error::MissingLanguageItem(language_item),
+                item: crate::Error::MissingLanguageItem(language_item.to_string()),
             });
 
             None
@@ -2362,7 +2362,7 @@ fn instantiated_language_trait<D: Driver>(
         None => {
             context.errors.borrow_mut().push(WithInfo {
                 info: info.clone(),
-                item: crate::Error::MissingLanguageItem(language_item),
+                item: crate::Error::MissingLanguageItem(language_item.to_string()),
             });
 
             WithInfo {

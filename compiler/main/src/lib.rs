@@ -1,11 +1,12 @@
 //! Coordinates the compiler passes.
 
 mod convert;
+mod render;
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, hash::Hash};
-use wasm_bindgen::prelude::wasm_bindgen;
+use wasm_bindgen::{prelude::wasm_bindgen, JsCast};
 
 pub use wipple_codegen as codegen;
 pub use wipple_linker as linker;
@@ -56,6 +57,42 @@ pub fn link(libraries: &str) -> String {
 
     let executable = linker::link(libraries);
     serialize(&executable)
+}
+
+/// JavaScript entrypoint to render errors.
+#[wasm_bindgen(js_name = "renderErrors")]
+pub fn render_errors(errors: &str) -> String {
+    initialize();
+
+    let errors: Vec<util::WithInfo<Info, Error>> = deserialize(errors);
+
+    let errors = errors
+        .into_iter()
+        .map(render::render_error)
+        .collect::<Vec<_>>();
+
+    serialize(&errors)
+}
+
+/// JavaScript entrypoint to render errors with console colors.
+#[wasm_bindgen(js_name = "colorizeErrors")]
+pub fn colorize_errors(errors: &str, source_code_for_file: wasm_bindgen::JsValue) -> String {
+    initialize();
+
+    let errors: Vec<render::Error> = deserialize(errors);
+
+    let source_code_for_file = |file: &str| {
+        source_code_for_file
+            .dyn_ref::<js_sys::Function>()
+            .unwrap()
+            .call1(&wasm_bindgen::JsValue::NULL, &file.into())
+            .unwrap()
+            .as_string()
+            .unwrap()
+    };
+
+    let colorized = render::colorize_errors(&errors, source_code_for_file);
+    serialize(&colorized)
 }
 
 /// The driver.
@@ -161,7 +198,7 @@ pub struct Result {
 
 /// Errors produced by the compiler.
 #[allow(missing_docs)]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Error {
     Read(parser::reader::Error),

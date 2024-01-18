@@ -12,7 +12,7 @@ import {
     positional,
 } from "cmd-ts";
 import { File } from "cmd-ts/batteries/fs";
-import { compile, link } from "wipple-compiler";
+import { compile, link, renderErrors, colorizeErrors } from "wipple-compiler";
 import { evaluate, InterpreterError, IoRequest } from "wipple-interpreter";
 
 Error.stackTraceLimit = Infinity;
@@ -48,7 +48,16 @@ const app = subcommands({
                 const result = compile(sources, dependencies);
 
                 if (result.errors.length > 0) {
-                    console.error(util.inspect(result.errors, { depth: Infinity, colors: true }));
+                    const output = colorizeErrors(renderErrors(result.errors), (file) => {
+                        try {
+                            return fs.readFileSync(file, "utf8");
+                        } catch {
+                            return "";
+                        }
+                    });
+
+                    console.log(output);
+
                     process.exit(1);
                 }
 
