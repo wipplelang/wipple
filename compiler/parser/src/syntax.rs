@@ -122,7 +122,6 @@ pub enum SyntaxKind {
     Instance,
     TypeParameter,
     Trait,
-    Statement,
     Pattern,
     Expression,
     Type,
@@ -421,25 +420,44 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 "#;
                 }
 
-                let name = match name {
-                    Node::Token(token) => match token.kind {
-                        TokenKind::Symbol(name) => WithInfo {
+                let name = |parser: &mut Self| match &name {
+                    Node::Token(token) => match &token.kind {
+                        TokenKind::Symbol(name) => Some(WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
-                                span: token.span,
+                                span: token.span.clone(),
                             }
                             .into(),
                             item: name.to_string(),
-                        },
-                        _ => return None,
+                        }),
+                        _ => {
+                            parser.errors.push(Error {
+                                span: token.span.clone(),
+                                expected: SyntaxKind::Name,
+                            });
+
+                            None
+                        }
                     },
-                    _ => return None,
+                    _ => {
+                        parser.errors.push(Error {
+                            span: name.span().cloned().unwrap_or_else(|| span.clone()),
+                            expected: SyntaxKind::Name,
+                        });
+
+                        None
+                    }
                 };
 
                 let parameters = parser.parse_type_function(span.clone(), parameters, bounds);
 
                 let type_declaration = |parser: &mut Self| {
                     TYPE_DECLARATION.parse(&declaration).map(|mut vars| {
+                        let name = match name(parser) {
+                            Some(name) => name,
+                            None => return syntax::Statement::Error,
+                        };
+
                         let representation = match vars
                             .remove("representation")
                             .map(|mut value| value.pop().unwrap())
@@ -465,7 +483,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         };
 
                         syntax::Statement::TypeDeclaration {
-                            name: name.clone(),
+                            name,
                             parameters: parameters.clone(),
                             representation,
                         }
@@ -474,6 +492,11 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
 
                 let trait_declaration = |parser: &mut Self| {
                     TRAIT_DECLARATION.parse(&declaration).map(|mut vars| {
+                        let name = match name(parser) {
+                            Some(name) => name,
+                            None => return syntax::Statement::Error,
+                        };
+
                         let r#type = match vars.remove("type").map(|mut value| value.pop().unwrap())
                         {
                             Some(r#type) => parser.parse_type(
@@ -504,7 +527,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         };
 
                         syntax::Statement::TraitDeclaration {
-                            name: name.clone(),
+                            name,
                             parameters: parameters.clone(),
                             r#type,
                         }

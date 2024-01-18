@@ -209,29 +209,6 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>) -> Error {
                         help: String::from("Parentheses are used to group code together — the opening `(` tells Wipple where to start and the closing `)` tells Wipple where to end. Make sure you have a closing `)` for every opening `(`."),
                     }
                 }
-                /*
-
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, IntoDiagnostic)]
-#[file_id(String)]
-pub enum ReadError {
-    #[message = "this symbol isn't allowed here"]
-    InvalidToken,
-
-    #[message = "expected {expected} here, but found {found} instead"]
-    Mismatch { expected: String, found: String },
-
-    #[message = "this operator can't be used multiple times in the same line of code"]
-    MultipleNonAssociativeOperators,
-
-    #[message = "missing an input before this operator"]
-    MissingOperatorInputOnLeft,
-
-    #[message = "missing an input after this operator"]
-    MissingOperatorInputOnRight,
-}
-
-                 */
                 wipple_parser::reader::ErrorKind::MultipleNonAssociativeOperators { operator, first_span } => Error {
                     group,
                     primary_label: Label {
@@ -271,7 +248,75 @@ pub enum ReadError {
                 },
             }
         }
-        crate::Error::Parse(_) => todo_error(),
+        crate::Error::Parse(error) => {
+            let group = ErrorGroup {
+                name: String::from("Syntax error"),
+                explanation: String::from("Wipple couldn't understand your code because it was expecting a different piece of code than the one provided."),
+                example: String::from("syntax-error"),
+            };
+
+            let render_syntax_kind =
+                |kind: &wipple_parser::syntax::SyntaxKind, a: &str, an: &str| match kind {
+                    wipple_parser::syntax::SyntaxKind::Name => format!("{a}name"),
+                    wipple_parser::syntax::SyntaxKind::Text => format!("{a}piece of text"),
+                    wipple_parser::syntax::SyntaxKind::Block => format!("{a}block of code"),
+                    wipple_parser::syntax::SyntaxKind::Instance => format!("{an}instance"),
+                    wipple_parser::syntax::SyntaxKind::TypeParameter => {
+                        format!("{a}type parameter")
+                    }
+                    wipple_parser::syntax::SyntaxKind::Trait => format!("{a}trait"),
+                    wipple_parser::syntax::SyntaxKind::Pattern => format!("{a}pattern"),
+                    wipple_parser::syntax::SyntaxKind::Expression => format!("{a}piece of code"),
+                    wipple_parser::syntax::SyntaxKind::Type => format!("{a}type"),
+                    wipple_parser::syntax::SyntaxKind::TypeMember => format!("{a}type member"),
+                    wipple_parser::syntax::SyntaxKind::Arm => format!("{a}function"),
+                    wipple_parser::syntax::SyntaxKind::TypeRepresentation => {
+                        format!("{a}list of fields or variants")
+                    }
+                    wipple_parser::syntax::SyntaxKind::Nothing => String::from("no more code"),
+                };
+
+            let render_help = |kind: &wipple_parser::syntax::SyntaxKind| {
+                match kind {
+                wipple_parser::syntax::SyntaxKind::Name => {
+                    String::from("This code defines a new value and needs a name for that value. If you're trying to add parameters to a function, put them to the right of `:`, followed by an arrow.")
+                }
+                wipple_parser::syntax::SyntaxKind::Text => {
+                    String::from("You might be forgetting quotes here.")
+                }
+                wipple_parser::syntax::SyntaxKind::Block => {
+                    String::from("You might be forgetting parentheses here.")
+                }
+                wipple_parser::syntax::SyntaxKind::Instance => {
+                    String::from("An instance looks like `(Show Number)` or `(Add Text Text Text)`.")
+                }
+                wipple_parser::syntax::SyntaxKind::TypeParameter => String::from("A type parameter is a single name like `A` or `Value`."),
+                wipple_parser::syntax::SyntaxKind::Trait => String::from("A trait is a single name like `Show` or `Add`."),
+                wipple_parser::syntax::SyntaxKind::Pattern => String::from("A pattern looks like `x` (to assign to a variable), `Some value` (to match a variant), `(number : 5)` (to match a structure), or `_` (to match anything)."),
+                wipple_parser::syntax::SyntaxKind::Expression => String::from("Try adding some more code here."),
+                wipple_parser::syntax::SyntaxKind::Type => String::from("Try adding another type here."),
+                wipple_parser::syntax::SyntaxKind::TypeMember => String::from("A type member looks like the field `name :: Text` (in a structure) or the variant `Blue` (in an enumeration)."),
+                wipple_parser::syntax::SyntaxKind::Arm => String::from("`when` accepts a list of functions to match its input. Make sure you are using the `->` arrow to define a function."),
+                wipple_parser::syntax::SyntaxKind::TypeRepresentation => String::from("`type` needs to know how to construct its values. Make sure you provide at least one field or variant."),
+                wipple_parser::syntax::SyntaxKind::Nothing => String::from("Try removing this code or moving it to a new line."),
+            }
+            };
+
+            Error {
+                group,
+                primary_label: Label {
+                    file: info.parser_info.path,
+                    span: error.span,
+                    message: format!(
+                        "expected {} here",
+                        render_syntax_kind(&error.expected, "a ", "an ")
+                    ),
+                },
+                secondary_labels: Vec::new(),
+                help: render_help(&error.expected),
+                fix: None,
+            }
+        }
         crate::Error::Syntax(_) => todo_error(),
         crate::Error::Lower(_) => todo_error(),
         crate::Error::Typecheck(_) => todo_error(),
