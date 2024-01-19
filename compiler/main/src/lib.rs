@@ -1,6 +1,7 @@
 //! Coordinates the compiler passes.
 
 mod convert;
+mod query;
 mod render;
 
 use itertools::Itertools;
@@ -12,10 +13,11 @@ pub use wipple_codegen as codegen;
 pub use wipple_linker as linker;
 pub use wipple_lower as lower;
 pub use wipple_parser as parser;
-pub use wipple_query as query;
 pub use wipple_syntax as syntax;
 pub use wipple_typecheck as typecheck;
 pub use wipple_util as util;
+
+pub use query::*;
 
 /// The default recursion limit.
 // TODO: Make this configurable
@@ -61,14 +63,18 @@ pub fn link(libraries: &str) -> String {
 
 /// JavaScript entrypoint to render errors.
 #[wasm_bindgen(js_name = "renderErrors")]
-pub fn render_errors(errors: &str) -> String {
+pub fn render_errors(errors: &str, interface_: &str, library: &str) -> String {
     initialize();
 
     let errors: Vec<util::WithInfo<Info, Error>> = deserialize(errors);
+    let interface: Interface = deserialize(interface_);
+    let library: Library = deserialize(library);
+
+    let query = Query::new(&interface, &library);
 
     let errors = errors
         .into_iter()
-        .map(render::render_error)
+        .map(|error| render::render_error(error, &query))
         .collect::<Vec<_>>();
 
     serialize(&errors)
@@ -149,7 +155,7 @@ pub struct File {
 #[serde(rename_all = "camelCase")]
 pub struct Interface {
     /// The names of top-level declarations in the program.
-    pub top_level: HashMap<String, Vec<lower::Path>>,
+    pub top_level: HashMap<String, Vec<util::WithInfo<Info, lower::Path>>>,
 
     /// The type declarations in the program.
     pub type_declarations:

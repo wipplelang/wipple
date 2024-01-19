@@ -37,7 +37,7 @@ pub struct Interface<D: Driver> {
     pub instance_declarations: HashMap<Path, WithInfo<D::Info, InstanceDeclaration<D>>>,
 
     /// The names of top-level declarations in the module.
-    pub top_level: HashMap<String, Vec<Path>>,
+    pub top_level: HashMap<String, Vec<WithInfo<D::Info, Path>>>,
 }
 
 /// Contains the implementations of items in a file.

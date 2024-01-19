@@ -48,13 +48,16 @@ const app = subcommands({
                 const result = compile(sources, dependencies);
 
                 if (result.errors.length > 0) {
-                    const output = colorizeErrors(renderErrors(result.errors), (file) => {
-                        try {
-                            return fs.readFileSync(file, "utf8");
-                        } catch {
-                            return "";
+                    const output = colorizeErrors(
+                        renderErrors(result.errors, result.interface, result.library),
+                        (file) => {
+                            try {
+                                return fs.readFileSync(file, "utf8");
+                            } catch {
+                                return "";
+                            }
                         }
-                    });
+                    );
 
                     console.log(output);
 

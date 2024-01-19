@@ -113,7 +113,7 @@ struct Info<D: Driver> {
         HashMap<crate::Path, WithInfo<D::Info, Option<crate::InstanceDeclaration<D>>>>,
     library: crate::Library<D>,
     path: crate::Path,
-    scopes: Scopes,
+    scopes: Scopes<D>,
     next_variable: u32,
 }
 
@@ -129,10 +129,14 @@ impl<D: Driver> Info<D> {
     }
 }
 
-pub type Scope = (ScopeKind, HashMap<String, Vec<crate::Path>>);
+pub type Scope<D> = (
+    ScopeKind,
+    HashMap<String, Vec<WithInfo<<D as Driver>::Info, crate::Path>>>,
+);
 
-#[derive(Debug, Clone, Default)]
-pub struct Scopes(Vec<Scope>);
+#[derive(Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""), Default(bound = ""))]
+pub struct Scopes<D: Driver>(Vec<Scope<D>>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScopeKind {
@@ -140,7 +144,7 @@ pub enum ScopeKind {
     Constant,
 }
 
-impl Scopes {
+impl<D: Driver> Scopes<D> {
     pub fn push_block_scope(&mut self) {
         self.0.push((ScopeKind::Block, HashMap::new()));
     }
@@ -149,16 +153,16 @@ impl Scopes {
         self.0.push((ScopeKind::Constant, HashMap::new()));
     }
 
-    pub fn pop_scope(&mut self) -> Scope {
+    pub fn pop_scope(&mut self) -> Scope<D> {
         self.0.pop().unwrap()
     }
 
-    pub fn define(&mut self, name: String, path: crate::Path) {
+    pub fn define(&mut self, name: String, path: WithInfo<D::Info, crate::Path>) {
         let (_, paths) = self.0.last_mut().unwrap();
         let paths = paths.entry(name).or_default();
 
-        if path.last().unwrap().is_local() {
-            paths.retain(|path| !path.last().unwrap().is_local());
+        if path.item.last().unwrap().is_local() {
+            paths.retain(|path| !path.item.last().unwrap().is_local());
         }
 
         paths.push(path);
@@ -189,7 +193,7 @@ fn resolve_statements<D: Driver>(
                         }
                         Entry::Vacant(entry) => {
                             entry.insert(statement.replace(None));
-                            info.scopes.define($name.clone(), path);
+                            info.scopes.define($name.clone(), statement.replace(path));
                             Some(statement)
                         }
                     }
@@ -317,7 +321,7 @@ fn resolve_statements<D: Driver>(
                                         ));
 
                                         constructors
-                                            .push((variant.name.item, variant_path.item.clone()));
+                                            .push((variant.name.item, variant_path.clone()));
 
                                         crate::Variant {
                                             name: variant_path,
@@ -475,11 +479,11 @@ fn resolve_statements<D: Driver>(
                 let path = resolve_name(item, info, |candidates| {
                     let mut candidates = candidates
                         .iter()
-                        .filter(|path| !path.last().unwrap().is_local())
+                        .filter(|path| !path.item.last().unwrap().is_local())
                         .cloned()
                         .collect::<Vec<_>>();
 
-                    candidates.sort_by_key(|path| match path.last().unwrap() {
+                    candidates.sort_by_key(|path| match path.item.last().unwrap() {
                         crate::PathComponent::Type(_) | crate::PathComponent::Trait(_) => 0,
                         crate::PathComponent::Constant(_)
                         | crate::PathComponent::Constructor(_)
@@ -521,7 +525,7 @@ fn generate_marker_constructor<D: Driver>(
     name: WithInfo<D::Info, String>,
     parameters: Vec<crate::Path>,
     info: &mut Info<D>,
-) -> (String, crate::Path) {
+) -> (String, WithInfo<D::Info, crate::Path>) {
     let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
 
     let constructor_declaration = crate::ConstantDeclaration {
@@ -553,7 +557,7 @@ fn generate_marker_constructor<D: Driver>(
     info.constant_declarations.insert(
         constructor_path.clone(),
         WithInfo {
-            info: name.info,
+            info: name.info.clone(),
             item: Some(constructor_declaration),
         },
     );
@@ -562,14 +566,20 @@ fn generate_marker_constructor<D: Driver>(
         .items
         .insert(constructor_path.clone(), constructor_body);
 
-    (name.item, constructor_path)
+    (
+        name.item,
+        WithInfo {
+            info: name.info,
+            item: constructor_path,
+        },
+    )
 }
 
 fn generate_structure_constructor<D: Driver>(
     name: WithInfo<D::Info, String>,
     parameters: Vec<crate::Path>,
     info: &mut Info<D>,
-) -> (String, crate::Path) {
+) -> (String, WithInfo<D::Info, crate::Path>) {
     let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
 
     let constructor_declaration = crate::ConstantDeclaration {
@@ -641,7 +651,7 @@ fn generate_structure_constructor<D: Driver>(
     info.constant_declarations.insert(
         constructor_path.clone(),
         WithInfo {
-            info: name.info,
+            info: name.info.clone(),
             item: Some(constructor_declaration),
         },
     );
@@ -650,7 +660,13 @@ fn generate_structure_constructor<D: Driver>(
         .items
         .insert(constructor_path.clone(), constructor_body);
 
-    (name.item, constructor_path)
+    (
+        name.item,
+        WithInfo {
+            info: name.info,
+            item: constructor_path,
+        },
+    )
 }
 
 fn generate_variant_constructor<D: Driver>(
@@ -659,7 +675,7 @@ fn generate_variant_constructor<D: Driver>(
     variant_path: WithInfo<D::Info, crate::Path>,
     value_types: Vec<WithInfo<D::Info, crate::Type<D>>>,
     info: &mut Info<D>,
-) -> (String, crate::Path) {
+) -> (String, WithInfo<D::Info, crate::Path>) {
     let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
 
     let constructor_declaration = crate::ConstantDeclaration {
@@ -732,7 +748,7 @@ fn generate_variant_constructor<D: Driver>(
     info.constant_declarations.insert(
         constructor_path.clone(),
         WithInfo {
-            info: name.info,
+            info: name.info.clone(),
             item: Some(constructor_declaration),
         },
     );
@@ -741,7 +757,13 @@ fn generate_variant_constructor<D: Driver>(
         .items
         .insert(constructor_path.clone(), constructor_body);
 
-    (name.item, constructor_path)
+    (
+        name.item,
+        WithInfo {
+            info: name.info,
+            item: constructor_path,
+        },
+    )
 }
 
 fn resolve_expression<D: Driver>(
@@ -765,23 +787,22 @@ fn resolve_expression<D: Driver>(
             |candidates| {
                 candidates
                     .iter()
-                    .filter_map(|path| match path.last().unwrap() {
+                    .filter_map(|path| match path.item.last().unwrap() {
                         crate::PathComponent::Trait(_) => {
-                            Some(crate::Expression::Trait(path.clone()))
+                            Some(crate::Expression::Trait(path.item.clone()))
                         }
                         crate::PathComponent::Constant(_)
                         | crate::PathComponent::Constructor(_) => {
-                            Some(crate::Expression::Constant(path.clone()))
+                            Some(crate::Expression::Constant(path.item.clone()))
                         }
                         crate::PathComponent::Variable(_) => {
-                            Some(crate::Expression::Variable(path.clone()))
+                            Some(crate::Expression::Variable(path.item.clone()))
                         }
                         _ => None,
                     })
                     .collect()
             },
         )
-        .map(|item| item.item)
         .unwrap_or(crate::Expression::Error),
         crate::UnresolvedExpression::Number(number) => crate::Expression::Number(number),
         crate::UnresolvedExpression::Text(text) => crate::Expression::Text(text),
@@ -1066,7 +1087,6 @@ fn resolve_expression<D: Driver>(
 
 fn resolve_pattern<D: Driver>(
     pattern: WithInfo<D::Info, crate::UnresolvedPattern<D>>,
-
     info: &mut Info<D>,
 ) -> WithInfo<D::Info, crate::Pattern<D>> {
     let mut defines = Vec::new();
@@ -1081,7 +1101,7 @@ fn resolve_pattern<D: Driver>(
 
 fn resolve_pattern_inner<D: Driver>(
     pattern: WithInfo<D::Info, crate::UnresolvedPattern<D>>,
-    defines: &mut Vec<(String, crate::Path)>,
+    defines: &mut Vec<(String, WithInfo<D::Info, crate::Path>)>,
     info: &mut Info<D>,
 ) -> WithInfo<D::Info, crate::Pattern<D>> {
     let pattern_info = pattern.info.clone();
@@ -1096,7 +1116,13 @@ fn resolve_pattern_inner<D: Driver>(
             info.next_variable += 1;
 
             let path = info.make_path(crate::PathComponent::Variable(index));
-            defines.push((name, path.clone()));
+            defines.push((
+                name,
+                WithInfo {
+                    info: pattern_info,
+                    item: path.clone(),
+                },
+            ));
 
             crate::Pattern::Variable(path)
         }
@@ -1110,7 +1136,7 @@ fn resolve_pattern_inner<D: Driver>(
                 |candidates| {
                     candidates
                         .iter()
-                        .filter_map(|path| match path.last().unwrap() {
+                        .filter_map(|path| match path.item.last().unwrap() {
                             crate::PathComponent::Variant(_) => Some(path.clone()),
                             _ => None,
                         })
@@ -1152,7 +1178,7 @@ fn resolve_pattern_inner<D: Driver>(
             let variant = match resolve_name(variant, info, |candidates| {
                 candidates
                     .iter()
-                    .filter_map(|path| match path.last().unwrap() {
+                    .filter_map(|path| match path.item.last().unwrap() {
                         crate::PathComponent::Variant(_) => Some(path.clone()),
                         _ => None,
                     })
@@ -1196,7 +1222,7 @@ fn resolve_type<D: Driver>(
             match resolve_name(name, info, |candidates| {
                 candidates
                     .iter()
-                    .filter_map(|path| match path.last().unwrap() {
+                    .filter_map(|path| match path.item.last().unwrap() {
                         crate::PathComponent::Type(_) | crate::PathComponent::TypeParameter(_) => {
                             Some(path.clone())
                         }
@@ -1245,8 +1271,13 @@ fn resolve_type_parameter<D: Driver>(
         type_parameter.item.name.item.clone(),
     ));
 
-    info.scopes
-        .define(type_parameter.item.name.item, path.clone());
+    info.scopes.define(
+        type_parameter.item.name.item,
+        WithInfo {
+            info: type_parameter_info.clone(),
+            item: path.clone(),
+        },
+    );
 
     let type_parameter_declaration = crate::TypeParameterDeclaration {
         infer: type_parameter.item.infer,
@@ -1275,7 +1306,7 @@ fn resolve_instance<D: Driver>(
         let r#trait = match resolve_name(instance.r#trait, info, |candidates| {
             candidates
                 .iter()
-                .filter_map(|path| match path.last().unwrap() {
+                .filter_map(|path| match path.item.last().unwrap() {
                     crate::PathComponent::Trait(_) => Some(path.clone()),
                     _ => None,
                 })
@@ -1299,8 +1330,8 @@ fn resolve_instance<D: Driver>(
 fn resolve_name<D: Driver, T>(
     name: WithInfo<D::Info, String>,
     info: &mut Info<D>,
-    filter: impl FnMut(&[crate::Path]) -> Vec<T>,
-) -> Option<WithInfo<D::Info, T>> {
+    filter: impl FnMut(&[WithInfo<D::Info, crate::Path>]) -> Vec<T>,
+) -> Option<T> {
     let result = try_resolve_name(name.clone(), info, filter);
 
     if result.is_none() {
@@ -1313,14 +1344,14 @@ fn resolve_name<D: Driver, T>(
 fn try_resolve_name<D: Driver, T>(
     name: WithInfo<D::Info, String>,
     info: &mut Info<D>,
-    mut filter: impl FnMut(&[crate::Path]) -> Vec<T>,
-) -> Option<WithInfo<D::Info, T>> {
+    mut filter: impl FnMut(&[WithInfo<D::Info, crate::Path>]) -> Vec<T>,
+) -> Option<T> {
     let mut allow_locals = true;
     for (kind, scope) in info.scopes.0.iter().rev() {
         if let Some(paths) = scope.get(&name.item) {
             let paths = paths
                 .iter()
-                .filter(|path| allow_locals || !path.last().unwrap().is_local())
+                .filter(|path| allow_locals || !path.item.last().unwrap().is_local())
                 .cloned()
                 .collect::<Vec<_>>();
 
@@ -1335,14 +1366,14 @@ fn try_resolve_name<D: Driver, T>(
 
                     continue;
                 }
-                1 => return Some(name.replace(candidates.pop().unwrap())),
+                1 => return Some(candidates.pop().unwrap()),
                 _ => {
                     info.errors.push(name.replace(crate::Error::AmbiguousName {
                         name: name.item.clone(),
-                        candidates: paths,
+                        candidates: paths.into_iter().map(|path| path.item).collect(),
                     }));
 
-                    return None;
+                    return Some(candidates.pop().unwrap()); // try the last candidate defined
                 }
             }
         }

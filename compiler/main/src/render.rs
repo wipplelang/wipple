@@ -1,5 +1,6 @@
 //! Render compiler errors, types, and other items to strings.
 
+use crate::Query;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, ops::Range};
 use wipple_util::WithInfo;
@@ -95,7 +96,7 @@ impl Fix {
 }
 
 /// Render a compiler error to an [`Error`].
-pub fn render_error(error: WithInfo<crate::Info, crate::Error>) -> Error {
+pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &Query<'_>) -> Error {
     let info = error.info;
 
     let todo_error = || Error {
@@ -412,7 +413,117 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>) -> Error {
                 },
             }
         }
-        crate::Error::Lower(_) => todo_error(),
+        crate::Error::Lower(error) => {
+            let group = ErrorGroup {
+                name: String::from("Name error"),
+                explanation: String::from(
+                    "Wipple couldn't find the definition for a name in your code.",
+                ),
+                example: String::from("name-error"),
+            };
+
+            let names_related_to = |name: &str| {
+                query.related_names(WithInfo {
+                    info: info.clone(),
+                    item: name,
+                })
+            };
+
+            let render_unresolved = |kind: &str, name: &str| {
+                let related_names = names_related_to(name);
+
+                Error {
+                    group: group.clone(),
+                    primary_label: Label {
+                        file: info.parser_info.path.clone(),
+                        span: info.parser_info.span.clone(),
+                        message: format!("can't find {kind}`{name}`"),
+                    },
+                    secondary_labels: related_names
+                        .iter()
+                        .map(|name| Label {
+                            file: name.info.parser_info.path.clone(),
+                            span: name.info.parser_info.span.clone(),
+                            message: format!("`{}` is defined here, did you mean this?", name.item),
+                        })
+                        .collect(),
+                    help: format!(
+                        "Check your spelling or add a definition for `{name}` using `:`."
+                    ),
+                    fix: related_names.first().map(|name| {
+                        Fix::replace(format!("did you mean `{}`?", name.item), name.item)
+                    }),
+                }
+            };
+
+            match error {
+                wipple_lower::Error::UnresolvedName(name) => render_unresolved("", &name),
+                wipple_lower::Error::UnresolvedType(name) => render_unresolved("type ", &name),
+                wipple_lower::Error::UnresolvedTrait(name) => render_unresolved("trait ", &name),
+                wipple_lower::Error::UnresolvedVariant(name) => {
+                    render_unresolved("variant ", &name)
+                }
+                wipple_lower::Error::UnresolvedLanguageItem(name) => {
+                    render_unresolved("language item ", &name)
+                }
+                wipple_lower::Error::AmbiguousName { name, candidates } => Error {
+                    group,
+                    primary_label: Label {
+                        file: info.parser_info.path.clone(),
+                        span: info.parser_info.span.clone(),
+                        message: format!("`{name}` could refer to multiple definitions"),
+                    },
+                    secondary_labels: candidates
+                        .iter()
+                        .filter_map(|path| {
+                            let info = query.info_at_path(path);
+
+                            Some(Label {
+                                file: info.parser_info.path.clone(),
+                                span: info.parser_info.span,
+                                message: format!(
+                                    "`{}` could refer to this",
+                                    path.last().unwrap().name()?,
+                                ),
+                            })
+                        })
+                        .collect(),
+                    help: format!("Try renaming one of the definitions of `{name}` so it doesn't conflict with the others."),
+                    fix: None,
+                },
+                wipple_lower::Error::AlreadyDefined(path) => {
+                    let name = path.last().unwrap().name().unwrap();
+                    let info = query.info_at_path(&path);
+
+                    Error {
+                        group,
+                        primary_label: Label {
+                            file: info.parser_info.path.clone(),
+                            span: info.parser_info.span.clone(),
+                            message: format!("`{name}` is already defined"),
+                        },
+                        secondary_labels: vec![Label {
+                            file: info.parser_info.path.clone(),
+                            span: info.parser_info.span,
+                            message: format!("the other `{}` is defined here", name),
+                        }],
+                        help: format!("Try choosing a different name for `{name}` so it doesn't conflict with the existing definition."),
+                        fix: None,
+                    }
+                },
+                wipple_lower::Error::NestedLanguageDeclaration => Error {
+                    group,
+                    primary_label: Label {
+                        file: info.parser_info.path.clone(),
+                        span: info.parser_info.span.clone(),
+                        message: String::from("`language` items must be defined at the top level"),
+                    },
+                    secondary_labels: Vec::new(),
+                    help: String::from("Try moving this line outside of any code."),
+                    fix: None,
+                }
+            }
+        }
         crate::Error::Typecheck(_) => todo_error(),
     }
 }

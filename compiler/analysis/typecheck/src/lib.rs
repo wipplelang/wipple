@@ -799,3 +799,122 @@ pub enum Role {
     WhenArm,
     CollectionElement,
 }
+
+/// Traverse an expression.
+pub trait Traverse<'a, I> {
+    /// The expression contained within the [`WithInfo`].
+    type Inner;
+
+    /// Call `f` for every subexpression in `self`.
+    fn traverse(&self, f: &mut dyn FnMut(WithInfo<I, &'a Self::Inner>));
+}
+
+impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a TypedExpression<D>> {
+    type Inner = TypedExpression<D>;
+
+    fn traverse(&self, f: &mut dyn FnMut(WithInfo<D::Info, &'a Self::Inner>)) {
+        f(self.clone());
+
+        match &self.item.kind {
+            TypedExpressionKind::Block(statements) => {
+                for statement in statements {
+                    statement.as_ref().traverse(f);
+                }
+            }
+            TypedExpressionKind::Function { body, .. } => {
+                body.as_deref().traverse(f);
+            }
+            TypedExpressionKind::Call { function, input } => {
+                function.as_deref().traverse(f);
+                input.as_deref().traverse(f);
+            }
+            TypedExpressionKind::When { input, arms } => {
+                input.as_deref().traverse(f);
+
+                for arm in arms {
+                    if let Some(condition) = &arm.item.condition {
+                        condition.as_ref().traverse(f);
+                    }
+
+                    arm.item.body.as_ref().traverse(f);
+                }
+            }
+            TypedExpressionKind::Intrinsic { inputs, .. } => {
+                for input in inputs {
+                    input.as_ref().traverse(f);
+                }
+            }
+            TypedExpressionKind::Initialize { value, .. } => {
+                value.as_deref().traverse(f);
+            }
+            TypedExpressionKind::Structure { fields, .. } => {
+                for field in fields {
+                    field.item.value.as_ref().traverse(f);
+                }
+            }
+            TypedExpressionKind::Variant { values, .. } => {
+                for value in values {
+                    value.as_ref().traverse(f);
+                }
+            }
+            TypedExpressionKind::Tuple(elements) => {
+                for element in elements {
+                    element.as_ref().traverse(f);
+                }
+            }
+            TypedExpressionKind::Format { segments, .. } => {
+                for segment in segments {
+                    segment.value.as_ref().traverse(f);
+                }
+            }
+            TypedExpressionKind::Semantics { body, .. } => {
+                body.as_deref().traverse(f);
+            }
+            TypedExpressionKind::Lazy(value) => {
+                value.as_deref().traverse(f);
+            }
+            TypedExpressionKind::Unknown(_)
+            | TypedExpressionKind::Marker(_)
+            | TypedExpressionKind::Variable(_)
+            | TypedExpressionKind::Constant(_)
+            | TypedExpressionKind::Trait(_)
+            | TypedExpressionKind::Number(_)
+            | TypedExpressionKind::Text(_) => {}
+        }
+    }
+}
+
+impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a Pattern<D>> {
+    type Inner = Pattern<D>;
+
+    fn traverse(&self, f: &mut dyn FnMut(WithInfo<D::Info, &'a Self::Inner>)) {
+        f(self.clone());
+
+        match &self.item {
+            Pattern::Destructure(fields) => {
+                for field in fields {
+                    field.item.pattern.as_ref().traverse(f);
+                }
+            }
+            Pattern::Variant { value_patterns, .. } => {
+                for value_pattern in value_patterns {
+                    value_pattern.as_ref().traverse(f);
+                }
+            }
+            Pattern::Tuple(elements) => {
+                for element in elements {
+                    element.as_ref().traverse(f);
+                }
+            }
+            Pattern::Or { left, right } => {
+                left.as_deref().traverse(f);
+                right.as_deref().traverse(f);
+            }
+            Pattern::Unknown
+            | Pattern::Wildcard
+            | Pattern::Number(_)
+            | Pattern::Text(_)
+            | Pattern::Variable(_) => {}
+        }
+    }
+}

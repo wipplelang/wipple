@@ -6,7 +6,5 @@ pub use web_sys;
 mod log;
 
 mod info;
-mod traverse;
 
 pub use info::*;
-pub use traverse::*;

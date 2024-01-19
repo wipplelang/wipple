@@ -4,7 +4,6 @@ members = [
     "analysis/lower",
     "analysis/syntax",
     "analysis/typecheck",
-    "analysis/query",
     "codegen",
     "linker",
     "main",

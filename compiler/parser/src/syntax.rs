@@ -110,6 +110,13 @@ pub struct Info {
     pub documentation: Vec<Documentation>,
 }
 
+impl Info {
+    /// Check if `span` is within the span of `other`.
+    pub fn span_is_within(&self, other: &Self) -> bool {
+        self.span.start >= other.span.start && self.span.end <= other.span.end
+    }
+}
+
 /// An error occurring during [`parse`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Error {
