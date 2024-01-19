@@ -75,7 +75,7 @@ type Value =
           ir: Instruction[][];
           label: number;
           substitutions: Record<string, TypeDescriptor>;
-          pure: boolean;
+          tailCallable: boolean;
       }
     | {
           type: "nativeFunction";
@@ -500,7 +500,8 @@ const evaluateItem = async (
                                 label: instruction.value[1].value[2],
                                 substitutions,
                                 scope,
-                                pure: instruction.value[1].value[0].length === 0,
+                                // A function is only tall callable if it has no captures
+                                tailCallable: instruction.value[1].value[0].length === 0,
                             });
 
                             break;
@@ -573,7 +574,7 @@ const evaluateItem = async (
                     const input = pop();
                     const func = pop();
 
-                    if (func.type === "function" && func.pure) {
+                    if (func.type === "function" && func.tailCallable) {
                         item = func.ir;
                         label = func.label;
                         scope = {};
