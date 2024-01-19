@@ -1545,12 +1545,10 @@ fn infer_expression<D: Driver>(
             }
         }
         crate::UntypedExpression::Variable(variable) => {
-            let r#type = context
-                .variables
-                .borrow()
-                .get(&variable)
-                .unwrap_or_else(|| panic!("variable {variable:?} not in context"))
-                .clone_in_current_context();
+            let r#type = context.variables.borrow().get(&variable).map_or_else(
+                || Type::new(TypeKind::Unknown, Vec::new()),
+                Type::clone_in_current_context,
+            );
 
             Expression {
                 r#type,

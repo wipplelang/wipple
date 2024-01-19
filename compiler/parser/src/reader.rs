@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, collections::VecDeque, iter::Peekable, mem, ops::Range};
 
 /// A token in the source code.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Token<'src> {
     /// The location of the token as a byte offset from the beginning of the
     /// source file.
@@ -81,7 +81,7 @@ pub fn tokenize(s: &str) -> tokenize::Result<'_> {
 }
 
 /// A node in a syntax tree.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Node<'src> {
     /// An empty node (eg. if the program contains no tokens or the node was a
@@ -95,7 +95,7 @@ pub enum Node<'src> {
     List(Range<u32>, Vec<Node<'src>>),
 
     /// A block node.
-    Block(Range<u32>, Vec<Node<'src>>),
+    Block(Range<u32>, Vec<(Vec<Documentation>, Node<'src>)>),
 
     /// A use of a binary operator.
     BinaryOperator(Range<u32>, Token<'src>, BinaryOperatorInput<'src>),
@@ -107,8 +107,36 @@ pub enum Node<'src> {
     VariadicOperator(Range<u32>, Token<'src>, VariadicOperatorInput<'src>),
 }
 
+/// The parsed contents of a comment.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Documentation {
+    /// A plain comment.
+    Comment(String),
+
+    /// A comment of the form `[name : value]`.
+    Attribute {
+        /// The name of the attribute.
+        name: String,
+
+        /// The value of the attribute.
+        value: DocumentationAttributeValue,
+    },
+}
+
+/// The value of a [`Documentation`] attribute.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DocumentationAttributeValue {
+    /// A text value wrapped in quotes.
+    Text(String),
+
+    /// A parsed expression, or [`Err`] if the expression was malformed.
+    Code(std::result::Result<Node<'static>, String>),
+}
+
 /// The input to a [`Node::BinaryOperator`].
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum BinaryOperatorInput<'src> {
     /// The operator has no inputs (eg. `(+)`).
@@ -125,7 +153,7 @@ pub enum BinaryOperatorInput<'src> {
 }
 
 /// The input to a [`Node::VariadicOperator`].
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum VariadicOperatorInput<'src> {
     /// The operator has no inputs (eg. `(,)`).
@@ -170,6 +198,7 @@ impl<'src> Node<'src> {
 
 /// An error occurring during [`tokenize`] or [`read`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Error {
     /// The location in the source code where the error occurred.
     pub span: Range<u32>,
@@ -186,6 +215,7 @@ impl Error {
 
 /// The kind of [`Error`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ErrorKind {
     /// The tokenizer encountered an invalid token.
     InvalidToken,
@@ -285,7 +315,9 @@ impl<'src> Node<'src> {
                 span,
                 statements
                     .into_iter()
-                    .filter_map(|element| element.strip_comments(errors))
+                    .filter_map(|(documentation, statement)| {
+                        Some((documentation, statement.strip_comments(errors)?))
+                    })
                     .collect(),
             )),
             Node::BinaryOperator(span, token, input) => Some(Node::BinaryOperator(
@@ -512,17 +544,49 @@ fn read_block<'src>(
     top_level: bool,
     last_span: &mut Range<u32>,
     errors: &mut Vec<Error>,
-) -> Vec<Node<'src>> {
+) -> Vec<(Vec<Documentation>, Node<'src>)> {
     let contents = (|| {
-        let mut contents = Vec::new();
+        let mut contents = vec![(Vec::new(), Node::List(last_span.clone(), Vec::new()))];
+
+        macro_rules! consume_documentation {
+            () => {
+                std::iter::from_fn(|| match &tokens.peek()?.kind {
+                    TokenKind::Comment(comment) => {
+                        let documentation = read_documentation(comment);
+                        tokens.next();
+
+                        while let Some(Token {
+                            kind: TokenKind::LineBreak,
+                            ..
+                        }) = tokens.peek()
+                        {
+                            tokens.next();
+                        }
+
+                        Some(documentation)
+                    }
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+            };
+        }
+
+        contents
+            .last_mut()
+            .unwrap()
+            .0
+            .extend(consume_documentation!());
+
         loop {
             match tokens.next() {
                 Some(next) => {
                     *last_span = next.span.clone();
 
-                    if contents.is_empty() {
-                        contents.push(Node::List(last_span.clone(), Vec::new()));
-                    }
+                    contents
+                        .last_mut()
+                        .unwrap()
+                        .0
+                        .extend(consume_documentation!());
 
                     *last_span = next.span.clone();
 
@@ -537,6 +601,7 @@ fn read_block<'src>(
                                 contents
                                     .last_mut()
                                     .unwrap()
+                                    .1
                                     .as_list_mut()
                                     .unwrap()
                                     .push(Node::Block(last_span.clone(), statements));
@@ -545,6 +610,7 @@ fn read_block<'src>(
                                 contents
                                     .last_mut()
                                     .unwrap()
+                                    .1
                                     .as_list_mut()
                                     .unwrap()
                                     .push(Node::List(last_span.clone(), nodes));
@@ -569,6 +635,7 @@ fn read_block<'src>(
                             contents
                                 .last_mut()
                                 .unwrap()
+                                .1
                                 .as_list_mut()
                                 .unwrap()
                                 .push(Node::Token(next));
@@ -585,11 +652,13 @@ fn read_block<'src>(
                         // Same as above, but for the case where the operator is at
                         // the beginning of the line
                         TokenKind::LineBreak => {
-                            while let Some(next) = tokens.peek() {
+                            while let Some(next) = tokens.peek().cloned() {
                                 if let TokenKind::LineBreak = next.kind {
                                     tokens.next();
                                     continue;
                                 } else {
+                                    let documentation = consume_documentation!();
+
                                     if let TokenKind::Symbol(symbol) = &next.kind {
                                         if is_operator(symbol) {
                                             let next = tokens.next().unwrap();
@@ -598,6 +667,7 @@ fn read_block<'src>(
                                             contents
                                                 .last_mut()
                                                 .unwrap()
+                                                .1
                                                 .as_list_mut()
                                                 .unwrap()
                                                 .push(Node::Token(next));
@@ -606,7 +676,10 @@ fn read_block<'src>(
                                         }
                                     }
 
-                                    contents.push(Node::List(last_span.clone(), Vec::new()));
+                                    contents.push((
+                                        documentation,
+                                        Node::List(last_span.clone(), Vec::new()),
+                                    ));
 
                                     break;
                                 }
@@ -616,6 +689,7 @@ fn read_block<'src>(
                             contents
                                 .last_mut()
                                 .unwrap()
+                                .1
                                 .as_list_mut()
                                 .unwrap()
                                 .push(Node::Token(next));
@@ -642,8 +716,41 @@ fn read_block<'src>(
     // Remove empty statements
     contents
         .into_iter()
-        .filter(|node| !matches!(node, Node::List(_, elements) if elements.is_empty()))
+        .filter(|(_, node)| !matches!(node, Node::List(_, elements) if elements.is_empty()))
         .collect()
+}
+
+fn read_documentation(comment: &str) -> Documentation {
+    if let Some((name, value)) = comment.split_once(" : ") {
+        if value.starts_with('"') && value.ends_with('"') {
+            return Documentation::Attribute {
+                name: name.to_string(),
+                value: DocumentationAttributeValue::Text(value[1..(value.len() - 1)].to_string()),
+            };
+        } else {
+            let tokenize_result = tokenize(value);
+
+            if tokenize_result.errors.is_empty() {
+                let read_result = read(tokenize_result.tokens, ReadOptions::default());
+
+                if read_result.errors.is_empty() {
+                    return Documentation::Attribute {
+                        name: name.to_string(),
+                        value: DocumentationAttributeValue::Code(Ok(read_result
+                            .top_level
+                            .into_owned())),
+                    };
+                }
+            }
+
+            return Documentation::Attribute {
+                name: name.to_string(),
+                value: DocumentationAttributeValue::Code(Err(value.to_string())),
+            };
+        }
+    }
+
+    Documentation::Comment(comment.to_string())
 }
 
 fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src> {
@@ -917,7 +1024,9 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src>
             span,
             statements
                 .into_iter()
-                .map(|statement| read_operators(statement, errors))
+                .map(|(documentation, statement)| {
+                    (documentation, read_operators(statement, errors))
+                })
                 .collect(),
         ),
         Node::BinaryOperator(..)
@@ -1014,7 +1123,7 @@ impl Node<'_> {
             ),
             Node::Block(_, statements) => SExp::list(
                 std::iter::once(SExp::symbol("block"))
-                    .chain(statements.iter().map(|contents| {
+                    .chain(statements.iter().map(|(_, contents)| {
                         SExp::list([SExp::symbol("statement"), contents.to_lexpr_value()])
                     }))
                     .collect::<Vec<_>>(),
@@ -1059,6 +1168,91 @@ impl Node<'_> {
                         }
                     })
                     .collect::<Vec<_>>(),
+            ),
+        }
+    }
+}
+
+impl<'src> Token<'src> {
+    /// Produce a token that owns its contents.
+    pub fn into_owned(self) -> Token<'static> {
+        Token {
+            span: self.span,
+            kind: match self.kind {
+                TokenKind::LeftParenthesis => TokenKind::LeftParenthesis,
+                TokenKind::RightParenthesis => TokenKind::RightParenthesis,
+                TokenKind::LineBreak => TokenKind::LineBreak,
+                TokenKind::Comment(comment) => TokenKind::Comment(comment.into_owned().into()),
+                TokenKind::Symbol(symbol) => TokenKind::Symbol(symbol.into_owned().into()),
+                TokenKind::Text(text) => TokenKind::Text(text.into_owned().into()),
+                TokenKind::Number(number) => TokenKind::Number(number.into_owned().into()),
+                TokenKind::Asset(asset) => TokenKind::Asset(asset.into_owned().into()),
+            },
+        }
+    }
+}
+
+impl<'src> Node<'src> {
+    /// Produce a node that owns its contents.
+    pub fn into_owned(self) -> Node<'static> {
+        match self {
+            Node::Empty => Node::Empty,
+            Node::Token(token) => Node::Token(token.into_owned()),
+            Node::List(span, elements) => Node::List(
+                span,
+                elements.into_iter().map(|node| node.into_owned()).collect(),
+            ),
+            Node::Block(span, statements) => Node::Block(
+                span,
+                statements
+                    .into_iter()
+                    .map(|(documentation, statement)| (documentation, statement.into_owned()))
+                    .collect(),
+            ),
+            Node::BinaryOperator(span, operator, input) => {
+                Node::BinaryOperator(span, operator.into_owned(), input.into_owned())
+            }
+            Node::NonAssociativeBinaryOperator(span, operator, left, right) => {
+                Node::NonAssociativeBinaryOperator(
+                    span,
+                    operator.into_owned(),
+                    Box::new(left.into_owned()),
+                    Box::new(right.into_owned()),
+                )
+            }
+            Node::VariadicOperator(span, operator, input) => {
+                Node::VariadicOperator(span, operator.into_owned(), input.into_owned())
+            }
+        }
+    }
+}
+
+impl<'src> BinaryOperatorInput<'src> {
+    /// Produce a binary operator input that owns its contents.
+    pub fn into_owned(self) -> BinaryOperatorInput<'static> {
+        match self {
+            BinaryOperatorInput::Unapplied => BinaryOperatorInput::Unapplied,
+            BinaryOperatorInput::PartiallyAppliedLeft(input) => {
+                BinaryOperatorInput::PartiallyAppliedLeft(Box::new(input.into_owned()))
+            }
+            BinaryOperatorInput::PartiallyAppliedRight(input) => {
+                BinaryOperatorInput::PartiallyAppliedRight(Box::new(input.into_owned()))
+            }
+            BinaryOperatorInput::Applied(left, right) => BinaryOperatorInput::Applied(
+                Box::new(left.into_owned()),
+                Box::new(right.into_owned()),
+            ),
+        }
+    }
+}
+
+impl<'src> VariadicOperatorInput<'src> {
+    /// Produce a variadic operator input that owns its contents.
+    pub fn into_owned(self) -> VariadicOperatorInput<'static> {
+        match self {
+            VariadicOperatorInput::Unapplied => VariadicOperatorInput::Unapplied,
+            VariadicOperatorInput::Applied(contents) => VariadicOperatorInput::Applied(
+                contents.into_iter().map(|node| node.into_owned()).collect(),
             ),
         }
     }

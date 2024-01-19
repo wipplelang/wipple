@@ -20,6 +20,7 @@ pub fn top_level<D: Driver>(
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""))]
 struct PartialConstant<D: Driver> {
+    info: D::Info,
     name: WithInfo<D::Info, String>,
     parameters: Vec<WithInfo<D::Info, crate::TypeParameter<D>>>,
     bounds: Vec<WithInfo<D::Info, crate::Instance<D>>>,
@@ -191,7 +192,9 @@ fn statements<D: Driver>(
                         if let Some(constant) = current_constant.as_ref() {
                             info.errors.push(WithInfo {
                                 info: $statement_info.unwrap_or(constant.name.info.clone()),
-                                item: crate::Error::ExpectedConstantValue(constant.name.item.clone()),
+                                item: crate::Error::ExpectedConstantValue(
+                                    constant.name.item.clone(),
+                                ),
                             });
                         }
                     };
@@ -207,23 +210,26 @@ fn statements<D: Driver>(
 
                 match statement_syntax {
                     Some(statement_syntax) => {
-                        let statement_info = statement_syntax.info.clone();
+                        let mut statement_info = statement_syntax.info.clone();
 
-                        statement_syntax.filter_map(|statement_syntax| match statement_syntax {
-                            syntax::Statement::Error => None,
-                            syntax::Statement::TypeDeclaration {
-                                name,
-                                parameters: type_function_syntax,
-                                representation: representation_syntax,
-                            } => {
-                                expected_constant_value!(Some(statement_info));
+                        statement_syntax
+                            .filter_map(|statement_syntax| match statement_syntax {
+                                syntax::Statement::Error => None,
+                                syntax::Statement::TypeDeclaration {
+                                    name,
+                                    parameters: type_function_syntax,
+                                    representation: representation_syntax,
+                                } => {
+                                    expected_constant_value!(Some(statement_info.clone()));
 
-                                let (parameters, bounds) =
-                                    type_function(type_function_syntax, info);
+                                    let (parameters, bounds) =
+                                        type_function(type_function_syntax, info);
 
-                                disallow_bounds(bounds, info);
+                                    disallow_bounds(bounds, info);
 
-                                let representation = representation_syntax.map(|representation_syntax| match representation_syntax {
+                                    let representation =
+                                            representation_syntax.map(|representation_syntax| {
+                                                match representation_syntax {
                                     syntax::TypeRepresentation::Marker => {
                                         crate::TypeRepresentation::Marker
                                     }
@@ -350,120 +356,130 @@ fn statements<D: Driver>(
 
                                         type_representation
                                     }
-                                });
-
-                                Some(crate::Statement::Type {
-                                    name,
-                                    parameters,
-                                    representation,
-                                })
-                            }
-                            syntax::Statement::TraitDeclaration {
-                                name,
-                                parameters: type_function_syntax,
-                                r#type: type_syntax,
-                            } => {
-                                expected_constant_value!(Some(statement_info));
-
-                                let (parameters, bounds) =
-                                    type_function(type_function_syntax, info);
-
-                                disallow_bounds(bounds, info);
-
-                                let r#type = r#type(type_syntax, info);
-
-                                Some(crate::Statement::Trait {
-                                    name,
-                                    parameters,
-                                    r#type,
-                                })
-                            }
-                            syntax::Statement::InstanceDeclaration {
-                                parameters: type_function_syntax,
-                                instance: instance_syntax,
-                                body: body_syntax,
-                            } => {
-                                expected_constant_value!(Some(statement_info));
-
-                                let (parameters, bounds) =
-                                    type_function(type_function_syntax, info);
-
-                                let instance = instance(instance_syntax, info);
-
-                                let body = expression(body_syntax, info);
-
-                                Some(crate::Statement::Instance {
-                                    parameters,
-                                    bounds,
-                                    instance,
-                                    body,
-                                })
-                            }
-                            syntax::Statement::ConstantDeclaration {
-                                name,
-                                parameters: type_function_syntax,
-                                r#type: type_syntax,
-                            } => {
-                                expected_constant_value!(Some(statement_info));
-
-                                let (parameters, bounds) =
-                                    type_function(type_function_syntax, info);
-
-                                let r#type = r#type(type_syntax, info);
-
-                                info.current_constant = Some(PartialConstant {
-                                    name,
-                                    parameters,
-                                    bounds,
-                                    r#type,
-                                });
-
-                                None
-                            }
-                            syntax::Statement::LanguageDeclaration { item, name } => {
-                                expected_constant_value!(Some(statement_info));
-
-                                Some(crate::Statement::Language { item, name })
-                            }
-                            syntax::Statement::Assignment {
-                                pattern: pattern_syntax,
-                                value: value_syntax,
-                            } => {
-                                let value = expression(value_syntax, info);
-
-                                if let Some(constant) = current_constant {
-                                    if let syntax::Pattern::VariantOrName(name) =
-                                        &pattern_syntax.item
-                                    {
-                                        if *name == constant.name.item {
-                                            return Some(crate::Statement::Constant {
-                                                name: constant.name,
-                                                parameters: constant.parameters,
-                                                bounds: constant.bounds,
-                                                r#type: constant.r#type,
-                                                body: value,
+                                }
                                             });
+
+                                    Some(crate::Statement::Type {
+                                        name,
+                                        parameters,
+                                        representation,
+                                    })
+                                }
+                                syntax::Statement::TraitDeclaration {
+                                    name,
+                                    parameters: type_function_syntax,
+                                    r#type: type_syntax,
+                                } => {
+                                    expected_constant_value!(Some(statement_info.clone()));
+
+                                    let (parameters, bounds) =
+                                        type_function(type_function_syntax, info);
+
+                                    disallow_bounds(bounds, info);
+
+                                    let r#type = r#type(type_syntax, info);
+
+                                    Some(crate::Statement::Trait {
+                                        name,
+                                        parameters,
+                                        r#type,
+                                    })
+                                }
+                                syntax::Statement::InstanceDeclaration {
+                                    parameters: type_function_syntax,
+                                    instance: instance_syntax,
+                                    body: body_syntax,
+                                } => {
+                                    expected_constant_value!(Some(statement_info.clone()));
+
+                                    let (parameters, bounds) =
+                                        type_function(type_function_syntax, info);
+
+                                    let instance = instance(instance_syntax, info);
+
+                                    let body = expression(body_syntax, info);
+
+                                    Some(crate::Statement::Instance {
+                                        parameters,
+                                        bounds,
+                                        instance,
+                                        body,
+                                    })
+                                }
+                                syntax::Statement::ConstantDeclaration {
+                                    name,
+                                    parameters: type_function_syntax,
+                                    r#type: type_syntax,
+                                } => {
+                                    expected_constant_value!(Some(statement_info.clone()));
+
+                                    let (parameters, bounds) =
+                                        type_function(type_function_syntax, info);
+
+                                    let r#type = r#type(type_syntax, info);
+
+                                    info.current_constant = Some(PartialConstant {
+                                        info: statement_info.clone(),
+                                        name,
+                                        parameters,
+                                        bounds,
+                                        r#type,
+                                    });
+
+                                    None
+                                }
+                                syntax::Statement::LanguageDeclaration { item, name } => {
+                                    expected_constant_value!(Some(statement_info.clone()));
+
+                                    Some(crate::Statement::Language { item, name })
+                                }
+                                syntax::Statement::Assignment {
+                                    pattern: pattern_syntax,
+                                    value: value_syntax,
+                                } => {
+                                    let value = expression(value_syntax, info);
+
+                                    if let Some(constant) = current_constant {
+                                        if let syntax::Pattern::VariantOrName(name) =
+                                            &pattern_syntax.item
+                                        {
+                                            if *name == constant.name.item {
+                                                statement_info = constant.info;
+
+                                                return Some(crate::Statement::Constant {
+                                                    name: constant.name,
+                                                    parameters: constant.parameters,
+                                                    bounds: constant.bounds,
+                                                    r#type: constant.r#type,
+                                                    body: value,
+                                                });
+                                            }
                                         }
+
+                                        info.errors.push(WithInfo {
+                                            info: statement_info.clone(),
+                                            item: crate::Error::ExpectedConstantValue(
+                                                constant.name.item,
+                                            ),
+                                        });
                                     }
 
-                                    info.errors.push(WithInfo {
-                                        info: statement_info,
-                                        item: crate::Error::ExpectedConstantValue(constant.name.item),
-                                    });
+                                    let pattern = pattern(pattern_syntax, info);
+
+                                    Some(crate::Statement::Assignment { pattern, value })
                                 }
+                                syntax::Statement::Expression(expression_syntax) => {
+                                    expected_constant_value!(Some(statement_info.clone()));
 
-                                let pattern = pattern(pattern_syntax, info);
+                                    let expression = expression(expression_syntax, info);
 
-                                Some(crate::Statement::Assignment { pattern, value })
-                            }
-                            syntax::Statement::Expression(expression_syntax) => {
-                                expected_constant_value!(Some(statement_info));
-
-                                let expression = expression(expression_syntax, info);
-
-                                Some(crate::Statement::Expression(expression))
-                            }
-                        })
+                                    Some(crate::Statement::Expression(expression))
+                                }
+                            })
+                            .map(|statement_syntax| WithInfo {
+                                info: statement_info,
+                                item: statement_syntax.item,
+                            })
                     }
                     None => {
                         expected_constant_value!(None);

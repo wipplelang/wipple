@@ -67,11 +67,7 @@ fn compile_expression<D: crate::Driver>(
             ));
         }
         wipple_typecheck::TypedExpressionKind::Variable(path) => {
-            let variable = info
-                .variables
-                .iter()
-                .position(|p| p == path)
-                .expect("undeclared variable") as u32;
+            let variable = info.variables.iter().position(|p| p == path)? as u32;
 
             info.captures.push(variable);
 

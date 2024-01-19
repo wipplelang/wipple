@@ -232,6 +232,7 @@ impl Driver {
                             parser_info: parser::syntax::Info {
                                 path: file.path.clone(),
                                 span: error.span.clone(),
+                                documentation: Vec::new(),
                             },
                         },
                         item: Error::Read(error),
@@ -244,6 +245,7 @@ impl Driver {
                     parser_info: parser::syntax::Info {
                         path: file.path.clone(),
                         span: error.span.clone(),
+                        documentation: Vec::new(),
                     },
                 },
                 item: Error::Read(error),
@@ -263,6 +265,7 @@ impl Driver {
                             parser_info: parser::syntax::Info {
                                 path: file.path.clone(),
                                 span: error.span.clone(),
+                                documentation: Vec::new(),
                             },
                         },
                         item: Error::Parse(error),
@@ -552,6 +555,7 @@ impl wipple_syntax::Driver for SyntaxDriver {
             parser_info: parser::syntax::Info {
                 path: left.parser_info.path,
                 span: left.parser_info.span.start..right.parser_info.span.end,
+                documentation: Vec::new(),
             },
         }
     }
@@ -570,9 +574,10 @@ impl wipple_typecheck::Driver for Driver {
     }
 
     fn top_level_info(&self) -> Self::Info {
-        wipple_parser::syntax::Info {
+        parser::syntax::Info {
             path: String::from("top-level"),
             span: 0..0,
+            documentation: Vec::new(),
         }
         .into()
     }

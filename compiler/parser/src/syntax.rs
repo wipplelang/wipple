@@ -2,7 +2,7 @@
 
 use crate::{
     grammar::grammar,
-    reader::{Node, TokenKind},
+    reader::{Documentation, Node, TokenKind},
 };
 use serde::{Deserialize, Serialize};
 use std::ops::Range;
@@ -24,6 +24,11 @@ impl wipple_syntax::Driver for Driver {
         Info {
             path: left.path,
             span: left.span.start..right.span.end,
+            documentation: left
+                .documentation
+                .into_iter()
+                .chain(right.documentation)
+                .collect(),
         }
     }
 }
@@ -39,6 +44,7 @@ where
         info: Info {
             path: Driver.file_path(),
             span,
+            documentation: Vec::new(),
         }
         .into(),
         item,
@@ -72,8 +78,8 @@ fn test_grammar<T: std::fmt::Debug + PartialEq>(
             assert!(nodes.len() == 1, "`code` must be a single statement");
 
             match nodes.pop().unwrap() {
-                Node::List(_, mut elements) if elements.len() == 1 => elements.pop().unwrap(),
-                node => node,
+                (_, Node::List(_, mut elements)) if elements.len() == 1 => elements.pop().unwrap(),
+                (_, node) => node,
             }
         }
         _ => panic!("expected `read` to return a block"),
@@ -99,6 +105,9 @@ pub struct Info {
 
     /// The location of the item in the source code.
     pub span: Range<u32>,
+
+    /// Any documentation associated with the item.
+    pub documentation: Vec<Documentation>,
 }
 
 /// An error occurring during [`parse`].
@@ -156,13 +165,18 @@ where
             info: Info {
                 path: driver.file_path(),
                 span,
+                documentation: Vec::new(),
             }
             .into(),
             item: syntax::TopLevel {
                 statements: statements
                     .into_iter()
-                    .map(|statement| {
-                        parser.parse_statement(statement.span().cloned().unwrap_or(0..0), statement)
+                    .map(|(documentation, statement)| {
+                        parser.parse_statement(
+                            statement.span().cloned().unwrap_or(0..0),
+                            documentation,
+                            statement,
+                        )
                     })
                     .collect(),
             },
@@ -179,6 +193,7 @@ where
                 info: Info {
                     path: driver.file_path(),
                     span,
+                    documentation: Vec::new(),
                 }
                 .into(),
                 item: syntax::TopLevel {
@@ -203,6 +218,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
     fn parse_statement(
         &mut self,
         span: Range<u32>,
+        documentation: Vec<Documentation>,
         node: Node<'_>,
     ) -> WithInfo<D::Info, syntax::Statement<D>>
     where
@@ -339,6 +355,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: token.span,
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: name.to_string(),
@@ -368,6 +385,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: token.span,
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: name.to_string(),
@@ -426,6 +444,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: token.span.clone(),
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: name.to_string(),
@@ -476,6 +495,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                         .span()
                                         .cloned()
                                         .unwrap_or_else(|| span.clone()),
+                                    documentation: Vec::new(),
                                 }
                                 .into(),
                                 item: syntax::TypeRepresentation::Marker,
@@ -519,6 +539,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                             .span()
                                             .cloned()
                                             .unwrap_or_else(|| span.clone()),
+                                        documentation: Vec::new(),
                                     }
                                     .into(),
                                     item: syntax::Type::Error,
@@ -551,6 +572,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: token.span,
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: name.to_string(),
@@ -605,6 +627,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
             info: Info {
                 path: self.driver.file_path(),
                 span,
+                documentation,
             }
             .into(),
             item: statement,
@@ -672,6 +695,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: span.clone(),
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: syntax::Expression::BinaryOperator {
@@ -679,6 +703,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                     info: Info {
                                         path: parser.driver.file_path(),
                                         span: span.clone(),
+                                        documentation: Vec::new(),
                                     }
                                     .into(),
                                     item: BinaryOperator::$wrapper,
@@ -828,6 +853,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Expression::Annotate {
@@ -860,6 +886,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: span.clone(),
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: syntax::Pattern::Error,
@@ -882,6 +909,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: span.clone(),
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: syntax::Expression::Error,
@@ -893,6 +921,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: patterns.into_iter().rfold(body.item, |body, pattern| {
@@ -921,6 +950,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Expression::Collection(elements),
@@ -946,6 +976,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Expression::Tuple(elements),
@@ -966,6 +997,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Expression::Structure(
@@ -979,6 +1011,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                             info: Info {
                                                 path: parser.driver.file_path(),
                                                 span: token.span,
+                                                documentation: Vec::new(),
                                             }
                                             .into(),
                                             item: name.to_string(),
@@ -997,6 +1030,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                     info: Info {
                                         path: parser.driver.file_path(),
                                         span: span.clone(),
+                                        documentation: Vec::new(),
                                     }
                                     .into(),
                                     item: syntax::FieldValue { name, value },
@@ -1019,6 +1053,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: token.span,
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: name.to_string(),
@@ -1033,6 +1068,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                 info: Info {
                                     path: parser.driver.file_path(),
                                     span: span.clone(),
+                                    documentation: Vec::new(),
                                 }
                                 .into(),
                                 item: syntax::Expression::Error,
@@ -1051,6 +1087,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: span.clone(),
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: syntax::Expression::Error,
@@ -1072,6 +1109,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Expression::Intrinsic { name, inputs },
@@ -1090,6 +1128,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: token.span,
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: name.to_string(),
@@ -1104,6 +1143,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                 info: Info {
                                     path: parser.driver.file_path(),
                                     span: span.clone(),
+                                    documentation: Vec::new(),
                                 }
                                 .into(),
                                 item: syntax::Expression::Error,
@@ -1122,6 +1162,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: span.clone(),
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: syntax::Expression::Error,
@@ -1144,6 +1185,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: span.clone(),
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: syntax::Expression::Error,
@@ -1162,6 +1204,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Expression::Semantics {
@@ -1193,6 +1236,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: span.clone(),
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: syntax::Expression::Error,
@@ -1229,6 +1273,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Expression::When {
@@ -1250,6 +1295,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: token.span,
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: name.to_string(),
@@ -1277,6 +1323,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Expression::Format { text, inputs },
@@ -1310,6 +1357,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Expression::Apply {
@@ -1342,6 +1390,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: token.span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Expression::Name(name.to_string()),
@@ -1350,6 +1399,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: token.span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Expression::Number(number.to_string()),
@@ -1358,6 +1408,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: token.span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Expression::Text(text.to_string()),
@@ -1372,6 +1423,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         info: Info {
                             path: parser.driver.file_path(),
                             span: token.span.clone(),
+                            documentation: Vec::new(),
                         }
                         .into(),
                         item: syntax::Expression::Error,
@@ -1399,6 +1451,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         info: Info {
                             path: parser.driver.file_path(),
                             span: span.clone(),
+                            documentation: Vec::new(),
                         }
                         .into(),
                         item: syntax::Expression::Unit,
@@ -1409,14 +1462,16 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 info: Info {
                     path: parser.driver.file_path(),
                     span: span.clone(),
+                    documentation: Vec::new(),
                 }
                 .into(),
                 item: syntax::Expression::Block(
                     statements
                         .iter()
-                        .map(|statement| {
+                        .map(|(documentation, statement)| {
                             parser.parse_statement(
                                 statement.span().cloned().unwrap_or_else(|| span.clone()),
+                                documentation.clone(),
                                 statement.clone(),
                             )
                         })
@@ -1433,6 +1488,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Expression::Error,
@@ -1498,6 +1554,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
             info: Info {
                 path: self.driver.file_path(),
                 span,
+                documentation: Vec::new(),
             }
             .into(),
             item: syntax::TypeFunction { parameters, bounds },
@@ -1549,6 +1606,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 info: Info {
                     path: self.driver.file_path(),
                     span: infer.span().cloned().unwrap_or_else(|| span.clone()),
+                    documentation: Vec::new(),
                 }
                 .into(),
                 item: (),
@@ -1566,6 +1624,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: self.driver.file_path(),
                         span: token.span,
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: name.to_string(),
@@ -1600,6 +1659,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
             info: Info {
                 path: self.driver.file_path(),
                 span,
+                documentation: Vec::new(),
             }
             .into(),
             item: syntax::TypeParameter {
@@ -1624,6 +1684,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: self.driver.file_path(),
                         span,
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Instance {
@@ -1631,6 +1692,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: self.driver.file_path(),
                                 span: token.span,
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: String::from(symbol),
@@ -1656,6 +1718,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: self.driver.file_path(),
                                 span: token.span,
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: String::from(symbol),
@@ -1689,6 +1752,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: self.driver.file_path(),
                         span,
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Instance {
@@ -1745,6 +1809,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                     info: Info {
                                         path: parser.driver.file_path(),
                                         span: token.span,
+                                        documentation: Vec::new(),
                                     }
                                     .into(),
                                     item: name.to_string(),
@@ -1773,6 +1838,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         info: Info {
                             path: parser.driver.file_path(),
                             span: span.clone(),
+                            documentation: Vec::new(),
                         }
                         .into(),
                         item: syntax::TypeRepresentation::SimpleEnumeration(variants),
@@ -1798,6 +1864,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::TypeRepresentation::Compound(members),
@@ -1817,6 +1884,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: self.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::TypeRepresentation::Marker,
@@ -1859,6 +1927,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: token.span,
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: name.to_string(),
@@ -1891,6 +1960,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::TypeMember {
@@ -1912,6 +1982,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: token.span,
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: name.to_string(),
@@ -1949,6 +2020,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::TypeMember {
@@ -2026,6 +2098,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: span.clone(),
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: syntax::Type::Error,
@@ -2048,6 +2121,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: span.clone(),
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: syntax::Type::Error,
@@ -2059,6 +2133,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Type::Function {
@@ -2087,6 +2162,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Type::Tuple(elements),
@@ -2107,6 +2183,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Type::Lazy(r#type.boxed()),
@@ -2120,6 +2197,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: token.span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: if name == "_" {
@@ -2130,6 +2208,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                 info: Info {
                                     path: parser.driver.file_path(),
                                     span: token.span.clone(),
+                                    documentation: Vec::new(),
                                 }
                                 .into(),
                                 item: name.to_string(),
@@ -2148,6 +2227,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         info: Info {
                             path: parser.driver.file_path(),
                             span: token.span.clone(),
+                            documentation: Vec::new(),
                         }
                         .into(),
                         item: syntax::Type::Error,
@@ -2163,6 +2243,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: token.span.clone(),
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: name.to_string(),
@@ -2177,6 +2258,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                 info: Info {
                                     path: parser.driver.file_path(),
                                     span: span.clone(),
+                                    documentation: Vec::new(),
                                 }
                                 .into(),
                                 item: syntax::Type::Error,
@@ -2193,6 +2275,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: span.clone(),
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: syntax::Type::Error,
@@ -2203,6 +2286,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: span.clone(),
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: syntax::Type::Unit,
@@ -2223,6 +2307,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Type::Declared { name, parameters },
@@ -2238,6 +2323,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Type::Error,
@@ -2320,6 +2406,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: span.clone(),
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: syntax::Pattern::Error,
@@ -2342,6 +2429,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: span.clone(),
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: syntax::Pattern::Error,
@@ -2353,6 +2441,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Pattern::Or {
@@ -2372,6 +2461,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Pattern::Destructure(
@@ -2385,6 +2475,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                             info: Info {
                                                 path: parser.driver.file_path(),
                                                 span: token.span,
+                                                documentation: Vec::new(),
                                             }
                                             .into(),
                                             item: name.to_string(),
@@ -2417,6 +2508,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                     info: Info {
                                         path: parser.driver.file_path(),
                                         span: span.clone(),
+                                        documentation: Vec::new(),
                                     }
                                     .into(),
                                     item: syntax::FieldPattern { name, pattern },
@@ -2446,6 +2538,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Pattern::Tuple(elements),
@@ -2459,6 +2552,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: token.span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: if name == "_" {
@@ -2471,6 +2565,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: token.span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Pattern::Number(number.to_string()),
@@ -2479,6 +2574,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: token.span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Pattern::Text(text.to_string()),
@@ -2493,6 +2589,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         info: Info {
                             path: parser.driver.file_path(),
                             span: token.span.clone(),
+                            documentation: Vec::new(),
                         }
                         .into(),
                         item: syntax::Pattern::Error,
@@ -2508,6 +2605,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: token.span.clone(),
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: name.to_string(),
@@ -2522,6 +2620,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                 info: Info {
                                     path: parser.driver.file_path(),
                                     span: span.clone(),
+                                    documentation: Vec::new(),
                                 }
                                 .into(),
                                 item: syntax::Pattern::Error,
@@ -2538,6 +2637,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: span.clone(),
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: syntax::Pattern::Error,
@@ -2548,6 +2648,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             info: Info {
                                 path: parser.driver.file_path(),
                                 span: span.clone(),
+                                documentation: Vec::new(),
                             }
                             .into(),
                             item: syntax::Pattern::Unit,
@@ -2568,6 +2669,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: if value_patterns.is_empty() {
@@ -2590,6 +2692,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: parser.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Pattern::Error,
@@ -2676,6 +2779,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: self.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Pattern::Error,
@@ -2704,6 +2808,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     info: Info {
                         path: self.driver.file_path(),
                         span: span.clone(),
+                        documentation: Vec::new(),
                     }
                     .into(),
                     item: syntax::Expression::Error,
@@ -2715,6 +2820,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
             info: Info {
                 path: self.driver.file_path(),
                 span,
+                documentation: Vec::new(),
             }
             .into(),
             item: syntax::Arm {

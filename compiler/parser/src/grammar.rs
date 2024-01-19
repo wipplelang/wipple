@@ -120,10 +120,13 @@ impl Grammar {
                         return None;
                     }
 
-                    gs.iter().zip(ns).map(|(g, n)| parse(g, n, vars)).collect()
+                    gs.iter()
+                        .zip(ns)
+                        .map(|(g, (_, n))| parse(g, n, vars))
+                        .collect()
                 }
                 (Grammar::RepeatBlock(g), Node::Block(_, ns)) => {
-                    ns.iter().map(|n| parse(g, n, vars)).collect()
+                    ns.iter().map(|(_, n)| parse(g, n, vars)).collect()
                 }
                 (
                     Grammar::BinaryOperator(a, gi),
