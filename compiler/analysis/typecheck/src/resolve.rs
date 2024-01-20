@@ -2312,28 +2312,8 @@ fn instantiated_language_type<D: Driver>(
     type_context: &TypeContext<D>,
     errors: &RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>,
 ) -> Option<Type<D>> {
-    match driver.path_for_language_type(language_item) {
-        Some(path) => {
-            let type_declaration = driver.get_type_declaration(&path);
-
-            let role = type_declaration.replace(Role::Annotation);
-
-            let instantiation_context = InstantiationContext::from_parameters(
-                driver,
-                type_declaration.item.parameters,
-                type_context,
-                info,
-                errors,
-            );
-
-            Some(Type::new(
-                TypeKind::Declared {
-                    path,
-                    parameters: instantiation_context.into_types_for_parameters(),
-                },
-                vec![role],
-            ))
-        }
+    match try_instantiated_language_type(language_item, info, driver, type_context, errors) {
+        Some(path) => Some(path),
         None => {
             errors.borrow_mut().push(WithInfo {
                 info: info.clone(),
@@ -2343,6 +2323,35 @@ fn instantiated_language_type<D: Driver>(
             None
         }
     }
+}
+
+fn try_instantiated_language_type<D: Driver>(
+    language_item: &'static str,
+    info: &D::Info,
+    driver: &D,
+    type_context: &TypeContext<D>,
+    errors: &RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>,
+) -> Option<Type<D>> {
+    let path = driver.path_for_language_type(language_item)?;
+    let type_declaration = driver.get_type_declaration(&path);
+
+    let role = type_declaration.replace(Role::Annotation);
+
+    let instantiation_context = InstantiationContext::from_parameters(
+        driver,
+        type_declaration.item.parameters,
+        type_context,
+        info,
+        errors,
+    );
+
+    Some(Type::new(
+        TypeKind::Declared {
+            path,
+            parameters: instantiation_context.into_types_for_parameters(),
+        },
+        vec![role],
+    ))
 }
 
 fn instantiated_language_trait<D: Driver>(
@@ -2489,7 +2498,7 @@ fn resolve_expression<D: Driver>(
             // If we encounter a unit after a number, treat the unit as a
             // function
             let function_is_number = (|| {
-                let number_type = match instantiated_language_type(
+                let number_type = match try_instantiated_language_type(
                     "number",
                     &expression.info,
                     context.driver,
