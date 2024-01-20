@@ -3105,39 +3105,6 @@ fn resolve_trait<D: Driver>(
             return Err(query.replace(QueuedError::RecursionLimit));
         }
 
-        // First, check if there are any instances in the stack that match -- we
-        // assume an instance that refers to itself is satisfied
-        for instance in stack.iter().rev() {
-            let (new_type_context, type_context_change) = type_context.deep_clone();
-
-            let mut query = query
-                .as_ref()
-                .map(|query| query.clone_in_context(&type_context_change));
-
-            let instance = instance
-                .as_ref()
-                .map(|instance| instance.clone_in_context(&type_context_change));
-
-            if unify_instance_with_options(
-                context.driver,
-                query.as_mut(),
-                instance.as_ref(),
-                UnifyOptions {
-                    require_equal_type_parameters: true,
-                    ..Default::default()
-                },
-            ) {
-                let type_context_change = type_context.merge(&new_type_context);
-
-                return Ok(WithInfo {
-                    info: instance.info,
-                    item: ResolvedTrait {
-                        type_context_change,
-                    },
-                });
-            }
-        }
-
         // Then, check if there are any bound instances that match
         for bound_instances in context.bound_instances.borrow().iter() {
             let mut candidates = Vec::new();
@@ -3248,7 +3215,10 @@ fn resolve_trait<D: Driver>(
             pick_from_candidates(candidates, query.clone(), stack)?
         {
             for bound in bounds {
-                resolve_trait_inner(bound.as_ref(), context, &type_context, stack)?;
+                let mut stack = stack.to_vec();
+                stack.push(bound.as_ref());
+
+                resolve_trait_inner(bound.as_ref(), context, &type_context, &stack)?;
             }
 
             return Ok(candidate);
@@ -3256,7 +3226,7 @@ fn resolve_trait<D: Driver>(
 
         // If nothing matches, raise an error
         Err(WithInfo {
-            info: query.info.clone(),
+            info: stack.first().unwrap_or(&query).info.clone(),
             item: QueuedError::UnresolvedInstance {
                 instance: query.item.clone_in_current_context(),
                 candidates: Vec::new(),
@@ -3268,7 +3238,7 @@ fn resolve_trait<D: Driver>(
         })
     }
 
-    resolve_trait_inner(query, context, context.type_context, &[])
+    resolve_trait_inner(query.clone(), context, context.type_context, &[query])
 }
 
 // region: Finalize

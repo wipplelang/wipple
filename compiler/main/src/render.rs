@@ -696,9 +696,13 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                                     .tuple_windows()
                                     .map(|(candidate, unsatisfied)| {
                                         Label {
-                                            file: candidate.info.parser_info.path,
-                                            span: candidate.info.parser_info.span,
-                                            message: format!("this instance could apply, but it requires `{}`", render_instance(&unsatisfied.item))
+                                            file: unsatisfied.info.parser_info.path,
+                                            span: unsatisfied.info.parser_info.span,
+                                            message: format!(
+                                                "this instance could satisfy `{}`, but it requires `{}`",
+                                                render_instance(&candidate.item),
+                                                render_instance(&unsatisfied.item)
+                                            ),
                                         }
                                     })
                                     .collect()
