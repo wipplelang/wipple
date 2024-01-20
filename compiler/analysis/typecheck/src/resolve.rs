@@ -372,10 +372,9 @@ enum QueuedError<D: Driver> {
     DisallowedCoercion(Type<D>),
 
     UnresolvedInstance {
-        r#trait: D::Path,
-        parameters: Vec<Type<D>>,
+        instance: Instance<D>,
         candidates: Vec<D::Info>,
-        stack: Vec<D::Info>,
+        stack: Vec<WithInfo<D::Info, Instance<D>>>,
     },
 
     MissingFields(Vec<String>),
@@ -404,18 +403,20 @@ fn report_queued_errors<D: Driver>(
                 crate::Error::DisallowedCoercion(finalize_type(r#type, &info, &finalize_context))
             }
             QueuedError::UnresolvedInstance {
-                r#trait,
-                parameters,
+                instance,
                 candidates,
                 stack,
             } => crate::Error::UnresolvedInstance {
-                r#trait,
-                parameters: parameters
-                    .into_iter()
-                    .map(|r#type| finalize_type(r#type, &info, &finalize_context))
-                    .collect(),
+                instance: finalize_instance(instance, &info, &finalize_context),
                 candidates,
-                stack,
+                stack: stack
+                    .into_iter()
+                    .map(|instance| {
+                        let info = instance.info.clone();
+                        instance
+                            .map(|instance| finalize_instance(instance, &info, &finalize_context))
+                    })
+                    .collect(),
             },
             QueuedError::MissingFields(fields) => crate::Error::MissingFields(fields),
             QueuedError::ExtraField => crate::Error::ExtraField,
@@ -2512,8 +2513,37 @@ fn resolve_expression<D: Driver>(
             })();
 
             if function_is_number {
-                let unit = resolve_expression(input.unboxed(), context);
+                let mut unit = resolve_expression(input.unboxed(), context);
                 let number = resolve_expression(function.unboxed(), context);
+
+                let unit_type =
+                    Type::new(
+                        TypeKind::Function {
+                            input: Box::new(
+                                number
+                                    .item
+                                    .r#type
+                                    .clone_in_current_context()
+                                    .with_role(number.replace(Role::FunctionInput)),
+                            ),
+                            output: Box::new(
+                                expression.item.r#type.clone_in_current_context().with_role(
+                                    WithInfo {
+                                        info: expression.info.clone(),
+                                        item: Role::FunctionOutput,
+                                    },
+                                ),
+                            ),
+                        },
+                        Vec::new(),
+                    );
+
+                try_unify_expression(
+                    context.driver,
+                    unit.as_mut(),
+                    &unit_type,
+                    context.error_queue,
+                );
 
                 ExpressionKind::Call {
                     function: unit.boxed(),
@@ -3038,17 +3068,15 @@ fn resolve_trait<D: Driver>(
             0 => Ok(None),
             1 => Ok(Some(candidates.pop().unwrap())),
             _ => Err(query.map(|query| QueuedError::UnresolvedInstance {
-                r#trait: query.r#trait.clone(),
-                parameters: query
-                    .parameters
-                    .iter()
-                    .map(|r#type| r#type.clone_in_current_context())
-                    .collect(),
+                instance: query.clone_in_current_context(),
                 candidates: candidates
                     .into_iter()
                     .map(|(candidate, _)| candidate.info)
                     .collect(),
-                stack: stack.iter().map(|instance| instance.info.clone()).collect(),
+                stack: stack
+                    .iter()
+                    .map(|instance| instance.as_deref().map(Instance::clone_in_current_context))
+                    .collect(),
             })),
         }
     }
@@ -3217,15 +3245,12 @@ fn resolve_trait<D: Driver>(
         Err(WithInfo {
             info: query.info.clone(),
             item: QueuedError::UnresolvedInstance {
-                r#trait: query.item.r#trait.clone(),
-                parameters: query
-                    .item
-                    .parameters
-                    .iter()
-                    .map(Type::clone_in_current_context)
-                    .collect(),
+                instance: query.item.clone_in_current_context(),
                 candidates: Vec::new(),
-                stack: stack.iter().map(|instance| instance.info.clone()).collect(),
+                stack: stack
+                    .iter()
+                    .map(|instance| instance.as_deref().map(Instance::clone_in_current_context))
+                    .collect(),
             },
         })
     }
@@ -3431,5 +3456,20 @@ fn finalize_expression<D: Driver>(
     WithInfo {
         info: expression.info,
         item: crate::TypedExpression { r#type, kind },
+    }
+}
+
+fn finalize_instance<D: Driver>(
+    instance: Instance<D>,
+    info: &D::Info,
+    context: &FinalizeContext<'_, D>,
+) -> crate::Instance<D> {
+    crate::Instance {
+        r#trait: instance.r#trait,
+        parameters: instance
+            .parameters
+            .into_iter()
+            .map(|r#type| finalize_type(r#type, info, context))
+            .collect(),
     }
 }

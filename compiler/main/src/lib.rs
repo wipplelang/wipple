@@ -18,6 +18,7 @@ pub use wipple_typecheck as typecheck;
 pub use wipple_util as util;
 
 pub use query::*;
+pub use render::*;
 
 /// The default recursion limit.
 // TODO: Make this configurable

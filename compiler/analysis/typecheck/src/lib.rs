@@ -189,11 +189,8 @@ pub enum Error<D: Driver> {
     /// No instance satisfying the provided parameters could be resolved.
     #[serde(rename_all = "camelCase")]
     UnresolvedInstance {
-        /// The trait for which no instance could be resolved.
-        r#trait: D::Path,
-
-        /// The parameters used to search for an instance.
-        parameters: Vec<Type<D>>,
+        /// The instance that couldn't be resolved.
+        instance: Instance<D>,
 
         /// If the instance could not be resolved because multiple candidates
         /// applied, they will be listed here.
@@ -201,7 +198,7 @@ pub enum Error<D: Driver> {
 
         /// Contains the list of instances evaluated before failing to resolve
         /// [`ErrorKind::UnresolvedInstance::trait`].
-        stack: Vec<D::Info>,
+        stack: Vec<WithInfo<D::Info, Instance<D>>>,
     },
 
     /// A structure expression was missing fields.
@@ -266,7 +263,13 @@ pub enum Type<D: Driver> {
 
 /// An instance or bound.
 #[derive(Serialize, Deserialize, Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct Instance<D: Driver> {
     /// The trait for which an instance must exist.
