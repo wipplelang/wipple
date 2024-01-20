@@ -551,7 +551,7 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                         vec![Label {
                             file: info.parser_info.path.clone(),
                             span: info.parser_info.span,
-                            message: format!("this code produces a value of type `{}`, where the `_` placeholders are unknown", render_type(&r#type)),
+                            message: format!("this code produces a value of type `{}`, where the `_` placeholders are unknown", render_type(&r#type, true)),
                         }]
                     },
                     help: String::from("Try providing some more context so Wipple can check this code. One way to do this is by using `::` to explicitly annotate the type, but you can also try assigning this code to a variable and passing it to a function."),
@@ -574,8 +574,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     expected_roles,
                     expected,
                 } => {
-                    let actual = render_type(&actual);
-                    let expected = render_type(&expected);
+                    let actual = render_type(&actual, true);
+                    let expected = render_type(&expected, true);
 
                     // TODO: Conversions, etc.
                     let mut secondary_labels = Vec::new();
@@ -653,7 +653,7 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     primary_label: Label {
                         file: info.parser_info.path.clone(),
                         span: info.parser_info.span,
-                        message: format!("cannot automatically convert this code to a `{}`", render_type(&r#type)),
+                        message: format!("cannot automatically convert this code to a `{}`", render_type(&r#type, true)),
                     },
                     secondary_labels: Vec::new(),
                     help: String::from("Try wrapping this code in a function that performs the conversion."),
@@ -833,7 +833,7 @@ pub fn colorize_errors<'a>(
 }
 
 /// Render a type to a string.
-pub fn render_type(r#type: &wipple_typecheck::Type<crate::Driver>) -> String {
+pub fn render_type(r#type: &wipple_typecheck::Type<crate::Driver>, is_top_level: bool) -> String {
     fn render_type_inner(
         r#type: &wipple_typecheck::Type<crate::Driver>,
         is_top_level: bool,
@@ -912,13 +912,19 @@ pub fn render_type(r#type: &wipple_typecheck::Type<crate::Driver>) -> String {
         }
     }
 
-    render_type_inner(r#type, true, true)
+    render_type_inner(r#type, is_top_level, true)
 }
 
 /// Render an instance to a string.
 pub fn render_instance(instance: &wipple_typecheck::Instance<crate::Driver>) -> String {
     let r#trait = instance.r#trait.last().unwrap().name().unwrap_or("_");
-    let parameters = instance.parameters.iter().map(render_type).join(" ");
+
+    let parameters = instance
+        .parameters
+        .iter()
+        .map(|r#type| render_type(r#type, false))
+        .join(" ");
+
     format!("{} {}", r#trait, parameters)
 }
 
@@ -951,26 +957,29 @@ pub fn render_type_function(
         format!(" where {}", bounds)
     };
 
-    let r#type = render_type(r#type);
+    let r#type = render_type(r#type, true);
 
     if parameters.is_empty() && bounds.is_empty() {
         r#type
     } else {
         match format {
             TypeFunctionFormat::Arrow => {
-                let parameters = parameters.iter().map(render_type).join(" ");
+                let parameters = parameters
+                    .iter()
+                    .map(|r#type| render_type(r#type, false))
+                    .join(" ");
                 format!("{parameters}{bounds} => {type}")
             }
             TypeFunctionFormat::Description => match parameters.len() {
                 0 => unreachable!(),
                 1 => {
-                    let parameter = render_type(parameters.first().unwrap());
+                    let parameter = render_type(parameters.first().unwrap(), false);
                     format!("`{type}` for any type `{parameter}`")
                 }
                 _ => {
                     let mut parameters = parameters
                         .iter()
-                        .map(|parameter| format!("`{}`", render_type(parameter)))
+                        .map(|parameter| format!("`{}`", render_type(parameter, false)))
                         .collect::<Vec<_>>();
 
                     let last = parameters.pop().unwrap();

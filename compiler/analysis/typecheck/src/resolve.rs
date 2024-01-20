@@ -3064,6 +3064,7 @@ fn resolve_trait<D: Driver>(
     context: &ResolveContext<'_, D>,
 ) -> Result<WithInfo<D::Info, ResolvedTrait<D>>, WithInfo<D::Info, QueuedError<D>>> {
     type Candidate<D> = (
+        TypeContext<D>,
         WithInfo<<D as Driver>::Info, ResolvedTrait<D>>,
         Vec<WithInfo<<D as Driver>::Info, Instance<D>>>,
     );
@@ -3080,7 +3081,7 @@ fn resolve_trait<D: Driver>(
                 instance: query.clone_in_current_context(),
                 candidates: candidates
                     .into_iter()
-                    .map(|(candidate, _)| candidate.info)
+                    .map(|(_, candidate, _)| candidate.info)
                     .collect(),
                 stack: stack
                     .iter()
@@ -3093,6 +3094,7 @@ fn resolve_trait<D: Driver>(
     fn resolve_trait_inner<D: Driver>(
         query: WithInfo<D::Info, &Instance<D>>,
         context: &ResolveContext<'_, D>,
+        type_context: &TypeContext<D>,
         stack: &[WithInfo<D::Info, &Instance<D>>],
     ) -> Result<WithInfo<D::Info, ResolvedTrait<D>>, WithInfo<D::Info, QueuedError<D>>> {
         let r#trait = query.item.r#trait.clone();
@@ -3106,7 +3108,7 @@ fn resolve_trait<D: Driver>(
         // First, check if there are any instances in the stack that match -- we
         // assume an instance that refers to itself is satisfied
         for instance in stack.iter().rev() {
-            let (new_type_context, type_context_change) = context.type_context.deep_clone();
+            let (new_type_context, type_context_change) = type_context.deep_clone();
 
             let mut query = query
                 .as_ref()
@@ -3116,8 +3118,16 @@ fn resolve_trait<D: Driver>(
                 .as_ref()
                 .map(|instance| instance.clone_in_context(&type_context_change));
 
-            if unify_instance(context.driver, query.as_mut(), instance.as_ref()) {
-                let type_context_change = context.type_context.merge(&new_type_context);
+            if unify_instance_with_options(
+                context.driver,
+                query.as_mut(),
+                instance.as_ref(),
+                UnifyOptions {
+                    require_equal_type_parameters: true,
+                    ..Default::default()
+                },
+            ) {
+                let type_context_change = type_context.merge(&new_type_context);
 
                 return Ok(WithInfo {
                     info: instance.info,
@@ -3132,7 +3142,7 @@ fn resolve_trait<D: Driver>(
         for bound_instances in context.bound_instances.borrow().iter() {
             let mut candidates = Vec::new();
             for bound_instance in bound_instances {
-                let (_, type_context_change) = context.type_context.deep_clone();
+                let (new_type_context, type_context_change) = type_context.deep_clone();
 
                 let mut query = query
                     .as_ref()
@@ -3152,6 +3162,7 @@ fn resolve_trait<D: Driver>(
                     },
                 ) {
                     candidates.push((
+                        new_type_context,
                         WithInfo {
                             info: bound.info,
                             item: ResolvedTrait {
@@ -3163,7 +3174,8 @@ fn resolve_trait<D: Driver>(
                 }
             }
 
-            if let Some((candidate, _)) = pick_from_candidates(candidates, query.clone(), stack)? {
+            if let Some((_, candidate, _)) = pick_from_candidates(candidates, query.clone(), stack)?
+            {
                 return Ok(candidate);
             }
         }
@@ -3173,7 +3185,7 @@ fn resolve_trait<D: Driver>(
         for path in context.driver.get_instances_for_trait(&r#trait) {
             let instance_declaration = context.driver.get_instance_declaration(&path);
 
-            let (new_type_context, type_context_change) = context.type_context.deep_clone();
+            let (new_type_context, type_context_change) = type_context.deep_clone();
 
             let mut query = query
                 .as_ref()
@@ -3217,16 +3229,9 @@ fn resolve_trait<D: Driver>(
                 },
             };
 
-            if unify_instance_with_options(
-                context.driver,
-                query.as_mut(),
-                instance.as_ref(),
-                UnifyOptions {
-                    require_equal_type_parameters: true,
-                    ..Default::default()
-                },
-            ) {
+            if unify_instance(context.driver, query.as_mut(), instance.as_ref()) {
                 candidates.push((
+                    new_type_context,
                     WithInfo {
                         info: instance.info,
                         item: ResolvedTrait {
@@ -3239,12 +3244,11 @@ fn resolve_trait<D: Driver>(
         }
 
         // If an instance matches, check its bounds
-        if let Some((candidate, bounds)) = pick_from_candidates(candidates, query.clone(), stack)? {
+        if let Some((type_context, candidate, bounds)) =
+            pick_from_candidates(candidates, query.clone(), stack)?
+        {
             for bound in bounds {
-                let mut stack = stack.to_vec();
-                stack.push(bound.as_ref());
-
-                resolve_trait_inner(bound.as_ref(), context, &stack)?;
+                resolve_trait_inner(bound.as_ref(), context, &type_context, stack)?;
             }
 
             return Ok(candidate);
@@ -3264,7 +3268,7 @@ fn resolve_trait<D: Driver>(
         })
     }
 
-    resolve_trait_inner(query, context, &[])
+    resolve_trait_inner(query, context, context.type_context, &[])
 }
 
 // region: Finalize
