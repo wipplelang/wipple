@@ -273,12 +273,11 @@ pub fn read(tokens: Vec<Token<'_>>, options: ReadOptions) -> read::Result<'_> {
     let mut errors = Vec::new();
 
     let first_span = tokens.first().map_or(0..0, |token| token.span.clone());
-    let mut last_span = first_span.clone();
-
-    let statements = read_block(
+    let end_span = tokens.last().map_or(0..0, |token| token.span.clone());
+    let (last_span, statements) = read_block(
         &mut tokens.into_iter().peekable(),
         true,
-        &mut last_span,
+        end_span,
         &mut errors,
     );
 
@@ -497,43 +496,40 @@ fn is_operator(symbol: &str) -> bool {
 
 fn read_list<'src>(
     tokens: &mut Peekable<impl Iterator<Item = Token<'src>>>,
-    last_span: &mut Range<u32>,
+    end_span: Range<u32>,
     errors: &mut Vec<Error>,
-) -> Vec<Node<'src>> {
+) -> (Range<u32>, Vec<Node<'src>>) {
     let mut contents = Vec::new();
     loop {
         match tokens.next() {
-            Some(next) => {
-                *last_span = next.span.clone();
-
-                match next.kind {
-                    TokenKind::LeftParenthesis => {
-                        if let Some(Token {
-                            kind: TokenKind::LineBreak,
-                            ..
-                        }) = tokens.peek()
-                        {
-                            let statements = read_block(tokens, false, last_span, errors);
-                            contents.push(Node::Block(last_span.clone(), statements));
-                        } else {
-                            let nodes = read_list(tokens, last_span, errors);
-                            contents.push(Node::List(last_span.clone(), nodes));
-                        }
+            Some(next) => match next.kind {
+                TokenKind::LeftParenthesis => {
+                    if let Some(Token {
+                        kind: TokenKind::LineBreak,
+                        ..
+                    }) = tokens.peek()
+                    {
+                        let (last_span, statements) =
+                            read_block(tokens, false, end_span.clone(), errors);
+                        contents.push(Node::Block(next.span.start..last_span.end, statements));
+                    } else {
+                        let (last_span, nodes) = read_list(tokens, end_span.clone(), errors);
+                        contents.push(Node::List(next.span.start..last_span.end, nodes));
                     }
-                    TokenKind::RightParenthesis => return contents,
-                    _ => contents.push(Node::Token(next)),
                 }
-            }
+                TokenKind::RightParenthesis => return (next.span, contents),
+                _ => contents.push(Node::Token(next)),
+            },
             None => {
                 errors.push(Error::new(
-                    last_span.clone(),
+                    end_span.clone(),
                     ErrorKind::Mismatch {
                         expected: Some(TokenKind::RightParenthesis),
                         found: None,
                     },
                 ));
 
-                return contents;
+                return (end_span, contents);
             }
         }
     }
@@ -542,182 +538,209 @@ fn read_list<'src>(
 fn read_block<'src>(
     tokens: &mut Peekable<impl Iterator<Item = Token<'src>>>,
     top_level: bool,
-    last_span: &mut Range<u32>,
+    end_span: Range<u32>,
     errors: &mut Vec<Error>,
-) -> Vec<(Vec<Documentation>, Node<'src>)> {
-    let contents = (|| {
-        let mut contents = vec![(Vec::new(), Node::List(last_span.clone(), Vec::new()))];
+) -> (Range<u32>, Vec<(Vec<Documentation>, Node<'src>)>) {
+    let (end_span, contents) =
+        (|| {
+            let mut contents = vec![(
+                Vec::new(),
+                Node::List(
+                    tokens.peek().map_or(&end_span, |token| &token.span).clone(),
+                    Vec::new(),
+                ),
+            )];
 
-        macro_rules! consume_documentation {
-            () => {
-                std::iter::from_fn(|| match &tokens.peek()?.kind {
-                    TokenKind::Comment(comment) => {
-                        let documentation = read_documentation(comment);
-                        tokens.next();
-
-                        while let Some(Token {
-                            kind: TokenKind::LineBreak,
-                            ..
-                        }) = tokens.peek()
-                        {
+            macro_rules! consume_documentation {
+                () => {
+                    std::iter::from_fn(|| match &tokens.peek()?.kind {
+                        TokenKind::Comment(comment) => {
+                            let documentation = read_documentation(comment);
                             tokens.next();
-                        }
 
-                        Some(documentation)
-                    }
-                    _ => None,
-                })
-                .collect::<Vec<_>>()
-            };
-        }
-
-        contents
-            .last_mut()
-            .unwrap()
-            .0
-            .extend(consume_documentation!());
-
-        loop {
-            match tokens.next() {
-                Some(next) => {
-                    *last_span = next.span.clone();
-
-                    contents
-                        .last_mut()
-                        .unwrap()
-                        .0
-                        .extend(consume_documentation!());
-
-                    *last_span = next.span.clone();
-
-                    match &next.kind {
-                        TokenKind::LeftParenthesis => {
-                            if let Some(Token {
+                            while let Some(Token {
                                 kind: TokenKind::LineBreak,
                                 ..
                             }) = tokens.peek()
                             {
-                                let statements = read_block(tokens, false, last_span, errors);
-                                contents
-                                    .last_mut()
-                                    .unwrap()
-                                    .1
-                                    .as_list_mut()
-                                    .unwrap()
-                                    .push(Node::Block(last_span.clone(), statements));
-                            } else {
-                                let nodes = read_list(tokens, last_span, errors);
-                                contents
-                                    .last_mut()
-                                    .unwrap()
-                                    .1
-                                    .as_list_mut()
-                                    .unwrap()
-                                    .push(Node::List(last_span.clone(), nodes));
+                                tokens.next();
                             }
-                        }
-                        TokenKind::RightParenthesis => {
-                            if top_level {
-                                errors.push(Error::new(
-                                    last_span.clone(),
-                                    ErrorKind::Mismatch {
-                                        expected: None,
-                                        found: Some(TokenKind::RightParenthesis),
-                                    },
-                                ));
-                            } else {
-                                return contents;
-                            }
-                        }
-                        // Allow splitting statements containing operators over
-                        // multiple lines
-                        TokenKind::Symbol(symbol) if is_operator(symbol) => {
-                            contents
-                                .last_mut()
-                                .unwrap()
-                                .1
-                                .as_list_mut()
-                                .unwrap()
-                                .push(Node::Token(next));
 
-                            while let Some(next) = tokens.peek() {
-                                if let TokenKind::LineBreak = next.kind {
-                                    tokens.next();
-                                    continue;
+                            Some(documentation)
+                        }
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+                };
+            }
+
+            contents
+                .last_mut()
+                .unwrap()
+                .0
+                .extend(consume_documentation!());
+
+            loop {
+                match tokens.next() {
+                    Some(next) => {
+                        contents
+                            .last_mut()
+                            .unwrap()
+                            .0
+                            .extend(consume_documentation!());
+
+                        match &next.kind {
+                            TokenKind::LeftParenthesis => {
+                                let first_span = next.span.clone();
+
+                                if let Some(Token {
+                                    kind: TokenKind::LineBreak,
+                                    ..
+                                }) = tokens.peek()
+                                {
+                                    let (last_span, statements) =
+                                        read_block(tokens, false, end_span.clone(), errors);
+
+                                    contents.last_mut().unwrap().1.as_list_mut().unwrap().push(
+                                        Node::Block(first_span.start..last_span.end, statements),
+                                    );
                                 } else {
-                                    break;
+                                    let (last_span, nodes) =
+                                        read_list(tokens, end_span.clone(), errors);
+
+                                    contents
+                                        .last_mut()
+                                        .unwrap()
+                                        .1
+                                        .as_list_mut()
+                                        .unwrap()
+                                        .push(Node::List(first_span.start..last_span.end, nodes));
                                 }
                             }
-                        }
-                        // Same as above, but for the case where the operator is at
-                        // the beginning of the line
-                        TokenKind::LineBreak => {
-                            while let Some(next) = tokens.peek().cloned() {
-                                if let TokenKind::LineBreak = next.kind {
-                                    tokens.next();
-                                    continue;
-                                } else {
-                                    let documentation = consume_documentation!();
-
-                                    if let TokenKind::Symbol(symbol) = &next.kind {
-                                        if is_operator(symbol) {
-                                            let next = tokens.next().unwrap();
-                                            *last_span = next.span.clone();
-
-                                            contents
-                                                .last_mut()
-                                                .unwrap()
-                                                .1
-                                                .as_list_mut()
-                                                .unwrap()
-                                                .push(Node::Token(next));
-
-                                            break;
-                                        }
-                                    }
-
-                                    contents.push((
-                                        documentation,
-                                        Node::List(last_span.clone(), Vec::new()),
+                            TokenKind::RightParenthesis => {
+                                if top_level {
+                                    errors.push(Error::new(
+                                        next.span.clone(),
+                                        ErrorKind::Mismatch {
+                                            expected: None,
+                                            found: Some(TokenKind::RightParenthesis),
+                                        },
                                     ));
-
-                                    break;
+                                } else {
+                                    return (next.span, contents);
                                 }
                             }
-                        }
-                        _ => {
-                            contents
-                                .last_mut()
-                                .unwrap()
-                                .1
-                                .as_list_mut()
-                                .unwrap()
-                                .push(Node::Token(next));
-                        }
-                    }
-                }
-                None => {
-                    if !top_level {
-                        errors.push(Error::new(
-                            last_span.clone(),
-                            ErrorKind::Mismatch {
-                                expected: Some(TokenKind::RightParenthesis),
-                                found: None,
-                            },
-                        ));
-                    }
+                            // Allow splitting statements containing operators over
+                            // multiple lines
+                            TokenKind::Symbol(symbol) if is_operator(symbol) => {
+                                contents
+                                    .last_mut()
+                                    .unwrap()
+                                    .1
+                                    .as_list_mut()
+                                    .unwrap()
+                                    .push(Node::Token(next));
 
-                    return contents;
+                                while let Some(next) = tokens.peek() {
+                                    if let TokenKind::LineBreak = next.kind {
+                                        tokens.next();
+                                        continue;
+                                    } else {
+                                        break;
+                                    }
+                                }
+                            }
+                            // Same as above, but for the case where the operator is at
+                            // the beginning of the line
+                            TokenKind::LineBreak => {
+                                while let Some(next) = tokens.peek().cloned() {
+                                    if let TokenKind::LineBreak = next.kind {
+                                        tokens.next();
+                                        continue;
+                                    } else {
+                                        let documentation = consume_documentation!();
+
+                                        if let TokenKind::Symbol(symbol) = &next.kind {
+                                            if is_operator(symbol) {
+                                                let next = tokens.next().unwrap();
+
+                                                contents
+                                                    .last_mut()
+                                                    .unwrap()
+                                                    .1
+                                                    .as_list_mut()
+                                                    .unwrap()
+                                                    .push(Node::Token(next));
+
+                                                break;
+                                            }
+                                        }
+
+                                        contents.push((
+                                            documentation,
+                                            Node::List(next.span.clone(), Vec::new()),
+                                        ));
+
+                                        break;
+                                    }
+                                }
+                            }
+                            _ => {
+                                contents
+                                    .last_mut()
+                                    .unwrap()
+                                    .1
+                                    .as_list_mut()
+                                    .unwrap()
+                                    .push(Node::Token(next));
+                            }
+                        }
+                    }
+                    None => {
+                        if !top_level {
+                            errors.push(Error::new(
+                                end_span.clone(),
+                                ErrorKind::Mismatch {
+                                    expected: Some(TokenKind::RightParenthesis),
+                                    found: None,
+                                },
+                            ));
+                        }
+
+                        return (end_span, contents);
+                    }
                 }
             }
-        }
-    })();
+        })();
 
-    // Remove empty statements
-    contents
+    // Remove empty statements and fix spans
+    let contents = contents
         .into_iter()
-        .filter(|(_, node)| !matches!(node, Node::List(_, elements) if elements.is_empty()))
-        .collect()
+        .filter_map(|(documentation, node)| match node {
+            Node::List(span, elements) => {
+                if elements.is_empty() {
+                    None
+                } else {
+                    let start = elements
+                        .first()
+                        .unwrap()
+                        .span()
+                        .map_or(span.start, |span| span.start);
+
+                    let end = elements
+                        .last()
+                        .unwrap()
+                        .span()
+                        .map_or(span.end, |span| span.end);
+
+                    Some((documentation, Node::List(start..end, elements)))
+                }
+            }
+            _ => Some((documentation, node)),
+        })
+        .collect::<Vec<_>>();
+
+    (end_span, contents)
 }
 
 fn read_documentation(comment: &str) -> Documentation {
