@@ -27,7 +27,7 @@ export type Instruction =
     | { type: "copy"; value: undefined }
     | { type: "drop"; value: undefined }
     | { type: "initialize"; value: number }
-    | { type: "field"; value: number }
+    | { type: "field"; value: string }
     | { type: "element"; value: number }
     | { type: "variable"; value: number }
     | { type: "call"; value: undefined }
@@ -334,7 +334,7 @@ const evaluateItem = async (
                     }
 
                     const field = value.fields[instruction.value]!;
-                    scope[instruction.value] = field;
+                    stack.push(field);
 
                     break;
                 }
