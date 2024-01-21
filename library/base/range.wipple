@@ -1,0 +1,59 @@
+[A continuous range between two numbers.]
+Range : (N : Number) => type (
+    min :: N
+    max :: N
+)
+
+To : N => trait (N -> N -> Range N)
+language "to" : To
+(N : Number) => instance (To N) : max min -> (
+    min : min
+    max : max
+)
+
+[A range between two numbers that counts up in discrete steps.]
+Stride : (N : Number) => type (
+    min :: N
+    max :: N
+    step :: N
+)
+
+By : (N : Number) => trait (Range N -> N -> Stride N)
+language "by" : By
+(N : Number) => instance (By N) : (
+    min : min
+    max : max
+) step -> (
+    min : min
+    max : max
+    step : step
+)
+
+(N : Number) where (Default N) (Order N) (Add N N N) => instance (As-Sequence (Stride N) N) : (
+    min : min
+    max : max
+    step : step
+) -> (
+    zero : Default
+
+    (max >= min) . expect "`max` must be greater than `min`"
+    (step >= zero). expect "`step` must be positive"
+
+    current : mutable min
+    sequence (
+        if (get current >= max) (
+            None
+        ) (
+            n : get current
+            current . add! step
+            Some n
+        )
+    )
+)
+
+[Retrieve the eleemnts of a list between a range of positions.]
+slice :: Element => Range Number -> List Element -> List Element
+slice : (
+    min : min
+    max : max
+) list -> semantics "pure" (intrinsic "list-slice" list min max)

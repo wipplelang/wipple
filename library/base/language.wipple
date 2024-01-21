@@ -4,25 +4,83 @@ language "number" : Number
 Text : type
 language "text" : Text
 
-Boolean : type (False True)
-language "boolean" : Boolean
-language "false" : False
-language "true" : True
-
-Maybe : A => type (
+Maybe : Value => type (
     None
-    Some A
+    Some Value
 )
 
 language "maybe" : Maybe
 language "none" : None
 language "some" : Some
 
-evaluate :: A => (lazy A) -> A
+Value where (Equal Value) => instance (Equal (Maybe Value)) : b a -> when (a ; b) (
+    Some a ; Some b -> a = b
+    None -> None -> True
+    _ -> False
+)
+
+[Represents the success or failure of an operation.]
+[on-mismatch : Success "try handling the case where the `Result` is `Error`, eg. using `when`, `try`, or `expect`]
+[on-mismatch : Failure "try converting the error to the corect type, eg. using `as` or `try`]
+[convert-from : Success (OK _)]
+[convert-from : Failure (Error _)]
+Result : Success Failure => type (
+    OK Success
+    Error Failure
+)
+
+Try : Value Success Failure => trait (Value -> Result Success Failure)
+
+[Represents the failure to find a value inside a `Maybe`.]
+None-Error : type
+
+Expect : Container Value => trait (Text -> Container -> Value)
+instance (Expect Boolean ()) : message boolean -> if boolean () (error message)
+
+Value => instance (Expect (Maybe Value) Value) : message maybe -> when maybe (
+    Some value -> value
+    None -> error message
+)
+
+Unwrap-Message : Container => trait (Container -> Text)
+Value => instance (Unwrap-Message (Maybe Value)) : just "called `unwrap` on `None`"
+Success Failure where (Show Failure) => instance (Unwrap-Message (Result Success Failure)) : result -> when result (
+    OK _ -> error "unreachable"
+    Error error -> "called `unwrap` on `Error`: _" error
+)
+
+[Unwrap the value in the container, or exit the program with the provided message.]
+expect :: Container (infer Value) where (Expect Container Value) => Text -> Container -> Value
+expect : Expect
+
+[Unwrap the value in the container, or exit the program.]
+unwrap :: Container (infer Value) where (Expect Container Value) (Unwrap-Message Container) => Container -> Value
+unwrap : value -> expect (Unwrap-Message value) value
+
+[on-unimplemented : "cannot convert _ into _" Input Output]
+As : Input Output => trait (Input -> Output)
+language "as" : As
+
+Value => instance (As Value Value) : it
+
+Success Failure => instance (As (Result Success Failure) (Maybe Success)) : result -> when result (
+    OK value -> Some value
+    Error _ -> None
+)
+
+evaluate :: Value => (lazy Value) -> Value
 evaluate : lazy -> intrinsic "evaluate" lazy
 
-error :: (A : ()) => Text -> A
+error :: (Value : ()) => Text -> Value
 error : message -> intrinsic "crash" message
 
-... :: A => A
+... :: Value => Value
 ... : error "not implemented"
+
+[Represents the default or initial value of a type.]
+[on-unimplemented : "_ has no default value" Value]
+Default : Value => trait Value
+instance (Default Number) : 0
+instance (Default Text) : ""
+instance (Default Boolean) : False
+Value => instance (Default (Maybe Value)) : None

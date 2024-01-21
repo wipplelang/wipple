@@ -1,0 +1,8 @@
+instance (Add Text Text Text) : b a -> "__" a b
+
+instance (As-Sequence Text Text) : text ->
+    As-Sequence (semantics "pure" (intrinsic "text-characters" text :: List Text))
+
+instance (From-Sequence Text Text) : reduce "" (+)
+
+[TODO: Specialization of `join` for `Text`]

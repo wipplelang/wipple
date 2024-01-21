@@ -1,0 +1,95 @@
+[The number returned from calculations whose result is undefined (eg. dividing by zero).]
+undefined :: Number
+undefined : semantics "pure" (intrinsic "undefined-number")
+
+[Add two values together, returning the sum.]
+[on-unimplemented : "cannot add _ to _" Right Left]
+[show-code : True]
+Add : (Left : Number) (Right : Number) (infer Sum) => trait (Right -> Left -> Sum)
+language "add" : Add
+instance (Add Number Number Number) : b a -> semantics "pure" (intrinsic "add-number" a b)
+
+[Subtract one value from another, returning the difference.]
+[on-unimplemented : "cannot subtract _ from _" Right Left]
+[show-code : True]
+Subtract : (Left : Number) (Right : Number) (infer Difference) => trait (Right -> Left -> Difference)
+language "subtract" : Subtract
+instance (Subtract Number Number Number) : b a -> semantics "pure" (intrinsic "subtract-number" a b)
+
+[Multiply two numbers, returning the product.]
+[on-unimplemented : "cannot multiply _ by _" Left Right]
+[show-code : True]
+Multiply : (Left : Number) (Right : Number) (infer Product) => trait (Right -> Left -> Product)
+language "multiply" : Multiply
+instance (Multiply Number Number Number) : b a -> semantics "pure" (intrinsic "multiply-number" a b)
+
+[Divide two numbers, returning the quotient.]
+[on-unimplemented : "cannot divide _ by _" Left Right]
+[show-code : True]
+Divide : (Left : Number) (Right : Number) (infer Quotient) => trait (Right -> Left -> Quotient)
+language "divide" : Divide
+instance (Divide Number Number Number) : b a -> semantics "pure" (intrinsic "divide-number" a b)
+
+[Divide two numbers, returning the remainder.]
+[on-unimplemented : "cannot divide _ by _" Left Right]
+[show-code : True]
+Remainder : (Left : Number) (Right : Number) (infer Remainder) => trait (Right -> Left -> Remainder)
+language "remainder" : Remainder
+instance (Remainder Number Number Number) : b a -> semantics "pure" (intrinsic "remainder-number" a b)
+
+[Raise the left side to the power of the right side.]
+[on-unimplemented : "cannot raise _ to the power of _" Left Right]
+[show-code : True]
+Power : (Left : Number) (Right : Number) (infer Power) => trait (Right -> Left -> Power)
+language "power" : Power
+instance (Power Number Number Number) : b a -> semantics "pure" (intrinsic "power-number" a b)
+
+[Round down a number to the nearest integer.]
+floor :: Number -> Number
+floor : n -> semantics "pure" (intrinsic "floor-number" n)
+
+[Round up a number to the nearest integer.]
+ceil :: Number -> Number
+ceil : n -> semantics "pure" (intrinsic "ceil-number" n)
+
+[Calculate the square root of a number.]
+sqrt :: Number -> Number
+sqrt : n -> semantics "pure" (intrinsic "sqrt-number" n)
+
+[An angle, represented in degrees or radians.]
+[convert-from : Number (_ degrees)]
+Angle : type (
+    Radians Number
+    Degrees Number
+)
+
+[An angle in radians.]
+radians :: Number -> Angle
+radians : Radians
+
+[An angle in degrees.]
+degrees :: Number -> Angle
+degrees : Degrees
+
+[Calculate the sine of an angle.]
+sin :: Angle -> Number
+sin : angle -> semantics "pure" (intrinsic "sin-number" angle)
+
+[Calculate the cosine of an angle.]
+cos :: Angle -> Number
+cos : angle -> semantics "pure" (intrinsic "cos-number" angle)
+
+[Calculate the tangent of an angle.]
+tan :: Angle -> Number
+tan : angle -> semantics "pure" (intrinsic "tan-number" angle)
+
+Negate : N => trait (N -> N)
+instance (Negate Number) : n -> semantics "pure" (intrinsic "negate-number" n)
+
+[Negate the sign of a number.]
+negate :: (N : Number) where (Negate N) => N -> N
+negate : Negate
+
+[Returns `True` if the first number is divisible by the second.]
+divisible-by? :: (N : Number) where (Remainder N) (Default N) => N -> N -> Boolean
+divisible-by? : b a -> a % b = Default

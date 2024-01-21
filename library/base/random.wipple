@@ -1,0 +1,18 @@
+Random : Range Result => trait (Range -> Result)
+
+[Produce a random value within the provided range.]
+random :: Range Result where (Random Range Result) => Range -> Result
+random : Random
+
+instance (Random (Range Number) Number) : (
+    min : min
+    max : max
+) -> (
+    (max >= min) . expect "`max` must be greater than `min`"
+    intrinsic "random-number" min max
+)
+
+Element => instance (Random (List Element) (Maybe Element)) :
+    list -> list . nth (random (0 to count list))
+
+instance (Random () Boolean) : () -> random (0 to 2) = 1

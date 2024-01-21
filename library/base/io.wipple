@@ -1,5 +1,4 @@
 [Convert a value into `Text` so it can be displayed using `show`.]
-[group : "Input and Output"]
 [show-code : True]
 [on-unimplemented : "cannot display _ on the screen" A]
 Show : (A : Text) => trait (A -> Text)
@@ -7,7 +6,6 @@ Show : (A : Text) => trait (A -> Text)
 language "show" : Show
 
 [Display a value on the screen.]
-[group : "Input and Output"]
 [playground : "https://wipple.dev/library/base/examples/show.txt"]
 [accepts-text : True]
 [alias : "print"]
