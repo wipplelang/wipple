@@ -793,22 +793,31 @@ fn resolve_expression<D: Driver>(
             },
             info,
             |candidates| {
-                candidates
-                    .iter()
-                    .filter_map(|path| match path.item.last().unwrap() {
-                        crate::PathComponent::Trait(_) => {
-                            Some(crate::Expression::Trait(path.item.clone()))
-                        }
-                        crate::PathComponent::Constant(_)
-                        | crate::PathComponent::Constructor(_) => {
-                            Some(crate::Expression::Constant(path.item.clone()))
-                        }
-                        crate::PathComponent::Variable(_) => {
-                            Some(crate::Expression::Variable(name.clone(), path.item.clone()))
-                        }
-                        _ => None,
-                    })
-                    .collect()
+                let mut candidates = candidates.to_vec();
+                candidates.sort_by_key(|path| match path.item.last().unwrap() {
+                    crate::PathComponent::Variable(_) => 0,
+                    crate::PathComponent::Trait(_) => 1,
+                    crate::PathComponent::Constant(_) | crate::PathComponent::Constructor(_) => 2,
+                    _ => 3,
+                });
+
+                let path = match candidates.first() {
+                    Some(candidate) => candidate,
+                    None => return Vec::new(),
+                };
+
+                match path.item.last().unwrap() {
+                    crate::PathComponent::Variable(_) => {
+                        vec![crate::Expression::Variable(name.clone(), path.item.clone())]
+                    }
+                    crate::PathComponent::Trait(_) => {
+                        vec![crate::Expression::Trait(path.item.clone())]
+                    }
+                    crate::PathComponent::Constant(_) | crate::PathComponent::Constructor(_) => {
+                        vec![crate::Expression::Constant(path.item.clone())]
+                    }
+                    _ => Vec::new(),
+                }
             },
         )
         .unwrap_or(crate::Expression::Error),

@@ -49,7 +49,7 @@ impl<'a> Query<'a> {
 
 impl<'a> Query<'a> {
     /// Return the [`Info`] associated with the definition at the provided path.
-    pub fn info_at_path(&self, path: &Path) -> Info {
+    pub fn info_at_path(&self, path: &Path) -> Option<Info> {
         self.interface
             .type_declarations
             .get(path)
@@ -84,7 +84,6 @@ impl<'a> Query<'a> {
                     .next()
                     .map(|path| path.info)
             })
-            .unwrap_or_else(|| panic!("no declaration found for path {path:?}"))
     }
 
     /// Return names related to the provided name at the name's position.
@@ -170,7 +169,10 @@ impl<'a> Query<'a> {
 
     /// Retrieve the value of the `show-code` attribute for a definition.
     pub fn get_show_code_enabled(&self, path: &Path) -> bool {
-        let info = self.info_at_path(path);
+        let info = match self.info_at_path(path) {
+            Some(info) => info,
+            None => return false,
+        };
 
         info.parser_info
             .documentation
@@ -194,7 +196,7 @@ impl<'a> Query<'a> {
         path: &Path,
         parameters: &[WithInfo<Info, wipple_typecheck::Type<Driver>>],
     ) -> Option<String> {
-        let info = self.info_at_path(path);
+        let info = self.info_at_path(path)?;
 
         let trait_declaration = self.interface.trait_declarations.get(path)?;
         let help_show_code_enabled = self.get_show_code_enabled(path);

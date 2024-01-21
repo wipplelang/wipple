@@ -805,6 +805,13 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         (variable . "function"))))
         "#;
 
+        static IS_EXPRESSION = r#"
+            (non-associative-binary-operator
+                "is"
+                (variable . "input")
+                (variable . "pattern"))
+        "#;
+
             static STRUCTURE_EXPRESSION = r#"
             (or
                 (non-associative-binary-operator
@@ -935,6 +942,55 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         let body = pattern.replace(body).boxed();
                         syntax::Expression::Function { pattern, body }
                     }),
+                }
+            })
+        };
+
+        let is = |parser: &mut Self| {
+            IS_EXPRESSION.parse(&node).map(|mut vars| {
+                let value = vars
+                    .remove("input")
+                    .map(|mut value| value.pop().unwrap())
+                    .map(|expression| {
+                        parser
+                            .parse_expression(
+                                expression.span().cloned().unwrap_or_else(|| span.clone()),
+                                expression,
+                            )
+                            .boxed()
+                    });
+
+                let pattern = match vars.remove("pattern").map(|mut value| value.pop().unwrap()) {
+                    Some(pattern) => parser.parse_pattern(
+                        pattern.span().cloned().unwrap_or_else(|| span.clone()),
+                        pattern,
+                    ),
+                    None => {
+                        parser.errors.push(Error {
+                            span: span.clone(),
+                            expected: SyntaxKind::Pattern,
+                        });
+
+                        WithInfo {
+                            info: Info {
+                                path: parser.driver.file_path(),
+                                span: span.clone(),
+                                documentation: Vec::new(),
+                            }
+                            .into(),
+                            item: syntax::Pattern::Error,
+                        }
+                    }
+                };
+
+                WithInfo {
+                    info: Info {
+                        path: parser.driver.file_path(),
+                        span: span.clone(),
+                        documentation: Vec::new(),
+                    }
+                    .into(),
+                    item: syntax::Expression::Is { value, pattern },
                 }
             })
         };
@@ -1505,6 +1561,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
 
         annotate(self)
             .or_else(|| function(self))
+            .or_else(|| is(self))
             .or_else(|| collection(self))
             .or_else(|| tuple(self))
             .or_else(|| structure(self))

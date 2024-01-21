@@ -149,7 +149,7 @@ Element => instance (From-Sequence Element (List Element)) : sequence -> (
     get list
 )
 
-Element => instance (As-Sequence (List Element) Element) -> list (
+Element => instance (As-Sequence (List Element) Element) : list -> (
     index : mutable 0
 
     sequence (
@@ -266,7 +266,7 @@ find : found? collection -> (
 
 [Find the position of the first item in a sequence that satisfies a condition.]
 find-position :: Collection (infer Element) where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Maybe Number
-find-index : found? collection -> (
+find-position : found? collection -> (
     sequence : As-Sequence collection
     counter : mutable 0
 

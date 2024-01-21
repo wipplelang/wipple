@@ -513,7 +513,7 @@ const PRECEDENCES: &[(Associativity, &[&str])] = &[
     (Associativity::None, &["is"]),
     (Associativity::Left, &["and"]),
     (Associativity::Left, &["or"]),
-    (Associativity::Left, &["."]),
+    (Associativity::Left, &[".", "|"]),
     (Associativity::None, &["where"]),
     (Associativity::Variadic, &[";"]),
     (Associativity::Variadic, &[","]),

@@ -460,7 +460,7 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     secondary_labels: candidates
                         .iter()
                         .filter_map(|path| {
-                            let info = query.info_at_path(path);
+                            let info = query.info_at_path(path)?;
 
                             Some(Label {
                                 file: info.parser_info.path.clone(),
@@ -477,7 +477,7 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                 },
                 wipple_lower::Error::AlreadyDefined(path) => {
                     let name = path.last().unwrap().name().unwrap();
-                    let info = query.info_at_path(&path);
+                    let info = query.info_at_path(&path).unwrap();
 
                     Error {
                         group,
@@ -745,7 +745,7 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     fix: None,
                 },
                 wipple_typecheck::Error::OverlappingInstances { other, .. } => {
-                    let other = query.info_at_path(&other);
+                    let other = query.info_at_path(&other).unwrap();
 
                     Error {
                         group,
