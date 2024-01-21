@@ -574,8 +574,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     expected_roles,
                     expected,
                 } => {
-                    let actual = render_type(&actual, true);
-                    let expected = render_type(&expected, true);
+                    let actual = render_type(&actual.item, true);
+                    let expected = render_type(&expected.item, true);
 
                     // TODO: Conversions, etc.
                     let mut secondary_labels = Vec::new();
@@ -653,7 +653,7 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     primary_label: Label {
                         file: info.parser_info.path.clone(),
                         span: info.parser_info.span,
-                        message: format!("cannot automatically convert this code to a `{}`", render_type(&r#type, true)),
+                        message: format!("cannot automatically convert this code to a `{}`", render_type(&r#type.item, true)),
                     },
                     secondary_labels: Vec::new(),
                     help: String::from("Try wrapping this code in a function that performs the conversion."),
@@ -688,7 +688,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                             primary_label: Label {
                                 file: info.parser_info.path.clone(),
                                 span: info.parser_info.span,
-                                message: format!("this code requires the instance `{}` to exist, but there is no such instance", render_instance(&instance)),
+                                message: query.get_on_unimplemented_message(&instance.r#trait, &instance.parameters)
+                                    .unwrap_or_else(|| format!("this code requires the instance `{}` to exist, but there is no such instance", render_instance(&instance))),
                             },
                             secondary_labels: if stack.len() > 1 {
                                 stack
@@ -859,7 +860,7 @@ pub fn render_type(r#type: &wipple_typecheck::Type<crate::Driver>, is_top_level:
                         name,
                         parameters
                             .iter()
-                            .map(|parameter| render_type_inner(parameter, false, false))
+                            .map(|parameter| render_type_inner(&parameter.item, false, false))
                             .join(" ")
                     )
                 };
@@ -871,8 +872,8 @@ pub fn render_type(r#type: &wipple_typecheck::Type<crate::Driver>, is_top_level:
                 }
             }
             wipple_typecheck::Type::Function { input, output } => {
-                let input = render_type_inner(input, is_top_level, false);
-                let output = render_type_inner(output, is_top_level, true);
+                let input = render_type_inner(&input.item, is_top_level, false);
+                let output = render_type_inner(&output.item, is_top_level, true);
 
                 let rendered = format!("{} -> {}", input, output);
 
@@ -887,13 +888,13 @@ pub fn render_type(r#type: &wipple_typecheck::Type<crate::Driver>, is_top_level:
                     0 => String::from("()"),
                     1 => format!(
                         "{} ;",
-                        render_type_inner(elements.first().unwrap(), is_top_level, is_return)
+                        render_type_inner(&elements.first().unwrap().item, is_top_level, is_return)
                     ),
                     _ => format!(
                         "({})",
                         elements
                             .iter()
-                            .map(|element| render_type_inner(element, false, false))
+                            .map(|element| render_type_inner(&element.item, false, false))
                             .join(" ; ")
                     ),
                 };
@@ -905,7 +906,7 @@ pub fn render_type(r#type: &wipple_typecheck::Type<crate::Driver>, is_top_level:
                 }
             }
             wipple_typecheck::Type::Lazy(r#type) => {
-                let rendered = render_type_inner(r#type, false, false);
+                let rendered = render_type_inner(&r#type.item, false, false);
 
                 if is_top_level {
                     format!("lazy {rendered}")
@@ -926,7 +927,7 @@ pub fn render_instance(instance: &wipple_typecheck::Instance<crate::Driver>) -> 
     let parameters = instance
         .parameters
         .iter()
-        .map(|r#type| render_type(r#type, false))
+        .map(|r#type| render_type(&r#type.item, false))
         .join(" ");
 
     format!("{} {}", r#trait, parameters)

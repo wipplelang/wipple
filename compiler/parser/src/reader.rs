@@ -131,6 +131,15 @@ pub enum DocumentationAttributeValue {
     /// A text value wrapped in quotes.
     Text(String),
 
+    /// A text value containing `_` placeholders followed by names to substitute into the text.
+    FormattedText(Vec<(String, String)>, String),
+
+    /// The literal `True`.
+    True,
+
+    /// The literal `False`.
+    False,
+
     /// A parsed expression, or [`Err`] if the expression was malformed.
     Code(std::result::Result<Node<'static>, String>),
 }
@@ -260,16 +269,16 @@ pub mod read {
     #[derive(Debug, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Result<'src> {
-        /// The top-level syntax tree.
-        pub top_level: Node<'src>,
+        /// The syntax tree.
+        pub node: Node<'src>,
 
         /// Any errors encountered while parsing the sequence of tokens.
         pub errors: Vec<Error>,
     }
 }
 
-/// Convert a sequence of tokens into a syntax tree.
-pub fn read(tokens: Vec<Token<'_>>, options: ReadOptions) -> read::Result<'_> {
+/// Convert a sequence of tokens into a top-level syntax tree.
+pub fn read_top_level(tokens: Vec<Token<'_>>, options: ReadOptions) -> read::Result<'_> {
     let mut errors = Vec::new();
 
     let first_span = tokens.first().map_or(0..0, |token| token.span.clone());
@@ -282,13 +291,39 @@ pub fn read(tokens: Vec<Token<'_>>, options: ReadOptions) -> read::Result<'_> {
     );
 
     let block = Node::Block(first_span.start..last_span.end, statements);
-    let mut top_level = read_operators(block, &mut errors);
+    let mut block = read_operators(block, &mut errors);
 
     if options.strip_comments {
-        top_level = top_level.strip_comments(&mut errors).unwrap_or(Node::Empty);
+        block = block.strip_comments(&mut errors).unwrap_or(Node::Empty);
     }
 
-    read::Result { top_level, errors }
+    read::Result {
+        node: block,
+        errors,
+    }
+}
+
+/// Convert a sequence of tokens into a syntax tree.
+pub fn read_tokens(tokens: Vec<Token<'_>>, options: ReadOptions) -> read::Result<'_> {
+    let mut errors = Vec::new();
+
+    let first_span = tokens.first().map_or(0..0, |token| token.span.clone());
+    let end_span = tokens.last().map_or(0..0, |token| token.span.clone());
+    let (last_span, elements) = read_list(
+        &mut tokens.into_iter().peekable(),
+        true,
+        end_span,
+        &mut errors,
+    );
+
+    let list = Node::List(first_span.start..last_span.end, elements);
+    let mut list = read_operators(list, &mut errors);
+
+    if options.strip_comments {
+        list = list.strip_comments(&mut errors).unwrap_or(Node::Empty);
+    }
+
+    read::Result { node: list, errors }
 }
 
 impl<'src> Node<'src> {
@@ -496,6 +531,7 @@ fn is_operator(symbol: &str) -> bool {
 
 fn read_list<'src>(
     tokens: &mut Peekable<impl Iterator<Item = Token<'src>>>,
+    top_level: bool,
     end_span: Range<u32>,
     errors: &mut Vec<Error>,
 ) -> (Range<u32>, Vec<Node<'src>>) {
@@ -513,7 +549,7 @@ fn read_list<'src>(
                             read_block(tokens, false, end_span.clone(), errors);
                         contents.push(Node::Block(next.span.start..last_span.end, statements));
                     } else {
-                        let (last_span, nodes) = read_list(tokens, end_span.clone(), errors);
+                        let (last_span, nodes) = read_list(tokens, false, end_span.clone(), errors);
                         contents.push(Node::List(next.span.start..last_span.end, nodes));
                     }
                 }
@@ -521,13 +557,15 @@ fn read_list<'src>(
                 _ => contents.push(Node::Token(next)),
             },
             None => {
-                errors.push(Error::new(
-                    end_span.clone(),
-                    ErrorKind::Mismatch {
-                        expected: Some(TokenKind::RightParenthesis),
-                        found: None,
-                    },
-                ));
+                if !top_level {
+                    errors.push(Error::new(
+                        end_span.clone(),
+                        ErrorKind::Mismatch {
+                            expected: Some(TokenKind::RightParenthesis),
+                            found: None,
+                        },
+                    ));
+                }
 
                 return (end_span, contents);
             }
@@ -606,7 +644,7 @@ fn read_block<'src>(
                                     );
                                 } else {
                                     let (last_span, nodes) =
-                                        read_list(tokens, end_span.clone(), errors);
+                                        read_list(tokens, false, end_span.clone(), errors);
 
                                     contents
                                         .last_mut()
@@ -745,35 +783,74 @@ fn read_block<'src>(
 
 fn read_documentation(comment: &str) -> Documentation {
     if let Some((name, value)) = comment.split_once(" : ") {
-        if value.starts_with('"') && value.ends_with('"') {
-            return Documentation::Attribute {
-                name: name.to_string(),
-                value: DocumentationAttributeValue::Text(value[1..(value.len() - 1)].to_string()),
-            };
-        } else {
-            let tokenize_result = tokenize(value);
+        let tokenize_result = tokenize(value);
 
+        let value = (|| {
             if tokenize_result.errors.is_empty() {
-                let read_result = read(tokenize_result.tokens, ReadOptions::default());
+                let read_result = read_tokens(tokenize_result.tokens, ReadOptions::default());
 
                 if read_result.errors.is_empty() {
-                    return Documentation::Attribute {
-                        name: name.to_string(),
-                        value: DocumentationAttributeValue::Code(Ok(read_result
-                            .top_level
-                            .into_owned())),
-                    };
+                    match &read_result.node {
+                        Node::Token(token) => match &token.kind {
+                            TokenKind::Symbol(symbol) => match symbol.as_ref() {
+                                "True" => return DocumentationAttributeValue::True,
+                                "False" => return DocumentationAttributeValue::False,
+                                _ => {}
+                            },
+                            TokenKind::Text(text) => {
+                                return DocumentationAttributeValue::Text(text.to_string())
+                            }
+                            _ => {}
+                        },
+                        Node::List(_, elements) => {
+                            let mut elements = elements.iter();
+
+                            if let Some(Node::Token(Token {
+                                kind: TokenKind::Text(text),
+                                ..
+                            })) = elements.next()
+                            {
+                                let mut segments =
+                                    text.split('_').map(ToString::to_string).collect::<Vec<_>>();
+                                let trailing_segment = segments.pop().unwrap();
+
+                                if let Some(inputs) = elements
+                                    .map(|node| match node {
+                                        Node::Token(Token {
+                                            kind: TokenKind::Symbol(symbol),
+                                            ..
+                                        }) => Some(symbol.to_string()),
+                                        _ => None,
+                                    })
+                                    .collect::<Option<Vec<_>>>()
+                                {
+                                    if segments.len() == inputs.len() {
+                                        // TODO: Lint invalid documentation comments
+                                        return DocumentationAttributeValue::FormattedText(
+                                            segments.into_iter().zip(inputs).collect(),
+                                            trailing_segment,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+
+                    return DocumentationAttributeValue::Code(Ok(read_result.node.into_owned()));
                 }
             }
 
-            return Documentation::Attribute {
-                name: name.to_string(),
-                value: DocumentationAttributeValue::Code(Err(value.to_string())),
-            };
-        }
-    }
+            DocumentationAttributeValue::Code(Err(value.to_string()))
+        })();
 
-    Documentation::Comment(comment.to_string())
+        Documentation::Attribute {
+            name: name.to_string(),
+            value,
+        }
+    } else {
+        Documentation::Comment(comment.to_string())
+    }
 }
 
 fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src> {

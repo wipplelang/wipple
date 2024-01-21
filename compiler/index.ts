@@ -5,12 +5,18 @@ export const compile = (sources: any[], dependencies: any[]) =>
 
 export const link = (libraries: any[]) => JSON.parse(wasm.link(JSON.stringify(libraries)));
 
-export const renderErrors = (errors: any[], interface_: any, library: any) =>
+export const renderErrors = (
+    errors: any[],
+    interface_: any,
+    library: any,
+    sourceCodeForFile: (file: string) => string
+) =>
     JSON.parse(
         wasm.renderErrors(
             JSON.stringify(errors),
             JSON.stringify(interface_),
-            JSON.stringify(library)
+            JSON.stringify(library),
+            sourceCodeForFile
         )
     );
 

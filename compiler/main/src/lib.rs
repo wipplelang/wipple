@@ -64,14 +64,29 @@ pub fn link(libraries: &str) -> String {
 
 /// JavaScript entrypoint to render errors.
 #[wasm_bindgen(js_name = "renderErrors")]
-pub fn render_errors(errors: &str, interface_: &str, library: &str) -> String {
+pub fn render_errors(
+    errors: &str,
+    interface_: &str,
+    library: &str,
+    source_code_for_file: wasm_bindgen::JsValue,
+) -> String {
     initialize();
 
     let errors: Vec<util::WithInfo<Info, Error>> = deserialize(errors);
     let interface: Interface = deserialize(interface_);
     let library: Library = deserialize(library);
 
-    let query = Query::new(&interface, &library);
+    let source_code_for_file = |file: &str| {
+        source_code_for_file
+            .dyn_ref::<js_sys::Function>()
+            .unwrap()
+            .call1(&wasm_bindgen::JsValue::NULL, &file.into())
+            .unwrap()
+            .as_string()
+            .unwrap()
+    };
+
+    let query = Query::new(&interface, &library, source_code_for_file);
 
     let errors = errors
         .into_iter()
@@ -246,7 +261,8 @@ impl Driver {
                     }),
             );
 
-            let read_result = wipple_parser::reader::read(tokenize_result.tokens, options);
+            let read_result =
+                wipple_parser::reader::read_top_level(tokenize_result.tokens, options);
             errors.extend(read_result.errors.into_iter().map(|error| util::WithInfo {
                 info: Info {
                     parser_info: parser::syntax::Info {
@@ -262,7 +278,7 @@ impl Driver {
                 file_path: file.path.clone(),
             };
 
-            let syntax_result = wipple_parser::syntax::parse(&syntax_driver, read_result.top_level);
+            let syntax_result = wipple_parser::syntax::parse(&syntax_driver, read_result.node);
             errors.extend(
                 syntax_result
                     .errors

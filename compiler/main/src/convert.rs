@@ -87,44 +87,18 @@ pub mod interface {
                     info: type_info.clone(),
                     item: path,
                 },
-                parameters: parameters
-                    .into_iter()
-                    .map(|parameter| wipple_util::WithInfo {
-                        info: type_info.clone(),
-                        item: parameter,
-                    })
-                    .map(convert_type)
-                    .collect(),
+                parameters: parameters.into_iter().map(convert_type).collect(),
             },
             wipple_typecheck::Type::Function { input, output } => wipple_lower::Type::Function {
-                input: convert_type(wipple_util::WithInfo {
-                    info: type_info.clone(),
-                    item: *input,
-                })
-                .boxed(),
-                output: convert_type(wipple_util::WithInfo {
-                    info: type_info,
-                    item: *output,
-                })
-                .boxed(),
+                input: convert_type(input.unboxed()).boxed(),
+                output: convert_type(output.unboxed()).boxed(),
             },
-            wipple_typecheck::Type::Tuple(elements) => wipple_lower::Type::Tuple(
-                elements
-                    .into_iter()
-                    .map(|element| wipple_util::WithInfo {
-                        info: type_info.clone(),
-                        item: element,
-                    })
-                    .map(convert_type)
-                    .collect(),
-            ),
-            wipple_typecheck::Type::Lazy(r#type) => wipple_lower::Type::Lazy(
-                convert_type(wipple_util::WithInfo {
-                    info: type_info,
-                    item: *r#type,
-                })
-                .boxed(),
-            ),
+            wipple_typecheck::Type::Tuple(elements) => {
+                wipple_lower::Type::Tuple(elements.into_iter().map(convert_type).collect())
+            }
+            wipple_typecheck::Type::Lazy(r#type) => {
+                wipple_lower::Type::Lazy(convert_type(r#type.unboxed()).boxed())
+            }
         })
     }
 
@@ -138,15 +112,7 @@ pub mod interface {
                 info: instance_info.clone(),
                 item: instance.r#trait,
             },
-            parameters: instance
-                .parameters
-                .into_iter()
-                .map(|parameter| wipple_util::WithInfo {
-                    info: instance_info.clone(),
-                    item: parameter,
-                })
-                .map(convert_type)
-                .collect(),
+            parameters: instance.parameters.into_iter().map(convert_type).collect(),
         })
     }
 
@@ -731,24 +697,24 @@ pub mod typecheck {
                 path: path.item,
                 parameters: parameters
                     .into_iter()
-                    .map(|r#type| convert_type(r#type, generic).item)
+                    .map(|r#type| convert_type(r#type, generic))
                     .collect(),
             },
             wipple_lower::Type::Parameter(parameter) => {
                 wipple_typecheck::Type::Parameter(parameter)
             }
             wipple_lower::Type::Function { input, output } => wipple_typecheck::Type::Function {
-                input: convert_type(input.unboxed(), generic).boxed().item,
-                output: convert_type(output.unboxed(), generic).boxed().item,
+                input: convert_type(input.unboxed(), generic).boxed(),
+                output: convert_type(output.unboxed(), generic).boxed(),
             },
             wipple_lower::Type::Tuple(elements) => wipple_typecheck::Type::Tuple(
                 elements
                     .into_iter()
-                    .map(|r#type| convert_type(r#type, generic).item)
+                    .map(|r#type| convert_type(r#type, generic))
                     .collect(),
             ),
             wipple_lower::Type::Lazy(r#type) => {
-                wipple_typecheck::Type::Lazy(convert_type(r#type.unboxed(), generic).boxed().item)
+                wipple_typecheck::Type::Lazy(convert_type(r#type.unboxed(), generic).boxed())
             }
         })
     }
@@ -761,7 +727,7 @@ pub mod typecheck {
             parameters: instance
                 .parameters
                 .into_iter()
-                .map(|r#type| convert_type(r#type, true).item)
+                .map(|r#type| convert_type(r#type, true))
                 .collect(),
         })
     }
@@ -780,7 +746,7 @@ pub mod typecheck {
             wipple_lower::Expression::Annotate { value, r#type } => {
                 wipple_typecheck::UntypedExpression::Annotate {
                     value: convert_expression(value.unboxed()).boxed(),
-                    r#type: convert_type(r#type, false).item,
+                    r#type: convert_type(r#type, false),
                 }
             }
             wipple_lower::Expression::Variable(variable) => {

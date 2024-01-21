@@ -162,13 +162,13 @@ pub enum Error<D: Driver> {
         actual_roles: Vec<WithInfo<D::Info, Role>>,
 
         /// The inferred type of the expression.
-        actual: Type<D>,
+        actual: WithInfo<D::Info, Type<D>>,
 
         /// The roles of the expected type.
         expected_roles: Vec<WithInfo<D::Info, Role>>,
 
         /// The expected type of the expression.
-        expected: Type<D>,
+        expected: WithInfo<D::Info, Type<D>>,
     },
 
     /// A coercion would be required for a contravariant type. Currently, the
@@ -184,7 +184,7 @@ pub enum Error<D: Driver> {
     /// y : x ()
     /// ```
     #[serde(rename_all = "camelCase")]
-    DisallowedCoercion(Type<D>),
+    DisallowedCoercion(WithInfo<D::Info, Type<D>>),
 
     /// No instance satisfying the provided parameters could be resolved.
     #[serde(rename_all = "camelCase")]
@@ -241,24 +241,24 @@ pub enum Type<D: Driver> {
         path: D::Path,
 
         /// The type's parameters.
-        parameters: Vec<Type<D>>,
+        parameters: Vec<WithInfo<D::Info, Type<D>>>,
     },
 
     /// A function type.
     #[serde(rename_all = "camelCase")]
     Function {
         /// The type of the function's input.
-        input: Box<Type<D>>,
+        input: WithInfo<D::Info, Box<Type<D>>>,
 
         /// The type of the function's output.
-        output: Box<Type<D>>,
+        output: WithInfo<D::Info, Box<Type<D>>>,
     },
 
     /// A tuple type.
-    Tuple(Vec<Type<D>>),
+    Tuple(Vec<WithInfo<D::Info, Type<D>>>),
 
     /// A type whose values are computed lazily.
-    Lazy(Box<Type<D>>),
+    Lazy(WithInfo<D::Info, Box<Type<D>>>),
 }
 
 /// An instance or bound.
@@ -276,7 +276,7 @@ pub struct Instance<D: Driver> {
     pub r#trait: D::Path,
 
     /// The parameters used to search for an instance.
-    pub parameters: Vec<Type<D>>,
+    pub parameters: Vec<WithInfo<D::Info, Type<D>>>,
 }
 
 /// A type declaration.
@@ -392,7 +392,7 @@ pub enum UntypedExpression<D: Driver> {
         value: WithInfo<D::Info, Box<UntypedExpression<D>>>,
 
         /// The type of the inner value.
-        r#type: Type<D>,
+        r#type: WithInfo<D::Info, Type<D>>,
     },
 
     /// A value of a marker type.

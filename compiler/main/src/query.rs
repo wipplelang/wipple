@@ -1,5 +1,6 @@
-use crate::{Driver, Info, Interface, Library};
+use crate::{render_type, Driver, Info, Interface, Library};
 use itertools::Itertools;
+use std::{cell::RefCell, collections::HashMap};
 use wipple_lower::Path;
 use wipple_typecheck::{Pattern, Traverse, TypedExpressionKind};
 use wipple_util::WithInfo;
@@ -8,12 +9,41 @@ use wipple_util::WithInfo;
 pub struct Query<'a> {
     interface: &'a Interface,
     library: &'a Library,
+    source_code_for_file: Box<dyn Fn(&str) -> String + 'a>,
+    source_cache: RefCell<HashMap<String, String>>,
 }
 
 impl<'a> Query<'a> {
     /// Perform queries on the provided interface and library.
-    pub fn new(interface: &'a Interface, library: &'a Library) -> Self {
-        Query { interface, library }
+    pub fn new(
+        interface: &'a Interface,
+        library: &'a Library,
+        source_code_for_file: impl Fn(&str) -> String + 'a,
+    ) -> Self {
+        Query {
+            interface,
+            library,
+            source_code_for_file: Box::new(source_code_for_file),
+            source_cache: Default::default(),
+        }
+    }
+
+    /// Retrieve the source code at the provided location.
+    pub fn source_code_at(&self, info: &Info) -> Option<String> {
+        use std::collections::hash_map::Entry;
+
+        let slice = |s: &str| {
+            s.get((info.parser_info.span.start as usize)..(info.parser_info.span.end as usize))
+                .map(ToString::to_string)
+        };
+
+        let mut source_cache = self.source_cache.borrow_mut();
+        match source_cache.entry(info.parser_info.path.clone()) {
+            Entry::Occupied(entry) => slice(entry.get()),
+            Entry::Vacant(entry) => {
+                slice(entry.insert((self.source_code_for_file)(&info.parser_info.path)))
+            }
+        }
     }
 }
 
@@ -136,5 +166,81 @@ impl<'a> Query<'a> {
         }
 
         names
+    }
+
+    /// Retrieve the value of the `show-code` attribute for a definition.
+    pub fn get_show_code_enabled(&self, path: &Path) -> bool {
+        let info = self.info_at_path(path);
+
+        info.parser_info
+            .documentation
+            .iter()
+            .any(|documentation| match documentation {
+                wipple_parser::reader::Documentation::Attribute { name, value }
+                    if name == "show-code" =>
+                {
+                    matches!(
+                        value,
+                        wipple_parser::reader::DocumentationAttributeValue::True
+                    )
+                }
+                _ => false,
+            })
+    }
+
+    /// Retrieve the `on-unimplemented` message for a trait definition.
+    pub fn get_on_unimplemented_message(
+        &self,
+        path: &Path,
+        parameters: &[WithInfo<Info, wipple_typecheck::Type<Driver>>],
+    ) -> Option<String> {
+        let info = self.info_at_path(path);
+
+        let trait_declaration = self.interface.trait_declarations.get(path)?;
+        let help_show_code_enabled = self.get_show_code_enabled(path);
+
+        info.parser_info
+            .documentation
+            .iter()
+            .find_map(|documentation| match documentation {
+                wipple_parser::reader::Documentation::Attribute { name, value }
+                    if name == "on-unimplemented" =>
+                {
+                    match value {
+                        wipple_parser::reader::DocumentationAttributeValue::Text(message) => {
+                            Some(message.clone())
+                        }
+                        wipple_parser::reader::DocumentationAttributeValue::FormattedText(
+                            segments,
+                            trailing,
+                        ) => Some(
+                            segments
+                                .iter()
+                                .map(|(text, parameter_name)| {
+                                    let index = trait_declaration.item.parameters.iter().position(
+                                        |path| {
+                                            path.last()
+                                                .and_then(|path| path.name())
+                                                .is_some_and(|name| name == *parameter_name)
+                                        },
+                                    )?;
+
+                                    let r#type = parameters.get(index)?;
+
+                                    let code = help_show_code_enabled
+                                        .then(|| self.source_code_at(&r#type.info))
+                                        .flatten()
+                                        .unwrap_or_else(|| render_type(&r#type.item, true));
+
+                                    Some(format!("{}`{}`", text, code))
+                                })
+                                .collect::<Option<String>>()?
+                                + trailing,
+                        ),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            })
     }
 }

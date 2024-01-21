@@ -389,24 +389,24 @@ pub fn type_descriptor<D: crate::Driver>(
                 path.clone(),
                 parameters
                     .iter()
-                    .map(type_descriptor)
+                    .map(|r#type| type_descriptor(&r#type.item))
                     .collect::<Option<_>>()?,
             ))
         }
         wipple_typecheck::Type::Function { input, output } => {
             Some(crate::TypeDescriptor::Function(
-                Box::new(type_descriptor(input)?),
-                Box::new(type_descriptor(output)?),
+                Box::new(type_descriptor(&input.item)?),
+                Box::new(type_descriptor(&output.item)?),
             ))
         }
         wipple_typecheck::Type::Tuple(elements) => Some(crate::TypeDescriptor::Tuple(
             elements
                 .iter()
-                .map(type_descriptor)
+                .map(|r#type| type_descriptor(&r#type.item))
                 .collect::<Option<_>>()?,
         )),
         wipple_typecheck::Type::Lazy(r#type) => Some(crate::TypeDescriptor::Lazy(Box::new(
-            type_descriptor(r#type)?,
+            type_descriptor(&r#type.item)?,
         ))),
     }
 }

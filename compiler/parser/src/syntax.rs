@@ -64,7 +64,7 @@ fn test_grammar<T: std::fmt::Debug + PartialEq>(
     let result = crate::reader::tokenize(code);
     assert!(result.errors.is_empty(), "error tokenizing");
 
-    let result = crate::reader::read(
+    let result = crate::reader::read_top_level(
         result.tokens,
         crate::reader::ReadOptions {
             strip_comments: true,
@@ -73,7 +73,7 @@ fn test_grammar<T: std::fmt::Debug + PartialEq>(
 
     assert!(result.errors.is_empty(), "error reading");
 
-    let top_level = match result.top_level {
+    let top_level = match result.node {
         Node::Block(_, mut nodes) => {
             assert!(nodes.len() == 1, "`code` must be a single statement");
 
