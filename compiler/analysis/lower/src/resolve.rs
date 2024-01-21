@@ -248,7 +248,8 @@ fn resolve_statements<D: Driver>(
         | crate::UnresolvedStatement::Expression(_) => 3,
     });
 
-    statements
+    let mut queued_constants = Vec::new();
+    let statements = statements
         .into_iter()
         .filter_map(|statement| match statement.item {
             crate::UnresolvedStatement::Type {
@@ -401,7 +402,7 @@ fn resolve_statements<D: Driver>(
 
                 let r#type = resolve_type(r#type, info);
 
-                let body = resolve_expression(body, info);
+                queued_constants.push((info.path.clone(), body));
 
                 info.next_variable = prev_next_variable;
                 info.scopes.pop_scope();
@@ -413,8 +414,6 @@ fn resolve_statements<D: Driver>(
                     bounds,
                     r#type,
                 });
-
-                info.library.items.insert(info.path.clone(), body);
 
                 info.path.pop().unwrap();
 
@@ -518,7 +517,16 @@ fn resolve_statements<D: Driver>(
                 Some(resolve_expression(expression, info))
             }
         })
-        .collect()
+        .collect();
+
+    for (path, body) in queued_constants {
+        let prev_path = mem::replace(&mut info.path, path);
+        let body = resolve_expression(body, info);
+        let path = mem::replace(&mut info.path, prev_path);
+        info.library.items.insert(path, body);
+    }
+
+    statements
 }
 
 fn generate_marker_constructor<D: Driver>(
@@ -637,11 +645,11 @@ fn generate_structure_constructor<D: Driver>(
             item: crate::Expression::Function {
                 pattern: WithInfo {
                     info: name.info.clone(),
-                    item: crate::Pattern::Variable(input_variable.clone()),
+                    item: crate::Pattern::Variable(name.item.clone(), input_variable.clone()),
                 },
                 body: WithInfo {
                     info: name.info.clone(),
-                    item: crate::Expression::Variable(input_variable),
+                    item: crate::Expression::Variable(name.item.clone(), input_variable),
                 }
                 .boxed(),
             },
@@ -727,7 +735,7 @@ fn generate_variant_constructor<D: Driver>(
                         .into_iter()
                         .map(|input_variable| WithInfo {
                             info: name.info.clone(),
-                            item: crate::Expression::Variable(input_variable),
+                            item: crate::Expression::Variable(name.item.clone(), input_variable),
                         })
                         .collect(),
                 },
@@ -737,7 +745,7 @@ fn generate_variant_constructor<D: Driver>(
                 item: crate::Expression::Function {
                     pattern: WithInfo {
                         info: name.info.clone(),
-                        item: crate::Pattern::Variable(next),
+                        item: crate::Pattern::Variable(name.item.clone(), next),
                     },
                     body: result.boxed(),
                 },
@@ -781,7 +789,7 @@ fn resolve_expression<D: Driver>(
         crate::UnresolvedExpression::Name(name) => resolve_name(
             WithInfo {
                 info: expression_info,
-                item: name,
+                item: name.clone(),
             },
             info,
             |candidates| {
@@ -796,7 +804,7 @@ fn resolve_expression<D: Driver>(
                             Some(crate::Expression::Constant(path.item.clone()))
                         }
                         crate::PathComponent::Variable(_) => {
-                            Some(crate::Expression::Variable(path.item.clone()))
+                            Some(crate::Expression::Variable(name.clone(), path.item.clone()))
                         }
                         _ => None,
                     })
@@ -849,12 +857,18 @@ fn resolve_expression<D: Driver>(
                 let input_variable = info.make_path(crate::PathComponent::Variable(input_variable));
 
                 crate::Expression::Function {
-                    pattern: input.replace(crate::Pattern::Variable(input_variable.clone())),
+                    pattern: input.replace(crate::Pattern::Variable(
+                        String::from("function"),
+                        input_variable.clone(),
+                    )),
                     body: WithInfo {
                         info: input.info.clone(),
                         item: crate::Expression::Call {
                             function: input
-                                .replace(crate::Expression::Variable(input_variable))
+                                .replace(crate::Expression::Variable(
+                                    String::from("function"),
+                                    input_variable,
+                                ))
                                 .boxed(),
                             input: resolve_expression(input.unboxed(), info).boxed(),
                         },
@@ -876,26 +890,38 @@ fn resolve_expression<D: Driver>(
                 crate::Expression::Function {
                     pattern: WithInfo {
                         info: expression_info.clone(),
-                        item: crate::Pattern::Variable(function_variable.clone()),
+                        item: crate::Pattern::Variable(
+                            String::from("function"),
+                            function_variable.clone(),
+                        ),
                     },
                     body: WithInfo {
                         info: expression_info.clone(),
                         item: crate::Expression::Function {
                             pattern: WithInfo {
                                 info: expression_info.clone(),
-                                item: crate::Pattern::Variable(input_variable.clone()),
+                                item: crate::Pattern::Variable(
+                                    String::from("input"),
+                                    input_variable.clone(),
+                                ),
                             },
                             body: WithInfo {
                                 info: expression_info.clone(),
                                 item: crate::Expression::Call {
                                     function: WithInfo {
                                         info: expression_info.clone(),
-                                        item: crate::Expression::Variable(function_variable),
+                                        item: crate::Expression::Variable(
+                                            String::from("function"),
+                                            function_variable,
+                                        ),
                                     }
                                     .boxed(),
                                     input: WithInfo {
                                         info: expression_info,
-                                        item: crate::Expression::Variable(input_variable),
+                                        item: crate::Expression::Variable(
+                                            String::from("input"),
+                                            input_variable,
+                                        ),
                                     }
                                     .boxed(),
                                 },
@@ -996,14 +1022,20 @@ fn resolve_expression<D: Driver>(
                 None => crate::Expression::Function {
                     pattern: WithInfo {
                         info: expression_info.clone(),
-                        item: crate::Pattern::Variable(input_variable.clone()),
+                        item: crate::Pattern::Variable(
+                            String::from("input"),
+                            input_variable.clone(),
+                        ),
                     },
                     body: WithInfo {
                         info: expression_info.clone(),
                         item: when_expression(
                             WithInfo {
                                 info: expression_info,
-                                item: crate::Expression::Variable(input_variable),
+                                item: crate::Expression::Variable(
+                                    String::from("input"),
+                                    input_variable,
+                                ),
                             },
                             info,
                         ),
@@ -1117,14 +1149,14 @@ fn resolve_pattern_inner<D: Driver>(
 
             let path = info.make_path(crate::PathComponent::Variable(index));
             defines.push((
-                name,
+                name.clone(),
                 WithInfo {
                     info: pattern_info,
                     item: path.clone(),
                 },
             ));
 
-            crate::Pattern::Variable(path)
+            crate::Pattern::Variable(name, path)
         }
         crate::UnresolvedPattern::VariantOrName(name) => {
             match try_resolve_name(
@@ -1411,14 +1443,20 @@ fn resolve_binary_operator<D: Driver>(
             let input_variable = info.make_path(crate::PathComponent::Variable(input_variable));
 
             crate::Expression::Function {
-                pattern: operator.replace(crate::Pattern::Variable(input_variable.clone())),
+                pattern: operator.replace(crate::Pattern::Variable(
+                    String::from("input"),
+                    input_variable.clone(),
+                )),
                 body: operator
                     .replace(crate::Expression::Call {
                         function: operator
                             .replace(crate::Expression::Call {
                                 function: operator_trait.boxed(),
                                 input: operator
-                                    .replace(crate::Expression::Variable(input_variable))
+                                    .replace(crate::Expression::Variable(
+                                        String::from("input"),
+                                        input_variable,
+                                    ))
                                     .boxed(),
                             })
                             .boxed(),
@@ -1450,8 +1488,13 @@ fn resolve_language_item<D: Driver>(
                 .map(Some)
         }) {
         Some(item) => Some(
-            item.expect("language items are resolved before everything else")
-                .clone(),
+            item.unwrap_or_else(|| {
+                panic!(
+                    "language items are resolved before everything else: {:?}",
+                    name.item
+                )
+            })
+            .clone(),
         ),
         None => {
             info.errors

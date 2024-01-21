@@ -749,8 +749,8 @@ pub mod typecheck {
                     r#type: convert_type(r#type, false),
                 }
             }
-            wipple_lower::Expression::Variable(variable) => {
-                wipple_typecheck::UntypedExpression::Variable(variable)
+            wipple_lower::Expression::Variable(name, variable) => {
+                wipple_typecheck::UntypedExpression::Variable(name, variable)
             }
             wipple_lower::Expression::Number(number) => {
                 wipple_typecheck::UntypedExpression::Number(number)
@@ -861,8 +861,8 @@ pub mod typecheck {
             wipple_lower::Pattern::Wildcard => wipple_typecheck::Pattern::Wildcard,
             wipple_lower::Pattern::Number(number) => wipple_typecheck::Pattern::Number(number),
             wipple_lower::Pattern::Text(text) => wipple_typecheck::Pattern::Text(text),
-            wipple_lower::Pattern::Variable(variable) => {
-                wipple_typecheck::Pattern::Variable(variable)
+            wipple_lower::Pattern::Variable(name, variable) => {
+                wipple_typecheck::Pattern::Variable(name, variable)
             }
             wipple_lower::Pattern::Destructure(fields) => wipple_typecheck::Pattern::Destructure(
                 fields

@@ -399,7 +399,7 @@ pub enum UntypedExpression<D: Driver> {
     Marker(D::Path),
 
     /// The value of a variable.
-    Variable(D::Path),
+    Variable(String, D::Path),
 
     /// The value of a constant.
     Constant(D::Path),
@@ -570,7 +570,7 @@ pub enum TypedExpressionKind<D: Driver> {
     Marker(D::Path),
 
     /// The value of a variable.
-    Variable(D::Path),
+    Variable(String, D::Path),
 
     /// A constant.
     Constant(D::Path),
@@ -741,7 +741,7 @@ pub enum Pattern<D: Driver> {
     Text(String),
 
     /// A variable pattern.
-    Variable(D::Path),
+    Variable(String, D::Path),
 
     /// A destructuring pattern.
     Destructure(Vec<WithInfo<D::Info, FieldPattern<D>>>),
@@ -878,7 +878,7 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a TypedExpress
             }
             TypedExpressionKind::Unknown(_)
             | TypedExpressionKind::Marker(_)
-            | TypedExpressionKind::Variable(_)
+            | TypedExpressionKind::Variable(_, _)
             | TypedExpressionKind::Constant(_)
             | TypedExpressionKind::Trait(_)
             | TypedExpressionKind::Number(_)
@@ -917,7 +917,7 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a Pattern<D>> 
             | Pattern::Wildcard
             | Pattern::Number(_)
             | Pattern::Text(_)
-            | Pattern::Variable(_) => {}
+            | Pattern::Variable(_, _) => {}
         }
     }
 }

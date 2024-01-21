@@ -79,7 +79,7 @@ impl<'a> Query<'a> {
                     .map(|declaration| declaration.info.clone())
             })
             .or_else(|| {
-                self.collect_variables_matching(|candidate| candidate.item == path)
+                self.collect_variables_matching(|candidate| candidate.item.1 == path)
                     .into_iter()
                     .next()
                     .map(|path| path.info)
@@ -101,7 +101,7 @@ impl<'a> Query<'a> {
 
         names_at_cursor
             .into_iter()
-            .map(|path| path.map(|path| path.last().unwrap().name().unwrap()))
+            .map(|path| path.map(|(name, _)| name))
             .chain(
                 self.interface
                     .top_level
@@ -124,17 +124,17 @@ impl<'a> Query<'a> {
     /// Return the paths of all variables in the program satisfying `f`.
     pub fn collect_variables_matching(
         &self,
-        mut f: impl FnMut(WithInfo<Info, &'a Path>) -> bool,
-    ) -> Vec<WithInfo<Info, &'a Path>> {
+        mut f: impl FnMut(WithInfo<Info, (&'a str, &'a Path)>) -> bool,
+    ) -> Vec<WithInfo<Info, (&'a str, &'a Path)>> {
         let mut names = Vec::new();
 
         let mut check_pattern = |pattern: WithInfo<Info, &'a Pattern<Driver>>| {
             pattern.traverse(&mut |pattern| {
-                if let Pattern::Variable(path) = &pattern.item {
-                    let path = pattern.replace(path);
+                if let Pattern::Variable(name, path) = &pattern.item {
+                    let name = pattern.replace((name.as_str(), path));
 
-                    if f(path.clone()) {
-                        names.push(path);
+                    if f(name.clone()) {
+                        names.push(name);
                     }
                 }
             });

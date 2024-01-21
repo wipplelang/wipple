@@ -842,7 +842,7 @@ pub enum Expression<D: Driver> {
     },
 
     /// A variable.
-    Variable(Path),
+    Variable(String, Path),
 
     /// A number literal.
     Number(String),
@@ -1062,7 +1062,7 @@ pub enum Pattern<D: Driver> {
     Text(String),
 
     /// A variable pattern.
-    Variable(Path),
+    Variable(String, Path),
 
     /// A destructuring pattern.
     Destructure(Vec<WithInfo<D::Info, FieldPattern<D>>>),

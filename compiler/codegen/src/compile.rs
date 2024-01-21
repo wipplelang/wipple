@@ -66,7 +66,7 @@ fn compile_expression<D: crate::Driver>(
                 crate::TypedInstruction::Marker,
             ));
         }
-        wipple_typecheck::TypedExpressionKind::Variable(path) => {
+        wipple_typecheck::TypedExpressionKind::Variable(_, path) => {
             let variable = info.variables.iter().position(|p| p == path)? as u32;
 
             info.captures.push(variable);
@@ -325,7 +325,7 @@ fn compile_pattern<D: crate::Driver>(
                 break_label,
             ));
         }
-        wipple_typecheck::Pattern::Variable(path) => {
+        wipple_typecheck::Pattern::Variable(_, path) => {
             let variable = info.variables.len() as u32;
             info.variables.push(path.clone());
             info.push_instruction(crate::Instruction::Initialize(variable));

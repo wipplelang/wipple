@@ -1330,7 +1330,7 @@ struct Expression<D: Driver> {
 enum ExpressionKind<D: Driver> {
     Unknown(Option<D::Path>),
     Marker(D::Path),
-    Variable(D::Path),
+    Variable(String, D::Path),
     UnresolvedConstant(D::Path),
     UnresolvedTrait(D::Path),
     ResolvedConstant(D::Path),
@@ -1536,7 +1536,7 @@ fn infer_expression<D: Driver>(
                 kind: ExpressionKind::Marker(path),
             }
         }
-        crate::UntypedExpression::Variable(variable) => {
+        crate::UntypedExpression::Variable(name, variable) => {
             let mut r#type = context.variables.borrow().get(&variable).map_or_else(
                 || Type::new(TypeKind::Unknown, info.clone(), Vec::new()),
                 Type::clone_in_current_context,
@@ -1546,7 +1546,7 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
-                kind: ExpressionKind::Variable(variable),
+                kind: ExpressionKind::Variable(name, variable),
             }
         }
         crate::UntypedExpression::Constant(path) => {
@@ -2115,7 +2115,7 @@ fn resolve_pattern<D: Driver>(
                 context.error_queue,
             );
         }
-        crate::Pattern::Variable(variable) => {
+        crate::Pattern::Variable(_, variable) => {
             context
                 .variables
                 .borrow_mut()
@@ -2441,7 +2441,7 @@ fn resolve_expression<D: Driver>(
     let kind = match expression.item.kind {
         ExpressionKind::Unknown(path) => ExpressionKind::Unknown(path),
         ExpressionKind::Marker(path) => ExpressionKind::Marker(path),
-        ExpressionKind::Variable(variable) => ExpressionKind::Variable(variable),
+        ExpressionKind::Variable(name, variable) => ExpressionKind::Variable(name, variable),
         ExpressionKind::UnresolvedConstant(ref path) => {
             let path = path.clone();
 
@@ -3340,7 +3340,9 @@ fn finalize_expression<D: Driver>(
     let kind = match expression.item.kind {
         ExpressionKind::Unknown(path) => crate::TypedExpressionKind::Unknown(path),
         ExpressionKind::Marker(path) => crate::TypedExpressionKind::Marker(path),
-        ExpressionKind::Variable(variable) => crate::TypedExpressionKind::Variable(variable),
+        ExpressionKind::Variable(name, variable) => {
+            crate::TypedExpressionKind::Variable(name, variable)
+        }
         ExpressionKind::UnresolvedConstant(path) | ExpressionKind::UnresolvedTrait(path) => {
             let error = WithInfo {
                 info: expression.info.clone(),
