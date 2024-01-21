@@ -80,6 +80,7 @@ error : message -> intrinsic "crash" message
 [Represents the default or initial value of a type.]
 [on-unimplemented : "_ has no default value" Value]
 Default : Value => trait Value
+language "default" : Default
 instance (Default Number) : 0
 instance (Default Text) : ""
 instance (Default Boolean) : False

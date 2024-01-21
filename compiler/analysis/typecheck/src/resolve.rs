@@ -445,6 +445,26 @@ impl<D: Driver> Type<D> {
         self
     }
 
+    fn contains_variable(&self, variable: &TypeVariable<D>) -> bool {
+        match &self.kind {
+            TypeKind::Variable(var) => {
+                TypeContext::ptr_eq(&var.context, &variable.context)
+                    && var.counter == variable.counter
+            }
+            TypeKind::Declared { parameters, .. } => parameters
+                .iter()
+                .any(|r#type| r#type.contains_variable(variable)),
+            TypeKind::Function { input, output } => {
+                input.contains_variable(variable) || output.contains_variable(variable)
+            }
+            TypeKind::Tuple(elements) => elements
+                .iter()
+                .any(|r#type| r#type.contains_variable(variable)),
+            TypeKind::Lazy(r#type) => r#type.contains_variable(variable),
+            TypeKind::Opaque(_) | TypeKind::Parameter(_) | TypeKind::Unknown => false,
+        }
+    }
+
     #[must_use]
     fn apply_in_current_context(&self) -> Self {
         let mut r#type = self.clone_in_current_context();
@@ -463,6 +483,8 @@ impl<D: Driver> Type<D> {
                         }
                     })
                 {
+                    assert!(!r#type.contains_variable(variable), "recursive type");
+
                     self.kind = r#type.kind;
                     self.info = r#type.info;
                     self.roles.extend(r#type.roles);
@@ -959,10 +981,10 @@ fn unify_with_options<D: Driver>(
                 Rc::as_ptr(&variable.context.0),
                 Rc::as_ptr(&other.context.0),
             );
+        }
 
-            if variable.counter == other.counter {
-                return false;
-            }
+        if r#type.contains_variable(variable) {
+            return false;
         }
 
         variable.with_substitution_mut(|substitution| match substitution {
@@ -3245,7 +3267,17 @@ fn resolve_trait<D: Driver>(
                 let mut stack = stack.to_vec();
                 stack.push(bound.as_ref());
 
-                resolve_trait_inner(query.replace(&bound.item), context, &type_context, &stack)?;
+                context
+                    .recursion_stack
+                    .borrow_mut()
+                    .push(bound.info.clone());
+
+                let result =
+                    resolve_trait_inner(query.replace(&bound.item), context, &type_context, &stack);
+
+                context.recursion_stack.borrow_mut().pop();
+
+                result?;
             }
 
             return Ok(candidate);
