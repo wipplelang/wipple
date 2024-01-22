@@ -501,21 +501,23 @@ impl<D: Driver> Type<D> {
     fn apply_in_current_context_mut(&mut self) {
         match &mut self.kind {
             TypeKind::Variable(variable) => {
-                if let Some(r#type) =
-                    variable.with_substitution_mut(|substitution| match substitution {
-                        btree_map::Entry::Vacant(_) => None,
-                        btree_map::Entry::Occupied(entry) => {
-                            Some(entry.get().clone_in_current_context())
-                        }
-                    })
+                let r#type = match variable.with_substitution_mut(|substitution| match substitution
                 {
-                    assert!(!r#type.contains_variable(variable), "recursive type");
+                    btree_map::Entry::Vacant(_) => None,
+                    btree_map::Entry::Occupied(entry) => {
+                        Some(entry.get().borrow().clone_in_current_context())
+                    }
+                }) {
+                    Some(r#type) => r#type,
+                    _ => return,
+                };
 
-                    self.kind = r#type.kind;
-                    self.info = r#type.info;
-                    self.roles.extend(r#type.roles);
-                    self.apply_in_current_context_mut();
-                }
+                assert!(!r#type.contains_variable(variable), "recursive type");
+
+                self.kind = r#type.kind;
+                self.info = r#type.info;
+                self.roles.extend(r#type.roles);
+                self.apply_in_current_context_mut();
             }
             TypeKind::Opaque(_) => {}
             TypeKind::Parameter(_) => {}
@@ -669,8 +671,8 @@ struct TypeContext<D: Driver>(Rc<TypeContextInner<D>>);
 
 struct TypeContextInner<D: Driver> {
     next_variable: Cell<u32>,
-    substitutions: RefCell<BTreeMap<u32, Type<D>>>,
-    defaults: RefCell<BTreeMap<u32, Type<D>>>,
+    substitutions: RefCell<BTreeMap<u32, Rc<RefCell<Type<D>>>>>,
+    defaults: RefCell<BTreeMap<u32, Rc<RefCell<Type<D>>>>>,
 }
 
 impl<D: Driver> TypeContextInner<D> {
@@ -681,14 +683,24 @@ impl<D: Driver> TypeContextInner<D> {
                 self.substitutions
                     .borrow()
                     .iter()
-                    .map(|(variable, r#type)| (*variable, r#type.clone_in_current_context()))
+                    .map(|(variable, r#type)| {
+                        (
+                            *variable,
+                            Rc::new(RefCell::new(r#type.borrow().clone_in_current_context())),
+                        )
+                    })
                     .collect(),
             ),
             defaults: RefCell::new(
                 self.defaults
                     .borrow()
                     .iter()
-                    .map(|(variable, r#type)| (*variable, r#type.clone_in_current_context()))
+                    .map(|(variable, r#type)| {
+                        (
+                            *variable,
+                            Rc::new(RefCell::new(r#type.borrow().clone_in_current_context())),
+                        )
+                    })
                     .collect(),
             ),
         }
@@ -977,7 +989,10 @@ impl<D: Driver> TypeContext<D> {
         self.0.next_variable.set(counter + 1);
 
         if let Some(default) = default.into() {
-            self.0.defaults.borrow_mut().insert(counter, default);
+            self.0
+                .defaults
+                .borrow_mut()
+                .insert(counter, Rc::new(RefCell::new(default)));
         }
 
         TypeVariable {
@@ -990,7 +1005,7 @@ impl<D: Driver> TypeContext<D> {
 impl<D: Driver> TypeVariable<D> {
     fn with_substitution_mut<T>(
         &self,
-        f: impl FnOnce(btree_map::Entry<'_, u32, Type<D>>) -> T,
+        f: impl FnOnce(btree_map::Entry<'_, u32, Rc<RefCell<Type<D>>>>) -> T,
     ) -> T {
         f(self
             .context
@@ -1030,7 +1045,7 @@ fn unify_with_options<D: Driver>(
 
         variable.with_substitution_mut(|substitution| match substitution {
             btree_map::Entry::Vacant(entry) => {
-                entry.insert(r#type.clone_in_current_context());
+                entry.insert(Rc::new(RefCell::new(r#type.clone_in_current_context())));
             }
             btree_map::Entry::Occupied(_) => panic!("variable already has substitution"),
         });
@@ -1049,6 +1064,12 @@ fn unify_with_options<D: Driver>(
 
         match (&mut r#type.kind, &expected_type.kind) {
             (TypeKind::Opaque(_), _) | (_, TypeKind::Opaque(_)) => true,
+            (TypeKind::Lazy(r#type), TypeKind::Lazy(expected_type)) => {
+                unify_type(driver, r#type, expected_type, options)
+            }
+            (_, TypeKind::Lazy(expected_type)) => {
+                unify_type(driver, r#type, expected_type, options)
+            }
             (TypeKind::Variable(variable), _) => {
                 unify_variable(variable, &expected_type);
                 r#type.apply_in_current_context_mut();
@@ -1103,12 +1124,6 @@ fn unify_with_options<D: Driver>(
                 }
 
                 unified
-            }
-            (TypeKind::Lazy(r#type), TypeKind::Lazy(expected_type)) => {
-                unify_type(driver, r#type, expected_type, options)
-            }
-            (_, TypeKind::Lazy(expected_type)) => {
-                unify_type(driver, r#type, expected_type, options)
             }
             (TypeKind::Unknown, _) | (_, TypeKind::Unknown) => true,
             (_, TypeKind::Parameter(_)) => true,
@@ -1257,12 +1272,28 @@ impl<D: Driver> TypeContext<D> {
 
         let change = TypeContextChange::from_deep_cloned(&new_context);
 
-        for r#type in new_context.0.substitutions.borrow_mut().values_mut() {
-            r#type.set_context(&change);
+        let substitutions = new_context
+            .0
+            .substitutions
+            .borrow()
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+
+        for r#type in substitutions {
+            r#type.borrow_mut().set_context(&change);
         }
 
-        for r#type in new_context.0.defaults.borrow_mut().values_mut() {
-            r#type.set_context(&change);
+        let defaults = new_context
+            .0
+            .defaults
+            .borrow()
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+
+        for r#type in defaults {
+            r#type.borrow_mut().set_context(&change);
         }
 
         (new_context, change)
@@ -1329,6 +1360,8 @@ impl<D: Driver> Type<D> {
             }
             TypeKind::Unknown => {}
         }
+
+        self.apply_in_current_context_mut();
     }
 }
 
@@ -2542,11 +2575,10 @@ fn resolve_expression<D: Driver>(
             });
 
             match resolve_trait(query.as_ref(), context) {
-                Ok(resolved_trait) => {
-                    expression
-                        .item
-                        .r#type
-                        .set_context(&resolved_trait.type_context_change);
+                Ok(resolved_instance) => {
+                    for change in resolved_instance.type_context_changes {
+                        expression.item.r#type.set_context(&change);
+                    }
 
                     ExpressionKind::ResolvedTrait(query.item.r#trait)
                 }
@@ -3045,7 +3077,7 @@ fn resolve_item<D: Driver>(
                     };
 
                     match resolve_trait(query.as_ref(), context) {
-                        Ok(resolved_trait) => Ok(Some(resolved_trait.type_context_change)),
+                        Ok(resolved_instance) => Ok(Some(resolved_instance.type_context_changes)),
                         Err(WithInfo {
                             item: QueuedError::UnresolvedInstance { .. },
                             ..
@@ -3078,7 +3110,7 @@ fn resolve_item<D: Driver>(
     };
 
     if let Some(changes) = evaluate_bounds(&instantiated_bounds, true)? {
-        for change in changes {
+        for change in changes.into_iter().flatten() {
             use_expression.item.r#type.set_context(&change);
             instantiated_declared_type.set_context(&change);
         }
@@ -3098,7 +3130,7 @@ fn resolve_item<D: Driver>(
     // determine the types of the inferred parameters by re-evaluating the bounds
 
     if let Some(changes) = evaluate_bounds(&instantiated_bounds, false)? {
-        for change in changes {
+        for change in changes.into_iter().flatten() {
             use_expression.item.r#type.set_context(&change);
             instantiated_declared_type.set_context(&change);
         }
@@ -3152,7 +3184,7 @@ fn resolve_trait_parameters_from_type<D: Driver>(
 
 struct ResolvedInstance<D: Driver> {
     instance: WithInfo<D::Info, Instance<D>>,
-    type_context_change: TypeContextChange<D>,
+    type_context_changes: Vec<TypeContextChange<D>>,
 }
 
 fn resolve_trait<D: Driver>(
@@ -3228,7 +3260,7 @@ fn resolve_trait<D: Driver>(
                         new_type_context,
                         ResolvedInstance {
                             instance: bound,
-                            type_context_change,
+                            type_context_changes: vec![type_context_change],
                         },
                         Vec::new(),
                     ));
@@ -3295,7 +3327,7 @@ fn resolve_trait<D: Driver>(
                     new_type_context,
                     ResolvedInstance {
                         instance,
-                        type_context_change,
+                        type_context_changes: vec![type_context_change],
                     },
                     bounds,
                 ));
@@ -3303,7 +3335,7 @@ fn resolve_trait<D: Driver>(
         }
 
         // If an instance matches, check its bounds
-        if let Some((type_context, candidate, bounds)) =
+        if let Some((type_context, mut candidate, bounds)) =
             pick_from_candidates(candidates, query.clone(), stack)?
         {
             for bound in bounds {
@@ -3320,7 +3352,11 @@ fn resolve_trait<D: Driver>(
 
                 context.recursion_stack.borrow_mut().pop();
 
-                result?;
+                let resolved_instance = result?;
+
+                let mut type_context_changes = resolved_instance.type_context_changes;
+                type_context_changes.extend(candidate.type_context_changes);
+                candidate.type_context_changes = type_context_changes;
             }
 
             return Ok(candidate);
