@@ -357,7 +357,8 @@ fn resolve_statements<D: Driver>(
                 parameters,
                 r#type,
             } => {
-                info.path.push(crate::PathComponent::Trait(name.item));
+                info.path
+                    .push(crate::PathComponent::Trait(name.item.clone()));
 
                 info.scopes.push_constant_scope();
 
@@ -372,7 +373,15 @@ fn resolve_statements<D: Driver>(
 
                 let declaration = info.trait_declarations.get_mut(&info.path).unwrap();
 
-                declaration.item = Some(crate::TraitDeclaration { parameters, r#type });
+                declaration.item = Some(crate::TraitDeclaration {
+                    parameters: parameters.clone(),
+                    r#type: r#type.clone(),
+                });
+
+                let (name, constructor) =
+                    generate_trait_constructor(name, parameters, r#type, info);
+
+                info.scopes.define(name, constructor);
 
                 info.path.pop().unwrap();
 
@@ -752,6 +761,52 @@ fn generate_variant_constructor<D: Driver>(
             },
         )
     };
+
+    info.constant_declarations.insert(
+        constructor_path.clone(),
+        WithInfo {
+            info: name.info.clone(),
+            item: Some(constructor_declaration),
+        },
+    );
+
+    info.library
+        .items
+        .insert(constructor_path.clone(), constructor_body);
+
+    (
+        name.item,
+        WithInfo {
+            info: name.info,
+            item: constructor_path,
+        },
+    )
+}
+
+fn generate_trait_constructor<D: Driver>(
+    name: WithInfo<D::Info, String>,
+    parameters: Vec<crate::Path>,
+    r#type: WithInfo<D::Info, crate::Type<D>>,
+    info: &mut Info<D>,
+) -> (String, WithInfo<D::Info, crate::Path>) {
+    let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
+
+    let constructor_declaration = crate::ConstantDeclaration {
+        parameters: parameters.clone(),
+        bounds: vec![name.replace(crate::Instance {
+            r#trait: name.replace(info.path.clone()),
+            parameters: parameters
+                .into_iter()
+                .map(|parameter| WithInfo {
+                    info: name.info.clone(),
+                    item: crate::Type::Parameter(parameter),
+                })
+                .collect(),
+        })],
+        r#type,
+    };
+
+    let constructor_body = name.replace(crate::Expression::Trait(info.path.clone()));
 
     info.constant_declarations.insert(
         constructor_path.clone(),
@@ -1481,7 +1536,11 @@ fn resolve_binary_operator<D: Driver>(
 ) -> crate::Expression<D> {
     let operator_trait = operator.replace(
         match resolve_language_item(operator.as_ref().map(ToString::to_string), info) {
-            Some(path) => crate::Expression::Trait(path),
+            Some(mut path) => {
+                let name = path.last().unwrap().name().unwrap().to_string();
+                path.push(crate::PathComponent::Constructor(name));
+                crate::Expression::Constant(path)
+            }
             None => crate::Expression::Error,
         },
     );

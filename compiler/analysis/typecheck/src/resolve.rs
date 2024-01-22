@@ -1515,7 +1515,7 @@ fn infer_expression<D: Driver>(
 ) -> WithInfo<<D as Driver>::Info, Expression<D>> {
     let info = expression.info.clone();
 
-    expression.map(|expression| match expression {
+    let mut expression = expression.map(|expression| match expression {
         crate::UntypedExpression::Unknown => Expression {
             r#type: Type::new(TypeKind::Unknown, info.clone(), Vec::new()),
             kind: ExpressionKind::Unknown(None),
@@ -1564,12 +1564,10 @@ fn infer_expression<D: Driver>(
             }
         }
         crate::UntypedExpression::Variable(name, variable) => {
-            let mut r#type = context.variables.borrow().get(&variable).map_or_else(
+            let r#type = context.variables.borrow().get(&variable).map_or_else(
                 || Type::new(TypeKind::Unknown, info.clone(), Vec::new()),
                 Type::clone_in_current_context,
             );
-
-            r#type.info = info.clone();
 
             Expression {
                 r#type,
@@ -1587,14 +1585,12 @@ fn infer_expression<D: Driver>(
                 context.errors,
             );
 
-            let mut r#type = infer_type(
+            let r#type = infer_type(
                 constant_declaration.item.r#type.as_ref(),
                 constant_declaration.replace(Role::Annotation),
                 Some(context.type_context),
             )
             .instantiate(context.driver, &instantiation_context);
-
-            r#type.info = info.clone();
 
             Expression {
                 r#type,
@@ -1612,14 +1608,12 @@ fn infer_expression<D: Driver>(
                 context.errors,
             );
 
-            let mut r#type = infer_type(
+            let r#type = infer_type(
                 trait_declaration.item.r#type.as_ref(),
                 trait_declaration.replace(Role::Trait),
                 Some(context.type_context),
             )
             .instantiate(context.driver, &instantiation_context);
-
-            r#type.info = info.clone();
 
             Expression {
                 r#type,
@@ -2077,7 +2071,11 @@ fn infer_expression<D: Driver>(
                 },
             }
         }
-    })
+    });
+
+    expression.item.r#type.info = info;
+
+    expression
 }
 
 fn resolve_pattern<D: Driver>(
@@ -2952,7 +2950,7 @@ fn resolve_item<D: Driver>(
     // Instantiate the items' type, substituting inferred parameters with opaque
     // type variables
 
-    let instantiated_declared_role = item_declaration.replace(Role::Annotation);
+    let instantiated_declared_role = use_expression.replace(Role::Annotation);
 
     let instantiation_context = InstantiationContext::from_parameters_with_options(
         context.driver,
@@ -2966,13 +2964,14 @@ fn resolve_item<D: Driver>(
     );
 
     let mut instantiated_declared_type = infer_type(
-        item_declaration.item.r#type.as_ref(),
+        WithInfo {
+            info: use_expression.info.clone(),
+            item: &item_declaration.item.r#type.item,
+        },
         instantiated_declared_role,
         Some(context.type_context),
     )
     .instantiate(context.driver, &instantiation_context);
-
-    instantiated_declared_type.info = use_expression.info.clone();
 
     let instantiated_bounds = item_declaration
         .item
