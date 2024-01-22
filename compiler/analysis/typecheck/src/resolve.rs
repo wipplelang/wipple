@@ -178,7 +178,7 @@ pub fn resolve<D: Driver>(
 
         if fully_resolved.get() || !progress.get() {
             if item_declaration.item.top_level {
-                // The top level has type `()` by default, but any other type is OK
+                // The top level has type `()` by default, but any other type is also OK
                 let _ = unify(
                     driver,
                     &mut queued.body.item.r#type,
@@ -1642,9 +1642,29 @@ fn infer_expression<D: Driver>(
             }
         }
         crate::UntypedExpression::Block(statements) => {
+            let statement_count = statements.len();
+
             let statements = statements
                 .into_iter()
-                .map(|expression| infer_expression(expression, context))
+                .enumerate()
+                .map(|(index, expression)| {
+                    let mut statement = infer_expression(expression, context);
+
+                    if index + 1 < statement_count {
+                        // Statements have type `()` by default, but any other type is also OK
+                        let _ = unify(
+                            context.driver,
+                            &mut statement.item.r#type,
+                            &Type::new(
+                                TypeKind::Tuple(Vec::new()),
+                                statement.info.clone(),
+                                Vec::new(),
+                            ),
+                        );
+                    }
+
+                    statement
+                })
                 .collect::<Vec<_>>();
 
             let r#type = statements.last().map_or_else(
