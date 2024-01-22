@@ -392,6 +392,12 @@ pub mod lower {
                         .map(|function| convert_expression(function.unboxed()).boxed()),
                 }
             }
+            wipple_syntax::Expression::Compose { outer, inner } => {
+                wipple_lower::UnresolvedExpression::Compose {
+                    outer: outer.map(|outer| convert_expression(outer.unboxed()).boxed()),
+                    inner: inner.map(|inner| convert_expression(inner.unboxed()).boxed()),
+                }
+            }
             wipple_syntax::Expression::BinaryOperator {
                 operator,
                 left,

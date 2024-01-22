@@ -378,6 +378,8 @@ enum QueuedError<D: Driver> {
         stack: Vec<WithInfo<D::Info, Instance<D>>>,
     },
 
+    NotAStructure(Type<D>),
+
     MissingFields(Vec<String>),
 
     ExtraField,
@@ -415,6 +417,9 @@ fn report_queued_errors<D: Driver>(
                     })
                     .collect(),
             },
+            QueuedError::NotAStructure(r#type) => {
+                crate::Error::NotAStructure(finalize_type(r#type, &finalize_context))
+            }
             QueuedError::MissingFields(fields) => crate::Error::MissingFields(fields),
             QueuedError::ExtraField => crate::Error::ExtraField,
         })
@@ -1022,8 +1027,6 @@ fn unify_with_options<D: Driver>(
                 driver.paths_are_equal(parameter, expected_parameter)
                     || !options.require_equal_type_parameters
             }
-            (_, TypeKind::Parameter(_)) => true,
-            (TypeKind::Parameter(_), _) => false,
             (
                 TypeKind::Declared { path, parameters },
                 TypeKind::Declared {
@@ -1072,6 +1075,8 @@ fn unify_with_options<D: Driver>(
                 unify_type(driver, r#type, expected_type, options)
             }
             (TypeKind::Unknown, _) | (_, TypeKind::Unknown) => true,
+            (_, TypeKind::Parameter(_)) => true,
+            (TypeKind::Parameter(_), _) => false,
             _ => false,
         }
     }
@@ -2868,7 +2873,16 @@ fn resolve_expression<D: Driver>(
                         fields,
                     }
                 }
-                _ => todo!("report error"),
+                _ => {
+                    context.error_queue.borrow_mut().push(WithInfo {
+                        info: expression.info.clone(),
+                        item: QueuedError::NotAStructure(
+                            expression.item.r#type.clone_in_current_context(),
+                        ),
+                    });
+
+                    ExpressionKind::Unknown(None)
+                }
             }
         }
         ExpressionKind::ResolvedStructure { structure, fields } => {

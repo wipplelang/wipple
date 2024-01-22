@@ -942,6 +942,56 @@ fn resolve_expression<D: Driver>(
                 }
             }
         },
+        crate::UnresolvedExpression::Compose { outer, inner } => match (outer, inner) {
+            (Some(outer), Some(inner)) => {
+                let outer = resolve_expression(outer.unboxed(), info);
+                let inner = resolve_expression(inner.unboxed(), info);
+
+                let input_variable = info.next_variable;
+                info.next_variable += 1;
+                let input_variable = info.make_path(crate::PathComponent::Variable(input_variable));
+
+                crate::Expression::Function {
+                    pattern: WithInfo {
+                        info: expression_info.clone(),
+                        item: crate::Pattern::Variable(
+                            String::from("input"),
+                            input_variable.clone(),
+                        ),
+                    },
+                    body: WithInfo {
+                        info: expression_info.clone(),
+                        item: crate::Expression::Call {
+                            function: outer.boxed(),
+                            input: WithInfo {
+                                info: expression_info.clone(),
+                                item: crate::Expression::Call {
+                                    function: inner.boxed(),
+                                    input: WithInfo {
+                                        info: expression_info,
+                                        item: crate::Expression::Variable(
+                                            String::from("input"),
+                                            input_variable,
+                                        ),
+                                    }
+                                    .boxed(),
+                                },
+                            }
+                            .boxed(),
+                        },
+                    }
+                    .boxed(),
+                }
+            }
+            _ => {
+                info.errors.push(WithInfo {
+                    info: expression_info,
+                    item: crate::Error::InvalidComposition,
+                });
+
+                crate::Expression::Error
+            }
+        },
         crate::UnresolvedExpression::BinaryOperator {
             operator,
             left,

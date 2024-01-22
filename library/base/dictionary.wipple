@@ -36,7 +36,7 @@ entry : key (
     repeat with-control-flow (
         when (entries . nth (get index) . unwrap) (
             Some (existing-key ; value) -> if (key = existing-key) (
-                Stop (Some Value)
+                Stop (Some value)
             ) (
                 index . set! ((get index + 1) % count entries)
                 if (get index = initial-index) (Stop None) Continue

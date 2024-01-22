@@ -201,6 +201,10 @@ pub enum Error<D: Driver> {
         stack: Vec<WithInfo<D::Info, Instance<D>>>,
     },
 
+    /// A structure expression was used, but the expression does not have a
+    /// structure type.
+    NotAStructure(WithInfo<D::Info, Type<D>>),
+
     /// A structure expression was missing fields.
     MissingFields(Vec<String>),
 

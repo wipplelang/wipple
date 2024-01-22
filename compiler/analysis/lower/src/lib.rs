@@ -130,6 +130,9 @@ pub enum Error {
 
     /// Language declarations must be at the top level.
     NestedLanguageDeclaration,
+
+    /// The function composition operator `|` expects inputs on both sides.
+    InvalidComposition,
 }
 
 /// An unresolved file.
@@ -297,6 +300,15 @@ pub enum UnresolvedExpression<D: Driver> {
 
         /// The function.
         function: Option<WithInfo<D::Info, Box<UnresolvedExpression<D>>>>,
+    },
+
+    /// Function composition.
+    Compose {
+        /// The outer function.
+        outer: Option<WithInfo<D::Info, Box<UnresolvedExpression<D>>>>,
+
+        /// The inner function.
+        inner: Option<WithInfo<D::Info, Box<UnresolvedExpression<D>>>>,
     },
 
     /// A binary operator expression.

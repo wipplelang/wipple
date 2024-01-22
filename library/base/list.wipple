@@ -29,7 +29,7 @@ append : element list -> semantics "pure" (intrinsic "list-append" list element)
 
 [Add a new item to the end of a mutable list.]
 append! :: Element => Element -> Mutable (List Element) -> ()
-append! : element list -> list . set! (get list . append new)
+append! : element list -> list . set! (get list . append element)
 
 [Insert a new item at a particular location inside a list, shifting the elements from that location on one place to the right, producing a new list.]
 insert-at :: Element => Number -> Element -> List Element -> Maybe (List Element)

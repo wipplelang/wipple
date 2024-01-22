@@ -399,6 +399,15 @@ pub mod syntax {
             function: Option<WithInfo<D::Info, Box<Expression<D>>>>,
         },
 
+        /// Function composition.
+        Compose {
+            /// The outer function.
+            outer: Option<WithInfo<D::Info, Box<Expression<D>>>>,
+
+            /// The inner function.
+            inner: Option<WithInfo<D::Info, Box<Expression<D>>>>,
+        },
+
         /// A binary operator expression.
         #[serde(rename_all = "camelCase")]
         BinaryOperator {
@@ -797,6 +806,15 @@ pub enum Expression<D: Driver> {
 
         /// The function.
         function: Option<WithInfo<D::Info, Box<Expression<D>>>>,
+    },
+
+    /// Function composition.
+    Compose {
+        /// The outer function.
+        outer: Option<WithInfo<D::Info, Box<Expression<D>>>>,
+
+        /// The inner function.
+        inner: Option<WithInfo<D::Info, Box<Expression<D>>>>,
     },
 
     /// A binary operator expression.

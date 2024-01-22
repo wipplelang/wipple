@@ -99,6 +99,15 @@ fn expression<D: Driver>(
             function: function_syntax
                 .map(|function_syntax| expression(function_syntax.unboxed(), info).boxed()),
         },
+        syntax::Expression::Compose {
+            outer: outer_syntax,
+            inner: inner_syntax,
+        } => crate::Expression::Compose {
+            outer: outer_syntax
+                .map(|outer_syntax| expression(outer_syntax.unboxed(), info).boxed()),
+            inner: inner_syntax
+                .map(|inner_syntax| expression(inner_syntax.unboxed(), info).boxed()),
+        },
         syntax::Expression::BinaryOperator {
             operator,
             left: left_syntax,

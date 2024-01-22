@@ -805,6 +805,26 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         (variable . "function"))))
         "#;
 
+        static COMPOSE_EXPRESSION = r#"
+            (or
+                (binary-operator
+                    "|"
+                    unapplied)
+                (binary-operator
+                    "|"
+                    (partially-applied-left .
+                        (variable . "left")))
+                (binary-operator
+                    "|"
+                    (partially-applied-right .
+                        (variable . "right")))
+                (binary-operator
+                    "|"
+                    (applied
+                        (variable . "left")
+                        (variable . "right"))))
+        "#;
+
         static IS_EXPRESSION = r#"
             (non-associative-binary-operator
                 "is"
@@ -1431,9 +1451,45 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
             })
         };
 
+        let compose = |parser: &mut Self| {
+            COMPOSE_EXPRESSION.parse(&node).map(|mut vars| {
+                let left = vars
+                    .remove("left")
+                    .map(|mut value| value.pop().unwrap())
+                    .map(|left| {
+                        parser.parse_expression(
+                            left.span().cloned().unwrap_or_else(|| span.clone()),
+                            left,
+                        )
+                    });
+
+                let right = vars
+                    .remove("right")
+                    .map(|mut value| value.pop().unwrap())
+                    .map(|right| {
+                        parser.parse_expression(
+                            right.span().cloned().unwrap_or_else(|| span.clone()),
+                            right,
+                        )
+                    });
+
+                WithInfo {
+                    info: Info {
+                        path: parser.driver.file_path(),
+                        span: span.clone(),
+                        documentation: Vec::new(),
+                    }
+                    .into(),
+                    item: syntax::Expression::Compose {
+                        outer: right.map(|right| right.boxed()),
+                        inner: left.map(|left| left.boxed()),
+                    },
+                }
+            })
+        };
+
         let or = binary_expression_operator!("or", Or);
         let and = binary_expression_operator!("and", And);
-        let compose = binary_expression_operator!("|", Compose);
         let less_than = binary_expression_operator!("<", LessThan);
         let less_than_or_equal = binary_expression_operator!("<=", LessThanOrEqual);
         let greater_than = binary_expression_operator!(">", GreaterThan);

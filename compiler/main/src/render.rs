@@ -505,7 +505,18 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     secondary_labels: Vec::new(),
                     help: String::from("Try moving this line outside of any code."),
                     fix: None,
-                }
+                },
+                wipple_lower::Error::InvalidComposition => Error {
+                    group,
+                    primary_label: Label {
+                        file: info.parser_info.path.clone(),
+                        span: info.parser_info.span.clone(),
+                        message: String::from("missing an input to the `|` operator"),
+                    },
+                    secondary_labels: Vec::new(),
+                    help: String::from("The function composition operator `|` requires inputs on both sides."),
+                    fix: None,
+                },
             }
         }
         crate::Error::Typecheck(error) => {
@@ -714,6 +725,17 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                             fix: None,
                         }
                     }
+                },
+                wipple_typecheck::Error::NotAStructure(r#type) => Error {
+                    group,
+                    primary_label: Label {
+                        file: info.parser_info.path.clone(),
+                        span: info.parser_info.span,
+                        message: format!("structure expression used here, but this code has type `{}`, which is not a structure type", render_type(&r#type.item, true)),
+                    },
+                    secondary_labels: Vec::new(),
+                    help: format!("Try adjusting the code so it produces a value of type `{}`.", render_type(&r#type.item, true)),
+                    fix: None,
                 },
                 wipple_typecheck::Error::MissingFields(mut fields) => Error {
                     group,

@@ -35,7 +35,7 @@ binding : Binding
 [Project a mutable value to refer to a component of the value.]
 project :: A B => (A -> B) -> (B -> A -> A) -> Mutable A -> Mutable B
 project : inner outer mutable ->
-    Binding (inner (get mutable)) (new -> mutable . set! (get mutable . outer value))
+    Binding (inner (get mutable)) (value -> mutable . set! (get mutable . outer value))
 
 [Perform an action when a mutable value changes.]
 inspect :: Value => (Value -> ()) -> Mutable Value -> Mutable Value
