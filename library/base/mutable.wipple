@@ -1,3 +1,6 @@
+Reference : Value => type
+language "reference" : Reference
+
 [Create a shared reference to a value.]
 reference :: Value => Value -> Reference Value
 reference : value -> semantics "pure" (intrinsic "make-reference" value)
