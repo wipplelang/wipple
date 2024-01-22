@@ -1189,27 +1189,6 @@ fn try_unify_without_coercion<D: Driver>(
     }
 }
 
-/// Copy over any new information from `change` while preserving the type's
-/// current context.
-fn apply_from_context_change<D: Driver>(
-    driver: &D,
-    r#type: WithInfo<D::Info, &mut Type<D>>,
-    change: &TypeContextChange<D>,
-    current_context: &TypeContext<D>,
-) {
-    let new_type = infer_type(
-        finalize_type(
-            r#type.item.clone_in_context(change),
-            &FinalizeContext { errors: None },
-        )
-        .as_ref(),
-        None,
-        Some(current_context),
-    );
-
-    assert!(unify(driver, r#type.item, &new_type).is_some())
-}
-
 // region: Merging and reification
 
 pub struct TypeContextChange<D: Driver> {
@@ -2503,7 +2482,7 @@ fn resolve_expression<D: Driver>(
                     expression
                         .item
                         .r#type
-                        .set_context(&resolved_trait.item.type_context_change);
+                        .set_context(&resolved_trait.type_context_change);
 
                     ExpressionKind::ResolvedTrait(query.item.r#trait)
                 }
@@ -3004,7 +2983,7 @@ fn resolve_item<D: Driver>(
                     };
 
                     match resolve_trait(query.as_ref(), context) {
-                        Ok(resolved_trait) => Ok(Some(resolved_trait.item.type_context_change)),
+                        Ok(resolved_trait) => Ok(Some(resolved_trait.type_context_change)),
                         Err(WithInfo {
                             item: QueuedError::UnresolvedInstance { .. },
                             ..
@@ -3038,12 +3017,7 @@ fn resolve_item<D: Driver>(
 
     if let Some(changes) = evaluate_bounds(&instantiated_bounds, true)? {
         for change in changes {
-            apply_from_context_change(
-                context.driver,
-                use_expression.replace(&mut instantiated_declared_type),
-                &change,
-                context.type_context,
-            );
+            instantiated_declared_type.set_context(&change);
         }
     }
 
@@ -3062,12 +3036,7 @@ fn resolve_item<D: Driver>(
 
     if let Some(changes) = evaluate_bounds(&instantiated_bounds, false)? {
         for change in changes {
-            apply_from_context_change(
-                context.driver,
-                use_expression.replace(&mut instantiated_declared_type),
-                &change,
-                context.type_context,
-            );
+            instantiated_declared_type.set_context(&change);
         }
     }
 
@@ -3117,17 +3086,18 @@ fn resolve_trait_parameters_from_type<D: Driver>(
     instantiation_context.into_types_for_parameters()
 }
 
-struct ResolvedTrait<D: Driver> {
+struct ResolvedInstance<D: Driver> {
+    instance: WithInfo<D::Info, Instance<D>>,
     type_context_change: TypeContextChange<D>,
 }
 
 fn resolve_trait<D: Driver>(
     query: WithInfo<D::Info, &Instance<D>>,
     context: &ResolveContext<'_, D>,
-) -> Result<WithInfo<D::Info, ResolvedTrait<D>>, WithInfo<D::Info, QueuedError<D>>> {
+) -> Result<ResolvedInstance<D>, WithInfo<D::Info, QueuedError<D>>> {
     type Candidate<D> = (
         TypeContext<D>,
-        WithInfo<<D as Driver>::Info, ResolvedTrait<D>>,
+        ResolvedInstance<D>,
         Vec<WithInfo<<D as Driver>::Info, Instance<D>>>,
     );
 
@@ -3143,7 +3113,7 @@ fn resolve_trait<D: Driver>(
                 instance: query.clone_in_current_context(),
                 candidates: candidates
                     .into_iter()
-                    .map(|(_, candidate, _)| candidate.info)
+                    .map(|(_, candidate, _)| candidate.instance.info)
                     .collect(),
                 stack: stack
                     .iter()
@@ -3158,7 +3128,7 @@ fn resolve_trait<D: Driver>(
         context: &ResolveContext<'_, D>,
         type_context: &TypeContext<D>,
         stack: &[WithInfo<D::Info, &Instance<D>>],
-    ) -> Result<WithInfo<D::Info, ResolvedTrait<D>>, WithInfo<D::Info, QueuedError<D>>> {
+    ) -> Result<ResolvedInstance<D>, WithInfo<D::Info, QueuedError<D>>> {
         let r#trait = query.item.r#trait.clone();
 
         let recursion_limit = context.driver.recursion_limit();
@@ -3192,11 +3162,9 @@ fn resolve_trait<D: Driver>(
                 ) {
                     candidates.push((
                         new_type_context,
-                        WithInfo {
-                            info: bound.info,
-                            item: ResolvedTrait {
-                                type_context_change,
-                            },
+                        ResolvedInstance {
+                            instance: bound,
+                            type_context_change,
                         },
                         Vec::new(),
                     ));
@@ -3261,11 +3229,9 @@ fn resolve_trait<D: Driver>(
             if unify_instance(context.driver, query.as_mut(), instance.as_ref()) {
                 candidates.push((
                     new_type_context,
-                    WithInfo {
-                        info: instance.info,
-                        item: ResolvedTrait {
-                            type_context_change,
-                        },
+                    ResolvedInstance {
+                        instance,
+                        type_context_change,
                     },
                     bounds,
                 ));
@@ -3526,4 +3492,63 @@ fn finalize_instance<D: Driver>(
             .map(|r#type| finalize_type(r#type, context))
             .collect(),
     }
+}
+
+#[allow(dead_code)]
+fn debug_instance<D: Driver>(instance: &Instance<D>) -> String {
+    format!(
+        "({:?}{})",
+        debug_path(&instance.r#trait),
+        instance
+            .parameters
+            .iter()
+            .fold(String::new(), |mut result, parameter| {
+                use std::fmt::Write;
+                write!(&mut result, " {}", debug_type(parameter)).unwrap();
+                result
+            })
+    )
+}
+
+#[allow(dead_code)]
+fn debug_type<D: Driver>(r#type: &Type<D>) -> String {
+    let r#type = r#type.apply_in_current_context();
+
+    match r#type.kind {
+        TypeKind::Variable(variable) => format!("{{{:?}}}", variable),
+        TypeKind::Opaque(_) => String::from("{opaque}"),
+        TypeKind::Parameter(path) => format!("({})", debug_path(&path)),
+        TypeKind::Declared { path, parameters } => format!(
+            "({:?}{})",
+            debug_path(&path),
+            parameters
+                .into_iter()
+                .fold(String::new(), |mut result, parameter| {
+                    use std::fmt::Write;
+                    write!(&mut result, " {}", debug_type(&parameter)).unwrap();
+                    result
+                })
+        ),
+        TypeKind::Function { input, output } => {
+            format!("({} -> {})", debug_type(&input), debug_type(&output),)
+        }
+        TypeKind::Tuple(elements) => format!(
+            "({})",
+            elements.iter().fold(String::new(), |mut result, element| {
+                use std::fmt::Write;
+                write!(&mut result, " {} ,", debug_type(element)).unwrap();
+                result
+            })
+        ),
+        TypeKind::Lazy(r#type) => format!("(lazy {})", debug_type(&r#type)),
+        TypeKind::Unknown => String::from("_"),
+    }
+}
+
+#[allow(dead_code)]
+fn debug_path(path: &(impl Debug + serde::Serialize)) -> String {
+    serde_json::to_value(path)
+        .ok()
+        .and_then(|value| value.as_str().map(ToString::to_string))
+        .unwrap_or_else(|| format!("{path:?}"))
 }

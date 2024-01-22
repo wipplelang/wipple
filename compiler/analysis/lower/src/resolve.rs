@@ -397,7 +397,6 @@ fn resolve_statements<D: Driver>(
                 info.path.push(crate::PathComponent::Constant(name.item));
 
                 info.scopes.push_constant_scope();
-                let prev_next_variable = info.reset_next_variable();
 
                 let parameters = parameters
                     .into_iter()
@@ -411,10 +410,9 @@ fn resolve_statements<D: Driver>(
 
                 let r#type = resolve_type(r#type, info);
 
-                queued_constants.push((info.path.clone(), body));
+                let scope = info.scopes.pop_scope();
 
-                info.next_variable = prev_next_variable;
-                info.scopes.pop_scope();
+                queued_constants.push((info.path.clone(), scope, body));
 
                 let declaration = info.constant_declarations.get_mut(&info.path).unwrap();
 
@@ -528,10 +526,17 @@ fn resolve_statements<D: Driver>(
         })
         .collect();
 
-    for (path, body) in queued_constants {
+    for (path, scope, body) in queued_constants {
+        let prev_next_variable = info.reset_next_variable();
         let prev_path = mem::replace(&mut info.path, path);
+        info.scopes.0.push(scope);
+
         let body = resolve_expression(body, info);
+
+        info.scopes.pop_scope();
         let path = mem::replace(&mut info.path, prev_path);
+        info.next_variable = prev_next_variable;
+
         info.library.items.insert(path, body);
     }
 
@@ -851,8 +856,7 @@ fn resolve_expression<D: Driver>(
                 let mut candidates = candidates.to_vec();
                 candidates.sort_by_key(|path| match path.item.last().unwrap() {
                     crate::PathComponent::Variable(_) => 0,
-                    crate::PathComponent::Trait(_) => 1,
-                    crate::PathComponent::Constant(_) | crate::PathComponent::Constructor(_) => 2,
+                    crate::PathComponent::Constant(_) | crate::PathComponent::Constructor(_) => 1,
                     _ => 3,
                 });
 
