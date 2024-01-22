@@ -6,42 +6,42 @@ undefined : semantics "pure" (intrinsic "undefined-number")
 [on-unimplemented : "cannot add _ to _" Right Left]
 [show-code : True]
 Add : (Left : Number) (Right : Number) (infer Sum) => trait (Right -> Left -> Sum)
-language "add" : Add
+language trait "add" : Add
 instance (Add Number Number Number) : b a -> semantics "pure" (intrinsic "add-number" a b)
 
 [Subtract one value from another, returning the difference.]
 [on-unimplemented : "cannot subtract _ from _" Right Left]
 [show-code : True]
 Subtract : (Left : Number) (Right : Number) (infer Difference) => trait (Right -> Left -> Difference)
-language "subtract" : Subtract
+language trait "subtract" : Subtract
 instance (Subtract Number Number Number) : b a -> semantics "pure" (intrinsic "subtract-number" a b)
 
 [Multiply two numbers, returning the product.]
 [on-unimplemented : "cannot multiply _ by _" Left Right]
 [show-code : True]
 Multiply : (Left : Number) (Right : Number) (infer Product) => trait (Right -> Left -> Product)
-language "multiply" : Multiply
+language trait "multiply" : Multiply
 instance (Multiply Number Number Number) : b a -> semantics "pure" (intrinsic "multiply-number" a b)
 
 [Divide two numbers, returning the quotient.]
 [on-unimplemented : "cannot divide _ by _" Left Right]
 [show-code : True]
 Divide : (Left : Number) (Right : Number) (infer Quotient) => trait (Right -> Left -> Quotient)
-language "divide" : Divide
+language trait "divide" : Divide
 instance (Divide Number Number Number) : b a -> semantics "pure" (intrinsic "divide-number" a b)
 
 [Divide two numbers, returning the remainder.]
 [on-unimplemented : "cannot divide _ by _" Left Right]
 [show-code : True]
 Remainder : (Left : Number) (Right : Number) (infer Remainder) => trait (Right -> Left -> Remainder)
-language "remainder" : Remainder
+language trait "remainder" : Remainder
 instance (Remainder Number Number Number) : b a -> semantics "pure" (intrinsic "remainder-number" a b)
 
 [Raise the left side to the power of the right side.]
 [on-unimplemented : "cannot raise _ to the power of _" Left Right]
 [show-code : True]
 Power : (Left : Number) (Right : Number) (infer Power) => trait (Right -> Left -> Power)
-language "power" : Power
+language trait "power" : Power
 instance (Power Number Number Number) : b a -> semantics "pure" (intrinsic "power-number" a b)
 
 [Round down a number to the nearest integer.]

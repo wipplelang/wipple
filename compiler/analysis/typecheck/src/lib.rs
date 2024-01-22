@@ -28,6 +28,12 @@ pub trait Driver: Sized {
     /// Retrieve the path of a trait annotated with `[language]`.
     fn path_for_language_trait(&self, language_item: &'static str) -> Option<Self::Path>;
 
+    /// Retrieve the path of a constructor annotated with `[language]`.
+    fn path_for_language_constructor(&self, language_item: &'static str) -> Option<Self::Path>;
+
+    /// Retrieve the path of a constant annotated with `[language]`.
+    fn path_for_language_constant(&self, language_item: &'static str) -> Option<Self::Path>;
+
     /// Check if two paths are equal.
     fn paths_are_equal(&self, left: &Self::Path, right: &Self::Path) -> bool;
 

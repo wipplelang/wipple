@@ -1,5 +1,5 @@
 UI : type
-language "ui" : UI
+language type "ui" : UI
 
 [Use a UI element from a JavaScript file.]
 with-ui :: Result => Text -> (UI -> Result) -> Result

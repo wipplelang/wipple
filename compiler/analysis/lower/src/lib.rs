@@ -216,6 +216,9 @@ pub enum UnresolvedStatement<D: Driver> {
         /// The name of the language feature.
         name: WithInfo<D::Info, String>,
 
+        /// The kind of value this language feature refers to.
+        kind: WithInfo<D::Info, LanguageDeclarationKind>,
+
         /// The item this language declaration corresponds to.
         item: WithInfo<D::Info, String>,
     },
@@ -232,6 +235,20 @@ pub enum UnresolvedStatement<D: Driver> {
 
     /// An expression.
     Expression(WithInfo<D::Info, UnresolvedExpression<D>>),
+}
+
+/// The kind of value a language declaration refers to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum LanguageDeclarationKind {
+    /// A type.
+    Type,
+
+    /// A trait.
+    Trait,
+
+    /// A constant.
+    Constant,
 }
 
 /// An unresolved expression.

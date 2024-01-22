@@ -481,26 +481,25 @@ fn resolve_statements<D: Driver>(
 
                 None
             }
-            crate::UnresolvedStatement::Language { name, item } => {
+            crate::UnresolvedStatement::Language { name, kind, item } => {
                 let path = resolve_name(item, info, |candidates| {
-                    let mut candidates = candidates
+                    candidates
                         .iter()
-                        .filter(|path| !path.item.last().unwrap().is_local())
+                        .filter(|path| match path.item.last().unwrap() {
+                            crate::PathComponent::Type(_) => {
+                                matches!(kind.item, crate::LanguageDeclarationKind::Type)
+                            }
+                            crate::PathComponent::Trait(_) => {
+                                matches!(kind.item, crate::LanguageDeclarationKind::Trait)
+                            }
+                            crate::PathComponent::Constant(_)
+                            | crate::PathComponent::Constructor(_) => {
+                                matches!(kind.item, crate::LanguageDeclarationKind::Constant)
+                            }
+                            _ => false,
+                        })
                         .cloned()
-                        .collect::<Vec<_>>();
-
-                    candidates.sort_by_key(|path| match path.item.last().unwrap() {
-                        crate::PathComponent::Type(_) | crate::PathComponent::Trait(_) => 0,
-                        crate::PathComponent::Constant(_)
-                        | crate::PathComponent::Constructor(_)
-                        | crate::PathComponent::Variant(_) => 1,
-                        crate::PathComponent::Instance(_)
-                        | crate::PathComponent::Language(_)
-                        | crate::PathComponent::TypeParameter(_)
-                        | crate::PathComponent::Variable(_) => 2,
-                    });
-
-                    vec![candidates.into_iter().next().unwrap()]
+                        .collect()
                 })?;
 
                 let declaration = info.language_declarations.get_mut(&name.item).unwrap();
@@ -1541,8 +1540,13 @@ fn resolve_binary_operator<D: Driver>(
     let operator_trait = operator.replace(
         match resolve_language_item(operator.as_ref().map(ToString::to_string), info) {
             Some(mut path) => {
-                let name = path.last().unwrap().name().unwrap().to_string();
+                let name = match path.last().unwrap() {
+                    crate::PathComponent::Trait(name) => name.clone(),
+                    _ => panic!("expected a trait for language item {}", operator.item),
+                };
+
                 path.push(crate::PathComponent::Constructor(name));
+
                 crate::Expression::Constant(path)
             }
             None => crate::Expression::Error,

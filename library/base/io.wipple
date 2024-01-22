@@ -3,7 +3,7 @@
 [on-unimplemented : "cannot display _ on the screen" A]
 Show : (A : Text) => trait (A -> Text)
 
-language "show" : Show
+language constant "show" : Show
 
 [Display a value on the screen.]
 [playground : "https://wipple.dev/library/base/examples/show.txt"]

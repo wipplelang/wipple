@@ -1925,16 +1925,8 @@ fn infer_expression<D: Driver>(
             }
         }
         crate::UntypedExpression::Collection(elements) => {
-            let list_type = instantiated_language_type(
-                "list",
-                &info,
-                context.driver,
-                context.type_context,
-                context.errors,
-            );
-
             let element_type = Type::new(
-                TypeKind::Variable(context.type_context.variable_with_default(list_type)),
+                TypeKind::Variable(context.type_context.variable()),
                 info.clone(),
                 vec![WithInfo {
                     info: info.clone(),
@@ -1942,11 +1934,12 @@ fn infer_expression<D: Driver>(
                 }],
             );
 
-            let default_trait = instantiated_language_trait("default", &info, context);
+            let initial_collection =
+                instantiated_language_constant("initial-collection", &info, context);
 
             elements
                 .into_iter()
-                .fold(default_trait, |current, expression| {
+                .fold(initial_collection, |current, expression| {
                     let mut expression = infer_expression(expression, context);
 
                     try_unify_expression(
@@ -2389,11 +2382,41 @@ fn instantiated_language_trait<D: Driver>(
     info: &D::Info,
     context: InferContext<'_, D>,
 ) -> WithInfo<D::Info, Expression<D>> {
-    match context.driver.path_for_language_trait(language_item) {
+    match context.driver.path_for_language_constructor(language_item) {
         Some(path) => infer_expression(
             WithInfo {
                 info: info.clone(),
-                item: crate::UntypedExpression::Trait(path),
+                item: crate::UntypedExpression::Constant(path),
+            },
+            context,
+        ),
+        None => {
+            context.errors.borrow_mut().push(WithInfo {
+                info: info.clone(),
+                item: crate::Error::MissingLanguageItem(language_item.to_string()),
+            });
+
+            WithInfo {
+                info: info.clone(),
+                item: Expression {
+                    r#type: Type::new(TypeKind::Unknown, info.clone(), Vec::new()),
+                    kind: ExpressionKind::Unknown(None),
+                },
+            }
+        }
+    }
+}
+
+fn instantiated_language_constant<D: Driver>(
+    language_item: &'static str,
+    info: &D::Info,
+    context: InferContext<'_, D>,
+) -> WithInfo<D::Info, Expression<D>> {
+    match context.driver.path_for_language_constant(language_item) {
+        Some(path) => infer_expression(
+            WithInfo {
+                info: info.clone(),
+                item: crate::UntypedExpression::Constant(path),
             },
             context,
         ),
@@ -3017,6 +3040,7 @@ fn resolve_item<D: Driver>(
 
     if let Some(changes) = evaluate_bounds(&instantiated_bounds, true)? {
         for change in changes {
+            use_expression.item.r#type.set_context(&change);
             instantiated_declared_type.set_context(&change);
         }
     }
@@ -3036,6 +3060,7 @@ fn resolve_item<D: Driver>(
 
     if let Some(changes) = evaluate_bounds(&instantiated_bounds, false)? {
         for change in changes {
+            use_expression.item.r#type.set_context(&change);
             instantiated_declared_type.set_context(&change);
         }
     }

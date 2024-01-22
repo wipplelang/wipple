@@ -1,17 +1,17 @@
 Number : type
-language "number" : Number
+language type "number" : Number
 
 Text : type
-language "text" : Text
+language type "text" : Text
 
 Maybe : Value => type (
     None
     Some Value
 )
 
-language "maybe" : Maybe
-language "none" : None
-language "some" : Some
+language type "maybe" : Maybe
+language constant "none" : None
+language constant "some" : Some
 
 Value where (Equal Value) => instance (Equal (Maybe Value)) : b a -> when (a ; b) (
     Some a ; Some b -> a = b
@@ -59,7 +59,7 @@ unwrap : value -> expect (Unwrap-Message value) value
 
 [on-unimplemented : "cannot convert _ into _" Input Output]
 As : Input Output => trait (Input -> Output)
-language "as" : As
+language trait "as" : As
 
 Value => instance (As Value Value) : it
 
@@ -80,7 +80,6 @@ error : message -> intrinsic "crash" message
 [Represents the default or initial value of a type.]
 [on-unimplemented : "_ has no default value" Value]
 Default : Value => trait Value
-language "default" : Default
 instance (Default Number) : 0
 instance (Default Text) : ""
 instance (Default Boolean) : False

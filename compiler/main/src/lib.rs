@@ -623,6 +623,24 @@ impl wipple_typecheck::Driver for Driver {
         )
     }
 
+    fn path_for_language_constructor(&self, language_item: &'static str) -> Option<Self::Path> {
+        Some(
+            self.interface
+                .language_declarations
+                .get(language_item)?
+                .clone(),
+        )
+    }
+
+    fn path_for_language_constant(&self, language_item: &'static str) -> Option<Self::Path> {
+        Some(
+            self.interface
+                .language_declarations
+                .get(language_item)?
+                .clone(),
+        )
+    }
+
     fn paths_are_equal(&self, left: &Self::Path, right: &Self::Path) -> bool {
         left == right
     }
@@ -667,7 +685,7 @@ impl wipple_typecheck::Driver for Driver {
         self.interface
             .constant_declarations
             .get(path)
-            .expect("missing constant declaration")
+            .unwrap_or_else(|| panic!("missing constant declaration {path:#?}"))
             .clone()
     }
 

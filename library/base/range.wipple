@@ -5,7 +5,7 @@ Range : (N : Number) => type (
 )
 
 To : N => trait (N -> N -> Range N)
-language "to" : To
+language trait "to" : To
 (N : Number) => instance (To N) : max min -> (
     min : min
     max : max
@@ -19,7 +19,7 @@ Stride : (N : Number) => type (
 )
 
 By : (N : Number) => trait (Range N -> N -> Stride N)
-language "by" : By
+language trait "by" : By
 (N : Number) => instance (By N) : (
     min : min
     max : max

@@ -197,6 +197,9 @@ pub mod syntax {
             /// The name of the language feature.
             name: WithInfo<D::Info, String>,
 
+            /// The kind of value this language feature refers to.
+            kind: WithInfo<D::Info, LanguageDeclarationKind>,
+
             /// The item this language declaration corresponds to.
             item: WithInfo<D::Info, String>,
         },
@@ -213,6 +216,20 @@ pub mod syntax {
 
         /// An expression.
         Expression(WithInfo<D::Info, Expression<D>>),
+    }
+
+    /// The kind of value a [`LanguageDeclaration`] refers to.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+    #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+    pub enum LanguageDeclarationKind {
+        /// A type.
+        Type,
+
+        /// A trait.
+        Trait,
+
+        /// A constant.
+        Constant,
     }
 
     /// A concrete type function.
@@ -722,6 +739,9 @@ pub enum Statement<D: Driver> {
         /// The name of the language feature.
         name: WithInfo<D::Info, String>,
 
+        /// The kind of value this language feature refers to.
+        kind: WithInfo<D::Info, LanguageDeclarationKind>,
+
         /// The item this language declaration corresponds to.
         item: WithInfo<D::Info, String>,
     },
@@ -738,6 +758,20 @@ pub enum Statement<D: Driver> {
 
     /// An expression.
     Expression(WithInfo<D::Info, Expression<D>>),
+}
+
+/// The kind of value a [`LanguageDeclaration`] refers to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+pub enum LanguageDeclarationKind {
+    /// A type.
+    Type,
+
+    /// A trait.
+    Trait,
+
+    /// A constant.
+    Constant,
 }
 
 /// A parsed expression.

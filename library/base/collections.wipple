@@ -1,7 +1,12 @@
 [on-unimplemented : "cannot create a _ from _ values" Collection Element]
-Build-Collection : Collection Element => trait (Element -> Mutable Collection -> ())
+Build-Collection : Collection (infer Element) => trait (Element -> Mutable Collection -> ())
 
-language "build-collection" : Build-Collection
+language constant "build-collection" : Build-Collection
+
+initial-collection :: Collection (infer Element) where (Default Collection) (Build-Collection Collection Element) => Collection
+initial-collection : Default
+
+language constant "initial-collection" : initial-collection
 
 Element => instance (Build-Collection (List Element) Element) : append!
 Key Value where (Equal Key) (Hash Key) => instance (Build-Collection (Dictionary Key Value) (Key ; Value)) : insert-entry!

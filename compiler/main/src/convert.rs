@@ -233,8 +233,20 @@ pub mod lower {
                 instance: convert_instance(instance),
                 body: convert_expression(body),
             },
-            wipple_syntax::Statement::Language { name, item } => {
-                wipple_lower::UnresolvedStatement::Language { name, item }
+            wipple_syntax::Statement::Language { name, kind, item } => {
+                let kind = kind.map(|kind| match kind {
+                    wipple_syntax::LanguageDeclarationKind::Type => {
+                        wipple_lower::LanguageDeclarationKind::Type
+                    }
+                    wipple_syntax::LanguageDeclarationKind::Trait => {
+                        wipple_lower::LanguageDeclarationKind::Trait
+                    }
+                    wipple_syntax::LanguageDeclarationKind::Constant => {
+                        wipple_lower::LanguageDeclarationKind::Constant
+                    }
+                });
+
+                wipple_lower::UnresolvedStatement::Language { name, kind, item }
             }
             wipple_syntax::Statement::Assignment { pattern, value } => {
                 wipple_lower::UnresolvedStatement::Assignment {

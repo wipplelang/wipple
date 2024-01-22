@@ -1,5 +1,5 @@
 Task-Group : type
-language "task-group" : Task-Group
+language type "task-group" : Task-Group
 
 [Wait for a function to be called before returning.]
 with-continuation :: A => ((A -> ()) -> ()) -> A

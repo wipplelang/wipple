@@ -1,5 +1,4 @@
 List : Element => type
-language "list" : List
 
 Element => instance (Default (List Element)) : semantics "pure" (intrinsic "make-empty-list")
 

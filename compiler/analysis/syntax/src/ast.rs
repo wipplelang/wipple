@@ -437,10 +437,22 @@ fn statements<D: Driver>(
 
                                     None
                                 }
-                                syntax::Statement::LanguageDeclaration { item, name } => {
+                                syntax::Statement::LanguageDeclaration { item, kind, name } => {
                                     expected_constant_value!(Some(statement_info.clone()));
 
-                                    Some(crate::Statement::Language { item, name })
+                                    let kind = kind.map(|kind| match kind {
+                                        syntax::LanguageDeclarationKind::Type => {
+                                            crate::LanguageDeclarationKind::Type
+                                        }
+                                        syntax::LanguageDeclarationKind::Trait => {
+                                            crate::LanguageDeclarationKind::Trait
+                                        }
+                                        syntax::LanguageDeclarationKind::Constant => {
+                                            crate::LanguageDeclarationKind::Constant
+                                        }
+                                    });
+
+                                    Some(crate::Statement::Language { item, kind, name })
                                 }
                                 syntax::Statement::Assignment {
                                     pattern: pattern_syntax,

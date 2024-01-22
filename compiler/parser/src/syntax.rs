@@ -265,6 +265,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     ":"
                     (list
                         (symbol . "language")
+                        (variable . "kind")
                         (variable . "name"))
                     (variable . "item"))
             "#;
@@ -354,6 +355,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
         let language_declaration = |parser: &mut Self| {
             LANGUAGE_DECLARATION.parse(&node).map(|mut vars| {
                 let name = vars.remove("name").unwrap().pop().unwrap();
+                let kind = vars.remove("kind").unwrap().pop().unwrap();
                 let item = vars.remove("item").unwrap().pop().unwrap();
 
                 let name = match name {
@@ -380,6 +382,48 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         parser.errors.push(Error {
                             span: name.span().cloned().unwrap_or_else(|| span.clone()),
                             expected: SyntaxKind::Text,
+                        });
+
+                        return syntax::Statement::Error;
+                    }
+                };
+
+                let kind = match kind {
+                    Node::Token(token) => match token.kind {
+                        TokenKind::Symbol(name) => WithInfo {
+                            info: Info {
+                                path: parser.driver.file_path(),
+                                span: token.span.clone(),
+                                documentation: Vec::new(),
+                            }
+                            .into(),
+                            item: match name.as_ref() {
+                                "type" => syntax::LanguageDeclarationKind::Type,
+                                "trait" => syntax::LanguageDeclarationKind::Trait,
+                                "constant" => syntax::LanguageDeclarationKind::Constant,
+                                _ => {
+                                    parser.errors.push(Error {
+                                        span: token.span,
+                                        expected: SyntaxKind::Name,
+                                    });
+
+                                    return syntax::Statement::Error;
+                                }
+                            },
+                        },
+                        _ => {
+                            parser.errors.push(Error {
+                                span: token.span,
+                                expected: SyntaxKind::Name,
+                            });
+
+                            return syntax::Statement::Error;
+                        }
+                    },
+                    _ => {
+                        parser.errors.push(Error {
+                            span: item.span().cloned().unwrap_or_else(|| span.clone()),
+                            expected: SyntaxKind::Name,
                         });
 
                         return syntax::Statement::Error;
@@ -416,7 +460,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     }
                 };
 
-                syntax::Statement::LanguageDeclaration { name, item }
+                syntax::Statement::LanguageDeclaration { name, kind, item }
             })
         };
 
