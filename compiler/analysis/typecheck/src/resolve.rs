@@ -135,6 +135,7 @@ pub fn resolve<D: Driver>(
         body,
     };
 
+    let mut prev_unresolved_variables = HashSet::new();
     let item = loop {
         if recursion_stack.borrow().len() as u32 > recursion_limit {
             errors.borrow_mut().push(WithInfo {
@@ -142,21 +143,20 @@ pub fn resolve<D: Driver>(
                 item: crate::Error::RecursionLimit,
             });
 
-            let finalize_context = FinalizeContext { errors: None };
+            let finalize_context = FinalizeContext {
+                errors: None,
+                unresolved_variables: None,
+            };
 
-            break finalize_expression(queued.body, &finalize_context);
+            break finalize_expression(queued.body.as_ref(), &finalize_context);
         }
 
-        let fully_resolved = Cell::new(true);
-        let progress = Cell::new(false);
         let resolve_context = ResolveContext {
             driver,
             type_context: &queued.type_context,
             error_queue: &error_queue,
             errors: &errors,
             variables: &variables,
-            fully_resolved: &fully_resolved,
-            progress: &progress,
             recursion_stack: &recursion_stack,
             bound_instances: RefCell::from(
                 queued
@@ -176,7 +176,20 @@ pub fn resolve<D: Driver>(
         try_unify_expression(driver, queued.body.as_mut(), &declared_type, &error_queue);
         queued.body = resolve_expression(queued.body, &resolve_context);
 
-        if fully_resolved.get() || !progress.get() {
+        let resolved_variables = {
+            let unresolved_variables: RefCell<HashSet<_>> = Default::default();
+
+            let finalize_context = FinalizeContext {
+                errors: Some(&errors),
+                unresolved_variables: Some(&unresolved_variables),
+            };
+
+            finalize_expression(queued.body.as_ref(), &finalize_context);
+
+            unresolved_variables.into_inner()
+        };
+
+        if resolved_variables.is_superset(&prev_unresolved_variables) {
             if item_declaration.item.top_level {
                 // The top level has type `()` by default, but any other type is also OK
                 let _ = unify(
@@ -192,10 +205,12 @@ pub fn resolve<D: Driver>(
 
             let finalize_context = FinalizeContext {
                 errors: Some(&errors),
+                unresolved_variables: None,
             };
 
-            break finalize_expression(queued.body, &finalize_context);
+            break finalize_expression(queued.body.as_ref(), &finalize_context);
         } else {
+            prev_unresolved_variables = resolved_variables;
             recursion_stack.borrow_mut().push(queued.use_info.clone());
         }
     };
@@ -355,7 +370,10 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
 
     assert!(errors.into_inner().is_empty());
 
-    let finalize_context = FinalizeContext { errors: None };
+    let finalize_context = FinalizeContext {
+        errors: None,
+        unresolved_variables: None,
+    };
 
     finalize_type(r#type, &finalize_context)
 }
@@ -389,7 +407,10 @@ fn report_queued_errors<D: Driver>(
     error_queue: Vec<WithInfo<D::Info, QueuedError<D>>>,
     errors: &mut Vec<WithInfo<D::Info, crate::Error<D>>>,
 ) {
-    let finalize_context = FinalizeContext { errors: None };
+    let finalize_context = FinalizeContext {
+        errors: None,
+        unresolved_variables: None,
+    };
 
     errors.extend(error_queue.into_iter().map(|error| {
         error.map(|error| match error {
@@ -602,6 +623,21 @@ impl<D: Driver> TypeVariable<D> {
             context: self.context.shallow_clone(),
             counter: self.counter,
         }
+    }
+}
+
+impl<D: Driver> PartialEq for TypeVariable<D> {
+    fn eq(&self, other: &Self) -> bool {
+        TypeContext::ptr_eq(&self.context, &other.context) && self.counter == other.counter
+    }
+}
+
+impl<D: Driver> Eq for TypeVariable<D> {}
+
+impl<D: Driver> std::hash::Hash for TypeVariable<D> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        Rc::as_ptr(&self.context.0).hash(state);
+        self.counter.hash(state);
     }
 }
 
@@ -1957,6 +1993,8 @@ fn infer_expression<D: Driver>(
             let initial_collection =
                 instantiated_language_constant("initial-collection", &info, context);
 
+            let collection_type = initial_collection.item.r#type.clone_in_current_context();
+
             elements
                 .into_iter()
                 .fold(initial_collection, |current, expression| {
@@ -1977,17 +2015,20 @@ fn infer_expression<D: Driver>(
                     WithInfo {
                         info: expression.info.clone(),
                         item: Expression {
-                            r#type: Type::new(
-                                TypeKind::Variable(context.type_context.variable()),
-                                expression.info.clone(),
-                                Vec::new(),
-                            ),
+                            r#type: collection_type.clone_in_current_context(),
                             kind: ExpressionKind::Call {
                                 function: WithInfo {
                                     info: current.info.clone(),
                                     item: Box::new(Expression {
                                         r#type: Type::new(
-                                            TypeKind::Variable(context.type_context.variable()),
+                                            TypeKind::Function {
+                                                input: Box::new(
+                                                    collection_type.clone_in_current_context(),
+                                                ),
+                                                output: Box::new(
+                                                    collection_type.clone_in_current_context(),
+                                                ),
+                                            },
                                             current.info.clone(),
                                             Vec::new(),
                                         ),
@@ -2465,20 +2506,8 @@ struct ResolveContext<'a, D: Driver> {
     error_queue: &'a RefCell<Vec<WithInfo<D::Info, QueuedError<D>>>>,
     errors: &'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>,
     variables: &'a RefCell<HashMap<D::Path, Type<D>>>,
-    fully_resolved: &'a Cell<bool>,
-    progress: &'a Cell<bool>,
     recursion_stack: &'a RefCell<Vec<D::Info>>,
     bound_instances: RefCell<Vec<Vec<WithInfo<D::Info, Instance<D>>>>>,
-}
-
-impl<D: Driver> ResolveContext<'_, D> {
-    fn make_progress(&self) {
-        self.progress.set(true);
-    }
-
-    fn flag_not_fully_resolved(&self) {
-        self.fully_resolved.set(false);
-    }
 }
 
 fn resolve_expression<D: Driver>(
@@ -2493,14 +2522,8 @@ fn resolve_expression<D: Driver>(
             let path = path.clone();
 
             match resolve_item(&path, expression.as_mut(), context) {
-                Ok(true) => {
-                    context.make_progress();
-                    ExpressionKind::ResolvedConstant(path)
-                }
-                Ok(false) => {
-                    context.flag_not_fully_resolved();
-                    ExpressionKind::UnresolvedConstant(path) // try again with more type information
-                }
+                Ok(true) => ExpressionKind::ResolvedConstant(path),
+                Ok(false) => ExpressionKind::UnresolvedConstant(path), // try again with more type information
                 Err(error) => {
                     context.error_queue.borrow_mut().push(error);
                     ExpressionKind::Unknown(Some(path))
@@ -2520,8 +2543,6 @@ fn resolve_expression<D: Driver>(
 
             match resolve_trait(query.as_ref(), context) {
                 Ok(resolved_trait) => {
-                    context.make_progress();
-
                     expression
                         .item
                         .r#type
@@ -2711,12 +2732,13 @@ fn resolve_expression<D: Driver>(
                     context.error_queue,
                 );
 
-                // Don't resolve `function` and `input` right away; allow them
-                // to be queued again so we can collect more type information
-                // now that we've unified `function` with a function type
-                context.make_progress();
+                let input = resolve_expression(input.unboxed(), context);
+                let function = resolve_expression(function.unboxed(), context);
 
-                ExpressionKind::Call { function, input }
+                ExpressionKind::Call {
+                    function: function.boxed(),
+                    input: input.boxed(),
+                }
             }
         }
         ExpressionKind::When { input, arms } => {
@@ -2767,21 +2789,17 @@ fn resolve_expression<D: Driver>(
             expression.item.r#type.apply_in_current_context_mut();
 
             match &expression.item.r#type.kind {
-                TypeKind::Variable(_) | TypeKind::Opaque(_) => {
-                    context.flag_not_fully_resolved();
-
-                    ExpressionKind::UnresolvedStructure(
-                        fields
-                            .into_iter()
-                            .map(|field_value| {
-                                field_value.map(|field_value| StructureFieldValue {
-                                    name: field_value.name,
-                                    value: resolve_expression(field_value.value, context),
-                                })
+                TypeKind::Variable(_) | TypeKind::Opaque(_) => ExpressionKind::UnresolvedStructure(
+                    fields
+                        .into_iter()
+                        .map(|field_value| {
+                            field_value.map(|field_value| StructureFieldValue {
+                                name: field_value.name,
+                                value: resolve_expression(field_value.value, context),
                             })
-                            .collect(),
-                    )
-                }
+                        })
+                        .collect(),
+                ),
                 TypeKind::Declared { path, .. } => {
                     let path = path.clone();
 
@@ -2886,8 +2904,6 @@ fn resolve_expression<D: Driver>(
                         }
                     }
 
-                    context.make_progress();
-
                     ExpressionKind::ResolvedStructure {
                         structure: path,
                         fields,
@@ -2962,12 +2978,10 @@ fn resolve_expression<D: Driver>(
 
 fn resolve_item<D: Driver>(
     path: &D::Path,
-    use_expression: WithInfo<D::Info, &mut Expression<D>>,
+    mut use_expression: WithInfo<D::Info, &mut Expression<D>>,
     context: &ResolveContext<'_, D>,
 ) -> Result<bool, WithInfo<D::Info, QueuedError<D>>> {
     let item_declaration = context.driver.get_constant_declaration(path);
-
-    let use_type = use_expression.item.r#type.clone_in_current_context();
 
     // Instantiate the items' type, substituting inferred parameters with opaque
     // type variables
@@ -3007,13 +3021,18 @@ fn resolve_item<D: Driver>(
 
     // Unify instantiated declared type with type of referring expression
 
-    let _ = unify(context.driver, &mut instantiated_declared_type, &use_type);
+    try_unify_expression(
+        context.driver,
+        use_expression.as_deref_mut(),
+        &instantiated_declared_type,
+        context.error_queue,
+    );
 
     // Check bounds
 
     let mut evaluate_bounds = {
-        let mut instantiated_declared_type = instantiated_declared_type.clone_in_current_context();
-        let use_type = &use_type;
+        let instantiated_declared_type = instantiated_declared_type.clone_in_current_context();
+        let mut use_type = use_expression.item.r#type.clone_in_current_context();
         let info = &use_expression.info;
 
         move |bounds: &[WithInfo<D::Info, Instance<D>>], allow_unresolved_instances: bool| {
@@ -3035,7 +3054,7 @@ fn resolve_item<D: Driver>(
                             // Attempt to get a better error message by unifying the
                             // declared type with the use type again, now that the
                             // bounds have influenced the type
-                            if unify(context.driver, &mut instantiated_declared_type, use_type)
+                            if unify(context.driver, &mut use_type, &instantiated_declared_type)
                                 .is_none()
                             {
                                 Err(WithInfo {
@@ -3087,7 +3106,7 @@ fn resolve_item<D: Driver>(
 
     try_unify_expression(
         context.driver,
-        use_expression,
+        use_expression.as_deref_mut(),
         &instantiated_declared_type,
         context.error_queue,
     );
@@ -3328,6 +3347,7 @@ fn resolve_trait<D: Driver>(
 
 struct FinalizeContext<'a, D: Driver> {
     errors: Option<&'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>>,
+    unresolved_variables: Option<&'a RefCell<HashSet<TypeVariable<D>>>>,
 }
 
 fn finalize_type<D: Driver>(
@@ -3336,6 +3356,7 @@ fn finalize_type<D: Driver>(
 ) -> WithInfo<D::Info, crate::Type<D>> {
     fn finalize_type_inner<D: Driver>(
         mut r#type: Type<D>,
+        context: &FinalizeContext<'_, D>,
         fully_resolved: &mut bool,
     ) -> WithInfo<D::Info, crate::Type<D>> {
         r#type.apply_in_current_context_mut();
@@ -3343,8 +3364,13 @@ fn finalize_type<D: Driver>(
         WithInfo {
             info: r#type.info,
             item: match r#type.kind {
-                TypeKind::Variable(_) | TypeKind::Opaque(_) => {
+                TypeKind::Variable(var) | TypeKind::Opaque(var) => {
                     *fully_resolved = false;
+
+                    if let Some(unresolved_variables) = &context.unresolved_variables {
+                        unresolved_variables.borrow_mut().insert(var);
+                    }
+
                     crate::Type::Unknown
                 }
                 TypeKind::Parameter(path) => crate::Type::Parameter(path),
@@ -3352,21 +3378,21 @@ fn finalize_type<D: Driver>(
                     path,
                     parameters: parameters
                         .into_iter()
-                        .map(|r#type| finalize_type_inner(r#type, fully_resolved))
+                        .map(|r#type| finalize_type_inner(r#type, context, fully_resolved))
                         .collect(),
                 },
                 TypeKind::Function { input, output } => crate::Type::Function {
-                    input: finalize_type_inner(*input, fully_resolved).boxed(),
-                    output: finalize_type_inner(*output, fully_resolved).boxed(),
+                    input: finalize_type_inner(*input, context, fully_resolved).boxed(),
+                    output: finalize_type_inner(*output, context, fully_resolved).boxed(),
                 },
                 TypeKind::Tuple(elements) => crate::Type::Tuple(
                     elements
                         .into_iter()
-                        .map(|r#type| finalize_type_inner(r#type, fully_resolved))
+                        .map(|r#type| finalize_type_inner(r#type, context, fully_resolved))
                         .collect(),
                 ),
                 TypeKind::Lazy(r#type) => {
-                    crate::Type::Lazy(finalize_type_inner(*r#type, fully_resolved).boxed())
+                    crate::Type::Lazy(finalize_type_inner(*r#type, context, fully_resolved).boxed())
                 }
                 TypeKind::Unknown => crate::Type::Unknown,
             },
@@ -3374,8 +3400,11 @@ fn finalize_type<D: Driver>(
     }
 
     let mut fully_resolved = true;
-    let finalized_type =
-        finalize_type_inner(r#type.clone_in_current_context(), &mut fully_resolved);
+    let finalized_type = finalize_type_inner(
+        r#type.clone_in_current_context(),
+        context,
+        &mut fully_resolved,
+    );
 
     if !fully_resolved {
         if let Some(errors) = &context.errors {
@@ -3390,14 +3419,14 @@ fn finalize_type<D: Driver>(
 }
 
 fn finalize_expression<D: Driver>(
-    expression: WithInfo<D::Info, Expression<D>>,
+    expression: WithInfo<D::Info, &Expression<D>>,
     context: &FinalizeContext<'_, D>,
 ) -> WithInfo<D::Info, crate::TypedExpression<D>> {
-    let kind = match expression.item.kind {
-        ExpressionKind::Unknown(path) => crate::TypedExpressionKind::Unknown(path),
-        ExpressionKind::Marker(path) => crate::TypedExpressionKind::Marker(path),
+    let kind = match &expression.item.kind {
+        ExpressionKind::Unknown(path) => crate::TypedExpressionKind::Unknown(path.clone()),
+        ExpressionKind::Marker(path) => crate::TypedExpressionKind::Marker(path.clone()),
         ExpressionKind::Variable(name, variable) => {
-            crate::TypedExpressionKind::Variable(name, variable)
+            crate::TypedExpressionKind::Variable(name.clone(), variable.clone())
         }
         ExpressionKind::UnresolvedConstant(path) | ExpressionKind::UnresolvedTrait(path) => {
             let error = WithInfo {
@@ -3411,51 +3440,54 @@ fn finalize_expression<D: Driver>(
                 errors.borrow_mut().push(error);
             }
 
-            crate::TypedExpressionKind::Unknown(Some(path))
+            crate::TypedExpressionKind::Unknown(Some(path.clone()))
         }
-        ExpressionKind::ResolvedConstant(path) => crate::TypedExpressionKind::Constant(path),
-        ExpressionKind::ResolvedTrait(path) => crate::TypedExpressionKind::Trait(path),
-        ExpressionKind::Number(number) => crate::TypedExpressionKind::Number(number),
-        ExpressionKind::Text(text) => crate::TypedExpressionKind::Text(text),
+        ExpressionKind::ResolvedConstant(path) => {
+            crate::TypedExpressionKind::Constant(path.clone())
+        }
+        ExpressionKind::ResolvedTrait(path) => crate::TypedExpressionKind::Trait(path.clone()),
+        ExpressionKind::Number(number) => crate::TypedExpressionKind::Number(number.clone()),
+        ExpressionKind::Text(text) => crate::TypedExpressionKind::Text(text.clone()),
         ExpressionKind::Block(statements) => crate::TypedExpressionKind::Block(
             statements
-                .into_iter()
-                .map(|expression| finalize_expression(expression, context))
+                .iter()
+                .map(|expression| finalize_expression(expression.as_ref(), context))
                 .collect(),
         ),
         ExpressionKind::Function { pattern, body } => crate::TypedExpressionKind::Function {
-            pattern,
-            body: finalize_expression(body.unboxed(), context).boxed(),
+            pattern: pattern.clone(),
+            body: finalize_expression(body.as_deref(), context).boxed(),
         },
         ExpressionKind::Call { function, input } => crate::TypedExpressionKind::Call {
-            function: finalize_expression(function.unboxed(), context).boxed(),
-            input: finalize_expression(input.unboxed(), context).boxed(),
+            function: finalize_expression(function.as_deref(), context).boxed(),
+            input: finalize_expression(input.as_deref(), context).boxed(),
         },
         ExpressionKind::When { input, arms } => crate::TypedExpressionKind::When {
-            input: finalize_expression(input.unboxed(), context).boxed(),
+            input: finalize_expression(input.as_deref(), context).boxed(),
             arms: arms
-                .into_iter()
+                .iter()
                 .map(|arm| {
-                    arm.map(|arm| crate::TypedArm {
-                        pattern: arm.pattern,
+                    arm.as_ref().map(|arm| crate::TypedArm {
+                        pattern: arm.pattern.clone(),
                         condition: arm
                             .condition
-                            .map(|expression| finalize_expression(expression, context)),
-                        body: finalize_expression(arm.body, context),
+                            .as_ref()
+                            .map(|expression| finalize_expression(expression.as_ref(), context)),
+                        body: finalize_expression(arm.body.as_ref(), context),
                     })
                 })
                 .collect(),
         },
         ExpressionKind::Intrinsic { name, inputs } => crate::TypedExpressionKind::Intrinsic {
-            name,
+            name: name.clone(),
             inputs: inputs
-                .into_iter()
-                .map(|expression| finalize_expression(expression, context))
+                .iter()
+                .map(|expression| finalize_expression(expression.as_ref(), context))
                 .collect(),
         },
         ExpressionKind::Initialize { pattern, value } => crate::TypedExpressionKind::Initialize {
-            pattern,
-            value: finalize_expression(value.unboxed(), context).boxed(),
+            pattern: pattern.clone(),
+            value: finalize_expression(value.as_deref(), context).boxed(),
         },
         ExpressionKind::UnresolvedStructure(_) => {
             let error = WithInfo {
@@ -3473,51 +3505,53 @@ fn finalize_expression<D: Driver>(
         }
         ExpressionKind::ResolvedStructure { structure, fields } => {
             crate::TypedExpressionKind::Structure {
-                structure,
+                structure: structure.clone(),
                 fields: fields
-                    .into_iter()
+                    .iter()
                     .map(|field_value| {
-                        field_value.map(|field_value| crate::TypedStructureFieldValue {
-                            name: field_value.name,
-                            value: finalize_expression(field_value.value, context),
-                        })
+                        field_value
+                            .as_ref()
+                            .map(|field_value| crate::TypedStructureFieldValue {
+                                name: field_value.name.clone(),
+                                value: finalize_expression(field_value.value.as_ref(), context),
+                            })
                     })
                     .collect(),
             }
         }
         ExpressionKind::Variant { variant, values } => crate::TypedExpressionKind::Variant {
-            variant,
+            variant: variant.clone(),
             values: values
-                .into_iter()
-                .map(|expression| finalize_expression(expression, context))
+                .iter()
+                .map(|expression| finalize_expression(expression.as_ref(), context))
                 .collect(),
         },
         ExpressionKind::Tuple(elements) => crate::TypedExpressionKind::Tuple(
             elements
-                .into_iter()
-                .map(|expression| finalize_expression(expression, context))
+                .iter()
+                .map(|expression| finalize_expression(expression.as_ref(), context))
                 .collect(),
         ),
         ExpressionKind::Format { segments, trailing } => crate::TypedExpressionKind::Format {
             segments: segments
-                .into_iter()
+                .iter()
                 .map(|segment| crate::TypedFormatSegment {
-                    text: segment.text,
-                    value: finalize_expression(segment.value, context),
+                    text: segment.text.clone(),
+                    value: finalize_expression(segment.value.as_ref(), context),
                 })
                 .collect(),
-            trailing,
+            trailing: trailing.clone(),
         },
         ExpressionKind::Semantics { name, body } => crate::TypedExpressionKind::Semantics {
-            name,
-            body: finalize_expression(body.unboxed(), context).boxed(),
+            name: name.clone(),
+            body: finalize_expression(body.as_deref(), context).boxed(),
         },
         ExpressionKind::Lazy(value) => {
-            crate::TypedExpressionKind::Lazy(finalize_expression(value.unboxed(), context).boxed())
+            crate::TypedExpressionKind::Lazy(finalize_expression(value.as_deref(), context).boxed())
         }
     };
 
-    let r#type = finalize_type(expression.item.r#type, context).item;
+    let r#type = finalize_type(expression.item.r#type.clone_in_current_context(), context).item;
 
     WithInfo {
         info: expression.info,

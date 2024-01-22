@@ -868,9 +868,6 @@ fn resolve_expression<D: Driver>(
                     crate::PathComponent::Variable(_) => {
                         vec![crate::Expression::Variable(name.clone(), path.item.clone())]
                     }
-                    crate::PathComponent::Trait(_) => {
-                        vec![crate::Expression::Trait(path.item.clone())]
-                    }
                     crate::PathComponent::Constant(_) | crate::PathComponent::Constructor(_) => {
                         vec![crate::Expression::Constant(path.item.clone())]
                     }

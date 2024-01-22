@@ -311,7 +311,7 @@ any? : condition? collection -> (
 zip :: Left (infer Left-Element) Right (infer Right-Element) where (As-Sequence Left Left-Element) (As-Sequence Right Right-Element) => Right -> Left -> Sequence (Left-Element ; Right-Element)
 zip : right left -> (
     left : As-Sequence left
-    right -> As-Sequence right
+    right : As-Sequence right
 
     sequence (
         when (next left ; next right) (
