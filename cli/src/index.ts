@@ -95,12 +95,14 @@ const app = subcommands({
                     JSON.parse(fs.readFileSync(path, "utf8"))
                 );
 
-                const executable = link(libraries);
+                const result = link(libraries);
 
-                if (!executable) {
-                    console.error("failed to link libraries");
+                if (result.Err) {
+                    console.error("failed to link libraries:", result.Err);
                     process.exit(1);
                 }
+
+                const executable = result.Ok;
 
                 const output = shebang + JSON.stringify(executable, null, 4);
 

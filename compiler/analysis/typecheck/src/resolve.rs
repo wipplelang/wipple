@@ -3274,32 +3274,41 @@ fn finalize_expression<D: Driver>(
         }
         ExpressionKind::UnresolvedConstant(path) => {
             if let Some(errors) = &context.errors {
-                if let Err(error) = resolve_item(
+                let resolve_context = ResolveContext {
+                    driver: context.driver,
+                    type_context: context.type_context,
+                    error_queue: &Default::default(),
+                    errors,
+                    variables: &Default::default(),
+                    recursion_stack: &Default::default(),
+                    bound_instances: context.bound_instances.clone(),
+                };
+
+                match resolve_item(
                     path,
                     expression.as_deref().map(Clone::clone).as_mut(),
-                    false,
-                    &ResolveContext {
-                        driver: context.driver,
-                        type_context: context.type_context,
-                        error_queue: &Default::default(),
-                        errors,
-                        variables: &Default::default(),
-                        recursion_stack: &Default::default(),
-                        bound_instances: context.bound_instances.clone(),
-                    },
+                    true,
+                    &resolve_context,
                 ) {
-                    report_queued_errors(
-                        context.driver,
-                        context.type_context,
-                        vec![error],
-                        &mut errors.borrow_mut(),
-                    );
-                } else {
-                    finalize_type(expression.item.r#type.clone(), context);
-                }
-            }
+                    Ok(true) => {
+                        finalize_type(expression.item.r#type.clone(), context);
+                        crate::TypedExpressionKind::Constant(path.clone())
+                    }
+                    Ok(false) => crate::TypedExpressionKind::Unknown(Some(path.clone())),
+                    Err(error) => {
+                        report_queued_errors(
+                            context.driver,
+                            context.type_context,
+                            vec![error],
+                            &mut errors.borrow_mut(),
+                        );
 
-            crate::TypedExpressionKind::Unknown(Some(path.clone()))
+                        crate::TypedExpressionKind::Unknown(Some(path.clone()))
+                    }
+                }
+            } else {
+                crate::TypedExpressionKind::Unknown(Some(path.clone()))
+            }
         }
         ExpressionKind::UnresolvedTrait(path) => {
             let error = WithInfo {

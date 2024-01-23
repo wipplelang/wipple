@@ -76,10 +76,25 @@ pub struct LinkedItem<D: Driver> {
     pub ir: Vec<Vec<wipple_codegen::Instruction<D>>>,
 }
 
+/// The linked executable, or the linking error.
+pub type Result<T, D> =
+    std::result::Result<T, WithInfo<<D as wipple_typecheck::Driver>::Info, Error>>;
+
+/// A linking error.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Error {
+    /// Failed to produce a type descriptor for the item.
+    TypeDescriptor,
+
+    /// Failed to produce IR for the item.
+    Ir,
+}
+
 /// Link multiple [`UnlinkedLibrary`]s into a single [`Executable`].
 pub fn link<D: Driver>(
     libraries: impl IntoIterator<Item = UnlinkedLibrary<D>>,
-) -> Option<Executable<D>> {
+) -> Result<Executable<D>, D> {
     libraries
         .into_iter()
         .try_fold(Executable::default(), |mut executable, library| {
@@ -101,13 +116,21 @@ pub fn link<D: Driver>(
                 executable.code.push(convert_item(item)?);
             }
 
-            Some(executable)
+            Ok(executable)
         })
 }
 
-fn convert_item<D: Driver>(item: UnlinkedItem<D>) -> Option<LinkedItem<D>> {
-    Some(LinkedItem {
-        type_descriptor: wipple_codegen::type_descriptor(&item.expression.item.r#type)?,
-        ir: item.ir?,
+fn convert_item<D: Driver>(item: UnlinkedItem<D>) -> Result<LinkedItem<D>, D> {
+    Ok(LinkedItem {
+        type_descriptor: wipple_codegen::type_descriptor(&item.expression.item.r#type).ok_or_else(
+            || WithInfo {
+                info: item.expression.info.clone(),
+                item: Error::TypeDescriptor,
+            },
+        )?,
+        ir: item.ir.ok_or(WithInfo {
+            info: item.expression.info,
+            item: Error::Ir,
+        })?,
     })
 }
