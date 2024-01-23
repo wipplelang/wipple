@@ -201,10 +201,12 @@ pub fn resolve<D: Driver>(
                 );
             }
 
+            let unresolved_variables: RefCell<HashSet<_>> = Default::default();
+
             let finalize_context = FinalizeContext {
                 type_context: &queued.type_context,
                 errors: Some(&errors),
-                unresolved_variables: None,
+                unresolved_variables: Some(&unresolved_variables),
             };
 
             break finalize_expression(queued.body.as_ref(), &finalize_context);
@@ -2298,20 +2300,8 @@ fn resolve_expression<D: Driver>(
         ExpressionKind::UnresolvedConstant(ref path) => {
             let path = path.clone();
 
-            wipple_util::log!(
-                "BEFORE: {}",
-                debug_type(&expression.item.r#type, context.type_context)
-            );
-
             match resolve_item(&path, expression.as_mut(), context) {
-                Ok(true) => {
-                    wipple_util::log!(
-                        "AFTER: {}",
-                        debug_type(&expression.item.r#type, context.type_context)
-                    );
-
-                    ExpressionKind::ResolvedConstant(path)
-                }
+                Ok(true) => ExpressionKind::ResolvedConstant(path),
                 Ok(false) => ExpressionKind::UnresolvedConstant(path), // try again with more type information
                 Err(error) => {
                     context.error_queue.borrow_mut().push(error);
@@ -2753,12 +2743,6 @@ fn resolve_expression<D: Driver>(
         }
     };
 
-    wipple_util::log!(
-        "resolved type = {}: {:#?}",
-        debug_type(&expression.item.r#type, context.type_context),
-        expression.info
-    );
-
     WithInfo {
         info: expression.info,
         item: Expression {
@@ -3147,10 +3131,17 @@ fn finalize_type<D: Driver>(
             info: r#type.info,
             item: match r#type.kind {
                 TypeKind::Variable(var) | TypeKind::Opaque(var) => {
-                    *fully_resolved = false;
-
                     if let Some(unresolved_variables) = &context.unresolved_variables {
-                        unresolved_variables.borrow_mut().insert(var);
+                        let mut unresolved_variables = unresolved_variables.borrow_mut();
+
+                        // Prevent displaying duplicate errors when a type variable is involved in
+                        // more than one expression
+                        if !unresolved_variables.contains(&var) {
+                            *fully_resolved = false;
+                            unresolved_variables.insert(var);
+                        }
+                    } else {
+                        *fully_resolved = false;
                     }
 
                     crate::Type::Unknown
@@ -3236,10 +3227,15 @@ fn finalize_expression<D: Driver>(
             pattern: pattern.clone(),
             body: finalize_expression(body.as_deref(), context).boxed(),
         },
-        ExpressionKind::Call { function, input } => crate::TypedExpressionKind::Call {
-            function: finalize_expression(function.as_deref(), context).boxed(),
-            input: finalize_expression(input.as_deref(), context).boxed(),
-        },
+        ExpressionKind::Call { function, input } => {
+            let input = finalize_expression(input.as_deref(), context);
+            let function = finalize_expression(function.as_deref(), context);
+
+            crate::TypedExpressionKind::Call {
+                function: function.boxed(),
+                input: input.boxed(),
+            }
+        }
         ExpressionKind::When { input, arms } => crate::TypedExpressionKind::When {
             input: finalize_expression(input.as_deref(), context).boxed(),
             arms: arms
