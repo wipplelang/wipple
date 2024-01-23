@@ -504,8 +504,9 @@ enum Associativity {
 }
 
 const PRECEDENCES: &[(Associativity, &[&str])] = &[
-    (Associativity::None, &["of"]),
     (Associativity::Left, &["as"]),
+    (Associativity::Left, &["to"]),
+    (Associativity::Left, &["by"]),
     (Associativity::Right, &["^"]),
     (Associativity::Left, &["*", "/", "%"]),
     (Associativity::Left, &["+", "-"]),

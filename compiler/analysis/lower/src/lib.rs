@@ -423,6 +423,8 @@ pub enum UnresolvedBinaryOperator {
     Power,
     And,
     Or,
+    To,
+    By,
 }
 
 /// An unresolved type parameter.

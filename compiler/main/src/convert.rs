@@ -565,6 +565,8 @@ pub mod lower {
             wipple_syntax::BinaryOperator::Power => wipple_lower::UnresolvedBinaryOperator::Power,
             wipple_syntax::BinaryOperator::And => wipple_lower::UnresolvedBinaryOperator::And,
             wipple_syntax::BinaryOperator::Or => wipple_lower::UnresolvedBinaryOperator::Or,
+            wipple_syntax::BinaryOperator::To => wipple_lower::UnresolvedBinaryOperator::To,
+            wipple_syntax::BinaryOperator::By => wipple_lower::UnresolvedBinaryOperator::By,
         })
     }
 }

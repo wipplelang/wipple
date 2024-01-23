@@ -106,6 +106,8 @@ pub enum BinaryOperator {
     Power,
     And,
     Or,
+    To,
+    By,
 }
 
 /// Contains the types for nodes in a concrete syntax tree.

@@ -822,13 +822,6 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     unapplied))
         "#;
 
-            static OF_EXPRESSION = r#"
-            (non-associative-binary-operator
-                "of"
-                (variable . "member")
-                (variable . "type"))
-        "#;
-
             static APPLY_EXPRESSION = r#"
             (or
                 (binary-operator
@@ -1546,6 +1539,8 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
         let divide = binary_expression_operator!("/", Divide);
         let remainder = binary_expression_operator!("%", Remainder);
         let power = binary_expression_operator!("^", Power);
+        let to = binary_expression_operator!("to", To);
+        let by = binary_expression_operator!("by", By);
 
         let terminal = |parser: &mut Self| match &node {
             Node::Token(token) => match &token.kind {
@@ -1685,6 +1680,8 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
             .or_else(|| divide(self))
             .or_else(|| remainder(self))
             .or_else(|| power(self))
+            .or_else(|| to(self))
+            .or_else(|| by(self))
             .unwrap_or_else(|| terminal(self))
     }
 
