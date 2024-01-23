@@ -146,6 +146,7 @@ pub fn resolve<D: Driver>(
             let finalize_context = FinalizeContext {
                 driver,
                 type_context: &queued.type_context,
+                bound_instances: queued.bounds.clone(),
                 errors: None,
                 unresolved_variables: None,
                 contains_unknown: &Cell::new(false),
@@ -180,6 +181,7 @@ pub fn resolve<D: Driver>(
             let finalize_context = FinalizeContext {
                 driver,
                 type_context: &queued.type_context,
+                bound_instances: queued.bounds.clone(),
                 errors: None,
                 unresolved_variables: Some(&unresolved_variables),
                 contains_unknown: &Cell::new(false),
@@ -214,6 +216,7 @@ pub fn resolve<D: Driver>(
             let finalize_context = FinalizeContext {
                 driver,
                 type_context: &queued.type_context,
+                bound_instances: queued.bounds.clone(),
                 errors: Some(&errors),
                 unresolved_variables: Some(&unresolved_variables),
                 contains_unknown: &Cell::new(false),
@@ -391,6 +394,7 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
     let finalize_context = FinalizeContext {
         driver,
         type_context: &type_context,
+        bound_instances: Default::default(),
         errors: None,
         unresolved_variables: None,
         contains_unknown: &Cell::new(false),
@@ -433,6 +437,7 @@ fn report_queued_errors<D: Driver>(
     let finalize_context = FinalizeContext {
         driver,
         type_context,
+        bound_instances: Default::default(),
         errors: None,
         unresolved_variables: None,
         contains_unknown: &Cell::new(false),
@@ -3155,6 +3160,7 @@ fn resolve_trait<D: Driver>(
 struct FinalizeContext<'a, D: Driver> {
     driver: &'a D,
     type_context: &'a TypeContext<D>,
+    bound_instances: RefCell<Vec<Vec<WithInfo<D::Info, Instance<D>>>>>,
     errors: Option<&'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>>,
     unresolved_variables: Option<&'a RefCell<HashSet<TypeVariable<D>>>>,
     contains_unknown: &'a Cell<bool>,
@@ -3257,7 +3263,7 @@ fn finalize_expression<D: Driver>(
                         errors,
                         variables: &Default::default(),
                         recursion_stack: &Default::default(),
-                        bound_instances: Default::default(),
+                        bound_instances: context.bound_instances.clone(),
                     },
                 ) {
                     report_queued_errors(
