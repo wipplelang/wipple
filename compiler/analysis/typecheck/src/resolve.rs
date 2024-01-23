@@ -148,6 +148,7 @@ pub fn resolve<D: Driver>(
                 type_context: &queued.type_context,
                 errors: None,
                 unresolved_variables: None,
+                contains_unknown: &Cell::new(false),
             };
 
             break finalize_expression(queued.body.as_ref(), &finalize_context);
@@ -181,9 +182,14 @@ pub fn resolve<D: Driver>(
                 type_context: &queued.type_context,
                 errors: None,
                 unresolved_variables: Some(&unresolved_variables),
+                contains_unknown: &Cell::new(false),
             };
 
-            finalize_expression(queued.body.as_ref(), &finalize_context);
+            let item = finalize_expression(queued.body.as_ref(), &finalize_context);
+
+            if finalize_context.contains_unknown.get() {
+                break item;
+            }
 
             unresolved_variables.into_inner()
         };
@@ -210,6 +216,7 @@ pub fn resolve<D: Driver>(
                 type_context: &queued.type_context,
                 errors: Some(&errors),
                 unresolved_variables: Some(&unresolved_variables),
+                contains_unknown: &Cell::new(false),
             };
 
             break finalize_expression(queued.body.as_ref(), &finalize_context);
@@ -386,6 +393,7 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
         type_context: &type_context,
         errors: None,
         unresolved_variables: None,
+        contains_unknown: &Cell::new(false),
     };
 
     finalize_type(r#type, &finalize_context)
@@ -427,6 +435,7 @@ fn report_queued_errors<D: Driver>(
         type_context,
         errors: None,
         unresolved_variables: None,
+        contains_unknown: &Cell::new(false),
     };
 
     errors.extend(error_queue.into_iter().map(|error| {
@@ -968,7 +977,7 @@ fn unify_with_options<D: Driver>(
                 driver.paths_are_equal(parameter, expected_parameter)
                     || !options.require_equal_type_parameters
             }
-            (_, TypeKind::Parameter(_)) => true,
+            (_, TypeKind::Parameter(_)) => false,
             (TypeKind::Parameter(_), _) => false,
             (
                 TypeKind::Declared { path, parameters },
@@ -3148,6 +3157,7 @@ struct FinalizeContext<'a, D: Driver> {
     type_context: &'a TypeContext<D>,
     errors: Option<&'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>>,
     unresolved_variables: Option<&'a RefCell<HashSet<TypeVariable<D>>>>,
+    contains_unknown: &'a Cell<bool>,
 }
 
 fn finalize_type<D: Driver>(
@@ -3201,7 +3211,10 @@ fn finalize_type<D: Driver>(
                 TypeKind::Lazy(r#type) => {
                     crate::Type::Lazy(finalize_type_inner(*r#type, context, fully_resolved).boxed())
                 }
-                TypeKind::Unknown => crate::Type::Unknown,
+                TypeKind::Unknown => {
+                    context.contains_unknown.set(true);
+                    crate::Type::Unknown
+                }
             },
         }
     }
