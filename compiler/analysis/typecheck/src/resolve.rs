@@ -144,6 +144,7 @@ pub fn resolve<D: Driver>(
             });
 
             let finalize_context = FinalizeContext {
+                driver,
                 type_context: &queued.type_context,
                 errors: None,
                 unresolved_variables: None,
@@ -176,6 +177,7 @@ pub fn resolve<D: Driver>(
             let unresolved_variables: RefCell<HashSet<_>> = Default::default();
 
             let finalize_context = FinalizeContext {
+                driver,
                 type_context: &queued.type_context,
                 errors: None,
                 unresolved_variables: Some(&unresolved_variables),
@@ -204,6 +206,7 @@ pub fn resolve<D: Driver>(
             let unresolved_variables: RefCell<HashSet<_>> = Default::default();
 
             let finalize_context = FinalizeContext {
+                driver,
                 type_context: &queued.type_context,
                 errors: Some(&errors),
                 unresolved_variables: Some(&unresolved_variables),
@@ -217,7 +220,12 @@ pub fn resolve<D: Driver>(
     };
 
     let mut errors = errors.into_inner();
-    report_queued_errors(&queued.type_context, error_queue.into_inner(), &mut errors);
+    report_queued_errors(
+        driver,
+        &queued.type_context,
+        error_queue.into_inner(),
+        &mut errors,
+    );
 
     crate::Result { item, errors }
 }
@@ -374,6 +382,7 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
     assert!(errors.into_inner().is_empty());
 
     let finalize_context = FinalizeContext {
+        driver,
         type_context: &type_context,
         errors: None,
         unresolved_variables: None,
@@ -408,11 +417,13 @@ enum QueuedError<D: Driver> {
 }
 
 fn report_queued_errors<D: Driver>(
+    driver: &D,
     type_context: &TypeContext<D>,
     error_queue: Vec<WithInfo<D::Info, QueuedError<D>>>,
     errors: &mut Vec<WithInfo<D::Info, crate::Error<D>>>,
 ) {
     let finalize_context = FinalizeContext {
+        driver,
         type_context,
         errors: None,
         unresolved_variables: None,
@@ -957,6 +968,8 @@ fn unify_with_options<D: Driver>(
                 driver.paths_are_equal(parameter, expected_parameter)
                     || !options.require_equal_type_parameters
             }
+            (_, TypeKind::Parameter(_)) => true,
+            (TypeKind::Parameter(_), _) => false,
             (
                 TypeKind::Declared { path, parameters },
                 TypeKind::Declared {
@@ -999,8 +1012,6 @@ fn unify_with_options<D: Driver>(
                 unified
             }
             (TypeKind::Unknown, _) | (_, TypeKind::Unknown) => true,
-            (_, TypeKind::Parameter(_)) => true,
-            (TypeKind::Parameter(_), _) => false,
             _ => false,
         }
     }
@@ -1131,14 +1142,14 @@ fn try_unify_without_coercion<D: Driver>(
 // region: Resolution
 
 #[derive(Derivative)]
-#[derivative(Debug(bound = ""))]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 struct Expression<D: Driver> {
     r#type: Type<D>,
     kind: ExpressionKind<D>,
 }
 
 #[derive(Derivative)]
-#[derivative(Debug(bound = ""))]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 enum ExpressionKind<D: Driver> {
     Unknown(Option<D::Path>),
     Marker(D::Path),
@@ -1192,21 +1203,21 @@ enum ExpressionKind<D: Driver> {
 }
 
 #[derive(Derivative)]
-#[derivative(Debug(bound = ""))]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 struct FormatSegment<D: Driver> {
     text: String,
     value: WithInfo<D::Info, Expression<D>>,
 }
 
 #[derive(Derivative)]
-#[derivative(Debug(bound = ""))]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 struct StructureFieldValue<D: Driver> {
     name: String,
     value: WithInfo<D::Info, Expression<D>>,
 }
 
 #[derive(Derivative)]
-#[derivative(Debug(bound = ""))]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 struct Arm<D: Driver> {
     pattern: WithInfo<D::Info, crate::Pattern<D>>,
     condition: Option<WithInfo<D::Info, Expression<D>>>,
@@ -1895,7 +1906,7 @@ fn resolve_pattern<D: Driver>(
     r#type: WithInfo<D::Info, &Type<D>>,
     context: InferContext<'_, D>,
 ) {
-    let r#type = r#type.map(|r#type| r#type.clone());
+    let mut r#type = r#type.map(|r#type| r#type.clone());
 
     match &pattern.item {
         crate::Pattern::Unknown => {}
@@ -1955,10 +1966,24 @@ fn resolve_pattern<D: Driver>(
             );
         }
         crate::Pattern::Variable(_, variable) => {
-            context
-                .variables
-                .borrow_mut()
-                .insert(variable.clone(), r#type.item);
+            use std::collections::hash_map::Entry;
+
+            let mut variables = context.variables.borrow_mut();
+
+            match variables.entry(variable.clone()) {
+                Entry::Occupied(entry) => {
+                    try_unify_without_coercion(
+                        context.driver,
+                        r#type.as_mut(),
+                        entry.get(),
+                        context.type_context,
+                        context.error_queue,
+                    );
+                }
+                Entry::Vacant(entry) => {
+                    entry.insert(r#type.item);
+                }
+            }
         }
         crate::Pattern::Destructure(fields) => {
             let field_types = match &r#type.item.kind {
@@ -2300,7 +2325,7 @@ fn resolve_expression<D: Driver>(
         ExpressionKind::UnresolvedConstant(ref path) => {
             let path = path.clone();
 
-            match resolve_item(&path, expression.as_mut(), context) {
+            match resolve_item(&path, expression.as_mut(), true, context) {
                 Ok(true) => ExpressionKind::ResolvedConstant(path),
                 Ok(false) => ExpressionKind::UnresolvedConstant(path), // try again with more type information
                 Err(error) => {
@@ -2755,6 +2780,7 @@ fn resolve_expression<D: Driver>(
 fn resolve_item<D: Driver>(
     path: &D::Path,
     mut use_expression: WithInfo<D::Info, &mut Expression<D>>,
+    allow_unresolved_bounds: bool,
     context: &ResolveContext<'_, D>,
 ) -> Result<bool, WithInfo<D::Info, QueuedError<D>>> {
     let item_declaration = context.driver.get_constant_declaration(path);
@@ -2812,7 +2838,7 @@ fn resolve_item<D: Driver>(
         let mut use_type = use_expression.item.r#type.clone();
         let info = &use_expression.info;
 
-        move |bounds: &[WithInfo<D::Info, Instance<D>>], allow_unresolved_instances: bool| {
+        move |bounds: &[WithInfo<D::Info, Instance<D>>], allow_unresolved: bool| {
             bounds
                 .iter()
                 .map(|bound| {
@@ -2826,7 +2852,7 @@ fn resolve_item<D: Driver>(
                         Err(WithInfo {
                             item: QueuedError::UnresolvedInstance { .. },
                             ..
-                        }) if allow_unresolved_instances => Ok(()),
+                        }) if allow_unresolved => Ok(()),
                         Err(error) => {
                             // Attempt to get a better error message by unifying the
                             // declared type with the use type again, now that the
@@ -2878,8 +2904,15 @@ fn resolve_item<D: Driver>(
     // Now that we've determined the types of the non-inferred parameters from the bounds,
     // determine the types of the inferred parameters by re-evaluating the bounds
 
+    let mut success = true;
     for result in evaluate_bounds(&instantiated_bounds, false) {
-        result?;
+        if let Err(error) = result {
+            if allow_unresolved_bounds {
+                success = false;
+            } else {
+                return Err(error);
+            }
+        }
     }
 
     try_unify_expression(
@@ -2890,7 +2923,7 @@ fn resolve_item<D: Driver>(
         context.error_queue,
     );
 
-    Ok(true)
+    Ok(success)
 }
 
 fn resolve_trait_parameters_from_type<D: Driver>(
@@ -3111,6 +3144,7 @@ fn resolve_trait<D: Driver>(
 // region: Finalize
 
 struct FinalizeContext<'a, D: Driver> {
+    driver: &'a D,
     type_context: &'a TypeContext<D>,
     errors: Option<&'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>>,
     unresolved_variables: Option<&'a RefCell<HashSet<TypeVariable<D>>>>,
@@ -3197,7 +3231,36 @@ fn finalize_expression<D: Driver>(
         ExpressionKind::Variable(name, variable) => {
             crate::TypedExpressionKind::Variable(name.clone(), variable.clone())
         }
-        ExpressionKind::UnresolvedConstant(path) | ExpressionKind::UnresolvedTrait(path) => {
+        ExpressionKind::UnresolvedConstant(path) => {
+            if let Some(errors) = &context.errors {
+                if let Err(error) = resolve_item(
+                    path,
+                    expression.as_deref().map(Clone::clone).as_mut(),
+                    false,
+                    &ResolveContext {
+                        driver: context.driver,
+                        type_context: context.type_context,
+                        error_queue: &Default::default(),
+                        errors,
+                        variables: &Default::default(),
+                        recursion_stack: &Default::default(),
+                        bound_instances: Default::default(),
+                    },
+                ) {
+                    report_queued_errors(
+                        context.driver,
+                        context.type_context,
+                        vec![error],
+                        &mut errors.borrow_mut(),
+                    );
+                } else {
+                    finalize_type(expression.item.r#type.clone(), context);
+                }
+            }
+
+            crate::TypedExpressionKind::Unknown(Some(path.clone()))
+        }
+        ExpressionKind::UnresolvedTrait(path) => {
             let error = WithInfo {
                 info: expression.info.clone(),
                 item: crate::Error::UnknownType(
