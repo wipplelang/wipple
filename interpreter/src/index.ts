@@ -582,9 +582,7 @@ const evaluateItem = async (
                         stack.push(input);
                         continue outer;
                     } else {
-                        const result = await context.call(func, input);
-                        stack.push(result);
-                        break;
+                        return await context.call(func, input);
                     }
                 }
                 case "unreachable": {
