@@ -13,7 +13,7 @@ language constant "show" : Show
 [alias : "display"]
 [on-unresolved : "`show` expects a value to be displayed"]
 [resolve : "insert a value to display" (show _)]
-show :: A where (Show A) => A -> ()
+show :: (A : Text) where (Show A) => A -> ()
 show : value -> intrinsic "display" (Show value)
 
 instance (Show Text) : it

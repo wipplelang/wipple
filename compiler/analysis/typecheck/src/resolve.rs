@@ -135,7 +135,7 @@ pub fn resolve<D: Driver>(
         body,
     };
 
-    let mut prev_unresolved_variables = HashSet::new();
+    let mut prev_subexpression_types = Vec::new();
     let item = loop {
         if recursion_stack.borrow().len() as u32 > recursion_limit {
             errors.borrow_mut().push(WithInfo {
@@ -150,6 +150,7 @@ pub fn resolve<D: Driver>(
                 errors: None,
                 unresolved_variables: None,
                 contains_unknown: &Cell::new(false),
+                subexpression_types: None,
             };
 
             break finalize_expression(queued.body.as_ref(), &finalize_context);
@@ -175,16 +176,17 @@ pub fn resolve<D: Driver>(
 
         queued.body = resolve_expression(queued.body, &resolve_context);
 
-        let resolved_variables = {
-            let unresolved_variables: RefCell<HashSet<_>> = Default::default();
+        let subexpression_types = {
+            let subexpression_types: RefCell<Vec<_>> = Default::default();
 
             let finalize_context = FinalizeContext {
                 driver,
                 type_context: &queued.type_context,
                 bound_instances: queued.bounds.clone(),
                 errors: None,
-                unresolved_variables: Some(&unresolved_variables),
+                unresolved_variables: None,
                 contains_unknown: &Cell::new(false),
+                subexpression_types: Some(&subexpression_types),
             };
 
             let item = finalize_expression(queued.body.as_ref(), &finalize_context);
@@ -193,40 +195,48 @@ pub fn resolve<D: Driver>(
                 break item;
             }
 
-            unresolved_variables.into_inner()
+            subexpression_types.into_inner()
         };
 
-        if resolved_variables.is_subset(&prev_unresolved_variables) {
-            if item_declaration.item.top_level {
-                // The top level has type `()` by default, but any other type is also OK
-                let _ = unify(
+        let made_progress = subexpression_types != prev_subexpression_types;
+
+        if !made_progress {
+            let substituted_defaults =
+                substitute_defaults_in_expression(driver, queued.body.as_mut(), &resolve_context);
+
+            if !substituted_defaults {
+                if item_declaration.item.top_level {
+                    // The top level has type `()` by default, but any other type is also OK
+                    let _ = unify(
+                        driver,
+                        &mut queued.body.item.r#type,
+                        &Type::new(
+                            TypeKind::Tuple(Vec::new()),
+                            queued.body.info.clone(),
+                            Vec::new(),
+                        ),
+                        &queued.type_context,
+                    );
+                }
+
+                let unresolved_variables: RefCell<HashSet<_>> = Default::default();
+
+                let finalize_context = FinalizeContext {
                     driver,
-                    &mut queued.body.item.r#type,
-                    &Type::new(
-                        TypeKind::Tuple(Vec::new()),
-                        queued.body.info.clone(),
-                        Vec::new(),
-                    ),
-                    &queued.type_context,
-                );
+                    type_context: &queued.type_context,
+                    bound_instances: queued.bounds.clone(),
+                    errors: Some(&errors),
+                    unresolved_variables: Some(&unresolved_variables),
+                    contains_unknown: &Cell::new(false),
+                    subexpression_types: None,
+                };
+
+                break finalize_expression(queued.body.as_ref(), &finalize_context);
             }
-
-            let unresolved_variables: RefCell<HashSet<_>> = Default::default();
-
-            let finalize_context = FinalizeContext {
-                driver,
-                type_context: &queued.type_context,
-                bound_instances: queued.bounds.clone(),
-                errors: Some(&errors),
-                unresolved_variables: Some(&unresolved_variables),
-                contains_unknown: &Cell::new(false),
-            };
-
-            break finalize_expression(queued.body.as_ref(), &finalize_context);
-        } else {
-            prev_unresolved_variables = resolved_variables;
-            recursion_stack.borrow_mut().push(queued.use_info.clone());
         }
+
+        prev_subexpression_types = subexpression_types;
+        recursion_stack.borrow_mut().push(queued.use_info.clone());
     };
 
     let mut errors = errors.into_inner();
@@ -398,6 +408,7 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
         errors: None,
         unresolved_variables: None,
         contains_unknown: &Cell::new(false),
+        subexpression_types: None,
     };
 
     finalize_type(r#type, &finalize_context)
@@ -441,6 +452,7 @@ fn report_queued_errors<D: Driver>(
         errors: None,
         unresolved_variables: None,
         contains_unknown: &Cell::new(false),
+        subexpression_types: None,
     };
 
     errors.extend(error_queue.into_iter().map(|error| {
@@ -915,6 +927,14 @@ impl<D: Driver> TypeVariable<D> {
     ) -> T {
         f(context.substitutions.borrow_mut().entry(self.counter))
     }
+
+    fn default(&self, context: &TypeContext<D>) -> Option<Type<D>> {
+        context
+            .defaults
+            .borrow()
+            .get(&self.counter)
+            .map(|r#type| r#type.borrow().clone())
+    }
 }
 
 #[derive(Clone, Copy, Default)]
@@ -1149,6 +1169,56 @@ fn try_unify_without_coercion<D: Driver>(
                 expected: expected_type.clone(),
             },
         });
+    }
+}
+
+fn substitute_defaults<D: Driver>(
+    driver: &D,
+    r#type: &mut Type<D>,
+    context: &TypeContext<D>,
+) -> bool {
+    r#type.apply_in_context_mut(context);
+
+    match &mut r#type.kind {
+        TypeKind::Variable(variable) | TypeKind::Opaque(variable) => {
+            if let Some(default) = variable.default(context) {
+                if let Some(coercion) = unify(driver, r#type, &default, context) {
+                    // FIXME: Enforce this
+                    assert!(
+                        coercion.is_none(),
+                        "type parameter defaults may not produce coercions"
+                    );
+
+                    return true;
+                }
+            }
+
+            false
+        }
+        TypeKind::Declared { parameters, .. } => {
+            for r#type in parameters {
+                if substitute_defaults(driver, r#type, context) {
+                    return true;
+                }
+            }
+
+            false
+        }
+        TypeKind::Function { input, output } => {
+            substitute_defaults(driver, input, context)
+                || substitute_defaults(driver, output, context)
+        }
+        TypeKind::Tuple(elements) => {
+            for r#type in elements {
+                if substitute_defaults(driver, r#type, context) {
+                    return true;
+                }
+            }
+
+            false
+        }
+        TypeKind::Lazy(r#type) => substitute_defaults(driver, r#type, context),
+        TypeKind::Parameter(_) | TypeKind::Unknown => false,
     }
 }
 
@@ -3177,6 +3247,75 @@ fn resolve_trait<D: Driver>(
     Ok(())
 }
 
+fn substitute_defaults_in_expression<D: Driver>(
+    driver: &D,
+    expression: WithInfo<D::Info, &mut Expression<D>>,
+    context: &ResolveContext<'_, D>,
+) -> bool {
+    let substituted_subexpression = match &mut expression.item.kind {
+        ExpressionKind::Block(statements) => statements.iter_mut().any(|statement| {
+            substitute_defaults_in_expression(driver, statement.as_mut(), context)
+        }),
+        ExpressionKind::Function { body, .. } => {
+            substitute_defaults_in_expression(driver, body.as_deref_mut(), context)
+        }
+        ExpressionKind::Call { function, input } => {
+            substitute_defaults_in_expression(driver, function.as_deref_mut(), context)
+                || substitute_defaults_in_expression(driver, input.as_deref_mut(), context)
+        }
+        ExpressionKind::When { input, arms } => {
+            substitute_defaults_in_expression(driver, input.as_deref_mut(), context)
+                || arms.iter_mut().any(|arm| {
+                    if let Some(condition) = &mut arm.item.condition {
+                        if substitute_defaults_in_expression(driver, condition.as_mut(), context) {
+                            return true;
+                        }
+                    }
+                    substitute_defaults_in_expression(driver, arm.item.body.as_mut(), context)
+                })
+        }
+        ExpressionKind::Intrinsic { inputs, .. } => inputs
+            .iter_mut()
+            .any(|input| substitute_defaults_in_expression(driver, input.as_mut(), context)),
+        ExpressionKind::Initialize { value, .. } => {
+            substitute_defaults_in_expression(driver, value.as_deref_mut(), context)
+        }
+        ExpressionKind::UnresolvedStructure(fields) => fields.iter_mut().any(|field| {
+            substitute_defaults_in_expression(driver, field.item.value.as_mut(), context)
+        }),
+        ExpressionKind::ResolvedStructure { fields, .. } => fields.iter_mut().any(|field| {
+            substitute_defaults_in_expression(driver, field.item.value.as_mut(), context)
+        }),
+        ExpressionKind::Variant { values, .. } => values
+            .iter_mut()
+            .any(|value| substitute_defaults_in_expression(driver, value.as_mut(), context)),
+        ExpressionKind::Tuple(elements) => elements
+            .iter_mut()
+            .any(|element| substitute_defaults_in_expression(driver, element.as_mut(), context)),
+        ExpressionKind::Format { segments, .. } => segments.iter_mut().any(|segment| {
+            substitute_defaults_in_expression(driver, segment.value.as_mut(), context)
+        }),
+        ExpressionKind::Semantics { body, .. } => {
+            substitute_defaults_in_expression(driver, body.as_deref_mut(), context)
+        }
+        ExpressionKind::Lazy(value) => {
+            substitute_defaults_in_expression(driver, value.as_deref_mut(), context)
+        }
+        ExpressionKind::Unknown(_)
+        | ExpressionKind::Marker(_)
+        | ExpressionKind::Variable(_, _)
+        | ExpressionKind::UnresolvedConstant(_)
+        | ExpressionKind::UnresolvedTrait(_)
+        | ExpressionKind::ResolvedConstant(_)
+        | ExpressionKind::ResolvedTrait(_)
+        | ExpressionKind::Number(_)
+        | ExpressionKind::Text(_) => false,
+    };
+
+    substituted_subexpression
+        || substitute_defaults(driver, &mut expression.item.r#type, context.type_context)
+}
+
 // region: Finalize
 
 struct FinalizeContext<'a, D: Driver> {
@@ -3186,6 +3325,7 @@ struct FinalizeContext<'a, D: Driver> {
     errors: Option<&'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>>,
     unresolved_variables: Option<&'a RefCell<HashSet<TypeVariable<D>>>>,
     contains_unknown: &'a Cell<bool>,
+    subexpression_types: Option<&'a RefCell<Vec<crate::Type<D>>>>, // in the order of traversal
 }
 
 fn finalize_type<D: Driver>(
@@ -3257,6 +3397,10 @@ fn finalize_type<D: Driver>(
                 item: crate::Error::UnknownType(finalized_type.item.clone()),
             });
         }
+    }
+
+    if let Some(types) = context.subexpression_types {
+        types.borrow_mut().push(finalized_type.item.clone());
     }
 
     finalized_type
