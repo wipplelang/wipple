@@ -186,7 +186,7 @@ pub fn resolve<D: Driver>(
             unresolved_variables.into_inner()
         };
 
-        if resolved_variables.is_superset(&prev_unresolved_variables) {
+        if resolved_variables.is_subset(&prev_unresolved_variables) {
             if item_declaration.item.top_level {
                 // The top level has type `()` by default, but any other type is also OK
                 let _ = unify(
