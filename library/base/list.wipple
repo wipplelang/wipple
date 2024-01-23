@@ -23,7 +23,7 @@ nth :: Element => Number -> List Element -> Maybe Element
 nth : index list -> semantics "pure" (intrinsic "list-nth" list index)
 
 [Add a new item to the end of a list, producing a new list.]
-append :: Element => Element -> List Element -> Element
+append :: Element => Element -> List Element -> List Element
 append : element list -> semantics "pure" (intrinsic "list-append" list element)
 
 [Add a new item to the end of a mutable list.]

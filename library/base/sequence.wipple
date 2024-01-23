@@ -322,7 +322,7 @@ zip : right left -> (
 )
 
 Extend : Container (infer Element) => trait (Sequence Element -> Container -> Container)
-Element => instance (Extend (List Element) Element) : list -> reduce list append
+Element => instance (Extend (List Element) Element) : sequence list -> sequence . reduce list append
 
 [Append the contents of a sequence to a collection.]
 extend :: From Container (infer Element) where (As-Sequence From Element) (Extend Container Element) => From -> Container -> Container

@@ -189,4 +189,4 @@ Element => instance (As-Sequence (Set Element) Element) :
     (dictionary : dictionary) -> dictionary . transform ((key ; ()) -> key)
 
 Element where (Equal Element) (Hash Element) => instance (Container (Set Element) Element) :
-    target (dictionary : dictionary) -> (dictionary . entry target) is Some _
+    target (dictionary : dictionary) -> (dictionary . entry target) is Some ()

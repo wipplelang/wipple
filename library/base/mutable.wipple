@@ -10,7 +10,7 @@ get-reference :: Value => Reference Value -> Value
 get-reference : reference -> intrinsic "get-reference" reference
 
 [Update the value inside a reference.]
-set-reference :: Value => Value -> Reference Value -> Value
+set-reference :: Value => Value -> Reference Value -> ()
 set-reference : value reference -> intrinsic "set-reference" reference value
 
 [A container for a value that can change.]
