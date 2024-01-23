@@ -1,0 +1,10 @@
+// Bun Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`hello-world.wipple 1`] = `
+{
+  "output": 
+"Hello, world!
+"
+,
+}
+`;

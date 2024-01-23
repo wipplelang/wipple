@@ -1,20 +1,16 @@
 {
-    "name": "wipple-cli",
+    "name": "wipple-tests",
     "private": true,
     "type": "module",
     "main": "dist/index.js",
     "scripts": {
-        "start": "bun run .",
-        "build": "bun run build.js",
-        "package": "bun build . --compile --outfile dist/wipple"
+        "test": "bun test"
     },
     "devDependencies": {
         "@types/bun": "^1.0.4",
-        "esbuild": "^0.19.11",
         "typescript": "^5.3.3"
     },
     "dependencies": {
-        "cmd-ts": "^0.13.0",
         "wipple-compiler": "file:../compiler",
         "wipple-interpreter": "file:../interpreter"
     }

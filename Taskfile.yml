@@ -8,31 +8,51 @@ tasks:
     cmds:
       - task: compile
 
+  test:
+    run: once
+    deps:
+      - base:compile
+    dir: test
+    cmds:
+      - npm test -- {{.CLI_ARGS}}
+
   compile:
     run: once
+    deps:
+      - base:compile
     preconditions:
       - sh: |
-          if [ -z "$WIPPLE_DEV_PREFIX" ]; then
+          if [ -z "$WIPPLE_TEST_PREFIX" ]; then
             exit 1
           fi
-        msg: WIPPLE_DEV_PREFIX is not set
+        msg: WIPPLE_TEST_PREFIX is not set
     cmds:
-      - rm -rf $WIPPLE_DEV_PREFIX/.wipple
-      - wipple compile library/base/*.wipple --interface $WIPPLE_DEV_PREFIX/.wipple/base.wippleinterface --library $WIPPLE_DEV_PREFIX/.wipple/base.wipplelibrary
-      - wipple compile $WIPPLE_DEV_PREFIX/test.wipple --dependency $WIPPLE_DEV_PREFIX/.wipple/base.wippleinterface --interface $WIPPLE_DEV_PREFIX/.wipple/test.wippleinterface --library $WIPPLE_DEV_PREFIX/.wipple/test.wipplelibrary
-      - wipple link $WIPPLE_DEV_PREFIX/.wipple/*.wipplelibrary --output $WIPPLE_DEV_PREFIX/.wipple/out
-      - $WIPPLE_DEV_PREFIX/.wipple/out
+      - wipple compile $WIPPLE_TEST_PREFIX/test.wipple --dependency $WIPPLE_TEST_PREFIX/.wipple/base.wippleinterface --interface $WIPPLE_TEST_PREFIX/.wipple/test.wippleinterface --library $WIPPLE_TEST_PREFIX/.wipple/test.wipplelibrary
+      - wipple link $WIPPLE_TEST_PREFIX/.wipple/*.wipplelibrary --output $WIPPLE_TEST_PREFIX/.wipple/out
+      - $WIPPLE_TEST_PREFIX/.wipple/out
 
   inspect:
     run: once
     preconditions:
       - sh: |
-          if [ -z "$WIPPLE_DEV_PREFIX" ]; then
+          if [ -z "$WIPPLE_TEST_PREFIX" ]; then
             exit 1
           fi
-        msg: WIPPLE_DEV_PREFIX is not set
+        msg: WIPPLE_TEST_PREFIX is not set
     cmds:
-      - code $WIPPLE_DEV_PREFIX/.wipple
+      - code $WIPPLE_TEST_PREFIX/.wipple
+
+  base:compile:
+    run: once
+    preconditions:
+      - sh: |
+          if [ -z "$WIPPLE_TEST_PREFIX" ]; then
+            exit 1
+          fi
+        msg: WIPPLE_TEST_PREFIX is not set
+    cmds:
+      - rm -rf $WIPPLE_TEST_PREFIX/.wipple
+      - wipple compile library/base/*.wipple --interface $WIPPLE_TEST_PREFIX/.wipple/base.wippleinterface --library $WIPPLE_TEST_PREFIX/.wipple/base.wipplelibrary
 
   cli:build:
     run: once
