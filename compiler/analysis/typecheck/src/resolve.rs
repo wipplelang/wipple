@@ -87,7 +87,7 @@ pub fn resolve<D: Driver>(
 ) -> crate::Result<D> {
     struct Queued<D: Driver> {
         use_info: D::Info,
-        type_context: RefCell<TypeContext<D>>,
+        type_context: TypeContext<D>,
         bounds: RefCell<Vec<Vec<WithInfo<D::Info, Instance<D>>>>>,
         body: WithInfo<D::Info, Expression<D>>,
     }
@@ -102,7 +102,7 @@ pub fn resolve<D: Driver>(
     let error_queue: RefCell<Vec<_>> = Default::default();
     let errors: RefCell<Vec<_>> = Default::default();
 
-    let type_context = RefCell::new(TypeContext::new());
+    let type_context = TypeContext::default();
 
     let variables: RefCell<HashMap<_, _>> = Default::default();
     let infer_context = InferContext {
@@ -116,7 +116,7 @@ pub fn resolve<D: Driver>(
     let declared_type = infer_type(
         item_declaration.item.r#type.as_ref(),
         item_declaration.replace(Role::Annotation),
-        Some(&type_context.borrow()),
+        Some(&type_context),
     );
 
     let body = infer_expression(item_declaration.item.body, infer_context);
@@ -144,6 +144,7 @@ pub fn resolve<D: Driver>(
             });
 
             let finalize_context = FinalizeContext {
+                type_context: &queued.type_context,
                 errors: None,
                 unresolved_variables: None,
             };
@@ -158,28 +159,24 @@ pub fn resolve<D: Driver>(
             errors: &errors,
             variables: &variables,
             recursion_stack: &recursion_stack,
-            bound_instances: RefCell::from(
-                queued
-                    .bounds
-                    .borrow()
-                    .iter()
-                    .map(|bounds| {
-                        bounds
-                            .iter()
-                            .map(|bound| bound.as_ref().map(Instance::clone_in_current_context))
-                            .collect()
-                    })
-                    .collect::<Vec<Vec<_>>>(),
-            ),
+            bound_instances: queued.bounds.clone(),
         };
 
-        try_unify_expression(driver, queued.body.as_mut(), &declared_type, &error_queue);
+        try_unify_expression(
+            driver,
+            queued.body.as_mut(),
+            &declared_type,
+            &queued.type_context,
+            &error_queue,
+        );
+
         queued.body = resolve_expression(queued.body, &resolve_context);
 
         let resolved_variables = {
             let unresolved_variables: RefCell<HashSet<_>> = Default::default();
 
             let finalize_context = FinalizeContext {
+                type_context: &queued.type_context,
                 errors: None,
                 unresolved_variables: Some(&unresolved_variables),
             };
@@ -200,10 +197,12 @@ pub fn resolve<D: Driver>(
                         queued.body.info.clone(),
                         Vec::new(),
                     ),
+                    &queued.type_context,
                 );
             }
 
             let finalize_context = FinalizeContext {
+                type_context: &queued.type_context,
                 errors: Some(&errors),
                 unresolved_variables: None,
             };
@@ -216,7 +215,7 @@ pub fn resolve<D: Driver>(
     };
 
     let mut errors = errors.into_inner();
-    report_queued_errors(error_queue.into_inner(), &mut errors);
+    report_queued_errors(&queued.type_context, error_queue.into_inner(), &mut errors);
 
     crate::Result { item, errors }
 }
@@ -265,7 +264,7 @@ pub fn instances_overlap<D: Driver>(
                 continue;
             }
 
-            let type_context = TypeContext::new();
+            let type_context = TypeContext::default();
 
             let instantiate_instance =
                 |parameters: Vec<<D as Driver>::Path>,
@@ -297,19 +296,20 @@ pub fn instances_overlap<D: Driver>(
                     }
                 };
 
-            let mut instance = instance
-                .as_ref()
-                .map(|instance| instance.clone_in_current_context());
+            let mut instance = instance.clone();
 
             instantiate_instance(parameters.clone(), instance.as_mut());
 
-            let mut other_instance = other_instance
-                .as_ref()
-                .map(|instance| instance.clone_in_current_context());
+            let mut other_instance = other_instance.clone();
 
             instantiate_instance(other_parameters.clone(), other_instance.as_mut());
 
-            if unify_instance(driver, instance.as_mut(), other_instance.as_ref()) {
+            if unify_instance(
+                driver,
+                instance.as_mut(),
+                other_instance.as_ref(),
+                &type_context,
+            ) {
                 overlapping.insert((index, other_index));
 
                 errors.push(WithInfo {
@@ -334,7 +334,7 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
 
     let role = trait_declaration.replace(Role::Trait);
 
-    let type_context = TypeContext::new();
+    let type_context = TypeContext::default();
     let errors: RefCell<Vec<_>> = Default::default();
 
     let instantiation_context = InstantiationContext::from_parameters(
@@ -357,6 +357,7 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
             driver,
             &mut r#type,
             &infer_type(instance_parameter.as_ref(), role.clone(), None),
+            &type_context,
         )
         .is_some());
     }
@@ -371,6 +372,7 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
     assert!(errors.into_inner().is_empty());
 
     let finalize_context = FinalizeContext {
+        type_context: &type_context,
         errors: None,
         unresolved_variables: None,
     };
@@ -404,10 +406,12 @@ enum QueuedError<D: Driver> {
 }
 
 fn report_queued_errors<D: Driver>(
+    type_context: &TypeContext<D>,
     error_queue: Vec<WithInfo<D::Info, QueuedError<D>>>,
     errors: &mut Vec<WithInfo<D::Info, crate::Error<D>>>,
 ) {
     let finalize_context = FinalizeContext {
+        type_context,
         errors: None,
         unresolved_variables: None,
     };
@@ -450,7 +454,7 @@ fn report_queued_errors<D: Driver>(
 // region: Types and type variables
 
 #[derive(Derivative)]
-#[derivative(Debug(bound = ""))]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 struct Type<D: Driver> {
     kind: TypeKind<D>,
     info: D::Info,
@@ -473,10 +477,7 @@ impl<D: Driver> Type<D> {
 
     fn contains_variable(&self, variable: &TypeVariable<D>) -> bool {
         match &self.kind {
-            TypeKind::Variable(var) => {
-                TypeContext::ptr_eq(&var.context, &variable.context)
-                    && var.counter == variable.counter
-            }
+            TypeKind::Variable(var) => var.counter == variable.counter,
             TypeKind::Declared { parameters, .. } => parameters
                 .iter()
                 .any(|r#type| r#type.contains_variable(variable)),
@@ -492,69 +493,58 @@ impl<D: Driver> Type<D> {
     }
 
     #[must_use]
-    fn apply_in_current_context(&self) -> Self {
-        let mut r#type = self.clone_in_current_context();
-        r#type.apply_in_current_context_mut();
+    fn apply_in_context(&self, context: &TypeContext<D>) -> Self {
+        let mut r#type = self.clone();
+        r#type.apply_in_context_mut(context);
         r#type
     }
 
-    fn apply_in_current_context_mut(&mut self) {
+    fn apply_in_context_mut(&mut self, context: &TypeContext<D>) {
         match &mut self.kind {
             TypeKind::Variable(variable) => {
-                let r#type = match variable.with_substitution_mut(|substitution| match substitution
-                {
-                    btree_map::Entry::Vacant(_) => None,
-                    btree_map::Entry::Occupied(entry) => {
-                        Some(entry.get().borrow().clone_in_current_context())
-                    }
-                }) {
-                    Some(r#type) => r#type,
-                    _ => return,
-                };
+                let r#type =
+                    match variable.with_substitution_mut(context, |substitution| match substitution
+                    {
+                        btree_map::Entry::Vacant(_) => None,
+                        btree_map::Entry::Occupied(entry) => Some(entry.get().borrow().clone()),
+                    }) {
+                        Some(r#type) => r#type,
+                        _ => return,
+                    };
 
                 assert!(!r#type.contains_variable(variable), "recursive type");
 
                 self.kind = r#type.kind;
                 self.info = r#type.info;
                 self.roles.extend(r#type.roles);
-                self.apply_in_current_context_mut();
+                self.apply_in_context_mut(context);
             }
             TypeKind::Opaque(_) => {}
             TypeKind::Parameter(_) => {}
             TypeKind::Declared { parameters, .. } => {
                 for r#type in parameters {
-                    r#type.apply_in_current_context_mut();
+                    r#type.apply_in_context_mut(context);
                 }
             }
             TypeKind::Function { input, output } => {
-                input.apply_in_current_context_mut();
-                output.apply_in_current_context_mut();
+                input.apply_in_context_mut(context);
+                output.apply_in_context_mut(context);
             }
             TypeKind::Tuple(elements) => {
                 for r#type in elements {
-                    r#type.apply_in_current_context_mut();
+                    r#type.apply_in_context_mut(context);
                 }
             }
             TypeKind::Lazy(r#type) => {
-                r#type.apply_in_current_context_mut();
+                r#type.apply_in_context_mut(context);
             }
             TypeKind::Unknown => {}
         }
     }
 }
 
-impl<D: Driver> Type<D> {
-    fn clone_in_current_context(&self) -> Self {
-        Type {
-            kind: self.kind.clone_in_current_context(),
-            info: self.info.clone(),
-            roles: self.roles.clone(),
-        }
-    }
-}
-
 #[derive(Derivative)]
-#[derivative(Debug(bound = ""))]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 enum TypeKind<D: Driver> {
     Variable(TypeVariable<D>),
     Opaque(TypeVariable<D>),
@@ -572,167 +562,56 @@ enum TypeKind<D: Driver> {
     Unknown,
 }
 
-impl<D: Driver> TypeKind<D> {
-    fn clone_in_current_context(&self) -> Self {
-        match self {
-            TypeKind::Variable(variable) => TypeKind::Variable(variable.clone_in_current_context()),
-            TypeKind::Opaque(variable) => TypeKind::Opaque(variable.clone_in_current_context()),
-            TypeKind::Parameter(path) => TypeKind::Parameter(path.clone()),
-            TypeKind::Declared {
-                path,
-                parameters: params,
-            } => TypeKind::Declared {
-                path: path.clone(),
-                parameters: params.iter().map(Type::clone_in_current_context).collect(),
-            },
-            TypeKind::Function { input, output } => TypeKind::Function {
-                input: Box::new(input.clone_in_current_context()),
-                output: Box::new(output.clone_in_current_context()),
-            },
-            TypeKind::Tuple(elements) => TypeKind::Tuple(
-                elements
-                    .iter()
-                    .map(Type::clone_in_current_context)
-                    .collect(),
-            ),
-            TypeKind::Lazy(r#type) => TypeKind::Lazy(Box::new(r#type.clone_in_current_context())),
-            TypeKind::Unknown => TypeKind::Unknown,
-        }
-    }
-}
-
 #[derive(Derivative)]
-#[derivative(Clone(bound = ""))]
+#[derivative(
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
 struct TypeVariable<D: Driver> {
-    context: TypeContext<D>,
+    _driver: std::marker::PhantomData<D>,
     counter: u32,
 }
 
 impl<D: Driver> Debug for TypeVariable<D> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "TypeVariable({} in context {:x?})",
-            self.counter,
-            Rc::as_ptr(&self.context.0)
-        )
-    }
-}
-
-impl<D: Driver> TypeVariable<D> {
-    fn clone_in_current_context(&self) -> Self {
-        TypeVariable {
-            context: self.context.shallow_clone(),
-            counter: self.counter,
-        }
-    }
-}
-
-impl<D: Driver> PartialEq for TypeVariable<D> {
-    fn eq(&self, other: &Self) -> bool {
-        TypeContext::ptr_eq(&self.context, &other.context) && self.counter == other.counter
-    }
-}
-
-impl<D: Driver> Eq for TypeVariable<D> {}
-
-impl<D: Driver> std::hash::Hash for TypeVariable<D> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        Rc::as_ptr(&self.context.0).hash(state);
-        self.counter.hash(state);
+        write!(f, "TypeVariable({})", self.counter)
     }
 }
 
 #[derive(Derivative)]
-#[derivative(Debug(bound = ""))]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 struct Instance<D: Driver> {
     r#trait: D::Path,
     parameters: Vec<Type<D>>,
 }
 
-impl<D: Driver> Instance<D> {
-    fn clone_in_current_context(&self) -> Self {
-        Instance {
-            r#trait: self.r#trait.clone(),
-            parameters: self
-                .parameters
-                .iter()
-                .map(Type::clone_in_current_context)
-                .collect(),
-        }
-    }
-}
-
 // region: Type context
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = ""))]
-struct TypeContext<D: Driver>(Rc<TypeContextInner<D>>);
-
-struct TypeContextInner<D: Driver> {
+#[derivative(Clone(bound = ""), Default(bound = ""))]
+struct TypeContext<D: Driver> {
     next_variable: Cell<u32>,
     substitutions: RefCell<BTreeMap<u32, Rc<RefCell<Type<D>>>>>,
     defaults: RefCell<BTreeMap<u32, Rc<RefCell<Type<D>>>>>,
 }
 
-impl<D: Driver> TypeContextInner<D> {
-    fn clone_in_current_context(&self) -> Self {
-        TypeContextInner {
-            next_variable: self.next_variable.clone(),
-            substitutions: RefCell::new(
-                self.substitutions
-                    .borrow()
-                    .iter()
-                    .map(|(variable, r#type)| {
-                        (
-                            *variable,
-                            Rc::new(RefCell::new(r#type.borrow().clone_in_current_context())),
-                        )
-                    })
-                    .collect(),
-            ),
-            defaults: RefCell::new(
-                self.defaults
-                    .borrow()
-                    .iter()
-                    .map(|(variable, r#type)| {
-                        (
-                            *variable,
-                            Rc::new(RefCell::new(r#type.borrow().clone_in_current_context())),
-                        )
-                    })
-                    .collect(),
-            ),
-        }
-    }
-}
-
 impl<D: Driver> TypeContext<D> {
-    pub fn new() -> Self {
-        TypeContext(Rc::new(TypeContextInner {
-            next_variable: Default::default(),
-            substitutions: Default::default(),
-            defaults: Default::default(),
-        }))
-    }
-
-    pub fn ptr_eq(this: &Self, other: &Self) -> bool {
-        Rc::ptr_eq(&this.0, &other.0)
-    }
-
-    pub fn shallow_clone(&self) -> Self {
-        TypeContext(self.0.clone())
+    fn replace_with(&self, other: Self) {
+        self.next_variable.set(other.next_variable.get());
+        self.substitutions.replace(other.substitutions.into_inner());
+        self.defaults.replace(other.defaults.into_inner());
     }
 }
 
 // region: Instantiation context
 
-#[derive(Derivative)]
-#[derivative(Debug(bound = ""))]
 struct InstantiationContext<'a, D: Driver> {
+    type_context: &'a TypeContext<D>,
+    types: Vec<(D::Path, Type<D>)>,
     info: &'a D::Info,
     errors: &'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>,
-    types: Vec<(D::Path, Type<D>)>,
 }
 
 #[derive(Clone, Copy, Default)]
@@ -745,7 +624,7 @@ impl<'a, D: Driver> InstantiationContext<'a, D> {
     pub fn from_parameters(
         driver: &D,
         parameters: impl IntoIterator<Item = D::Path>,
-        type_context: &TypeContext<D>,
+        type_context: &'a TypeContext<D>,
         info: &'a D::Info,
         errors: &'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>,
     ) -> Self {
@@ -762,12 +641,13 @@ impl<'a, D: Driver> InstantiationContext<'a, D> {
     pub fn from_parameters_with_options(
         driver: &D,
         parameters: impl IntoIterator<Item = D::Path>,
-        type_context: &TypeContext<D>,
+        type_context: &'a TypeContext<D>,
         info: &'a D::Info,
         errors: &'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>,
         options: InstantiationOptions,
     ) -> Self {
         InstantiationContext {
+            type_context,
             types: parameters
                 .into_iter()
                 .map(|path| {
@@ -819,7 +699,7 @@ impl<'a, D: Driver> InstantiationContext<'a, D> {
                     .paths_are_equal(parameter, instantiation_path)
                     .then_some(r#type)
             })
-            .map(Type::clone_in_current_context)
+            .cloned()
             .unwrap_or_else(|| {
                 self.errors.borrow_mut().push(WithInfo {
                     info: self.info.clone(),
@@ -838,13 +718,13 @@ impl<'a, D: Driver> InstantiationContext<'a, D> {
 impl<D: Driver> Type<D> {
     #[must_use]
     fn instantiate(&self, driver: &D, instantiation_context: &InstantiationContext<'_, D>) -> Self {
-        let mut r#type = self.clone_in_current_context();
+        let mut r#type = self.clone();
         r#type.instantiate_mut(driver, instantiation_context);
         r#type
     }
 
     fn instantiate_mut(&mut self, driver: &D, instantiation_context: &InstantiationContext<'_, D>) {
-        self.apply_in_current_context_mut();
+        self.apply_in_context_mut(instantiation_context.type_context);
 
         match &mut self.kind {
             TypeKind::Variable(_) => {}
@@ -874,37 +754,37 @@ impl<D: Driver> Type<D> {
     }
 
     #[must_use]
-    fn instantiate_opaque(&self) -> Self {
-        let mut r#type = self.clone_in_current_context();
-        r#type.instantiate_opaque_mut();
+    fn instantiate_opaque_in_context(&self, context: &TypeContext<D>) -> Self {
+        let mut r#type = self.clone();
+        r#type.instantiate_opaque_in_context_mut(context);
         r#type
     }
 
-    fn instantiate_opaque_mut(&mut self) {
-        self.apply_in_current_context_mut();
+    fn instantiate_opaque_in_context_mut(&mut self, context: &TypeContext<D>) {
+        self.apply_in_context_mut(context);
 
         match &mut self.kind {
             TypeKind::Variable(_) => {}
             TypeKind::Opaque(variable) => {
-                self.kind = TypeKind::Variable(variable.clone_in_current_context());
+                self.kind = TypeKind::Variable(variable.clone());
             }
             TypeKind::Parameter(_) => {}
             TypeKind::Declared { parameters, .. } => {
                 for r#type in parameters {
-                    r#type.instantiate_opaque_mut();
+                    r#type.instantiate_opaque_in_context_mut(context);
                 }
             }
             TypeKind::Function { input, output } => {
-                input.instantiate_opaque_mut();
-                output.instantiate_opaque_mut();
+                input.instantiate_opaque_in_context_mut(context);
+                output.instantiate_opaque_in_context_mut(context);
             }
             TypeKind::Tuple(elements) => {
                 for r#type in elements {
-                    r#type.instantiate_opaque_mut();
+                    r#type.instantiate_opaque_in_context_mut(context);
                 }
             }
             TypeKind::Lazy(r#type) => {
-                r#type.instantiate_opaque_mut();
+                r#type.instantiate_opaque_in_context_mut(context);
             }
             TypeKind::Unknown => {}
         }
@@ -914,7 +794,7 @@ impl<D: Driver> Type<D> {
 impl<D: Driver> Instance<D> {
     #[must_use]
     fn instantiate(&self, driver: &D, instantiation_context: &InstantiationContext<'_, D>) -> Self {
-        let mut bound = self.clone_in_current_context();
+        let mut bound = self.clone();
         bound.instantiate_mut(driver, instantiation_context);
         bound
     }
@@ -926,15 +806,15 @@ impl<D: Driver> Instance<D> {
     }
 
     #[must_use]
-    fn instantiate_opaque(&self) -> Self {
-        let mut bound = self.clone_in_current_context();
-        bound.instantiate_opaque_mut();
+    fn instantiate_opaque(&self, context: &TypeContext<D>) -> Self {
+        let mut bound = self.clone();
+        bound.instantiate_opaque_mut(context);
         bound
     }
 
-    fn instantiate_opaque_mut(&mut self) {
+    fn instantiate_opaque_mut(&mut self, context: &TypeContext<D>) {
         for parameter in &mut self.parameters {
-            parameter.instantiate_opaque_mut();
+            parameter.instantiate_opaque_in_context_mut(context);
         }
     }
 }
@@ -960,7 +840,7 @@ impl<D: Driver> Coercion<D> {
 impl<D: Driver> Expression<D> {
     fn apply_coercion(&mut self, info: &D::Info, Coercion { lazy }: Coercion<D>) {
         if let Some(original_type) = lazy {
-            let r#type = self.r#type.clone_in_current_context();
+            let r#type = self.r#type.clone();
             self.r#type.kind = TypeKind::Lazy(Box::new(r#type));
 
             let kind = mem::replace(&mut self.kind, ExpressionKind::Unknown(None));
@@ -984,18 +864,17 @@ impl<D: Driver> TypeContext<D> {
     }
 
     pub fn variable_with_default(&self, default: impl Into<Option<Type<D>>>) -> TypeVariable<D> {
-        let counter = self.0.next_variable.get();
-        self.0.next_variable.set(counter + 1);
+        let counter = self.next_variable.get();
+        self.next_variable.set(counter + 1);
 
         if let Some(default) = default.into() {
-            self.0
-                .defaults
+            self.defaults
                 .borrow_mut()
                 .insert(counter, Rc::new(RefCell::new(default)));
         }
 
         TypeVariable {
-            context: self.shallow_clone(),
+            _driver: std::marker::PhantomData,
             counter,
         }
     }
@@ -1004,14 +883,10 @@ impl<D: Driver> TypeContext<D> {
 impl<D: Driver> TypeVariable<D> {
     fn with_substitution_mut<T>(
         &self,
+        context: &TypeContext<D>,
         f: impl FnOnce(btree_map::Entry<'_, u32, Rc<RefCell<Type<D>>>>) -> T,
     ) -> T {
-        f(self
-            .context
-            .0
-            .substitutions
-            .borrow_mut()
-            .entry(self.counter))
+        f(context.substitutions.borrow_mut().entry(self.counter))
     }
 }
 
@@ -1026,25 +901,21 @@ fn unify_with_options<D: Driver>(
     driver: &D,
     r#type: &mut Type<D>,
     expected_type: &Type<D>,
+    context: &TypeContext<D>,
     options: UnifyOptions,
 ) -> Option<Coercion<D>> {
-    fn unify_variable<D: Driver>(variable: &TypeVariable<D>, r#type: &Type<D>) -> bool {
-        if let TypeKind::Variable(other) = &r#type.kind {
-            assert!(
-                TypeContext::ptr_eq(&variable.context, &other.context),
-                "cannot unify type variables from different contexts: {:x?} and {:x?}",
-                Rc::as_ptr(&variable.context.0),
-                Rc::as_ptr(&other.context.0),
-            );
-        }
-
+    fn unify_variable<D: Driver>(
+        variable: &TypeVariable<D>,
+        r#type: &Type<D>,
+        context: &TypeContext<D>,
+    ) -> bool {
         if r#type.contains_variable(variable) {
             return false;
         }
 
-        variable.with_substitution_mut(|substitution| match substitution {
+        variable.with_substitution_mut(context, |substitution| match substitution {
             btree_map::Entry::Vacant(entry) => {
-                entry.insert(Rc::new(RefCell::new(r#type.clone_in_current_context())));
+                entry.insert(Rc::new(RefCell::new(r#type.clone())));
             }
             btree_map::Entry::Occupied(_) => panic!("variable already has substitution"),
         });
@@ -1056,27 +927,28 @@ fn unify_with_options<D: Driver>(
         driver: &D,
         r#type: &mut Type<D>,
         expected_type: &Type<D>,
+        context: &TypeContext<D>,
         options: UnifyOptions,
     ) -> bool {
-        r#type.apply_in_current_context_mut();
-        let expected_type = expected_type.apply_in_current_context();
+        r#type.apply_in_context_mut(context);
+        let expected_type = expected_type.apply_in_context(context);
 
         match (&mut r#type.kind, &expected_type.kind) {
             (TypeKind::Opaque(_), _) | (_, TypeKind::Opaque(_)) => true,
             (TypeKind::Lazy(r#type), TypeKind::Lazy(expected_type)) => {
-                unify_type(driver, r#type, expected_type, options)
+                unify_type(driver, r#type, expected_type, context, options)
             }
             (_, TypeKind::Lazy(expected_type)) => {
-                unify_type(driver, r#type, expected_type, options)
+                unify_type(driver, r#type, expected_type, context, options)
             }
             (TypeKind::Variable(variable), _) => {
-                unify_variable(variable, &expected_type);
-                r#type.apply_in_current_context_mut();
+                unify_variable(variable, &expected_type, context);
+                r#type.apply_in_context_mut(context);
                 true
             }
             (_, TypeKind::Variable(variable)) => {
-                unify_variable(variable, r#type);
-                r#type.apply_in_current_context_mut();
+                unify_variable(variable, r#type, context);
+                r#type.apply_in_context_mut(context);
                 true
             }
             (TypeKind::Parameter(parameter), TypeKind::Parameter(expected_parameter)) => {
@@ -1097,7 +969,7 @@ fn unify_with_options<D: Driver>(
                 assert_eq!(parameters.len(), expected_parameters.len());
                 let mut unified = true;
                 for (r#type, expected_type) in parameters.iter_mut().zip(expected_parameters) {
-                    unified &= unify_type(driver, r#type, expected_type, options);
+                    unified &= unify_type(driver, r#type, expected_type, context, options);
                 }
 
                 unified
@@ -1109,8 +981,8 @@ fn unify_with_options<D: Driver>(
                     output: expected_output,
                 },
             ) => {
-                unify_type(driver, input, expected_input, options)
-                    & unify_type(driver, output, expected_output, options)
+                unify_type(driver, input, expected_input, context, options)
+                    & unify_type(driver, output, expected_output, context, options)
             }
             (TypeKind::Tuple(elements), TypeKind::Tuple(expected_elements)) => {
                 if elements.len() != expected_elements.len() {
@@ -1119,7 +991,7 @@ fn unify_with_options<D: Driver>(
 
                 let mut unified = true;
                 for (r#type, expected_type) in elements.iter_mut().zip(expected_elements) {
-                    unified &= unify_type(driver, r#type, expected_type, options);
+                    unified &= unify_type(driver, r#type, expected_type, context, options);
                 }
 
                 unified
@@ -1136,7 +1008,7 @@ fn unify_with_options<D: Driver>(
 
         match (&r#type.kind, &expected_type.kind) {
             (kind, TypeKind::Lazy(_)) if !matches!(kind, TypeKind::Lazy(_)) => {
-                coercion.lazy = Some(r#type.clone_in_current_context());
+                coercion.lazy = Some(r#type.clone());
             }
             _ => {}
         }
@@ -1144,7 +1016,8 @@ fn unify_with_options<D: Driver>(
         coercion
     }
 
-    unify_type(driver, r#type, expected_type, options).then(|| get_coercion(r#type, expected_type))
+    unify_type(driver, r#type, expected_type, context, options)
+        .then(|| get_coercion(r#type, expected_type))
 }
 
 #[must_use]
@@ -1152,8 +1025,15 @@ fn unify<D: Driver>(
     driver: &D,
     r#type: &mut Type<D>,
     expected_type: &Type<D>,
+    context: &TypeContext<D>,
 ) -> Option<Coercion<D>> {
-    unify_with_options(driver, r#type, expected_type, UnifyOptions::default())
+    unify_with_options(
+        driver,
+        r#type,
+        expected_type,
+        context,
+        UnifyOptions::default(),
+    )
 }
 
 #[must_use]
@@ -1161,11 +1041,12 @@ fn unify_parameters_with_options<D: Driver>(
     driver: &D,
     parameters: &mut [Type<D>],
     expected_parameters: &[Type<D>],
+    context: &TypeContext<D>,
     options: UnifyOptions,
 ) -> bool {
     let mut unified = true;
     for (r#type, expected_type) in parameters.iter_mut().zip(expected_parameters) {
-        unified &= unify_with_options(driver, r#type, expected_type, options).is_some();
+        unified &= unify_with_options(driver, r#type, expected_type, context, options).is_some();
     }
 
     unified
@@ -1176,6 +1057,7 @@ fn unify_instance_with_options<D: Driver>(
     driver: &D,
     instance: WithInfo<D::Info, &mut Instance<D>>,
     expected_instance: WithInfo<D::Info, &Instance<D>>,
+    context: &TypeContext<D>,
     options: UnifyOptions,
 ) -> bool {
     driver.paths_are_equal(&instance.item.r#trait, &expected_instance.item.r#trait)
@@ -1183,6 +1065,7 @@ fn unify_instance_with_options<D: Driver>(
             driver,
             &mut instance.item.parameters,
             &expected_instance.item.parameters,
+            context,
             options,
         )
 }
@@ -1192,11 +1075,13 @@ fn unify_instance<D: Driver>(
     driver: &D,
     actual_instance: WithInfo<D::Info, &mut Instance<D>>,
     expected_instance: WithInfo<D::Info, &Instance<D>>,
+    context: &TypeContext<D>,
 ) -> bool {
     unify_instance_with_options(
         driver,
         actual_instance,
         expected_instance,
+        context,
         UnifyOptions::default(),
     )
 }
@@ -1205,16 +1090,17 @@ fn try_unify_expression<D: Driver>(
     driver: &D,
     expression: WithInfo<D::Info, &mut Expression<D>>,
     expected_type: &Type<D>,
+    context: &TypeContext<D>,
     error_queue: &RefCell<Vec<WithInfo<D::Info, QueuedError<D>>>>,
 ) {
-    if let Some(coercion) = unify(driver, &mut expression.item.r#type, expected_type) {
+    if let Some(coercion) = unify(driver, &mut expression.item.r#type, expected_type, context) {
         expression.item.apply_coercion(&expression.info, coercion);
     } else {
         error_queue.borrow_mut().push(WithInfo {
             info: expression.info.clone(),
             item: QueuedError::Mismatch {
-                actual: expression.item.r#type.clone_in_current_context(),
-                expected: expected_type.clone_in_current_context(),
+                actual: expression.item.r#type.clone(),
+                expected: expected_type.clone(),
             },
         });
     }
@@ -1224,169 +1110,19 @@ fn try_unify_without_coercion<D: Driver>(
     driver: &D,
     r#type: WithInfo<D::Info, &mut Type<D>>,
     expected_type: &Type<D>,
+    context: &TypeContext<D>,
     error_queue: &RefCell<Vec<WithInfo<D::Info, QueuedError<D>>>>,
 ) {
-    if let Some(coercion) = unify(driver, r#type.item, expected_type) {
+    if let Some(coercion) = unify(driver, r#type.item, expected_type, context) {
         assert!(coercion.is_none());
     } else {
         error_queue.borrow_mut().push(WithInfo {
             info: r#type.info.clone(),
             item: QueuedError::Mismatch {
-                actual: r#type.item.clone_in_current_context(),
-                expected: expected_type.clone_in_current_context(),
+                actual: r#type.item.clone(),
+                expected: expected_type.clone(),
             },
         });
-    }
-}
-
-// region: Merging and reification
-
-pub struct TypeContextChange<D: Driver> {
-    context: TypeContext<D>,
-    delta: u32,
-}
-
-impl<D: Driver> Clone for TypeContextChange<D> {
-    fn clone(&self) -> Self {
-        TypeContextChange {
-            context: self.context.shallow_clone(),
-            delta: self.delta,
-        }
-    }
-}
-
-impl<D: Driver> TypeContextChange<D> {
-    fn from_deep_cloned(context: &TypeContext<D>) -> Self {
-        TypeContextChange {
-            context: context.shallow_clone(),
-            delta: 0,
-        }
-    }
-}
-
-impl<D: Driver> TypeContext<D> {
-    #[must_use]
-    pub fn deep_clone(&self) -> (Self, TypeContextChange<D>) {
-        let new_context = TypeContext(Rc::new(self.0.as_ref().clone_in_current_context()));
-
-        let change = TypeContextChange::from_deep_cloned(&new_context);
-
-        let substitutions = new_context
-            .0
-            .substitutions
-            .borrow()
-            .values()
-            .cloned()
-            .collect::<Vec<_>>();
-
-        for r#type in substitutions {
-            r#type.borrow_mut().set_context(&change);
-        }
-
-        let defaults = new_context
-            .0
-            .defaults
-            .borrow()
-            .values()
-            .cloned()
-            .collect::<Vec<_>>();
-
-        for r#type in defaults {
-            r#type.borrow_mut().set_context(&change);
-        }
-
-        (new_context, change)
-    }
-}
-
-impl<D: Driver> Type<D> {
-    pub fn clone_in_context(&self, change: &TypeContextChange<D>) -> Self {
-        Type {
-            info: self.info.clone(),
-            roles: self.roles.clone(),
-            kind: match &self.kind {
-                TypeKind::Variable(variable) => {
-                    TypeKind::Variable(variable.clone_in_context(change))
-                }
-                TypeKind::Opaque(variable) => TypeKind::Opaque(variable.clone_in_context(change)),
-                TypeKind::Parameter(path) => TypeKind::Parameter(path.clone()),
-                TypeKind::Declared { path, parameters } => TypeKind::Declared {
-                    path: path.clone(),
-                    parameters: parameters
-                        .iter()
-                        .map(|parameter| parameter.clone_in_context(change))
-                        .collect(),
-                },
-                TypeKind::Function { input, output } => TypeKind::Function {
-                    input: Box::new(input.clone_in_context(change)),
-                    output: Box::new(output.clone_in_context(change)),
-                },
-                TypeKind::Tuple(elements) => TypeKind::Tuple(
-                    elements
-                        .iter()
-                        .map(|element| element.clone_in_context(change))
-                        .collect(),
-                ),
-                TypeKind::Lazy(r#type) => TypeKind::Lazy(Box::new(r#type.clone_in_context(change))),
-                TypeKind::Unknown => TypeKind::Unknown,
-            },
-        }
-    }
-
-    pub fn set_context(&mut self, change: &TypeContextChange<D>) {
-        self.apply_in_current_context_mut();
-
-        match &mut self.kind {
-            TypeKind::Variable(variable) => variable.set_context(change),
-            TypeKind::Opaque(variable) => variable.set_context(change),
-            TypeKind::Parameter(_) => {}
-            TypeKind::Declared { parameters, .. } => {
-                for parameter in parameters {
-                    parameter.set_context(change);
-                }
-            }
-            TypeKind::Function { input, output } => {
-                input.set_context(change);
-                output.set_context(change);
-            }
-            TypeKind::Tuple(elements) => {
-                for element in elements {
-                    element.set_context(change);
-                }
-            }
-            TypeKind::Lazy(r#type) => {
-                r#type.set_context(change);
-            }
-            TypeKind::Unknown => {}
-        }
-
-        self.apply_in_current_context_mut();
-    }
-}
-
-impl<D: Driver> TypeVariable<D> {
-    fn clone_in_context(&self, change: &TypeContextChange<D>) -> Self {
-        let mut variable = self.clone_in_current_context();
-        variable.set_context(change);
-        variable
-    }
-
-    fn set_context(&mut self, change: &TypeContextChange<D>) {
-        self.context = change.context.shallow_clone();
-        self.counter += change.delta;
-    }
-}
-
-impl<D: Driver> Instance<D> {
-    fn clone_in_context(&self, change: &TypeContextChange<D>) -> Self {
-        Instance {
-            r#trait: self.r#trait.clone(),
-            parameters: self
-                .parameters
-                .iter()
-                .map(|parameter| parameter.clone_in_context(change))
-                .collect(),
-        }
     }
 }
 
@@ -1479,7 +1215,7 @@ struct Arm<D: Driver> {
 
 struct InferContext<'a, D: Driver> {
     driver: &'a D,
-    type_context: &'a RefCell<TypeContext<D>>,
+    type_context: &'a TypeContext<D>,
     error_queue: &'a RefCell<Vec<WithInfo<D::Info, QueuedError<D>>>>,
     errors: &'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>,
     variables: &'a RefCell<HashMap<D::Path, Type<D>>>,
@@ -1489,7 +1225,7 @@ impl<'a, D: Driver> InferContext<'a, D> {
     fn from_resolve_context(context: &'a ResolveContext<'a, D>) -> Self {
         InferContext {
             driver: context.driver,
-            type_context: &context.type_context,
+            type_context: context.type_context,
             error_queue: context.error_queue,
             errors: context.errors,
             variables: context.variables,
@@ -1573,10 +1309,16 @@ fn infer_expression<D: Driver>(
             let r#type = infer_type(
                 r#type.as_ref(),
                 value.replace(Role::Annotation),
-                Some(&context.type_context.borrow()),
+                Some(context.type_context),
             );
 
-            try_unify_expression(context.driver, value.as_mut(), &r#type, context.error_queue);
+            try_unify_expression(
+                context.driver,
+                value.as_mut(),
+                &r#type,
+                context.type_context,
+                context.error_queue,
+            );
 
             value.item
         }
@@ -1586,7 +1328,7 @@ fn infer_expression<D: Driver>(
             let instantiation_context = InstantiationContext::from_parameters(
                 context.driver,
                 type_declaration.item.parameters.clone(),
-                &context.type_context.borrow(),
+                context.type_context,
                 &info,
                 context.errors,
             );
@@ -1611,10 +1353,12 @@ fn infer_expression<D: Driver>(
             }
         }
         crate::UntypedExpression::Variable(name, variable) => {
-            let r#type = context.variables.borrow().get(&variable).map_or_else(
-                || Type::new(TypeKind::Unknown, info.clone(), Vec::new()),
-                Type::clone_in_current_context,
-            );
+            let r#type = context
+                .variables
+                .borrow()
+                .get(&variable)
+                .cloned()
+                .unwrap_or_else(|| Type::new(TypeKind::Unknown, info.clone(), Vec::new()));
 
             Expression {
                 r#type,
@@ -1627,7 +1371,7 @@ fn infer_expression<D: Driver>(
             let instantiation_context = InstantiationContext::from_parameters(
                 context.driver,
                 constant_declaration.item.parameters.clone(),
-                &context.type_context.borrow(),
+                context.type_context,
                 &info,
                 context.errors,
             );
@@ -1635,7 +1379,7 @@ fn infer_expression<D: Driver>(
             let r#type = infer_type(
                 constant_declaration.item.r#type.as_ref(),
                 constant_declaration.replace(Role::Annotation),
-                Some(&context.type_context.borrow()),
+                Some(context.type_context),
             )
             .instantiate(context.driver, &instantiation_context);
 
@@ -1650,7 +1394,7 @@ fn infer_expression<D: Driver>(
             let instantiation_context = InstantiationContext::from_parameters(
                 context.driver,
                 trait_declaration.item.parameters.clone(),
-                &context.type_context.borrow(),
+                context.type_context,
                 &info,
                 context.errors,
             );
@@ -1658,7 +1402,7 @@ fn infer_expression<D: Driver>(
             let r#type = infer_type(
                 trait_declaration.item.r#type.as_ref(),
                 trait_declaration.replace(Role::Trait),
-                Some(&context.type_context.borrow()),
+                Some(context.type_context),
             )
             .instantiate(context.driver, &instantiation_context);
 
@@ -1672,12 +1416,12 @@ fn infer_expression<D: Driver>(
                 "number",
                 &info,
                 context.driver,
-                &context.type_context.borrow(),
+                context.type_context,
                 context.errors,
             )
             .unwrap_or_else(|| {
                 Type::new(
-                    TypeKind::Variable(context.type_context.borrow().variable()),
+                    TypeKind::Variable(context.type_context.variable()),
                     info.clone(),
                     Vec::new(),
                 )
@@ -1693,12 +1437,12 @@ fn infer_expression<D: Driver>(
                 "text",
                 &info,
                 context.driver,
-                &context.type_context.borrow(),
+                context.type_context,
                 context.errors,
             )
             .unwrap_or_else(|| {
                 Type::new(
-                    TypeKind::Variable(context.type_context.borrow().variable()),
+                    TypeKind::Variable(context.type_context.variable()),
                     info.clone(),
                     Vec::new(),
                 )
@@ -1728,6 +1472,7 @@ fn infer_expression<D: Driver>(
                                 statement.info.clone(),
                                 Vec::new(),
                             ),
+                            context.type_context,
                         );
                     }
 
@@ -1746,7 +1491,7 @@ fn infer_expression<D: Driver>(
                         }],
                     )
                 },
-                |expression| expression.item.r#type.clone_in_current_context(),
+                |expression| expression.item.r#type.clone(),
             );
 
             Expression {
@@ -1756,7 +1501,7 @@ fn infer_expression<D: Driver>(
         }
         crate::UntypedExpression::Function { pattern, body } => {
             let input_type = Type::new(
-                TypeKind::Variable(context.type_context.borrow().variable()),
+                TypeKind::Variable(context.type_context.variable()),
                 info.clone(),
                 Vec::new(),
             );
@@ -1772,7 +1517,7 @@ fn infer_expression<D: Driver>(
                         output: Box::new(
                             body.item
                                 .r#type
-                                .clone_in_current_context()
+                                .clone()
                                 .with_role(body.replace(Role::FunctionOutput)),
                         ),
                     },
@@ -1793,9 +1538,9 @@ fn infer_expression<D: Driver>(
             input.item.r#type = input.item.r#type.with_role(role);
 
             let r#type = match &function.item.r#type.kind {
-                TypeKind::Function { output, .. } => output.as_ref().clone_in_current_context(),
+                TypeKind::Function { output, .. } => output.as_ref().clone(),
                 _ => Type::new(
-                    TypeKind::Variable(context.type_context.borrow().variable()),
+                    TypeKind::Variable(context.type_context.variable()),
                     info.clone(),
                     vec![function.replace(Role::FunctionOutput)],
                 ),
@@ -1813,7 +1558,7 @@ fn infer_expression<D: Driver>(
             let input = infer_expression(input.unboxed(), context);
 
             let r#type = Type::new(
-                TypeKind::Variable(context.type_context.borrow().variable()),
+                TypeKind::Variable(context.type_context.variable()),
                 info.clone(),
                 Vec::new(),
             );
@@ -1839,12 +1584,12 @@ fn infer_expression<D: Driver>(
                                 "boolean",
                                 &info,
                                 context.driver,
-                                &context.type_context.borrow(),
+                                context.type_context,
                                 context.errors,
                             )
                             .unwrap_or_else(|| {
                                 Type::new(
-                                    TypeKind::Variable(context.type_context.borrow().variable()),
+                                    TypeKind::Variable(context.type_context.variable()),
                                     guard.info.clone(),
                                     Vec::new(),
                                 )
@@ -1854,6 +1599,7 @@ fn infer_expression<D: Driver>(
                                 context.driver,
                                 guard.as_mut(),
                                 &boolean_type,
+                                context.type_context,
                                 context.error_queue,
                             );
                         }
@@ -1862,6 +1608,7 @@ fn infer_expression<D: Driver>(
                             context.driver,
                             arm.body.as_mut(),
                             &r#type,
+                            context.type_context,
                             context.error_queue,
                         );
 
@@ -1880,7 +1627,7 @@ fn infer_expression<D: Driver>(
         }
         crate::UntypedExpression::Intrinsic { name, inputs } => Expression {
             r#type: Type::new(
-                TypeKind::Variable(context.type_context.borrow().variable()),
+                TypeKind::Variable(context.type_context.variable()),
                 info.clone(),
                 Vec::new(),
             ),
@@ -1911,7 +1658,7 @@ fn infer_expression<D: Driver>(
         }
         crate::UntypedExpression::Structure(fields) => Expression {
             r#type: Type::new(
-                TypeKind::Variable(context.type_context.borrow().variable()),
+                TypeKind::Variable(context.type_context.variable()),
                 info.clone(),
                 Vec::new(),
             ),
@@ -1934,7 +1681,7 @@ fn infer_expression<D: Driver>(
             let instantiation_context = InstantiationContext::from_parameters(
                 context.driver,
                 type_declaration.item.parameters.clone(),
-                &context.type_context.borrow(),
+                context.type_context,
                 &info,
                 context.errors,
             );
@@ -1953,7 +1700,7 @@ fn infer_expression<D: Driver>(
                             let declared_type = infer_type(
                                 declared_type.as_ref(),
                                 declared_variant.replace(Role::VariantElement),
-                                Some(&context.type_context.borrow()),
+                                Some(context.type_context),
                             )
                             .instantiate(context.driver, &instantiation_context);
 
@@ -1963,6 +1710,7 @@ fn infer_expression<D: Driver>(
                                 context.driver,
                                 value.as_mut(),
                                 &declared_type,
+                                context.type_context,
                                 context.error_queue,
                             );
 
@@ -2003,7 +1751,7 @@ fn infer_expression<D: Driver>(
                     TypeKind::Tuple(
                         elements
                             .iter()
-                            .map(|element| element.item.r#type.clone_in_current_context())
+                            .map(|element| element.item.r#type.clone())
                             .collect(),
                     ),
                     info.clone(),
@@ -2014,7 +1762,7 @@ fn infer_expression<D: Driver>(
         }
         crate::UntypedExpression::Collection(elements) => {
             let element_type = Type::new(
-                TypeKind::Variable(context.type_context.borrow().variable()),
+                TypeKind::Variable(context.type_context.variable()),
                 info.clone(),
                 vec![WithInfo {
                     info: info.clone(),
@@ -2025,7 +1773,7 @@ fn infer_expression<D: Driver>(
             let initial_collection =
                 instantiated_language_constant("initial-collection", &info, context);
 
-            let collection_type = initial_collection.item.r#type.clone_in_current_context();
+            let collection_type = initial_collection.item.r#type.clone();
 
             elements
                 .into_iter()
@@ -2036,10 +1784,11 @@ fn infer_expression<D: Driver>(
                         context.driver,
                         expression.as_mut(),
                         &element_type,
+                        context.type_context,
                         context.error_queue,
                     );
 
-                    expression.item.r#type = element_type.clone_in_current_context();
+                    expression.item.r#type = element_type.clone();
 
                     let build_collection_trait =
                         instantiated_language_trait("build-collection", &info, context);
@@ -2047,19 +1796,15 @@ fn infer_expression<D: Driver>(
                     WithInfo {
                         info: expression.info.clone(),
                         item: Expression {
-                            r#type: collection_type.clone_in_current_context(),
+                            r#type: collection_type.clone(),
                             kind: ExpressionKind::Call {
                                 function: WithInfo {
                                     info: current.info.clone(),
                                     item: Box::new(Expression {
                                         r#type: Type::new(
                                             TypeKind::Function {
-                                                input: Box::new(
-                                                    collection_type.clone_in_current_context(),
-                                                ),
-                                                output: Box::new(
-                                                    collection_type.clone_in_current_context(),
-                                                ),
+                                                input: Box::new(collection_type.clone()),
+                                                output: Box::new(collection_type.clone()),
                                             },
                                             current.info.clone(),
                                             Vec::new(),
@@ -2082,12 +1827,12 @@ fn infer_expression<D: Driver>(
                 "text",
                 &info,
                 context.driver,
-                &context.type_context.borrow(),
+                context.type_context,
                 context.errors,
             )
             .unwrap_or_else(|| {
                 Type::new(
-                    TypeKind::Variable(context.type_context.borrow().variable()),
+                    TypeKind::Variable(context.type_context.variable()),
                     info.clone(),
                     Vec::new(),
                 )
@@ -2106,7 +1851,7 @@ fn infer_expression<D: Driver>(
                             info: value.info.clone(),
                             item: Expression {
                                 r#type: Type::new(
-                                    TypeKind::Variable(context.type_context.borrow().variable()),
+                                    TypeKind::Variable(context.type_context.variable()),
                                     value.info.clone(),
                                     Vec::new(),
                                 ),
@@ -2129,7 +1874,7 @@ fn infer_expression<D: Driver>(
             let body = infer_expression(body.unboxed(), context);
 
             Expression {
-                r#type: body.item.r#type.clone_in_current_context(),
+                r#type: body.item.r#type.clone(),
                 kind: ExpressionKind::Semantics {
                     name,
                     body: body.boxed(),
@@ -2148,7 +1893,7 @@ fn resolve_pattern<D: Driver>(
     r#type: WithInfo<D::Info, &Type<D>>,
     context: InferContext<'_, D>,
 ) {
-    let r#type = r#type.map(|r#type| r#type.clone_in_current_context());
+    let r#type = r#type.map(|r#type| r#type.clone());
 
     match &pattern.item {
         crate::Pattern::Unknown => {}
@@ -2158,13 +1903,13 @@ fn resolve_pattern<D: Driver>(
                 "number",
                 &pattern.info,
                 context.driver,
-                &context.type_context.borrow(),
+                context.type_context,
                 context.errors,
             )
             .map_or_else(
                 || {
                     Type::new(
-                        TypeKind::Variable(context.type_context.borrow().variable()),
+                        TypeKind::Variable(context.type_context.variable()),
                         pattern.info.clone(),
                         Vec::new(),
                     )
@@ -2176,6 +1921,7 @@ fn resolve_pattern<D: Driver>(
                 context.driver,
                 r#type.replace(&mut number_type),
                 &r#type.item,
+                context.type_context,
                 context.error_queue,
             );
         }
@@ -2184,13 +1930,13 @@ fn resolve_pattern<D: Driver>(
                 "text",
                 &pattern.info,
                 context.driver,
-                &context.type_context.borrow(),
+                context.type_context,
                 context.errors,
             )
             .map_or_else(
                 || {
                     Type::new(
-                        TypeKind::Variable(context.type_context.borrow().variable()),
+                        TypeKind::Variable(context.type_context.variable()),
                         pattern.info.clone(),
                         Vec::new(),
                     )
@@ -2202,6 +1948,7 @@ fn resolve_pattern<D: Driver>(
                 context.driver,
                 r#type.replace(&mut text_type),
                 &r#type.item,
+                context.type_context,
                 context.error_queue,
             );
         }
@@ -2209,7 +1956,7 @@ fn resolve_pattern<D: Driver>(
             context
                 .variables
                 .borrow_mut()
-                .insert(variable.clone(), r#type.item.clone_in_current_context());
+                .insert(variable.clone(), r#type.item);
         }
         crate::Pattern::Destructure(fields) => {
             let field_types = match &r#type.item.kind {
@@ -2219,7 +1966,7 @@ fn resolve_pattern<D: Driver>(
                     let instantiation_context = InstantiationContext::from_parameters(
                         context.driver,
                         type_declaration.item.parameters.clone(),
-                        &context.type_context.borrow(),
+                        context.type_context,
                         &pattern.info,
                         context.errors,
                     );
@@ -2229,6 +1976,7 @@ fn resolve_pattern<D: Driver>(
                             context.driver,
                             &mut instantiation_context.type_for_parameter(context.driver, path),
                             r#type,
+                            context.type_context,
                         )
                         .is_some());
                     }
@@ -2245,7 +1993,7 @@ fn resolve_pattern<D: Driver>(
                                         .r#type
                                         .as_ref(),
                                     field.replace(Role::StructureField),
-                                    Some(&context.type_context.borrow()),
+                                    Some(context.type_context),
                                 )
                                 .instantiate(context.driver, &instantiation_context)
                             })
@@ -2257,7 +2005,7 @@ fn resolve_pattern<D: Driver>(
                     .iter()
                     .map(|field| {
                         Type::new(
-                            TypeKind::Variable(context.type_context.borrow().variable()),
+                            TypeKind::Variable(context.type_context.variable()),
                             field.info.clone(),
                             Vec::new(),
                         )
@@ -2280,7 +2028,7 @@ fn resolve_pattern<D: Driver>(
                     let instantiation_context = InstantiationContext::from_parameters(
                         context.driver,
                         type_declaration.item.parameters.clone(),
-                        &context.type_context.borrow(),
+                        context.type_context,
                         &pattern.info,
                         context.errors,
                     );
@@ -2290,6 +2038,7 @@ fn resolve_pattern<D: Driver>(
                             context.driver,
                             &mut instantiation_context.type_for_parameter(context.driver, path),
                             r#type,
+                            context.type_context,
                         )
                         .is_some());
                     }
@@ -2307,7 +2056,7 @@ fn resolve_pattern<D: Driver>(
                                     infer_type(
                                         r#type.as_ref(),
                                         variant.replace(Role::VariantElement),
-                                        Some(&context.type_context.borrow()),
+                                        Some(context.type_context),
                                     )
                                     .instantiate(context.driver, &instantiation_context)
                                 })
@@ -2323,7 +2072,7 @@ fn resolve_pattern<D: Driver>(
                     let instantiation_context = InstantiationContext::from_parameters(
                         context.driver,
                         type_declaration.item.parameters.clone(),
-                        &context.type_context.borrow(),
+                        context.type_context,
                         &pattern.info,
                         context.errors,
                     );
@@ -2340,7 +2089,7 @@ fn resolve_pattern<D: Driver>(
                                     infer_type(
                                         r#type.as_ref(),
                                         r#type.replace(Role::VariantElement),
-                                        Some(&context.type_context.borrow()),
+                                        Some(context.type_context),
                                     )
                                     .instantiate(context.driver, &instantiation_context)
                                 })
@@ -2362,6 +2111,7 @@ fn resolve_pattern<D: Driver>(
                         context.driver,
                         r#type.replace(&mut enumeration_type),
                         &r#type.item,
+                        context.type_context,
                         context.error_queue,
                     );
 
@@ -2375,15 +2125,14 @@ fn resolve_pattern<D: Driver>(
         }
         crate::Pattern::Tuple(elements) => {
             let element_types = match &r#type.item.kind {
-                TypeKind::Tuple(element_types) => element_types
-                    .iter()
-                    .map(Type::clone_in_current_context)
-                    .collect::<Vec<_>>(),
+                TypeKind::Tuple(element_types) => {
+                    element_types.iter().map(Type::clone).collect::<Vec<_>>()
+                }
                 _ => elements
                     .iter()
                     .map(|element| {
                         Type::new(
-                            TypeKind::Variable(context.type_context.borrow().variable()),
+                            TypeKind::Variable(context.type_context.variable()),
                             element.info.clone(),
                             Vec::new(),
                         )
@@ -2392,12 +2141,7 @@ fn resolve_pattern<D: Driver>(
             };
 
             let mut tuple_type = Type::new(
-                TypeKind::Tuple(
-                    element_types
-                        .iter()
-                        .map(Type::clone_in_current_context)
-                        .collect(),
-                ),
+                TypeKind::Tuple(element_types.iter().map(Type::clone).collect()),
                 pattern.info.clone(),
                 Vec::new(),
             );
@@ -2406,6 +2150,7 @@ fn resolve_pattern<D: Driver>(
                 context.driver,
                 r#type.replace(&mut tuple_type),
                 &r#type.item,
+                context.type_context,
                 context.error_queue,
             );
 
@@ -2534,7 +2279,7 @@ fn instantiated_language_constant<D: Driver>(
 
 struct ResolveContext<'a, D: Driver> {
     driver: &'a D,
-    type_context: &'a RefCell<TypeContext<D>>,
+    type_context: &'a TypeContext<D>,
     error_queue: &'a RefCell<Vec<WithInfo<D::Info, QueuedError<D>>>>,
     errors: &'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>,
     variables: &'a RefCell<HashMap<D::Path, Type<D>>>,
@@ -2553,11 +2298,17 @@ fn resolve_expression<D: Driver>(
         ExpressionKind::UnresolvedConstant(ref path) => {
             let path = path.clone();
 
-            wipple_util::log!("BEFORE: {}", debug_type(&expression.item.r#type));
+            wipple_util::log!(
+                "BEFORE: {}",
+                debug_type(&expression.item.r#type, context.type_context)
+            );
 
             match resolve_item(&path, expression.as_mut(), context) {
                 Ok(true) => {
-                    wipple_util::log!("AFTER: {}", debug_type(&expression.item.r#type));
+                    wipple_util::log!(
+                        "AFTER: {}",
+                        debug_type(&expression.item.r#type, context.type_context)
+                    );
 
                     ExpressionKind::ResolvedConstant(path)
                 }
@@ -2580,14 +2331,7 @@ fn resolve_expression<D: Driver>(
             });
 
             match resolve_trait(query.as_ref(), context) {
-                Ok(resolved_instance) => {
-                    expression
-                        .item
-                        .r#type
-                        .set_context(&resolved_instance.type_context_change);
-
-                    ExpressionKind::ResolvedTrait(query.item.r#trait)
-                }
+                Ok(()) => ExpressionKind::ResolvedTrait(query.item.r#trait),
                 Err(error) => {
                     context.error_queue.borrow_mut().push(error);
                     ExpressionKind::Unknown(Some(query.item.r#trait))
@@ -2625,7 +2369,10 @@ fn resolve_expression<D: Driver>(
             mut function,
             mut input,
         } => {
-            function.item.r#type.apply_in_current_context_mut();
+            function
+                .item
+                .r#type
+                .apply_in_context_mut(context.type_context);
 
             // If we encounter a unit after a number, treat the unit as a
             // function
@@ -2634,7 +2381,7 @@ fn resolve_expression<D: Driver>(
                     "number",
                     &expression.info,
                     context.driver,
-                    &context.type_context.borrow(),
+                    context.type_context,
                     context.errors,
                 ) {
                     Some(number_type) => number_type,
@@ -2657,33 +2404,29 @@ fn resolve_expression<D: Driver>(
                 let mut unit = resolve_expression(input.unboxed(), context);
                 let number = resolve_expression(function.unboxed(), context);
 
-                let unit_type =
-                    Type::new(
-                        TypeKind::Function {
-                            input: Box::new(
-                                number
-                                    .item
-                                    .r#type
-                                    .clone_in_current_context()
-                                    .with_role(number.replace(Role::FunctionInput)),
-                            ),
-                            output: Box::new(
-                                expression.item.r#type.clone_in_current_context().with_role(
-                                    WithInfo {
-                                        info: expression.info.clone(),
-                                        item: Role::FunctionOutput,
-                                    },
-                                ),
-                            ),
-                        },
-                        expression.info.clone(),
-                        Vec::new(),
-                    );
+                let unit_type = Type::new(
+                    TypeKind::Function {
+                        input: Box::new(
+                            number
+                                .item
+                                .r#type
+                                .clone()
+                                .with_role(number.replace(Role::FunctionInput)),
+                        ),
+                        output: Box::new(expression.item.r#type.clone().with_role(WithInfo {
+                            info: expression.info.clone(),
+                            item: Role::FunctionOutput,
+                        })),
+                    },
+                    expression.info.clone(),
+                    Vec::new(),
+                );
 
                 try_unify_expression(
                     context.driver,
                     unit.as_mut(),
                     &unit_type,
+                    context.type_context,
                     context.error_queue,
                 );
 
@@ -2700,6 +2443,7 @@ fn resolve_expression<D: Driver>(
                     context.driver,
                     input.as_deref_mut(),
                     input_type,
+                    context.type_context,
                     context.error_queue,
                 );
 
@@ -2707,7 +2451,12 @@ fn resolve_expression<D: Driver>(
                 // because functions' return types are contravariant. But we
                 // disallow `lazy` and other coercions in return type position,
                 // so this is OK.
-                match unify(context.driver, &mut expression.item.r#type, output_type) {
+                match unify(
+                    context.driver,
+                    &mut expression.item.r#type,
+                    output_type,
+                    context.type_context,
+                ) {
                     Some(coercion) => {
                         // In the case where we still have a coercion (eg. if
                         // a type parameter is returned and that type parameter
@@ -2716,7 +2465,7 @@ fn resolve_expression<D: Driver>(
                             context.error_queue.borrow_mut().push(WithInfo {
                                 info: expression.info.clone(),
                                 item: QueuedError::DisallowedCoercion(
-                                    expression.item.r#type.clone_in_current_context(),
+                                    expression.item.r#type.clone(),
                                 ),
                             });
                         }
@@ -2725,8 +2474,8 @@ fn resolve_expression<D: Driver>(
                         context.error_queue.borrow_mut().push(WithInfo {
                             info: expression.info.clone(),
                             item: QueuedError::Mismatch {
-                                actual: expression.item.r#type.clone_in_current_context(),
-                                expected: output_type.clone_in_current_context(),
+                                actual: expression.item.r#type.clone(),
+                                expected: output_type.as_ref().clone(),
                             },
                         });
                     }
@@ -2740,33 +2489,29 @@ fn resolve_expression<D: Driver>(
                     input: input.boxed(),
                 }
             } else {
-                let function_type =
-                    Type::new(
-                        TypeKind::Function {
-                            input: Box::new(
-                                input
-                                    .item
-                                    .r#type
-                                    .clone_in_current_context()
-                                    .with_role(input.replace(Role::FunctionInput)),
-                            ),
-                            output: Box::new(
-                                expression.item.r#type.clone_in_current_context().with_role(
-                                    WithInfo {
-                                        info: expression.info.clone(),
-                                        item: Role::FunctionOutput,
-                                    },
-                                ),
-                            ),
-                        },
-                        function.info.clone(),
-                        Vec::new(),
-                    );
+                let function_type = Type::new(
+                    TypeKind::Function {
+                        input: Box::new(
+                            input
+                                .item
+                                .r#type
+                                .clone()
+                                .with_role(input.replace(Role::FunctionInput)),
+                        ),
+                        output: Box::new(expression.item.r#type.clone().with_role(WithInfo {
+                            info: expression.info.clone(),
+                            item: Role::FunctionOutput,
+                        })),
+                    },
+                    function.info.clone(),
+                    Vec::new(),
+                );
 
                 try_unify_expression(
                     context.driver,
                     function.as_deref_mut(),
                     &function_type,
+                    context.type_context,
                     context.error_queue,
                 );
 
@@ -2824,7 +2569,10 @@ fn resolve_expression<D: Driver>(
             ExpressionKind::Initialize { pattern, value }
         }
         ExpressionKind::UnresolvedStructure(fields) => {
-            expression.item.r#type.apply_in_current_context_mut();
+            expression
+                .item
+                .r#type
+                .apply_in_context_mut(context.type_context);
 
             match &expression.item.r#type.kind {
                 TypeKind::Variable(_) | TypeKind::Opaque(_) => ExpressionKind::UnresolvedStructure(
@@ -2851,7 +2599,7 @@ fn resolve_expression<D: Driver>(
                     let instantiation_context = InstantiationContext::from_parameters(
                         context.driver,
                         type_declaration.item.parameters.clone(),
-                        &context.type_context.borrow(),
+                        context.type_context,
                         &expression.info,
                         context.errors,
                     );
@@ -2866,7 +2614,7 @@ fn resolve_expression<D: Driver>(
                                     Some(field) => infer_type(
                                         field.item.r#type.as_ref(),
                                         field.replace(Role::StructureField),
-                                        Some(&context.type_context.borrow()),
+                                        Some(context.type_context),
                                     )
                                     .instantiate(context.driver, &instantiation_context),
                                     None => {
@@ -2885,6 +2633,7 @@ fn resolve_expression<D: Driver>(
                                     context.driver,
                                     value.as_mut(),
                                     &declared_type,
+                                    context.type_context,
                                     context.error_queue,
                                 );
 
@@ -2917,6 +2666,7 @@ fn resolve_expression<D: Driver>(
                         context.driver,
                         &mut instantiated_declared_type,
                         &expression.item.r#type,
+                        context.type_context,
                     ) {
                         Some(coercion) => {
                             // In the case where we still have a coercion (eg. if
@@ -2926,7 +2676,7 @@ fn resolve_expression<D: Driver>(
                                 context.error_queue.borrow_mut().push(WithInfo {
                                     info: expression.info.clone(),
                                     item: QueuedError::DisallowedCoercion(
-                                        expression.item.r#type.clone_in_current_context(),
+                                        expression.item.r#type.clone(),
                                     ),
                                 });
                             }
@@ -2935,8 +2685,8 @@ fn resolve_expression<D: Driver>(
                             context.error_queue.borrow_mut().push(WithInfo {
                                 info: expression.info.clone(),
                                 item: QueuedError::Mismatch {
-                                    actual: instantiated_declared_type.clone_in_current_context(),
-                                    expected: expression.item.r#type.clone_in_current_context(),
+                                    actual: instantiated_declared_type.clone(),
+                                    expected: expression.item.r#type.clone(),
                                 },
                             });
                         }
@@ -2950,9 +2700,7 @@ fn resolve_expression<D: Driver>(
                 _ => {
                     context.error_queue.borrow_mut().push(WithInfo {
                         info: expression.info.clone(),
-                        item: QueuedError::NotAStructure(
-                            expression.item.r#type.clone_in_current_context(),
-                        ),
+                        item: QueuedError::NotAStructure(expression.item.r#type.clone()),
                     });
 
                     ExpressionKind::Unknown(None)
@@ -3007,7 +2755,7 @@ fn resolve_expression<D: Driver>(
 
     wipple_util::log!(
         "resolved type = {}: {:#?}",
-        debug_type(&expression.item.r#type),
+        debug_type(&expression.item.r#type, context.type_context),
         expression.info
     );
 
@@ -3035,7 +2783,7 @@ fn resolve_item<D: Driver>(
     let instantiation_context = InstantiationContext::from_parameters_with_options(
         context.driver,
         item_declaration.item.parameters,
-        &context.type_context.borrow(),
+        context.type_context,
         &use_expression.info,
         context.errors,
         InstantiationOptions {
@@ -3043,13 +2791,13 @@ fn resolve_item<D: Driver>(
         },
     );
 
-    let mut instantiated_declared_type = infer_type(
+    let instantiated_declared_type = infer_type(
         WithInfo {
             info: use_expression.info.clone(),
             item: &item_declaration.item.r#type.item,
         },
         instantiated_declared_role,
-        Some(&context.type_context.borrow()),
+        Some(context.type_context),
     )
     .instantiate(context.driver, &instantiation_context);
 
@@ -3069,44 +2817,49 @@ fn resolve_item<D: Driver>(
         context.driver,
         use_expression.as_deref_mut(),
         &instantiated_declared_type,
+        context.type_context,
         context.error_queue,
     );
 
     // Check bounds
 
     let mut evaluate_bounds = {
-        let instantiated_declared_type = instantiated_declared_type.clone_in_current_context();
-        let mut use_type = use_expression.item.r#type.clone_in_current_context();
+        let instantiated_declared_type = instantiated_declared_type.clone();
+        let mut use_type = use_expression.item.r#type.clone();
         let info = &use_expression.info;
 
         move |bounds: &[WithInfo<D::Info, Instance<D>>], allow_unresolved_instances: bool| {
-            Ok(bounds
+            bounds
                 .iter()
                 .map(|bound| {
                     let query = WithInfo {
                         info: info.clone(),
-                        item: bound.item.clone_in_current_context(),
+                        item: bound.item.clone(),
                     };
 
                     match resolve_trait(query.as_ref(), context) {
-                        Ok(resolved_instance) => Ok(Some(resolved_instance.type_context_change)),
+                        Ok(()) => Ok(()),
                         Err(WithInfo {
                             item: QueuedError::UnresolvedInstance { .. },
                             ..
-                        }) if allow_unresolved_instances => Ok(None),
+                        }) if allow_unresolved_instances => Ok(()),
                         Err(error) => {
                             // Attempt to get a better error message by unifying the
                             // declared type with the use type again, now that the
                             // bounds have influenced the type
-                            if unify(context.driver, &mut use_type, &instantiated_declared_type)
-                                .is_none()
+                            if unify(
+                                context.driver,
+                                &mut use_type,
+                                &instantiated_declared_type,
+                                context.type_context,
+                            )
+                            .is_none()
                             {
                                 Err(WithInfo {
                                     info: info.clone(),
                                     item: QueuedError::Mismatch {
-                                        actual: use_type.clone_in_current_context(),
-                                        expected: instantiated_declared_type
-                                            .clone_in_current_context(),
+                                        actual: use_type.clone(),
+                                        expected: instantiated_declared_type.clone(),
                                     },
                                 })
                             } else {
@@ -3115,43 +2868,41 @@ fn resolve_item<D: Driver>(
                         }
                     }
                 })
-                .collect::<Result<Vec<_>, _>>()?
-                .into_iter()
-                .collect::<Option<Vec<_>>>())
+                .collect::<Vec<Result<(), _>>>()
         }
     };
 
-    if let Some(changes) = evaluate_bounds(&instantiated_bounds, true)? {
-        for change in changes {
-            use_expression.item.r#type.set_context(&change);
-            instantiated_declared_type.set_context(&change);
-        }
+    for result in evaluate_bounds(&instantiated_bounds, true) {
+        result?;
     }
 
     // Turn the opaque type variables back into regular type variables so they
     // can be inferred now that we've checked the bounds
 
-    let mut instantiated_declared_type = instantiated_declared_type.instantiate_opaque();
+    let instantiated_declared_type =
+        instantiated_declared_type.instantiate_opaque_in_context(context.type_context);
 
     let instantiated_bounds = instantiated_bounds
         .into_iter()
-        .map(|bound| bound.as_ref().map(Instance::instantiate_opaque))
+        .map(|bound| {
+            bound
+                .as_ref()
+                .map(|instance| instance.instantiate_opaque(context.type_context))
+        })
         .collect::<Vec<_>>();
 
     // Now that we've determined the types of the non-inferred parameters from the bounds,
     // determine the types of the inferred parameters by re-evaluating the bounds
 
-    if let Some(changes) = evaluate_bounds(&instantiated_bounds, false)? {
-        for change in changes {
-            use_expression.item.r#type.set_context(&change);
-            instantiated_declared_type.set_context(&change);
-        }
+    for result in evaluate_bounds(&instantiated_bounds, false) {
+        result?;
     }
 
     try_unify_expression(
         context.driver,
         use_expression.as_deref_mut(),
         &instantiated_declared_type,
+        context.type_context,
         context.error_queue,
     );
 
@@ -3172,7 +2923,7 @@ fn resolve_trait_parameters_from_type<D: Driver>(
     let instantiation_context = InstantiationContext::from_parameters(
         context.driver,
         trait_declaration.item.parameters,
-        &context.type_context.borrow(),
+        context.type_context,
         &use_info,
         context.errors,
     );
@@ -3180,7 +2931,7 @@ fn resolve_trait_parameters_from_type<D: Driver>(
     let trait_type = infer_type(
         trait_declaration.item.r#type.as_ref(),
         role,
-        Some(&context.type_context.borrow()),
+        Some(context.type_context),
     )
     .instantiate(context.driver, &instantiation_context);
 
@@ -3188,24 +2939,20 @@ fn resolve_trait_parameters_from_type<D: Driver>(
         context.driver,
         use_expression,
         &trait_type,
+        context.type_context,
         context.error_queue,
     );
 
     instantiation_context.into_types_for_parameters()
 }
 
-struct ResolvedInstance<D: Driver> {
-    instance: WithInfo<D::Info, Instance<D>>,
-    new_type_context: TypeContext<D>,
-    type_context_change: TypeContextChange<D>,
-}
-
 fn resolve_trait<D: Driver>(
     query: WithInfo<D::Info, &Instance<D>>,
     context: &ResolveContext<'_, D>,
-) -> Result<ResolvedInstance<D>, WithInfo<D::Info, QueuedError<D>>> {
+) -> Result<(), WithInfo<D::Info, QueuedError<D>>> {
     type Candidate<D> = (
-        ResolvedInstance<D>,
+        TypeContext<D>,
+        WithInfo<<D as Driver>::Info, Instance<D>>,
         Vec<WithInfo<<D as Driver>::Info, Instance<D>>>,
     );
 
@@ -3213,26 +2960,19 @@ fn resolve_trait<D: Driver>(
         mut candidates: Vec<Candidate<D>>,
         query: WithInfo<D::Info, &Instance<D>>,
         stack: &[WithInfo<D::Info, &Instance<D>>],
-        context: &ResolveContext<'_, D>,
     ) -> Result<Option<Candidate<D>>, WithInfo<D::Info, QueuedError<D>>> {
         match candidates.len() {
             0 => Ok(None),
-            1 => {
-                let (candidate, stack) = candidates.pop().unwrap();
-
-                *context.type_context.borrow_mut() = candidate.new_type_context.shallow_clone();
-
-                Ok(Some((candidate, stack)))
-            }
+            1 => Ok(Some(candidates.pop().unwrap())),
             _ => Err(query.map(|query| QueuedError::UnresolvedInstance {
-                instance: query.clone_in_current_context(),
+                instance: query.clone(),
                 candidates: candidates
                     .into_iter()
-                    .map(|(candidate, _)| candidate.instance.info)
+                    .map(|(_, candidate, _)| candidate.info)
                     .collect(),
                 stack: stack
                     .iter()
-                    .map(|instance| instance.as_deref().map(Instance::clone_in_current_context))
+                    .map(|instance| instance.as_deref().map(Instance::clone))
                     .collect(),
             })),
         }
@@ -3242,7 +2982,7 @@ fn resolve_trait<D: Driver>(
         query: WithInfo<D::Info, &Instance<D>>,
         context: &ResolveContext<'_, D>,
         stack: &[WithInfo<D::Info, &Instance<D>>],
-    ) -> Result<ResolvedInstance<D>, WithInfo<D::Info, QueuedError<D>>> {
+    ) -> Result<WithInfo<D::Info, Instance<D>>, WithInfo<D::Info, QueuedError<D>>> {
         let r#trait = query.item.r#trait.clone();
 
         let recursion_limit = context.driver.recursion_limit();
@@ -3255,45 +2995,30 @@ fn resolve_trait<D: Driver>(
         for bound_instances in context.bound_instances.borrow().iter() {
             let mut candidates = Vec::new();
             for bound_instance in bound_instances {
-                let (new_type_context, type_context_change) =
-                    context.type_context.borrow().deep_clone();
+                let new_type_context = context.type_context.clone();
 
-                let mut query = query
-                    .as_ref()
-                    .map(|query| query.clone_in_context(&type_context_change));
+                let mut query = query.as_deref().map(Clone::clone);
 
-                let bound = bound_instance
-                    .as_ref()
-                    .map(|bound| bound.clone_in_context(&type_context_change));
+                let bound = bound_instance.as_ref().map(Clone::clone);
 
                 if unify_instance_with_options(
                     context.driver,
                     query.as_mut(),
                     bound.as_ref(),
+                    &new_type_context,
                     UnifyOptions {
                         require_equal_type_parameters: true,
                         ..Default::default()
                     },
                 ) {
-                    candidates.push((
-                        ResolvedInstance {
-                            instance: bound,
-                            new_type_context,
-                            type_context_change,
-                        },
-                        Vec::new(),
-                    ));
+                    candidates.push((new_type_context, bound, Vec::new()));
                 }
             }
 
-            if let Some((candidate, _)) =
-                pick_from_candidates(candidates, query.clone(), stack, context)?
+            if let Some((new_type_context, candidate, _)) =
+                pick_from_candidates(candidates, query.clone(), stack)?
             {
-                wipple_util::log!(
-                    "found bound: {:?}",
-                    debug_instance(&candidate.instance.item)
-                );
-
+                context.type_context.replace_with(new_type_context);
                 return Ok(candidate);
             }
         }
@@ -3303,12 +3028,9 @@ fn resolve_trait<D: Driver>(
         for path in context.driver.get_instances_for_trait(&r#trait) {
             let instance_declaration = context.driver.get_instance_declaration(&path);
 
-            let (new_type_context, type_context_change) =
-                context.type_context.borrow().deep_clone();
+            let new_type_context = context.type_context.clone();
 
-            let mut query = query
-                .as_ref()
-                .map(|query| query.clone_in_context(&type_context_change));
+            let mut query = query.as_deref().map(Clone::clone);
 
             let instantiation_context = InstantiationContext::from_parameters(
                 context.driver,
@@ -3348,22 +3070,22 @@ fn resolve_trait<D: Driver>(
                 },
             };
 
-            if unify_instance(context.driver, query.as_mut(), instance.as_ref()) {
-                candidates.push((
-                    ResolvedInstance {
-                        instance,
-                        new_type_context,
-                        type_context_change,
-                    },
-                    bounds,
-                ));
+            if unify_instance(
+                context.driver,
+                query.as_mut(),
+                instance.as_ref(),
+                &new_type_context,
+            ) {
+                candidates.push((new_type_context, instance, bounds));
             }
         }
 
         // If an instance matches, check its bounds
-        if let Some((candidate, bounds)) =
-            pick_from_candidates(candidates, query.clone(), stack, context)?
+        if let Some((new_type_context, candidate, bounds)) =
+            pick_from_candidates(candidates, query.clone(), stack)?
         {
+            context.type_context.replace_with(new_type_context);
+
             for bound in bounds {
                 let mut stack = stack.to_vec();
                 stack.push(bound.as_ref());
@@ -3380,11 +3102,6 @@ fn resolve_trait<D: Driver>(
                 result?;
             }
 
-            wipple_util::log!(
-                "found instance: {:?}",
-                debug_instance(&candidate.instance.item)
-            );
-
             return Ok(candidate);
         }
 
@@ -3392,22 +3109,25 @@ fn resolve_trait<D: Driver>(
         Err(WithInfo {
             info: stack.first().unwrap().info.clone(),
             item: QueuedError::UnresolvedInstance {
-                instance: query.item.clone_in_current_context(),
+                instance: query.item.clone(),
                 candidates: Vec::new(),
                 stack: stack
                     .iter()
-                    .map(|instance| instance.as_deref().map(Instance::clone_in_current_context))
+                    .map(|instance| instance.as_deref().map(Instance::clone))
                     .collect(),
             },
         })
     }
 
-    resolve_trait_inner(query.clone(), context, &[query])
+    resolve_trait_inner(query.clone(), context, &[query])?;
+
+    Ok(())
 }
 
 // region: Finalize
 
 struct FinalizeContext<'a, D: Driver> {
+    type_context: &'a TypeContext<D>,
     errors: Option<&'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>>,
     unresolved_variables: Option<&'a RefCell<HashSet<TypeVariable<D>>>>,
 }
@@ -3421,7 +3141,7 @@ fn finalize_type<D: Driver>(
         context: &FinalizeContext<'_, D>,
         fully_resolved: &mut bool,
     ) -> WithInfo<D::Info, crate::Type<D>> {
-        r#type.apply_in_current_context_mut();
+        r#type.apply_in_context_mut(context.type_context);
 
         WithInfo {
             info: r#type.info,
@@ -3462,11 +3182,7 @@ fn finalize_type<D: Driver>(
     }
 
     let mut fully_resolved = true;
-    let finalized_type = finalize_type_inner(
-        r#type.clone_in_current_context(),
-        context,
-        &mut fully_resolved,
-    );
+    let finalized_type = finalize_type_inner(r#type, context, &mut fully_resolved);
 
     if !fully_resolved {
         if let Some(errors) = &context.errors {
@@ -3494,7 +3210,7 @@ fn finalize_expression<D: Driver>(
             let error = WithInfo {
                 info: expression.info.clone(),
                 item: crate::Error::UnknownType(
-                    finalize_type(expression.item.r#type.clone_in_current_context(), context).item,
+                    finalize_type(expression.item.r#type.clone(), context).item,
                 ),
             };
 
@@ -3555,7 +3271,7 @@ fn finalize_expression<D: Driver>(
             let error = WithInfo {
                 info: expression.info.clone(),
                 item: crate::Error::UnknownType(
-                    finalize_type(expression.item.r#type.clone_in_current_context(), context).item,
+                    finalize_type(expression.item.r#type.clone(), context).item,
                 ),
             };
 
@@ -3613,7 +3329,7 @@ fn finalize_expression<D: Driver>(
         }
     };
 
-    let r#type = finalize_type(expression.item.r#type.clone_in_current_context(), context).item;
+    let r#type = finalize_type(expression.item.r#type.clone(), context).item;
 
     WithInfo {
         info: expression.info,
@@ -3636,7 +3352,7 @@ fn finalize_instance<D: Driver>(
 }
 
 #[allow(dead_code)]
-fn debug_instance<D: Driver>(instance: &Instance<D>) -> String {
+fn debug_instance<D: Driver>(instance: &Instance<D>, context: &TypeContext<D>) -> String {
     format!(
         "({:?}{})",
         debug_path(&instance.r#trait),
@@ -3645,15 +3361,15 @@ fn debug_instance<D: Driver>(instance: &Instance<D>) -> String {
             .iter()
             .fold(String::new(), |mut result, parameter| {
                 use std::fmt::Write;
-                write!(&mut result, " {}", debug_type(parameter)).unwrap();
+                write!(&mut result, " {}", debug_type(parameter, context)).unwrap();
                 result
             })
     )
 }
 
 #[allow(dead_code)]
-fn debug_type<D: Driver>(r#type: &Type<D>) -> String {
-    let r#type = r#type.apply_in_current_context();
+fn debug_type<D: Driver>(r#type: &Type<D>, context: &TypeContext<D>) -> String {
+    let r#type = r#type.apply_in_context(context);
 
     match r#type.kind {
         TypeKind::Variable(variable) => format!("{{{:?}}}", variable),
@@ -3666,22 +3382,26 @@ fn debug_type<D: Driver>(r#type: &Type<D>) -> String {
                 .into_iter()
                 .fold(String::new(), |mut result, parameter| {
                     use std::fmt::Write;
-                    write!(&mut result, " {}", debug_type(&parameter)).unwrap();
+                    write!(&mut result, " {}", debug_type(&parameter, context)).unwrap();
                     result
                 })
         ),
         TypeKind::Function { input, output } => {
-            format!("({} -> {})", debug_type(&input), debug_type(&output),)
+            format!(
+                "({} -> {})",
+                debug_type(&input, context),
+                debug_type(&output, context),
+            )
         }
         TypeKind::Tuple(elements) => format!(
             "({})",
             elements.iter().fold(String::new(), |mut result, element| {
                 use std::fmt::Write;
-                write!(&mut result, " {} ,", debug_type(element)).unwrap();
+                write!(&mut result, " {} ,", debug_type(element, context)).unwrap();
                 result
             })
         ),
-        TypeKind::Lazy(r#type) => format!("(lazy {})", debug_type(&r#type)),
+        TypeKind::Lazy(r#type) => format!("(lazy {})", debug_type(&r#type, context)),
         TypeKind::Unknown => String::from("_"),
     }
 }
