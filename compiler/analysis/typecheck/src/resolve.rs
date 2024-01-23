@@ -982,8 +982,7 @@ fn unify_with_options<D: Driver>(
                 driver.paths_are_equal(parameter, expected_parameter)
                     || !options.require_equal_type_parameters
             }
-            (_, TypeKind::Parameter(_)) => false,
-            (TypeKind::Parameter(_), _) => false,
+            (_, TypeKind::Parameter(_)) | (TypeKind::Parameter(_), _) => false,
             (
                 TypeKind::Declared { path, parameters },
                 TypeKind::Declared {
@@ -1921,6 +1920,7 @@ fn resolve_pattern<D: Driver>(
     context: InferContext<'_, D>,
 ) {
     let mut r#type = r#type.map(|r#type| r#type.clone());
+    r#type.item.apply_in_context_mut(context.type_context);
 
     match &pattern.item {
         crate::Pattern::Unknown => {}
@@ -2139,7 +2139,7 @@ fn resolve_pattern<D: Driver>(
                         _ => panic!("expected enumeration type"),
                     };
 
-                    let mut enumeration_type = Type::new(
+                    let enumeration_type = Type::new(
                         TypeKind::Declared {
                             path: enumeration,
                             parameters: instantiation_context.into_types_for_parameters(),
@@ -2150,8 +2150,8 @@ fn resolve_pattern<D: Driver>(
 
                     try_unify_without_coercion(
                         context.driver,
-                        r#type.replace(&mut enumeration_type),
-                        &r#type.item,
+                        r#type.as_mut(),
+                        &enumeration_type,
                         context.type_context,
                         context.error_queue,
                     );
@@ -2335,7 +2335,29 @@ fn resolve_expression<D: Driver>(
     let kind = match expression.item.kind {
         ExpressionKind::Unknown(path) => ExpressionKind::Unknown(path),
         ExpressionKind::Marker(path) => ExpressionKind::Marker(path),
-        ExpressionKind::Variable(name, variable) => ExpressionKind::Variable(name, variable),
+        ExpressionKind::Variable(ref name, ref variable) => {
+            let variable_type = context
+                .variables
+                .borrow()
+                .get(variable)
+                .cloned()
+                .unwrap_or_else(|| {
+                    Type::new(TypeKind::Unknown, expression.info.clone(), Vec::new())
+                });
+
+            let name = name.clone();
+            let variable = variable.clone();
+
+            try_unify_expression(
+                context.driver,
+                expression.as_mut(),
+                &variable_type,
+                context.type_context,
+                context.error_queue,
+            );
+
+            ExpressionKind::Variable(name, variable)
+        }
         ExpressionKind::UnresolvedConstant(ref path) => {
             let path = path.clone();
 
