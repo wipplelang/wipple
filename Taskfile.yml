@@ -11,6 +11,8 @@ tasks:
   test:
     run: once
     deps:
+      - compiler:build
+      - interpreter:build
       - base:compile
     dir: test
     cmds:
@@ -61,7 +63,6 @@ tasks:
       - interpreter:build
     dir: cli
     cmds:
-      - npm ci
       - npm run build
       - npm run package
       - cp dist/wipple /usr/local/bin/wipple
@@ -70,12 +71,10 @@ tasks:
     run: once
     dir: compiler
     cmds:
-      - npm ci
       - npm run build
 
   interpreter:build:
     run: once
     dir: interpreter
     cmds:
-      - npm ci
       - npm run build

@@ -1,1 +1,3 @@
+[should compile]
+
 show "Hello, world!"
