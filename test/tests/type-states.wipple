@@ -1,0 +1,19 @@
+[should error]
+
+Idle : type
+Hovering : type
+
+Drone : State => type
+
+my-drone :: Drone Idle
+my-drone : Drone
+
+take-off :: Drone Idle -> Drone Hovering
+take-off : just Drone
+
+land :: Drone Hovering -> Drone Idle
+land : just Drone
+
+_ : my-drone . take-off . land -- works!
+
+_ : my-drone . land -- cannot land because drone is already idle

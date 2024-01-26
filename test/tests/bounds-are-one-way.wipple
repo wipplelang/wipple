@@ -1,0 +1,6 @@
+[should compile]
+
+T : A => trait A
+
+f :: A where (T A) => Number
+f : T

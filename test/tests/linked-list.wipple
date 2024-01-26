@@ -1,0 +1,17 @@
+[should compile]
+
+Linked-List : A => type {
+  Nil
+  Cons A (Linked-List A)
+}
+
+reduce :: A R => (A -> R -> R) -> R -> Linked-List A -> R
+reduce : f result l -> when l {
+  Nil -> result
+  Cons x rest -> reduce f (f x result) rest
+}
+
+l : Cons 1 (Cons 2 (Cons 3 Nil))
+
+sum : reduce (Add :: (Number -> _)) 0 l
+show sum

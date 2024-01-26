@@ -1,0 +1,4 @@
+[should compile]
+
+show (Some 42 is Some _)
+show (Some 42 is None)

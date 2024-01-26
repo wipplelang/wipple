@@ -1,0 +1,13 @@
+[should compile]
+
+[help-show-code]
+[on-unimplemented ("_ is not compatible with _" Left Right)]
+Compatible : Left Right => trait (Left -> Right -> ())
+
+Foo : type
+foo : Foo
+
+Bar : type
+bar : Bar
+
+Compatible foo bar

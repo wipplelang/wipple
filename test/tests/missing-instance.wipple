@@ -1,0 +1,4 @@
+[should error]
+
+Foo : type
+show Foo

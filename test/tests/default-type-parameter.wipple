@@ -1,0 +1,17 @@
+[should compile]
+
+X : type
+Y : type
+
+T : A => trait A
+instance (T X) : X
+instance (T Y) : Y
+
+instance (Show X) : just "X"
+instance (Show Y) : just "Y"
+
+foo :: (A : X) where (T A) => A
+foo : T
+
+show foo
+show (foo :: Y)

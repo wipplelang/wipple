@@ -1,0 +1,12 @@
+[should compile]
+
+T : A => trait ()
+U : A => trait ()
+V : A => trait ()
+W : A => trait ()
+
+A where (U A) => instance (T A) : ()
+A where (V A) => instance (U A) : ()
+A where (W A) => instance (V A) : ()
+
+T

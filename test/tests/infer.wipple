@@ -1,0 +1,6 @@
+[should compile]
+
+languages : "C" , "Python" , "Java" , "JavaScript" , "Wipple"
+
+short-names : languages . filter (name -> count name < 5)
+short-names . each show

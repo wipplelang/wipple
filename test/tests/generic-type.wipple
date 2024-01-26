@@ -1,0 +1,10 @@
+[should compile]
+
+Container : A => type {
+  inner :: A
+}
+
+c : Container { inner : "Hello, world!" }
+
+{ inner } : c
+show inner

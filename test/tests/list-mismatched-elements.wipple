@@ -1,0 +1,4 @@
+[should compile]
+
+my-list : 1 , "hi" , ()
+my-list . each show

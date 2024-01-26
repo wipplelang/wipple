@@ -1,0 +1,4 @@
+[should error]
+
+x :: Number
+x : "42"

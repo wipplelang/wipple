@@ -32,13 +32,16 @@ for (let file of fs.readdirSync("tests").sort()) {
                     shouldCompile = true;
                     break;
                 }
+                case "should warn": {
+                    throw new Error("TODO");
+                }
                 case "should error": {
                     shouldCompile = false;
                     break;
                 }
                 default: {
                     throw new Error(
-                        "expected test to begin with [should compile] or [should error]"
+                        "expected test to begin with [should compile], [should warn], or [should error]"
                     );
                 }
             }

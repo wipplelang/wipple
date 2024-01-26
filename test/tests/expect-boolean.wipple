@@ -1,0 +1,4 @@
+[should compile]
+
+True . expect "this should never happen"
+False . expect "hello, world"

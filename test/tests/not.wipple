@@ -1,0 +1,4 @@
+[should compile]
+
+input : 3.14
+show (not (Equal 42) input = not (Equal 42 input))

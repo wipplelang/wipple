@@ -1,0 +1,13 @@
+[should compile]
+
+Boolean : type {
+  True
+  False
+}
+
+x? : True
+
+show (when x? {
+  True -> "Yay!"
+  False -> "Uh oh"
+})

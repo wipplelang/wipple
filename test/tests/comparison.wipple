@@ -1,0 +1,14 @@
+[should compile]
+
+show (1 + 2 = 3)
+show (1 = 2 or 1 = 1)
+show (2 /= 3)
+show ("hello" = "hello")
+show (() = ())
+show (True = True)
+show (False = False)
+show (True = False)
+show (2 > 1)
+show (1 >= 1)
+show (4 < 3)
+show (5 <= 6)

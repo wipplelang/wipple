@@ -1,0 +1,9 @@
+[should compile]
+
+my-list : 1 , 2 , 3
+
+show (my-list . first)
+show (my-list . last)
+show (my-list . initial . unwrap . last)
+show (my-list . tail . unwrap . first)
+show (my-list . nth 1)

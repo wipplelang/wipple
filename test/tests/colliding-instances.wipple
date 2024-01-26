@@ -1,0 +1,12 @@
+[should error]
+
+T : A => trait ()
+
+X : type
+instance (T X) : ()
+instance (T X) : ()
+
+instance (T _) : ()
+
+U : A => trait ()
+A where (U A) => instance (T A) : ()
