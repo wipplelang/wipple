@@ -47,7 +47,6 @@ for (let file of fs.readdirSync("tests")) {
 
             if (compileResult.errors.length > 0) {
                 expect(shouldCompile).toBeFalsy();
-
                 expect({ errors: compileResult.errors }).toMatchSnapshot();
                 return;
             }

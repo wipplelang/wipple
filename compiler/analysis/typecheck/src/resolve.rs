@@ -147,6 +147,7 @@ pub fn resolve<D: Driver>(
                 driver,
                 type_context: &queued.type_context,
                 bound_instances: queued.bounds.clone(),
+                error_queue: None,
                 errors: None,
                 unresolved_variables: None,
                 contains_unknown: &Cell::new(false),
@@ -183,6 +184,7 @@ pub fn resolve<D: Driver>(
                 driver,
                 type_context: &queued.type_context,
                 bound_instances: queued.bounds.clone(),
+                error_queue: None,
                 errors: None,
                 unresolved_variables: None,
                 contains_unknown: &Cell::new(false),
@@ -225,6 +227,7 @@ pub fn resolve<D: Driver>(
                     driver,
                     type_context: &queued.type_context,
                     bound_instances: queued.bounds.clone(),
+                    error_queue: Some(&error_queue),
                     errors: Some(&errors),
                     unresolved_variables: Some(&unresolved_variables),
                     contains_unknown: &Cell::new(false),
@@ -405,6 +408,7 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
         driver,
         type_context: &type_context,
         bound_instances: Default::default(),
+        error_queue: None,
         errors: None,
         unresolved_variables: None,
         contains_unknown: &Cell::new(false),
@@ -449,6 +453,7 @@ fn report_queued_errors<D: Driver>(
         driver,
         type_context,
         bound_instances: Default::default(),
+        error_queue: None,
         errors: None,
         unresolved_variables: None,
         contains_unknown: &Cell::new(false),
@@ -685,49 +690,51 @@ impl<'a, D: Driver> InstantiationContext<'a, D> {
         errors: &'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>,
         options: InstantiationOptions,
     ) -> Self {
-        InstantiationContext {
+        let mut context = InstantiationContext {
             type_context,
-            types: parameters
-                .into_iter()
-                .map(|path| {
-                    let parameter_declaration = driver.get_type_parameter_declaration(&path);
-
-                    let variable = type_context.variable_with_default(
-                        parameter_declaration
-                            .as_ref()
-                            .item
-                            .default
-                            .as_ref()
-                            .map(|r#type| {
-                                infer_type(
-                                    r#type.as_ref(),
-                                    parameter_declaration.replace(Role::TypeParameter),
-                                    Some(type_context),
-                                )
-                            }),
-                    );
-
-                    let kind = if parameter_declaration.item.infer.is_some()
-                        && options.instantiate_inferred_parameters_as_opaque
-                    {
-                        TypeKind::Opaque(variable)
-                    } else {
-                        TypeKind::Variable(variable)
-                    };
-
-                    (
-                        path,
-                        Type::new(
-                            kind,
-                            parameter_declaration.info.clone(),
-                            vec![parameter_declaration.replace(Role::TypeParameter)],
-                        ),
-                    )
-                })
-                .collect(),
+            types: Vec::new(),
             info,
             errors,
+        };
+
+        for path in parameters {
+            let parameter_declaration = driver.get_type_parameter_declaration(&path);
+
+            let variable = type_context.variable_with_default(
+                parameter_declaration
+                    .as_ref()
+                    .item
+                    .default
+                    .as_ref()
+                    .map(|r#type| {
+                        infer_type(
+                            r#type.as_ref(),
+                            parameter_declaration.replace(Role::TypeParameter),
+                            Some(type_context),
+                        )
+                        .instantiate(driver, &context)
+                    }),
+            );
+
+            let kind = if parameter_declaration.item.infer.is_some()
+                && options.instantiate_inferred_parameters_as_opaque
+            {
+                TypeKind::Opaque(variable)
+            } else {
+                TypeKind::Variable(variable)
+            };
+
+            context.types.push((
+                path,
+                Type::new(
+                    kind,
+                    parameter_declaration.info.clone(),
+                    vec![parameter_declaration.replace(Role::TypeParameter)],
+                ),
+            ));
         }
+
+        context
     }
 
     pub fn type_for_parameter(&self, driver: &D, parameter: &D::Path) -> Type<D> {
@@ -967,6 +974,15 @@ fn unify_with_options<D: Driver>(
             btree_map::Entry::Occupied(_) => panic!("variable already has substitution"),
         });
 
+        if let TypeKind::Variable(other) = &r#type.kind {
+            if let Some(default) = variable.default(context) {
+                context
+                    .defaults
+                    .borrow_mut()
+                    .insert(other.counter, Rc::new(RefCell::new(default)));
+            }
+        }
+
         true
     }
 
@@ -1180,7 +1196,7 @@ fn substitute_defaults<D: Driver>(
     r#type.apply_in_context_mut(context);
 
     match &mut r#type.kind {
-        TypeKind::Variable(variable) | TypeKind::Opaque(variable) => {
+        TypeKind::Variable(variable) => {
             if let Some(default) = variable.default(context) {
                 if let Some(coercion) = unify(driver, r#type, &default, context) {
                     // FIXME: Enforce this
@@ -1218,7 +1234,7 @@ fn substitute_defaults<D: Driver>(
             false
         }
         TypeKind::Lazy(r#type) => substitute_defaults(driver, r#type, context),
-        TypeKind::Parameter(_) | TypeKind::Unknown => false,
+        TypeKind::Opaque(_) | TypeKind::Parameter(_) | TypeKind::Unknown => false,
     }
 }
 
@@ -3260,8 +3276,8 @@ fn substitute_defaults_in_expression<D: Driver>(
             substitute_defaults_in_expression(driver, body.as_deref_mut(), context)
         }
         ExpressionKind::Call { function, input } => {
-            substitute_defaults_in_expression(driver, function.as_deref_mut(), context)
-                || substitute_defaults_in_expression(driver, input.as_deref_mut(), context)
+            substitute_defaults_in_expression(driver, input.as_deref_mut(), context)
+                || substitute_defaults_in_expression(driver, function.as_deref_mut(), context)
         }
         ExpressionKind::When { input, arms } => {
             substitute_defaults_in_expression(driver, input.as_deref_mut(), context)
@@ -3322,6 +3338,7 @@ struct FinalizeContext<'a, D: Driver> {
     driver: &'a D,
     type_context: &'a TypeContext<D>,
     bound_instances: RefCell<Vec<Vec<WithInfo<D::Info, Instance<D>>>>>,
+    error_queue: Option<&'a RefCell<Vec<WithInfo<D::Info, QueuedError<D>>>>>,
     errors: Option<&'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>>,
     unresolved_variables: Option<&'a RefCell<HashSet<TypeVariable<D>>>>,
     contains_unknown: &'a Cell<bool>,
@@ -3417,11 +3434,13 @@ fn finalize_expression<D: Driver>(
             crate::TypedExpressionKind::Variable(name.clone(), variable.clone())
         }
         ExpressionKind::UnresolvedConstant(path) => {
-            if let Some(errors) = &context.errors {
+            if let Some((error_queue, errors)) =
+                context.error_queue.as_ref().zip(context.errors.as_ref())
+            {
                 let resolve_context = ResolveContext {
                     driver: context.driver,
                     type_context: context.type_context,
-                    error_queue: &Default::default(),
+                    error_queue,
                     errors,
                     variables: &Default::default(),
                     recursion_stack: &Default::default(),
@@ -3431,7 +3450,7 @@ fn finalize_expression<D: Driver>(
                 match resolve_item(
                     path,
                     expression.as_deref().map(Clone::clone).as_mut(),
-                    true,
+                    false,
                     &resolve_context,
                 ) {
                     Ok(true) => {
@@ -3440,13 +3459,7 @@ fn finalize_expression<D: Driver>(
                     }
                     Ok(false) => crate::TypedExpressionKind::Unknown(Some(path.clone())),
                     Err(error) => {
-                        report_queued_errors(
-                            context.driver,
-                            context.type_context,
-                            vec![error],
-                            &mut errors.borrow_mut(),
-                        );
-
+                        error_queue.borrow_mut().push(error);
                         crate::TypedExpressionKind::Unknown(Some(path.clone()))
                     }
                 }
