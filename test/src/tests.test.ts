@@ -19,7 +19,7 @@ const baseInterface = JSON.parse(
 
 const baseLibrary = JSON.parse(fs.readFileSync(path.join(prefix, "base.wipplelibrary"), "utf8"));
 
-for (let file of fs.readdirSync("tests")) {
+for (let file of fs.readdirSync("tests").sort()) {
     if (path.extname(file) === ".wipple") {
         test(file, async () => {
             const code = await fsp.readFile(path.join("tests", file), "utf8");
