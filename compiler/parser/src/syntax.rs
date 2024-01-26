@@ -869,6 +869,26 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 (variable . "pattern"))
         "#;
 
+        static AS_EXPRESSION = r#"
+            (or
+                (binary-operator
+                    "as"
+                    unapplied)
+                (binary-operator
+                    "as"
+                    (partially-applied-left .
+                        (variable . "value")))
+                (binary-operator
+                    "as"
+                    (partially-applied-right .
+                        (variable . "value")))
+                (binary-operator
+                    "as"
+                    (applied
+                        (variable . "value")
+                        (variable . "type"))))
+        "#;
+
             static STRUCTURE_EXPRESSION = r#"
             (or
                 (non-associative-binary-operator
@@ -1525,6 +1545,63 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
             })
         };
 
+        let r#as = |parser: &mut Self| {
+            AS_EXPRESSION.parse(&node).map(|mut vars| {
+                let value = vars
+                    .remove("value")
+                    .map(|mut value| value.pop().unwrap())
+                    .map(|value| {
+                        parser.parse_expression(
+                            value.span().cloned().unwrap_or_else(|| span.clone()),
+                            value,
+                        )
+                    });
+
+                let r#type = vars
+                    .remove("type")
+                    .map(|mut r#type| r#type.pop().unwrap())
+                    .map(|r#type| {
+                        parser.parse_type(
+                            r#type.span().cloned().unwrap_or_else(|| span.clone()),
+                            r#type,
+                        )
+                    });
+
+                let r#type = match r#type {
+                    Some(r#type) => r#type,
+                    None => {
+                        parser.errors.push(Error {
+                            span: span.clone(),
+                            expected: SyntaxKind::Block,
+                        });
+
+                        WithInfo {
+                            info: Info {
+                                path: parser.driver.file_path(),
+                                span: span.clone(),
+                                documentation: Vec::new(),
+                            }
+                            .into(),
+                            item: syntax::Type::Error,
+                        }
+                    }
+                };
+
+                WithInfo {
+                    info: Info {
+                        path: parser.driver.file_path(),
+                        span: span.clone(),
+                        documentation: Vec::new(),
+                    }
+                    .into(),
+                    item: syntax::Expression::As {
+                        value: value.map(|value| value.boxed()),
+                        r#type,
+                    },
+                }
+            })
+        };
+
         let or = binary_expression_operator!("or", Or);
         let and = binary_expression_operator!("and", And);
         let less_than = binary_expression_operator!("<", LessThan);
@@ -1668,6 +1745,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
             .or_else(|| or(self))
             .or_else(|| and(self))
             .or_else(|| compose(self))
+            .or_else(|| r#as(self))
             .or_else(|| less_than(self))
             .or_else(|| less_than_or_equal(self))
             .or_else(|| greater_than(self))

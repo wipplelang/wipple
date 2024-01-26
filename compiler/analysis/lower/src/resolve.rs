@@ -1069,17 +1069,47 @@ fn resolve_expression<D: Driver>(
                     None => crate::Expression::Error,
                 });
 
-            let operator_trait = crate::Expression::Annotate {
-                value: operator_trait.boxed(),
-                r#type: resolve_type(r#type, info),
-            };
+            let r#type = resolve_type(r#type, info);
 
             match value {
-                Some(value) => crate::Expression::Call {
-                    function: operator.replace(operator_trait).boxed(),
-                    input: resolve_expression(value.unboxed(), info).boxed(),
+                Some(value) => crate::Expression::Annotate {
+                    value: operator
+                        .replace(crate::Expression::Call {
+                            function: operator_trait.boxed(),
+                            input: resolve_expression(value.unboxed(), info).boxed(),
+                        })
+                        .boxed(),
+                    r#type,
                 },
-                None => operator_trait,
+                None => {
+                    let input_variable = info.next_variable;
+                    info.next_variable += 1;
+                    let input_variable =
+                        info.make_path(crate::PathComponent::Variable(input_variable));
+
+                    crate::Expression::Function {
+                        pattern: operator.replace(crate::Pattern::Variable(
+                            String::from("input"),
+                            input_variable.clone(),
+                        )),
+                        body: operator
+                            .replace(crate::Expression::Annotate {
+                                value: operator
+                                    .replace(crate::Expression::Call {
+                                        function: operator_trait.boxed(),
+                                        input: operator
+                                            .replace(crate::Expression::Variable(
+                                                String::from("input"),
+                                                input_variable,
+                                            ))
+                                            .boxed(),
+                                    })
+                                    .boxed(),
+                                r#type,
+                            })
+                            .boxed(),
+                    }
+                }
             }
         }
         crate::UnresolvedExpression::Is { value, pattern } => {
