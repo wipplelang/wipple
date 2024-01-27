@@ -34,6 +34,9 @@ pub struct UnlinkedLibrary<D: Driver> {
 #[derivative(Debug(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct UnlinkedItem<D: Driver> {
+    /// The list of type parameters declared by the item.
+    pub parameters: Vec<D::Path>,
+
     /// The analyzed expression.
     pub expression: WithInfo<D::Info, wipple_typecheck::TypedExpression<D>>,
 
@@ -69,6 +72,9 @@ pub struct Executable<D: Driver> {
 #[derivative(Debug(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct LinkedItem<D: Driver> {
+    /// The list of type parameters declared by the item.
+    pub parameters: Vec<D::Path>,
+
     /// The item's type descriptor.
     pub type_descriptor: wipple_codegen::TypeDescriptor<D>,
 
@@ -122,6 +128,7 @@ pub fn link<D: Driver>(
 
 fn convert_item<D: Driver>(item: UnlinkedItem<D>) -> Result<LinkedItem<D>, D> {
     Ok(LinkedItem {
+        parameters: item.parameters,
         type_descriptor: wipple_codegen::type_descriptor(&item.expression.item.r#type).ok_or_else(
             || WithInfo {
                 info: item.expression.info.clone(),

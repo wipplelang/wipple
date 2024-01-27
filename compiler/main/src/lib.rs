@@ -428,6 +428,7 @@ impl Driver {
             self.library.items.insert(
                 path,
                 Item {
+                    parameters: declaration.item.parameters,
                     expression: typecheck_result.item,
                     ir: codegen_result.map(|result| result.labels),
                 },
@@ -463,6 +464,7 @@ impl Driver {
             self.library.items.insert(
                 path,
                 Item {
+                    parameters: declaration.item.parameters,
                     expression: typecheck_result.item,
                     ir: codegen_result.map(|result| result.labels),
                 },
@@ -498,6 +500,7 @@ impl Driver {
             );
 
             self.library.code.push(Item {
+                parameters: Vec::new(),
                 expression: typecheck_result.item,
                 ir: codegen_result.map(|result| result.labels),
             });

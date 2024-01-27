@@ -583,7 +583,14 @@ pub enum TypedExpressionKind<D: Driver> {
     Variable(String, D::Path),
 
     /// A constant.
-    Constant(D::Path),
+    Constant {
+        /// The path to the constant declaration.
+        path: D::Path,
+
+        /// The types of the constant's parameters. This is used in case the
+        /// constant's type doesn't reference all type parameters.
+        parameters: Vec<Type<D>>,
+    },
 
     /// A trait.
     Trait(D::Path),
@@ -889,7 +896,7 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a TypedExpress
             TypedExpressionKind::Unknown(_)
             | TypedExpressionKind::Marker(_)
             | TypedExpressionKind::Variable(_, _)
-            | TypedExpressionKind::Constant(_)
+            | TypedExpressionKind::Constant { .. }
             | TypedExpressionKind::Trait(_)
             | TypedExpressionKind::Number(_)
             | TypedExpressionKind::Text(_) => {}

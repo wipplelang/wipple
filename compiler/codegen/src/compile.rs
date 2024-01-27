@@ -73,12 +73,17 @@ fn compile_expression<D: crate::Driver>(
 
             info.push_instruction(crate::Instruction::Variable(variable));
         }
-        wipple_typecheck::TypedExpressionKind::Constant(path) => {
-            info.push_instruction(crate::Instruction::Typed(
+        wipple_typecheck::TypedExpressionKind::Constant { path, parameters } => info
+            .push_instruction(crate::Instruction::Typed(
                 type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Constant(path.clone()),
-            ))
-        }
+                crate::TypedInstruction::Constant(
+                    path.clone(),
+                    parameters
+                        .iter()
+                        .map(type_descriptor)
+                        .collect::<Option<_>>()?,
+                ),
+            )),
         wipple_typecheck::TypedExpressionKind::Trait(path) => {
             info.push_instruction(crate::Instruction::Typed(
                 type_descriptor(&expression.item.r#type)?,

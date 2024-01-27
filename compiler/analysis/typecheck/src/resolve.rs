@@ -1255,7 +1255,10 @@ enum ExpressionKind<D: Driver> {
     Variable(String, D::Path),
     UnresolvedConstant(D::Path),
     UnresolvedTrait(D::Path),
-    ResolvedConstant(D::Path),
+    ResolvedConstant {
+        path: D::Path,
+        parameters: Vec<Type<D>>,
+    },
     ResolvedTrait(D::Path),
     Number(String),
     Text(String),
@@ -2448,8 +2451,8 @@ fn resolve_expression<D: Driver>(
             let path = path.clone();
 
             match resolve_item(&path, expression.as_mut(), true, context) {
-                Ok(true) => ExpressionKind::ResolvedConstant(path),
-                Ok(false) => ExpressionKind::UnresolvedConstant(path), // try again with more type information
+                Ok(Some(parameters)) => ExpressionKind::ResolvedConstant { path, parameters },
+                Ok(None) => ExpressionKind::UnresolvedConstant(path), // try again with more type information
                 Err(error) => {
                     context.error_queue.borrow_mut().push(error);
                     ExpressionKind::Unknown(Some(path))
@@ -2475,7 +2478,9 @@ fn resolve_expression<D: Driver>(
                 }
             }
         }
-        ExpressionKind::ResolvedConstant(path) => ExpressionKind::ResolvedConstant(path),
+        ExpressionKind::ResolvedConstant { path, parameters } => {
+            ExpressionKind::ResolvedConstant { path, parameters }
+        }
         ExpressionKind::ResolvedTrait(path) => ExpressionKind::ResolvedTrait(path),
         ExpressionKind::Number(number) => ExpressionKind::Number(number),
         ExpressionKind::Text(text) => ExpressionKind::Text(text),
@@ -2904,7 +2909,7 @@ fn resolve_item<D: Driver>(
     mut use_expression: WithInfo<D::Info, &mut Expression<D>>,
     allow_unresolved_bounds: bool,
     context: &ResolveContext<'_, D>,
-) -> Result<bool, WithInfo<D::Info, QueuedError<D>>> {
+) -> Result<Option<Vec<Type<D>>>, WithInfo<D::Info, QueuedError<D>>> {
     let item_declaration = context.driver.get_constant_declaration(path);
 
     // Instantiate the items' type, substituting inferred parameters with opaque
@@ -2912,11 +2917,13 @@ fn resolve_item<D: Driver>(
 
     let instantiated_declared_role = use_expression.replace(Role::Annotation);
 
+    let use_info = use_expression.info.clone();
+
     let instantiation_context = InstantiationContext::from_parameters_with_options(
         context.driver,
         item_declaration.item.parameters,
         context.type_context,
-        &use_expression.info,
+        &use_info,
         context.errors,
         InstantiationOptions {
             instantiate_inferred_parameters_as_opaque: true,
@@ -3045,7 +3052,13 @@ fn resolve_item<D: Driver>(
         context.error_queue,
     );
 
-    Ok(success)
+    Ok(success.then(|| {
+        instantiation_context
+            .into_types_for_parameters()
+            .into_iter()
+            .map(|parameter| parameter.instantiate_opaque_in_context(context.type_context))
+            .collect()
+    }))
 }
 
 fn resolve_trait_parameters_from_type<D: Driver>(
@@ -3317,12 +3330,14 @@ fn substitute_defaults_in_expression<D: Driver>(
         ExpressionKind::Lazy(value) => {
             substitute_defaults_in_expression(driver, value.as_deref_mut(), context)
         }
+        ExpressionKind::ResolvedConstant { parameters, .. } => parameters
+            .iter_mut()
+            .any(|r#type| substitute_defaults(driver, r#type, context.type_context)),
         ExpressionKind::Unknown(_)
         | ExpressionKind::Marker(_)
         | ExpressionKind::Variable(_, _)
         | ExpressionKind::UnresolvedConstant(_)
         | ExpressionKind::UnresolvedTrait(_)
-        | ExpressionKind::ResolvedConstant(_)
         | ExpressionKind::ResolvedTrait(_)
         | ExpressionKind::Number(_)
         | ExpressionKind::Text(_) => false,
@@ -3453,11 +3468,18 @@ fn finalize_expression<D: Driver>(
                     false,
                     &resolve_context,
                 ) {
-                    Ok(true) => {
+                    Ok(Some(parameters)) => {
                         finalize_type(expression.item.r#type.clone(), context);
-                        crate::TypedExpressionKind::Constant(path.clone())
+
+                        crate::TypedExpressionKind::Constant {
+                            path: path.clone(),
+                            parameters: parameters
+                                .into_iter()
+                                .map(|r#type| finalize_type(r#type, context).item)
+                                .collect(),
+                        }
                     }
-                    Ok(false) => crate::TypedExpressionKind::Unknown(Some(path.clone())),
+                    Ok(None) => crate::TypedExpressionKind::Unknown(Some(path.clone())),
                     Err(error) => {
                         error_queue.borrow_mut().push(error);
                         crate::TypedExpressionKind::Unknown(Some(path.clone()))
@@ -3481,8 +3503,14 @@ fn finalize_expression<D: Driver>(
 
             crate::TypedExpressionKind::Unknown(Some(path.clone()))
         }
-        ExpressionKind::ResolvedConstant(path) => {
-            crate::TypedExpressionKind::Constant(path.clone())
+        ExpressionKind::ResolvedConstant { path, parameters } => {
+            crate::TypedExpressionKind::Constant {
+                path: path.clone(),
+                parameters: parameters
+                    .iter()
+                    .map(|r#type| finalize_type(r#type.clone(), context).item)
+                    .collect(),
+            }
         }
         ExpressionKind::ResolvedTrait(path) => crate::TypedExpressionKind::Trait(path.clone()),
         ExpressionKind::Number(number) => crate::TypedExpressionKind::Number(number.clone()),

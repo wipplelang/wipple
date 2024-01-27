@@ -174,7 +174,7 @@ pub enum TypedInstruction<D: Driver> {
     Lazy(Vec<u32>, D::Path, Label),
 
     /// A constant.
-    Constant(D::Path),
+    Constant(D::Path, Vec<TypeDescriptor<D>>),
 
     /// An instance of a trait.
     Instance(D::Path),
@@ -271,7 +271,7 @@ where
             TypedInstruction::Lazy(captures, path, label) => {
                 write!(f, "lazy {captures:?} ({path}) {label}")
             }
-            TypedInstruction::Constant(path) => write!(f, "constant {path}"),
+            TypedInstruction::Constant(path, _) => write!(f, "constant {path}"),
             TypedInstruction::Instance(path) => write!(f, "instance {path}"),
         }
     }

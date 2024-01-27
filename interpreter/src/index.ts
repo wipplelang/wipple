@@ -12,6 +12,7 @@ export interface Executable {
 }
 
 export interface Item {
+    parameters: string[];
     typeDescriptor: TypeDescriptor;
     ir: Instruction[][];
 }
@@ -50,7 +51,7 @@ export type TypedInstruction =
     | { type: "variant"; value: [string, number] }
     | { type: "function"; value: [number[], string, number] }
     | { type: "lazy"; value: [number[], string, number] }
-    | { type: "constant"; value: string }
+    | { type: "constant"; value: [string, TypeDescriptor[]] }
     | { type: "instance"; value: string };
 
 export type TypedValue = Value & { typeDescriptor: TypeDescriptor };
@@ -131,7 +132,11 @@ export interface Context {
     io: (request: IoRequest) => void;
     call: (func: TypedValue, input: TypedValue) => Promise<TypedValue>;
     evaluate: (lazy: TypedValue) => Promise<TypedValue>;
-    getItem: (path: string, typeDescriptor: TypeDescriptor) => Promise<TypedValue>;
+    getItem: (
+        path: string,
+        substitutions: TypeDescriptor[] | Record<string, TypeDescriptor>,
+        typeDescriptor: TypeDescriptor
+    ) => Promise<TypedValue>;
     error: (
         options:
             | string
@@ -225,7 +230,18 @@ export const evaluate = async (
                 context
             ))!;
         },
-        getItem: async (path, typeDescriptor) => {
+        getItem: async (path, parametersOrSubstitutions, typeDescriptor) => {
+            const item = context.executable.items[path];
+
+            const substitutions = Array.isArray(parametersOrSubstitutions)
+                ? Object.fromEntries(
+                      item.parameters.map(
+                          (parameter, index) =>
+                              [parameter, parametersOrSubstitutions[index]] as const
+                      )
+                  )
+                : parametersOrSubstitutions;
+
             for (const [substitutions, value] of context.initializedItems[path] ?? []) {
                 if (!unify(typeDescriptor, value.typeDescriptor, { ...substitutions })) {
                     continue;
@@ -234,17 +250,13 @@ export const evaluate = async (
                 return value;
             }
 
-            const item = context.executable.items[path];
-
-            const substitutions: Record<string, TypeDescriptor> = {};
-            if (!unify(typeDescriptor, item.typeDescriptor, substitutions)) {
-                throw context.error("incompatible constant type");
-            }
-
             if (process.env.WIPPLE_DEBUG_INTERPRETER) {
                 console.error(
                     "## initializing constant:",
-                    util.inspect({ path, typeDescriptor }, { depth: Infinity, colors: true })
+                    util.inspect(
+                        { path, typeDescriptor, substitutions },
+                        { depth: Infinity, colors: true }
+                    )
                 );
             }
 
@@ -311,7 +323,7 @@ const evaluateItem = async (
                 console.error(
                     "## evaluating:",
                     util.inspect(
-                        { path, label, instruction, stack, scope },
+                        { path, label, instruction, stack, scope, substitutions },
                         { depth: Infinity, colors: true }
                     )
                 );
@@ -527,19 +539,32 @@ const evaluateItem = async (
                             break;
                         }
                         case "constant": {
-                            const path = instruction.value[1].value;
-                            const value = await context.getItem(path, typeDescriptor);
+                            const [path, parameters] = instruction.value[1].value;
+
+                            const value = await context.getItem(
+                                path,
+                                parameters.map((parameter) =>
+                                    substituteTypeDescriptor(parameter, substitutions)
+                                ),
+                                typeDescriptor
+                            );
+
                             stack.push(value);
                             break;
                         }
                         case "instance": {
-                            const path = findInstance(
+                            const [path, substitutions] = findInstance(
                                 instruction.value[1].value,
                                 typeDescriptor,
                                 context.executable
                             );
 
-                            const value = await context.getItem(path, typeDescriptor);
+                            const value = await context.getItem(
+                                path,
+                                substitutions,
+                                typeDescriptor
+                            );
+
                             stack.push(value);
 
                             break;
@@ -605,8 +630,9 @@ const evaluateItem = async (
 const findInstance = (trait: string, typeDescriptor: TypeDescriptor, executable: Executable) => {
     for (const path of executable.instances[trait] ?? []) {
         const instance = executable.items[path];
-        if (unify(typeDescriptor, instance.typeDescriptor, {})) {
-            return path;
+        const substitutions: Record<string, TypeDescriptor> = {};
+        if (unify(typeDescriptor, instance.typeDescriptor, substitutions)) {
+            return [path, substitutions] as const;
         }
     }
 
