@@ -4,7 +4,6 @@ use std::{
     cell::{Cell, RefCell},
     collections::{btree_map, BTreeMap, HashMap, HashSet},
     fmt::Debug,
-    mem,
     rc::Rc,
 };
 use wipple_util::WithInfo;
@@ -154,7 +153,7 @@ pub fn resolve<D: Driver>(
                 subexpression_types: None,
             };
 
-            break finalize_expression(queued.body.as_ref(), &finalize_context);
+            break finalize_expression(queued.body, &finalize_context);
         }
 
         let resolve_context = ResolveContext {
@@ -191,7 +190,7 @@ pub fn resolve<D: Driver>(
                 subexpression_types: Some(&subexpression_types),
             };
 
-            let item = finalize_expression(queued.body.as_ref(), &finalize_context);
+            let item = finalize_expression(queued.body.clone(), &finalize_context);
 
             if finalize_context.contains_unknown.get() {
                 break item;
@@ -209,9 +208,9 @@ pub fn resolve<D: Driver>(
             if !substituted_defaults {
                 if item_declaration.item.top_level {
                     // The top level has type `()` by default, but any other type is also OK
-                    let _ = unify(
+                    let _ = unify_ignoring_coercion(
                         driver,
-                        &mut queued.body.item.r#type,
+                        &queued.body.item.r#type,
                         &Type::new(
                             TypeKind::Tuple(Vec::new()),
                             queued.body.info.clone(),
@@ -234,7 +233,7 @@ pub fn resolve<D: Driver>(
                     subexpression_types: None,
                 };
 
-                break finalize_expression(queued.body.as_ref(), &finalize_context);
+                break finalize_expression(queued.body, &finalize_context);
             }
         }
 
@@ -339,7 +338,7 @@ pub fn instances_overlap<D: Driver>(
 
             if unify_instance(
                 driver,
-                instance.as_mut(),
+                instance.as_ref(),
                 other_instance.as_ref(),
                 &type_context,
             ) {
@@ -384,15 +383,14 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
         .into_iter()
         .zip(&instance.item.parameters)
     {
-        let mut r#type = instantiation_context.type_for_parameter(driver, &trait_parameter);
+        let r#type = instantiation_context.type_for_parameter(driver, &trait_parameter);
 
-        assert!(unify(
+        assert!(unify_ignoring_coercion(
             driver,
-            &mut r#type,
+            &r#type,
             &infer_type(instance_parameter.as_ref(), role.clone(), None),
             &type_context,
-        )
-        .is_some());
+        ));
     }
 
     let r#type = infer_type(
@@ -427,8 +425,6 @@ enum QueuedError<D: Driver> {
         actual: Type<D>,
         expected: Type<D>,
     },
-
-    DisallowedCoercion(Type<D>),
 
     UnresolvedInstance {
         instance: Instance<D>,
@@ -469,9 +465,6 @@ fn report_queued_errors<D: Driver>(
                 expected_roles: expected.roles.clone(),
                 expected: finalize_type(expected, &finalize_context),
             },
-            QueuedError::DisallowedCoercion(r#type) => {
-                crate::Error::DisallowedCoercion(finalize_type(r#type, &finalize_context))
-            }
             QueuedError::UnresolvedInstance {
                 instance,
                 candidates,
@@ -865,43 +858,6 @@ impl<D: Driver> Instance<D> {
     }
 }
 
-// region: Coercions
-
-struct Coercion<D: Driver> {
-    lazy: Option<Type<D>>,
-}
-
-impl<D: Driver> Default for Coercion<D> {
-    fn default() -> Self {
-        Coercion { lazy: None }
-    }
-}
-
-impl<D: Driver> Coercion<D> {
-    fn is_none(&self) -> bool {
-        self.lazy.is_none()
-    }
-}
-
-impl<D: Driver> Expression<D> {
-    fn apply_coercion(&mut self, info: &D::Info, Coercion { lazy }: Coercion<D>) {
-        if let Some(original_type) = lazy {
-            let r#type = self.r#type.clone();
-            self.r#type.kind = TypeKind::Lazy(Box::new(r#type));
-
-            let kind = mem::replace(&mut self.kind, ExpressionKind::Unknown(None));
-
-            self.kind = ExpressionKind::Lazy(WithInfo {
-                info: info.clone(),
-                item: Box::new(Expression {
-                    r#type: original_type,
-                    kind,
-                }),
-            });
-        }
-    }
-}
-
 // region: Unification
 
 impl<D: Driver> TypeContext<D> {
@@ -950,14 +906,19 @@ struct UnifyOptions {
     require_equal_type_parameters: bool,
 }
 
+#[derive(Debug, Clone, Default)]
+struct Coercion {
+    lazy: bool,
+}
+
 #[must_use]
 fn unify_with_options<D: Driver>(
     driver: &D,
-    r#type: &mut Type<D>,
+    r#type: &Type<D>,
     expected_type: &Type<D>,
     context: &TypeContext<D>,
     options: UnifyOptions,
-) -> Option<Coercion<D>> {
+) -> Option<Coercion> {
     fn unify_variable<D: Driver>(
         variable: &TypeVariable<D>,
         r#type: &Type<D>,
@@ -986,39 +947,50 @@ fn unify_with_options<D: Driver>(
         true
     }
 
-    fn unify_type<D: Driver>(
+    fn unify_inner<D: Driver>(
         driver: &D,
-        r#type: &mut Type<D>,
+        r#type: &Type<D>,
         expected_type: &Type<D>,
         context: &TypeContext<D>,
         options: UnifyOptions,
     ) -> bool {
-        r#type.apply_in_context_mut(context);
+        let r#type = r#type.apply_in_context(context);
         let expected_type = expected_type.apply_in_context(context);
 
-        match (&mut r#type.kind, &expected_type.kind) {
+        match (&r#type.kind, &expected_type.kind) {
+            // Opaque types don't unify with anything
             (TypeKind::Opaque(_), _) | (_, TypeKind::Opaque(_)) => true,
+
+            // `A` is a subtype of `lazy A`. All expressions of type `A`
+            // are wrapped in `Lazy` during finalization
             (TypeKind::Lazy(r#type), TypeKind::Lazy(expected_type)) => {
-                unify_type(driver, r#type, expected_type, context, options)
+                unify_inner(driver, r#type, expected_type, context, options)
             }
             (_, TypeKind::Lazy(expected_type)) => {
-                unify_type(driver, r#type, expected_type, context, options)
+                // The value will be coerced to `lazy` during finalization
+                unify_inner(driver, &r#type, expected_type, context, options)
             }
+
+            // Type variables unify with anything and are substituted with the
+            // other type in `apply_in_context`
             (TypeKind::Variable(variable), _) => {
                 unify_variable(variable, &expected_type, context);
-                r#type.apply_in_context_mut(context);
                 true
             }
             (_, TypeKind::Variable(variable)) => {
-                unify_variable(variable, r#type, context);
-                r#type.apply_in_context_mut(context);
+                unify_variable(variable, &r#type, context);
                 true
             }
+
+            // Type parameters are equal to themselves, but otherwise must be
+            // instantiated
             (TypeKind::Parameter(parameter), TypeKind::Parameter(expected_parameter)) => {
                 driver.paths_are_equal(parameter, expected_parameter)
                     || !options.require_equal_type_parameters
             }
             (_, TypeKind::Parameter(_)) | (TypeKind::Parameter(_), _) => false,
+
+            // Unify declared types, functions and tuples structurally
             (
                 TypeKind::Declared { path, parameters },
                 TypeKind::Declared {
@@ -1032,8 +1004,8 @@ fn unify_with_options<D: Driver>(
 
                 assert_eq!(parameters.len(), expected_parameters.len());
                 let mut unified = true;
-                for (r#type, expected_type) in parameters.iter_mut().zip(expected_parameters) {
-                    unified &= unify_type(driver, r#type, expected_type, context, options);
+                for (r#type, expected_type) in parameters.iter().zip(expected_parameters) {
+                    unified &= unify_inner(driver, r#type, expected_type, context, options);
                 }
 
                 unified
@@ -1045,8 +1017,8 @@ fn unify_with_options<D: Driver>(
                     output: expected_output,
                 },
             ) => {
-                unify_type(driver, input, expected_input, context, options)
-                    & unify_type(driver, output, expected_output, context, options)
+                unify_inner(driver, input, expected_input, context, options)
+                    & unify_inner(driver, output, expected_output, context, options)
             }
             (TypeKind::Tuple(elements), TypeKind::Tuple(expected_elements)) => {
                 if elements.len() != expected_elements.len() {
@@ -1054,41 +1026,41 @@ fn unify_with_options<D: Driver>(
                 }
 
                 let mut unified = true;
-                for (r#type, expected_type) in elements.iter_mut().zip(expected_elements) {
-                    unified &= unify_type(driver, r#type, expected_type, context, options);
+                for (r#type, expected_type) in elements.iter().zip(expected_elements) {
+                    unified &= unify_inner(driver, r#type, expected_type, context, options);
                 }
 
                 unified
             }
+
+            // Unknown types unify with everything
             (TypeKind::Unknown, _) | (_, TypeKind::Unknown) => true,
+
+            // Any other combination of types is an error
             _ => false,
         }
     }
 
-    fn get_coercion<D: Driver>(r#type: &Type<D>, expected_type: &Type<D>) -> Coercion<D> {
+    unify_inner(driver, r#type, expected_type, context, options).then(|| {
         let mut coercion = Coercion::default();
 
-        match (&r#type.kind, &expected_type.kind) {
-            (kind, TypeKind::Lazy(_)) if !matches!(kind, TypeKind::Lazy(_)) => {
-                coercion.lazy = Some(r#type.clone());
-            }
-            _ => {}
+        if matches!(expected_type.kind, TypeKind::Lazy(_))
+            && !matches!(r#type.kind, TypeKind::Lazy(_))
+        {
+            coercion.lazy = true;
         }
 
         coercion
-    }
-
-    unify_type(driver, r#type, expected_type, context, options)
-        .then(|| get_coercion(r#type, expected_type))
+    })
 }
 
 #[must_use]
-fn unify<D: Driver>(
+fn unify_with_coercion<D: Driver>(
     driver: &D,
-    r#type: &mut Type<D>,
+    r#type: &Type<D>,
     expected_type: &Type<D>,
     context: &TypeContext<D>,
-) -> Option<Coercion<D>> {
+) -> Option<Coercion> {
     unify_with_options(
         driver,
         r#type,
@@ -1099,15 +1071,32 @@ fn unify<D: Driver>(
 }
 
 #[must_use]
+fn unify_ignoring_coercion<D: Driver>(
+    driver: &D,
+    r#type: &Type<D>,
+    expected_type: &Type<D>,
+    context: &TypeContext<D>,
+) -> bool {
+    unify_with_options(
+        driver,
+        r#type,
+        expected_type,
+        context,
+        UnifyOptions::default(),
+    )
+    .is_some()
+}
+
+#[must_use]
 fn unify_parameters_with_options<D: Driver>(
     driver: &D,
-    parameters: &mut [Type<D>],
+    parameters: &[Type<D>],
     expected_parameters: &[Type<D>],
     context: &TypeContext<D>,
     options: UnifyOptions,
 ) -> bool {
     let mut unified = true;
-    for (r#type, expected_type) in parameters.iter_mut().zip(expected_parameters) {
+    for (r#type, expected_type) in parameters.iter().zip(expected_parameters) {
         unified &= unify_with_options(driver, r#type, expected_type, context, options).is_some();
     }
 
@@ -1117,7 +1106,7 @@ fn unify_parameters_with_options<D: Driver>(
 #[must_use]
 fn unify_instance_with_options<D: Driver>(
     driver: &D,
-    instance: WithInfo<D::Info, &mut Instance<D>>,
+    instance: WithInfo<D::Info, &Instance<D>>,
     expected_instance: WithInfo<D::Info, &Instance<D>>,
     context: &TypeContext<D>,
     options: UnifyOptions,
@@ -1125,7 +1114,7 @@ fn unify_instance_with_options<D: Driver>(
     driver.paths_are_equal(&instance.item.r#trait, &expected_instance.item.r#trait)
         && unify_parameters_with_options(
             driver,
-            &mut instance.item.parameters,
+            &instance.item.parameters,
             &expected_instance.item.parameters,
             context,
             options,
@@ -1135,7 +1124,7 @@ fn unify_instance_with_options<D: Driver>(
 #[must_use]
 fn unify_instance<D: Driver>(
     driver: &D,
-    actual_instance: WithInfo<D::Info, &mut Instance<D>>,
+    actual_instance: WithInfo<D::Info, &Instance<D>>,
     expected_instance: WithInfo<D::Info, &Instance<D>>,
     context: &TypeContext<D>,
 ) -> bool {
@@ -1155,8 +1144,10 @@ fn try_unify_expression<D: Driver>(
     context: &TypeContext<D>,
     error_queue: &RefCell<Vec<WithInfo<D::Info, QueuedError<D>>>>,
 ) {
-    if let Some(coercion) = unify(driver, &mut expression.item.r#type, expected_type, context) {
-        expression.item.apply_coercion(&expression.info, coercion);
+    if let Some(coercion) =
+        unify_with_coercion(driver, &expression.item.r#type, expected_type, context)
+    {
+        expression.item.coercion = coercion;
     } else {
         error_queue.borrow_mut().push(WithInfo {
             info: expression.info.clone(),
@@ -1168,16 +1159,14 @@ fn try_unify_expression<D: Driver>(
     }
 }
 
-fn try_unify_without_coercion<D: Driver>(
+fn try_unify_ignoring_coercion<D: Driver>(
     driver: &D,
-    r#type: WithInfo<D::Info, &mut Type<D>>,
+    r#type: WithInfo<D::Info, &Type<D>>,
     expected_type: &Type<D>,
     context: &TypeContext<D>,
     error_queue: &RefCell<Vec<WithInfo<D::Info, QueuedError<D>>>>,
 ) {
-    if let Some(coercion) = unify(driver, r#type.item, expected_type, context) {
-        assert!(coercion.is_none());
-    } else {
+    if !unify_ignoring_coercion(driver, r#type.item, expected_type, context) {
         error_queue.borrow_mut().push(WithInfo {
             info: r#type.info.clone(),
             item: QueuedError::Mismatch {
@@ -1196,21 +1185,9 @@ fn substitute_defaults<D: Driver>(
     r#type.apply_in_context_mut(context);
 
     match &mut r#type.kind {
-        TypeKind::Variable(variable) => {
-            if let Some(default) = variable.default(context) {
-                if let Some(coercion) = unify(driver, r#type, &default, context) {
-                    // FIXME: Enforce this
-                    assert!(
-                        coercion.is_none(),
-                        "type parameter defaults may not produce coercions"
-                    );
-
-                    return true;
-                }
-            }
-
-            false
-        }
+        TypeKind::Variable(variable) => variable
+            .default(context)
+            .is_some_and(|default| unify_ignoring_coercion(driver, r#type, &default, context)),
         TypeKind::Declared { parameters, .. } => {
             for r#type in parameters {
                 if substitute_defaults(driver, r#type, context) {
@@ -1244,6 +1221,7 @@ fn substitute_defaults<D: Driver>(
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 struct Expression<D: Driver> {
     r#type: Type<D>,
+    coercion: Coercion,
     kind: ExpressionKind<D>,
 }
 
@@ -1301,7 +1279,6 @@ enum ExpressionKind<D: Driver> {
         name: String,
         body: WithInfo<D::Info, Box<Expression<D>>>,
     },
-    Lazy(WithInfo<D::Info, Box<Expression<D>>>),
 }
 
 #[derive(Derivative)]
@@ -1416,6 +1393,7 @@ fn infer_expression<D: Driver>(
     let mut expression = expression.map(|expression| match expression {
         crate::UntypedExpression::Unknown => Expression {
             r#type: Type::new(TypeKind::Unknown, info.clone(), Vec::new()),
+            coercion: Default::default(),
             kind: ExpressionKind::Unknown(None),
         },
         crate::UntypedExpression::Annotate { value, r#type } => {
@@ -1464,6 +1442,7 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
+                coercion: Default::default(),
                 kind: ExpressionKind::Marker(path),
             }
         }
@@ -1477,6 +1456,7 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
+                coercion: Default::default(),
                 kind: ExpressionKind::Variable(name, variable),
             }
         }
@@ -1500,6 +1480,7 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
+                coercion: Default::default(),
                 kind: ExpressionKind::UnresolvedConstant(path),
             }
         }
@@ -1523,6 +1504,7 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
+                coercion: Default::default(),
                 kind: ExpressionKind::UnresolvedTrait(path),
             }
         }
@@ -1544,6 +1526,7 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
+                coercion: Default::default(),
                 kind: ExpressionKind::Number(number),
             }
         }
@@ -1565,6 +1548,7 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
+                coercion: Default::default(),
                 kind: ExpressionKind::Text(text),
             }
         }
@@ -1575,13 +1559,13 @@ fn infer_expression<D: Driver>(
                 .into_iter()
                 .enumerate()
                 .map(|(index, expression)| {
-                    let mut statement = infer_expression(expression, context);
+                    let statement = infer_expression(expression, context);
 
                     if index + 1 < statement_count {
                         // Statements have type `()` by default, but any other type is also OK
-                        let _ = unify(
+                        let _ = unify_ignoring_coercion(
                             context.driver,
-                            &mut statement.item.r#type,
+                            &statement.item.r#type,
                             &Type::new(
                                 TypeKind::Tuple(Vec::new()),
                                 statement.info.clone(),
@@ -1611,6 +1595,7 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
+                coercion: Default::default(),
                 kind: ExpressionKind::Block(statements),
             }
         }
@@ -1639,6 +1624,7 @@ fn infer_expression<D: Driver>(
                     info.clone(),
                     Vec::new(),
                 ),
+                coercion: Default::default(),
                 kind: ExpressionKind::Function {
                     pattern,
                     body: body.boxed(),
@@ -1663,6 +1649,7 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
+                coercion: Default::default(),
                 kind: ExpressionKind::Call {
                     function: function.boxed(),
                     input: input.boxed(),
@@ -1734,6 +1721,7 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
+                coercion: Default::default(),
                 kind: ExpressionKind::When {
                     input: input.boxed(),
                     arms,
@@ -1746,6 +1734,7 @@ fn infer_expression<D: Driver>(
                 info.clone(),
                 Vec::new(),
             ),
+            coercion: Default::default(),
             kind: ExpressionKind::Intrinsic {
                 name,
                 inputs: inputs
@@ -1765,6 +1754,7 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type: Type::new(TypeKind::Tuple(Vec::new()), info.clone(), Vec::new()),
+                coercion: Default::default(),
                 kind: ExpressionKind::Initialize {
                     pattern,
                     value: value.boxed(),
@@ -1777,6 +1767,7 @@ fn infer_expression<D: Driver>(
                 info.clone(),
                 Vec::new(),
             ),
+            coercion: Default::default(),
             kind: ExpressionKind::UnresolvedStructure(
                 fields
                     .into_iter()
@@ -1852,6 +1843,7 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
+                coercion: Default::default(),
                 kind: ExpressionKind::Variant { variant, values },
             }
         }
@@ -1872,6 +1864,7 @@ fn infer_expression<D: Driver>(
                     info.clone(),
                     Vec::new(),
                 ),
+                coercion: Default::default(),
                 kind: ExpressionKind::Tuple(elements),
             }
         }
@@ -1912,6 +1905,7 @@ fn infer_expression<D: Driver>(
                         info: expression.info.clone(),
                         item: Expression {
                             r#type: collection_type.clone(),
+                            coercion: Default::default(),
                             kind: ExpressionKind::Call {
                                 function: WithInfo {
                                     info: current.info.clone(),
@@ -1924,6 +1918,7 @@ fn infer_expression<D: Driver>(
                                             current.info.clone(),
                                             Vec::new(),
                                         ),
+                                        coercion: Default::default(),
                                         kind: ExpressionKind::Call {
                                             function: build_collection_trait.boxed(),
                                             input: expression.boxed(),
@@ -1970,6 +1965,7 @@ fn infer_expression<D: Driver>(
                                     value.info.clone(),
                                     Vec::new(),
                                 ),
+                                coercion: Default::default(),
                                 kind: ExpressionKind::Call {
                                     function: show_trait.boxed(),
                                     input: value.boxed(),
@@ -1982,6 +1978,7 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type: text_type,
+                coercion: Default::default(),
                 kind: ExpressionKind::Format { segments, trailing },
             }
         }
@@ -1990,6 +1987,7 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type: body.item.r#type.clone(),
+                coercion: Default::default(),
                 kind: ExpressionKind::Semantics {
                     name,
                     body: body.boxed(),
@@ -2015,7 +2013,7 @@ fn resolve_pattern<D: Driver>(
         crate::Pattern::Unknown => {}
         crate::Pattern::Wildcard => {}
         crate::Pattern::Number(_) => {
-            let mut number_type = instantiated_language_type(
+            let number_type = instantiated_language_type(
                 "number",
                 &pattern.info,
                 context.driver,
@@ -2033,16 +2031,16 @@ fn resolve_pattern<D: Driver>(
                 |r#type| r#type,
             );
 
-            try_unify_without_coercion(
+            try_unify_ignoring_coercion(
                 context.driver,
-                r#type.replace(&mut number_type),
+                r#type.replace(&number_type),
                 &r#type.item,
                 context.type_context,
                 context.error_queue,
             );
         }
         crate::Pattern::Text(_) => {
-            let mut text_type = instantiated_language_type(
+            let text_type = instantiated_language_type(
                 "text",
                 &pattern.info,
                 context.driver,
@@ -2060,9 +2058,9 @@ fn resolve_pattern<D: Driver>(
                 |r#type| r#type,
             );
 
-            try_unify_without_coercion(
+            try_unify_ignoring_coercion(
                 context.driver,
-                r#type.replace(&mut text_type),
+                r#type.replace(&text_type),
                 &r#type.item,
                 context.type_context,
                 context.error_queue,
@@ -2075,9 +2073,9 @@ fn resolve_pattern<D: Driver>(
 
             match variables.entry(variable.clone()) {
                 Entry::Occupied(entry) => {
-                    try_unify_without_coercion(
+                    try_unify_ignoring_coercion(
                         context.driver,
-                        r#type.as_mut(),
+                        r#type.as_ref(),
                         entry.get(),
                         context.type_context,
                         context.error_queue,
@@ -2102,13 +2100,12 @@ fn resolve_pattern<D: Driver>(
                     );
 
                     for (path, r#type) in type_declaration.item.parameters.iter().zip(parameters) {
-                        assert!(unify(
+                        assert!(unify_ignoring_coercion(
                             context.driver,
-                            &mut instantiation_context.type_for_parameter(context.driver, path),
+                            &instantiation_context.type_for_parameter(context.driver, path),
                             r#type,
                             context.type_context,
-                        )
-                        .is_some());
+                        ));
                     }
 
                     match type_declaration.item.representation.item {
@@ -2164,13 +2161,12 @@ fn resolve_pattern<D: Driver>(
                     );
 
                     for (path, r#type) in type_declaration.item.parameters.iter().zip(parameters) {
-                        assert!(unify(
+                        assert!(unify_ignoring_coercion(
                             context.driver,
-                            &mut instantiation_context.type_for_parameter(context.driver, path),
+                            &instantiation_context.type_for_parameter(context.driver, path),
                             r#type,
                             context.type_context,
-                        )
-                        .is_some());
+                        ));
                     }
 
                     match &type_declaration.item.representation.item {
@@ -2237,9 +2233,9 @@ fn resolve_pattern<D: Driver>(
                         Vec::new(),
                     );
 
-                    try_unify_without_coercion(
+                    try_unify_ignoring_coercion(
                         context.driver,
-                        r#type.as_mut(),
+                        r#type.as_ref(),
                         &enumeration_type,
                         context.type_context,
                         context.error_queue,
@@ -2270,15 +2266,15 @@ fn resolve_pattern<D: Driver>(
                     .collect::<Vec<_>>(),
             };
 
-            let mut tuple_type = Type::new(
+            let tuple_type = Type::new(
                 TypeKind::Tuple(element_types.iter().map(Type::clone).collect()),
                 pattern.info.clone(),
                 Vec::new(),
             );
 
-            try_unify_without_coercion(
+            try_unify_ignoring_coercion(
                 context.driver,
-                r#type.replace(&mut tuple_type),
+                r#type.replace(&tuple_type),
                 &r#type.item,
                 context.type_context,
                 context.error_queue,
@@ -2368,6 +2364,7 @@ fn instantiated_language_trait<D: Driver>(
                 info: info.clone(),
                 item: Expression {
                     r#type: Type::new(TypeKind::Unknown, info.clone(), Vec::new()),
+                    coercion: Default::default(),
                     kind: ExpressionKind::Unknown(None),
                 },
             }
@@ -2398,6 +2395,7 @@ fn instantiated_language_constant<D: Driver>(
                 info: info.clone(),
                 item: Expression {
                     r#type: Type::new(TypeKind::Unknown, info.clone(), Vec::new()),
+                    coercion: Default::default(),
                     kind: ExpressionKind::Unknown(None),
                 },
             }
@@ -2516,6 +2514,8 @@ fn resolve_expression<D: Driver>(
                 .r#type
                 .apply_in_context_mut(context.type_context);
 
+            input.item.r#type.apply_in_context_mut(context.type_context);
+
             // If we encounter a unit after a number, treat the unit as a
             // function
             let function_is_number = (|| {
@@ -2589,39 +2589,18 @@ fn resolve_expression<D: Driver>(
                     context.error_queue,
                 );
 
-                // NOTE: Normally we would need to unify in the other direction
-                // because functions' return types are contravariant. But we
-                // disallow `lazy` and other coercions in return type position,
-                // so this is OK.
-                match unify(
+                // `lazy` may only appear on function inputs, so it's OK to
+                // ignore coercions here
+                try_unify_ignoring_coercion(
                     context.driver,
-                    &mut expression.item.r#type,
+                    WithInfo {
+                        info: expression.info.clone(),
+                        item: &expression.item.r#type,
+                    },
                     output_type,
                     context.type_context,
-                ) {
-                    Some(coercion) => {
-                        // In the case where we still have a coercion (eg. if
-                        // a type parameter is returned and that type parameter
-                        // is `lazy`, for example), raise an error here.
-                        if !coercion.is_none() {
-                            context.error_queue.borrow_mut().push(WithInfo {
-                                info: expression.info.clone(),
-                                item: QueuedError::DisallowedCoercion(
-                                    expression.item.r#type.clone(),
-                                ),
-                            });
-                        }
-                    }
-                    None => {
-                        context.error_queue.borrow_mut().push(WithInfo {
-                            info: expression.info.clone(),
-                            item: QueuedError::Mismatch {
-                                actual: expression.item.r#type.clone(),
-                                expected: output_type.as_ref().clone(),
-                            },
-                        });
-                    }
-                }
+                    context.error_queue,
+                );
 
                 let input = resolve_expression(input.unboxed(), context);
                 let function = resolve_expression(function.unboxed(), context);
@@ -2795,7 +2774,7 @@ fn resolve_expression<D: Driver>(
                         });
                     }
 
-                    let mut instantiated_declared_type = Type::new(
+                    let instantiated_declared_type = Type::new(
                         TypeKind::Declared {
                             path: path.clone(),
                             parameters: instantiation_context.into_types_for_parameters(),
@@ -2804,35 +2783,16 @@ fn resolve_expression<D: Driver>(
                         Vec::new(),
                     );
 
-                    match unify(
+                    try_unify_ignoring_coercion(
                         context.driver,
-                        &mut instantiated_declared_type,
+                        WithInfo {
+                            info: expression.info.clone(),
+                            item: &instantiated_declared_type,
+                        },
                         &expression.item.r#type,
                         context.type_context,
-                    ) {
-                        Some(coercion) => {
-                            // In the case where we still have a coercion (eg. if
-                            // a type parameter is returned and that type parameter
-                            // is `lazy`, for example), raise an error here.
-                            if !coercion.is_none() {
-                                context.error_queue.borrow_mut().push(WithInfo {
-                                    info: expression.info.clone(),
-                                    item: QueuedError::DisallowedCoercion(
-                                        expression.item.r#type.clone(),
-                                    ),
-                                });
-                            }
-                        }
-                        None => {
-                            context.error_queue.borrow_mut().push(WithInfo {
-                                info: expression.info.clone(),
-                                item: QueuedError::Mismatch {
-                                    actual: instantiated_declared_type.clone(),
-                                    expected: expression.item.r#type.clone(),
-                                },
-                            });
-                        }
-                    }
+                        context.error_queue,
+                    );
 
                     ExpressionKind::ResolvedStructure {
                         structure: path,
@@ -2890,15 +2850,13 @@ fn resolve_expression<D: Driver>(
             name,
             body: resolve_expression(body.unboxed(), context).boxed(),
         },
-        ExpressionKind::Lazy(value) => {
-            ExpressionKind::Lazy(resolve_expression(value.unboxed(), context).boxed())
-        }
     };
 
     WithInfo {
         info: expression.info,
         item: Expression {
             r#type: expression.item.r#type,
+            coercion: expression.item.coercion,
             kind,
         },
     }
@@ -2912,12 +2870,12 @@ fn resolve_item<D: Driver>(
 ) -> Result<Option<Vec<Type<D>>>, WithInfo<D::Info, QueuedError<D>>> {
     let item_declaration = context.driver.get_constant_declaration(path);
 
+    let use_info = use_expression.info.clone();
+
     // Instantiate the items' type, substituting inferred parameters with opaque
     // type variables
 
     let instantiated_declared_role = use_expression.replace(Role::Annotation);
-
-    let use_info = use_expression.info.clone();
 
     let instantiation_context = InstantiationContext::from_parameters_with_options(
         context.driver,
@@ -2932,7 +2890,7 @@ fn resolve_item<D: Driver>(
 
     let instantiated_declared_type = infer_type(
         WithInfo {
-            info: use_expression.info.clone(),
+            info: use_info.clone(),
             item: &item_declaration.item.r#type.item,
         },
         instantiated_declared_role,
@@ -2962,10 +2920,10 @@ fn resolve_item<D: Driver>(
 
     // Check bounds
 
-    let mut evaluate_bounds = {
+    let evaluate_bounds = {
         let instantiated_declared_type = instantiated_declared_type.clone();
-        let mut use_type = use_expression.item.r#type.clone();
-        let info = &use_expression.info;
+        let use_type = use_expression.item.r#type.clone();
+        let info = &use_info;
 
         move |bounds: &[WithInfo<D::Info, Instance<D>>], allow_unresolved: bool| {
             bounds
@@ -2986,14 +2944,12 @@ fn resolve_item<D: Driver>(
                             // Attempt to get a better error message by unifying the
                             // declared type with the use type again, now that the
                             // bounds have influenced the type
-                            if unify(
+                            if !unify_ignoring_coercion(
                                 context.driver,
-                                &mut use_type,
+                                &use_type,
                                 &instantiated_declared_type,
                                 context.type_context,
-                            )
-                            .is_none()
-                            {
+                            ) {
                                 Err(WithInfo {
                                     info: info.clone(),
                                     item: QueuedError::Mismatch {
@@ -3046,7 +3002,7 @@ fn resolve_item<D: Driver>(
 
     try_unify_expression(
         context.driver,
-        use_expression.as_deref_mut(),
+        use_expression,
         &instantiated_declared_type,
         context.type_context,
         context.error_queue,
@@ -3149,13 +3105,13 @@ fn resolve_trait<D: Driver>(
             for bound_instance in bound_instances {
                 let new_type_context = context.type_context.clone();
 
-                let mut query = query.as_deref().map(Clone::clone);
+                let query = query.as_deref().map(Clone::clone);
 
                 let bound = bound_instance.as_ref().map(Clone::clone);
 
                 if unify_instance_with_options(
                     context.driver,
-                    query.as_mut(),
+                    query.as_ref(),
                     bound.as_ref(),
                     &new_type_context,
                     UnifyOptions {
@@ -3182,7 +3138,7 @@ fn resolve_trait<D: Driver>(
 
             let new_type_context = context.type_context.clone();
 
-            let mut query = query.as_deref().map(Clone::clone);
+            let query = query.as_deref().map(Clone::clone);
 
             let instantiation_context = InstantiationContext::from_parameters(
                 context.driver,
@@ -3224,7 +3180,7 @@ fn resolve_trait<D: Driver>(
 
             if unify_instance(
                 context.driver,
-                query.as_mut(),
+                query.as_ref(),
                 instance.as_ref(),
                 &new_type_context,
             ) {
@@ -3326,9 +3282,6 @@ fn substitute_defaults_in_expression<D: Driver>(
         }),
         ExpressionKind::Semantics { body, .. } => {
             substitute_defaults_in_expression(driver, body.as_deref_mut(), context)
-        }
-        ExpressionKind::Lazy(value) => {
-            substitute_defaults_in_expression(driver, value.as_deref_mut(), context)
         }
         ExpressionKind::ResolvedConstant { parameters, .. } => parameters
             .iter_mut()
@@ -3439,16 +3392,18 @@ fn finalize_type<D: Driver>(
 }
 
 fn finalize_expression<D: Driver>(
-    expression: WithInfo<D::Info, &Expression<D>>,
+    mut expression: WithInfo<D::Info, Expression<D>>,
     context: &FinalizeContext<'_, D>,
 ) -> WithInfo<D::Info, crate::TypedExpression<D>> {
-    let kind = match &expression.item.kind {
-        ExpressionKind::Unknown(path) => crate::TypedExpressionKind::Unknown(path.clone()),
-        ExpressionKind::Marker(path) => crate::TypedExpressionKind::Marker(path.clone()),
+    let kind = match expression.item.kind {
+        ExpressionKind::Unknown(path) => crate::TypedExpressionKind::Unknown(path),
+        ExpressionKind::Marker(path) => crate::TypedExpressionKind::Marker(path),
         ExpressionKind::Variable(name, variable) => {
-            crate::TypedExpressionKind::Variable(name.clone(), variable.clone())
+            crate::TypedExpressionKind::Variable(name, variable)
         }
-        ExpressionKind::UnresolvedConstant(path) => {
+        ExpressionKind::UnresolvedConstant(ref path) => {
+            let path = path.clone();
+
             if let Some((error_queue, errors)) =
                 context.error_queue.as_ref().zip(context.errors.as_ref())
             {
@@ -3462,12 +3417,7 @@ fn finalize_expression<D: Driver>(
                     bound_instances: context.bound_instances.clone(),
                 };
 
-                match resolve_item(
-                    path,
-                    expression.as_deref().map(Clone::clone).as_mut(),
-                    false,
-                    &resolve_context,
-                ) {
+                match resolve_item(&path, expression.as_mut(), false, &resolve_context) {
                     Ok(Some(parameters)) => {
                         finalize_type(expression.item.r#type.clone(), context);
 
@@ -3479,14 +3429,14 @@ fn finalize_expression<D: Driver>(
                                 .collect(),
                         }
                     }
-                    Ok(None) => crate::TypedExpressionKind::Unknown(Some(path.clone())),
+                    Ok(None) => crate::TypedExpressionKind::Unknown(Some(path)),
                     Err(error) => {
                         error_queue.borrow_mut().push(error);
-                        crate::TypedExpressionKind::Unknown(Some(path.clone()))
+                        crate::TypedExpressionKind::Unknown(Some(path))
                     }
                 }
             } else {
-                crate::TypedExpressionKind::Unknown(Some(path.clone()))
+                crate::TypedExpressionKind::Unknown(Some(path))
             }
         }
         ExpressionKind::UnresolvedTrait(path) => {
@@ -3501,33 +3451,33 @@ fn finalize_expression<D: Driver>(
                 errors.borrow_mut().push(error);
             }
 
-            crate::TypedExpressionKind::Unknown(Some(path.clone()))
+            crate::TypedExpressionKind::Unknown(Some(path))
         }
         ExpressionKind::ResolvedConstant { path, parameters } => {
             crate::TypedExpressionKind::Constant {
-                path: path.clone(),
+                path,
                 parameters: parameters
                     .iter()
                     .map(|r#type| finalize_type(r#type.clone(), context).item)
                     .collect(),
             }
         }
-        ExpressionKind::ResolvedTrait(path) => crate::TypedExpressionKind::Trait(path.clone()),
-        ExpressionKind::Number(number) => crate::TypedExpressionKind::Number(number.clone()),
-        ExpressionKind::Text(text) => crate::TypedExpressionKind::Text(text.clone()),
+        ExpressionKind::ResolvedTrait(path) => crate::TypedExpressionKind::Trait(path),
+        ExpressionKind::Number(number) => crate::TypedExpressionKind::Number(number),
+        ExpressionKind::Text(text) => crate::TypedExpressionKind::Text(text),
         ExpressionKind::Block(statements) => crate::TypedExpressionKind::Block(
             statements
-                .iter()
-                .map(|expression| finalize_expression(expression.as_ref(), context))
+                .into_iter()
+                .map(|expression| finalize_expression(expression, context))
                 .collect(),
         ),
         ExpressionKind::Function { pattern, body } => crate::TypedExpressionKind::Function {
-            pattern: pattern.clone(),
-            body: finalize_expression(body.as_deref(), context).boxed(),
+            pattern,
+            body: finalize_expression(body.unboxed(), context).boxed(),
         },
         ExpressionKind::Call { function, input } => {
-            let input = finalize_expression(input.as_deref(), context);
-            let function = finalize_expression(function.as_deref(), context);
+            let input = finalize_expression(input.unboxed(), context);
+            let function = finalize_expression(function.unboxed(), context);
 
             crate::TypedExpressionKind::Call {
                 function: function.boxed(),
@@ -3535,31 +3485,30 @@ fn finalize_expression<D: Driver>(
             }
         }
         ExpressionKind::When { input, arms } => crate::TypedExpressionKind::When {
-            input: finalize_expression(input.as_deref(), context).boxed(),
+            input: finalize_expression(input.unboxed(), context).boxed(),
             arms: arms
-                .iter()
+                .into_iter()
                 .map(|arm| {
-                    arm.as_ref().map(|arm| crate::TypedArm {
-                        pattern: arm.pattern.clone(),
+                    arm.map(|arm| crate::TypedArm {
+                        pattern: arm.pattern,
                         condition: arm
                             .condition
-                            .as_ref()
-                            .map(|expression| finalize_expression(expression.as_ref(), context)),
-                        body: finalize_expression(arm.body.as_ref(), context),
+                            .map(|expression| finalize_expression(expression, context)),
+                        body: finalize_expression(arm.body, context),
                     })
                 })
                 .collect(),
         },
         ExpressionKind::Intrinsic { name, inputs } => crate::TypedExpressionKind::Intrinsic {
-            name: name.clone(),
+            name,
             inputs: inputs
-                .iter()
-                .map(|expression| finalize_expression(expression.as_ref(), context))
+                .into_iter()
+                .map(|expression| finalize_expression(expression, context))
                 .collect(),
         },
         ExpressionKind::Initialize { pattern, value } => crate::TypedExpressionKind::Initialize {
-            pattern: pattern.clone(),
-            value: finalize_expression(value.as_deref(), context).boxed(),
+            pattern,
+            value: finalize_expression(value.unboxed(), context).boxed(),
         },
         ExpressionKind::UnresolvedStructure(_) => {
             let error = WithInfo {
@@ -3577,58 +3526,61 @@ fn finalize_expression<D: Driver>(
         }
         ExpressionKind::ResolvedStructure { structure, fields } => {
             crate::TypedExpressionKind::Structure {
-                structure: structure.clone(),
+                structure,
                 fields: fields
-                    .iter()
+                    .into_iter()
                     .map(|field_value| {
-                        field_value
-                            .as_ref()
-                            .map(|field_value| crate::TypedStructureFieldValue {
-                                name: field_value.name.clone(),
-                                value: finalize_expression(field_value.value.as_ref(), context),
-                            })
+                        field_value.map(|field_value| crate::TypedStructureFieldValue {
+                            name: field_value.name.clone(),
+                            value: finalize_expression(field_value.value, context),
+                        })
                     })
                     .collect(),
             }
         }
         ExpressionKind::Variant { variant, values } => crate::TypedExpressionKind::Variant {
-            variant: variant.clone(),
+            variant,
             values: values
-                .iter()
-                .map(|expression| finalize_expression(expression.as_ref(), context))
+                .into_iter()
+                .map(|expression| finalize_expression(expression, context))
                 .collect(),
         },
         ExpressionKind::Tuple(elements) => crate::TypedExpressionKind::Tuple(
             elements
-                .iter()
-                .map(|expression| finalize_expression(expression.as_ref(), context))
+                .into_iter()
+                .map(|expression| finalize_expression(expression, context))
                 .collect(),
         ),
         ExpressionKind::Format { segments, trailing } => crate::TypedExpressionKind::Format {
             segments: segments
-                .iter()
+                .into_iter()
                 .map(|segment| crate::TypedFormatSegment {
                     text: segment.text.clone(),
-                    value: finalize_expression(segment.value.as_ref(), context),
+                    value: finalize_expression(segment.value, context),
                 })
                 .collect(),
-            trailing: trailing.clone(),
+            trailing,
         },
         ExpressionKind::Semantics { name, body } => crate::TypedExpressionKind::Semantics {
-            name: name.clone(),
-            body: finalize_expression(body.as_deref(), context).boxed(),
+            name,
+            body: finalize_expression(body.unboxed(), context).boxed(),
         },
-        ExpressionKind::Lazy(value) => {
-            crate::TypedExpressionKind::Lazy(finalize_expression(value.as_deref(), context).boxed())
-        }
     };
 
     let r#type = finalize_type(expression.item.r#type.clone(), context).item;
 
-    WithInfo {
+    let Coercion { lazy } = expression.item.coercion;
+
+    let mut expression = WithInfo {
         info: expression.info,
         item: crate::TypedExpression { r#type, kind },
+    };
+
+    if lazy {
+        expression.item.kind = crate::TypedExpressionKind::Lazy(expression.clone().boxed());
     }
+
+    expression
 }
 
 fn finalize_instance<D: Driver>(
