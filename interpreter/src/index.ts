@@ -117,6 +117,11 @@ type Value =
     | {
           type: "taskGroup";
           value: TaskGroup;
+      }
+    | {
+          type: "hasher";
+          key: number[];
+          hash: number;
       };
 
 export interface Context {
