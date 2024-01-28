@@ -903,6 +903,7 @@ impl<D: Driver> TypeVariable<D> {
 #[derive(Clone, Copy, Default)]
 #[non_exhaustive]
 struct UnifyOptions {
+    allow_coercion: bool,
     require_equal_type_parameters: bool,
 }
 
@@ -951,6 +952,7 @@ fn unify_with_options<D: Driver>(
         driver: &D,
         r#type: &Type<D>,
         expected_type: &Type<D>,
+        allow_coercion: bool,
         context: &TypeContext<D>,
         options: UnifyOptions,
     ) -> bool {
@@ -964,11 +966,12 @@ fn unify_with_options<D: Driver>(
             // `A` is a subtype of `lazy A`. All expressions of type `A`
             // are wrapped in `Lazy` during finalization
             (TypeKind::Lazy(r#type), TypeKind::Lazy(expected_type)) => {
-                unify_inner(driver, r#type, expected_type, context, options)
+                unify_inner(driver, r#type, expected_type, false, context, options)
             }
-            (_, TypeKind::Lazy(expected_type)) => {
+            (_, TypeKind::Lazy(expected_type)) if allow_coercion => {
                 // The value will be coerced to `lazy` during finalization
-                unify_inner(driver, &r#type, expected_type, context, options)
+                options.allow_coercion
+                    && unify_inner(driver, &r#type, expected_type, false, context, options)
             }
 
             // Type variables unify with anything and are substituted with the
@@ -1005,7 +1008,7 @@ fn unify_with_options<D: Driver>(
                 assert_eq!(parameters.len(), expected_parameters.len());
                 let mut unified = true;
                 for (r#type, expected_type) in parameters.iter().zip(expected_parameters) {
-                    unified &= unify_inner(driver, r#type, expected_type, context, options);
+                    unified &= unify_inner(driver, r#type, expected_type, false, context, options);
                 }
 
                 unified
@@ -1017,8 +1020,8 @@ fn unify_with_options<D: Driver>(
                     output: expected_output,
                 },
             ) => {
-                unify_inner(driver, input, expected_input, context, options)
-                    & unify_inner(driver, output, expected_output, context, options)
+                unify_inner(driver, input, expected_input, false, context, options)
+                    & unify_inner(driver, output, expected_output, false, context, options)
             }
             (TypeKind::Tuple(elements), TypeKind::Tuple(expected_elements)) => {
                 if elements.len() != expected_elements.len() {
@@ -1027,7 +1030,7 @@ fn unify_with_options<D: Driver>(
 
                 let mut unified = true;
                 for (r#type, expected_type) in elements.iter().zip(expected_elements) {
-                    unified &= unify_inner(driver, r#type, expected_type, context, options);
+                    unified &= unify_inner(driver, r#type, expected_type, false, context, options);
                 }
 
                 unified
@@ -1041,7 +1044,7 @@ fn unify_with_options<D: Driver>(
         }
     }
 
-    unify_inner(driver, r#type, expected_type, context, options).then(|| {
+    unify_inner(driver, r#type, expected_type, true, context, options).then(|| {
         let mut coercion = Coercion::default();
 
         if matches!(expected_type.kind, TypeKind::Lazy(_))
@@ -1066,7 +1069,10 @@ fn unify_with_coercion<D: Driver>(
         r#type,
         expected_type,
         context,
-        UnifyOptions::default(),
+        UnifyOptions {
+            allow_coercion: true,
+            ..Default::default()
+        },
     )
 }
 
@@ -3577,6 +3583,13 @@ fn finalize_expression<D: Driver>(
     };
 
     if lazy {
+        expression.item.r#type = crate::Type::Lazy(
+            expression
+                .as_ref()
+                .replace(expression.item.r#type.clone())
+                .boxed(),
+        );
+
         expression.item.kind = crate::TypedExpressionKind::Lazy(expression.clone().boxed());
     }
 

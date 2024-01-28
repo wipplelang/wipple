@@ -133,6 +133,9 @@ pub enum Error {
 
     /// The function composition operator `|` expects inputs on both sides.
     InvalidComposition,
+
+    /// `lazy` may only appear on the input to a function.
+    InvalidLazyType,
 }
 
 /// An unresolved file.

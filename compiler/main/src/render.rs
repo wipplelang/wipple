@@ -517,6 +517,17 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     help: String::from("The function composition operator `|` requires inputs on both sides."),
                     fix: None,
                 },
+                wipple_lower::Error::InvalidLazyType => Error {
+                    group,
+                    primary_label: Label {
+                        file: info.parser_info.path.clone(),
+                        span: info.parser_info.span.clone(),
+                        message: String::from("`lazy` is not allowed here"),
+                    },
+                    secondary_labels: Vec::new(),
+                    help: String::from("`lazy` may only appear on the input to a function."),
+                    fix: None,
+                },
             }
         }
         crate::Error::Typecheck(error) => {
