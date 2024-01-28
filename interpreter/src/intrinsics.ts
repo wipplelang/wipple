@@ -3,20 +3,24 @@ import type { Context, TaskGroup, TypeDescriptor, TypedValue } from "./index.js"
 // @ts-ignore
 import { hash, hash_uint } from "siphash";
 
-export type Intrinsic = (inputs: TypedValue[], context: Context) => Promise<TypedValue>;
+export type Intrinsic = (
+    inputs: TypedValue[],
+    expectedTypeDescriptor: TypeDescriptor,
+    context: Context
+) => Promise<TypedValue>;
 
 export const intrinsics: Record<string, Intrinsic> = {
-    crash: async ([message], context) => {
+    crash: async ([message], _expectedTypeDescriptor, context) => {
         if (message.type !== "text") {
             throw context.error("expected text");
         }
 
         throw context.error(`error: ${message.value}`);
     },
-    evaluate: async ([lazy], context) => {
+    evaluate: async ([lazy], _expectedTypeDescriptor, context) => {
         return await context.evaluate(lazy);
     },
-    display: async ([message], context) => {
+    display: async ([message], _expectedTypeDescriptor, context) => {
         await new Promise<void>((resolve) => {
             context.io({
                 type: "display",
@@ -27,7 +31,7 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         return unit;
     },
-    prompt: async ([message, validate], context) => {
+    prompt: async ([message, validate], expectedTypeDescriptor, context) => {
         let value: TypedValue | undefined;
         do {
             await new Promise<void>((resolve) => {
@@ -36,7 +40,10 @@ export const intrinsics: Record<string, Intrinsic> = {
                     message: textToJs(message, context),
                     validate: async (input) => {
                         value = maybeToJs(
-                            await context.call(validate, jsToText(input, context)),
+                            await context.call(
+                                validate,
+                                jsToText(expectedTypeDescriptor, input, context)
+                            ),
                             context
                         );
 
@@ -50,7 +57,7 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         return value;
     },
-    choice: async ([message, options], context) => {
+    choice: async ([message, options], expectedTypeDescriptor, context) => {
         const choices = listToJs(options, context).map((option) => textToJs(option, context));
 
         const index = await new Promise<number>((resolve) => {
@@ -62,27 +69,26 @@ export const intrinsics: Record<string, Intrinsic> = {
             });
         });
 
-        return jsToNumber(new Decimal(index), context);
+        return jsToNumber(expectedTypeDescriptor, new Decimal(index), context);
     },
-    "with-ui": async ([url, callback], context) => {
+    ui: async ([url], expectedTypeDescriptor, context) => {
         return await new Promise<TypedValue>(async (resolve) => {
             context.io({
                 type: "ui",
                 url: textToJs(url, context),
                 completion: async (onMessage) => {
-                    const result = await context.call(callback, jsToUiHandle(onMessage, context));
-                    resolve(result);
+                    resolve(jsToUiHandle(expectedTypeDescriptor, onMessage, context));
                 },
             });
         });
     },
-    "message-ui": async ([handle, message, value], context) => {
+    "message-ui": async ([handle, message, value], _expectedTypeDescriptor, context) => {
         const sendMessage = uiHandleToJs(handle, context);
         const messageName = textToJs(message, context);
 
         return await sendMessage(messageName, value);
     },
-    "with-continuation": async ([callback], context) => {
+    "with-continuation": async ([callback], _expectedTypeDescriptor, context) => {
         if (callback.typeDescriptor.type !== "function") {
             throw context.error("expected function");
         }
@@ -93,27 +99,36 @@ export const intrinsics: Record<string, Intrinsic> = {
             throw context.error("expected function");
         }
 
-        const inputTypeDescriptor = callbackTypeDescriptor.value[0];
+        const typeDescriptor: TypeDescriptor = {
+            type: "function",
+            value: [callbackTypeDescriptor.value[0], unit.typeDescriptor],
+        };
 
         return await new Promise<TypedValue>(async (resolve) => {
             await context.call(
                 callback,
-                jsToFunction(inputTypeDescriptor, unit.typeDescriptor, async (result) => {
+                jsToFunction(typeDescriptor, async (result) => {
                     resolve(result);
                     return unit;
                 })
             );
         });
     },
-    "with-task-group": async ([callback], context) => {
+    "with-task-group": async ([callback], _expectedTypeDescriptor, context) => {
+        if (callback.typeDescriptor.type !== "function") {
+            throw context.error("expected function");
+        }
+
+        const taskGroupTypeDescriptor = callback.typeDescriptor.value[0];
+
         const taskGroup: TaskGroup = [];
-        await context.call(callback, jsToTaskGroup(taskGroup, context));
+        await context.call(callback, jsToTaskGroup(taskGroupTypeDescriptor, taskGroup, context));
 
         await Promise.all(taskGroup.map((task) => task()));
 
         return unit;
     },
-    task: async ([taskGroup, callback], context) => {
+    task: async ([taskGroup, callback], _expectedTypeDescriptor, context) => {
         if (taskGroup.type !== "taskGroup") {
             throw context.error("expected task group");
         }
@@ -124,14 +139,14 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         return unit;
     },
-    "in-background": async ([callback], context) => {
+    "in-background": async ([callback], _expectedTypeDescriptor, context) => {
         (async () => {
             await context.call(callback, unit);
         })();
 
         return unit;
     },
-    delay: async ([duration], context) => {
+    delay: async ([duration], _expectedTypeDescriptor, context) => {
         if (duration.type !== "number") {
             throw context.error("expected number");
         }
@@ -146,80 +161,119 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         return unit;
     },
-    "number-to-text": async ([number], context) => {
-        return jsToText(numberToJs(number, context).toString(), context);
+    "number-to-text": async ([number], expectedTypeDescriptor, context) => {
+        return jsToText(expectedTypeDescriptor, numberToJs(number, context).toString(), context);
     },
-    "text-to-number": async ([text], context) => {
+    "text-to-number": async ([text], expectedTypeDescriptor, context) => {
+        if (expectedTypeDescriptor.type !== "named") {
+            throw context.error("expected result to be a named type");
+        }
+
+        const numberTypeDescriptor = expectedTypeDescriptor.value[1][0];
+
         const input = textToJs(text, context);
         if (input === "undefined") {
-            return jsToSome(jsToNumber(new Decimal(NaN), context), context);
+            return jsToSome(
+                expectedTypeDescriptor,
+                jsToNumber(numberTypeDescriptor, new Decimal(NaN), context),
+                context
+            );
         }
 
         let number: Decimal;
         try {
             number = new Decimal(input);
         } catch {
-            return jsToNone(context);
+            return jsToNone(expectedTypeDescriptor, context);
         }
 
-        return jsToSome(jsToNumber(number, context), context);
+        return jsToSome(
+            expectedTypeDescriptor,
+            jsToNumber(numberTypeDescriptor, number, context),
+            context
+        );
     },
-    "add-number": async ([left, right], context) => {
-        return jsToNumber(numberToJs(left, context).add(numberToJs(right, context)), context);
+    "add-number": async ([left, right], expectedTypeDescriptor, context) => {
+        return jsToNumber(
+            expectedTypeDescriptor,
+            numberToJs(left, context).add(numberToJs(right, context)),
+            context
+        );
     },
-    "subtract-number": async ([left, right], context) => {
-        return jsToNumber(numberToJs(left, context).sub(numberToJs(right, context)), context);
+    "subtract-number": async ([left, right], expectedTypeDescriptor, context) => {
+        return jsToNumber(
+            expectedTypeDescriptor,
+            numberToJs(left, context).sub(numberToJs(right, context)),
+            context
+        );
     },
-    "multiply-number": async ([left, right], context) => {
-        return jsToNumber(numberToJs(left, context).mul(numberToJs(right, context)), context);
+    "multiply-number": async ([left, right], expectedTypeDescriptor, context) => {
+        return jsToNumber(
+            expectedTypeDescriptor,
+            numberToJs(left, context).mul(numberToJs(right, context)),
+            context
+        );
     },
-    "divide-number": async ([left, right], context) => {
-        return jsToNumber(numberToJs(left, context).div(numberToJs(right, context)), context);
+    "divide-number": async ([left, right], expectedTypeDescriptor, context) => {
+        return jsToNumber(
+            expectedTypeDescriptor,
+            numberToJs(left, context).div(numberToJs(right, context)),
+            context
+        );
     },
-    "remainder-number": async ([left, right], context) => {
-        return jsToNumber(numberToJs(left, context).mod(numberToJs(right, context)), context);
+    "remainder-number": async ([left, right], expectedTypeDescriptor, context) => {
+        return jsToNumber(
+            expectedTypeDescriptor,
+            numberToJs(left, context).mod(numberToJs(right, context)),
+            context
+        );
     },
-    "power-number": async ([left, right], context) => {
-        return jsToNumber(numberToJs(left, context).pow(numberToJs(right, context)), context);
+    "power-number": async ([left, right], expectedTypeDescriptor, context) => {
+        return jsToNumber(
+            expectedTypeDescriptor,
+            numberToJs(left, context).pow(numberToJs(right, context)),
+            context
+        );
     },
-    "floor-number": async ([number], context) => {
-        return jsToNumber(numberToJs(number, context).floor(), context);
+    "floor-number": async ([number], expectedTypeDescriptor, context) => {
+        return jsToNumber(expectedTypeDescriptor, numberToJs(number, context).floor(), context);
     },
-    "ceiling-number": async ([number], context) => {
-        return jsToNumber(numberToJs(number, context).ceil(), context);
+    "ceiling-number": async ([number], expectedTypeDescriptor, context) => {
+        return jsToNumber(expectedTypeDescriptor, numberToJs(number, context).ceil(), context);
     },
-    "sqrt-number": async ([number], context) => {
-        return jsToNumber(numberToJs(number, context).sqrt(), context);
+    "sqrt-number": async ([number], expectedTypeDescriptor, context) => {
+        return jsToNumber(expectedTypeDescriptor, numberToJs(number, context).sqrt(), context);
     },
-    "sin-number": async ([number], context) => {
-        return jsToNumber(numberToJs(number, context).sin(), context);
+    "sin-number": async ([number], expectedTypeDescriptor, context) => {
+        return jsToNumber(expectedTypeDescriptor, numberToJs(number, context).sin(), context);
     },
-    "cos-number": async ([number], context) => {
-        return jsToNumber(numberToJs(number, context).cos(), context);
+    "cos-number": async ([number], expectedTypeDescriptor, context) => {
+        return jsToNumber(expectedTypeDescriptor, numberToJs(number, context).cos(), context);
     },
-    "tan-number": async ([number], context) => {
-        return jsToNumber(numberToJs(number, context).tan(), context);
+    "tan-number": async ([number], expectedTypeDescriptor, context) => {
+        return jsToNumber(expectedTypeDescriptor, numberToJs(number, context).tan(), context);
     },
-    "negate-number": async ([number], context) => {
-        return jsToNumber(numberToJs(number, context).neg(), context);
+    "negate-number": async ([number], expectedTypeDescriptor, context) => {
+        return jsToNumber(expectedTypeDescriptor, numberToJs(number, context).neg(), context);
     },
-    "text-equality": async ([left, right], context) => {
+    "text-equality": async ([left, right], expectedTypeDescriptor, context) => {
         if (left.type !== "text" || right.type !== "text") {
             throw context.error("expected text");
         }
 
-        return jsToBoolean(left.value === right.value, context);
+        return jsToBoolean(expectedTypeDescriptor, left.value === right.value, context);
     },
-    "number-equality": async ([left, right], context) => {
+    "number-equality": async ([left, right], expectedTypeDescriptor, context) => {
         const leftNumber = numberToJs(left, context);
         const rightNumber = numberToJs(right, context);
 
         return jsToBoolean(
+            expectedTypeDescriptor,
             (leftNumber.isNaN() && rightNumber.isNaN()) || leftNumber.eq(rightNumber),
             context
         );
     },
-    "text-ordering": async ([left, right], context) => {
+    "text-ordering": async ([left, right], expectedTypeDescriptor, context) => {
         if (left.type !== "text" || right.type !== "text") {
             throw context.error("expected text");
         }
@@ -227,57 +281,59 @@ export const intrinsics: Record<string, Intrinsic> = {
         const ordering = left.value.localeCompare(right.value);
 
         if (ordering < 0) {
-            return jsToIsLessThan(context);
+            return jsToIsLessThan(expectedTypeDescriptor, context);
         } else if (ordering > 0) {
-            return jsToIsGreaterThan(context);
+            return jsToIsGreaterThan(expectedTypeDescriptor, context);
         } else {
-            return jsToIsEqual(context);
+            return jsToIsEqual(expectedTypeDescriptor, context);
         }
     },
-    "number-ordering": async ([left, right], context) => {
+    "number-ordering": async ([left, right], expectedTypeDescriptor, context) => {
         const leftNumber = numberToJs(left, context);
         const rightNumber = numberToJs(right, context);
 
         if (leftNumber.lt(rightNumber)) {
-            return jsToIsLessThan(context);
+            return jsToIsLessThan(expectedTypeDescriptor, context);
         } else if (leftNumber.gt(rightNumber)) {
-            return jsToIsGreaterThan(context);
+            return jsToIsGreaterThan(expectedTypeDescriptor, context);
         } else {
-            return jsToIsEqual(context);
+            return jsToIsEqual(expectedTypeDescriptor, context);
         }
     },
-    "make-reference": async ([value], context) => {
-        return jsToReference(value, context);
+    "make-reference": async ([value], expectedTypeDescriptor, context) => {
+        return jsToReference(expectedTypeDescriptor, value, context);
     },
-    "get-reference": async ([reference], context) => {
+    "get-reference": async ([reference], _expectedTypeDescriptor, context) => {
         return referenceToJs(reference, context).current;
     },
-    "set-reference": async ([reference, value], context) => {
+    "set-reference": async ([reference, value], expectedTypeDescriptor, context) => {
         referenceToJs(reference, context).current = value;
         return unit;
     },
-    "make-empty-list": async ([], context) => {
-        return jsToList([], context);
+    "make-empty-list": async ([], expectedTypeDescriptor, context) => {
+        return jsToList(expectedTypeDescriptor, [], context);
     },
-    "list-first": async ([list], context) => {
-        const listValue = listToJs(list, context);
-        return listValue.length > 0 ? jsToSome(listValue[0], context) : jsToNone(context);
-    },
-    "list-last": async ([list], context) => {
+    "list-first": async ([list], expectedTypeDescriptor, context) => {
         const listValue = listToJs(list, context);
         return listValue.length > 0
-            ? jsToSome(listValue[listValue.length - 1], context)
-            : jsToNone(context);
+            ? jsToSome(expectedTypeDescriptor, listValue[0], context)
+            : jsToNone(expectedTypeDescriptor, context);
     },
-    "list-initial": async ([list], context) => {
+    "list-last": async ([list], expectedTypeDescriptor, context) => {
         const listValue = listToJs(list, context);
-        return jsToList(listValue.slice(0, listValue.length - 1), context);
+        return listValue.length > 0
+            ? jsToSome(expectedTypeDescriptor, listValue[listValue.length - 1], context)
+            : jsToNone(expectedTypeDescriptor, context);
     },
-    "list-tail": async ([list], context) => {
+    "list-initial": async ([list], expectedTypeDescriptor, context) => {
         const listValue = listToJs(list, context);
-        return jsToList(listValue.slice(1), context);
+        return jsToList(expectedTypeDescriptor, listValue.slice(0, listValue.length - 1), context);
     },
-    "list-nth": async ([list, position], context) => {
+    "list-tail": async ([list], expectedTypeDescriptor, context) => {
+        const listValue = listToJs(list, context);
+        return jsToList(expectedTypeDescriptor, listValue.slice(1), context);
+    },
+    "list-nth": async ([list, position], expectedTypeDescriptor, context) => {
         const listValue = listToJs(list, context);
         const positionValue = numberToJs(position, context);
 
@@ -288,18 +344,18 @@ export const intrinsics: Record<string, Intrinsic> = {
         const index = positionValue.toNumber();
 
         return index >= 0 && index < listValue.length
-            ? jsToSome(listValue[index], context)
-            : jsToNone(context);
+            ? jsToSome(expectedTypeDescriptor, listValue[index], context)
+            : jsToNone(expectedTypeDescriptor, context);
     },
-    "list-append": async ([list, element], context) => {
+    "list-append": async ([list, element], expectedTypeDescriptor, context) => {
         const listValue = listToJs(list, context);
-        return jsToList([...listValue, element], context);
+        return jsToList(expectedTypeDescriptor, [...listValue, element], context);
     },
-    "list-prepend": async ([list, element], context) => {
+    "list-prepend": async ([list, element], expectedTypeDescriptor, context) => {
         const listValue = listToJs(list, context);
-        return jsToList([element, ...listValue], context);
+        return jsToList(expectedTypeDescriptor, [element, ...listValue], context);
     },
-    "list-insert-at": async ([list, position, element], context) => {
+    "list-insert-at": async ([list, position, element], expectedTypeDescriptor, context) => {
         const listValue = listToJs(list, context);
         const positionValue = numberToJs(position, context);
 
@@ -310,11 +366,12 @@ export const intrinsics: Record<string, Intrinsic> = {
         const index = positionValue.toNumber();
 
         return jsToList(
+            expectedTypeDescriptor,
             [...listValue.slice(0, index), element, ...listValue.slice(index)],
             context
         );
     },
-    "list-remove-at": async ([list, position], context) => {
+    "list-remove-at": async ([list, position], expectedTypeDescriptor, context) => {
         const listValue = listToJs(list, context);
         const positionValue = numberToJs(position, context);
 
@@ -324,12 +381,20 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         const index = positionValue.toNumber();
 
-        return jsToList([...listValue.slice(0, index), ...listValue.slice(index + 1)], context);
+        return jsToList(
+            expectedTypeDescriptor,
+            [...listValue.slice(0, index), ...listValue.slice(index + 1)],
+            context
+        );
     },
-    "list-count": async ([list], context) => {
-        return jsToNumber(new Decimal(listToJs(list, context).length), context);
+    "list-count": async ([list], expectedTypeDescriptor, context) => {
+        return jsToNumber(
+            expectedTypeDescriptor,
+            new Decimal(listToJs(list, context).length),
+            context
+        );
     },
-    "list-slice": async ([list, start, end], context) => {
+    "list-slice": async ([list, start, end], expectedTypeDescriptor, context) => {
         const listValue = listToJs(list, context);
         const startValue = numberToJs(start, context);
         const endValue = numberToJs(end, context);
@@ -345,17 +410,24 @@ export const intrinsics: Record<string, Intrinsic> = {
         const startIndex = startValue.toNumber();
         const endIndex = endValue.toNumber();
 
-        return jsToList(listValue.slice(startIndex, endIndex), context);
+        return jsToList(expectedTypeDescriptor, listValue.slice(startIndex, endIndex), context);
     },
-    "text-characters": async ([text], context) => {
+    "text-characters": async ([text], expectedTypeDescriptor, context) => {
         const textValue = textToJs(text, context);
 
+        if (expectedTypeDescriptor.type !== "named") {
+            throw context.error("expected result to be a named type");
+        }
+
+        const textTypeDescriptor = expectedTypeDescriptor.value[1][0];
+
         return jsToList(
-            [...textValue].map((character) => jsToText(character, context)),
+            expectedTypeDescriptor,
+            [...textValue].map((character) => jsToText(textTypeDescriptor, character, context)),
             context
         );
     },
-    "random-number": async ([min, max], context) => {
+    "random-number": async ([min, max], expectedTypeDescriptor, context) => {
         const minValue = numberToJs(min, context);
         const maxValue = numberToJs(max, context);
 
@@ -364,6 +436,7 @@ export const intrinsics: Record<string, Intrinsic> = {
         }
 
         return jsToNumber(
+            expectedTypeDescriptor,
             minValue.add(
                 maxValue
                     .sub(minValue)
@@ -373,36 +446,39 @@ export const intrinsics: Record<string, Intrinsic> = {
             context
         );
     },
-    "undefined-number": async ([], context) => {
-        return jsToNumber(new Decimal(NaN), context);
+    "undefined-number": async ([], expectedTypeDescriptor, context) => {
+        return jsToNumber(expectedTypeDescriptor, new Decimal(NaN), context);
     },
-    "make-hasher": async ([], context) => {
+    "make-hasher": async ([], expectedTypeDescriptor, context) => {
         return jsToHasher(
+            expectedTypeDescriptor,
             [Math.random(), Math.random(), Math.random(), Math.random()],
             Math.random(),
             context
         );
     },
-    "hash-into-hasher": async ([hasher, message], context) => {
+    "hash-into-hasher": async ([hasher, message], expectedTypeDescriptor, context) => {
         const hasherValue = hasherToJs(hasher, context);
         const messageValue = numberToJs(message, context);
 
         const messageBytes = new Uint8Array(new Float64Array(messageValue.toNumber()).buffer);
 
         return jsToHasher(
+            expectedTypeDescriptor,
             hasherValue.key,
             hash(hash_uint(hasherValue.key, hasherValue.hash), messageBytes),
             context
         );
     },
-    "value-of-hasher": async ([hasher], context) => {
+    "value-of-hasher": async ([hasher], expectedTypeDescriptor, context) => {
         const hasherValue = hasherToJs(hasher, context);
-        return jsToNumber(new Decimal(hasherValue.hash), context);
+        return jsToNumber(expectedTypeDescriptor, new Decimal(hasherValue.hash), context);
     },
-    "hash-text": async ([text], context) => {
+    "hash-text": async ([text], expectedTypeDescriptor, context) => {
         const textValue = textToJs(text, context);
 
         return jsToNumber(
+            expectedTypeDescriptor,
             new Decimal(
                 hash([Math.random(), Math.random(), Math.random(), Math.random()], textValue)
             ),
@@ -420,9 +496,13 @@ const unit: TypedValue = {
     values: [],
 };
 
-const jsToText = (string: string, context: Context): TypedValue => ({
+const jsToText = (
+    typeDescriptor: TypeDescriptor,
+    string: string,
+    _context: Context
+): TypedValue => ({
     type: "text",
-    typeDescriptor: context.executable.intrinsicTypeDescriptors.text,
+    typeDescriptor,
     value: string,
 });
 
@@ -434,9 +514,13 @@ const textToJs = (value: TypedValue, context: Context): string => {
     return value.value;
 };
 
-const jsToNumber = (number: Decimal, context: Context): TypedValue => ({
+const jsToNumber = (
+    typeDescriptor: TypeDescriptor,
+    number: Decimal,
+    _context: Context
+): TypedValue => ({
     type: "number",
-    typeDescriptor: context.executable.intrinsicTypeDescriptors.number,
+    typeDescriptor,
     value: number,
 });
 
@@ -448,8 +532,12 @@ const numberToJs = (value: TypedValue, context: Context): Decimal => {
     return value.value;
 };
 
-const jsToBoolean = (boolean: boolean, context: Context): TypedValue => ({
-    typeDescriptor: context.executable.intrinsicTypeDescriptors.boolean,
+const jsToBoolean = (
+    typeDescriptor: TypeDescriptor,
+    boolean: boolean,
+    context: Context
+): TypedValue => ({
+    typeDescriptor,
     type: "variant",
     variant: boolean
         ? context.executable.intrinsicVariants.true
@@ -472,36 +560,40 @@ const booleanToJs = (value: TypedValue, context: Context): boolean => {
     }
 };
 
-const jsToSome = (value: TypedValue, context: Context): TypedValue => ({
-    typeDescriptor: context.executable.intrinsicTypeDescriptors.maybe,
+const jsToSome = (
+    typeDescriptor: TypeDescriptor,
+    value: TypedValue,
+    context: Context
+): TypedValue => ({
+    typeDescriptor,
     type: "variant",
     variant: context.executable.intrinsicVariants.some,
     values: [value],
 });
 
-const jsToNone = (context: Context): TypedValue => ({
-    typeDescriptor: context.executable.intrinsicTypeDescriptors.maybe,
+const jsToNone = (typeDescriptor: TypeDescriptor, context: Context): TypedValue => ({
+    typeDescriptor,
     type: "variant",
     variant: context.executable.intrinsicVariants.none,
     values: [],
 });
 
-const jsToIsLessThan = (context: Context): TypedValue => ({
-    typeDescriptor: context.executable.intrinsicTypeDescriptors.ordering,
+const jsToIsLessThan = (typeDescriptor: TypeDescriptor, context: Context): TypedValue => ({
+    typeDescriptor,
     type: "variant",
     variant: context.executable.intrinsicVariants["is-less-than"],
     values: [],
 });
 
-const jsToIsEqual = (context: Context): TypedValue => ({
-    typeDescriptor: context.executable.intrinsicTypeDescriptors.ordering,
+const jsToIsEqual = (typeDescriptor: TypeDescriptor, context: Context): TypedValue => ({
+    typeDescriptor,
     type: "variant",
     variant: context.executable.intrinsicVariants["is-equal"],
     values: [],
 });
 
-const jsToIsGreaterThan = (context: Context): TypedValue => ({
-    typeDescriptor: context.executable.intrinsicTypeDescriptors.ordering,
+const jsToIsGreaterThan = (typeDescriptor: TypeDescriptor, context: Context): TypedValue => ({
+    typeDescriptor,
     type: "variant",
     variant: context.executable.intrinsicVariants["is-greater-than"],
     values: [],
@@ -522,8 +614,12 @@ const maybeToJs = (value: TypedValue, context: Context): TypedValue | undefined 
     }
 };
 
-const jsToList = (values: TypedValue[], context: Context): TypedValue => ({
-    typeDescriptor: context.executable.intrinsicTypeDescriptors.list,
+const jsToList = (
+    typeDescriptor: TypeDescriptor,
+    values: TypedValue[],
+    _context: Context
+): TypedValue => ({
+    typeDescriptor,
     type: "list",
     values,
 });
@@ -537,23 +633,20 @@ const listToJs = (value: TypedValue, context: Context): TypedValue[] => {
 };
 
 const jsToFunction = (
-    inputTypeDescriptor: TypeDescriptor,
-    outputTypeDescriptor: TypeDescriptor,
+    typeDescriptor: TypeDescriptor,
     func: (input: TypedValue) => Promise<TypedValue>
 ): TypedValue => ({
     type: "nativeFunction",
-    typeDescriptor: {
-        type: "function",
-        value: [inputTypeDescriptor, outputTypeDescriptor],
-    },
+    typeDescriptor,
     value: func,
 });
 
 const jsToUiHandle = (
+    typeDescriptor: TypeDescriptor,
     sendMessage: (message: string, value: TypedValue) => Promise<TypedValue>,
-    context: Context
+    _context: Context
 ): TypedValue => ({
-    typeDescriptor: context.executable.intrinsicTypeDescriptors.uiHandle,
+    typeDescriptor,
     type: "uiHandle",
     onMessage: sendMessage,
 });
@@ -566,15 +659,23 @@ const uiHandleToJs = (value: TypedValue, context: Context) => {
     return value.onMessage;
 };
 
-const jsToTaskGroup = (taskGroup: TaskGroup, context: Context): TypedValue => ({
+const jsToTaskGroup = (
+    typeDescriptor: TypeDescriptor,
+    taskGroup: TaskGroup,
+    _context: Context
+): TypedValue => ({
     type: "taskGroup",
-    typeDescriptor: context.executable.intrinsicTypeDescriptors.taskGroup,
+    typeDescriptor,
     value: taskGroup,
 });
 
-const jsToReference = (value: TypedValue, context: Context): TypedValue => ({
+const jsToReference = (
+    typeDescriptor: TypeDescriptor,
+    value: TypedValue,
+    _context: Context
+): TypedValue => ({
     type: "reference",
-    typeDescriptor: context.executable.intrinsicTypeDescriptors.reference,
+    typeDescriptor,
     value: { current: value },
 });
 
@@ -586,9 +687,14 @@ const referenceToJs = (value: TypedValue, context: Context): { current: TypedVal
     return value.value;
 };
 
-const jsToHasher = (key: number[], hash: number, context: Context): TypedValue => ({
+const jsToHasher = (
+    typeDescriptor: TypeDescriptor,
+    key: number[],
+    hash: number,
+    _context: Context
+): TypedValue => ({
     type: "hasher",
-    typeDescriptor: context.executable.intrinsicTypeDescriptors.hasher,
+    typeDescriptor,
     key,
     hash,
 });

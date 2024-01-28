@@ -9,14 +9,17 @@ use wipple_util::WithInfo;
 
 /// Provides the code generation with information about the program.
 pub trait Driver: wipple_typecheck::Driver {
-    /// The path of the variant representing `True`.
-    fn true_variant(&self) -> Option<Self::Path>;
-
     /// The path of the type representing `Number`.
     fn number_type(&self) -> Option<Self::Path>;
 
     /// The path of the type representing `Text`.
     fn text_type(&self) -> Option<Self::Path>;
+
+    /// The path of the type representing `Boolean`.
+    fn boolean_type(&self) -> Option<Self::Path>;
+
+    /// The path of the variant representing `True`.
+    fn true_variant(&self) -> Option<Self::Path>;
 
     /// The name of the intrinsic that compares numbers.
     fn number_equality_intrinsic(&self) -> Option<String>;
@@ -101,9 +104,6 @@ pub enum Instruction<D: Driver> {
     /// the top of the stack.
     Call,
 
-    /// (Consuming) An intrinsic provided by the runtime with _n_ inputs.
-    Intrinsic(String, u32),
-
     /// (Values) A tuple.
     Tuple(u32),
 
@@ -149,6 +149,9 @@ pub enum Instruction<D: Driver> {
     bound(serialize = "", deserialize = "")
 )]
 pub enum TypedInstruction<D: Driver> {
+    /// (Consuming) An intrinsic provided by the runtime with _n_ inputs.
+    Intrinsic(String, u32),
+
     /// A text value.
     Text(String),
 
@@ -226,7 +229,6 @@ where
             Instruction::Element(element) => write!(f, "element {element}"),
             Instruction::Variable(variable) => write!(f, "variable {variable}"),
             Instruction::Call => write!(f, "call"),
-            Instruction::Intrinsic(name, inputs) => write!(f, "intrinsic {name} {inputs}"),
             Instruction::Tuple(elements) => write!(f, "tuple {elements}"),
             Instruction::Typed(descriptor, instruction) => {
                 write!(f, "{instruction} :: {descriptor}")
@@ -249,6 +251,7 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            TypedInstruction::Intrinsic(name, inputs) => write!(f, "intrinsic {name} {inputs}"),
             TypedInstruction::Text(text) => write!(f, "text {text:?}"),
             TypedInstruction::Number(number) => write!(f, "number {number:?}"),
             TypedInstruction::Marker => write!(f, "marker"),

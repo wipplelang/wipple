@@ -1,9 +1,9 @@
 UI : type
-language type "ui" : UI
+language type "ui-handle" : UI
 
 [Use a UI element from a JavaScript file.]
-with-ui :: Result => Text -> (UI -> Result) -> Result
-with-ui : url body -> intrinsic "with-ui" url body
+ui :: Text -> UI
+ui : url -> intrinsic "ui" url
 
 [Send a message to a UI element.]
 message :: Input (Output : ()) => Text -> Input -> UI -> Output

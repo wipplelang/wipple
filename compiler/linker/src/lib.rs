@@ -16,9 +16,6 @@ pub struct UnlinkedLibrary<D: Driver> {
     /// The implementations of constants and instances.
     pub items: HashMap<D::Path, UnlinkedItem<D>>,
 
-    /// The type descriptors required for various intrinsics.
-    pub intrinsic_type_descriptors: HashMap<String, D::Path>,
-
     /// The variants required for various intrinsics.
     pub intrinsic_variants: HashMap<String, D::Path>,
 
@@ -52,9 +49,6 @@ pub struct UnlinkedItem<D: Driver> {
 pub struct Executable<D: Driver> {
     /// The implementations of constants and instances.
     pub items: HashMap<D::Path, LinkedItem<D>>,
-
-    /// The type descriptors required for various intrinsics.
-    pub intrinsic_type_descriptors: HashMap<String, D::Path>,
 
     /// The variants required for various intrinsics.
     pub intrinsic_variants: HashMap<String, D::Path>,
@@ -107,10 +101,6 @@ pub fn link<D: Driver>(
             for (path, item) in library.items {
                 executable.items.insert(path, convert_item(item)?);
             }
-
-            executable
-                .intrinsic_type_descriptors
-                .extend(library.intrinsic_type_descriptors);
 
             executable
                 .intrinsic_variants

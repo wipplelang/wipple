@@ -151,9 +151,9 @@ fn compile_expression<D: crate::Driver>(
                 compile_expression(input.as_ref(), info)?;
             }
 
-            info.push_instruction(crate::Instruction::Intrinsic(
-                name.clone(),
-                inputs.len() as u32,
+            info.push_instruction(crate::Instruction::Typed(
+                type_descriptor(&expression.item.r#type)?,
+                crate::TypedInstruction::Intrinsic(name.clone(), inputs.len() as u32),
             ));
         }
         wipple_typecheck::TypedExpressionKind::Initialize { pattern, value } => {
@@ -302,9 +302,9 @@ fn compile_pattern<D: crate::Driver>(
                 crate::TypedInstruction::Number(number.clone()),
             ));
 
-            info.push_instruction(crate::Instruction::Intrinsic(
-                info.driver.number_equality_intrinsic()?,
-                2,
+            info.push_instruction(crate::Instruction::Typed(
+                crate::TypeDescriptor::Named(info.driver.boolean_type()?, Vec::new()),
+                crate::TypedInstruction::Intrinsic(info.driver.number_equality_intrinsic()?, 2),
             ));
 
             info.push_instruction(crate::Instruction::JumpIfNot(
@@ -320,9 +320,9 @@ fn compile_pattern<D: crate::Driver>(
                 crate::TypedInstruction::Text(text.clone()),
             ));
 
-            info.push_instruction(crate::Instruction::Intrinsic(
-                info.driver.text_equality_intrinsic()?,
-                2,
+            info.push_instruction(crate::Instruction::Typed(
+                crate::TypeDescriptor::Named(info.driver.boolean_type()?, Vec::new()),
+                crate::TypedInstruction::Intrinsic(info.driver.text_equality_intrinsic()?, 2),
             ));
 
             info.push_instruction(crate::Instruction::JumpIfNot(

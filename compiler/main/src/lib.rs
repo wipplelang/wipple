@@ -538,24 +538,10 @@ impl Driver {
                 }
             };
         }
-
-        insert_intrinsic!("text", intrinsic_type_descriptors);
-
-        insert_intrinsic!("number", intrinsic_type_descriptors);
-
-        insert_intrinsic!("boolean", intrinsic_type_descriptors);
-        insert_intrinsic!("true", intrinsic_variants);
         insert_intrinsic!("false", intrinsic_variants);
-
-        insert_intrinsic!("maybe", intrinsic_type_descriptors);
+        insert_intrinsic!("true", intrinsic_variants);
         insert_intrinsic!("none", intrinsic_variants);
         insert_intrinsic!("some", intrinsic_variants);
-
-        insert_intrinsic!("list", intrinsic_type_descriptors);
-
-        insert_intrinsic!("ui-handle", intrinsic_type_descriptors);
-
-        insert_intrinsic!("task-group", intrinsic_type_descriptors);
 
         Result {
             interface: self.interface,
@@ -719,16 +705,20 @@ impl wipple_typecheck::Driver for Driver {
 }
 
 impl wipple_codegen::Driver for Driver {
-    fn true_variant(&self) -> Option<Self::Path> {
-        self.interface.language_declarations.get("true").cloned()
-    }
-
     fn number_type(&self) -> Option<Self::Path> {
         self.interface.language_declarations.get("number").cloned()
     }
 
     fn text_type(&self) -> Option<Self::Path> {
         self.interface.language_declarations.get("text").cloned()
+    }
+
+    fn boolean_type(&self) -> Option<Self::Path> {
+        self.interface.language_declarations.get("boolean").cloned()
+    }
+
+    fn true_variant(&self) -> Option<Self::Path> {
+        self.interface.language_declarations.get("true").cloned()
     }
 
     fn number_equality_intrinsic(&self) -> Option<String> {

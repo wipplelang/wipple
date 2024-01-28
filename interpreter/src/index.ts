@@ -6,7 +6,6 @@ import { produce } from "immer";
 export interface Executable {
     items: Record<string, Item>;
     instances: Record<string, string[]>;
-    intrinsicTypeDescriptors: Record<string, TypeDescriptor>;
     intrinsicVariants: Record<string, string>;
     code: Item[];
 }
@@ -32,7 +31,6 @@ export type Instruction =
     | { type: "element"; value: number }
     | { type: "variable"; value: number }
     | { type: "call"; value: undefined }
-    | { type: "intrinsic"; value: [string, number] }
     | { type: "tuple"; value: number }
     | { type: "typed"; value: [TypeDescriptor, TypedInstruction] }
     | { type: "jumpIfNot"; value: [string, number] }
@@ -43,6 +41,7 @@ export type Instruction =
     | { type: "unreachable"; value: undefined };
 
 export type TypedInstruction =
+    | { type: "intrinsic"; value: [string, number] }
     | { type: "text"; value: string }
     | { type: "number"; value: string }
     | { type: "format"; value: [string[], string] }
@@ -380,22 +379,6 @@ const evaluateItem = async (
 
                     break;
                 }
-                case "intrinsic": {
-                    const intrinsic = intrinsics[instruction.value[0]];
-                    if (!intrinsic) {
-                        throw error(`unknown intrinsic '${instruction.value[0]}'`);
-                    }
-
-                    const inputs: TypedValue[] = [];
-                    for (let i = 0; i < instruction.value[1]; i++) {
-                        inputs.push(pop());
-                    }
-
-                    const result = await intrinsic(inputs.reverse(), context);
-                    stack.push(result);
-
-                    break;
-                }
                 case "tuple": {
                     const elements: TypedValue[] = [];
                     for (let i = 0; i < instruction.value; i++) {
@@ -421,6 +404,27 @@ const evaluateItem = async (
                     );
 
                     switch (instruction.value[1].type) {
+                        case "intrinsic": {
+                            const intrinsic = intrinsics[instruction.value[1].value[0]];
+                            if (!intrinsic) {
+                                throw error(`unknown intrinsic '${instruction.value[0]}'`);
+                            }
+
+                            const inputs: TypedValue[] = [];
+                            for (let i = 0; i < instruction.value[1].value[1]; i++) {
+                                inputs.push(pop());
+                            }
+
+                            const result = await intrinsic(
+                                inputs.reverse(),
+                                typeDescriptor,
+                                context
+                            );
+
+                            stack.push(result);
+
+                            break;
+                        }
                         case "number": {
                             stack.push({
                                 typeDescriptor,
