@@ -1,7 +1,7 @@
 import { Decimal } from "decimal.js";
 import type { Context, TaskGroup, TypeDescriptor, TypedValue } from "./index.js";
 // @ts-ignore
-import { hash, hash_uint } from "siphash";
+import { hash_uint } from "siphash";
 
 export type Intrinsic = (
     inputs: TypedValue[],
@@ -306,7 +306,7 @@ export const intrinsics: Record<string, Intrinsic> = {
     "get-reference": async ([reference], _expectedTypeDescriptor, context) => {
         return referenceToJs(reference, context).current;
     },
-    "set-reference": async ([reference, value], expectedTypeDescriptor, context) => {
+    "set-reference": async ([reference, value], _expectedTypeDescriptor, context) => {
         referenceToJs(reference, context).current = value;
         return unit;
     },
@@ -356,6 +356,12 @@ export const intrinsics: Record<string, Intrinsic> = {
         return jsToList(expectedTypeDescriptor, [element, ...listValue], context);
     },
     "list-insert-at": async ([list, position, element], expectedTypeDescriptor, context) => {
+        if (expectedTypeDescriptor.type !== "named") {
+            throw context.error("expected result to be a named type");
+        }
+
+        const listTypeDescriptor = expectedTypeDescriptor.value[1][0];
+
         const listValue = listToJs(list, context);
         const positionValue = numberToJs(position, context);
 
@@ -365,13 +371,25 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         const index = positionValue.toNumber();
 
-        return jsToList(
-            expectedTypeDescriptor,
-            [...listValue.slice(0, index), element, ...listValue.slice(index)],
-            context
-        );
+        return index >= 0 && index <= listValue.length
+            ? jsToSome(
+                  expectedTypeDescriptor,
+                  jsToList(
+                      listTypeDescriptor,
+                      [...listValue.slice(0, index), element, ...listValue.slice(index)],
+                      context
+                  ),
+                  context
+              )
+            : jsToNone(expectedTypeDescriptor, context);
     },
     "list-remove-at": async ([list, position], expectedTypeDescriptor, context) => {
+        if (expectedTypeDescriptor.type !== "named") {
+            throw context.error("expected result to be a named type");
+        }
+
+        const listTypeDescriptor = expectedTypeDescriptor.value[1][0];
+
         const listValue = listToJs(list, context);
         const positionValue = numberToJs(position, context);
 
@@ -381,11 +399,17 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         const index = positionValue.toNumber();
 
-        return jsToList(
-            expectedTypeDescriptor,
-            [...listValue.slice(0, index), ...listValue.slice(index + 1)],
-            context
-        );
+        return index >= 0 && index <= listValue.length
+            ? jsToSome(
+                  expectedTypeDescriptor,
+                  jsToList(
+                      listTypeDescriptor,
+                      [...listValue.slice(0, index), ...listValue.slice(index + 1)],
+                      context
+                  ),
+                  context
+              )
+            : jsToNone(expectedTypeDescriptor, context);
     },
     "list-count": async ([list], expectedTypeDescriptor, context) => {
         return jsToNumber(
@@ -452,8 +476,8 @@ export const intrinsics: Record<string, Intrinsic> = {
     "make-hasher": async ([], expectedTypeDescriptor, context) => {
         return jsToHasher(
             expectedTypeDescriptor,
-            [Math.random(), Math.random(), Math.random(), Math.random()],
-            Math.random(),
+            [randomInteger(), randomInteger(), randomInteger(), randomInteger()],
+            randomInteger(),
             context
         );
     },
@@ -461,14 +485,11 @@ export const intrinsics: Record<string, Intrinsic> = {
         const hasherValue = hasherToJs(hasher, context);
         const messageValue = numberToJs(message, context);
 
-        const messageBytes = new Uint8Array(new Float64Array(messageValue.toNumber()).buffer);
+        const messageBytes = new Uint8Array(Float64Array.of(messageValue.toNumber()).buffer);
 
-        return jsToHasher(
-            expectedTypeDescriptor,
-            hasherValue.key,
-            hash(hash_uint(hasherValue.key, hasherValue.hash), messageBytes),
-            context
-        );
+        const hashValue = hash_uint(hash_uint(hasherValue.key, hasherValue.hash), messageBytes);
+
+        return jsToHasher(expectedTypeDescriptor, hasherValue.key, hashValue, context);
     },
     "value-of-hasher": async ([hasher], expectedTypeDescriptor, context) => {
         const hasherValue = hasherToJs(hasher, context);
@@ -477,13 +498,12 @@ export const intrinsics: Record<string, Intrinsic> = {
     "hash-text": async ([text], expectedTypeDescriptor, context) => {
         const textValue = textToJs(text, context);
 
-        return jsToNumber(
-            expectedTypeDescriptor,
-            new Decimal(
-                hash([Math.random(), Math.random(), Math.random(), Math.random()], textValue)
-            ),
-            context
+        const hashValue = hash_uint(
+            [randomInteger(), randomInteger(), randomInteger(), randomInteger()],
+            textValue
         );
+
+        return jsToNumber(expectedTypeDescriptor, new Decimal(hashValue), context);
     },
 };
 
@@ -706,3 +726,5 @@ const hasherToJs = (value: TypedValue, context: Context): { key: number[]; hash:
 
     return value;
 };
+
+const randomInteger = () => Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);

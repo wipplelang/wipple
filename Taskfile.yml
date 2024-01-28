@@ -7,6 +7,7 @@ tasks:
       - cli:build
     cmds:
       - task: compile
+      - $WIPPLE_TEST_PREFIX/.wipple/out
 
   test:
     run: once
@@ -31,7 +32,6 @@ tasks:
     cmds:
       - wipple compile $WIPPLE_TEST_PREFIX/test.wipple --dependency $WIPPLE_TEST_PREFIX/.wipple/base.wippleinterface --interface $WIPPLE_TEST_PREFIX/.wipple/test.wippleinterface --library $WIPPLE_TEST_PREFIX/.wipple/test.wipplelibrary
       - wipple link $WIPPLE_TEST_PREFIX/.wipple/*.wipplelibrary --output $WIPPLE_TEST_PREFIX/.wipple/out
-      - $WIPPLE_TEST_PREFIX/.wipple/out
 
   inspect:
     run: once

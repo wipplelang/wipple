@@ -529,19 +529,20 @@ impl Driver {
             self.library.instances.insert(r#trait.clone(), instances);
         }
 
-        macro_rules! insert_intrinsic {
-            ($name:literal, $intrinsics:ident) => {
+        macro_rules! insert_intrinsic_variant {
+            ($name:literal) => {
                 if let Some(value) = self.interface.language_declarations.get($name) {
                     self.library
-                        .$intrinsics
-                        .insert(String::from($name), value.clone());
+                        .intrinsic_variants
+                        .insert(String::from($name), variant_from_constructor(value.clone()));
                 }
             };
+            ($($name:literal),* $(,)?) => {
+                $(insert_intrinsic_variant!($name);)*
+            }
         }
-        insert_intrinsic!("false", intrinsic_variants);
-        insert_intrinsic!("true", intrinsic_variants);
-        insert_intrinsic!("none", intrinsic_variants);
-        insert_intrinsic!("some", intrinsic_variants);
+
+        insert_intrinsic_variant!("false", "true", "none", "some");
 
         Result {
             interface: self.interface,
@@ -718,7 +719,11 @@ impl wipple_codegen::Driver for Driver {
     }
 
     fn true_variant(&self) -> Option<Self::Path> {
-        self.interface.language_declarations.get("true").cloned()
+        self.interface
+            .language_declarations
+            .get("true")
+            .cloned()
+            .map(variant_from_constructor)
     }
 
     fn number_equality_intrinsic(&self) -> Option<String> {
@@ -731,3 +736,14 @@ impl wipple_codegen::Driver for Driver {
 }
 
 impl wipple_linker::Driver for Driver {}
+
+fn variant_from_constructor(mut path: lower::Path) -> lower::Path {
+    let name = match path.pop().unwrap() {
+        lower::PathComponent::Constructor(name) => name,
+        _ => panic!("expected constructor"),
+    };
+
+    path.push(lower::PathComponent::Variant(name));
+
+    path
+}

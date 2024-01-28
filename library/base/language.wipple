@@ -45,7 +45,7 @@ Value => instance (Expect (Maybe Value) Value) : message maybe -> when maybe (
 Unwrap-Message : Container => trait (Container -> Text)
 Value => instance (Unwrap-Message (Maybe Value)) : just "called `unwrap` on `None`"
 Success Failure where (Show Failure) => instance (Unwrap-Message (Result Success Failure)) : result -> when result (
-    OK _ -> error "unreachable"
+    OK _ -> unreachable
     Error error -> "called `unwrap` on `Error`: _" error
 )
 
@@ -76,6 +76,9 @@ error : message -> intrinsic "crash" message
 
 ... :: Value => Value
 ... : error "not implemented"
+
+unreachable :: Value => Value
+unreachable : error "unreachable"
 
 [Represents the default or initial value of a type.]
 [on-unimplemented : "_ has no default value" Value]

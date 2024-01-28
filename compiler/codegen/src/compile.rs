@@ -218,8 +218,7 @@ fn compile_expression<D: crate::Driver>(
             compile_expression(expression.as_deref(), info)?;
             info.push_instruction(crate::Instruction::Return);
             let captures = mem::replace(&mut info.captures, prev_captures);
-
-            let lazy_label = mem::replace(&mut info.current_label, previous_label);
+            info.current_label = previous_label;
 
             info.push_instruction(crate::Instruction::Typed(
                 type_descriptor(&expression.item.r#type)?,

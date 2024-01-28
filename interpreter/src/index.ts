@@ -288,7 +288,7 @@ const evaluateItem = async (
     path: string,
     item: Instruction[][],
     label: number,
-    stack: TypedValue[] = [],
+    stack: TypedValue[],
     scope: Record<number, TypedValue>,
     substitutions: Record<string, TypeDescriptor>,
     context: Context
@@ -322,7 +322,14 @@ const evaluateItem = async (
                 console.error(
                     "## evaluating:",
                     util.inspect(
-                        { path, label, instruction, stack, scope, substitutions },
+                        {
+                            path,
+                            label,
+                            instruction,
+                            stack,
+                            scope,
+                            substitutions,
+                        },
                         { depth: Infinity, colors: true }
                     )
                 );
