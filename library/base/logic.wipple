@@ -33,9 +33,9 @@ instance (Or Boolean Boolean Boolean) : b a -> if a True b
 [The result of a comparison between two values.]
 Ordering : type (Is-Less-Than Is-Equal-To Is-Greater-Than)
 language type "ordering" : Ordering
-language constant "less-ordering" : Is-Less-Than
-language constant "equal-ordering" : Is-Equal-To
-language constant "greater-ordering" : Is-Greater-Than
+language constant "is-less-than" : Is-Less-Than
+language constant "is-equal-to" : Is-Equal-To
+language constant "is-greater-than" : Is-Greater-Than
 
 [Implement this trait to enable comparisons between two values of your type.]
 [on-unimplemented : "cannot compare _ values" Value]

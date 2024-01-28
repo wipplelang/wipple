@@ -371,6 +371,7 @@ fn compile_pattern<D: crate::Driver>(
 
             info.current_label = else_label;
             compile_pattern(right.as_deref(), break_label, info)?;
+            info.push_instruction(crate::Instruction::Jump(then_label));
 
             info.current_label = then_label;
         }

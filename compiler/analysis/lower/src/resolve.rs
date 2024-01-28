@@ -1240,6 +1240,7 @@ fn resolve_expression<D: Driver>(
                 .into_iter()
                 .map(|element| resolve_expression(element, info))
                 .collect::<Vec<_>>();
+
             crate::Expression::Collection(collection)
         }
         crate::UnresolvedExpression::Structure(structure) => {

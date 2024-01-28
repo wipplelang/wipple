@@ -121,7 +121,6 @@ type Value =
     | {
           type: "hasher";
           key: number[];
-          hash: number;
       };
 
 export interface Context {
@@ -202,7 +201,7 @@ export const evaluate = async (
                         func.ir,
                         func.label,
                         [input],
-                        func.scope,
+                        { ...func.scope },
                         func.substitutions,
                         context
                     ))!;
@@ -224,7 +223,7 @@ export const evaluate = async (
                 lazy.ir,
                 lazy.label,
                 [],
-                lazy.scope,
+                { ...lazy.scope },
                 lazy.substitutions,
                 context
             ))!;
@@ -451,8 +450,7 @@ const evaluateItem = async (
                             break;
                         }
                         case "format": {
-                            const inputs = instruction.value[1].value.map(() => pop());
-                            inputs.reverse();
+                            const inputs = instruction.value[1].value[0].map(() => pop());
 
                             let result = "";
                             for (const segment of instruction.value[1].value[0]) {
@@ -592,6 +590,10 @@ const evaluateItem = async (
                     const value = peek();
                     if (value.type !== "variant") {
                         throw error("expected variant", value);
+                    }
+
+                    if (!value.variant) {
+                        throw error("variant is undefined", value);
                     }
 
                     if (value.variant !== instruction.value[0]) {

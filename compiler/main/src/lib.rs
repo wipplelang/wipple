@@ -542,7 +542,15 @@ impl Driver {
             }
         }
 
-        insert_intrinsic_variant!("false", "true", "none", "some");
+        insert_intrinsic_variant!(
+            "false",
+            "true",
+            "none",
+            "some",
+            "is-less-than",
+            "is-equal-to",
+            "is-greater-than",
+        );
 
         Result {
             interface: self.interface,

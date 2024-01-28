@@ -221,11 +221,9 @@ count : collection -> (
                 increment! count
                 Continue
             )
-            None -> Stop ()
+            None -> Stop (get count)
         )
     )
-
-    get count
 )
 
 [Collect two sequences into a single value.]

@@ -1,7 +1,8 @@
+import util from "util";
 import { Decimal } from "decimal.js";
-import type { Context, TaskGroup, TypeDescriptor, TypedValue } from "./index.js";
 // @ts-ignore
 import { hash_uint } from "siphash";
+import type { Context, TaskGroup, TypeDescriptor, TypedValue } from "./index.js";
 
 export type Intrinsic = (
     inputs: TypedValue[],
@@ -10,6 +11,10 @@ export type Intrinsic = (
 ) => Promise<TypedValue>;
 
 export const intrinsics: Record<string, Intrinsic> = {
+    debug: async ([value], _expectedTypeDescriptor, _context) => {
+        console.error(util.inspect(value, { depth: Infinity, colors: true }));
+        return value;
+    },
     crash: async ([message], _expectedTypeDescriptor, context) => {
         if (message.type !== "text") {
             throw context.error("expected text");
@@ -292,6 +297,10 @@ export const intrinsics: Record<string, Intrinsic> = {
         const leftNumber = numberToJs(left, context);
         const rightNumber = numberToJs(right, context);
 
+        if (leftNumber.isNaN() && rightNumber.isNaN()) {
+            return jsToIsEqual(expectedTypeDescriptor, context);
+        }
+
         if (leftNumber.lt(rightNumber)) {
             return jsToIsLessThan(expectedTypeDescriptor, context);
         } else if (leftNumber.gt(rightNumber)) {
@@ -477,31 +486,25 @@ export const intrinsics: Record<string, Intrinsic> = {
         return jsToHasher(
             expectedTypeDescriptor,
             [randomInteger(), randomInteger(), randomInteger(), randomInteger()],
-            randomInteger(),
             context
         );
     },
-    "hash-into-hasher": async ([hasher, message], expectedTypeDescriptor, context) => {
+    "hash-number": async ([hasher, number], expectedTypeDescriptor, context) => {
         const hasherValue = hasherToJs(hasher, context);
-        const messageValue = numberToJs(message, context);
-
-        const messageBytes = new Uint8Array(Float64Array.of(messageValue.toNumber()).buffer);
-
-        const hashValue = hash_uint(hash_uint(hasherValue.key, hasherValue.hash), messageBytes);
-
-        return jsToHasher(expectedTypeDescriptor, hasherValue.key, hashValue, context);
-    },
-    "value-of-hasher": async ([hasher], expectedTypeDescriptor, context) => {
-        const hasherValue = hasherToJs(hasher, context);
-        return jsToNumber(expectedTypeDescriptor, new Decimal(hasherValue.hash), context);
-    },
-    "hash-text": async ([text], expectedTypeDescriptor, context) => {
-        const textValue = textToJs(text, context);
+        const numberValue = numberToJs(number, context);
 
         const hashValue = hash_uint(
-            [randomInteger(), randomInteger(), randomInteger(), randomInteger()],
-            textValue
+            hasherValue.key,
+            new Uint8Array(Float64Array.of(numberValue.toNumber()).buffer)
         );
+
+        return jsToNumber(expectedTypeDescriptor, new Decimal(hashValue), context);
+    },
+    "hash-text": async ([hasher, text], expectedTypeDescriptor, context) => {
+        const hasherValue = hasherToJs(hasher, context);
+        const textValue = textToJs(text, context);
+
+        const hashValue = hash_uint(hasherValue.key, textValue);
 
         return jsToNumber(expectedTypeDescriptor, new Decimal(hashValue), context);
     },
@@ -608,7 +611,7 @@ const jsToIsLessThan = (typeDescriptor: TypeDescriptor, context: Context): Typed
 const jsToIsEqual = (typeDescriptor: TypeDescriptor, context: Context): TypedValue => ({
     typeDescriptor,
     type: "variant",
-    variant: context.executable.intrinsicVariants["is-equal"],
+    variant: context.executable.intrinsicVariants["is-equal-to"],
     values: [],
 });
 
@@ -710,16 +713,14 @@ const referenceToJs = (value: TypedValue, context: Context): { current: TypedVal
 const jsToHasher = (
     typeDescriptor: TypeDescriptor,
     key: number[],
-    hash: number,
     _context: Context
 ): TypedValue => ({
     type: "hasher",
     typeDescriptor,
     key,
-    hash,
 });
 
-const hasherToJs = (value: TypedValue, context: Context): { key: number[]; hash: number } => {
+const hasherToJs = (value: TypedValue, context: Context): { key: number[] } => {
     if (value.type !== "hasher") {
         throw context.error("expected hasher");
     }
