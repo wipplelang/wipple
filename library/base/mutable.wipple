@@ -17,7 +17,7 @@ set-reference : value reference -> intrinsic "set-reference" reference value
 Mutable : Value => type (
     Constant Value
     Referred (Reference Value)
-    Binding (lazy Value) (Value -> ())
+    Binding (() -> Value) (Value -> ())
 )
 
 [Create a new mutable value.]
@@ -30,16 +30,16 @@ constant : value -> Constant value
 
 [Create a new mutable value that computes its value each time it is accessed.]
 binding :: Value => lazy Value -> (Value -> ()) -> Mutable Value
-binding : Binding
+binding : get update -> Binding (() -> evaluate get) update
 
 [Project a mutable value to refer to a component of the value.]
 project :: A B => (A -> B) -> (B -> A -> A) -> Mutable A -> Mutable B
 project : inner outer mutable ->
-    Binding (inner (get mutable)) (value -> mutable . set! (get mutable . outer value))
+    Binding (() -> inner (get mutable)) (value -> mutable . set! (get mutable . outer value))
 
 [Perform an action when a mutable value changes.]
 inspect :: Value => (Value -> ()) -> Mutable Value -> Mutable Value
-inspect : action -> project it (new _ -> (
+inspect : action -> project (value -> value) (new _ -> (
     action new
     new
 ))
@@ -49,7 +49,7 @@ get :: Value => Mutable Value -> Value
 get : mutable -> when mutable (
     Constant value -> value
     Referred reference -> get-reference reference
-    Binding value _ -> evaluate value
+    Binding value _ -> value ()
 )
 
 [Update the value contained inside a mutable value.]

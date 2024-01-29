@@ -38,7 +38,7 @@ entry : key (
                 Stop (Some value)
             ) (
                 index . set! ((get index + 1) % count entries)
-                if (get index = initial-index) (Stop None) Continue
+                if (get index = initial-index) (Stop None) (Continue ())
             )
             None -> Stop None
         )
@@ -115,7 +115,7 @@ set-entry : key value (
                     Stop ()
                 ) (
                     index . set! ((get index + 1) % count entries)
-                    if (get index = initial-index) (Stop ()) Continue
+                    if (get index = initial-index) (Stop ()) (Continue ())
                 )
             )
             None -> Stop ()
@@ -146,7 +146,7 @@ Key Value where (Equal Key) (Hash Key) => instance (From-Sequence (Key ; Value) 
         when (next sequence) (
             Some entry -> (
                 dictionary . insert-entry! entry
-                Continue
+                Continue ()
             )
             None -> Stop ()
         )

@@ -16,7 +16,7 @@ language constant "show" : Show
 show :: (A : Text) where (Show A) => A -> ()
 show : value -> intrinsic "display" (Show value)
 
-instance (Show Text) : it
+instance (Show Text) : text -> text
 instance (Show Number) : n -> semantics "pure" (intrinsic "number-to-text" n)
 instance (Show Boolean) : b -> if b "True" "False"
 Value where (Show Value) => instance (Show (Maybe Value)) : m -> when m (

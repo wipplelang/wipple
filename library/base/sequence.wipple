@@ -1,21 +1,21 @@
 [A container for a sequence that produces the next value on demand.]
 Sequence : Element => type (
-    next :: lazy (Maybe Element)
+    next :: () -> Maybe Element
 )
 
 [Create a sequence that computes its value on demand.]
 sequence :: Element => lazy (Maybe Element) -> Sequence Element
-sequence : next -> (next : next)
+sequence : next -> (next : () -> evaluate next)
 
 [Retrieve the next item in a sequence.]
 next :: Element => Sequence Element -> Maybe Element
-next : (next : next) -> evaluate next
+next : (next : next) -> next ()
 
 [Convert a collection into a sequence.]
 [on-unimplemented : "cannot create a sequence from a _" Container]
 As-Sequence : Container (infer Element) => trait (Container -> Sequence Element)
 
-Element => instance (As-Sequence (Sequence Element) Element) : it
+Element => instance (As-Sequence (Sequence Element) Element) : sequence -> sequence
 
 Element => instance (As-Sequence (Maybe Element) Element) : maybe -> (
     maybe : mutable maybe
@@ -41,7 +41,7 @@ filter : include? container -> (
     sequence (
         repeat with-control-flow (
             when (next base) (
-                Some value -> if (include? value) (Stop (Some value)) Continue
+                Some value -> if (include? value) (Stop (Some value)) (Continue ())
                 None -> Stop None
             )
         )
@@ -58,7 +58,7 @@ filter-by : transform container -> (
             when (next base) (
                 Some value -> when (transform value) (
                     Some value -> Stop (Some value)
-                    None -> Continue
+                    None -> Continue ()
                 )
                 None -> Stop None
             )
@@ -82,7 +82,7 @@ flatten : outer -> (
                         None -> when (next outer) (
                             Some next-inner -> (
                                 inner . set! (As-Sequence next-inner)
-                                Continue
+                                Continue ()
                             )
                             None -> Stop None
                         )
@@ -103,7 +103,7 @@ find-by : f collection -> (
         when (next base) (
             Some element -> when (f element) (
                 Some result -> Stop (Some result)
-                None -> Continue
+                None -> Continue ()
             )
             None -> Stop None
         )
@@ -140,7 +140,7 @@ Element => instance (From-Sequence Element (List Element)) : sequence -> (
         when (next sequence) (
             Some value -> (
                 list . append! value
-                Continue
+                Continue ()
             )
             None -> Stop ()
         )
@@ -166,7 +166,7 @@ Element => instance (As-Sequence (List Element) Element) : list -> (
 instance (From-Sequence () ()) : sequence -> (
     repeat with-control-flow (
         when (next sequence) (
-            Some () -> Continue
+            Some () -> Continue ()
             None -> Stop ()
         )
     )
@@ -196,7 +196,7 @@ split-by : separator collection -> (
 
                         group . set! (Some (inner . append x))
 
-                        Continue
+                        Continue ()
                     )
                 )
                 None -> Stop (take! group)
@@ -219,7 +219,7 @@ count : collection -> (
         when (next sequence) (
             Some _ -> (
                 increment! count
-                Continue
+                Continue ()
             )
             None -> Stop (get count)
         )
@@ -256,7 +256,7 @@ find : found? collection -> (
 
     repeat with-control-flow (
         when (next sequence) (
-            Some element -> if (found? element) (Stop (Some element)) Continue
+            Some element -> if (found? element) (Stop (Some element)) (Continue ())
             None -> Stop None
         )
     )
@@ -274,7 +274,7 @@ find-position : found? collection -> (
                 Stop (Some (get counter))
             ) (
                 increment! counter
-                Continue
+                Continue ()
             )
             None -> Stop None
         )
@@ -339,7 +339,7 @@ Left (infer Left-Element) Right (infer Right-Element) where (Extend Left Left-El
             Some (a ; b) -> (
                 left . extend! (Some a)
                 right . extend! (Some b)
-                Continue
+                Continue ()
             )
             None -> Stop ()
         )
@@ -363,7 +363,7 @@ Element where (Equal Element) => instance (Container (List Element) Element) : t
 
     repeat with-control-flow (
         when (next sequence) (
-            Some element -> if (element = target) (Stop True) Continue
+            Some element -> if (element = target) (Stop True) (Continue ())
             None -> Stop False
         )
     )

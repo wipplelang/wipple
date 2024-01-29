@@ -61,7 +61,7 @@ unwrap : value -> expect (Unwrap-Message value) value
 As : Input Output => trait (Input -> Output)
 language trait "as" : As
 
-Value => instance (As Value Value) : it
+Value => instance (As Value Value) : value -> value
 
 Success Failure => instance (As (Result Success Failure) (Maybe Success)) : result -> when result (
     OK value -> Some value

@@ -1,7 +1,3 @@
-[Returns its input unmodified.]
-it :: A => A -> A
-it : x -> x
-
 [Create a function that always returns the provided value instead of its own input.]
 just :: A B => A -> B -> A
 just : x -> _ -> x

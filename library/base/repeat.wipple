@@ -1,27 +1,32 @@
 [Used by `repeat` to determine whether to continue running or stop with a value.]
-Control-Flow : Value => type (
-    Continue
-    Stop Value
+Control-Flow : State Result => type (
+    Continue State
+    Stop Result
 )
 
 [Determines whether to evaluate a `repeat` body again.]
-Repeat-Predicate : Predicate Body Result => trait (Predicate -> Body -> Control-Flow Result)
+Repeat-Predicate : State Body Result => trait (State -> Control-Flow (Body -> State) Result)
 
 [Repeat using the `Control-Flow` produced by the `repeat` body.]
-with-control-flow :: With-Control-Flow
-with-control-flow : With-Control-Flow
+with-control-flow :: Result => With-Control-Flow Result
+with-control-flow : (current : Continue ())
 
-With-Control-Flow : type
+With-Control-Flow : Result => type (current :: Control-Flow () Result)
 
-Result => instance (Repeat-Predicate With-Control-Flow (Control-Flow Result) Result) : _ body -> body
+Result => instance (Repeat-Predicate (With-Control-Flow Result) (Control-Flow () Result) Result) :
+    (current : current) -> when current (
+        Continue () -> Continue (new -> (current : new))
+        Stop result -> Stop result
+    )
 
 [Repeat so long as the provided condition is `True`.]
 while :: lazy Boolean -> While
-while : condition -> (condition : condition)
+while : condition -> (condition : () -> evaluate condition)
 
-While : type (condition :: lazy Boolean)
+While : type (condition :: () -> Boolean)
 
-instance (Repeat-Predicate While () ()) : (condition : condition) body -> if (evaluate condition) Continue (Stop ())
+instance (Repeat-Predicate While () ()) : (condition : condition) ->
+    if (condition ()) (Continue (() -> (condition : condition))) (Stop ())
 
 [Repeat forever.]
 forever :: Forever
@@ -29,18 +34,44 @@ forever : Forever
 
 Forever : type
 
-Body Result => instance (Repeat-Predicate Forever Body Result) : _ _ -> Continue
+Body Result => instance (Repeat-Predicate Forever Body Result) :
+    _ -> Continue (_ -> Forever)
+
+Times : type (
+    count :: Number
+    current :: Number
+)
+
+instance (Repeat-Predicate Times () ()) : (
+    count : count
+    current : current
+) -> if (current < count) (
+    Continue (() -> (
+        count : count
+        current : current + 1
+    ))
+) (
+    Stop ()
+)
+
+[Repeat a certain number of times.]
+times :: Number -> Times
+times : count -> (
+    count : count
+    current : 0
+)
 
 [Execute a block of code repeatedly.]
-repeat :: Predicate (infer Body) (infer Result) where (Repeat-Predicate Predicate Body Result) => Predicate -> lazy Body -> Result
-repeat : predicate body -> (
-    [The predicate and body are grouped together in a tuple to allow for tail-call optimization.]
-    repeat' :: Body Result => ((Body -> Control-Flow Result) ; (lazy Body)) -> Result
-    repeat' : (predicate ; body) -> when (predicate (evaluate body)) (
-        Continue -> repeat' (predicate ; body)
-        Stop result -> result
+repeat :: State (infer Body) (infer Result) where (Repeat-Predicate State Body Result) => State -> lazy Body -> Result
+repeat : state body -> (
+    [The inputs are wrapped in a tuple to allow for tail-call optimization]
+    helper :: State Body Result where (Repeat-Predicate State Body Result) => (State ; (() -> Body)) -> Result
+    helper : (state ; body) -> (
+        when (Repeat-Predicate state) (
+            Continue next -> helper (next (body ()) ; body)
+            Stop result -> result
+        )
     )
 
-    predicate : Repeat-Predicate predicate
-    repeat' (predicate ; body)
+    helper (state ; (() -> evaluate body))
 )
