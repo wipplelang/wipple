@@ -1,13 +1,8 @@
 [should compile]
 
-Boolean : type {
-  True
-  False
-}
+x : True
 
-x? : True
-
-show (when x? {
+show (when x (
   True -> "Yay!"
   False -> "Uh oh"
-})
+))

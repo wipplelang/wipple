@@ -1,6 +1,6 @@
 [should compile]
 
-sports : "Basketball" , "Soccer" , "Golf" :: Set _
+sports : "Basketball" , "Soccer" , "Golf"
 
 show (sports . contains? "Basketball")
 show (sports . contains? "Soccer")

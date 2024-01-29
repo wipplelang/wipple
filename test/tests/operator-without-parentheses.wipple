@@ -1,4 +1,4 @@
-[should compile]
+[should error]
 
 show 1 + 2
 show True or False

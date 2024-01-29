@@ -1,10 +1,8 @@
 [should compile]
 
-Container : A => type {
-  inner :: A
-}
+Foo : A => type (inner :: A)
 
-c : Container { inner : "Hello, world!" }
+foo : Foo (inner : "Hello, world!")
 
-{ inner } : c
+(inner : inner) : foo
 show inner

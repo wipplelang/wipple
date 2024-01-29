@@ -1,7 +1,7 @@
-[should compile]
+[should error]
 
-[help-show-code]
-[on-unimplemented ("_ is not compatible with _" Left Right)]
+[show-code : True]
+[on-unimplemented : "_ is not compatible with _" Left Right]
 Compatible : Left Right => trait (Left -> Right -> ())
 
 Foo : type

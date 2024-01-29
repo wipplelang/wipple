@@ -1,7 +1,7 @@
 [should compile]
 
-show (when 3 {
+show (when 3 (
   1 -> "oh no"
   2 or 3 -> "yay"
   _ -> "uh oh"
-})
+))

@@ -1,13 +1,13 @@
 [should compile]
 
 remove-duplicates :: Element where (Show Element) (Equal Element) (Hash Element) => List Element -> Sequence Element
-remove-duplicates : list -> {
+remove-duplicates : list -> (
   seen : mutable (,)
-  list . filter (item -> (get seen . not contains? item) and {
+  list . filter (item -> (get seen . not contains? item) and (
     seen . insert! item
     True
-  })
-}
+  ))
+)
 
 numbers : 5 , 5 , 4 , 3 , 3 , 3 , 2 , 1 , 2 , 3 , 4 , 5
 numbers . remove-duplicates . each show

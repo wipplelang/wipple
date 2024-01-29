@@ -1,4 +1,10 @@
 [should compile]
 
--- Here, 'it' is our unit for simplicity
-show (42 it = it 42)
+Elephants : type (count :: Number)
+
+instance (Equal Elephants) : (count : a) (count : b) -> a = b
+
+elephants :: Number -> Elephants
+elephants : count -> (count : count)
+
+show (42 elephants = elephants 42)

@@ -1,6 +1,6 @@
 [should compile]
 
-show (random-between (0 to 0))
-show (random-between (1 to 2))
-show (random-element (1 ,))
-show (random-element (,) :: Maybe Number)
+show (random (0 to 0))
+show (random (1 to 2))
+show (random (1 ,))
+show (random (,) :: Maybe Number)

@@ -1,7 +1,5 @@
 [should warn]
 
-mySyntax : syntax {}
-
 myType : type
 
 myTrait : trait
