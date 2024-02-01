@@ -32,7 +32,7 @@ Result : Success Failure => type (
 Try : Value Success Failure => trait (Value -> Result Success Failure)
 
 [Represents the failure to find a value inside a `Maybe`.]
-None-Error : type
+None-Error : type (None-Error)
 
 Expect : Container Value => trait (Text -> Container -> Value)
 instance (Expect Boolean ()) : message boolean -> if boolean () (error message)

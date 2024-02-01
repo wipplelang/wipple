@@ -300,10 +300,19 @@ fn compile_pattern<D: crate::Driver>(
                 crate::TypedInstruction::Intrinsic(info.driver.number_equality_intrinsic()?, 2),
             ));
 
+            let else_label = info.push_label();
+
             info.push_instruction(crate::Instruction::JumpIfNot(
                 info.driver.true_variant()?,
-                break_label,
+                else_label,
             ));
+
+            info.push_instruction(crate::Instruction::Drop);
+
+            let prev_label = mem::replace(&mut info.current_label, else_label);
+            info.push_instruction(crate::Instruction::Drop);
+            info.push_instruction(crate::Instruction::Jump(break_label));
+            info.current_label = prev_label;
         }
         wipple_typecheck::Pattern::Text(text) => {
             info.push_instruction(crate::Instruction::Copy);
@@ -318,10 +327,19 @@ fn compile_pattern<D: crate::Driver>(
                 crate::TypedInstruction::Intrinsic(info.driver.text_equality_intrinsic()?, 2),
             ));
 
+            let else_label = info.push_label();
+
             info.push_instruction(crate::Instruction::JumpIfNot(
                 info.driver.true_variant()?,
-                break_label,
+                else_label,
             ));
+
+            info.push_instruction(crate::Instruction::Drop);
+
+            let prev_label = mem::replace(&mut info.current_label, else_label);
+            info.push_instruction(crate::Instruction::Drop);
+            info.push_instruction(crate::Instruction::Jump(break_label));
+            info.current_label = prev_label;
         }
         wipple_typecheck::Pattern::Variable(_, path) => {
             let variable = info.variables.len() as u32;

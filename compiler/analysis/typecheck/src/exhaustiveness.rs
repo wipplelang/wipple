@@ -585,11 +585,15 @@ impl<'a, D: Driver> MatchCompiler<'a, D> {
 
                 Some(Decision::Switch(branch_variable.clone(), cases, None))
             }
-            Type::Unmatchable => Some(Decision::Switch(
-                branch_variable.clone(),
-                HashMap::new(),
-                None,
-            )),
+            Type::Unmatchable => {
+                let (cases, fallback) = self.compile_unbounded_cases(rows, &branch_variable)?;
+
+                Some(Decision::Switch(
+                    branch_variable,
+                    cases,
+                    Some(Box::new(fallback)),
+                ))
+            }
         }
     }
 
@@ -645,6 +649,46 @@ impl<'a, D: Driver> MatchCompiler<'a, D> {
                 ))
             })
             .collect()
+    }
+
+    fn compile_unbounded_cases(
+        &mut self,
+        rows: impl IntoIterator<Item = Row<D>>,
+        branch_variable: &Variable<D>,
+    ) -> Option<(HashMap<Option<D::Path>, Case<D>>, Decision<D>)> {
+        let mut raw_cases = Vec::new();
+        let mut fallback_rows = Vec::new();
+
+        for mut row in rows {
+            if let Some(column) = row.remove_column(branch_variable.counter) {
+                for (_, row) in column.pattern.flatten_or(row) {
+                    let constructor = Constructor::Unbounded;
+                    raw_cases.push((constructor, Vec::new(), vec![row]));
+                }
+            } else {
+                fallback_rows.push(row);
+            }
+        }
+
+        for (_, _, rows) in &mut raw_cases {
+            rows.append(&mut fallback_rows.clone());
+        }
+
+        let cases = raw_cases
+            .into_iter()
+            .map(|(constructor, arguments, rows)| {
+                Some((
+                    None,
+                    Case {
+                        constructor,
+                        arguments,
+                        body: self.compile_rows(rows)?,
+                    },
+                ))
+            })
+            .collect::<Option<_>>()?;
+
+        Some((cases, self.compile_rows(fallback_rows)?))
     }
 
     fn new_row_id(&mut self) -> u32 {
