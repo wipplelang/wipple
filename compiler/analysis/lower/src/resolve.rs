@@ -269,14 +269,8 @@ fn resolve_statements<D: Driver>(
 
                 let mut constructors = Vec::new();
                 let representation = representation.map(|representation| match representation {
-                    crate::UnresolvedTypeRepresentation::Marker => {
-                        constructors.push(generate_marker_constructor(
-                            name,
-                            parameters.clone(),
-                            info,
-                        ));
-
-                        crate::TypeRepresentation::Marker
+                    crate::UnresolvedTypeRepresentation::Opaque => {
+                        crate::TypeRepresentation::Opaque
                     }
                     crate::UnresolvedTypeRepresentation::Structure(fields) => {
                         constructors.push(generate_structure_constructor(
@@ -540,60 +534,6 @@ fn resolve_statements<D: Driver>(
     }
 
     statements
-}
-
-fn generate_marker_constructor<D: Driver>(
-    name: WithInfo<D::Info, String>,
-    parameters: Vec<crate::Path>,
-    info: &mut Info<D>,
-) -> (String, WithInfo<D::Info, crate::Path>) {
-    let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
-
-    let constructor_declaration = crate::ConstantDeclaration {
-        parameters: parameters.clone(),
-        bounds: Vec::new(),
-        r#type: WithInfo {
-            info: name.info.clone(),
-            item: crate::Type::Declared {
-                path: WithInfo {
-                    info: name.info.clone(),
-                    item: info.path.clone(),
-                },
-                parameters: parameters
-                    .into_iter()
-                    .map(|parameter| WithInfo {
-                        info: name.info.clone(),
-                        item: crate::Type::Parameter(parameter),
-                    })
-                    .collect(),
-            },
-        },
-    };
-
-    let constructor_body = WithInfo {
-        info: name.info.clone(),
-        item: crate::Expression::Marker(info.path.clone()),
-    };
-
-    info.constant_declarations.insert(
-        constructor_path.clone(),
-        WithInfo {
-            info: name.info.clone(),
-            item: Some(constructor_declaration),
-        },
-    );
-
-    info.library
-        .items
-        .insert(constructor_path.clone(), constructor_body);
-
-    (
-        name.item,
-        WithInfo {
-            info: name.info,
-            item: constructor_path,
-        },
-    )
 }
 
 fn generate_structure_constructor<D: Driver>(

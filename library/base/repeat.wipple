@@ -32,7 +32,7 @@ instance (Repeat-Predicate While () ()) : (condition : condition) ->
 forever :: Forever
 forever : Forever
 
-Forever : type
+Forever : type (Forever)
 
 Body Result => instance (Repeat-Predicate Forever Body Result) :
     _ -> Continue (_ -> Forever)

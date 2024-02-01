@@ -45,7 +45,6 @@ export type TypedInstruction =
     | { type: "text"; value: string }
     | { type: "number"; value: string }
     | { type: "format"; value: [string[], string] }
-    | { type: "marker"; value: undefined }
     | { type: "structure"; value: string[] }
     | { type: "variant"; value: [string, number] }
     | { type: "function"; value: [number[], string, number] }
@@ -56,10 +55,6 @@ export type TypedInstruction =
 export type TypedValue = Value & { typeDescriptor: TypeDescriptor };
 
 type Value =
-    | {
-          type: "marker";
-          value: undefined;
-      }
     | {
           type: "number";
           value: Decimal;
@@ -468,15 +463,6 @@ const evaluateItem = async (
                                 typeDescriptor,
                                 type: "text",
                                 value: result,
-                            });
-
-                            break;
-                        }
-                        case "marker": {
-                            stack.push({
-                                typeDescriptor,
-                                type: "marker",
-                                value: undefined,
                             });
 
                             break;

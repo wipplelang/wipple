@@ -549,7 +549,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                     documentation: Vec::new(),
                                 }
                                 .into(),
-                                item: syntax::TypeRepresentation::Marker,
+                                item: syntax::TypeRepresentation::Opaque,
                             },
                         };
 
@@ -2126,7 +2126,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         documentation: Vec::new(),
                     }
                     .into(),
-                    item: syntax::TypeRepresentation::Marker,
+                    item: syntax::TypeRepresentation::Opaque,
                 }
             })
     }

@@ -123,8 +123,8 @@ pub mod interface {
         >,
     ) -> wipple_util::WithInfo<crate::Info, wipple_lower::TypeRepresentation<crate::Driver>> {
         type_representation.map(|type_representation| match type_representation {
-            wipple_typecheck::TypeRepresentation::Marker => {
-                wipple_lower::TypeRepresentation::Marker
+            wipple_typecheck::TypeRepresentation::Opaque => {
+                wipple_lower::TypeRepresentation::Opaque
             }
             wipple_typecheck::TypeRepresentation::Structure(fields) => {
                 wipple_lower::TypeRepresentation::Structure(
@@ -281,8 +281,8 @@ pub mod lower {
     ) -> wipple_util::WithInfo<Info, wipple_lower::UnresolvedTypeRepresentation<crate::Driver>>
     {
         type_representation.map(|type_representation| match type_representation {
-            wipple_syntax::TypeRepresentation::Marker => {
-                wipple_lower::UnresolvedTypeRepresentation::Marker
+            wipple_syntax::TypeRepresentation::Opaque => {
+                wipple_lower::UnresolvedTypeRepresentation::Opaque
             }
             wipple_syntax::TypeRepresentation::Structure(fields) => {
                 wipple_lower::UnresolvedTypeRepresentation::Structure(
@@ -584,8 +584,8 @@ pub mod typecheck {
             parameters: type_declaration.parameters,
             representation: type_declaration.representation.map(|type_representation| {
                 match type_representation {
-                    wipple_lower::TypeRepresentation::Marker => {
-                        wipple_typecheck::TypeRepresentation::Marker
+                    wipple_lower::TypeRepresentation::Opaque => {
+                        wipple_typecheck::TypeRepresentation::Opaque
                     }
                     wipple_lower::TypeRepresentation::Structure(fields) => {
                         wipple_typecheck::TypeRepresentation::Structure(
@@ -757,9 +757,6 @@ pub mod typecheck {
                 wipple_typecheck::UntypedExpression::Number(number)
             }
             wipple_lower::Expression::Text(text) => wipple_typecheck::UntypedExpression::Text(text),
-            wipple_lower::Expression::Marker(path) => {
-                wipple_typecheck::UntypedExpression::Marker(path)
-            }
             wipple_lower::Expression::Constant(path) => {
                 wipple_typecheck::UntypedExpression::Constant(path)
             }

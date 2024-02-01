@@ -450,8 +450,8 @@ pub struct UnresolvedTypeParameter<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum UnresolvedTypeRepresentation<D: Driver> {
-    /// A marker type.
-    Marker,
+    /// A type that cannot be constructed directly.
+    Opaque,
 
     /// A structure type.
     Structure(Vec<WithInfo<D::Info, UnresolvedField<D>>>),
@@ -884,9 +884,6 @@ pub enum Expression<D: Driver> {
     /// A text literal.
     Text(String),
 
-    /// The value of a marker type.
-    Marker(Path),
-
     /// A constant.
     Constant(Path),
 
@@ -980,8 +977,8 @@ pub enum Expression<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum TypeRepresentation<D: Driver> {
-    /// A marker type.
-    Marker,
+    /// A type that cannot be constructed directly.
+    Opaque,
 
     /// A structure type.
     Structure(Vec<WithInfo<D::Info, Field<D>>>),

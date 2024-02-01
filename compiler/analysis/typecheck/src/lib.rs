@@ -218,6 +218,7 @@ pub enum Error<D: Driver> {
     ExtraField,
 
     /// Two instances overlap.
+    #[serde(rename_all = "camelCase")]
     OverlappingInstances {
         /// The instance that overlaps with [`Error::OverlappingInstances::other`].
         instance: D::Path,
@@ -297,7 +298,7 @@ pub struct TypeDeclaration<D: Driver> {
     /// The type's parameters.
     pub parameters: Vec<D::Path>,
 
-    /// The type's representation (marker, structure or enumeration).
+    /// The type's representation (opaque, structure or enumeration).
     pub representation: WithInfo<D::Info, TypeRepresentation<D>>,
 }
 
@@ -330,8 +331,8 @@ pub struct TypeParameterDeclaration<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum TypeRepresentation<D: Driver> {
-    /// The type contains no data.
-    Marker,
+    /// The type cannot be constructed directly.
+    Opaque,
 
     /// The type contains an ordered list of fields.
     Structure(HashMap<String, WithInfo<D::Info, StructureField<D>>>),
@@ -404,9 +405,6 @@ pub enum UntypedExpression<D: Driver> {
         /// The type of the inner value.
         r#type: WithInfo<D::Info, Type<D>>,
     },
-
-    /// A value of a marker type.
-    Marker(D::Path),
 
     /// The value of a variable.
     Variable(String, D::Path),
@@ -575,9 +573,6 @@ pub struct TypedExpression<D: Driver> {
 pub enum TypedExpressionKind<D: Driver> {
     /// An expression that could not be resolved.
     Unknown(Option<D::Path>),
-
-    /// A value of a marker type.
-    Marker(D::Path),
 
     /// The value of a variable.
     Variable(String, D::Path),
@@ -894,7 +889,6 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a TypedExpress
                 value.as_deref().traverse(f);
             }
             TypedExpressionKind::Unknown(_)
-            | TypedExpressionKind::Marker(_)
             | TypedExpressionKind::Variable(_, _)
             | TypedExpressionKind::Constant { .. }
             | TypedExpressionKind::Trait(_)

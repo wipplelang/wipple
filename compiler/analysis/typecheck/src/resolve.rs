@@ -1235,7 +1235,6 @@ struct Expression<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 enum ExpressionKind<D: Driver> {
     Unknown(Option<D::Path>),
-    Marker(D::Path),
     Variable(String, D::Path),
     UnresolvedConstant(D::Path),
     UnresolvedTrait(D::Path),
@@ -1420,37 +1419,6 @@ fn infer_expression<D: Driver>(
             );
 
             value.item
-        }
-        crate::UntypedExpression::Marker(path) => {
-            let type_declaration = context.driver.get_type_declaration(&path);
-
-            let instantiation_context = InstantiationContext::from_parameters(
-                context.driver,
-                type_declaration.item.parameters.clone(),
-                context.type_context,
-                &info,
-                context.errors,
-            );
-
-            let r#type = Type::new(
-                TypeKind::Declared {
-                    path: path.clone(),
-                    parameters: type_declaration
-                        .item
-                        .parameters
-                        .into_iter()
-                        .map(|path| instantiation_context.type_for_parameter(context.driver, &path))
-                        .collect(),
-                },
-                info.clone(),
-                Vec::new(),
-            );
-
-            Expression {
-                r#type,
-                coercion: Default::default(),
-                kind: ExpressionKind::Marker(path),
-            }
         }
         crate::UntypedExpression::Variable(name, variable) => {
             let r#type = context
@@ -2427,7 +2395,6 @@ fn resolve_expression<D: Driver>(
 ) -> WithInfo<D::Info, Expression<D>> {
     let kind = match expression.item.kind {
         ExpressionKind::Unknown(path) => ExpressionKind::Unknown(path),
-        ExpressionKind::Marker(path) => ExpressionKind::Marker(path),
         ExpressionKind::Variable(ref name, ref variable) => {
             let variable_type = context
                 .variables
@@ -3293,7 +3260,6 @@ fn substitute_defaults_in_expression<D: Driver>(
             .iter_mut()
             .any(|r#type| substitute_defaults(driver, r#type, context.type_context)),
         ExpressionKind::Unknown(_)
-        | ExpressionKind::Marker(_)
         | ExpressionKind::Variable(_, _)
         | ExpressionKind::UnresolvedConstant(_)
         | ExpressionKind::UnresolvedTrait(_)
@@ -3403,7 +3369,6 @@ fn finalize_expression<D: Driver>(
 ) -> WithInfo<D::Info, crate::TypedExpression<D>> {
     let kind = match expression.item.kind {
         ExpressionKind::Unknown(path) => crate::TypedExpressionKind::Unknown(path),
-        ExpressionKind::Marker(path) => crate::TypedExpressionKind::Marker(path),
         ExpressionKind::Variable(name, variable) => {
             crate::TypedExpressionKind::Variable(name, variable)
         }

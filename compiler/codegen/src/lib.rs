@@ -158,9 +158,6 @@ pub enum TypedInstruction<D: Driver> {
     /// A number value.
     Number(String),
 
-    /// A value of a marker type.
-    Marker,
-
     /// (Consuming) String interpolation.
     Format(Vec<String>, String),
 
@@ -203,7 +200,7 @@ pub enum TypeDescriptor<D: Driver> {
     /// generic item, never in a value.
     Parameter(D::Path),
 
-    /// A named marker type, structure, or enumeration.
+    /// A named opaque type, structure, or enumeration.
     Named(D::Path, Vec<TypeDescriptor<D>>),
 
     /// A function type.
@@ -254,7 +251,6 @@ where
             TypedInstruction::Intrinsic(name, inputs) => write!(f, "intrinsic {name} {inputs}"),
             TypedInstruction::Text(text) => write!(f, "text {text:?}"),
             TypedInstruction::Number(number) => write!(f, "number {number:?}"),
-            TypedInstruction::Marker => write!(f, "marker"),
             TypedInstruction::Format(segments, trailing) => write!(
                 f,
                 "format{} {trailing:?}",

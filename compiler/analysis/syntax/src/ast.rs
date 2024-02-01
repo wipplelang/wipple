@@ -239,8 +239,8 @@ fn statements<D: Driver>(
                                     let representation =
                                             representation_syntax.map(|representation_syntax| {
                                                 match representation_syntax {
-                                    syntax::TypeRepresentation::Marker => {
-                                        crate::TypeRepresentation::Marker
+                                    syntax::TypeRepresentation::Opaque => {
+                                        crate::TypeRepresentation::Opaque
                                     }
                                     syntax::TypeRepresentation::SimpleEnumeration(variants) => {
                                         crate::TypeRepresentation::Enumeration(
@@ -295,7 +295,7 @@ fn statements<D: Driver>(
                                                     item: crate::Error::EmptyTypeRepresentation,
                                                 });
 
-                                                crate::TypeRepresentation::Marker
+                                                crate::TypeRepresentation::Opaque
                                             }
                                         };
 
@@ -303,7 +303,7 @@ fn statements<D: Driver>(
                                             match member_syntax.item.kind {
                                                 syntax::TypeMemberKind::Field(type_syntax) => {
                                                     let fields = match &mut type_representation {
-                                                        crate::TypeRepresentation::Marker => {
+                                                        crate::TypeRepresentation::Opaque => {
                                                             unreachable!()
                                                         }
                                                         crate::TypeRepresentation::Structure(
@@ -331,7 +331,7 @@ fn statements<D: Driver>(
                                                 }
                                                 syntax::TypeMemberKind::Variant(type_syntaxes) => {
                                                     let variants = match &mut type_representation {
-                                                        crate::TypeRepresentation::Marker => {
+                                                        crate::TypeRepresentation::Opaque => {
                                                             unreachable!()
                                                         }
                                                         crate::TypeRepresentation::Structure(_) => {

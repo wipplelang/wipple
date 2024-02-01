@@ -60,12 +60,6 @@ fn compile_expression<D: crate::Driver>(
 ) -> Option<()> {
     match &expression.item.kind {
         wipple_typecheck::TypedExpressionKind::Unknown(_) => return None,
-        wipple_typecheck::TypedExpressionKind::Marker(_) => {
-            info.push_instruction(crate::Instruction::Typed(
-                type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Marker,
-            ));
-        }
         wipple_typecheck::TypedExpressionKind::Variable(_, path) => {
             let variable = info.variables.iter().position(|p| p == path)? as u32;
 

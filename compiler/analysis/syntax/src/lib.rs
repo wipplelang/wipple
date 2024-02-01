@@ -298,8 +298,8 @@ pub mod syntax {
     )]
     #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
     pub enum TypeRepresentation<D: Driver> {
-        /// A marker type.
-        Marker,
+        /// A type that cannot be constructed directly.
+        Opaque,
 
         /// An enumeration type with all of its variants on a single line.
         SimpleEnumeration(Vec<WithInfo<D::Info, String>>),
@@ -947,8 +947,8 @@ pub struct TypeParameter<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum TypeRepresentation<D: Driver> {
-    /// A marker type.
-    Marker,
+    /// A type that cannot be constructed directly.
+    Opaque,
 
     /// A structure type.
     Structure(Vec<WithInfo<D::Info, Field<D>>>),
