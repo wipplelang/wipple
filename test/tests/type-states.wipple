@@ -3,7 +3,7 @@
 Idle : type
 Hovering : type
 
-Drone : State => type
+Drone : State => type (Drone)
 
 my-drone :: Drone Idle
 my-drone : Drone
@@ -14,6 +14,6 @@ take-off : just Drone
 land :: Drone Hovering -> Drone Idle
 land : just Drone
 
-_ : my-drone . take-off . land -- works!
+_ : my-drone . take-off . land [works!]
 
-_ : my-drone . land -- cannot land because drone is already idle
+_ : my-drone . land [cannot land because drone is already idle]

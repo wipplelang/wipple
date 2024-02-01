@@ -4,10 +4,10 @@
 [on-unimplemented : "_ is not compatible with _" Left Right]
 Compatible : Left Right => trait (Left -> Right -> ())
 
-Foo : type
+Foo : type (Foo)
 foo : Foo
 
-Bar : type
+Bar : type (Bar)
 bar : Bar
 
 Compatible foo bar

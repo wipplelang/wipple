@@ -27,16 +27,21 @@ for (let file of fs.readdirSync("tests").sort()) {
 
             const header = code.match(/\[([\w\s]+)\]/)?.[1];
             let shouldCompile: boolean;
+            let shouldWarn: boolean;
             switch (header) {
                 case "should compile": {
                     shouldCompile = true;
+                    shouldWarn = false;
                     break;
                 }
                 case "should warn": {
-                    throw new Error("TODO");
+                    shouldCompile = true;
+                    shouldWarn = true;
+                    break;
                 }
                 case "should error": {
                     shouldCompile = false;
+                    shouldWarn = true;
                     break;
                 }
                 default: {

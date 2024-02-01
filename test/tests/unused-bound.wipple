@@ -5,7 +5,7 @@ T : A => trait (A -> Text)
 foo :: A where (T A) => A -> A
 foo : x -> x
 
-A : type
+A : type (A)
 instance (T A) : just "A"
 
 _ : foo A

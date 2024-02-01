@@ -683,107 +683,138 @@ exports[`bounds-dont-influence-other-bounds.wipple 1`] = `
           "documentation": [],
           "path": "test/tests/bounds-dont-influence-other-bounds.wipple",
           "span": {
-            "end": 30,
-            "start": 25,
-          },
-        },
-      },
-      "item": {
-        "parse": {
-          "expected": "type",
-          "span": {
-            "end": 30,
-            "start": 25,
-          },
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/bounds-dont-influence-other-bounds.wipple",
-          "span": {
-            "end": 182,
-            "start": 125,
-          },
-        },
-      },
-      "item": {
-        "parse": {
-          "expected": "type",
-          "span": {
-            "end": 182,
-            "start": 125,
-          },
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/bounds-dont-influence-other-bounds.wipple",
-          "span": {
-            "end": 120,
-            "start": 119,
-          },
-        },
-      },
-      "item": {
-        "syntax": {
-          "expectedConstantValue": "f",
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/bounds-dont-influence-other-bounds.wipple",
-          "span": {
-            "end": 40,
-            "start": 32,
-          },
-        },
-      },
-      "item": {
-        "lower": {
-          "unresolvedName": "instance",
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/bounds-dont-influence-other-bounds.wipple",
-          "span": {
-            "end": 60,
-            "start": 52,
-          },
-        },
-      },
-      "item": {
-        "lower": {
-          "unresolvedName": "instance",
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/bounds-dont-influence-other-bounds.wipple",
-          "span": {
-            "end": 30,
-            "start": 25,
+            "end": 198,
+            "start": 197,
           },
         },
       },
       "item": {
         "typecheck": {
-          "unknownType": "unknown",
+          "unknownType": {
+            "tuple": [
+              {
+                "info": {
+                  "parserInfo": {
+                    "documentation": [],
+                    "path": "test/tests/bounds-dont-influence-other-bounds.wipple",
+                    "span": {
+                      "end": 212,
+                      "start": 206,
+                    },
+                  },
+                },
+                "item": {
+                  "declared": {
+                    "parameters": [],
+                    "path": "type Number",
+                  },
+                },
+              },
+              {
+                "info": {
+                  "parserInfo": {
+                    "documentation": [],
+                    "path": "test/tests/bounds-dont-influence-other-bounds.wipple",
+                    "span": {
+                      "end": 138,
+                      "start": 101,
+                    },
+                  },
+                },
+                "item": "unknown",
+              },
+            ],
+          },
+        },
+      },
+    },
+    {
+      "info": {
+        "parserInfo": {
+          "documentation": [],
+          "path": "test/tests/bounds-dont-influence-other-bounds.wipple",
+          "span": {
+            "end": 198,
+            "start": 197,
+          },
+        },
+      },
+      "item": {
+        "typecheck": {
+          "unresolvedInstance": {
+            "candidates": [
+              {
+                "parserInfo": {
+                  "documentation": [],
+                  "path": "test/tests/bounds-dont-influence-other-bounds.wipple",
+                  "span": {
+                    "end": 99,
+                    "start": 72,
+                  },
+                },
+              },
+              {
+                "parserInfo": {
+                  "documentation": [],
+                  "path": "test/tests/bounds-dont-influence-other-bounds.wipple",
+                  "span": {
+                    "end": 71,
+                    "start": 42,
+                  },
+                },
+              },
+            ],
+            "instance": {
+              "parameters": [
+                {
+                  "info": {
+                    "parserInfo": {
+                      "documentation": [],
+                      "path": "test/tests/bounds-dont-influence-other-bounds.wipple",
+                      "span": {
+                        "end": 138,
+                        "start": 101,
+                      },
+                    },
+                  },
+                  "item": "unknown",
+                },
+              ],
+              "trait": "trait T",
+            },
+            "stack": [
+              {
+                "info": {
+                  "parserInfo": {
+                    "documentation": [],
+                    "path": "test/tests/bounds-dont-influence-other-bounds.wipple",
+                    "span": {
+                      "end": 198,
+                      "start": 197,
+                    },
+                  },
+                },
+                "item": {
+                  "parameters": [
+                    {
+                      "info": {
+                        "parserInfo": {
+                          "documentation": [],
+                          "path": "test/tests/bounds-dont-influence-other-bounds.wipple",
+                          "span": {
+                            "end": 138,
+                            "start": 101,
+                          },
+                        },
+                      },
+                      "item": "unknown",
+                    },
+                  ],
+                  "trait": "trait T",
+                },
+              },
+            ],
+          },
         },
       },
     },
@@ -860,6 +891,46 @@ exports[`colliding-instances.wipple 1`] = `
         "typecheck": {
           "overlappingInstances": {
             "instance": "instance 75",
+            "other": "instance 72",
+          },
+        },
+      },
+    },
+    {
+      "info": {
+        "parserInfo": {
+          "documentation": [],
+          "path": "test/tests/colliding-instances.wipple",
+          "span": {
+            "end": 160,
+            "start": 124,
+          },
+        },
+      },
+      "item": {
+        "typecheck": {
+          "overlappingInstances": {
+            "instance": "instance 75",
+            "other": "instance 73",
+          },
+        },
+      },
+    },
+    {
+      "info": {
+        "parserInfo": {
+          "documentation": [],
+          "path": "test/tests/colliding-instances.wipple",
+          "span": {
+            "end": 160,
+            "start": 124,
+          },
+        },
+      },
+      "item": {
+        "typecheck": {
+          "overlappingInstances": {
+            "instance": "instance 75",
             "other": "instance 74",
           },
         },
@@ -871,15 +942,15 @@ exports[`colliding-instances.wipple 1`] = `
           "documentation": [],
           "path": "test/tests/colliding-instances.wipple",
           "span": {
-            "end": 160,
-            "start": 124,
+            "end": 63,
+            "start": 44,
           },
         },
       },
       "item": {
         "typecheck": {
           "overlappingInstances": {
-            "instance": "instance 75",
+            "instance": "instance 72",
             "other": "instance 73",
           },
         },
@@ -891,56 +962,16 @@ exports[`colliding-instances.wipple 1`] = `
           "documentation": [],
           "path": "test/tests/colliding-instances.wipple",
           "span": {
-            "end": 160,
-            "start": 124,
+            "end": 63,
+            "start": 44,
           },
         },
       },
       "item": {
         "typecheck": {
           "overlappingInstances": {
-            "instance": "instance 75",
-            "other": "instance 72",
-          },
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/colliding-instances.wipple",
-          "span": {
-            "end": 104,
-            "start": 85,
-          },
-        },
-      },
-      "item": {
-        "typecheck": {
-          "overlappingInstances": {
-            "instance": "instance 74",
-            "other": "instance 73",
-          },
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/colliding-instances.wipple",
-          "span": {
-            "end": 104,
-            "start": 85,
-          },
-        },
-      },
-      "item": {
-        "typecheck": {
-          "overlappingInstances": {
-            "instance": "instance 74",
-            "other": "instance 72",
+            "instance": "instance 72",
+            "other": "instance 74",
           },
         },
       },
@@ -960,7 +991,7 @@ exports[`colliding-instances.wipple 1`] = `
         "typecheck": {
           "overlappingInstances": {
             "instance": "instance 73",
-            "other": "instance 72",
+            "other": "instance 74",
           },
         },
       },
@@ -1330,6 +1361,33 @@ exports[`enumeration.wipple 1`] = `
 }
 `;
 
+exports[`exhaustiveness-checking.wipple 1`] = `
+{
+  "errors": [
+    {
+      "info": {
+        "parserInfo": {
+          "documentation": [],
+          "path": "test/tests/exhaustiveness-checking.wipple",
+          "span": {
+            "end": 90,
+            "start": 85,
+          },
+        },
+      },
+      "item": {
+        "typecheck": {
+          "missingPatterns": [
+            {},
+            {},
+          ],
+        },
+      },
+    },
+  ],
+}
+`;
+
 exports[`expect-boolean.wipple 1`] = `
 {
   "output": 
@@ -1400,8 +1458,8 @@ exports[`help-show-code.wipple 1`] = `
           "documentation": [],
           "path": "test/tests/help-show-code.wipple",
           "span": {
-            "end": 206,
-            "start": 196,
+            "end": 218,
+            "start": 208,
           },
         },
       },
@@ -1417,8 +1475,8 @@ exports[`help-show-code.wipple 1`] = `
                       "documentation": [],
                       "path": "test/tests/help-show-code.wipple",
                       "span": {
-                        "end": 210,
-                        "start": 207,
+                        "end": 222,
+                        "start": 219,
                       },
                     },
                   },
@@ -1435,8 +1493,8 @@ exports[`help-show-code.wipple 1`] = `
                       "documentation": [],
                       "path": "test/tests/help-show-code.wipple",
                       "span": {
-                        "end": 214,
-                        "start": 211,
+                        "end": 226,
+                        "start": 223,
                       },
                     },
                   },
@@ -1457,8 +1515,8 @@ exports[`help-show-code.wipple 1`] = `
                     "documentation": [],
                     "path": "test/tests/help-show-code.wipple",
                     "span": {
-                      "end": 206,
-                      "start": 196,
+                      "end": 218,
+                      "start": 208,
                     },
                   },
                 },
@@ -1470,8 +1528,8 @@ exports[`help-show-code.wipple 1`] = `
                           "documentation": [],
                           "path": "test/tests/help-show-code.wipple",
                           "span": {
-                            "end": 210,
-                            "start": 207,
+                            "end": 222,
+                            "start": 219,
                           },
                         },
                       },
@@ -1488,8 +1546,8 @@ exports[`help-show-code.wipple 1`] = `
                           "documentation": [],
                           "path": "test/tests/help-show-code.wipple",
                           "span": {
-                            "end": 214,
-                            "start": 211,
+                            "end": 226,
+                            "start": 223,
                           },
                         },
                       },
@@ -1844,110 +1902,8 @@ exports[`mismatched-call.wipple 1`] = `
           "documentation": [],
           "path": "test/tests/mismatched-call.wipple",
           "span": {
-            "end": 65,
-            "start": 63,
-          },
-        },
-      },
-      "item": {
-        "lower": {
-          "unresolvedName": "--",
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/mismatched-call.wipple",
-          "span": {
-            "end": 72,
-            "start": 66,
-          },
-        },
-      },
-      "item": {
-        "lower": {
-          "unresolvedName": "should",
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/mismatched-call.wipple",
-          "span": {
-            "end": 80,
-            "start": 73,
-          },
-        },
-      },
-      "item": {
-        "lower": {
-          "unresolvedName": "display",
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/mismatched-call.wipple",
-          "span": {
-            "end": 121,
-            "start": 115,
-          },
-        },
-      },
-      "item": {
-        "lower": {
-          "unresolvedName": "rather",
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/mismatched-call.wipple",
-          "span": {
-            "end": 126,
-            "start": 122,
-          },
-        },
-      },
-      "item": {
-        "lower": {
-          "unresolvedName": "than",
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/mismatched-call.wipple",
-          "span": {
-            "end": 129,
-            "start": 127,
-          },
-        },
-      },
-      "item": {
-        "lower": {
-          "unresolvedName": "--",
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/mismatched-call.wipple",
-          "span": {
-            "end": 198,
-            "start": 191,
+            "end": 195,
+            "start": 188,
           },
         },
       },
@@ -1960,8 +1916,8 @@ exports[`mismatched-call.wipple 1`] = `
                   "documentation": [],
                   "path": "test/tests/mismatched-call.wipple",
                   "span": {
-                    "end": 198,
-                    "start": 191,
+                    "end": 195,
+                    "start": 188,
                   },
                 },
               },
@@ -1973,8 +1929,8 @@ exports[`mismatched-call.wipple 1`] = `
                         "documentation": [],
                         "path": "test/tests/mismatched-call.wipple",
                         "span": {
-                          "end": 197,
-                          "start": 196,
+                          "end": 194,
+                          "start": 193,
                         },
                       },
                     },
@@ -2004,8 +1960,8 @@ exports[`mismatched-call.wipple 1`] = `
                               "documentation": [],
                               "path": "test/tests/mismatched-call.wipple",
                               "span": {
-                                "end": 193,
-                                "start": 192,
+                                "end": 190,
+                                "start": 189,
                               },
                             },
                           },
@@ -2061,8 +2017,8 @@ exports[`mismatched-call.wipple 1`] = `
                   "documentation": [],
                   "path": "test/tests/mismatched-call.wipple",
                   "span": {
-                    "end": 198,
-                    "start": 191,
+                    "end": 195,
+                    "start": 188,
                   },
                 },
               },
@@ -2074,8 +2030,8 @@ exports[`mismatched-call.wipple 1`] = `
                         "documentation": [],
                         "path": "test/tests/mismatched-call.wipple",
                         "span": {
-                          "end": 197,
-                          "start": 196,
+                          "end": 194,
+                          "start": 193,
                         },
                       },
                     },
@@ -2105,8 +2061,8 @@ exports[`mismatched-call.wipple 1`] = `
                               "documentation": [],
                               "path": "test/tests/mismatched-call.wipple",
                               "span": {
-                                "end": 193,
-                                "start": 192,
+                                "end": 190,
+                                "start": 189,
                               },
                             },
                           },
@@ -2148,8 +2104,8 @@ exports[`mismatched-call.wipple 1`] = `
                     "documentation": [],
                     "path": "test/tests/mismatched-call.wipple",
                     "span": {
-                      "end": 198,
-                      "start": 191,
+                      "end": 195,
+                      "start": 188,
                     },
                   },
                 },
@@ -2292,8 +2248,8 @@ exports[`missing-instance.wipple 1`] = `
           "documentation": [],
           "path": "test/tests/missing-instance.wipple",
           "span": {
-            "end": 31,
-            "start": 27,
+            "end": 37,
+            "start": 33,
           },
         },
       },
@@ -2309,8 +2265,8 @@ exports[`missing-instance.wipple 1`] = `
                       "documentation": [],
                       "path": "test/tests/missing-instance.wipple",
                       "span": {
-                        "end": 35,
-                        "start": 32,
+                        "end": 41,
+                        "start": 38,
                       },
                     },
                   },
@@ -2331,8 +2287,8 @@ exports[`missing-instance.wipple 1`] = `
                     "documentation": [],
                     "path": "test/tests/missing-instance.wipple",
                     "span": {
-                      "end": 31,
-                      "start": 27,
+                      "end": 37,
+                      "start": 33,
                     },
                   },
                 },
@@ -2344,8 +2300,8 @@ exports[`missing-instance.wipple 1`] = `
                           "documentation": [],
                           "path": "test/tests/missing-instance.wipple",
                           "span": {
-                            "end": 35,
-                            "start": 32,
+                            "end": 41,
+                            "start": 38,
                           },
                         },
                       },
@@ -3006,7 +2962,7 @@ exports[`operator-without-parentheses.wipple 1`] = `
 exports[`or-pattern.wipple 1`] = `
 {
   "output": 
-"expected number
+"yay
 "
 ,
 }
@@ -3016,7 +2972,7 @@ exports[`random.wipple 1`] = `
 {
   "output": 
 "0
-1.4
+1.8
 list position must be a whole number
 "
 ,
@@ -3078,8 +3034,8 @@ exports[`show-variable.wipple 1`] = `
           "documentation": [],
           "path": "test/tests/show-variable.wipple",
           "span": {
-            "end": 74,
-            "start": 70,
+            "end": 92,
+            "start": 88,
           },
         },
       },
@@ -3095,8 +3051,8 @@ exports[`show-variable.wipple 1`] = `
                       "documentation": [],
                       "path": "test/tests/show-variable.wipple",
                       "span": {
-                        "end": 86,
-                        "start": 75,
+                        "end": 104,
+                        "start": 93,
                       },
                     },
                   },
@@ -3117,8 +3073,8 @@ exports[`show-variable.wipple 1`] = `
                     "documentation": [],
                     "path": "test/tests/show-variable.wipple",
                     "span": {
-                      "end": 74,
-                      "start": 70,
+                      "end": 92,
+                      "start": 88,
                     },
                   },
                 },
@@ -3130,8 +3086,8 @@ exports[`show-variable.wipple 1`] = `
                           "documentation": [],
                           "path": "test/tests/show-variable.wipple",
                           "span": {
-                            "end": 86,
-                            "start": 75,
+                            "end": 104,
+                            "start": 93,
                           },
                         },
                       },
@@ -3503,6 +3459,23 @@ exports[`type-logic.wipple 1`] = `
           "documentation": [],
           "path": "test/tests/type-logic.wipple",
           "span": {
+            "end": 190,
+            "start": 189,
+          },
+        },
+      },
+      "item": {
+        "lower": {
+          "unresolvedName": "S",
+        },
+      },
+    },
+    {
+      "info": {
+        "parserInfo": {
+          "documentation": [],
+          "path": "test/tests/type-logic.wipple",
+          "span": {
             "end": 192,
             "start": 191,
           },
@@ -3520,6 +3493,23 @@ exports[`type-logic.wipple 1`] = `
           "documentation": [],
           "path": "test/tests/type-logic.wipple",
           "span": {
+            "end": 195,
+            "start": 194,
+          },
+        },
+      },
+      "item": {
+        "lower": {
+          "unresolvedName": "Z",
+        },
+      },
+    },
+    {
+      "info": {
+        "parserInfo": {
+          "documentation": [],
+          "path": "test/tests/type-logic.wipple",
+          "span": {
             "end": 211,
             "start": 203,
           },
@@ -3528,6 +3518,40 @@ exports[`type-logic.wipple 1`] = `
       "item": {
         "lower": {
           "unresolvedName": "instance",
+        },
+      },
+    },
+    {
+      "info": {
+        "parserInfo": {
+          "documentation": [],
+          "path": "test/tests/type-logic.wipple",
+          "span": {
+            "end": 224,
+            "start": 223,
+          },
+        },
+      },
+      "item": {
+        "lower": {
+          "unresolvedName": "Z",
+        },
+      },
+    },
+    {
+      "info": {
+        "parserInfo": {
+          "documentation": [],
+          "path": "test/tests/type-logic.wipple",
+          "span": {
+            "end": 227,
+            "start": 226,
+          },
+        },
+      },
+      "item": {
+        "lower": {
+          "unresolvedName": "S",
         },
       },
     },
@@ -3639,119 +3663,6 @@ exports[`type-logic.wipple 1`] = `
           "documentation": [],
           "path": "test/tests/type-logic.wipple",
           "span": {
-            "end": 190,
-            "start": 189,
-          },
-        },
-      },
-      "item": {
-        "typecheck": {
-          "mismatch": {
-            "actual": {
-              "info": {
-                "parserInfo": {
-                  "documentation": [],
-                  "path": "test/tests/type-logic.wipple",
-                  "span": {
-                    "end": 190,
-                    "start": 189,
-                  },
-                },
-              },
-              "item": {
-                "declared": {
-                  "parameters": [
-                    {
-                      "info": {
-                        "parserInfo": {
-                          "documentation": [],
-                          "path": "test/tests/type-logic.wipple",
-                          "span": {
-                            "end": 38,
-                            "start": 25,
-                          },
-                        },
-                      },
-                      "item": "unknown",
-                    },
-                  ],
-                  "path": "type S",
-                },
-              },
-            },
-            "actualRoles": [
-              {
-                "info": {
-                  "parserInfo": {
-                    "documentation": [],
-                    "path": "test/tests/type-logic.wipple",
-                    "span": {
-                      "end": 26,
-                      "start": 25,
-                    },
-                  },
-                },
-                "item": "annotation",
-              },
-            ],
-            "expected": {
-              "info": {
-                "parserInfo": {
-                  "documentation": [],
-                  "path": "test/tests/type-logic.wipple",
-                  "span": {
-                    "end": 190,
-                    "start": 189,
-                  },
-                },
-              },
-              "item": {
-                "function": {
-                  "input": {
-                    "info": {
-                      "parserInfo": {
-                        "documentation": [],
-                        "path": "test/tests/type-logic.wipple",
-                        "span": {
-                          "end": 192,
-                          "start": 191,
-                        },
-                      },
-                    },
-                    "item": "unknown",
-                  },
-                  "output": {
-                    "info": {
-                      "parserInfo": {
-                        "documentation": [],
-                        "path": "test/tests/type-logic.wipple",
-                        "span": {
-                          "end": 195,
-                          "start": 194,
-                        },
-                      },
-                    },
-                    "item": {
-                      "declared": {
-                        "parameters": [],
-                        "path": "type Z",
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            "expectedRoles": [],
-          },
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/type-logic.wipple",
-          "span": {
             "end": 229,
             "start": 213,
           },
@@ -3822,119 +3733,6 @@ exports[`type-logic.wipple 1`] = `
                       },
                     },
                     "item": "unknown",
-                  },
-                },
-              },
-            },
-            "expectedRoles": [],
-          },
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/type-logic.wipple",
-          "span": {
-            "end": 227,
-            "start": 226,
-          },
-        },
-      },
-      "item": {
-        "typecheck": {
-          "mismatch": {
-            "actual": {
-              "info": {
-                "parserInfo": {
-                  "documentation": [],
-                  "path": "test/tests/type-logic.wipple",
-                  "span": {
-                    "end": 227,
-                    "start": 226,
-                  },
-                },
-              },
-              "item": {
-                "declared": {
-                  "parameters": [
-                    {
-                      "info": {
-                        "parserInfo": {
-                          "documentation": [],
-                          "path": "test/tests/type-logic.wipple",
-                          "span": {
-                            "end": 38,
-                            "start": 25,
-                          },
-                        },
-                      },
-                      "item": "unknown",
-                    },
-                  ],
-                  "path": "type S",
-                },
-              },
-            },
-            "actualRoles": [
-              {
-                "info": {
-                  "parserInfo": {
-                    "documentation": [],
-                    "path": "test/tests/type-logic.wipple",
-                    "span": {
-                      "end": 26,
-                      "start": 25,
-                    },
-                  },
-                },
-                "item": "annotation",
-              },
-            ],
-            "expected": {
-              "info": {
-                "parserInfo": {
-                  "documentation": [],
-                  "path": "test/tests/type-logic.wipple",
-                  "span": {
-                    "end": 227,
-                    "start": 226,
-                  },
-                },
-              },
-              "item": {
-                "function": {
-                  "input": {
-                    "info": {
-                      "parserInfo": {
-                        "documentation": [],
-                        "path": "test/tests/type-logic.wipple",
-                        "span": {
-                          "end": 229,
-                          "start": 228,
-                        },
-                      },
-                    },
-                    "item": "unknown",
-                  },
-                  "output": {
-                    "info": {
-                      "parserInfo": {
-                        "documentation": [],
-                        "path": "test/tests/type-logic.wipple",
-                        "span": {
-                          "end": 224,
-                          "start": 223,
-                        },
-                      },
-                    },
-                    "item": {
-                      "declared": {
-                        "parameters": [],
-                        "path": "type Z",
-                      },
-                    },
                   },
                 },
               },
@@ -4376,267 +4174,25 @@ exports[`type-states.wipple 1`] = `
           "documentation": [],
           "path": "test/tests/type-states.wipple",
           "span": {
-            "end": 262,
-            "start": 260,
+            "end": 281,
+            "start": 280,
           },
         },
       },
       "item": {
-        "lower": {
-          "unresolvedName": "--",
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/type-states.wipple",
-          "span": {
-            "end": 269,
-            "start": 263,
-          },
-        },
-      },
-      "item": {
-        "lower": {
-          "unresolvedName": "works!",
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/type-states.wipple",
-          "span": {
-            "end": 293,
-            "start": 291,
-          },
-        },
-      },
-      "item": {
-        "lower": {
-          "unresolvedName": "--",
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/type-states.wipple",
-          "span": {
-            "end": 300,
-            "start": 294,
-          },
-        },
-      },
-      "item": {
-        "lower": {
-          "unresolvedName": "cannot",
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/type-states.wipple",
-          "span": {
-            "end": 313,
-            "start": 306,
-          },
-        },
-      },
-      "item": {
-        "lower": {
-          "unresolvedName": "because",
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/type-states.wipple",
-          "span": {
-            "end": 319,
-            "start": 314,
-          },
-        },
-      },
-      "item": {
-        "lower": {
-          "unresolvedName": "drone",
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/type-states.wipple",
-          "span": {
-            "end": 330,
-            "start": 323,
-          },
-        },
-      },
-      "item": {
-        "lower": {
-          "unresolvedName": "already",
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/type-states.wipple",
-          "span": {
-            "end": 262,
-            "start": 255,
-          },
-        },
-      },
-      "item": {
-        "typecheck": {
-          "mismatch": {
-            "actual": {
-              "info": {
-                "parserInfo": {
-                  "documentation": [],
-                  "path": "test/tests/type-states.wipple",
-                  "span": {
-                    "end": 262,
-                    "start": 255,
-                  },
-                },
+        "read": {
+          "kind": {
+            "multipleNonAssociativeOperators": {
+              "first_span": {
+                "end": 240,
+                "start": 239,
               },
-              "item": {
-                "declared": {
-                  "parameters": [
-                    {
-                      "info": {
-                        "parserInfo": {
-                          "documentation": [],
-                          "path": "test/tests/type-states.wipple",
-                          "span": {
-                            "end": 209,
-                            "start": 205,
-                          },
-                        },
-                      },
-                      "item": {
-                        "declared": {
-                          "parameters": [],
-                          "path": "type Idle",
-                        },
-                      },
-                    },
-                  ],
-                  "path": "type Drone",
-                },
-              },
+              "operator": ":",
             },
-            "actualRoles": [],
-            "expected": {
-              "info": {
-                "parserInfo": {
-                  "documentation": [],
-                  "path": "test/tests/type-states.wipple",
-                  "span": {
-                    "end": 262,
-                    "start": 255,
-                  },
-                },
-              },
-              "item": {
-                "function": {
-                  "input": {
-                    "info": {
-                      "parserInfo": {
-                        "documentation": [],
-                        "path": "test/tests/type-states.wipple",
-                        "span": {
-                          "end": 269,
-                          "start": 263,
-                        },
-                      },
-                    },
-                    "item": "unknown",
-                  },
-                  "output": {
-                    "info": {
-                      "parserInfo": {
-                        "documentation": [],
-                        "path": "test/tests/type-states.wipple",
-                        "span": {
-                          "end": 269,
-                          "start": 255,
-                        },
-                      },
-                    },
-                    "item": {
-                      "function": {
-                        "input": {
-                          "info": {
-                            "parserInfo": {
-                              "documentation": [],
-                              "path": "test/tests/type-states.wipple",
-                              "span": {
-                                "end": 252,
-                                "start": 233,
-                              },
-                            },
-                          },
-                          "item": {
-                            "declared": {
-                              "parameters": [
-                                {
-                                  "info": {
-                                    "parserInfo": {
-                                      "documentation": [],
-                                      "path": "test/tests/type-states.wipple",
-                                      "span": {
-                                        "end": 149,
-                                        "start": 141,
-                                      },
-                                    },
-                                  },
-                                  "item": {
-                                    "declared": {
-                                      "parameters": [],
-                                      "path": "type Hovering",
-                                    },
-                                  },
-                                },
-                              ],
-                              "path": "type Drone",
-                            },
-                          },
-                        },
-                        "output": {
-                          "info": {
-                            "parserInfo": {
-                              "documentation": [],
-                              "path": "test/tests/type-states.wipple",
-                              "span": {
-                                "end": 269,
-                                "start": 233,
-                              },
-                            },
-                          },
-                          "item": "unknown",
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            "expectedRoles": [],
+          },
+          "span": {
+            "end": 281,
+            "start": 280,
           },
         },
       },
@@ -4647,377 +4203,17 @@ exports[`type-states.wipple 1`] = `
           "documentation": [],
           "path": "test/tests/type-states.wipple",
           "span": {
-            "end": 335,
-            "start": 286,
+            "end": 0,
+            "start": 0,
           },
         },
       },
       "item": {
-        "typecheck": {
-          "mismatch": {
-            "actual": {
-              "info": {
-                "parserInfo": {
-                  "documentation": [],
-                  "path": "test/tests/type-states.wipple",
-                  "span": {
-                    "end": 335,
-                    "start": 286,
-                  },
-                },
-              },
-              "item": {
-                "declared": {
-                  "parameters": [],
-                  "path": "type Boolean",
-                },
-              },
-            },
-            "actualRoles": [
-              {
-                "info": {
-                  "parserInfo": {
-                    "documentation": [],
-                    "path": "/Users/wilson/Desktop/wipple-wasm/library/base/logic.wipple",
-                    "span": {
-                      "end": 65,
-                      "start": 61,
-                    },
-                  },
-                },
-                "item": "annotation",
-              },
-            ],
-            "expected": {
-              "info": {
-                "parserInfo": {
-                  "documentation": [],
-                  "path": "test/tests/type-states.wipple",
-                  "span": {
-                    "end": 335,
-                    "start": 286,
-                  },
-                },
-              },
-              "item": {
-                "function": {
-                  "input": {
-                    "info": {
-                      "parserInfo": {
-                        "documentation": [],
-                        "path": "test/tests/type-states.wipple",
-                        "span": {
-                          "end": 283,
-                          "start": 275,
-                        },
-                      },
-                    },
-                    "item": {
-                      "declared": {
-                        "parameters": [
-                          {
-                            "info": {
-                              "parserInfo": {
-                                "documentation": [],
-                                "path": "test/tests/type-states.wipple",
-                                "span": {
-                                  "end": 90,
-                                  "start": 86,
-                                },
-                              },
-                            },
-                            "item": {
-                              "declared": {
-                                "parameters": [],
-                                "path": "type Idle",
-                              },
-                            },
-                          },
-                        ],
-                        "path": "type Drone",
-                      },
-                    },
-                  },
-                  "output": {
-                    "info": {
-                      "parserInfo": {
-                        "documentation": [],
-                        "path": "test/tests/type-states.wipple",
-                        "span": {
-                          "end": 335,
-                          "start": 275,
-                        },
-                      },
-                    },
-                    "item": "unknown",
-                  },
-                },
-              },
-            },
-            "expectedRoles": [],
-          },
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/type-states.wipple",
+        "parse": {
+          "expected": "expression",
           "span": {
-            "end": 293,
-            "start": 286,
-          },
-        },
-      },
-      "item": {
-        "typecheck": {
-          "mismatch": {
-            "actual": {
-              "info": {
-                "parserInfo": {
-                  "documentation": [],
-                  "path": "test/tests/type-states.wipple",
-                  "span": {
-                    "end": 293,
-                    "start": 286,
-                  },
-                },
-              },
-              "item": {
-                "declared": {
-                  "parameters": [
-                    {
-                      "info": {
-                        "parserInfo": {
-                          "documentation": [],
-                          "path": "test/tests/type-states.wipple",
-                          "span": {
-                            "end": 209,
-                            "start": 205,
-                          },
-                        },
-                      },
-                      "item": {
-                        "declared": {
-                          "parameters": [],
-                          "path": "type Idle",
-                        },
-                      },
-                    },
-                  ],
-                  "path": "type Drone",
-                },
-              },
-            },
-            "actualRoles": [],
-            "expected": {
-              "info": {
-                "parserInfo": {
-                  "documentation": [],
-                  "path": "test/tests/type-states.wipple",
-                  "span": {
-                    "end": 293,
-                    "start": 286,
-                  },
-                },
-              },
-              "item": {
-                "function": {
-                  "input": {
-                    "info": {
-                      "parserInfo": {
-                        "documentation": [],
-                        "path": "test/tests/type-states.wipple",
-                        "span": {
-                          "end": 300,
-                          "start": 294,
-                        },
-                      },
-                    },
-                    "item": "unknown",
-                  },
-                  "output": {
-                    "info": {
-                      "parserInfo": {
-                        "documentation": [],
-                        "path": "test/tests/type-states.wipple",
-                        "span": {
-                          "end": 300,
-                          "start": 286,
-                        },
-                      },
-                    },
-                    "item": {
-                      "function": {
-                        "input": {
-                          "info": {
-                            "parserInfo": {
-                              "documentation": [],
-                              "path": "test/tests/type-states.wipple",
-                              "span": {
-                                "end": 305,
-                                "start": 301,
-                              },
-                            },
-                          },
-                          "item": {
-                            "function": {
-                              "input": {
-                                "info": {
-                                  "parserInfo": {
-                                    "documentation": [],
-                                    "path": "test/tests/type-states.wipple",
-                                    "span": {
-                                      "end": 195,
-                                      "start": 181,
-                                    },
-                                  },
-                                },
-                                "item": {
-                                  "declared": {
-                                    "parameters": [
-                                      {
-                                        "info": {
-                                          "parserInfo": {
-                                            "documentation": [],
-                                            "path": "test/tests/type-states.wipple",
-                                            "span": {
-                                              "end": 195,
-                                              "start": 187,
-                                            },
-                                          },
-                                        },
-                                        "item": {
-                                          "declared": {
-                                            "parameters": [],
-                                            "path": "type Hovering",
-                                          },
-                                        },
-                                      },
-                                    ],
-                                    "path": "type Drone",
-                                  },
-                                },
-                              },
-                              "output": {
-                                "info": {
-                                  "parserInfo": {
-                                    "documentation": [],
-                                    "path": "test/tests/type-states.wipple",
-                                    "span": {
-                                      "end": 209,
-                                      "start": 199,
-                                    },
-                                  },
-                                },
-                                "item": {
-                                  "declared": {
-                                    "parameters": [
-                                      {
-                                        "info": {
-                                          "parserInfo": {
-                                            "documentation": [],
-                                            "path": "test/tests/type-states.wipple",
-                                            "span": {
-                                              "end": 209,
-                                              "start": 205,
-                                            },
-                                          },
-                                        },
-                                        "item": {
-                                          "declared": {
-                                            "parameters": [],
-                                            "path": "type Idle",
-                                          },
-                                        },
-                                      },
-                                    ],
-                                    "path": "type Drone",
-                                  },
-                                },
-                              },
-                            },
-                          },
-                        },
-                        "output": {
-                          "info": {
-                            "parserInfo": {
-                              "documentation": [],
-                              "path": "test/tests/type-states.wipple",
-                              "span": {
-                                "end": 305,
-                                "start": 286,
-                              },
-                            },
-                          },
-                          "item": {
-                            "function": {
-                              "input": {
-                                "info": {
-                                  "parserInfo": {
-                                    "documentation": [],
-                                    "path": "test/tests/type-states.wipple",
-                                    "span": {
-                                      "end": 313,
-                                      "start": 306,
-                                    },
-                                  },
-                                },
-                                "item": "unknown",
-                              },
-                              "output": {
-                                "info": {
-                                  "parserInfo": {
-                                    "documentation": [],
-                                    "path": "test/tests/type-states.wipple",
-                                    "span": {
-                                      "end": 313,
-                                      "start": 286,
-                                    },
-                                  },
-                                },
-                                "item": {
-                                  "function": {
-                                    "input": {
-                                      "info": {
-                                        "parserInfo": {
-                                          "documentation": [],
-                                          "path": "test/tests/type-states.wipple",
-                                          "span": {
-                                            "end": 319,
-                                            "start": 314,
-                                          },
-                                        },
-                                      },
-                                      "item": "unknown",
-                                    },
-                                    "output": {
-                                      "info": {
-                                        "parserInfo": {
-                                          "documentation": [],
-                                          "path": "test/tests/type-states.wipple",
-                                          "span": {
-                                            "end": 319,
-                                            "start": 286,
-                                          },
-                                        },
-                                      },
-                                      "item": "unknown",
-                                    },
-                                  },
-                                },
-                              },
-                            },
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            "expectedRoles": [],
+            "end": 0,
+            "start": 0,
           },
         },
       },
@@ -5072,14 +4268,14 @@ exports[`unresolved-type-multiple-parameters.wipple 1`] = `
           "documentation": [],
           "path": "test/tests/unresolved-type-multiple-parameters.wipple",
           "span": {
-            "end": 66,
-            "start": 47,
+            "end": 87,
+            "start": 86,
           },
         },
       },
       "item": {
-        "typecheck": {
-          "unknownType": "unknown",
+        "lower": {
+          "unresolvedName": "T",
         },
       },
     },
@@ -5089,14 +4285,14 @@ exports[`unresolved-type-multiple-parameters.wipple 1`] = `
           "documentation": [],
           "path": "test/tests/unresolved-type-multiple-parameters.wipple",
           "span": {
-            "end": 119,
-            "start": 89,
+            "end": 223,
+            "start": 222,
           },
         },
       },
       "item": {
-        "typecheck": {
-          "unknownType": "unknown",
+        "lower": {
+          "unresolvedName": "U",
         },
       },
     },
@@ -5106,14 +4302,14 @@ exports[`unresolved-type-multiple-parameters.wipple 1`] = `
           "documentation": [],
           "path": "test/tests/unresolved-type-multiple-parameters.wipple",
           "span": {
-            "end": 179,
-            "start": 142,
+            "end": 245,
+            "start": 244,
           },
         },
       },
       "item": {
-        "typecheck": {
-          "unknownType": "unknown",
+        "lower": {
+          "unresolvedName": "U",
         },
       },
     },
@@ -6299,6 +5495,82 @@ exports[`when-mismatched-types.wipple 1`] = `
               },
             ],
           },
+        },
+      },
+    },
+    {
+      "info": {
+        "parserInfo": {
+          "documentation": [],
+          "path": "test/tests/when-mismatched-types.wipple",
+          "span": {
+            "end": 26,
+            "start": 22,
+          },
+        },
+      },
+      "item": {
+        "typecheck": {
+          "missingPatterns": [
+            {},
+          ],
+        },
+      },
+    },
+    {
+      "info": {
+        "parserInfo": {
+          "documentation": [],
+          "path": "test/tests/when-mismatched-types.wipple",
+          "span": {
+            "end": 34,
+            "start": 33,
+          },
+        },
+      },
+      "item": {
+        "typecheck": {
+          "missingPatterns": [
+            {},
+          ],
+        },
+      },
+    },
+    {
+      "info": {
+        "parserInfo": {
+          "documentation": [],
+          "path": "test/tests/when-mismatched-types.wipple",
+          "span": {
+            "end": 40,
+            "start": 36,
+          },
+        },
+      },
+      "item": {
+        "typecheck": {
+          "missingPatterns": [
+            "binding",
+          ],
+        },
+      },
+    },
+    {
+      "info": {
+        "parserInfo": {
+          "documentation": [],
+          "path": "test/tests/when-mismatched-types.wipple",
+          "span": {
+            "end": 47,
+            "start": 46,
+          },
+        },
+      },
+      "item": {
+        "typecheck": {
+          "missingPatterns": [
+            {},
+          ],
         },
       },
     },

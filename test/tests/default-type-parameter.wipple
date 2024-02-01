@@ -1,7 +1,7 @@
 [should compile]
 
-X : type
-Y : type
+X : type (X)
+Y : type (Y)
 
 T : A => trait A
 instance (T X) : X

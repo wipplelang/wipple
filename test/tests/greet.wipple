@@ -12,7 +12,7 @@ Person : type (name :: Text)
 [Greet for Person values is defined as the person's name]
 instance (Greet Person) : (name : name) -> name
 
-Earth : type
+Earth : type (Earth)
 
 [Greet for Earth values is defined as "world"]
 instance (Greet Earth) : just "world"

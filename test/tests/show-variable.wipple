@@ -1,6 +1,6 @@
 [should error]
 
-Cannot-Be-Shown : type
+Cannot-Be-Shown : type (Cannot-Be-Shown)
 
 my-variable : Cannot-Be-Shown
 show my-variable
