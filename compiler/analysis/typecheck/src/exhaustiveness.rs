@@ -466,8 +466,6 @@ impl<'a, D: Driver> MatchCompiler<'a, D> {
 
         let tree = self.compile_rows(rows)?;
 
-        wipple_util::log!("tree: {:#?}", tree);
-
         Some(Match {
             tree,
             missing: self.missing,
@@ -492,8 +490,6 @@ impl<'a, D: Driver> MatchCompiler<'a, D> {
                 ..row
             })
             .collect::<Vec<_>>();
-
-        wipple_util::log!("rows: {:#?}", rows);
 
         if rows.first().unwrap().columns.is_empty() {
             let row = rows.remove(0);
