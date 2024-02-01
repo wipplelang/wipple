@@ -1,6 +1,7 @@
 //! Compiler pass that determines the type of every expression in the program
 //! and resolves constants and traits to concrete items.
 
+pub mod exhaustiveness;
 mod resolve;
 
 use derivative::Derivative;
@@ -112,6 +113,14 @@ pub fn instances_overlap<D: Driver>(
     instances: impl IntoIterator<Item = D::Path>,
 ) -> Vec<WithInfo<D::Info, Error<D>>> {
     resolve::instances_overlap(driver, r#trait, instances)
+}
+
+/// Check for inexhaustive bindings and `when` expressions.
+pub fn check_exhaustiveness<D: Driver>(
+    driver: &D,
+    expression: WithInfo<D::Info, &TypedExpression<D>>,
+) -> Vec<WithInfo<D::Info, Error<D>>> {
+    exhaustiveness::check_exhaustiveness(driver, expression)
 }
 
 /// Obtain the type of a trait expression matching the provided instance. For
@@ -226,6 +235,12 @@ pub enum Error<D: Driver> {
         /// The instance that overlaps with [`Error::OverlappingInstances::instance`].
         other: D::Path,
     },
+
+    /// The binding or `when` expression does not exhaustively match its input.
+    MissingPatterns(Vec<exhaustiveness::Pattern<D>>),
+
+    /// This pattern is already handled by a previous pattern.
+    ExtraPattern,
 }
 
 /// The type of an expression.
@@ -737,7 +752,13 @@ pub struct TypedArm<D: Driver> {
 
 /// A pattern.
 #[derive(Serialize, Deserialize, Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum Pattern<D: Driver> {
     /// A pattern that could not be resolved prior to or after typechecking.
@@ -783,7 +804,13 @@ pub enum Pattern<D: Driver> {
 
 /// A field in a destructuring pattern.
 #[derive(Serialize, Deserialize, Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct FieldPattern<D: Driver> {
     /// The name of the field.

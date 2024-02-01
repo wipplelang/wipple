@@ -1,15 +1,19 @@
-//! Render compiler errors, types, and other items to strings.
+//! Render compiler diagnostics, types, and other items to strings.
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, ops::Range};
 use wipple_util::WithInfo;
 
-/// A rendered error.
+/// A rendered diagnostic.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Error {
+pub struct Diagnostic {
+    /// Whether the diagnostic represents an error that must be fixed before the
+    /// program can run.
+    pub error: bool,
+
     /// The group the error belongs to.
-    pub group: ErrorGroup,
+    pub group: DiagnosticGroup,
 
     /// The error's primary label.
     pub primary_label: Label,
@@ -24,9 +28,9 @@ pub struct Error {
     pub fix: Option<Fix>,
 }
 
-/// A category of [`Error`]s.
+/// A category of [`Diagnostic`]s.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ErrorGroup {
+pub struct DiagnosticGroup {
     /// The name of the error.
     pub name: String,
 
@@ -37,7 +41,7 @@ pub struct ErrorGroup {
     pub example: String,
 }
 
-/// A label in an [`Error`].
+/// A label in a [`Diagnostic`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Label {
     /// The path to the file containing the error.
@@ -50,7 +54,7 @@ pub struct Label {
     pub message: String,
 }
 
-/// A fix for an [`Error`].
+/// A fix for a [`Diagnostic`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Fix {
     /// The action's message.
@@ -95,20 +99,24 @@ impl Fix {
     }
 }
 
-/// Render a compiler error to an [`Error`].
-pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Query<'_>) -> Error {
+/// Render a compiler diagnostic to an [`Diagnostic`].
+pub fn render_diagnostic(
+    error: WithInfo<crate::Info, crate::Error>,
+    query: &crate::Query<'_>,
+) -> Diagnostic {
     let info = error.info;
 
     match error.item {
         crate::Error::Read(error) => {
-            let group = ErrorGroup {
+            let group = DiagnosticGroup {
                 name: String::from("Syntax error"),
                 explanation: String::from("Wipple couldn't understand your code because a symbol is missing or is in the wrong place."),
                 example: String::from("syntax-error"),
             };
 
             match error.kind {
-                wipple_parser::reader::ErrorKind::InvalidToken => Error {
+                wipple_parser::reader::ErrorKind::InvalidToken => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path,
@@ -150,7 +158,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                         }
                     };
 
-                    Error {
+                    Diagnostic {
+                        error: true,
                         group,
                         primary_label: Label {
                             file: info.parser_info.path,
@@ -194,7 +203,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                         help: String::from("Parentheses are used to group code together — the opening `(` tells Wipple where to start and the closing `)` tells Wipple where to end. Make sure you have a closing `)` for every opening `(`."),
                     }
                 }
-                wipple_parser::reader::ErrorKind::MultipleNonAssociativeOperators { operator, first_span } => Error {
+                wipple_parser::reader::ErrorKind::MultipleNonAssociativeOperators { operator, first_span } => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path.clone(),
@@ -209,7 +219,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     help: format!("Operators like `+` prioritize the left or right side automatically. For example, `1 + 2 + 3` is the same as `(1 + 2) + 3`. However, `{operator}` doesn't prioritize either side, so you need to use parentheses."),
                     fix: None,
                 },
-                wipple_parser::reader::ErrorKind::MissingOperatorInputOnLeft(operator) => Error {
+                wipple_parser::reader::ErrorKind::MissingOperatorInputOnLeft(operator) => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path,
@@ -220,7 +231,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     help: format!("The `{operator}` operator needs an input on the left side."),
                     fix: Some(Fix::before(format!("add an input to the left of the `{operator}`"), "_ ")),
                 },
-                wipple_parser::reader::ErrorKind::MissingOperatorInputOnRight(operator) => Error {
+                wipple_parser::reader::ErrorKind::MissingOperatorInputOnRight(operator) => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path,
@@ -234,7 +246,7 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
             }
         }
         crate::Error::Parse(error) => {
-            let group = ErrorGroup {
+            let group = DiagnosticGroup {
                 name: String::from("Syntax error"),
                 explanation: String::from("Wipple couldn't understand your code because it was expecting a different piece of code than the one provided."),
                 example: String::from("syntax-error"),
@@ -287,7 +299,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                 }
             };
 
-            Error {
+            Diagnostic {
+                error: true,
                 group,
                 primary_label: Label {
                     file: info.parser_info.path,
@@ -303,7 +316,7 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
             }
         }
         crate::Error::Syntax(error) => {
-            let group = ErrorGroup {
+            let group = DiagnosticGroup {
                 name: String::from("Syntax error"),
                 explanation: String::from(
                     "Wipple couldn't understand your code because some information is missing.",
@@ -312,7 +325,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
             };
 
             match error {
-                wipple_syntax::Error::UnexpectedBound => Error {
+                wipple_syntax::Error::UnexpectedBound => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path,
@@ -323,7 +337,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     help: String::from("Bounds aren't allowed in `type` and `trait` definitions. Instead, move the bounds to the functions that use the types and traits."),
                     fix: None,
                 },
-                wipple_syntax::Error::ExpectedConstantValue(name) => Error {
+                wipple_syntax::Error::ExpectedConstantValue(name) => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path,
@@ -334,7 +349,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     help: format!("Here, you defined `{name}`'s type using `::`, but constants must also be assigned a value using `:`. Try giving `{name}` a value on the line below this one."),
                     fix: Some(Fix::after(format!("give `{name}` a value"), format!("\n{name} : _"))),
                 },
-                wipple_syntax::Error::EmptyTypeRepresentation => Error {
+                wipple_syntax::Error::EmptyTypeRepresentation => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path,
@@ -342,10 +358,11 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                         message: String::from("type definition must contain at least one field or variant"),
                     },
                     secondary_labels: Vec::new(),
-                    help: String::from("Try adding a field (`name :: Type`) or variant (`Name`) inside the parentheses. If you are trying to create a marker type, remove the parentheses."),
+                    help: String::from("Try adding a field (`name :: Type`) or variant (`Name`) inside the parentheses."),
                     fix: Some(Fix::replace("add a new field between the parentheses", "(\n  field :: Text\n)")),
                 },
-                wipple_syntax::Error::ExpectedField => Error {
+                wipple_syntax::Error::ExpectedField => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path,
@@ -356,7 +373,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     help: String::from("A type must contain all fields or all variants."),
                     fix: None,
                 },
-                wipple_syntax::Error::ExpectedVariant => Error {
+                wipple_syntax::Error::ExpectedVariant => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path,
@@ -367,7 +385,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     help: String::from("A type must contain all fields or all variants."),
                     fix: None,
                 },
-                wipple_syntax::Error::InvalidTextLiteral(text_literal_error) => Error {
+                wipple_syntax::Error::InvalidTextLiteral(text_literal_error) => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path,
@@ -378,7 +397,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     help: String::from("This piece of text contains an invalid character or escape sequence."),
                     fix: Some(Fix::replace("remove the invalid piece of text", "")),
                 },
-                wipple_syntax::Error::InvalidPlaceholderText { expected, found } => Error {
+                wipple_syntax::Error::InvalidPlaceholderText { expected, found } => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path,
@@ -398,7 +418,7 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
             }
         }
         crate::Error::Lower(error) => {
-            let group = ErrorGroup {
+            let group = DiagnosticGroup {
                 name: String::from("Name error"),
                 explanation: String::from(
                     "Wipple couldn't find the definition for a name in your code.",
@@ -416,7 +436,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
             let render_unresolved = |kind: &str, name: &str| {
                 let related_names = names_related_to(name);
 
-                Error {
+                Diagnostic {
+                    error: true,
                     group: group.clone(),
                     primary_label: Label {
                         file: info.parser_info.path.clone(),
@@ -450,7 +471,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                 wipple_lower::Error::UnresolvedLanguageItem(name) => {
                     render_unresolved("language item ", &name)
                 }
-                wipple_lower::Error::AmbiguousName { name, candidates } => Error {
+                wipple_lower::Error::AmbiguousName { name, candidates } => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path.clone(),
@@ -479,7 +501,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     let name = path.last().unwrap().name().unwrap();
                     let info = query.info_at_path(&path).unwrap();
 
-                    Error {
+                    Diagnostic {
+                        error: true,
                         group,
                         primary_label: Label {
                             file: info.parser_info.path.clone(),
@@ -495,7 +518,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                         fix: None,
                     }
                 },
-                wipple_lower::Error::NestedLanguageDeclaration => Error {
+                wipple_lower::Error::NestedLanguageDeclaration => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path.clone(),
@@ -506,7 +530,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     help: String::from("Try moving this line outside of any code."),
                     fix: None,
                 },
-                wipple_lower::Error::InvalidComposition => Error {
+                wipple_lower::Error::InvalidComposition => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path.clone(),
@@ -517,7 +542,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     help: String::from("The function composition operator `|` requires inputs on both sides."),
                     fix: None,
                 },
-                wipple_lower::Error::InvalidLazyType => Error {
+                wipple_lower::Error::InvalidLazyType => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path.clone(),
@@ -531,14 +557,15 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
             }
         }
         crate::Error::Typecheck(error) => {
-            let group = ErrorGroup {
+            let group = DiagnosticGroup {
                 name: String::from("Type error"),
                 explanation: String::from("This code doesn't produce what's expected here. Double-check that you're providing the right inputs and using the correct units."),
                 example: String::from("type-error"),
             };
 
             match error {
-                wipple_typecheck::Error::RecursionLimit => Error {
+                wipple_typecheck::Error::RecursionLimit => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path.clone(),
@@ -549,7 +576,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     help: String::from("This code is too complex for Wipple to check. Try splitting the code across multiple functions or providing explicit type annotations using `::`."),
                     fix: None,
                 },
-                wipple_typecheck::Error::MissingLanguageItem(language_item) => Error {
+                wipple_typecheck::Error::MissingLanguageItem(language_item) => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path.clone(),
@@ -560,7 +588,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     help: format!("Try defining `{language_item}` using a `language` pattern."),
                     fix: None,
                 },
-                wipple_typecheck::Error::UnknownType(r#type) => Error {
+                wipple_typecheck::Error::UnknownType(r#type) => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path.clone(),
@@ -579,7 +608,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     help: String::from("Try providing some more context so Wipple can check this code. One way to do this is by using `::` to explicitly annotate the type, but you can also try assigning this code to a variable and passing it to a function."),
                     fix: None,
                 },
-                wipple_typecheck::Error::UndeclaredTypeParameter(_) => Error {
+                wipple_typecheck::Error::UndeclaredTypeParameter(_) => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path.clone(),
@@ -658,7 +688,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                         }
                     }
 
-                    Error {
+                    Diagnostic {
+                        error: true,
                         group,
                         primary_label: Label {
                             file: info.parser_info.path.clone(),
@@ -670,7 +701,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                         fix: None,
                     }
                 },
-                wipple_typecheck::Error::DisallowedCoercion(r#type) => Error {
+                wipple_typecheck::Error::DisallowedCoercion(r#type) => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path.clone(),
@@ -687,7 +719,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     let r#trait = instance.r#trait.last().unwrap().name().unwrap_or("_");
 
                     if candidates.len() > 1 {
-                        Error {
+                        Diagnostic {
+                            error: true,
                             group,
                             primary_label: Label {
                                 file: info.parser_info.path.clone(),
@@ -705,7 +738,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                             fix: None,
                         }
                     } else {
-                        Error {
+                        Diagnostic {
+                            error: true,
                             group,
                             primary_label: Label {
                                 file: info.parser_info.path.clone(),
@@ -737,7 +771,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                         }
                     }
                 },
-                wipple_typecheck::Error::NotAStructure(r#type) => Error {
+                wipple_typecheck::Error::NotAStructure(r#type) => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path.clone(),
@@ -748,7 +783,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     help: format!("Try adjusting the code so it produces a value of type `{}`.", render_type(&r#type.item, true)),
                     fix: None,
                 },
-                wipple_typecheck::Error::MissingFields(mut fields) => Error {
+                wipple_typecheck::Error::MissingFields(mut fields) => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path.clone(),
@@ -766,7 +802,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                     help: String::from("Try adding these fields using `:`."),
                     fix: None,
                 },
-                wipple_typecheck::Error::ExtraField => Error {
+                wipple_typecheck::Error::ExtraField => Diagnostic {
+                    error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path.clone(),
@@ -780,7 +817,8 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                 wipple_typecheck::Error::OverlappingInstances { other, .. } => {
                     let other = query.info_at_path(&other).unwrap();
 
-                    Error {
+                    Diagnostic {
+                        error: true,
                         group,
                         primary_label: Label {
                             file: info.parser_info.path.clone(),
@@ -796,17 +834,57 @@ pub fn render_error(error: WithInfo<crate::Info, crate::Error>, query: &crate::Q
                         fix: None,
                     }
                 },
+                wipple_typecheck::Error::MissingPatterns(mut patterns) => {
+                    Diagnostic {
+                        error: true,
+                        group,
+                        primary_label: Label {
+                            file: info.parser_info.path.clone(),
+                            span: info.parser_info.span,
+                            message: match patterns.len() {
+                                1 => format!("missing pattern for `{}`", render_pattern(query, patterns.pop().unwrap())),
+                                _ => {
+                                    let last = patterns.pop().unwrap();
+
+                                    format!(
+                                        "missing patterns for `{}` and `{}`",
+                                        patterns.into_iter().map(|pattern| render_pattern(query, pattern)).join(", "),
+                                        render_pattern(query, last),
+                                    )
+                                },
+                            },
+                        },
+                        secondary_labels: Vec::new(),
+                        help: String::from("The input could be one of these patterns, but your code doesn't handle them. Try adding some more cases or using `_` or a variable to match any possible value."),
+                        fix: None,
+                    }
+                }
+                wipple_typecheck::Error::ExtraPattern => {
+                    Diagnostic {
+                        error: false,
+                        group,
+                        primary_label: Label {
+                            file: info.parser_info.path.clone(),
+                            span: info.parser_info.span,
+                            message: String::from("extra case in `when` expression"),
+                        },
+                        secondary_labels: Vec::new(),
+                        help: String::from("This case is unreachable because a different pattern already handles the same pattern. Try removing this code."),
+                        fix: None,
+                    }
+                },
+                // FIXME: Rename 'Error' to 'Diagnostic'
             }
         }
     }
 }
 
 pub fn colorize_errors<'a>(
-    errors: impl IntoIterator<Item = &'a Error>,
+    errors: impl IntoIterator<Item = &'a Diagnostic>,
     source_code_for_file: impl Fn(&str) -> String,
 ) -> String {
     use codespan_reporting::{
-        diagnostic::{Diagnostic, Label},
+        diagnostic::{Diagnostic, Label, Severity},
         files::SimpleFiles,
         term,
     };
@@ -832,7 +910,13 @@ pub fn colorize_errors<'a>(
             }
         }
 
-        let diagnostic = Diagnostic::error() // TODO: Warnings
+        let severity = if error.error {
+            Severity::Error
+        } else {
+            Severity::Warning
+        };
+
+        let diagnostic = Diagnostic::new(severity)
             .with_message(&error.group.name)
             .with_labels(
                 std::iter::once(
@@ -1032,4 +1116,77 @@ pub fn render_type_function(
             },
         }
     }
+}
+
+/// Render a pattern to a string.
+pub fn render_pattern(
+    _query: &crate::Query<'_>,
+    pattern: wipple_typecheck::exhaustiveness::Pattern<crate::Driver>,
+) -> String {
+    fn render_pattern_inner(
+        pattern: wipple_typecheck::exhaustiveness::Pattern<crate::Driver>,
+        is_top_level: bool,
+    ) -> String {
+        match pattern {
+            wipple_typecheck::exhaustiveness::Pattern::Constructor(constructor, mut patterns) => {
+                match constructor {
+                    wipple_typecheck::exhaustiveness::Constructor::Variant(path) => {
+                        let name = path.last().unwrap().name().unwrap_or("_").to_string();
+
+                        let has_patterns = !patterns.is_empty();
+
+                        let rendered = if has_patterns {
+                            let patterns = patterns
+                                .into_iter()
+                                .map(|pattern| render_pattern_inner(pattern, false))
+                                .join(" ");
+
+                            format!("{} {}", name, patterns)
+                        } else {
+                            name
+                        };
+
+                        if !is_top_level && !has_patterns {
+                            format!("({})", rendered)
+                        } else {
+                            rendered
+                        }
+                    }
+                    wipple_typecheck::exhaustiveness::Constructor::Tuple => {
+                        let has_patterns = !patterns.is_empty();
+
+                        let rendered = match patterns.len() {
+                            1 => {
+                                let pattern = patterns.pop().unwrap();
+                                format!("{} ;", render_pattern_inner(pattern, false))
+                            }
+                            _ => {
+                                let patterns = patterns
+                                    .into_iter()
+                                    .map(|pattern| render_pattern_inner(pattern, false))
+                                    .join(" ; ");
+
+                                format!("({})", patterns)
+                            }
+                        };
+
+                        if !is_top_level && !has_patterns {
+                            rendered
+                        } else {
+                            format!("({})", rendered)
+                        }
+                    }
+                    wipple_typecheck::exhaustiveness::Constructor::Structure => {
+                        // TODO: Render actual fields
+                        String::from("(...)")
+                    }
+                    wipple_typecheck::exhaustiveness::Constructor::Unbounded => String::from("_"),
+                }
+            }
+            wipple_typecheck::exhaustiveness::Pattern::Binding => String::from("_"),
+            wipple_typecheck::exhaustiveness::Pattern::Or(_) => unreachable!("`or` is flattened"),
+        }
+    }
+
+    render_pattern_inner(pattern, true)
 }

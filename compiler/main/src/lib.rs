@@ -90,7 +90,7 @@ pub fn render_errors(
 
     let errors = errors
         .into_iter()
-        .map(|error| render::render_error(error, &query))
+        .map(|error| render::render_diagnostic(error, &query))
         .collect::<Vec<_>>();
 
     serialize(&errors)
@@ -101,7 +101,7 @@ pub fn render_errors(
 pub fn colorize_errors(errors: &str, source_code_for_file: wasm_bindgen::JsValue) -> String {
     initialize();
 
-    let errors: Vec<render::Error> = deserialize(errors);
+    let errors: Vec<render::Diagnostic> = deserialize(errors);
 
     let source_code_for_file = |file: &str| {
         source_code_for_file
@@ -422,6 +422,15 @@ impl Driver {
                     .map(|error| error.map(Error::Typecheck)),
             );
 
+            let exhaustiveness_errors =
+                wipple_typecheck::check_exhaustiveness(&self, typecheck_result.item.as_ref());
+
+            errors.extend(
+                exhaustiveness_errors
+                    .into_iter()
+                    .map(|error| error.map(Error::Typecheck)),
+            );
+
             let codegen_result =
                 codegen::compile(&self, path.clone(), typecheck_result.item.as_ref(), false);
 
@@ -458,6 +467,15 @@ impl Driver {
                     .map(|error| error.map(Error::Typecheck)),
             );
 
+            let exhaustiveness_errors =
+                wipple_typecheck::check_exhaustiveness(&self, typecheck_result.item.as_ref());
+
+            errors.extend(
+                exhaustiveness_errors
+                    .into_iter()
+                    .map(|error| error.map(Error::Typecheck)),
+            );
+
             let codegen_result =
                 codegen::compile(&self, path.clone(), typecheck_result.item.as_ref(), false);
 
@@ -488,6 +506,15 @@ impl Driver {
             errors.extend(
                 typecheck_result
                     .errors
+                    .into_iter()
+                    .map(|error| error.map(Error::Typecheck)),
+            );
+
+            let exhaustiveness_errors =
+                wipple_typecheck::check_exhaustiveness(&self, typecheck_result.item.as_ref());
+
+            errors.extend(
+                exhaustiveness_errors
                     .into_iter()
                     .map(|error| error.map(Error::Typecheck)),
             );
