@@ -397,7 +397,7 @@ pub fn type_descriptor<D: crate::Driver>(
     r#type: &wipple_typecheck::Type<D>,
 ) -> Option<crate::TypeDescriptor<D>> {
     match r#type {
-        wipple_typecheck::Type::Unknown => None,
+        wipple_typecheck::Type::Unknown(_) => None,
         wipple_typecheck::Type::Parameter(parameter) => {
             Some(crate::TypeDescriptor::Parameter(parameter.clone()))
         }

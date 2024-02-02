@@ -1,4 +1,4 @@
-use crate::{Driver, Role};
+use crate::{Driver, Role, UnknownTypeId};
 use derivative::Derivative;
 use std::{
     cell::{Cell, RefCell},
@@ -68,7 +68,7 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
                 bounds: Vec::new(),
                 r#type: WithInfo {
                     info: info.clone(),
-                    item: crate::Type::Unknown, // the top level can be any type
+                    item: crate::Type::Unknown(UnknownTypeId::none()), // the top level can be any type
                 },
                 body: WithInfo {
                     info: driver.top_level_info(),
@@ -601,7 +601,7 @@ enum TypeKind<D: Driver> {
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = ""),
+    Copy(bound = ""),
     PartialEq(bound = ""),
     Eq(bound = ""),
     Hash(bound = "")
@@ -609,6 +609,12 @@ enum TypeKind<D: Driver> {
 struct TypeVariable<D: Driver> {
     _driver: std::marker::PhantomData<D>,
     counter: u32,
+}
+
+impl<D: Driver> Clone for TypeVariable<D> {
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<D: Driver> Debug for TypeVariable<D> {
@@ -805,7 +811,7 @@ impl<D: Driver> Type<D> {
         match &mut self.kind {
             TypeKind::Variable(_) => {}
             TypeKind::Opaque(variable) => {
-                self.kind = TypeKind::Variable(variable.clone());
+                self.kind = TypeKind::Variable(*variable);
             }
             TypeKind::Parameter(_) => {}
             TypeKind::Declared { parameters, .. } => {
@@ -1366,7 +1372,7 @@ fn infer_type<D: Driver>(
             crate::Type::Lazy(r#type) => {
                 TypeKind::Lazy(Box::new(infer_type(r#type.as_deref(), None, type_context)))
             }
-            crate::Type::Unknown => match type_context {
+            crate::Type::Unknown(_) => match type_context {
                 Some(type_context) => TypeKind::Variable(type_context.variable()),
                 None => TypeKind::Unknown,
             },
@@ -3313,7 +3319,7 @@ fn finalize_type<D: Driver>(
                         *fully_resolved = false;
                     }
 
-                    crate::Type::Unknown
+                    crate::Type::Unknown(UnknownTypeId(Some(var.counter)))
                 }
                 TypeKind::Parameter(path) => crate::Type::Parameter(path),
                 TypeKind::Declared { path, parameters } => crate::Type::Declared {
@@ -3338,7 +3344,7 @@ fn finalize_type<D: Driver>(
                 }
                 TypeKind::Unknown => {
                     context.contains_unknown.set(true);
-                    crate::Type::Unknown
+                    crate::Type::Unknown(UnknownTypeId::none())
                 }
             },
         }

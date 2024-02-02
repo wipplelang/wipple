@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use wipple_util::WithInfo;
 
+/// Check if every pattern in the expression is exhaustive.
 pub fn check_exhaustiveness<D: Driver>(
     driver: &D,
     expression: WithInfo<D::Info, &crate::TypedExpression<D>>,
@@ -151,7 +152,7 @@ fn convert_type<D: Driver>(
         crate::Type::Tuple(elements) => Some(Type::Tuple(
             elements.iter().map(|r#type| r#type.item.clone()).collect(),
         )),
-        crate::Type::Unknown | crate::Type::Lazy(_) | crate::Type::Function { .. } => None,
+        crate::Type::Unknown(_) | crate::Type::Lazy(_) | crate::Type::Function { .. } => None,
     }
 }
 
@@ -221,6 +222,7 @@ enum Type<D: Driver> {
     Unmatchable,
 }
 
+/// A compiled pattern.
 #[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Debug(bound = ""),
@@ -231,11 +233,17 @@ enum Type<D: Driver> {
 )]
 #[serde(rename_all = "camelCase", bound = "")]
 pub enum Pattern<D: Driver> {
+    /// A pattern representing a concrete type.
     Constructor(Constructor<D>, Vec<Pattern<D>>),
+
+    /// A pattern for a variable.
     Binding,
+
+    /// Match any pattern in the list.
     Or(Vec<Pattern<D>>),
 }
 
+/// Represents the concrete type a pattern matches.
 #[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Debug(bound = ""),
@@ -246,9 +254,17 @@ pub enum Pattern<D: Driver> {
 )]
 #[serde(rename_all = "camelCase", bound = "")]
 pub enum Constructor<D: Driver> {
+    /// A variant of an enumeration.
     Variant(D::Path),
+
+    /// A tuple.
     Tuple,
+
+    /// A structure.
     Structure,
+
+    /// A type that cannot be matched except with a variable binding or
+    /// wildcard (eg. `Number`).
     Unbounded,
 }
 

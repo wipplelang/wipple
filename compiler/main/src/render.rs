@@ -596,7 +596,7 @@ pub fn render_diagnostic(
                         span: info.parser_info.span.clone(),
                         message: String::from("not enough information to determine the type of this code"),
                     },
-                    secondary_labels: if let wipple_typecheck::Type::Unknown = r#type {
+                    secondary_labels: if let wipple_typecheck::Type::Unknown(_) = r#type {
                         Vec::new()
                     } else {
                         vec![Label {
@@ -962,7 +962,7 @@ pub fn render_type(r#type: &wipple_typecheck::Type<crate::Driver>, is_top_level:
         is_return: bool,
     ) -> String {
         match r#type {
-            wipple_typecheck::Type::Unknown => String::from("_"),
+            wipple_typecheck::Type::Unknown(_) => String::from("_"),
             wipple_typecheck::Type::Parameter(parameter) => {
                 parameter.last().unwrap().name().unwrap_or("_").to_string()
             }

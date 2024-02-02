@@ -255,7 +255,7 @@ pub enum Error<D: Driver> {
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum Type<D: Driver> {
     /// A type to be inferred or that could not be resolved.
-    Unknown,
+    Unknown(UnknownTypeId),
 
     /// A type parameter.
     Parameter(D::Path),
@@ -285,6 +285,17 @@ pub enum Type<D: Driver> {
 
     /// A type whose values are computed lazily.
     Lazy(WithInfo<D::Info, Box<Type<D>>>),
+}
+
+/// Used to disambiguate between unknown types.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct UnknownTypeId(Option<u32>);
+
+impl UnknownTypeId {
+    /// No additional information is available about the type.
+    pub fn none() -> Self {
+        UnknownTypeId(None)
+    }
 }
 
 /// An instance or bound.
