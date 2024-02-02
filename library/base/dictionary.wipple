@@ -17,7 +17,7 @@ Dictionary : Key Value => type (
     entries :: List (Maybe (Key ; Value))
 )
 
-Key Value => instance (Default (Dictionary Key Value)) : Dictionary (
+Key Value => instance (Empty (Dictionary Key Value)) : Dictionary (
     hasher : intrinsic "make-hasher"
     size : 0
     entries : (None ,)
@@ -164,7 +164,7 @@ Key Value where (Equal Key) (Hash Key) => instance (Container (Dictionary Key Va
 [An unordered collection of unique elements.]
 Set : Element => type (dictionary :: Dictionary Element ())
 
-Element => instance (Default (Set Element)) : (dictionary : Default)
+Element => instance (Empty (Set Element)) : (dictionary : Empty)
 
 [Add a new element to a set, returning a new set.]
 insert :: Element where (Equal Element) (Hash Element) => Element -> Set Element -> Set Element

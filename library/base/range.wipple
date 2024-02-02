@@ -29,12 +29,12 @@ language trait "by" : By
     step : step
 )
 
-(N : Number) where (Default N) (Order N) (Add N N N) => instance (As-Sequence (Stride N) N) : (
+(N : Number) where (Empty N) (Order N) (Add N N N) => instance (As-Sequence (Stride N) N) : (
     min : min
     max : max
     step : step
 ) -> (
-    zero : Default
+    zero : Empty
 
     (max >= min) . expect "`max` must be greater than `min`"
     (step >= zero). expect "`step` must be positive"

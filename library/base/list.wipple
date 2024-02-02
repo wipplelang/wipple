@@ -1,7 +1,7 @@
 List : Element => type
 language type "list" : List
 
-Element => instance (Default (List Element)) : semantics "pure" (intrinsic "make-empty-list")
+Element => instance (Empty (List Element)) : semantics "pure" (intrinsic "make-empty-list")
 
 [Retrieve the first item inside a list, or `None` if the list is empty.]
 first :: Element => List Element -> Maybe Element

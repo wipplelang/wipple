@@ -80,10 +80,10 @@ add! : n m -> m . set! (get m + n)
 increment! :: Value where (Add Value Number Value) => Mutable Value -> ()
 increment! : add! 1
 
-[Remove the value contained inside a mutable value, replacing it with `Default`.]
-take! :: Value where (Default Value) => Mutable Value -> Value
+[Remove the value contained inside a mutable value, replacing it with `Empty`.]
+take! :: Value where (Empty Value) => Mutable Value -> Value
 take! : mutable -> (
     value : get mutable
-    mutable . set! Default
+    mutable . set! Empty
     value
 )

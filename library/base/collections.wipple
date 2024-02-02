@@ -3,8 +3,8 @@ Build-Collection : Element (Collection : List Element) => trait (Element -> Coll
 
 language constant "build-collection" : Build-Collection
 
-initial-collection :: Element (Collection : List Element) where (Default Collection) (Build-Collection Element Collection) => Collection
-initial-collection : Default
+initial-collection :: Element (Collection : List Element) where (Empty Collection) (Build-Collection Element Collection) => Collection
+initial-collection : Empty
 
 language constant "initial-collection" : initial-collection
 

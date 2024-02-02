@@ -91,5 +91,5 @@ negate :: (N : Number) where (Negate N) => N -> N
 negate : Negate
 
 [Returns `True` if the first number is divisible by the second.]
-divisible-by? :: (N : Number) where (Equal N) (Remainder N) (Default N) => N -> N -> Boolean
-divisible-by? : b a -> a % b = Default
+divisible-by? :: (N : Number) where (Equal N) (Remainder N) (Empty N) => N -> N -> Boolean
+divisible-by? : b a -> a % b = Empty

@@ -82,8 +82,8 @@ unreachable : error "unreachable"
 
 [Represents the default or initial value of a type.]
 [on-unimplemented : "_ has no default value" Value]
-Default : Value => trait Value
-instance (Default Number) : 0
-instance (Default Text) : ""
-instance (Default Boolean) : False
-Value => instance (Default (Maybe Value)) : None
+Empty : Value => trait Value
+instance (Empty Number) : 0
+instance (Empty Text) : ""
+instance (Empty Boolean) : False
+Value => instance (Empty (Maybe Value)) : None

@@ -123,8 +123,8 @@ reduce : result f container -> (
 )
 
 [Find the sum of all the numbers in a sequence.]
-sum :: Container (infer N) where (As-Sequence Container N) (Default N) (Add N N N) => Container -> N
-sum : reduce Default (+)
+sum :: Container (infer N) where (As-Sequence Container N) (Empty N) (Add N N N) => Container -> N
+sum : reduce Empty (+)
 
 [on-unimplemented : "cannot create a _ from a sequence of _" Container Element]
 From-Sequence : Element Container => trait (Sequence Element -> Container)
@@ -349,8 +349,8 @@ Left (infer Left-Element) Right (infer Right-Element) where (Extend Left Left-El
 )
 
 [Split a sequence that produces two values at a time into two separate collections.]
-unzip :: Collection (infer Left-Element) (infer Right-Element) Left Right where (As-Sequence Collection (Left-Element ; Right-Element)) (Extend Left Left-Element) (Extend Right Right-Element) (Default Left) (Default Right) => Collection -> (Left ; Right)
-unzip : collection -> extend (As-Sequence collection) (Default ; Default)
+unzip :: Collection (infer Left-Element) (infer Right-Element) Left Right where (As-Sequence Collection (Left-Element ; Right-Element)) (Extend Left Left-Element) (Extend Right Right-Element) (Empty Left) (Empty Right) => Collection -> (Left ; Right)
+unzip : collection -> extend (As-Sequence collection) (Empty ; Empty)
 
 Container : Collection (infer Element) => trait (Element -> Collection -> Boolean)
 
