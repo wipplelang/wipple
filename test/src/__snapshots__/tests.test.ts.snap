@@ -2972,7 +2972,7 @@ exports[`random.wipple 1`] = `
 {
   "output": 
 "0
-1.8
+1.4
 list position must be a whole number
 "
 ,
@@ -3268,77 +3268,143 @@ exports[`type-arithmetic.wipple 1`] = `
           "documentation": [],
           "path": "test/tests/type-arithmetic.wipple",
           "span": {
-            "end": 62,
-            "start": 57,
+            "end": 274,
+            "start": 263,
           },
         },
       },
       "item": {
-        "parse": {
-          "expected": "type",
-          "span": {
-            "end": 62,
-            "start": 57,
+        "typecheck": {
+          "unknownType": {
+            "function": {
+              "input": {
+                "info": {
+                  "parserInfo": {
+                    "documentation": [],
+                    "path": "test/tests/type-arithmetic.wipple",
+                    "span": {
+                      "end": 274,
+                      "start": 263,
+                    },
+                  },
+                },
+                "item": "unknown",
+              },
+              "output": {
+                "info": {
+                  "parserInfo": {
+                    "documentation": [],
+                    "path": "test/tests/type-arithmetic.wipple",
+                    "span": {
+                      "end": 177,
+                      "start": 170,
+                    },
+                  },
+                },
+                "item": {
+                  "declared": {
+                    "parameters": [
+                      {
+                        "info": {
+                          "parserInfo": {
+                            "documentation": [],
+                            "path": "test/tests/type-arithmetic.wipple",
+                            "span": {
+                              "end": 177,
+                              "start": 170,
+                            },
+                          },
+                        },
+                        "item": {
+                          "declared": {
+                            "parameters": [
+                              {
+                                "info": {
+                                  "parserInfo": {
+                                    "documentation": [],
+                                    "path": "test/tests/type-arithmetic.wipple",
+                                    "span": {
+                                      "end": 177,
+                                      "start": 170,
+                                    },
+                                  },
+                                },
+                                "item": {
+                                  "declared": {
+                                    "parameters": [
+                                      {
+                                        "info": {
+                                          "parserInfo": {
+                                            "documentation": [],
+                                            "path": "test/tests/type-arithmetic.wipple",
+                                            "span": {
+                                              "end": 236,
+                                              "start": 227,
+                                            },
+                                          },
+                                        },
+                                        "item": {
+                                          "declared": {
+                                            "parameters": [
+                                              {
+                                                "info": {
+                                                  "parserInfo": {
+                                                    "documentation": [],
+                                                    "path": "test/tests/type-arithmetic.wipple",
+                                                    "span": {
+                                                      "end": 235,
+                                                      "start": 230,
+                                                    },
+                                                  },
+                                                },
+                                                "item": {
+                                                  "declared": {
+                                                    "parameters": [
+                                                      {
+                                                        "info": {
+                                                          "parserInfo": {
+                                                            "documentation": [],
+                                                            "path": "test/tests/type-arithmetic.wipple",
+                                                            "span": {
+                                                              "end": 234,
+                                                              "start": 233,
+                                                            },
+                                                          },
+                                                        },
+                                                        "item": {
+                                                          "declared": {
+                                                            "parameters": [],
+                                                            "path": "type Z",
+                                                          },
+                                                        },
+                                                      },
+                                                    ],
+                                                    "path": "type S",
+                                                  },
+                                                },
+                                              },
+                                            ],
+                                            "path": "type S",
+                                          },
+                                        },
+                                      },
+                                    ],
+                                    "path": "type S",
+                                  },
+                                },
+                              },
+                            ],
+                            "path": "type S",
+                          },
+                        },
+                      },
+                    ],
+                    "path": "type S",
+                  },
+                },
+              },
+            },
           },
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/type-arithmetic.wipple",
-          "span": {
-            "end": 88,
-            "start": 63,
-          },
-        },
-      },
-      "item": {
-        "parse": {
-          "expected": "expression",
-          "span": {
-            "end": 88,
-            "start": 63,
-          },
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/type-arithmetic.wipple",
-          "span": {
-            "end": 150,
-            "start": 89,
-          },
-        },
-      },
-      "item": {
-        "parse": {
-          "expected": "expression",
-          "span": {
-            "end": 150,
-            "start": 89,
-          },
-        },
-      },
-    },
-    {
-      "info": {
-        "parserInfo": {
-          "documentation": [],
-          "path": "test/tests/type-arithmetic.wipple",
-          "span": {
-            "end": 62,
-            "start": 40,
-          },
-        },
-      },
-      "item": {
-        "lower": {
-          "alreadyDefined": "trait Add",
         },
       },
     },
@@ -4314,6 +4380,12 @@ exports[`unresolved-type-multiple-parameters.wipple 1`] = `
       },
     },
   ],
+}
+`;
+
+exports[`unused-bound.wipple 1`] = `
+{
+  "output": "",
 }
 `;
 
