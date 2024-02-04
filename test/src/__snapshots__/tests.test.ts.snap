@@ -1008,7 +1008,7 @@ True
 True
 True
 True
-expected lazy value
+expected defer value
 "
 ,
 }
@@ -2512,7 +2512,7 @@ exports[`nested-bounds.wipple 1`] = `
 exports[`not.wipple 1`] = `
 {
   "output": 
-"expected lazy value
+"expected defer value
 "
 ,
 }
@@ -2735,8 +2735,8 @@ exports[`operator-without-parentheses.wipple 1`] = `
                       "documentation": [],
                       "path": "/Users/wilson/Desktop/wipple-wasm/library/base/logic.wipple",
                       "span": {
-                        "end": 1116,
-                        "start": 1046,
+                        "end": 1118,
+                        "start": 1047,
                       },
                     },
                   },
@@ -2798,8 +2798,8 @@ exports[`operator-without-parentheses.wipple 1`] = `
                           "documentation": [],
                           "path": "/Users/wilson/Desktop/wipple-wasm/library/base/logic.wipple",
                           "span": {
-                            "end": 1116,
-                            "start": 1046,
+                            "end": 1118,
+                            "start": 1047,
                           },
                         },
                       },
@@ -2972,7 +2972,7 @@ exports[`random.wipple 1`] = `
 {
   "output": 
 "0
-1.4
+1.8
 list position must be a whole number
 "
 ,
