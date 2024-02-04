@@ -56,6 +56,26 @@ tasks:
       - rm -rf $WIPPLE_TEST_PREFIX/.wipple
       - wipple compile library/base/*.wipple --interface $WIPPLE_TEST_PREFIX/.wipple/base.wippleinterface --library $WIPPLE_TEST_PREFIX/.wipple/base.wipplelibrary
 
+  install-dependencies:
+    run: once
+    deps:
+      - test:install-dependencies
+      - cli:install-dependencies
+      - compiler:install-dependencies
+      - interpreter:install-dependencies
+
+  test:install-dependencies:
+    run: once
+    dir: test
+    cmds:
+      - npm install
+
+  cli:install-dependencies:
+    run: once
+    dir: cli
+    cmds:
+      - npm install
+
   cli:build:
     run: once
     deps:
@@ -67,11 +87,23 @@ tasks:
       - npm run package
       - cp dist/wipple /usr/local/bin/wipple
 
+  compiler:install-dependencies:
+    run: once
+    dir: compiler
+    cmds:
+      - npm install
+
   compiler:build:
     run: once
     dir: compiler
     cmds:
       - npm run build
+
+  interpreter:install-dependencies:
+    run: once
+    dir: interpreter
+    cmds:
+      - npm install
 
   interpreter:build:
     run: once

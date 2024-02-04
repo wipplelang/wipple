@@ -1,0 +1,38 @@
+on:
+    - workflow_dispatch
+    - push
+
+jobs:
+    tests:
+        name: Tests
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+
+            - uses: arduino/setup-task@v1
+
+            - uses: oven-sh/setup-bun@v1
+              with:
+                  bun-version: latest
+
+            - uses: Swatinem/rust-cache@v2.2.0
+              with:
+                  workspaces: |
+                      compiler
+                  cache-on-failure: true
+
+            - run: |
+                  rustup toolchain install stable --profile minimal
+                  rustup target add wasm32-unknown-unknown
+                  curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+                  cargo install -f wasm-bindgen-cli
+
+            - run: task install-dependencies
+
+            - run: task cli:build
+
+            - run: task test
+              env:
+                  WIPPLE_TEST_PREFIX: ${{ github.workspace }}
+
+    # TODO: Deploy website
