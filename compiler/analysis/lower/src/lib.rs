@@ -518,7 +518,7 @@ pub enum UnresolvedType<D: Driver> {
     /// A tuple type.
     Tuple(Vec<WithInfo<D::Info, UnresolvedType<D>>>),
 
-    /// A type whose values are computed lazily.
+    /// A type whose values are computed later.
     Deferred(WithInfo<D::Info, Box<UnresolvedType<D>>>),
 }
 
@@ -1048,7 +1048,7 @@ pub enum Type<D: Driver> {
     /// A tuple type.
     Tuple(Vec<WithInfo<D::Info, Type<D>>>),
 
-    /// A type whose values are computed lazily.
+    /// A type whose values are computed later.
     Deferred(WithInfo<D::Info, Box<Type<D>>>),
 }
 

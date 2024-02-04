@@ -255,7 +255,7 @@ pub enum Error<D: Driver> {
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum Type<D: Driver> {
     /// A type to be inferred or that could not be resolved.
-    Unknown(UnknownTypeId),
+    Unknown(#[serde(skip)] UnknownTypeId),
 
     /// A type parameter.
     Parameter(D::Path),
@@ -283,12 +283,13 @@ pub enum Type<D: Driver> {
     /// A tuple type.
     Tuple(Vec<WithInfo<D::Info, Type<D>>>),
 
-    /// A type whose values are computed lazily.
+    /// A type whose values are computed later.
     Deferred(WithInfo<D::Info, Box<Type<D>>>),
 }
 
-/// Used to disambiguate between unknown types.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// Used to disambiguate between unknown types by recording the internal type
+/// variable the [`Unknown`](Type::Unknown) type replaced.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct UnknownTypeId(Option<u32>);
 
 impl UnknownTypeId {
@@ -296,6 +297,23 @@ impl UnknownTypeId {
     pub fn none() -> Self {
         UnknownTypeId(None)
     }
+
+    /// Returns `true` if `self` originated from the same type as `other`.
+    pub fn is_from_same_type_as(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl PartialEq for UnknownTypeId {
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
+}
+
+impl Eq for UnknownTypeId {}
+
+impl Hash for UnknownTypeId {
+    fn hash<H: std::hash::Hasher>(&self, _state: &mut H) {}
 }
 
 /// An instance or bound.
@@ -718,7 +736,7 @@ pub enum TypedExpressionKind<D: Driver> {
         body: WithInfo<D::Info, Box<TypedExpression<D>>>,
     },
 
-    /// A lazily-computed value.
+    /// A deferred value.
     Deferred(WithInfo<D::Info, Box<TypedExpression<D>>>),
 }
 

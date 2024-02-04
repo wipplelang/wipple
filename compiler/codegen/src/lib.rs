@@ -170,7 +170,7 @@ pub enum TypedInstruction<D: Driver> {
     /// A function that can potentially capture variables.
     Function(Vec<u32>, D::Path, Label),
 
-    /// A lazily-evaluated expression.
+    /// A deferred expression.
     Deferred(Vec<u32>, D::Path, Label),
 
     /// A constant.
