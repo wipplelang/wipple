@@ -16,6 +16,9 @@ pub trait Driver: Sized {
     /// Retrieve the path of the file being parsed.
     fn file_path(&self) -> String;
 
+    /// Retrieve the path to be rendered in diagnostics.
+    fn visible_path(&self) -> String;
+
     /// Merge two [`Info`](Driver::Info) values together.
     fn merge_info(left: Self::Info, right: Self::Info) -> Self::Info;
 }

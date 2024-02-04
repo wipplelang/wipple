@@ -90,7 +90,7 @@ pub fn render_diagnostics(
 
     let diagnostics = diagnostics
         .into_iter()
-        .map(|error| render::render_diagnostic(error, &query))
+        .map(|diagnostic| render::render_diagnostic(diagnostic, &query))
         .collect::<Vec<_>>();
 
     serialize(&diagnostics)
@@ -163,6 +163,9 @@ impl From<parser::syntax::Info> for Info {
 pub struct File {
     /// The file's path.
     pub path: String,
+
+    /// The path to be rendered in diagnostics.
+    pub visible_path: String,
 
     /// The file's contents.
     pub code: String,
@@ -254,6 +257,7 @@ impl Driver {
                         info: Info {
                             parser_info: parser::syntax::Info {
                                 path: file.path.clone(),
+                                visible_path: file.visible_path.clone(),
                                 span: error.span.clone(),
                                 documentation: Vec::new(),
                             },
@@ -269,6 +273,7 @@ impl Driver {
                         info: Info {
                             parser_info: parser::syntax::Info {
                                 path: file.path.clone(),
+                                visible_path: file.visible_path.clone(),
                                 span: error.span.clone(),
                                 documentation: Vec::new(),
                             },
@@ -279,6 +284,7 @@ impl Driver {
 
                 let syntax_driver = SyntaxDriver {
                     file_path: file.path.clone(),
+                    visible_path: file.visible_path.clone(),
                 };
 
                 let syntax_result = wipple_parser::syntax::parse(&syntax_driver, read_result.node);
@@ -287,6 +293,7 @@ impl Driver {
                         info: Info {
                             parser_info: parser::syntax::Info {
                                 path: file.path.clone(),
+                                visible_path: file.visible_path.clone(),
                                 span: error.span.clone(),
                                 documentation: Vec::new(),
                             },
@@ -590,6 +597,7 @@ impl Driver {
 
 struct SyntaxDriver {
     file_path: String,
+    visible_path: String,
 }
 
 impl wipple_syntax::Driver for SyntaxDriver {
@@ -599,10 +607,15 @@ impl wipple_syntax::Driver for SyntaxDriver {
         self.file_path.clone()
     }
 
+    fn visible_path(&self) -> String {
+        self.visible_path.clone()
+    }
+
     fn merge_info(left: Self::Info, right: Self::Info) -> Self::Info {
         Info {
             parser_info: parser::syntax::Info {
                 path: left.parser_info.path,
+                visible_path: left.parser_info.visible_path,
                 span: left.parser_info.span.start..right.parser_info.span.end,
                 documentation: Vec::new(),
             },
@@ -625,6 +638,7 @@ impl wipple_typecheck::Driver for Driver {
     fn top_level_info(&self) -> Self::Info {
         parser::syntax::Info {
             path: String::from("top-level"),
+            visible_path: String::from("top-level"),
             span: 0..0,
             documentation: Vec::new(),
         }

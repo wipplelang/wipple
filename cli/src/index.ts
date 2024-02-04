@@ -35,10 +35,13 @@ const app = subcommands({
                 outputLibraryPath,
                 sourcePaths,
             }) => {
-                const sources = sourcePaths.map((path) => {
-                    const code = fs.readFileSync(path, "utf8");
-                    return { path, code };
-                });
+                const sources = sourcePaths.map((sourcePath) => ({
+                    path: sourcePath,
+                    visiblePath: `${path.basename(path.dirname(sourcePath))}/${path.basename(
+                        sourcePath
+                    )}`,
+                    code: fs.readFileSync(sourcePath, "utf8"),
+                }));
 
                 const dependencies = dependencyPath
                     ? JSON.parse(fs.readFileSync(dependencyPath, "utf8"))

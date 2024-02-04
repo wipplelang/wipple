@@ -629,12 +629,12 @@ exports[`bounds-are-one-way.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a type compatible with \`T\`, or define a new instance for \`T\` using \`instance\`.",
       "primaryLabel": {
-        "file": "test/tests/bounds-are-one-way.wipple",
         "message": "this code requires the instance \`T Number\` to exist, but there is no such instance",
         "span": {
           "end": 68,
           "start": 67,
         },
+        "visiblePath": "test/tests/bounds-are-one-way.wipple",
       },
       "secondaryLabels": [],
     },
@@ -656,21 +656,21 @@ exports[`bounds-dont-influence-other-bounds.wipple 1`] = `
       },
       "help": "Try providing some more context so Wipple can check this code. One way to do this is by using \`::\` to explicitly annotate the type, but you can also try assigning this code to a variable and passing it to a function.",
       "primaryLabel": {
-        "file": "test/tests/bounds-dont-influence-other-bounds.wipple",
         "message": "not enough information to determine the type of this code",
         "span": {
           "end": 198,
           "start": 197,
         },
+        "visiblePath": "test/tests/bounds-dont-influence-other-bounds.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/bounds-dont-influence-other-bounds.wipple",
           "message": "this code produces a value of type \`(Number ; _)\`, where the \`_\` placeholders are unknown",
           "span": {
             "end": 198,
             "start": 197,
           },
+          "visiblePath": "test/tests/bounds-dont-influence-other-bounds.wipple",
         },
       ],
     },
@@ -684,29 +684,29 @@ exports[`bounds-dont-influence-other-bounds.wipple 1`] = `
       },
       "help": "Try providing some more context so only a single instance applies.",
       "primaryLabel": {
-        "file": "test/tests/bounds-dont-influence-other-bounds.wipple",
         "message": "multiple instances for \`T\` could apply here",
         "span": {
           "end": 198,
           "start": 197,
         },
+        "visiblePath": "test/tests/bounds-dont-influence-other-bounds.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/bounds-dont-influence-other-bounds.wipple",
           "message": "this instance could apply",
           "span": {
             "end": 71,
             "start": 42,
           },
+          "visiblePath": "test/tests/bounds-dont-influence-other-bounds.wipple",
         },
         {
-          "file": "test/tests/bounds-dont-influence-other-bounds.wipple",
           "message": "this instance could apply",
           "span": {
             "end": 99,
             "start": 72,
           },
+          "visiblePath": "test/tests/bounds-dont-influence-other-bounds.wipple",
         },
       ],
     },
@@ -728,12 +728,12 @@ exports[`call-function-diagnostic.wipple 1`] = `
       },
       "help": "A pattern looks like \`x\` (to assign to a variable), \`Some value\` (to match a variant), \`(number : 5)\` (to match a structure), or \`_\` (to match anything).",
       "primaryLabel": {
-        "file": "test/tests/call-function-diagnostic.wipple",
         "message": "expected a pattern here",
         "span": {
           "end": 84,
           "start": 70,
         },
+        "visiblePath": "test/tests/call-function-diagnostic.wipple",
       },
       "secondaryLabels": [],
     },
@@ -752,29 +752,29 @@ exports[`call-function-diagnostic.wipple 1`] = `
       },
       "help": "Check your spelling or add a definition for \`text\` using \`:\`.",
       "primaryLabel": {
-        "file": "test/tests/call-function-diagnostic.wipple",
         "message": "can't find \`text\`",
         "span": {
           "end": 97,
           "start": 93,
         },
+        "visiblePath": "test/tests/call-function-diagnostic.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "/Users/wilson/Desktop/wipple-wasm/library/base/language.wipple",
           "message": "\`Text\` is defined here, did you mean this?",
           "span": {
             "end": 58,
             "start": 47,
           },
+          "visiblePath": "base/language.wipple",
         },
         {
-          "file": "/Users/wilson/Desktop/wipple-wasm/library/base/sequence.wipple",
           "message": "\`next\` is defined here, did you mean this?",
           "span": {
             "end": 393,
             "start": 341,
           },
+          "visiblePath": "base/sequence.wipple",
         },
       ],
     },
@@ -809,21 +809,21 @@ exports[`colliding-instances.wipple 1`] = `
       },
       "help": "Try making this instance more specific or change the types involved.",
       "primaryLabel": {
-        "file": "test/tests/colliding-instances.wipple",
         "message": "this instance is already defined",
         "span": {
           "end": 104,
           "start": 85,
         },
+        "visiblePath": "test/tests/colliding-instances.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/colliding-instances.wipple",
           "message": "other definition of the instance here",
           "span": {
             "end": 160,
             "start": 124,
           },
+          "visiblePath": "test/tests/colliding-instances.wipple",
         },
       ],
     },
@@ -837,21 +837,21 @@ exports[`colliding-instances.wipple 1`] = `
       },
       "help": "Try making this instance more specific or change the types involved.",
       "primaryLabel": {
-        "file": "test/tests/colliding-instances.wipple",
         "message": "this instance is already defined",
         "span": {
           "end": 104,
           "start": 85,
         },
+        "visiblePath": "test/tests/colliding-instances.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/colliding-instances.wipple",
           "message": "other definition of the instance here",
           "span": {
             "end": 63,
             "start": 44,
           },
+          "visiblePath": "test/tests/colliding-instances.wipple",
         },
       ],
     },
@@ -865,21 +865,21 @@ exports[`colliding-instances.wipple 1`] = `
       },
       "help": "Try making this instance more specific or change the types involved.",
       "primaryLabel": {
-        "file": "test/tests/colliding-instances.wipple",
         "message": "this instance is already defined",
         "span": {
           "end": 104,
           "start": 85,
         },
+        "visiblePath": "test/tests/colliding-instances.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/colliding-instances.wipple",
           "message": "other definition of the instance here",
           "span": {
             "end": 83,
             "start": 64,
           },
+          "visiblePath": "test/tests/colliding-instances.wipple",
         },
       ],
     },
@@ -893,21 +893,21 @@ exports[`colliding-instances.wipple 1`] = `
       },
       "help": "Try making this instance more specific or change the types involved.",
       "primaryLabel": {
-        "file": "test/tests/colliding-instances.wipple",
         "message": "this instance is already defined",
         "span": {
           "end": 160,
           "start": 124,
         },
+        "visiblePath": "test/tests/colliding-instances.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/colliding-instances.wipple",
           "message": "other definition of the instance here",
           "span": {
             "end": 63,
             "start": 44,
           },
+          "visiblePath": "test/tests/colliding-instances.wipple",
         },
       ],
     },
@@ -921,21 +921,21 @@ exports[`colliding-instances.wipple 1`] = `
       },
       "help": "Try making this instance more specific or change the types involved.",
       "primaryLabel": {
-        "file": "test/tests/colliding-instances.wipple",
         "message": "this instance is already defined",
         "span": {
           "end": 160,
           "start": 124,
         },
+        "visiblePath": "test/tests/colliding-instances.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/colliding-instances.wipple",
           "message": "other definition of the instance here",
           "span": {
             "end": 83,
             "start": 64,
           },
+          "visiblePath": "test/tests/colliding-instances.wipple",
         },
       ],
     },
@@ -949,21 +949,21 @@ exports[`colliding-instances.wipple 1`] = `
       },
       "help": "Try making this instance more specific or change the types involved.",
       "primaryLabel": {
-        "file": "test/tests/colliding-instances.wipple",
         "message": "this instance is already defined",
         "span": {
           "end": 63,
           "start": 44,
         },
+        "visiblePath": "test/tests/colliding-instances.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/colliding-instances.wipple",
           "message": "other definition of the instance here",
           "span": {
             "end": 83,
             "start": 64,
           },
+          "visiblePath": "test/tests/colliding-instances.wipple",
         },
       ],
     },
@@ -1030,12 +1030,12 @@ exports[`constant-captured-variables.wipple 1`] = `
       },
       "help": "Wipple recognizes symbols like parentheses, math operators, numbers, and names containing \`A\` through \`Z\` and dashes (\`-\`). Make sure your code only uses these symbols.",
       "primaryLabel": {
-        "file": "test/tests/constant-captured-variables.wipple",
         "message": "this symbol isn't recognized",
         "span": {
           "end": 21,
           "start": 20,
         },
+        "visiblePath": "test/tests/constant-captured-variables.wipple",
       },
       "secondaryLabels": [],
     },
@@ -1054,12 +1054,12 @@ exports[`constant-captured-variables.wipple 1`] = `
       },
       "help": "Wipple recognizes symbols like parentheses, math operators, numbers, and names containing \`A\` through \`Z\` and dashes (\`-\`). Make sure your code only uses these symbols.",
       "primaryLabel": {
-        "file": "test/tests/constant-captured-variables.wipple",
         "message": "this symbol isn't recognized",
         "span": {
           "end": 72,
           "start": 71,
         },
+        "visiblePath": "test/tests/constant-captured-variables.wipple",
       },
       "secondaryLabels": [],
     },
@@ -1073,21 +1073,21 @@ exports[`constant-captured-variables.wipple 1`] = `
       },
       "help": "Operators like \`+\` prioritize the left or right side automatically. For example, \`1 + 2 + 3\` is the same as \`(1 + 2) + 3\`. However, \`:\` doesn't prioritize either side, so you need to use parentheses.",
       "primaryLabel": {
-        "file": "test/tests/constant-captured-variables.wipple",
         "message": "the \`:\` operator can't be used multiple times in the same line of code",
         "span": {
           "end": 27,
           "start": 26,
         },
+        "visiblePath": "test/tests/constant-captured-variables.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/constant-captured-variables.wipple",
           "message": "first use of \`:\` here",
           "span": {
             "end": 19,
             "start": 18,
           },
+          "visiblePath": "test/tests/constant-captured-variables.wipple",
         },
       ],
     },
@@ -1101,12 +1101,12 @@ exports[`constant-captured-variables.wipple 1`] = `
       },
       "help": "Try adding some more code here.",
       "primaryLabel": {
-        "file": "test/tests/constant-captured-variables.wipple",
         "message": "expected a piece of code here",
         "span": {
           "end": 0,
           "start": 0,
         },
+        "visiblePath": "test/tests/constant-captured-variables.wipple",
       },
       "secondaryLabels": [],
     },
@@ -1120,12 +1120,12 @@ exports[`constant-captured-variables.wipple 1`] = `
       },
       "help": "Check your spelling or add a definition for \`n\` using \`:\`.",
       "primaryLabel": {
-        "file": "test/tests/constant-captured-variables.wipple",
         "message": "can't find \`n\`",
         "span": {
           "end": 60,
           "start": 58,
         },
+        "visiblePath": "test/tests/constant-captured-variables.wipple",
       },
       "secondaryLabels": [],
     },
@@ -1147,29 +1147,29 @@ exports[`constant-mismatched-types.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a \`Number\` instead.",
       "primaryLabel": {
-        "file": "test/tests/constant-mismatched-types.wipple",
         "message": "expected a \`Number\` here, but this code produces a \`Text\` instead",
         "span": {
           "end": 36,
           "start": 32,
         },
+        "visiblePath": "test/tests/constant-mismatched-types.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/constant-mismatched-types.wipple",
           "message": "expected because the type was annotated here...",
           "span": {
             "end": 27,
             "start": 16,
           },
+          "visiblePath": "test/tests/constant-mismatched-types.wipple",
         },
         {
-          "file": "/Users/wilson/Desktop/wipple-wasm/library/base/language.wipple",
           "message": "...but the actual type was annotated here",
           "span": {
             "end": 58,
             "start": 47,
           },
+          "visiblePath": "base/language.wipple",
         },
       ],
     },
@@ -1243,12 +1243,12 @@ exports[`did-you-mean.wipple 1`] = `
       },
       "help": "Check your spelling or add a definition for \`print\` using \`:\`.",
       "primaryLabel": {
-        "file": "test/tests/did-you-mean.wipple",
         "message": "can't find \`print\`",
         "span": {
           "end": 21,
           "start": 16,
         },
+        "visiblePath": "test/tests/did-you-mean.wipple",
       },
       "secondaryLabels": [],
     },
@@ -1262,12 +1262,12 @@ exports[`did-you-mean.wipple 1`] = `
       },
       "help": "Check your spelling or add a definition for \`hello\` using \`:\`.",
       "primaryLabel": {
-        "file": "test/tests/did-you-mean.wipple",
         "message": "can't find \`hello\`",
         "span": {
           "end": 40,
           "start": 35,
         },
+        "visiblePath": "test/tests/did-you-mean.wipple",
       },
       "secondaryLabels": [],
     },
@@ -1281,12 +1281,12 @@ exports[`did-you-mean.wipple 1`] = `
       },
       "help": "Check your spelling or add a definition for \`//\` using \`:\`.",
       "primaryLabel": {
-        "file": "test/tests/did-you-mean.wipple",
         "message": "can't find \`//\`",
         "span": {
           "end": 55,
           "start": 53,
         },
+        "visiblePath": "test/tests/did-you-mean.wipple",
       },
       "secondaryLabels": [],
     },
@@ -1300,12 +1300,12 @@ exports[`did-you-mean.wipple 1`] = `
       },
       "help": "Check your spelling or add a definition for \`comment\` using \`:\`.",
       "primaryLabel": {
-        "file": "test/tests/did-you-mean.wipple",
         "message": "can't find \`comment\`",
         "span": {
           "end": 63,
           "start": 56,
         },
+        "visiblePath": "test/tests/did-you-mean.wipple",
       },
       "secondaryLabels": [],
     },
@@ -1359,12 +1359,12 @@ exports[`exhaustiveness-checking.wipple 1`] = `
       },
       "help": "The input could be one of these patterns, but your code doesn't handle them. Try adding some more cases or using \`_\` or a variable to match any possible value.",
       "primaryLabel": {
-        "file": "test/tests/exhaustiveness-checking.wipple",
         "message": "missing patterns for \`D\` and \`F\`",
         "span": {
           "end": 90,
           "start": 85,
         },
+        "visiblePath": "test/tests/exhaustiveness-checking.wipple",
       },
       "secondaryLabels": [],
     },
@@ -1496,12 +1496,12 @@ exports[`help-show-code.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a type compatible with \`Compatible\`, or define a new instance for \`Compatible\` using \`instance\`.",
       "primaryLabel": {
-        "file": "test/tests/help-show-code.wipple",
         "message": "\`foo\` is not compatible with \`bar\`",
         "span": {
           "end": 218,
           "start": 208,
         },
+        "visiblePath": "test/tests/help-show-code.wipple",
       },
       "secondaryLabels": [],
     },
@@ -1573,29 +1573,29 @@ exports[`list-mismatched-elements.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a \`Number\` instead.",
       "primaryLabel": {
-        "file": "test/tests/list-mismatched-elements.wipple",
         "message": "expected a \`Number\` here, but this code produces a \`Text\` instead",
         "span": {
           "end": 34,
           "start": 30,
         },
+        "visiblePath": "test/tests/list-mismatched-elements.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/list-mismatched-elements.wipple",
           "message": "expected because the previous elements in the collection have type \`Number\`...",
           "span": {
             "end": 39,
             "start": 26,
           },
+          "visiblePath": "test/tests/list-mismatched-elements.wipple",
         },
         {
-          "file": "/Users/wilson/Desktop/wipple-wasm/library/base/language.wipple",
           "message": "...but the actual type was annotated here",
           "span": {
             "end": 58,
             "start": 47,
           },
+          "visiblePath": "base/language.wipple",
         },
       ],
     },
@@ -1609,21 +1609,21 @@ exports[`list-mismatched-elements.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a \`Number\` instead.",
       "primaryLabel": {
-        "file": "test/tests/list-mismatched-elements.wipple",
         "message": "expected a \`Number\` here, but this code produces a \`()\` instead",
         "span": {
           "end": 39,
           "start": 37,
         },
+        "visiblePath": "test/tests/list-mismatched-elements.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/list-mismatched-elements.wipple",
           "message": "expected because the previous elements in the collection have type \`Number\`",
           "span": {
             "end": 39,
             "start": 26,
           },
+          "visiblePath": "test/tests/list-mismatched-elements.wipple",
         },
       ],
     },
@@ -1801,29 +1801,29 @@ exports[`mismatched-call.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a \`Number -> Number -> Number\` instead.",
       "primaryLabel": {
-        "file": "test/tests/mismatched-call.wipple",
         "message": "expected a \`Number -> Number -> Number\` here, but this code produces a \`Number -> Number -> Text\` instead",
         "span": {
           "end": 195,
           "start": 188,
         },
+        "visiblePath": "test/tests/mismatched-call.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/mismatched-call.wipple",
           "message": "expected because the type was annotated here...",
           "span": {
             "end": 195,
             "start": 188,
           },
+          "visiblePath": "test/tests/mismatched-call.wipple",
         },
         {
-          "file": "/Users/wilson/Desktop/wipple-wasm/library/base/math.wipple",
           "message": "...but the actual type was annotated here",
           "span": {
             "end": 291,
             "start": 288,
           },
+          "visiblePath": "base/math.wipple",
         },
       ],
     },
@@ -1845,12 +1845,12 @@ exports[`mismatched-inferred-params.wipple 1`] = `
       },
       "help": "A pattern looks like \`x\` (to assign to a variable), \`Some value\` (to match a variant), \`(number : 5)\` (to match a structure), or \`_\` (to match anything).",
       "primaryLabel": {
-        "file": "test/tests/mismatched-inferred-params.wipple",
         "message": "expected a pattern here",
         "span": {
           "end": 52,
           "start": 41,
         },
+        "visiblePath": "test/tests/mismatched-inferred-params.wipple",
       },
       "secondaryLabels": [],
     },
@@ -1872,29 +1872,29 @@ exports[`mismatched-types.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a \`Text\` instead.",
       "primaryLabel": {
-        "file": "test/tests/mismatched-types.wipple",
         "message": "expected a \`Text\` here, but this code produces a \`Number\` instead",
         "span": {
           "end": 18,
           "start": 16,
         },
+        "visiblePath": "test/tests/mismatched-types.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/mismatched-types.wipple",
           "message": "expected because the type was annotated here...",
           "span": {
             "end": 18,
             "start": 16,
           },
+          "visiblePath": "test/tests/mismatched-types.wipple",
         },
         {
-          "file": "/Users/wilson/Desktop/wipple-wasm/library/base/language.wipple",
           "message": "...but the actual type was annotated here",
           "span": {
             "end": 13,
             "start": 0,
           },
+          "visiblePath": "base/language.wipple",
         },
       ],
     },
@@ -1916,12 +1916,12 @@ exports[`missing-instance.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a type compatible with \`Show\`, or define a new instance for \`Show\` using \`instance\`.",
       "primaryLabel": {
-        "file": "test/tests/missing-instance.wipple",
         "message": "cannot display \`Foo\` on the screen",
         "span": {
           "end": 37,
           "start": 33,
         },
+        "visiblePath": "test/tests/missing-instance.wipple",
       },
       "secondaryLabels": [],
     },
@@ -1975,37 +1975,37 @@ exports[`nested-bounds.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a type compatible with \`W\`, or define a new instance for \`W\` using \`instance\`.",
       "primaryLabel": {
-        "file": "test/tests/nested-bounds.wipple",
         "message": "this code requires the instance \`W _\` to exist, but there is no such instance",
         "span": {
           "end": 202,
           "start": 201,
         },
+        "visiblePath": "test/tests/nested-bounds.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/nested-bounds.wipple",
           "message": "this instance could satisfy \`T _\`, but it requires \`U _\`",
           "span": {
             "end": 125,
             "start": 89,
           },
+          "visiblePath": "test/tests/nested-bounds.wipple",
         },
         {
-          "file": "test/tests/nested-bounds.wipple",
           "message": "this instance could satisfy \`U _\`, but it requires \`V _\`",
           "span": {
             "end": 162,
             "start": 126,
           },
+          "visiblePath": "test/tests/nested-bounds.wipple",
         },
         {
-          "file": "test/tests/nested-bounds.wipple",
           "message": "this instance could satisfy \`V _\`, but it requires \`W _\`",
           "span": {
             "end": 199,
             "start": 163,
           },
+          "visiblePath": "test/tests/nested-bounds.wipple",
         },
       ],
     },
@@ -2080,12 +2080,12 @@ exports[`operator-without-parentheses.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a type compatible with \`Add\`, or define a new instance for \`Add\` using \`instance\`.",
       "primaryLabel": {
-        "file": "test/tests/operator-without-parentheses.wipple",
         "message": "cannot add \`2\` to \`show 1\`",
         "span": {
           "end": 26,
           "start": 16,
         },
+        "visiblePath": "test/tests/operator-without-parentheses.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2099,12 +2099,12 @@ exports[`operator-without-parentheses.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a type compatible with \`Or\`, or define a new instance for \`Or\` using \`instance\`.",
       "primaryLabel": {
-        "file": "test/tests/operator-without-parentheses.wipple",
         "message": "this code requires the instance \`Or () Boolean _\` to exist, but there is no such instance",
         "span": {
           "end": 45,
           "start": 27,
         },
+        "visiblePath": "test/tests/operator-without-parentheses.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2118,12 +2118,12 @@ exports[`operator-without-parentheses.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a type compatible with \`Add\`, or define a new instance for \`Add\` using \`instance\`.",
       "primaryLabel": {
-        "file": "test/tests/operator-without-parentheses.wipple",
         "message": "cannot add \`"hi"\` to \`1\`",
         "span": {
           "end": 61,
           "start": 51,
         },
+        "visiblePath": "test/tests/operator-without-parentheses.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2197,12 +2197,12 @@ exports[`redundant-case.wipple 1`] = `
       },
       "help": "This case is unreachable because a different pattern already handles the same pattern. Try removing this code.",
       "primaryLabel": {
-        "file": "test/tests/redundant-case.wipple",
         "message": "extra case in \`when\` expression",
         "span": {
           "end": 60,
           "start": 54,
         },
+        "visiblePath": "test/tests/redundant-case.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2216,12 +2216,12 @@ exports[`redundant-case.wipple 1`] = `
       },
       "help": "This case is unreachable because a different pattern already handles the same pattern. Try removing this code.",
       "primaryLabel": {
-        "file": "test/tests/redundant-case.wipple",
         "message": "extra case in \`when\` expression",
         "span": {
           "end": 85,
           "start": 84,
         },
+        "visiblePath": "test/tests/redundant-case.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2309,12 +2309,12 @@ exports[`show-variable.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a type compatible with \`Show\`, or define a new instance for \`Show\` using \`instance\`.",
       "primaryLabel": {
-        "file": "test/tests/show-variable.wipple",
         "message": "cannot display \`my-variable\` on the screen",
         "span": {
           "end": 92,
           "start": 88,
         },
+        "visiblePath": "test/tests/show-variable.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2357,12 +2357,12 @@ exports[`too-many-inputs.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a \`Number -> Number -> ()\` instead.",
       "primaryLabel": {
-        "file": "test/tests/too-many-inputs.wipple",
         "message": "expected a \`Number -> Number -> ()\` here, but this code produces a \`()\` instead",
         "span": {
           "end": 22,
           "start": 16,
         },
+        "visiblePath": "test/tests/too-many-inputs.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2400,21 +2400,21 @@ exports[`type-arithmetic.wipple 1`] = `
       },
       "help": "Try providing some more context so Wipple can check this code. One way to do this is by using \`::\` to explicitly annotate the type, but you can also try assigning this code to a variable and passing it to a function.",
       "primaryLabel": {
-        "file": "test/tests/type-arithmetic.wipple",
         "message": "not enough information to determine the type of this code",
         "span": {
           "end": 274,
           "start": 263,
         },
+        "visiblePath": "test/tests/type-arithmetic.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/type-arithmetic.wipple",
           "message": "this code produces a value of type \`_ -> S (S (S (S (S Z))))\`, where the \`_\` placeholders are unknown",
           "span": {
             "end": 274,
             "start": 263,
           },
+          "visiblePath": "test/tests/type-arithmetic.wipple",
         },
       ],
     },
@@ -2436,12 +2436,12 @@ exports[`type-logic.wipple 1`] = `
       },
       "help": "Try adding another type here.",
       "primaryLabel": {
-        "file": "test/tests/type-logic.wipple",
         "message": "expected a type here",
         "span": {
           "end": 131,
           "start": 126,
         },
+        "visiblePath": "test/tests/type-logic.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2455,12 +2455,12 @@ exports[`type-logic.wipple 1`] = `
       },
       "help": "Try adding some more code here.",
       "primaryLabel": {
-        "file": "test/tests/type-logic.wipple",
         "message": "expected a piece of code here",
         "span": {
           "end": 167,
           "start": 132,
         },
+        "visiblePath": "test/tests/type-logic.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2474,12 +2474,12 @@ exports[`type-logic.wipple 1`] = `
       },
       "help": "Try adding some more code here.",
       "primaryLabel": {
-        "file": "test/tests/type-logic.wipple",
         "message": "expected a piece of code here",
         "span": {
           "end": 304,
           "start": 237,
         },
+        "visiblePath": "test/tests/type-logic.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2493,21 +2493,21 @@ exports[`type-logic.wipple 1`] = `
       },
       "help": "Try choosing a different name for \`Less-Than\` so it doesn't conflict with the existing definition.",
       "primaryLabel": {
-        "file": "/Users/wilson/Desktop/wipple-wasm/library/base/logic.wipple",
         "message": "\`Less-Than\` is already defined",
         "span": {
           "end": 1882,
           "start": 1828,
         },
+        "visiblePath": "base/logic.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "/Users/wilson/Desktop/wipple-wasm/library/base/logic.wipple",
           "message": "the other \`Less-Than\` is defined here",
           "span": {
             "end": 1882,
             "start": 1828,
           },
+          "visiblePath": "base/logic.wipple",
         },
       ],
     },
@@ -2521,12 +2521,12 @@ exports[`type-logic.wipple 1`] = `
       },
       "help": "Check your spelling or add a definition for \`instance\` using \`:\`.",
       "primaryLabel": {
-        "file": "test/tests/type-logic.wipple",
         "message": "can't find \`instance\`",
         "span": {
           "end": 176,
           "start": 168,
         },
+        "visiblePath": "test/tests/type-logic.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2545,21 +2545,21 @@ exports[`type-logic.wipple 1`] = `
       },
       "help": "Check your spelling or add a definition for \`S\` using \`:\`.",
       "primaryLabel": {
-        "file": "test/tests/type-logic.wipple",
         "message": "can't find \`S\`",
         "span": {
           "end": 190,
           "start": 189,
         },
+        "visiblePath": "test/tests/type-logic.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/type-logic.wipple",
           "message": "\`S\` is defined here, did you mean this?",
           "span": {
             "end": 38,
             "start": 25,
           },
+          "visiblePath": "test/tests/type-logic.wipple",
         },
       ],
     },
@@ -2573,12 +2573,12 @@ exports[`type-logic.wipple 1`] = `
       },
       "help": "Check your spelling or add a definition for \`_\` using \`:\`.",
       "primaryLabel": {
-        "file": "test/tests/type-logic.wipple",
         "message": "can't find \`_\`",
         "span": {
           "end": 192,
           "start": 191,
         },
+        "visiblePath": "test/tests/type-logic.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2597,21 +2597,21 @@ exports[`type-logic.wipple 1`] = `
       },
       "help": "Check your spelling or add a definition for \`Z\` using \`:\`.",
       "primaryLabel": {
-        "file": "test/tests/type-logic.wipple",
         "message": "can't find \`Z\`",
         "span": {
           "end": 195,
           "start": 194,
         },
+        "visiblePath": "test/tests/type-logic.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/type-logic.wipple",
           "message": "\`Z\` is defined here, did you mean this?",
           "span": {
             "end": 24,
             "start": 16,
           },
+          "visiblePath": "test/tests/type-logic.wipple",
         },
       ],
     },
@@ -2625,12 +2625,12 @@ exports[`type-logic.wipple 1`] = `
       },
       "help": "Check your spelling or add a definition for \`instance\` using \`:\`.",
       "primaryLabel": {
-        "file": "test/tests/type-logic.wipple",
         "message": "can't find \`instance\`",
         "span": {
           "end": 211,
           "start": 203,
         },
+        "visiblePath": "test/tests/type-logic.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2649,21 +2649,21 @@ exports[`type-logic.wipple 1`] = `
       },
       "help": "Check your spelling or add a definition for \`Z\` using \`:\`.",
       "primaryLabel": {
-        "file": "test/tests/type-logic.wipple",
         "message": "can't find \`Z\`",
         "span": {
           "end": 224,
           "start": 223,
         },
+        "visiblePath": "test/tests/type-logic.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/type-logic.wipple",
           "message": "\`Z\` is defined here, did you mean this?",
           "span": {
             "end": 24,
             "start": 16,
           },
+          "visiblePath": "test/tests/type-logic.wipple",
         },
       ],
     },
@@ -2682,21 +2682,21 @@ exports[`type-logic.wipple 1`] = `
       },
       "help": "Check your spelling or add a definition for \`S\` using \`:\`.",
       "primaryLabel": {
-        "file": "test/tests/type-logic.wipple",
         "message": "can't find \`S\`",
         "span": {
           "end": 227,
           "start": 226,
         },
+        "visiblePath": "test/tests/type-logic.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/type-logic.wipple",
           "message": "\`S\` is defined here, did you mean this?",
           "span": {
             "end": 38,
             "start": 25,
           },
+          "visiblePath": "test/tests/type-logic.wipple",
         },
       ],
     },
@@ -2710,12 +2710,12 @@ exports[`type-logic.wipple 1`] = `
       },
       "help": "Check your spelling or add a definition for \`_\` using \`:\`.",
       "primaryLabel": {
-        "file": "test/tests/type-logic.wipple",
         "message": "can't find \`_\`",
         "span": {
           "end": 229,
           "start": 228,
         },
+        "visiblePath": "test/tests/type-logic.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2729,12 +2729,12 @@ exports[`type-logic.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a \`Boolean -> _\` instead.",
       "primaryLabel": {
-        "file": "test/tests/type-logic.wipple",
         "message": "expected a \`Boolean -> _\` here, but this code produces a \`Boolean\` instead",
         "span": {
           "end": 195,
           "start": 178,
         },
+        "visiblePath": "test/tests/type-logic.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2748,12 +2748,12 @@ exports[`type-logic.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a \`Boolean -> _\` instead.",
       "primaryLabel": {
-        "file": "test/tests/type-logic.wipple",
         "message": "expected a \`Boolean -> _\` here, but this code produces a \`Boolean\` instead",
         "span": {
           "end": 229,
           "start": 213,
         },
+        "visiblePath": "test/tests/type-logic.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2775,12 +2775,12 @@ exports[`type-span.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a type compatible with \`Add\`, or define a new instance for \`Add\` using \`instance\`.",
       "primaryLabel": {
-        "file": "test/tests/type-span.wipple",
         "message": "cannot add \`1\` to \`show\`",
         "span": {
           "end": 24,
           "start": 16,
         },
+        "visiblePath": "test/tests/type-span.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2794,12 +2794,12 @@ exports[`type-span.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a type compatible with \`Add\`, or define a new instance for \`Add\` using \`instance\`.",
       "primaryLabel": {
-        "file": "test/tests/type-span.wipple",
         "message": "cannot add \`1\` to \`Show\`",
         "span": {
           "end": 33,
           "start": 25,
         },
+        "visiblePath": "test/tests/type-span.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2821,21 +2821,21 @@ exports[`type-states.wipple 1`] = `
       },
       "help": "Operators like \`+\` prioritize the left or right side automatically. For example, \`1 + 2 + 3\` is the same as \`(1 + 2) + 3\`. However, \`:\` doesn't prioritize either side, so you need to use parentheses.",
       "primaryLabel": {
-        "file": "test/tests/type-states.wipple",
         "message": "the \`:\` operator can't be used multiple times in the same line of code",
         "span": {
           "end": 281,
           "start": 280,
         },
+        "visiblePath": "test/tests/type-states.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/type-states.wipple",
           "message": "first use of \`:\` here",
           "span": {
             "end": 240,
             "start": 239,
           },
+          "visiblePath": "test/tests/type-states.wipple",
         },
       ],
     },
@@ -2849,12 +2849,12 @@ exports[`type-states.wipple 1`] = `
       },
       "help": "Try adding some more code here.",
       "primaryLabel": {
-        "file": "test/tests/type-states.wipple",
         "message": "expected a piece of code here",
         "span": {
           "end": 0,
           "start": 0,
         },
+        "visiblePath": "test/tests/type-states.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2896,12 +2896,12 @@ exports[`undefined-name.wipple 1`] = `
       },
       "help": "Check your spelling or add a definition for \`foo\` using \`:\`.",
       "primaryLabel": {
-        "file": "test/tests/undefined-name.wipple",
         "message": "can't find \`foo\`",
         "span": {
           "end": 19,
           "start": 16,
         },
+        "visiblePath": "test/tests/undefined-name.wipple",
       },
       "secondaryLabels": [],
     },
@@ -2928,21 +2928,21 @@ exports[`unresolved-type-multiple-parameters.wipple 1`] = `
       },
       "help": "Check your spelling or add a definition for \`T\` using \`:\`.",
       "primaryLabel": {
-        "file": "test/tests/unresolved-type-multiple-parameters.wipple",
         "message": "can't find \`T\`",
         "span": {
           "end": 87,
           "start": 86,
         },
+        "visiblePath": "test/tests/unresolved-type-multiple-parameters.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/unresolved-type-multiple-parameters.wipple",
           "message": "\`T\` is defined here, did you mean this?",
           "span": {
             "end": 29,
             "start": 16,
           },
+          "visiblePath": "test/tests/unresolved-type-multiple-parameters.wipple",
         },
       ],
     },
@@ -2961,21 +2961,21 @@ exports[`unresolved-type-multiple-parameters.wipple 1`] = `
       },
       "help": "Check your spelling or add a definition for \`U\` using \`:\`.",
       "primaryLabel": {
-        "file": "test/tests/unresolved-type-multiple-parameters.wipple",
         "message": "can't find \`U\`",
         "span": {
           "end": 223,
           "start": 222,
         },
+        "visiblePath": "test/tests/unresolved-type-multiple-parameters.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/unresolved-type-multiple-parameters.wipple",
           "message": "\`U\` is defined here, did you mean this?",
           "span": {
             "end": 45,
             "start": 30,
           },
+          "visiblePath": "test/tests/unresolved-type-multiple-parameters.wipple",
         },
       ],
     },
@@ -2994,21 +2994,21 @@ exports[`unresolved-type-multiple-parameters.wipple 1`] = `
       },
       "help": "Check your spelling or add a definition for \`U\` using \`:\`.",
       "primaryLabel": {
-        "file": "test/tests/unresolved-type-multiple-parameters.wipple",
         "message": "can't find \`U\`",
         "span": {
           "end": 245,
           "start": 244,
         },
+        "visiblePath": "test/tests/unresolved-type-multiple-parameters.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/unresolved-type-multiple-parameters.wipple",
           "message": "\`U\` is defined here, did you mean this?",
           "span": {
             "end": 45,
             "start": 30,
           },
+          "visiblePath": "test/tests/unresolved-type-multiple-parameters.wipple",
         },
       ],
     },
@@ -3058,12 +3058,12 @@ exports[`when-mismatched-types.wipple 1`] = `
       },
       "help": "Wipple recognizes symbols like parentheses, math operators, numbers, and names containing \`A\` through \`Z\` and dashes (\`-\`). Make sure your code only uses these symbols.",
       "primaryLabel": {
-        "file": "test/tests/when-mismatched-types.wipple",
         "message": "this symbol isn't recognized",
         "span": {
           "end": 33,
           "start": 32,
         },
+        "visiblePath": "test/tests/when-mismatched-types.wipple",
       },
       "secondaryLabels": [],
     },
@@ -3082,12 +3082,12 @@ exports[`when-mismatched-types.wipple 1`] = `
       },
       "help": "Wipple recognizes symbols like parentheses, math operators, numbers, and names containing \`A\` through \`Z\` and dashes (\`-\`). Make sure your code only uses these symbols.",
       "primaryLabel": {
-        "file": "test/tests/when-mismatched-types.wipple",
         "message": "this symbol isn't recognized",
         "span": {
           "end": 64,
           "start": 63,
         },
+        "visiblePath": "test/tests/when-mismatched-types.wipple",
       },
       "secondaryLabels": [],
     },
@@ -3101,12 +3101,12 @@ exports[`when-mismatched-types.wipple 1`] = `
       },
       "help": "Try adding another type here.",
       "primaryLabel": {
-        "file": "test/tests/when-mismatched-types.wipple",
         "message": "expected a type here",
         "span": {
           "end": 34,
           "start": 33,
         },
+        "visiblePath": "test/tests/when-mismatched-types.wipple",
       },
       "secondaryLabels": [],
     },
@@ -3120,12 +3120,12 @@ exports[`when-mismatched-types.wipple 1`] = `
       },
       "help": "Try adding another type here.",
       "primaryLabel": {
-        "file": "test/tests/when-mismatched-types.wipple",
         "message": "expected a type here",
         "span": {
           "end": 47,
           "start": 46,
         },
+        "visiblePath": "test/tests/when-mismatched-types.wipple",
       },
       "secondaryLabels": [],
     },
@@ -3139,12 +3139,12 @@ exports[`when-mismatched-types.wipple 1`] = `
       },
       "help": "Try adding some more code here.",
       "primaryLabel": {
-        "file": "test/tests/when-mismatched-types.wipple",
         "message": "expected a piece of code here",
         "span": {
           "end": 63,
           "start": 62,
         },
+        "visiblePath": "test/tests/when-mismatched-types.wipple",
       },
       "secondaryLabels": [],
     },
@@ -3158,12 +3158,12 @@ exports[`when-mismatched-types.wipple 1`] = `
       },
       "help": "Try removing some of these inputs or adding more placeholders to the text.",
       "primaryLabel": {
-        "file": "test/tests/when-mismatched-types.wipple",
         "message": "expected 0 values after the text because it has 1 placeholders",
         "span": {
           "end": 62,
           "start": 58,
         },
+        "visiblePath": "test/tests/when-mismatched-types.wipple",
       },
       "secondaryLabels": [],
     },
@@ -3177,21 +3177,21 @@ exports[`when-mismatched-types.wipple 1`] = `
       },
       "help": "Try providing some more context so Wipple can check this code. One way to do this is by using \`::\` to explicitly annotate the type, but you can also try assigning this code to a variable and passing it to a function.",
       "primaryLabel": {
-        "file": "test/tests/when-mismatched-types.wipple",
         "message": "not enough information to determine the type of this code",
         "span": {
           "end": 46,
           "start": 44,
         },
+        "visiblePath": "test/tests/when-mismatched-types.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/when-mismatched-types.wipple",
           "message": "this code produces a value of type \`_ -> Boolean -> Text\`, where the \`_\` placeholders are unknown",
           "span": {
             "end": 46,
             "start": 44,
           },
+          "visiblePath": "test/tests/when-mismatched-types.wipple",
         },
       ],
     },
@@ -3205,21 +3205,21 @@ exports[`when-mismatched-types.wipple 1`] = `
       },
       "help": "Try providing some more context so Wipple can check this code. One way to do this is by using \`::\` to explicitly annotate the type, but you can also try assigning this code to a variable and passing it to a function.",
       "primaryLabel": {
-        "file": "test/tests/when-mismatched-types.wipple",
         "message": "not enough information to determine the type of this code",
         "span": {
           "end": 31,
           "start": 27,
         },
+        "visiblePath": "test/tests/when-mismatched-types.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/when-mismatched-types.wipple",
           "message": "this code produces a value of type \`_ -> Boolean -> Number -> _ -> Boolean -> Text\`, where the \`_\` placeholders are unknown",
           "span": {
             "end": 31,
             "start": 27,
           },
+          "visiblePath": "test/tests/when-mismatched-types.wipple",
         },
       ],
     },
@@ -3233,21 +3233,21 @@ exports[`when-mismatched-types.wipple 1`] = `
       },
       "help": "Try providing some more context so Wipple can check this code. One way to do this is by using \`::\` to explicitly annotate the type, but you can also try assigning this code to a variable and passing it to a function.",
       "primaryLabel": {
-        "file": "test/tests/when-mismatched-types.wipple",
         "message": "not enough information to determine the type of this code",
         "span": {
           "end": 65,
           "start": 21,
         },
+        "visiblePath": "test/tests/when-mismatched-types.wipple",
       },
       "secondaryLabels": [
         {
-          "file": "test/tests/when-mismatched-types.wipple",
           "message": "this code produces a value of type \`_ -> Boolean -> _ -> Boolean -> Number -> _ -> Boolean -> Text\`, where the \`_\` placeholders are unknown",
           "span": {
             "end": 65,
             "start": 21,
           },
+          "visiblePath": "test/tests/when-mismatched-types.wipple",
         },
       ],
     },
@@ -3261,7 +3261,6 @@ exports[`when-mismatched-types.wipple 1`] = `
       },
       "help": "Try adjusting the code so it produces a type compatible with \`Show\`, or define a new instance for \`Show\` using \`instance\`.",
       "primaryLabel": {
-        "file": "test/tests/when-mismatched-types.wipple",
         "message": 
 "cannot display \`(when True {
   True -> 42
@@ -3272,6 +3271,7 @@ exports[`when-mismatched-types.wipple 1`] = `
           "end": 20,
           "start": 16,
         },
+        "visiblePath": "test/tests/when-mismatched-types.wipple",
       },
       "secondaryLabels": [],
     },
@@ -3285,12 +3285,12 @@ exports[`when-mismatched-types.wipple 1`] = `
       },
       "help": "The input could be one of these patterns, but your code doesn't handle them. Try adding some more cases or using \`_\` or a variable to match any possible value.",
       "primaryLabel": {
-        "file": "test/tests/when-mismatched-types.wipple",
         "message": "missing pattern for \`False\`",
         "span": {
           "end": 26,
           "start": 22,
         },
+        "visiblePath": "test/tests/when-mismatched-types.wipple",
       },
       "secondaryLabels": [],
     },
@@ -3304,12 +3304,12 @@ exports[`when-mismatched-types.wipple 1`] = `
       },
       "help": "The input could be one of these patterns, but your code doesn't handle them. Try adding some more cases or using \`_\` or a variable to match any possible value.",
       "primaryLabel": {
-        "file": "test/tests/when-mismatched-types.wipple",
         "message": "missing pattern for \`False\`",
         "span": {
           "end": 34,
           "start": 33,
         },
+        "visiblePath": "test/tests/when-mismatched-types.wipple",
       },
       "secondaryLabels": [],
     },
@@ -3323,12 +3323,12 @@ exports[`when-mismatched-types.wipple 1`] = `
       },
       "help": "The input could be one of these patterns, but your code doesn't handle them. Try adding some more cases or using \`_\` or a variable to match any possible value.",
       "primaryLabel": {
-        "file": "test/tests/when-mismatched-types.wipple",
         "message": "missing pattern for \`_\`",
         "span": {
           "end": 40,
           "start": 36,
         },
+        "visiblePath": "test/tests/when-mismatched-types.wipple",
       },
       "secondaryLabels": [],
     },
@@ -3342,12 +3342,12 @@ exports[`when-mismatched-types.wipple 1`] = `
       },
       "help": "The input could be one of these patterns, but your code doesn't handle them. Try adding some more cases or using \`_\` or a variable to match any possible value.",
       "primaryLabel": {
-        "file": "test/tests/when-mismatched-types.wipple",
         "message": "missing pattern for \`True\`",
         "span": {
           "end": 47,
           "start": 46,
         },
+        "visiblePath": "test/tests/when-mismatched-types.wipple",
       },
       "secondaryLabels": [],
     },

@@ -20,9 +20,14 @@ impl wipple_syntax::Driver for Driver {
         String::from("test")
     }
 
+    fn visible_path(&self) -> String {
+        String::from("test")
+    }
+
     fn merge_info(left: Self::Info, right: Self::Info) -> Self::Info {
         Info {
             path: left.path,
+            visible_path: left.visible_path,
             span: left.span.start..right.span.end,
             documentation: left
                 .documentation
@@ -43,6 +48,7 @@ where
     WithInfo {
         info: Info {
             path: Driver.file_path(),
+            visible_path: Driver.visible_path(),
             span,
             documentation: Vec::new(),
         }
@@ -102,6 +108,9 @@ fn test_grammar<T: std::fmt::Debug + PartialEq>(
 pub struct Info {
     /// The path to the source file.
     pub path: String,
+
+    /// The path rendered in diagnostics.
+    pub visible_path: String,
 
     /// The location of the item in the source code.
     pub span: Range<u32>,
@@ -171,6 +180,7 @@ where
         Node::Block(span, statements) => WithInfo {
             info: Info {
                 path: driver.file_path(),
+                visible_path: driver.visible_path(),
                 span,
                 documentation: Vec::new(),
             }
@@ -199,6 +209,7 @@ where
             WithInfo {
                 info: Info {
                     path: driver.file_path(),
+                    visible_path: driver.visible_path(),
                     span,
                     documentation: Vec::new(),
                 }
@@ -363,6 +374,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         TokenKind::Text(name) => WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: token.span,
                                 documentation: Vec::new(),
                             }
@@ -393,6 +405,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         TokenKind::Symbol(name) => WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: token.span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -435,6 +448,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         TokenKind::Symbol(name) => WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: token.span,
                                 documentation: Vec::new(),
                             }
@@ -494,6 +508,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         TokenKind::Symbol(name) => Some(WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: token.span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -542,6 +557,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             None => WithInfo {
                                 info: Info {
                                     path: parser.driver.file_path(),
+                                    visible_path: parser.driver.visible_path(),
                                     span: declaration
                                         .span()
                                         .cloned()
@@ -586,6 +602,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                 WithInfo {
                                     info: Info {
                                         path: self.driver.file_path(),
+                                        visible_path: self.driver.visible_path(),
                                         span: declaration
                                             .span()
                                             .cloned()
@@ -622,6 +639,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         TokenKind::Symbol(name) => WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: token.span,
                                 documentation: Vec::new(),
                             }
@@ -677,6 +695,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
         WithInfo {
             info: Info {
                 path: self.driver.file_path(),
+                visible_path: self.driver.visible_path(),
                 span,
                 documentation,
             }
@@ -745,6 +764,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -753,6 +773,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                 operator: WithInfo {
                                     info: Info {
                                         path: parser.driver.file_path(),
+                                        visible_path: parser.driver.visible_path(),
                                         span: span.clone(),
                                         documentation: Vec::new(),
                                     }
@@ -943,6 +964,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -976,6 +998,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         vec![WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -999,6 +1022,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -1011,6 +1035,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -1051,6 +1076,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -1063,6 +1089,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -1089,6 +1116,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -1115,6 +1143,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -1136,6 +1165,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 Some(WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -1150,6 +1180,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                         TokenKind::Symbol(name) => WithInfo {
                                             info: Info {
                                                 path: parser.driver.file_path(),
+                                                visible_path: parser.driver.visible_path(),
                                                 span: token.span,
                                                 documentation: Vec::new(),
                                             }
@@ -1169,6 +1200,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                 Some(WithInfo {
                                     info: Info {
                                         path: parser.driver.file_path(),
+                                        visible_path: parser.driver.visible_path(),
                                         span: span.clone(),
                                         documentation: Vec::new(),
                                     }
@@ -1192,6 +1224,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         TokenKind::Text(name) => WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: token.span,
                                 documentation: Vec::new(),
                             }
@@ -1207,6 +1240,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             return WithInfo {
                                 info: Info {
                                     path: parser.driver.file_path(),
+                                    visible_path: parser.driver.visible_path(),
                                     span: span.clone(),
                                     documentation: Vec::new(),
                                 }
@@ -1226,6 +1260,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         return WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -1248,6 +1283,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -1267,6 +1303,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         TokenKind::Text(name) => WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: token.span,
                                 documentation: Vec::new(),
                             }
@@ -1282,6 +1319,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             return WithInfo {
                                 info: Info {
                                     path: parser.driver.file_path(),
+                                    visible_path: parser.driver.visible_path(),
                                     span: span.clone(),
                                     documentation: Vec::new(),
                                 }
@@ -1301,6 +1339,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         return WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -1324,6 +1363,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -1343,6 +1383,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -1375,6 +1416,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -1412,6 +1454,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -1434,6 +1477,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         TokenKind::Text(name) => WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: token.span,
                                 documentation: Vec::new(),
                             }
@@ -1462,6 +1506,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 Some(WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -1496,6 +1541,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -1533,6 +1579,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -1578,6 +1625,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -1590,6 +1638,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -1624,6 +1673,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 TokenKind::Symbol(name) => WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: token.span.clone(),
                         documentation: Vec::new(),
                     }
@@ -1633,6 +1683,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 TokenKind::Number(number) => WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: token.span.clone(),
                         documentation: Vec::new(),
                     }
@@ -1642,6 +1693,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 TokenKind::Text(text) | TokenKind::Asset(text) => WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: token.span.clone(),
                         documentation: Vec::new(),
                     }
@@ -1657,6 +1709,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     WithInfo {
                         info: Info {
                             path: parser.driver.file_path(),
+                            visible_path: parser.driver.visible_path(),
                             span: token.span.clone(),
                             documentation: Vec::new(),
                         }
@@ -1685,6 +1738,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     WithInfo {
                         info: Info {
                             path: parser.driver.file_path(),
+                            visible_path: parser.driver.visible_path(),
                             span: span.clone(),
                             documentation: Vec::new(),
                         }
@@ -1696,6 +1750,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
             Node::Block(span, statements) => WithInfo {
                 info: Info {
                     path: parser.driver.file_path(),
+                    visible_path: parser.driver.visible_path(),
                     span: span.clone(),
                     documentation: Vec::new(),
                 }
@@ -1722,6 +1777,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -1792,6 +1848,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
         WithInfo {
             info: Info {
                 path: self.driver.file_path(),
+                visible_path: self.driver.visible_path(),
                 span,
                 documentation: Vec::new(),
             }
@@ -1844,6 +1901,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
             .map(|infer| WithInfo {
                 info: Info {
                     path: self.driver.file_path(),
+                    visible_path: self.driver.visible_path(),
                     span: infer.span().cloned().unwrap_or_else(|| span.clone()),
                     documentation: Vec::new(),
                 }
@@ -1862,6 +1920,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 TokenKind::Symbol(name) => WithInfo {
                     info: Info {
                         path: self.driver.file_path(),
+                        visible_path: self.driver.visible_path(),
                         span: token.span,
                         documentation: Vec::new(),
                     }
@@ -1897,6 +1956,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
         Some(WithInfo {
             info: Info {
                 path: self.driver.file_path(),
+                visible_path: self.driver.visible_path(),
                 span,
                 documentation: Vec::new(),
             }
@@ -1922,6 +1982,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 TokenKind::Symbol(symbol) => Some(WithInfo {
                     info: Info {
                         path: self.driver.file_path(),
+                        visible_path: self.driver.visible_path(),
                         span,
                         documentation: Vec::new(),
                     }
@@ -1930,6 +1991,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         r#trait: WithInfo {
                             info: Info {
                                 path: self.driver.file_path(),
+                                visible_path: self.driver.visible_path(),
                                 span: token.span,
                                 documentation: Vec::new(),
                             }
@@ -1956,6 +2018,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         TokenKind::Symbol(symbol) => WithInfo {
                             info: Info {
                                 path: self.driver.file_path(),
+                                visible_path: self.driver.visible_path(),
                                 span: token.span,
                                 documentation: Vec::new(),
                             }
@@ -1990,6 +2053,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 Some(WithInfo {
                     info: Info {
                         path: self.driver.file_path(),
+                        visible_path: self.driver.visible_path(),
                         span,
                         documentation: Vec::new(),
                     }
@@ -2047,6 +2111,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                 TokenKind::Symbol(name) => Some(WithInfo {
                                     info: Info {
                                         path: parser.driver.file_path(),
+                                        visible_path: parser.driver.visible_path(),
                                         span: token.span,
                                         documentation: Vec::new(),
                                     }
@@ -2076,6 +2141,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     WithInfo {
                         info: Info {
                             path: parser.driver.file_path(),
+                            visible_path: parser.driver.visible_path(),
                             span: span.clone(),
                             documentation: Vec::new(),
                         }
@@ -2102,6 +2168,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -2122,6 +2189,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: self.driver.file_path(),
+                        visible_path: self.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -2165,6 +2233,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         TokenKind::Symbol(name) => WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: token.span,
                                 documentation: Vec::new(),
                             }
@@ -2198,6 +2267,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 Some(WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -2220,6 +2290,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         TokenKind::Symbol(name) => WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: token.span,
                                 documentation: Vec::new(),
                             }
@@ -2258,6 +2329,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 Some(WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -2336,6 +2408,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -2359,6 +2432,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -2371,6 +2445,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -2400,6 +2475,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -2421,6 +2497,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -2435,6 +2512,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 TokenKind::Symbol(name) => WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: token.span.clone(),
                         documentation: Vec::new(),
                     }
@@ -2446,6 +2524,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             name: WithInfo {
                                 info: Info {
                                     path: parser.driver.file_path(),
+                                    visible_path: parser.driver.visible_path(),
                                     span: token.span.clone(),
                                     documentation: Vec::new(),
                                 }
@@ -2465,6 +2544,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     WithInfo {
                         info: Info {
                             path: parser.driver.file_path(),
+                            visible_path: parser.driver.visible_path(),
                             span: token.span.clone(),
                             documentation: Vec::new(),
                         }
@@ -2481,6 +2561,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         TokenKind::Symbol(name) => WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: token.span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -2496,6 +2577,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             return WithInfo {
                                 info: Info {
                                     path: parser.driver.file_path(),
+                                    visible_path: parser.driver.visible_path(),
                                     span: span.clone(),
                                     documentation: Vec::new(),
                                 }
@@ -2513,6 +2595,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         return WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -2524,6 +2607,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         return WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -2545,6 +2629,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -2561,6 +2646,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -2644,6 +2730,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -2667,6 +2754,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -2679,6 +2767,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -2699,6 +2788,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -2713,6 +2803,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                         TokenKind::Symbol(name) => WithInfo {
                                             info: Info {
                                                 path: parser.driver.file_path(),
+                                                visible_path: parser.driver.visible_path(),
                                                 span: token.span,
                                                 documentation: Vec::new(),
                                             }
@@ -2746,6 +2837,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                 Some(WithInfo {
                                     info: Info {
                                         path: parser.driver.file_path(),
+                                        visible_path: parser.driver.visible_path(),
                                         span: span.clone(),
                                         documentation: Vec::new(),
                                     }
@@ -2776,6 +2868,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -2790,6 +2883,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 TokenKind::Symbol(name) => WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: token.span.clone(),
                         documentation: Vec::new(),
                     }
@@ -2803,6 +2897,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 TokenKind::Number(number) => WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: token.span.clone(),
                         documentation: Vec::new(),
                     }
@@ -2812,6 +2907,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 TokenKind::Text(text) | TokenKind::Asset(text) => WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: token.span.clone(),
                         documentation: Vec::new(),
                     }
@@ -2827,6 +2923,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     WithInfo {
                         info: Info {
                             path: parser.driver.file_path(),
+                            visible_path: parser.driver.visible_path(),
                             span: token.span.clone(),
                             documentation: Vec::new(),
                         }
@@ -2843,6 +2940,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         TokenKind::Symbol(name) => WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: token.span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -2858,6 +2956,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             return WithInfo {
                                 info: Info {
                                     path: parser.driver.file_path(),
+                                    visible_path: parser.driver.visible_path(),
                                     span: span.clone(),
                                     documentation: Vec::new(),
                                 }
@@ -2875,6 +2974,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         return WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -2886,6 +2986,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         return WithInfo {
                             info: Info {
                                 path: parser.driver.file_path(),
+                                visible_path: parser.driver.visible_path(),
                                 span: span.clone(),
                                 documentation: Vec::new(),
                             }
@@ -2907,6 +3008,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -2930,6 +3032,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
+                        visible_path: parser.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -3017,6 +3120,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: self.driver.file_path(),
+                        visible_path: self.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -3046,6 +3150,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 WithInfo {
                     info: Info {
                         path: self.driver.file_path(),
+                        visible_path: self.driver.visible_path(),
                         span: span.clone(),
                         documentation: Vec::new(),
                     }
@@ -3058,6 +3163,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
         Some(WithInfo {
             info: Info {
                 path: self.driver.file_path(),
+                visible_path: self.driver.visible_path(),
                 span,
                 documentation: Vec::new(),
             }

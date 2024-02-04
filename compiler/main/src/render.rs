@@ -31,6 +31,7 @@ pub struct Diagnostic {
 
 /// A category of [`Diagnostic`]s.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DiagnosticGroup {
     /// The name of the error.
     pub name: String,
@@ -44,9 +45,13 @@ pub struct DiagnosticGroup {
 
 /// A label in a [`Diagnostic`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Label {
     /// The path to the file containing the error.
-    pub file: String,
+    pub path: String,
+
+    /// The path to display to the user.
+    pub visible_path: String,
 
     /// The location in the source code where the error occurred.
     pub span: Range<u32>,
@@ -57,6 +62,7 @@ pub struct Label {
 
 /// A fix for a [`Diagnostic`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Fix {
     /// The action's message.
     pub message: String,
@@ -120,7 +126,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path,
+                        path: info.parser_info.path,
+                        visible_path: info.parser_info.visible_path,
                         span: error.span,
                         message: String::from("this symbol isn't recognized"),
                     },
@@ -163,7 +170,8 @@ pub fn render_diagnostic(
                         error: true,
                         group,
                         primary_label: Label {
-                            file: info.parser_info.path,
+                            path: info.parser_info.path,
+                            visible_path: info.parser_info.visible_path,
                             span: error.span,
                             message: match (&expected, &found) {
                                 (None, None) => unreachable!(),
@@ -208,12 +216,14 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path.clone(),
+                        path: info.parser_info.path.clone(),
+                        visible_path: info.parser_info.visible_path.clone(),
                         span: error.span,
                         message: format!("the `{operator}` operator can't be used multiple times in the same line of code"),
                     },
                     secondary_labels: vec![Label {
-                        file: info.parser_info.path,
+                        path: info.parser_info.path,
+                        visible_path: info.parser_info.visible_path,
                         span: first_span,
                         message: format!("first use of `{operator}` here"),
                     }],
@@ -224,7 +234,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path,
+                        path: info.parser_info.path,
+                        visible_path: info.parser_info.visible_path,
                         span: error.span,
                         message: format!("missing an input before the `{operator}` operator"),
                     },
@@ -236,7 +247,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path,
+                        path: info.parser_info.path,
+                        visible_path: info.parser_info.visible_path,
                         span: error.span,
                         message: format!("missing an input after the `{operator}` operator"),
                     },
@@ -304,7 +316,8 @@ pub fn render_diagnostic(
                 error: true,
                 group,
                 primary_label: Label {
-                    file: info.parser_info.path,
+                    path: info.parser_info.path,
+                    visible_path: info.parser_info.visible_path,
                     span: error.span,
                     message: format!(
                         "expected {} here",
@@ -330,7 +343,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path,
+                        path: info.parser_info.path,
+                        visible_path: info.parser_info.visible_path,
                         span: info.parser_info.span,
                         message: String::from("unexpected bound here"),
                     },
@@ -342,7 +356,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path,
+                        path: info.parser_info.path,
+                        visible_path: info.parser_info.visible_path,
                         span: info.parser_info.span,
                         message: format!("`{name}`'s value must come immediately after its definition"),
                     },
@@ -354,7 +369,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path,
+                        path: info.parser_info.path,
+                        visible_path: info.parser_info.visible_path,
                         span: info.parser_info.span,
                         message: String::from("type definition must contain at least one field or variant"),
                     },
@@ -366,7 +382,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path,
+                        path: info.parser_info.path,
+                        visible_path: info.parser_info.visible_path,
                         span: info.parser_info.span,
                         message: String::from("expected another field after the previous field in this structure definition"),
                     },
@@ -378,7 +395,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path,
+                        path: info.parser_info.path,
+                        visible_path: info.parser_info.visible_path,
                         span: info.parser_info.span,
                         message: String::from("expected another variant after the previous variant in this enumeration definition"),
                     },
@@ -390,7 +408,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path,
+                        path: info.parser_info.path,
+                        visible_path: info.parser_info.visible_path,
                         span: (info.parser_info.span.start + text_literal_error.start)..(info.parser_info.span.start + text_literal_error.end),
                         message: text_literal_error.error,
                     },
@@ -402,7 +421,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path,
+                        path: info.parser_info.path,
+                        visible_path: info.parser_info.visible_path,
                         span: info.parser_info.span,
                         message: format!("expected {} values after the text because it has {} placeholders", expected, found),
                     },
@@ -441,14 +461,16 @@ pub fn render_diagnostic(
                     error: true,
                     group: group.clone(),
                     primary_label: Label {
-                        file: info.parser_info.path.clone(),
+                        path: info.parser_info.path.clone(),
+                        visible_path: info.parser_info.visible_path.clone(),
                         span: info.parser_info.span.clone(),
                         message: format!("can't find {kind}`{name}`"),
                     },
                     secondary_labels: related_names
                         .iter()
                         .map(|name| Label {
-                            file: name.info.parser_info.path.clone(),
+                            path: name.info.parser_info.path.clone(),
+                            visible_path: name.info.parser_info.visible_path.clone(),
                             span: name.info.parser_info.span.clone(),
                             message: format!("`{}` is defined here, did you mean this?", name.item),
                         })
@@ -476,7 +498,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path.clone(),
+                        path: info.parser_info.path.clone(),
+                        visible_path: info.parser_info.visible_path.clone(),
                         span: info.parser_info.span.clone(),
                         message: format!("`{name}` could refer to multiple definitions"),
                     },
@@ -486,7 +509,8 @@ pub fn render_diagnostic(
                             let info = query.info_at_path(path)?;
 
                             Some(Label {
-                                file: info.parser_info.path.clone(),
+                                path: info.parser_info.path.clone(),
+                                visible_path: info.parser_info.visible_path.clone(),
                                 span: info.parser_info.span,
                                 message: format!(
                                     "`{}` could refer to this",
@@ -506,12 +530,14 @@ pub fn render_diagnostic(
                         error: true,
                         group,
                         primary_label: Label {
-                            file: info.parser_info.path.clone(),
+                            path: info.parser_info.path.clone(),
+                            visible_path: info.parser_info.visible_path.clone(),
                             span: info.parser_info.span.clone(),
                             message: format!("`{name}` is already defined"),
                         },
                         secondary_labels: vec![Label {
-                            file: info.parser_info.path.clone(),
+                            path: info.parser_info.path.clone(),
+                            visible_path: info.parser_info.visible_path.clone(),
                             span: info.parser_info.span,
                             message: format!("the other `{}` is defined here", name),
                         }],
@@ -523,7 +549,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path.clone(),
+                        path: info.parser_info.path.clone(),
+                        visible_path: info.parser_info.visible_path.clone(),
                         span: info.parser_info.span.clone(),
                         message: String::from("`language` items must be defined at the top level"),
                     },
@@ -535,7 +562,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path.clone(),
+                        path: info.parser_info.path.clone(),
+                        visible_path: info.parser_info.visible_path.clone(),
                         span: info.parser_info.span.clone(),
                         message: String::from("missing an input to the `|` operator"),
                     },
@@ -547,7 +575,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path.clone(),
+                        path: info.parser_info.path.clone(),
+                        visible_path: info.parser_info.visible_path.clone(),
                         span: info.parser_info.span.clone(),
                         message: String::from("`defer` is not allowed here"),
                     },
@@ -569,7 +598,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path.clone(),
+                        path: info.parser_info.path.clone(),
+                        visible_path: info.parser_info.visible_path.clone(),
                         span: info.parser_info.span,
                         message: String::from("recursion limit reached while checking this code"),
                     },
@@ -581,7 +611,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path.clone(),
+                        path: info.parser_info.path.clone(),
+                        visible_path: info.parser_info.visible_path.clone(),
                         span: info.parser_info.span,
                         message: format!("language item `{language_item}` is required to check this code"),
                     },
@@ -593,7 +624,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path.clone(),
+                        path: info.parser_info.path.clone(),
+                        visible_path: info.parser_info.visible_path.clone(),
                         span: info.parser_info.span.clone(),
                         message: String::from("not enough information to determine the type of this code"),
                     },
@@ -601,7 +633,8 @@ pub fn render_diagnostic(
                         Vec::new()
                     } else {
                         vec![Label {
-                            file: info.parser_info.path.clone(),
+                            path: info.parser_info.path.clone(),
+                            visible_path: info.parser_info.visible_path.clone(),
                             span: info.parser_info.span,
                             message: format!("this code produces a value of type `{}`, where the `_` placeholders are unknown", render_type(&r#type, true)),
                         }]
@@ -613,7 +646,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path.clone(),
+                        path: info.parser_info.path.clone(),
+                        visible_path: info.parser_info.visible_path.clone(),
                         span: info.parser_info.span,
                         message: String::from(""),
                     },
@@ -635,7 +669,8 @@ pub fn render_diagnostic(
 
                     if let Some(role) = expected_roles.last() {
                         secondary_labels.push(Label {
-                            file: role.info.parser_info.path.clone(),
+                            path: role.info.parser_info.path.clone(),
+                            visible_path: role.info.parser_info.visible_path.clone(),
                             span: role.info.parser_info.span.clone(),
                             message: {
                                 let mut message = match role.item {
@@ -666,7 +701,8 @@ pub fn render_diagnostic(
 
                         if let Some(role) = actual_roles.last() {
                             secondary_labels.push(Label {
-                                file: role.info.parser_info.path.clone(),
+                                path: role.info.parser_info.path.clone(),
+                                visible_path: role.info.parser_info.visible_path.clone(),
                                 span: role.info.parser_info.span.clone(),
                                 message: match role.item {
                                     wipple_typecheck::Role::Pattern => format!("...but this pattern actually has type `{actual}`"),
@@ -693,7 +729,8 @@ pub fn render_diagnostic(
                         error: true,
                         group,
                         primary_label: Label {
-                            file: info.parser_info.path.clone(),
+                            path: info.parser_info.path.clone(),
+                            visible_path: info.parser_info.visible_path.clone(),
                             span: info.parser_info.span,
                             message: format!("expected a `{expected}` here, but this code produces a `{actual}` instead"),
                         },
@@ -706,7 +743,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path.clone(),
+                        path: info.parser_info.path.clone(),
+                        visible_path: info.parser_info.visible_path.clone(),
                         span: info.parser_info.span,
                         message: format!("cannot automatically convert this code to a `{}`", render_type(&r#type.item, true)),
                     },
@@ -724,13 +762,15 @@ pub fn render_diagnostic(
                             error: true,
                             group,
                             primary_label: Label {
-                                file: info.parser_info.path.clone(),
+                                path: info.parser_info.path.clone(),
+                                visible_path: info.parser_info.visible_path.clone(),
                                 span: info.parser_info.span,
                                 message: format!("multiple instances for `{trait}` could apply here"),
                             },
                             secondary_labels: candidates.into_iter().map(|candidate| {
                                 Label {
-                                    file: candidate.parser_info.path,
+                                    path: candidate.parser_info.path,
+                                    visible_path: candidate.parser_info.visible_path,
                                     span: candidate.parser_info.span,
                                     message: String::from("this instance could apply"),
                                 }
@@ -743,7 +783,8 @@ pub fn render_diagnostic(
                             error: true,
                             group,
                             primary_label: Label {
-                                file: info.parser_info.path.clone(),
+                                path: info.parser_info.path.clone(),
+                                visible_path: info.parser_info.visible_path.clone(),
                                 span: info.parser_info.span,
                                 message: query.get_on_unimplemented_message(&instance.r#trait, &instance.parameters)
                                     .unwrap_or_else(|| format!("this code requires the instance `{}` to exist, but there is no such instance", render_instance(&instance))),
@@ -754,7 +795,8 @@ pub fn render_diagnostic(
                                     .tuple_windows()
                                     .map(|(candidate, unsatisfied)| {
                                         Label {
-                                            file: unsatisfied.info.parser_info.path,
+                                            path: unsatisfied.info.parser_info.path,
+                                            visible_path: unsatisfied.info.parser_info.visible_path,
                                             span: unsatisfied.info.parser_info.span,
                                             message: format!(
                                                 "this instance could satisfy `{}`, but it requires `{}`",
@@ -776,7 +818,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path.clone(),
+                        path: info.parser_info.path.clone(),
+                        visible_path: info.parser_info.visible_path.clone(),
                         span: info.parser_info.span,
                         message: format!("structure expression used here, but this code has type `{}`, which is not a structure type", render_type(&r#type.item, true)),
                     },
@@ -788,7 +831,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path.clone(),
+                        path: info.parser_info.path.clone(),
+                        visible_path: info.parser_info.visible_path.clone(),
                         span: info.parser_info.span,
                         message: {
                             if fields.len() > 1 {
@@ -807,7 +851,8 @@ pub fn render_diagnostic(
                     error: true,
                     group,
                     primary_label: Label {
-                        file: info.parser_info.path.clone(),
+                        path: info.parser_info.path.clone(),
+                        visible_path: info.parser_info.visible_path.clone(),
                         span: info.parser_info.span,
                         message: String::from("extra field in structure expression"),
                     },
@@ -822,12 +867,14 @@ pub fn render_diagnostic(
                         error: true,
                         group,
                         primary_label: Label {
-                            file: info.parser_info.path.clone(),
+                            path: info.parser_info.path.clone(),
+                            visible_path: info.parser_info.visible_path.clone(),
                             span: info.parser_info.span,
                             message: String::from("this instance is already defined"),
                         },
                         secondary_labels: vec![Label {
-                            file: other.parser_info.path,
+                            path: other.parser_info.path,
+                            visible_path: other.parser_info.visible_path,
                             span: other.parser_info.span,
                             message: String::from("other definition of the instance here"),
                         }],
@@ -840,7 +887,8 @@ pub fn render_diagnostic(
                         error: true,
                         group,
                         primary_label: Label {
-                            file: info.parser_info.path.clone(),
+                            path: info.parser_info.path.clone(),
+                            visible_path: info.parser_info.visible_path.clone(),
                             span: info.parser_info.span,
                             message: match patterns.len() {
                                 1 => format!("missing pattern for `{}`", render_pattern(query, patterns.pop().unwrap())),
@@ -865,7 +913,8 @@ pub fn render_diagnostic(
                         error: false,
                         group,
                         primary_label: Label {
-                            file: info.parser_info.path.clone(),
+                            path: info.parser_info.path.clone(),
+                            visible_path: info.parser_info.visible_path.clone(),
                             span: info.parser_info.span,
                             message: String::from("extra case in `when` expression"),
                         },
@@ -886,12 +935,50 @@ pub fn colorize_diagnostics<'a>(
 ) -> String {
     use codespan_reporting::{
         diagnostic::{Diagnostic, Label, Severity},
-        files::SimpleFiles,
-        term,
+        files, term,
     };
 
-    let mut files = SimpleFiles::new();
-    let mut file_ids = HashMap::new();
+    #[derive(Debug, Default)]
+    struct FileMap(HashMap<String, files::SimpleFile<String, String>>);
+
+    impl FileMap {
+        fn add(&mut self, path: String, visible_path: String, source: String) {
+            self.0
+                .insert(path, files::SimpleFile::new(visible_path, source));
+        }
+
+        fn get(&self, path: &str) -> Result<&files::SimpleFile<String, String>, files::Error> {
+            self.0.get(path).ok_or(files::Error::FileMissing)
+        }
+    }
+
+    impl<'a> files::Files<'a> for FileMap {
+        type FileId = &'a str;
+        type Name = String;
+        type Source = &'a str;
+
+        fn name(&self, file_id: &'a str) -> Result<String, files::Error> {
+            Ok(self.get(file_id)?.name().clone())
+        }
+
+        fn source(&self, file_id: &'a str) -> Result<&str, files::Error> {
+            Ok(self.get(file_id)?.source().as_ref())
+        }
+
+        fn line_index(&self, file_id: &'a str, byte_index: usize) -> Result<usize, files::Error> {
+            self.get(file_id)?.line_index((), byte_index)
+        }
+
+        fn line_range(
+            &self,
+            file_id: &'a str,
+            line_index: usize,
+        ) -> Result<Range<usize>, files::Error> {
+            self.get(file_id)?.line_range((), line_index)
+        }
+    }
+
+    let mut files = FileMap::default();
 
     let mut output = Vec::new();
     let mut writer = term::termcolor::Ansi::new(&mut output);
@@ -900,14 +987,9 @@ pub fn colorize_diagnostics<'a>(
 
     for error in errors {
         for label in std::iter::once(&error.primary_label).chain(&error.secondary_labels) {
-            use std::collections::hash_map::Entry;
-
-            match file_ids.entry(&label.file) {
-                Entry::Occupied(_) => continue,
-                Entry::Vacant(entry) => {
-                    let file_id = files.add(&label.file, source_code_for_file(&label.file));
-                    entry.insert(file_id);
-                }
+            if files.get(&label.path).is_err() {
+                let source = source_code_for_file(&label.path);
+                files.add(label.path.clone(), label.visible_path.clone(), source);
             }
         }
 
@@ -922,7 +1004,7 @@ pub fn colorize_diagnostics<'a>(
             .with_labels(
                 std::iter::once(
                     Label::primary(
-                        *file_ids.get(&error.primary_label.file).unwrap(),
+                        error.primary_label.path.as_str(),
                         (error.primary_label.span.start as usize)
                             ..(error.primary_label.span.end as usize),
                     )
@@ -930,7 +1012,7 @@ pub fn colorize_diagnostics<'a>(
                 )
                 .chain(error.secondary_labels.iter().map(|label| {
                     Label::secondary(
-                        *file_ids.get(&label.file).unwrap(),
+                        error.primary_label.path.as_str(),
                         (label.span.start as usize)..(label.span.end as usize),
                     )
                     .with_message(&label.message)

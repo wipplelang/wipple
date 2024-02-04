@@ -52,14 +52,25 @@ for (let file of fs.readdirSync("tests").sort()) {
                 }
             }
 
-            const compileResult = compile([{ path: file, code }], baseInterface);
+            const compileResult = compile([{ path: file, visiblePath: file, code }], baseInterface);
 
             const renderedDiagnostics = renderDiagnostics(
                 compileResult.diagnostics,
                 compileResult.interface,
                 compileResult.library,
                 (path) => (path === file ? code : "")
-            );
+            ).map((diagnostic) => {
+                // Hide the actual path from the snapshot so tests can be
+                // reproduced across machines
+
+                delete diagnostic.primaryLabel.path;
+
+                for (const label of diagnostic.secondaryLabels) {
+                    delete label.path;
+                }
+
+                return diagnostic;
+            });
 
             const [errors, warnings] = _.partition(
                 renderedDiagnostics,
