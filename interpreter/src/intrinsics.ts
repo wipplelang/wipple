@@ -468,14 +468,12 @@ export const intrinsics: Record<string, Intrinsic> = {
             throw context.error("min must be less than or equal to max");
         }
 
+        const sd = Math.max(minValue.sd(), maxValue.sd()) - 1;
+        const random = minValue.add(maxValue.sub(minValue).mul(Decimal.random()));
+
         return jsToNumber(
             expectedTypeDescriptor,
-            minValue.add(
-                maxValue
-                    .sub(minValue)
-                    .mul(Decimal.random())
-                    .toSignificantDigits(Math.max(minValue.sd(), maxValue.sd()))
-            ),
+            sd === 0 ? random.floor() : random.toSignificantDigits(sd),
             context
         );
     },

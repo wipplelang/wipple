@@ -2159,8 +2159,9 @@ exports[`random.wipple 2`] = `
 {
   "output": 
 "0
-1.6
-list position must be a whole number
+1
+Some 1
+None
 "
 ,
 }
