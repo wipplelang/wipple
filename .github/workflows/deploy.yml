@@ -24,7 +24,7 @@ jobs:
             - run: |
                   rustup toolchain install stable --profile minimal
                   rustup target add wasm32-unknown-unknown
-                  curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+                  cargo install wasm-pack --no-default-features
                   cargo install wasm-bindgen-cli
 
             - run: task install-dependencies
