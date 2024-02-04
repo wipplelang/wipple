@@ -542,16 +542,16 @@ pub fn render_diagnostic(
                     help: String::from("The function composition operator `|` requires inputs on both sides."),
                     fix: None,
                 },
-                wipple_lower::Error::InvalidLazyType => Diagnostic {
+                wipple_lower::Error::InvalidDeferredType => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
                         file: info.parser_info.path.clone(),
                         span: info.parser_info.span.clone(),
-                        message: String::from("`lazy` is not allowed here"),
+                        message: String::from("`defer` is not allowed here"),
                     },
                     secondary_labels: Vec::new(),
-                    help: String::from("`lazy` may only appear on the input to a function."),
+                    help: String::from("`defer` may only appear on the input to a function."),
                     fix: None,
                 },
             }
@@ -1022,13 +1022,13 @@ pub fn render_type(r#type: &wipple_typecheck::Type<crate::Driver>, is_top_level:
                     format!("({})", rendered)
                 }
             }
-            wipple_typecheck::Type::Lazy(r#type) => {
+            wipple_typecheck::Type::Deferred(r#type) => {
                 let rendered = render_type_inner(&r#type.item, false, false);
 
                 if is_top_level {
-                    format!("lazy {rendered}")
+                    format!("defer {rendered}")
                 } else {
-                    format!("(lazy {})", rendered)
+                    format!("(defer {})", rendered)
                 }
             }
         }

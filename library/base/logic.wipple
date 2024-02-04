@@ -5,10 +5,10 @@ language constant "false" : False
 language constant "true" : True
 
 [Make a choice based on whether the input is `True` or `False`.]
-if :: A => Boolean -> lazy A -> lazy A -> A
+if :: A => Boolean -> defer A -> defer A -> A
 if : condition then else -> when condition (
-    True -> evaluate then
-    False -> evaluate else
+    True -> produce then
+    False -> produce else
 )
 
 [Represents the logical inverse of a value.]
@@ -21,12 +21,12 @@ not :: (Value : Boolean) where (Not Value) => Value -> Value
 not : Not
 
 [Returns `True` if both sides are `True`.]
-And : Left Right (infer Output) => trait (lazy Right -> Left -> Output)
+And : Left Right (infer Output) => trait (defer Right -> Left -> Output)
 language trait "and" : And
 instance (And Boolean Boolean Boolean) : b a -> if a b False
 
 [Returns `True` if either side is `True`.]
-Or : Left Right (infer Output) => trait (lazy Right -> Left -> Output)
+Or : Left Right (infer Output) => trait (defer Right -> Left -> Output)
 language trait "or" : Or
 instance (Or Boolean Boolean Boolean) : b a -> if a True b
 

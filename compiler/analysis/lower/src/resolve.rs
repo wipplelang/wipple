@@ -1377,15 +1377,15 @@ fn resolve_type<D: Driver>(
                     .map(|element| resolve_type_inner(element, false, info))
                     .collect(),
             ),
-            crate::UnresolvedType::Lazy(r#type) => {
+            crate::UnresolvedType::Deferred(r#type) => {
                 let r#type = resolve_type_inner(r#type.unboxed(), false, info);
 
                 if is_function_input {
-                    crate::Type::Lazy(r#type.boxed())
+                    crate::Type::Deferred(r#type.boxed())
                 } else {
                     info.errors.push(WithInfo {
                         info: type_info,
-                        item: crate::Error::InvalidLazyType,
+                        item: crate::Error::InvalidDeferredType,
                     });
 
                     r#type.item

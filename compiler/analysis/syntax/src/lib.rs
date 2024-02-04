@@ -544,7 +544,7 @@ pub mod syntax {
         Tuple(Vec<WithInfo<D::Info, Type<D>>>),
 
         /// A type whose values are computed lazily.
-        Lazy(WithInfo<D::Info, Box<Type<D>>>),
+        Deferred(WithInfo<D::Info, Box<Type<D>>>),
     }
 
     /// A concrete patterns.
@@ -1016,7 +1016,7 @@ pub enum Type<D: Driver> {
     Tuple(Vec<WithInfo<D::Info, Type<D>>>),
 
     /// A type whose values are computed lazily.
-    Lazy(WithInfo<D::Info, Box<Type<D>>>),
+    Deferred(WithInfo<D::Info, Box<Type<D>>>),
 }
 
 /// A parsed instance.

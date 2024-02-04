@@ -586,8 +586,8 @@ fn r#type<D: Driver>(
                 .map(|type_syntax| r#type(type_syntax, info))
                 .collect(),
         ),
-        syntax::Type::Lazy(type_syntax) => {
-            crate::Type::Lazy(r#type(type_syntax.unboxed(), info).boxed())
+        syntax::Type::Deferred(type_syntax) => {
+            crate::Type::Deferred(r#type(type_syntax.unboxed(), info).boxed())
         }
     })
 }

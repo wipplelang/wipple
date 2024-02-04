@@ -2317,7 +2317,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
 
             static LAZY_TYPE = r#"
                 (list
-                    (symbol . "lazy")
+                    (symbol . "defer")
                     (variable . "type"))
             "#;
         }
@@ -2409,7 +2409,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
             })
         };
 
-        let lazy = |parser: &mut Self| {
+        let defer = |parser: &mut Self| {
             LAZY_TYPE.parse(&node).map(|mut vars| {
                 let r#type = vars.remove("type").unwrap().pop().unwrap();
 
@@ -2425,7 +2425,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         documentation: Vec::new(),
                     }
                     .into(),
-                    item: syntax::Type::Lazy(r#type.boxed()),
+                    item: syntax::Type::Deferred(r#type.boxed()),
                 }
             })
         };
@@ -2572,7 +2572,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
 
         function(self)
             .or_else(|| tuple(self))
-            .or_else(|| lazy(self))
+            .or_else(|| defer(self))
             .unwrap_or_else(|| terminal(self))
     }
 

@@ -152,7 +152,7 @@ fn convert_type<D: Driver>(
         crate::Type::Tuple(elements) => Some(Type::Tuple(
             elements.iter().map(|r#type| r#type.item.clone()).collect(),
         )),
-        crate::Type::Unknown(_) | crate::Type::Lazy(_) | crate::Type::Function { .. } => None,
+        crate::Type::Unknown(_) | crate::Type::Deferred(_) | crate::Type::Function { .. } => None,
     }
 }
 

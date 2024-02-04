@@ -524,7 +524,7 @@ impl<D: Driver> Type<D> {
             TypeKind::Tuple(elements) => elements
                 .iter()
                 .any(|r#type| r#type.contains_variable(variable)),
-            TypeKind::Lazy(r#type) => r#type.contains_variable(variable),
+            TypeKind::Deferred(r#type) => r#type.contains_variable(variable),
             TypeKind::Opaque(_) | TypeKind::Parameter(_) | TypeKind::Unknown => false,
         }
     }
@@ -572,7 +572,7 @@ impl<D: Driver> Type<D> {
                     r#type.apply_in_context_mut(context);
                 }
             }
-            TypeKind::Lazy(r#type) => {
+            TypeKind::Deferred(r#type) => {
                 r#type.apply_in_context_mut(context);
             }
             TypeKind::Unknown => {}
@@ -595,7 +595,7 @@ enum TypeKind<D: Driver> {
         output: Box<Type<D>>,
     },
     Tuple(Vec<Type<D>>),
-    Lazy(Box<Type<D>>),
+    Deferred(Box<Type<D>>),
     Unknown,
 }
 
@@ -791,7 +791,7 @@ impl<D: Driver> Type<D> {
                     r#type.instantiate_mut(driver, instantiation_context);
                 }
             }
-            TypeKind::Lazy(r#type) => {
+            TypeKind::Deferred(r#type) => {
                 r#type.instantiate_mut(driver, instantiation_context);
             }
             TypeKind::Unknown => {}
@@ -828,7 +828,7 @@ impl<D: Driver> Type<D> {
                     r#type.instantiate_opaque_in_context_mut(context);
                 }
             }
-            TypeKind::Lazy(r#type) => {
+            TypeKind::Deferred(r#type) => {
                 r#type.instantiate_opaque_in_context_mut(context);
             }
             TypeKind::Unknown => {}
@@ -915,7 +915,7 @@ struct UnifyOptions {
 
 #[derive(Debug, Clone, Default)]
 struct Coercion {
-    lazy: bool,
+    deferred: bool,
 }
 
 #[must_use]
@@ -969,13 +969,13 @@ fn unify_with_options<D: Driver>(
             // Opaque types don't unify with anything
             (TypeKind::Opaque(_), _) | (_, TypeKind::Opaque(_)) => true,
 
-            // `A` is a subtype of `lazy A`. All expressions of type `A`
-            // are wrapped in `Lazy` during finalization
-            (TypeKind::Lazy(r#type), TypeKind::Lazy(expected_type)) => {
+            // `A` is a subtype of `defer A`. All expressions of type `A`
+            // are wrapped in `Deferred` during finalization
+            (TypeKind::Deferred(r#type), TypeKind::Deferred(expected_type)) => {
                 unify_inner(driver, r#type, expected_type, false, context, options)
             }
-            (_, TypeKind::Lazy(expected_type)) if allow_coercion => {
-                // The value will be coerced to `lazy` during finalization
+            (_, TypeKind::Deferred(expected_type)) if allow_coercion => {
+                // The value will be coerced to `defer` during finalization
                 options.allow_coercion
                     && unify_inner(driver, &r#type, expected_type, false, context, options)
             }
@@ -1053,10 +1053,10 @@ fn unify_with_options<D: Driver>(
     unify_inner(driver, r#type, expected_type, true, context, options).then(|| {
         let mut coercion = Coercion::default();
 
-        if matches!(expected_type.kind, TypeKind::Lazy(_))
-            && !matches!(r#type.kind, TypeKind::Lazy(_))
+        if matches!(expected_type.kind, TypeKind::Deferred(_))
+            && !matches!(r#type.kind, TypeKind::Deferred(_))
         {
-            coercion.lazy = true;
+            coercion.deferred = true;
         }
 
         coercion
@@ -1222,7 +1222,7 @@ fn substitute_defaults<D: Driver>(
 
             false
         }
-        TypeKind::Lazy(r#type) => substitute_defaults(driver, r#type, context),
+        TypeKind::Deferred(r#type) => substitute_defaults(driver, r#type, context),
         TypeKind::Opaque(_) | TypeKind::Parameter(_) | TypeKind::Unknown => false,
     }
 }
@@ -1369,8 +1369,8 @@ fn infer_type<D: Driver>(
                     .map(|r#type| infer_type(r#type.as_ref(), None, type_context))
                     .collect(),
             ),
-            crate::Type::Lazy(r#type) => {
-                TypeKind::Lazy(Box::new(infer_type(r#type.as_deref(), None, type_context)))
+            crate::Type::Deferred(r#type) => {
+                TypeKind::Deferred(Box::new(infer_type(r#type.as_deref(), None, type_context)))
             }
             crate::Type::Unknown(_) => match type_context {
                 Some(type_context) => TypeKind::Variable(type_context.variable()),
@@ -2568,7 +2568,7 @@ fn resolve_expression<D: Driver>(
                     context.error_queue,
                 );
 
-                // `lazy` may only appear on function inputs, so it's OK to
+                // `defer` may only appear on function inputs, so it's OK to
                 // ignore coercions here
                 try_unify_ignoring_coercion(
                     context.driver,
@@ -3339,9 +3339,9 @@ fn finalize_type<D: Driver>(
                         .map(|r#type| finalize_type_inner(r#type, context, fully_resolved))
                         .collect(),
                 ),
-                TypeKind::Lazy(r#type) => {
-                    crate::Type::Lazy(finalize_type_inner(*r#type, context, fully_resolved).boxed())
-                }
+                TypeKind::Deferred(r#type) => crate::Type::Deferred(
+                    finalize_type_inner(*r#type, context, fully_resolved).boxed(),
+                ),
                 TypeKind::Unknown => {
                     context.contains_unknown.set(true);
                     crate::Type::Unknown(UnknownTypeId::none())
@@ -3546,22 +3546,22 @@ fn finalize_expression<D: Driver>(
 
     let r#type = finalize_type(expression.item.r#type.clone(), context).item;
 
-    let Coercion { lazy } = expression.item.coercion;
+    let Coercion { deferred: defer } = expression.item.coercion;
 
     let mut expression = WithInfo {
         info: expression.info,
         item: crate::TypedExpression { r#type, kind },
     };
 
-    if lazy {
-        expression.item.r#type = crate::Type::Lazy(
+    if defer {
+        expression.item.r#type = crate::Type::Deferred(
             expression
                 .as_ref()
                 .replace(expression.item.r#type.clone())
                 .boxed(),
         );
 
-        expression.item.kind = crate::TypedExpressionKind::Lazy(expression.clone().boxed());
+        expression.item.kind = crate::TypedExpressionKind::Deferred(expression.clone().boxed());
     }
 
     expression
@@ -3631,7 +3631,7 @@ fn debug_type<D: Driver>(r#type: &Type<D>, context: &TypeContext<D>) -> String {
                 result
             })
         ),
-        TypeKind::Lazy(r#type) => format!("(lazy {})", debug_type(&r#type, context)),
+        TypeKind::Deferred(r#type) => format!("(defer {})", debug_type(&r#type, context)),
         TypeKind::Unknown => String::from("_"),
     }
 }

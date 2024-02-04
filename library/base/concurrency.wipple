@@ -10,11 +10,11 @@ with-task-group :: (Task-Group -> ()) -> ()
 with-task-group : body -> intrinsic "with-task-group" body
 
 [Run a task in a task group.]
-task :: (lazy ()) -> Task-Group -> ()
-task : body group -> intrinsic "task" group (() -> evaluate body)
+task :: (defer ()) -> Task-Group -> ()
+task : body group -> intrinsic "task" group (() -> produce body)
 
 [Execute code in the background without waiting for it to finish.]
-in-background :: (lazy ()) -> ()
-in-background : body -> intrinsic "in-background" (() -> evaluate body)
+in-background :: (defer ()) -> ()
+in-background : body -> intrinsic "in-background" (() -> produce body)
 
 [TODO: Delay and duration units]

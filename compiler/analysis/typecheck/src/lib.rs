@@ -187,12 +187,12 @@ pub enum Error<D: Driver> {
     },
 
     /// A coercion would be required for a contravariant type. Currently, the
-    /// only coercion is `A` to `lazy A`, so this error effectively means that
+    /// only coercion is `A` to `defer A`, so this error effectively means that
     /// the following program is invalid because `x` cannot be implicitly
     /// `evaluate`d:
     ///
     /// ```wipple
-    /// x :: () -> lazy Number
+    /// x :: () -> defer Number
     /// x : () -> 42
     ///
     /// y : () -> Number
@@ -284,7 +284,7 @@ pub enum Type<D: Driver> {
     Tuple(Vec<WithInfo<D::Info, Type<D>>>),
 
     /// A type whose values are computed lazily.
-    Lazy(WithInfo<D::Info, Box<Type<D>>>),
+    Deferred(WithInfo<D::Info, Box<Type<D>>>),
 }
 
 /// Used to disambiguate between unknown types.
@@ -719,7 +719,7 @@ pub enum TypedExpressionKind<D: Driver> {
     },
 
     /// A lazily-computed value.
-    Lazy(WithInfo<D::Info, Box<TypedExpression<D>>>),
+    Deferred(WithInfo<D::Info, Box<TypedExpression<D>>>),
 }
 
 /// A segment in a string interpolation expression.
@@ -923,7 +923,7 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a TypedExpress
             TypedExpressionKind::Semantics { body, .. } => {
                 body.as_deref().traverse(f);
             }
-            TypedExpressionKind::Lazy(value) => {
+            TypedExpressionKind::Deferred(value) => {
                 value.as_deref().traverse(f);
             }
             TypedExpressionKind::Unknown(_)

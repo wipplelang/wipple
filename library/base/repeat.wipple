@@ -20,8 +20,8 @@ Result => instance (Repeat-Predicate (With-Control-Flow Result) (Control-Flow ()
     )
 
 [Repeat so long as the provided condition is `True`.]
-while :: lazy Boolean -> While
-while : condition -> (condition : () -> evaluate condition)
+while :: defer Boolean -> While
+while : condition -> (condition : () -> produce condition)
 
 While : type (condition :: () -> Boolean)
 
@@ -62,7 +62,7 @@ times : count -> (
 )
 
 [Execute a block of code repeatedly.]
-repeat :: State (infer Body) (infer Result) where (Repeat-Predicate State Body Result) => State -> lazy Body -> Result
+repeat :: State (infer Body) (infer Result) where (Repeat-Predicate State Body Result) => State -> defer Body -> Result
 repeat : state body -> (
     [The inputs are wrapped in a tuple to allow for tail-call optimization]
     helper :: State Body Result where (Repeat-Predicate State Body Result) => (State ; (() -> Body)) -> Result
@@ -73,5 +73,5 @@ repeat : state body -> (
         )
     )
 
-    helper (state ; (() -> evaluate body))
+    helper (state ; (() -> produce body))
 )

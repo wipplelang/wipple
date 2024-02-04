@@ -22,8 +22,8 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         throw context.error(`error: ${message.value}`);
     },
-    evaluate: async ([lazy], _expectedTypeDescriptor, context) => {
-        return await context.evaluate(lazy);
+    produce: async ([defer], _expectedTypeDescriptor, context) => {
+        return await context.produce(defer);
     },
     display: async ([message], _expectedTypeDescriptor, context) => {
         await new Promise<void>((resolve) => {

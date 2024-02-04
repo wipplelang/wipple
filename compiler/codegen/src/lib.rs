@@ -171,7 +171,7 @@ pub enum TypedInstruction<D: Driver> {
     Function(Vec<u32>, D::Path, Label),
 
     /// A lazily-evaluated expression.
-    Lazy(Vec<u32>, D::Path, Label),
+    Deferred(Vec<u32>, D::Path, Label),
 
     /// A constant.
     Constant(D::Path, Vec<TypeDescriptor<D>>),
@@ -209,8 +209,8 @@ pub enum TypeDescriptor<D: Driver> {
     /// A tuple type.
     Tuple(Vec<TypeDescriptor<D>>),
 
-    /// The type of a lazy value.
-    Lazy(Box<TypeDescriptor<D>>),
+    /// The type of a defer value.
+    Deferred(Box<TypeDescriptor<D>>),
 }
 
 impl<D: Driver> std::fmt::Display for Instruction<D>
@@ -267,8 +267,8 @@ where
             TypedInstruction::Function(captures, path, label) => {
                 write!(f, "function {captures:?} ({path}) {label}")
             }
-            TypedInstruction::Lazy(captures, path, label) => {
-                write!(f, "lazy {captures:?} ({path}) {label}")
+            TypedInstruction::Deferred(captures, path, label) => {
+                write!(f, "defer {captures:?} ({path}) {label}")
             }
             TypedInstruction::Constant(path, _) => write!(f, "constant {path}"),
             TypedInstruction::Instance(path) => write!(f, "instance {path}"),
@@ -304,7 +304,7 @@ where
                     .collect::<Vec<_>>()
                     .join(" , "),
             ),
-            TypeDescriptor::Lazy(r#type) => write!(f, "(lazy {type})"),
+            TypeDescriptor::Deferred(r#type) => write!(f, "(defer {type})"),
         }
     }
 }

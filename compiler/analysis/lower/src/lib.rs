@@ -134,8 +134,8 @@ pub enum Error {
     /// The function composition operator `|` expects inputs on both sides.
     InvalidComposition,
 
-    /// `lazy` may only appear on the input to a function.
-    InvalidLazyType,
+    /// `defer` may only appear on the input to a function.
+    InvalidDeferredType,
 }
 
 /// An unresolved file.
@@ -519,7 +519,7 @@ pub enum UnresolvedType<D: Driver> {
     Tuple(Vec<WithInfo<D::Info, UnresolvedType<D>>>),
 
     /// A type whose values are computed lazily.
-    Lazy(WithInfo<D::Info, Box<UnresolvedType<D>>>),
+    Deferred(WithInfo<D::Info, Box<UnresolvedType<D>>>),
 }
 
 /// An unresolved instance.
@@ -1049,7 +1049,7 @@ pub enum Type<D: Driver> {
     Tuple(Vec<WithInfo<D::Info, Type<D>>>),
 
     /// A type whose values are computed lazily.
-    Lazy(WithInfo<D::Info, Box<Type<D>>>),
+    Deferred(WithInfo<D::Info, Box<Type<D>>>),
 }
 
 /// A resolved instance.

@@ -204,7 +204,7 @@ fn compile_expression<D: crate::Driver>(
 
             compile_expression(body.as_deref(), info)?;
         }
-        wipple_typecheck::TypedExpressionKind::Lazy(expression) => {
+        wipple_typecheck::TypedExpressionKind::Deferred(expression) => {
             let lazy_label = info.push_label();
             let previous_label = mem::replace(&mut info.current_label, lazy_label);
 
@@ -216,7 +216,7 @@ fn compile_expression<D: crate::Driver>(
 
             info.push_instruction(crate::Instruction::Typed(
                 type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Lazy(captures, info.path.clone(), lazy_label),
+                crate::TypedInstruction::Deferred(captures, info.path.clone(), lazy_label),
             ));
         }
     }
@@ -422,8 +422,8 @@ pub fn type_descriptor<D: crate::Driver>(
                 .map(|r#type| type_descriptor(&r#type.item))
                 .collect::<Option<_>>()?,
         )),
-        wipple_typecheck::Type::Lazy(r#type) => Some(crate::TypeDescriptor::Lazy(Box::new(
-            type_descriptor(&r#type.item)?,
-        ))),
+        wipple_typecheck::Type::Deferred(r#type) => Some(crate::TypeDescriptor::Deferred(
+            Box::new(type_descriptor(&r#type.item)?),
+        )),
     }
 }

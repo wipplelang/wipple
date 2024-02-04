@@ -21,7 +21,7 @@ export type TypeDescriptor =
     | { type: "named"; value: [string, TypeDescriptor[]] }
     | { type: "function"; value: [TypeDescriptor, TypeDescriptor] }
     | { type: "tuple"; value: TypeDescriptor[] }
-    | { type: "lazy"; value: TypeDescriptor };
+    | { type: "deferred"; value: TypeDescriptor };
 
 export type Instruction =
     | { type: "copy"; value: undefined }
@@ -48,7 +48,7 @@ export type TypedInstruction =
     | { type: "structure"; value: string[] }
     | { type: "variant"; value: [string, number] }
     | { type: "function"; value: [number[], string, number] }
-    | { type: "lazy"; value: [number[], string, number] }
+    | { type: "deferred"; value: [number[], string, number] }
     | { type: "constant"; value: [string, TypeDescriptor[]] }
     | { type: "instance"; value: string };
 
@@ -77,7 +77,7 @@ type Value =
           value: (value: TypedValue) => Promise<TypedValue>;
       }
     | {
-          type: "lazy";
+          type: "deferred";
           scope: Record<number, TypedValue>;
           path: string;
           ir: Instruction[][];
@@ -124,7 +124,7 @@ export interface Context {
     initializedItems: Record<string, [Record<string, TypeDescriptor>, TypedValue][]>;
     io: (request: IoRequest) => void;
     call: (func: TypedValue, input: TypedValue) => Promise<TypedValue>;
-    evaluate: (lazy: TypedValue) => Promise<TypedValue>;
+    produce: (deferred: TypedValue) => Promise<TypedValue>;
     getItem: (
         path: string,
         substitutions: TypeDescriptor[] | Record<string, TypeDescriptor>,
@@ -208,18 +208,18 @@ export const evaluate = async (
                     throw new InterpreterError("expected function");
             }
         },
-        evaluate: async (lazy) => {
-            if (lazy.type !== "lazy") {
-                throw new InterpreterError("expected lazy value");
+        produce: async (defer) => {
+            if (defer.type !== "deferred") {
+                throw new InterpreterError("expected defer value");
             }
 
             return (await evaluateItem(
-                lazy.path,
-                lazy.ir,
-                lazy.label,
+                defer.path,
+                defer.ir,
+                defer.label,
                 [],
-                { ...lazy.scope },
-                lazy.substitutions,
+                { ...defer.scope },
+                defer.substitutions,
                 context
             ))!;
         },
@@ -518,11 +518,11 @@ const evaluateItem = async (
 
                             break;
                         }
-                        case "lazy": {
+                        case "deferred": {
                             const path = instruction.value[1].value[1];
 
                             stack.push({
-                                type: "lazy",
+                                type: "deferred",
                                 typeDescriptor,
                                 path,
                                 ir: path ? context.executable.items[path].ir : item,
@@ -684,10 +684,10 @@ const unify = (
                     unify(typeDescriptor, right.value[index], substitutions)
                 )
             );
-        case "lazy":
-            // Coercions are done at compile time, so at runtime `lazy` only
-            // unifies with `lazy`
-            return left.type === "lazy" && unify(left.value, right.value, substitutions);
+        case "deferred":
+            // Coercions are done at compile time, so at runtime `defer` only
+            // unifies with `defer`
+            return left.type === "deferred" && unify(left.value, right.value, substitutions);
         default:
             right satisfies never;
             throw new InterpreterError(`unknown type descriptor ${JSON.stringify(right)}`);
@@ -732,9 +732,9 @@ const substituteTypeDescriptor = (
                     substituteTypeDescriptor(typeDescriptor, substitutions)
                 ),
             };
-        case "lazy":
+        case "deferred":
             return {
-                type: "lazy",
+                type: "deferred",
                 value: substituteTypeDescriptor(typeDescriptor.value, substitutions),
             };
         default:

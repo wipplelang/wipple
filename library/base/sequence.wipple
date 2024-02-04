@@ -4,8 +4,8 @@ Sequence : Element => type (
 )
 
 [Create a sequence that computes its value on demand.]
-sequence :: Element => lazy (Maybe Element) -> Sequence Element
-sequence : next -> (next : () -> evaluate next)
+sequence :: Element => defer (Maybe Element) -> Sequence Element
+sequence : next -> (next : () -> produce next)
 
 [Retrieve the next item in a sequence.]
 next :: Element => Sequence Element -> Maybe Element

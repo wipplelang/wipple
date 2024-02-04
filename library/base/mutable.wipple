@@ -29,8 +29,8 @@ constant :: Value => Value -> Mutable Value
 constant : value -> Constant value
 
 [Create a new mutable value that computes its value each time it is accessed.]
-binding :: Value => lazy Value -> (Value -> ()) -> Mutable Value
-binding : get update -> Binding (() -> evaluate get) update
+binding :: Value => defer Value -> (Value -> ()) -> Mutable Value
+binding : get update -> Binding (() -> produce get) update
 
 [Project a mutable value to refer to a component of the value.]
 project :: A B => (A -> B) -> (B -> A -> A) -> Mutable A -> Mutable B

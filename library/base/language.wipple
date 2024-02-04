@@ -68,8 +68,8 @@ Success Failure => instance (As (Result Success Failure) (Maybe Success)) : resu
     Error _ -> None
 )
 
-evaluate :: Value => (lazy Value) -> Value
-evaluate : lazy -> intrinsic "evaluate" lazy
+produce :: Value => (defer Value) -> Value
+produce : defer -> intrinsic "produce" defer
 
 error :: (Value : ()) => Text -> Value
 error : message -> intrinsic "crash" message
