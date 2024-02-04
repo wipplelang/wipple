@@ -103,7 +103,7 @@ pub struct Result<D: Driver> {
     pub item: WithInfo<D::Info, TypedExpression<D>>,
 
     /// Any errors encountered while resolving the item.
-    pub errors: Vec<WithInfo<D::Info, Error<D>>>,
+    pub diagnostics: Vec<WithInfo<D::Info, Diagnostic<D>>>,
 }
 
 /// Check that none of the provided instances overlap.
@@ -111,7 +111,7 @@ pub fn instances_overlap<D: Driver>(
     driver: &D,
     r#trait: &D::Path,
     instances: impl IntoIterator<Item = D::Path>,
-) -> Vec<WithInfo<D::Info, Error<D>>> {
+) -> Vec<WithInfo<D::Info, Diagnostic<D>>> {
     resolve::instances_overlap(driver, r#trait, instances)
 }
 
@@ -119,7 +119,7 @@ pub fn instances_overlap<D: Driver>(
 pub fn check_exhaustiveness<D: Driver>(
     driver: &D,
     expression: WithInfo<D::Info, &TypedExpression<D>>,
-) -> Vec<WithInfo<D::Info, Error<D>>> {
+) -> Vec<WithInfo<D::Info, Diagnostic<D>>> {
     exhaustiveness::check_exhaustiveness(driver, expression)
 }
 
@@ -154,7 +154,7 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
     Hash(bound = "")
 )]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub enum Error<D: Driver> {
+pub enum Diagnostic<D: Driver> {
     /// The typechecker hit the recursion limit while attempting to resolve the
     /// expression.
     RecursionLimit,

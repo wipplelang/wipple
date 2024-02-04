@@ -62,17 +62,17 @@ pub fn link(libraries: &str) -> String {
     serialize(&executable)
 }
 
-/// JavaScript entrypoint to render errors.
-#[wasm_bindgen(js_name = "renderErrors")]
-pub fn render_errors(
-    errors: &str,
+/// JavaScript entrypoint to render diagnostics.
+#[wasm_bindgen(js_name = "renderDiagnostics")]
+pub fn render_diagnostics(
+    diagnostics: &str,
     interface_: &str,
     library: &str,
     source_code_for_file: wasm_bindgen::JsValue,
 ) -> String {
     initialize();
 
-    let errors: Vec<util::WithInfo<Info, Error>> = deserialize(errors);
+    let diagnostics: Vec<util::WithInfo<Info, Diagnostic>> = deserialize(diagnostics);
     let interface: Interface = deserialize(interface_);
     let library: Library = deserialize(library);
 
@@ -88,20 +88,23 @@ pub fn render_errors(
 
     let query = Query::new(&interface, &library, source_code_for_file);
 
-    let errors = errors
+    let diagnostics = diagnostics
         .into_iter()
         .map(|error| render::render_diagnostic(error, &query))
         .collect::<Vec<_>>();
 
-    serialize(&errors)
+    serialize(&diagnostics)
 }
 
-/// JavaScript entrypoint to render errors with console colors.
-#[wasm_bindgen(js_name = "colorizeErrors")]
-pub fn colorize_errors(errors: &str, source_code_for_file: wasm_bindgen::JsValue) -> String {
+/// JavaScript entrypoint to render diagnostics with console colors.
+#[wasm_bindgen(js_name = "colorizeDiagnostics")]
+pub fn colorize_diagnostics(
+    diagnostics: &str,
+    source_code_for_file: wasm_bindgen::JsValue,
+) -> String {
     initialize();
 
-    let errors: Vec<render::Diagnostic> = deserialize(errors);
+    let diagnostics: Vec<render::Diagnostic> = deserialize(diagnostics);
 
     let source_code_for_file = |file: &str| {
         source_code_for_file
@@ -113,7 +116,7 @@ pub fn colorize_errors(errors: &str, source_code_for_file: wasm_bindgen::JsValue
             .unwrap()
     };
 
-    let colorized = render::colorize_errors(&errors, source_code_for_file);
+    let colorized = render::colorize_diagnostics(&diagnostics, source_code_for_file);
     serialize(&colorized)
 }
 
@@ -214,20 +217,20 @@ pub struct Result {
     /// The generated library.
     pub library: Library,
 
-    /// Any errors ocurring during compilation.
-    pub errors: Vec<util::WithInfo<Info, Error>>,
+    /// Any diagnostics ocurring during compilation.
+    pub diagnostics: Vec<util::WithInfo<Info, Diagnostic>>,
 }
 
-/// Errors produced by the compiler.
+/// Diagnostics produced by the compiler.
 #[allow(missing_docs)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub enum Error {
-    Read(parser::reader::Error),
-    Parse(parser::syntax::Error),
-    Syntax(syntax::Error),
-    Lower(lower::Error),
-    Typecheck(typecheck::Error<Driver>),
+pub enum Diagnostic {
+    Read(parser::reader::Diagnostic),
+    Parse(parser::syntax::Diagnostic),
+    Syntax(syntax::Diagnostic),
+    Lower(lower::Diagnostic),
+    Typecheck(typecheck::Diagnostic<Driver>),
 }
 
 impl Driver {
@@ -237,19 +240,17 @@ impl Driver {
         files: impl IntoIterator<Item = File>,
         dependencies: Option<Interface>,
     ) -> Result {
-        let mut errors = Vec::new();
+        let mut diagnostics = Vec::new();
 
-        let files = files.into_iter().map(|file| {
-            let options = parser::reader::ReadOptions {
-                strip_comments: true,
-            };
+        let files =
+            files.into_iter().map(|file| {
+                let options = parser::reader::ReadOptions {
+                    strip_comments: true,
+                };
 
-            let tokenize_result = parser::reader::tokenize(&file.code);
-            errors.extend(
-                tokenize_result
-                    .errors
-                    .into_iter()
-                    .map(|error| util::WithInfo {
+                let tokenize_result = parser::reader::tokenize(&file.code);
+                diagnostics.extend(tokenize_result.diagnostics.into_iter().map(|error| {
+                    util::WithInfo {
                         info: Info {
                             parser_info: parser::syntax::Info {
                                 path: file.path.clone(),
@@ -257,33 +258,14 @@ impl Driver {
                                 documentation: Vec::new(),
                             },
                         },
-                        item: Error::Read(error),
-                    }),
-            );
+                        item: Diagnostic::Read(error),
+                    }
+                }));
 
-            let read_result =
-                wipple_parser::reader::read_top_level(tokenize_result.tokens, options);
-            errors.extend(read_result.errors.into_iter().map(|error| util::WithInfo {
-                info: Info {
-                    parser_info: parser::syntax::Info {
-                        path: file.path.clone(),
-                        span: error.span.clone(),
-                        documentation: Vec::new(),
-                    },
-                },
-                item: Error::Read(error),
-            }));
-
-            let syntax_driver = SyntaxDriver {
-                file_path: file.path.clone(),
-            };
-
-            let syntax_result = wipple_parser::syntax::parse(&syntax_driver, read_result.node);
-            errors.extend(
-                syntax_result
-                    .errors
-                    .into_iter()
-                    .map(|error| util::WithInfo {
+                let read_result =
+                    wipple_parser::reader::read_top_level(tokenize_result.tokens, options);
+                diagnostics.extend(read_result.diagnostics.into_iter().map(|error| {
+                    util::WithInfo {
                         info: Info {
                             parser_info: parser::syntax::Info {
                                 path: file.path.clone(),
@@ -291,20 +273,38 @@ impl Driver {
                                 documentation: Vec::new(),
                             },
                         },
-                        item: Error::Parse(error),
-                    }),
-            );
+                        item: Diagnostic::Read(error),
+                    }
+                }));
 
-            let parse_result = wipple_syntax::parse(&syntax_driver, syntax_result.top_level);
-            errors.extend(
-                parse_result
-                    .errors
-                    .into_iter()
-                    .map(|error| error.map(Error::Syntax).map_info(Info::from)),
-            );
+                let syntax_driver = SyntaxDriver {
+                    file_path: file.path.clone(),
+                };
 
-            convert::lower::convert(parse_result.top_level)
-        });
+                let syntax_result = wipple_parser::syntax::parse(&syntax_driver, read_result.node);
+                diagnostics.extend(syntax_result.diagnostics.into_iter().map(|error| {
+                    util::WithInfo {
+                        info: Info {
+                            parser_info: parser::syntax::Info {
+                                path: file.path.clone(),
+                                span: error.span.clone(),
+                                documentation: Vec::new(),
+                            },
+                        },
+                        item: Diagnostic::Parse(error),
+                    }
+                }));
+
+                let parse_result = wipple_syntax::parse(&syntax_driver, syntax_result.top_level);
+                diagnostics.extend(
+                    parse_result
+                        .diagnostics
+                        .into_iter()
+                        .map(|error| error.map(Diagnostic::Syntax).map_info(Info::from)),
+                );
+
+                convert::lower::convert(parse_result.top_level)
+            });
 
         let lower_result = wipple_lower::resolve(
             &self,
@@ -355,11 +355,11 @@ impl Driver {
                 .unwrap_or_default(),
         );
 
-        errors.extend(
+        diagnostics.extend(
             lower_result
-                .errors
+                .diagnostics
                 .into_iter()
-                .map(|error| error.map(Error::Lower)),
+                .map(|error| error.map(Diagnostic::Lower)),
         );
 
         self.interface.top_level = lower_result.interface.top_level;
@@ -415,20 +415,20 @@ impl Driver {
                 ),
             );
 
-            errors.extend(
+            diagnostics.extend(
                 typecheck_result
-                    .errors
+                    .diagnostics
                     .into_iter()
-                    .map(|error| error.map(Error::Typecheck)),
+                    .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            let exhaustiveness_errors =
+            let exhaustiveness_diagnostics =
                 wipple_typecheck::check_exhaustiveness(&self, typecheck_result.item.as_ref());
 
-            errors.extend(
-                exhaustiveness_errors
+            diagnostics.extend(
+                exhaustiveness_diagnostics
                     .into_iter()
-                    .map(|error| error.map(Error::Typecheck)),
+                    .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
             let codegen_result =
@@ -460,20 +460,20 @@ impl Driver {
                 ),
             );
 
-            errors.extend(
+            diagnostics.extend(
                 typecheck_result
-                    .errors
+                    .diagnostics
                     .into_iter()
-                    .map(|error| error.map(Error::Typecheck)),
+                    .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            let exhaustiveness_errors =
+            let exhaustiveness_diagnostics =
                 wipple_typecheck::check_exhaustiveness(&self, typecheck_result.item.as_ref());
 
-            errors.extend(
-                exhaustiveness_errors
+            diagnostics.extend(
+                exhaustiveness_diagnostics
                     .into_iter()
-                    .map(|error| error.map(Error::Typecheck)),
+                    .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
             let codegen_result =
@@ -503,20 +503,20 @@ impl Driver {
                 },
             );
 
-            errors.extend(
+            diagnostics.extend(
                 typecheck_result
-                    .errors
+                    .diagnostics
                     .into_iter()
-                    .map(|error| error.map(Error::Typecheck)),
+                    .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            let exhaustiveness_errors =
+            let exhaustiveness_diagnostics =
                 wipple_typecheck::check_exhaustiveness(&self, typecheck_result.item.as_ref());
 
-            errors.extend(
-                exhaustiveness_errors
+            diagnostics.extend(
+                exhaustiveness_diagnostics
                     .into_iter()
-                    .map(|error| error.map(Error::Typecheck)),
+                    .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
             let codegen_result = codegen::compile(
@@ -545,12 +545,13 @@ impl Driver {
                 .map(|(path, _)| path.clone())
                 .collect::<Vec<_>>();
 
-            let overlap_errors = typecheck::instances_overlap(&self, &r#trait, instances.clone());
+            let overlap_diagnostics =
+                typecheck::instances_overlap(&self, &r#trait, instances.clone());
 
-            errors.extend(
-                overlap_errors
+            diagnostics.extend(
+                overlap_diagnostics
                     .into_iter()
-                    .map(|error| error.map(Error::Typecheck)),
+                    .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
             self.library.instances.insert(r#trait.clone(), instances);
@@ -582,7 +583,7 @@ impl Driver {
         Result {
             interface: self.interface,
             library: self.library,
-            errors: errors.into_iter().unique().collect(),
+            diagnostics: diagnostics.into_iter().unique().collect(),
         }
     }
 }

@@ -93,14 +93,14 @@ pub fn resolve<D: Driver>(
     crate::Result {
         interface,
         library: info.library,
-        errors: info.errors,
+        diagnostics: info.errors,
     }
 }
 
 #[derive(Debug, Derivative)]
 #[derivative(Default(bound = ""))]
 struct Info<D: Driver> {
-    errors: Vec<WithInfo<D::Info, crate::Error>>,
+    errors: Vec<WithInfo<D::Info, crate::Diagnostic>>,
     dependencies: crate::Interface<D>,
     type_declarations: HashMap<crate::Path, WithInfo<D::Info, Option<crate::TypeDeclaration<D>>>>,
     trait_declarations: HashMap<crate::Path, WithInfo<D::Info, Option<crate::TraitDeclaration<D>>>>,
@@ -186,7 +186,7 @@ fn resolve_statements<D: Driver>(
                         Entry::Occupied(entry) => {
                             info.errors.push(
                                 statement
-                                    .replace(crate::Error::AlreadyDefined(entry.key().clone())),
+                                    .replace(crate::Diagnostic::AlreadyDefined(entry.key().clone())),
                             );
 
                             None
@@ -220,7 +220,7 @@ fn resolve_statements<D: Driver>(
                     if info.path.len() > 1 {
                         info.errors.push(WithInfo {
                             info: statement.info,
-                            item: crate::Error::NestedLanguageDeclaration,
+                            item: crate::Diagnostic::NestedLanguageDeclaration,
                         });
 
                         return None;
@@ -981,7 +981,7 @@ fn resolve_expression<D: Driver>(
             _ => {
                 info.errors.push(WithInfo {
                     info: expression_info,
-                    item: crate::Error::InvalidComposition,
+                    item: crate::Diagnostic::InvalidComposition,
                 });
 
                 crate::Expression::Error
@@ -1385,7 +1385,7 @@ fn resolve_type<D: Driver>(
                 } else {
                     info.errors.push(WithInfo {
                         info: type_info,
-                        item: crate::Error::InvalidDeferredType,
+                        item: crate::Diagnostic::InvalidDeferredType,
                     });
 
                     r#type.item
@@ -1472,7 +1472,8 @@ fn resolve_name<D: Driver, T>(
     let result = try_resolve_name(name.clone(), info, filter);
 
     if result.is_none() {
-        info.errors.push(name.map(crate::Error::UnresolvedName));
+        info.errors
+            .push(name.map(crate::Diagnostic::UnresolvedName));
     }
 
     result
@@ -1505,10 +1506,11 @@ fn try_resolve_name<D: Driver, T>(
                 }
                 1 => return Some(candidates.pop().unwrap()),
                 _ => {
-                    info.errors.push(name.replace(crate::Error::AmbiguousName {
-                        name: name.item.clone(),
-                        candidates: paths.into_iter().map(|path| path.item).collect(),
-                    }));
+                    info.errors
+                        .push(name.replace(crate::Diagnostic::AmbiguousName {
+                            name: name.item.clone(),
+                            candidates: paths.into_iter().map(|path| path.item).collect(),
+                        }));
 
                     return Some(candidates.pop().unwrap()); // try the last candidate defined
                 }
@@ -1612,7 +1614,7 @@ fn resolve_language_item<D: Driver>(
         ),
         None => {
             info.errors
-                .push(name.map(crate::Error::UnresolvedLanguageItem));
+                .push(name.map(crate::Diagnostic::UnresolvedLanguageItem));
 
             None
         }

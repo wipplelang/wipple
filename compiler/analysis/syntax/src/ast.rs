@@ -13,7 +13,7 @@ pub fn top_level<D: Driver>(
 
     crate::Result {
         top_level,
-        errors: info.errors,
+        diagnostics: info.errors,
     }
 }
 
@@ -28,7 +28,7 @@ struct PartialConstant<D: Driver> {
 }
 
 struct Info<D: Driver> {
-    errors: Vec<WithInfo<D::Info, crate::Error>>,
+    errors: Vec<WithInfo<D::Info, crate::Diagnostic>>,
     current_constant: Option<PartialConstant<D>>,
 }
 
@@ -201,7 +201,7 @@ fn statements<D: Driver>(
                         if let Some(constant) = current_constant.as_ref() {
                             info.errors.push(WithInfo {
                                 info: $statement_info.unwrap_or(constant.name.info.clone()),
-                                item: crate::Error::ExpectedConstantValue(
+                                item: crate::Diagnostic::ExpectedConstantValue(
                                     constant.name.item.clone(),
                                 ),
                             });
@@ -213,7 +213,7 @@ fn statements<D: Driver>(
                                        info: &mut Info<D>| {
                     for bound in bounds {
                         info.errors
-                            .push(bound.replace(crate::Error::UnexpectedBound));
+                            .push(bound.replace(crate::Diagnostic::UnexpectedBound));
                     }
                 };
 
@@ -292,7 +292,7 @@ fn statements<D: Driver>(
                                             None => {
                                                 info.errors.push(WithInfo {
                                                     info: name.info.clone(),
-                                                    item: crate::Error::EmptyTypeRepresentation,
+                                                    item: crate::Diagnostic::EmptyTypeRepresentation,
                                                 });
 
                                                 crate::TypeRepresentation::Opaque
@@ -314,7 +314,7 @@ fn statements<D: Driver>(
                                                         ) => {
                                                             info.errors.push(WithInfo {
                                                                 info: member_syntax.info.clone(),
-                                                                item: crate::Error::ExpectedVariant,
+                                                                item: crate::Diagnostic::ExpectedVariant,
                                                             });
 
                                                             continue;
@@ -337,7 +337,7 @@ fn statements<D: Driver>(
                                                         crate::TypeRepresentation::Structure(_) => {
                                                             info.errors.push(WithInfo {
                                                                 info: member_syntax.info.clone(),
-                                                                item: crate::Error::ExpectedField,
+                                                                item: crate::Diagnostic::ExpectedField,
                                                             });
 
                                                             continue;
@@ -479,7 +479,7 @@ fn statements<D: Driver>(
 
                                         info.errors.push(WithInfo {
                                             info: statement_info.clone(),
-                                            item: crate::Error::ExpectedConstantValue(
+                                            item: crate::Diagnostic::ExpectedConstantValue(
                                                 constant.name.item,
                                             ),
                                         });

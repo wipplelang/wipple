@@ -10,7 +10,7 @@ pub struct ParseFormatExpressionResult<D: Driver> {
 pub(crate) fn parse_format_expression<D: Driver>(
     raw: &WithInfo<D::Info, String>,
     mut inputs: Vec<WithInfo<D::Info, syntax::Expression<D>>>,
-    errors: &mut Vec<WithInfo<D::Info, crate::Error>>,
+    errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic>>,
 ) -> ParseFormatExpressionResult<D> {
     let mut string = String::with_capacity(raw.item.len());
     let mut escaped_underscores = Vec::new();
@@ -25,7 +25,7 @@ pub(crate) fn parse_format_expression<D: Driver>(
         }
         Err(e) => errors.push(WithInfo {
             info: raw.info.clone(),
-            item: crate::Error::InvalidTextLiteral(TextLiteralError {
+            item: crate::Diagnostic::InvalidTextLiteral(TextLiteralError {
                 start: range.start as u32,
                 end: range.end as u32,
                 error: message_from_rustc(&e).to_string(),
@@ -54,7 +54,7 @@ pub(crate) fn parse_format_expression<D: Driver>(
     if segments.len() != inputs.len() {
         errors.push(WithInfo {
             info: raw.info.clone(),
-            item: crate::Error::InvalidPlaceholderText {
+            item: crate::Diagnostic::InvalidPlaceholderText {
                 expected: segments.len() as u32,
                 found: inputs.len() as u32,
             },

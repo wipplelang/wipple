@@ -5,20 +5,22 @@ export const compile = (sources: any[], dependencies: any) =>
 
 export const link = (libraries: any[]) => JSON.parse(wasm.link(JSON.stringify(libraries)));
 
-export const renderErrors = (
-    errors: any[],
+export const renderDiagnostics = (
+    diagnostics: any[],
     interface_: any,
     library: any,
     sourceCodeForFile: (file: string) => string
 ) =>
     JSON.parse(
-        wasm.renderErrors(
-            JSON.stringify(errors),
+        wasm.renderDiagnostics(
+            JSON.stringify(diagnostics),
             JSON.stringify(interface_),
             JSON.stringify(library),
             sourceCodeForFile
         )
     );
 
-export const colorizeErrors = (errors: any[], sourceCodeForFile: (file: string) => string) =>
-    JSON.parse(wasm.colorizeErrors(JSON.stringify(errors), sourceCodeForFile));
+export const colorizeDiagnostics = (
+    diagnostics: any[],
+    sourceCodeForFile: (file: string) => string
+) => JSON.parse(wasm.colorizeDiagnostics(JSON.stringify(diagnostics), sourceCodeForFile));

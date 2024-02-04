@@ -59,7 +59,7 @@ pub mod tokenize {
         pub tokens: Vec<Token<'src>>,
 
         /// Any errors encountered while parsing the source code.
-        pub errors: Vec<Error>,
+        pub diagnostics: Vec<Diagnostic>,
     }
 }
 
@@ -72,12 +72,15 @@ pub fn tokenize(s: &str) -> tokenize::Result<'_> {
 
             match result {
                 Ok(kind) => Ok(Token { span, kind }),
-                Err(()) => Err(Error::new(span, ErrorKind::InvalidToken)),
+                Err(()) => Err(Diagnostic::new(span, ErrorKind::InvalidToken)),
             }
         })
         .partition_result();
 
-    tokenize::Result { tokens, errors }
+    tokenize::Result {
+        tokens,
+        diagnostics: errors,
+    }
 }
 
 /// A node in a syntax tree.
@@ -208,7 +211,7 @@ impl<'src> Node<'src> {
 /// An error occurring during [`tokenize`] or [`read`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Error {
+pub struct Diagnostic {
     /// The location in the source code where the error occurred.
     pub span: Range<u32>,
 
@@ -216,9 +219,9 @@ pub struct Error {
     pub kind: ErrorKind,
 }
 
-impl Error {
+impl Diagnostic {
     pub(crate) fn new(span: Range<u32>, kind: ErrorKind) -> Self {
-        Error { span, kind }
+        Diagnostic { span, kind }
     }
 }
 
@@ -273,7 +276,7 @@ pub mod read {
         pub node: Node<'src>,
 
         /// Any errors encountered while parsing the sequence of tokens.
-        pub errors: Vec<Error>,
+        pub diagnostics: Vec<Diagnostic>,
     }
 }
 
@@ -299,7 +302,7 @@ pub fn read_top_level(tokens: Vec<Token<'_>>, options: ReadOptions) -> read::Res
 
     read::Result {
         node: block,
-        errors,
+        diagnostics: errors,
     }
 }
 
@@ -323,12 +326,15 @@ pub fn read_tokens(tokens: Vec<Token<'_>>, options: ReadOptions) -> read::Result
         list = list.strip_comments(&mut errors).unwrap_or(Node::Empty);
     }
 
-    read::Result { node: list, errors }
+    read::Result {
+        node: list,
+        diagnostics: errors,
+    }
 }
 
 impl<'src> Node<'src> {
     /// Remove all comments from this node.
-    fn strip_comments(self, errors: &mut Vec<Error>) -> Option<Self> {
+    fn strip_comments(self, errors: &mut Vec<Diagnostic>) -> Option<Self> {
         match self {
             Node::Empty => Some(Node::Empty),
             Node::Token(token) => {
@@ -368,7 +374,7 @@ impl<'src> Node<'src> {
                 let left = match left.strip_comments(errors) {
                     Some(input) => input,
                     None => {
-                        errors.push(Error::new(
+                        errors.push(Diagnostic::new(
                             span,
                             ErrorKind::MissingOperatorInputOnLeft(operator_name.to_string()),
                         ));
@@ -380,7 +386,7 @@ impl<'src> Node<'src> {
                 let right = match right.strip_comments(errors) {
                     Some(input) => input,
                     None => {
-                        errors.push(Error::new(
+                        errors.push(Diagnostic::new(
                             span,
                             ErrorKind::MissingOperatorInputOnLeft(operator_name.to_string()),
                         ));
@@ -410,7 +416,7 @@ impl<'src> Node<'src> {
 }
 
 impl<'src> BinaryOperatorInput<'src> {
-    fn strip_comments(self, errors: &mut Vec<Error>) -> Self {
+    fn strip_comments(self, errors: &mut Vec<Diagnostic>) -> Self {
         match self {
             BinaryOperatorInput::Unapplied => BinaryOperatorInput::Unapplied,
             BinaryOperatorInput::PartiallyAppliedLeft(input) => {
@@ -448,7 +454,7 @@ impl<'src> VariadicOperatorInput<'src> {
         self,
         operator_name: &str,
         span: &Range<u32>,
-        errors: &mut Vec<Error>,
+        errors: &mut Vec<Diagnostic>,
     ) -> Option<Self> {
         match self {
             VariadicOperatorInput::Unapplied => Some(VariadicOperatorInput::Unapplied),
@@ -459,7 +465,7 @@ impl<'src> VariadicOperatorInput<'src> {
                         let error = input
                             .span_mut()
                             .map(|span| {
-                                Error::new(
+                                Diagnostic::new(
                                     span.clone(),
                                     ErrorKind::MissingOperatorInputOnLeft(
                                         operator_name.to_string(),
@@ -467,7 +473,7 @@ impl<'src> VariadicOperatorInput<'src> {
                                 )
                             })
                             .unwrap_or_else(|| {
-                                Error::new(
+                                Diagnostic::new(
                                     span.clone(),
                                     ErrorKind::MissingOperatorInputOnRight(
                                         operator_name.to_string(),
@@ -534,7 +540,7 @@ fn read_list<'src>(
     tokens: &mut Peekable<impl Iterator<Item = Token<'src>>>,
     top_level: bool,
     end_span: Range<u32>,
-    errors: &mut Vec<Error>,
+    errors: &mut Vec<Diagnostic>,
 ) -> (Range<u32>, Vec<Node<'src>>) {
     let mut contents = Vec::new();
     loop {
@@ -559,7 +565,7 @@ fn read_list<'src>(
             },
             None => {
                 if !top_level {
-                    errors.push(Error::new(
+                    errors.push(Diagnostic::new(
                         end_span.clone(),
                         ErrorKind::Mismatch {
                             expected: Some(TokenKind::RightParenthesis),
@@ -578,7 +584,7 @@ fn read_block<'src>(
     tokens: &mut Peekable<impl Iterator<Item = Token<'src>>>,
     top_level: bool,
     end_span: Range<u32>,
-    errors: &mut Vec<Error>,
+    errors: &mut Vec<Diagnostic>,
 ) -> (Range<u32>, Vec<(Vec<Documentation>, Node<'src>)>) {
     let (end_span, contents) =
         (|| {
@@ -658,7 +664,7 @@ fn read_block<'src>(
                             }
                             TokenKind::RightParenthesis => {
                                 if top_level {
-                                    errors.push(Error::new(
+                                    errors.push(Diagnostic::new(
                                         next.span.clone(),
                                         ErrorKind::Mismatch {
                                             expected: None,
@@ -737,7 +743,7 @@ fn read_block<'src>(
                     }
                     None => {
                         if !top_level {
-                            errors.push(Error::new(
+                            errors.push(Diagnostic::new(
                                 end_span.clone(),
                                 ErrorKind::Mismatch {
                                     expected: Some(TokenKind::RightParenthesis),
@@ -787,10 +793,10 @@ fn read_documentation(comment: &str) -> Documentation {
         let tokenize_result = tokenize(value);
 
         let value = (|| {
-            if tokenize_result.errors.is_empty() {
+            if tokenize_result.diagnostics.is_empty() {
                 let read_result = read_tokens(tokenize_result.tokens, ReadOptions::default());
 
-                if read_result.errors.is_empty() {
+                if read_result.diagnostics.is_empty() {
                     match &read_result.node {
                         Node::Token(token) => match &token.kind {
                             TokenKind::Symbol(symbol) => match symbol.as_ref() {
@@ -854,7 +860,7 @@ fn read_documentation(comment: &str) -> Documentation {
     }
 }
 
-fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src> {
+fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Diagnostic>) -> Node<'src> {
     match node {
         Node::Empty => Node::Empty,
         Node::Token(token) => Node::Token(token),
@@ -901,7 +907,7 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src>
                 .map(|(index, token, _, associativity)| (index, token, associativity))
                 .collect::<Vec<_>>();
 
-            let inputs = |mut side: Vec<Node<'src>>, errors: &mut Vec<Error>| {
+            let inputs = |mut side: Vec<Node<'src>>, errors: &mut Vec<Diagnostic>| {
                 read_operators(
                     Node::List(
                         side.first_mut().unwrap().span_mut().unwrap().start
@@ -912,7 +918,7 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src>
                 )
             };
 
-            let input = |mut elements: Vec<_>, index: usize, errors: &mut Vec<Error>| {
+            let input = |mut elements: Vec<_>, index: usize, errors: &mut Vec<Diagnostic>| {
                 let right = elements
                     .split_off(index)
                     .into_iter()
@@ -937,7 +943,7 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src>
             };
 
             let variadic_input = |operators: Vec<(usize, Token<'src>, &Associativity)>,
-                                  errors: &mut Vec<Error>| {
+                                  errors: &mut Vec<Diagnostic>| {
                 let (_, first_operator_token, _) = operators.first().unwrap().clone();
                 let mut operators = VecDeque::from(operators);
 
@@ -981,7 +987,7 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src>
                                     _ => unreachable!(),
                                 };
 
-                                errors.push(Error::new(
+                                errors.push(Diagnostic::new(
                                     token.span,
                                     ErrorKind::MissingOperatorInputOnLeft(operator_name),
                                 ));
@@ -1028,7 +1034,7 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src>
                             let (left, right) = match input(elements, *index, errors) {
                                 BinaryOperatorInput::Unapplied
                                 | BinaryOperatorInput::PartiallyAppliedRight(_) => {
-                                    errors.push(Error::new(
+                                    errors.push(Diagnostic::new(
                                         span,
                                         ErrorKind::MissingOperatorInputOnLeft(
                                             operator_name.to_string(),
@@ -1038,7 +1044,7 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src>
                                     return Node::Empty;
                                 }
                                 BinaryOperatorInput::PartiallyAppliedLeft(_) => {
-                                    errors.push(Error::new(
+                                    errors.push(Diagnostic::new(
                                         span,
                                         ErrorKind::MissingOperatorInputOnRight(
                                             operator_name.to_string(),
@@ -1064,7 +1070,7 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src>
                             let (token, input) = match (left.is_empty(), right.is_empty()) {
                                 (true, true) => (token.clone(), VariadicOperatorInput::Unapplied),
                                 (true, false) => {
-                                    errors.push(Error::new(
+                                    errors.push(Diagnostic::new(
                                         token.span.clone(),
                                         ErrorKind::MissingOperatorInputOnLeft(
                                             operator_name.to_string(),
@@ -1091,7 +1097,7 @@ fn read_operators<'src>(node: Node<'src>, errors: &mut Vec<Error>) -> Node<'src>
                         Associativity::None => {
                             for token in operators.iter().skip(1).map(|(_, token, _)| token.clone())
                             {
-                                errors.push(Error::new(
+                                errors.push(Diagnostic::new(
                                     token.span.clone(),
                                     ErrorKind::MultipleNonAssociativeOperators {
                                         operator: match token.kind {

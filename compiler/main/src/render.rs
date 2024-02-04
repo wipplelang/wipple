@@ -7,6 +7,7 @@ use wipple_util::WithInfo;
 
 /// A rendered diagnostic.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Diagnostic {
     /// Whether the diagnostic represents an error that must be fixed before the
     /// program can run.
@@ -101,13 +102,13 @@ impl Fix {
 
 /// Render a compiler diagnostic to an [`Diagnostic`].
 pub fn render_diagnostic(
-    error: WithInfo<crate::Info, crate::Error>,
+    error: WithInfo<crate::Info, crate::Diagnostic>,
     query: &crate::Query<'_>,
 ) -> Diagnostic {
     let info = error.info;
 
     match error.item {
-        crate::Error::Read(error) => {
+        crate::Diagnostic::Read(error) => {
             let group = DiagnosticGroup {
                 name: String::from("Syntax error"),
                 explanation: String::from("Wipple couldn't understand your code because a symbol is missing or is in the wrong place."),
@@ -245,7 +246,7 @@ pub fn render_diagnostic(
                 },
             }
         }
-        crate::Error::Parse(error) => {
+        crate::Diagnostic::Parse(error) => {
             let group = DiagnosticGroup {
                 name: String::from("Syntax error"),
                 explanation: String::from("Wipple couldn't understand your code because it was expecting a different piece of code than the one provided."),
@@ -315,7 +316,7 @@ pub fn render_diagnostic(
                 fix: None,
             }
         }
-        crate::Error::Syntax(error) => {
+        crate::Diagnostic::Syntax(error) => {
             let group = DiagnosticGroup {
                 name: String::from("Syntax error"),
                 explanation: String::from(
@@ -325,7 +326,7 @@ pub fn render_diagnostic(
             };
 
             match error {
-                wipple_syntax::Error::UnexpectedBound => Diagnostic {
+                wipple_syntax::Diagnostic::UnexpectedBound => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -337,7 +338,7 @@ pub fn render_diagnostic(
                     help: String::from("Bounds aren't allowed in `type` and `trait` definitions. Instead, move the bounds to the functions that use the types and traits."),
                     fix: None,
                 },
-                wipple_syntax::Error::ExpectedConstantValue(name) => Diagnostic {
+                wipple_syntax::Diagnostic::ExpectedConstantValue(name) => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -349,7 +350,7 @@ pub fn render_diagnostic(
                     help: format!("Here, you defined `{name}`'s type using `::`, but constants must also be assigned a value using `:`. Try giving `{name}` a value on the line below this one."),
                     fix: Some(Fix::after(format!("give `{name}` a value"), format!("\n{name} : _"))),
                 },
-                wipple_syntax::Error::EmptyTypeRepresentation => Diagnostic {
+                wipple_syntax::Diagnostic::EmptyTypeRepresentation => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -361,7 +362,7 @@ pub fn render_diagnostic(
                     help: String::from("Try adding a field (`name :: Type`) or variant (`Name`) inside the parentheses."),
                     fix: Some(Fix::replace("add a new field between the parentheses", "(\n  field :: Text\n)")),
                 },
-                wipple_syntax::Error::ExpectedField => Diagnostic {
+                wipple_syntax::Diagnostic::ExpectedField => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -373,7 +374,7 @@ pub fn render_diagnostic(
                     help: String::from("A type must contain all fields or all variants."),
                     fix: None,
                 },
-                wipple_syntax::Error::ExpectedVariant => Diagnostic {
+                wipple_syntax::Diagnostic::ExpectedVariant => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -385,7 +386,7 @@ pub fn render_diagnostic(
                     help: String::from("A type must contain all fields or all variants."),
                     fix: None,
                 },
-                wipple_syntax::Error::InvalidTextLiteral(text_literal_error) => Diagnostic {
+                wipple_syntax::Diagnostic::InvalidTextLiteral(text_literal_error) => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -397,7 +398,7 @@ pub fn render_diagnostic(
                     help: String::from("This piece of text contains an invalid character or escape sequence."),
                     fix: Some(Fix::replace("remove the invalid piece of text", "")),
                 },
-                wipple_syntax::Error::InvalidPlaceholderText { expected, found } => Diagnostic {
+                wipple_syntax::Diagnostic::InvalidPlaceholderText { expected, found } => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -417,7 +418,7 @@ pub fn render_diagnostic(
                 },
             }
         }
-        crate::Error::Lower(error) => {
+        crate::Diagnostic::Lower(error) => {
             let group = DiagnosticGroup {
                 name: String::from("Name error"),
                 explanation: String::from(
@@ -462,16 +463,16 @@ pub fn render_diagnostic(
             };
 
             match error {
-                wipple_lower::Error::UnresolvedName(name) => render_unresolved("", &name),
-                wipple_lower::Error::UnresolvedType(name) => render_unresolved("type ", &name),
-                wipple_lower::Error::UnresolvedTrait(name) => render_unresolved("trait ", &name),
-                wipple_lower::Error::UnresolvedVariant(name) => {
+                wipple_lower::Diagnostic::UnresolvedName(name) => render_unresolved("", &name),
+                wipple_lower::Diagnostic::UnresolvedType(name) => render_unresolved("type ", &name),
+                wipple_lower::Diagnostic::UnresolvedTrait(name) => render_unresolved("trait ", &name),
+                wipple_lower::Diagnostic::UnresolvedVariant(name) => {
                     render_unresolved("variant ", &name)
                 }
-                wipple_lower::Error::UnresolvedLanguageItem(name) => {
+                wipple_lower::Diagnostic::UnresolvedLanguageItem(name) => {
                     render_unresolved("language item ", &name)
                 }
-                wipple_lower::Error::AmbiguousName { name, candidates } => Diagnostic {
+                wipple_lower::Diagnostic::AmbiguousName { name, candidates } => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -497,7 +498,7 @@ pub fn render_diagnostic(
                     help: format!("Try renaming one of the definitions of `{name}` so it doesn't conflict with the others."),
                     fix: None,
                 },
-                wipple_lower::Error::AlreadyDefined(path) => {
+                wipple_lower::Diagnostic::AlreadyDefined(path) => {
                     let name = path.last().unwrap().name().unwrap();
                     let info = query.info_at_path(&path).unwrap();
 
@@ -518,7 +519,7 @@ pub fn render_diagnostic(
                         fix: None,
                     }
                 },
-                wipple_lower::Error::NestedLanguageDeclaration => Diagnostic {
+                wipple_lower::Diagnostic::NestedLanguageDeclaration => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -530,7 +531,7 @@ pub fn render_diagnostic(
                     help: String::from("Try moving this line outside of any code."),
                     fix: None,
                 },
-                wipple_lower::Error::InvalidComposition => Diagnostic {
+                wipple_lower::Diagnostic::InvalidComposition => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -542,7 +543,7 @@ pub fn render_diagnostic(
                     help: String::from("The function composition operator `|` requires inputs on both sides."),
                     fix: None,
                 },
-                wipple_lower::Error::InvalidDeferredType => Diagnostic {
+                wipple_lower::Diagnostic::InvalidDeferredType => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -556,7 +557,7 @@ pub fn render_diagnostic(
                 },
             }
         }
-        crate::Error::Typecheck(error) => {
+        crate::Diagnostic::Typecheck(error) => {
             let group = DiagnosticGroup {
                 name: String::from("Type error"),
                 explanation: String::from("This code doesn't produce what's expected here. Double-check that you're providing the right inputs and using the correct units."),
@@ -564,7 +565,7 @@ pub fn render_diagnostic(
             };
 
             match error {
-                wipple_typecheck::Error::RecursionLimit => Diagnostic {
+                wipple_typecheck::Diagnostic::RecursionLimit => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -576,7 +577,7 @@ pub fn render_diagnostic(
                     help: String::from("This code is too complex for Wipple to check. Try splitting the code across multiple functions or providing explicit type annotations using `::`."),
                     fix: None,
                 },
-                wipple_typecheck::Error::MissingLanguageItem(language_item) => Diagnostic {
+                wipple_typecheck::Diagnostic::MissingLanguageItem(language_item) => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -588,7 +589,7 @@ pub fn render_diagnostic(
                     help: format!("Try defining `{language_item}` using a `language` pattern."),
                     fix: None,
                 },
-                wipple_typecheck::Error::UnknownType(r#type) => Diagnostic {
+                wipple_typecheck::Diagnostic::UnknownType(r#type) => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -608,7 +609,7 @@ pub fn render_diagnostic(
                     help: String::from("Try providing some more context so Wipple can check this code. One way to do this is by using `::` to explicitly annotate the type, but you can also try assigning this code to a variable and passing it to a function."),
                     fix: None,
                 },
-                wipple_typecheck::Error::UndeclaredTypeParameter(_) => Diagnostic {
+                wipple_typecheck::Diagnostic::UndeclaredTypeParameter(_) => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -620,7 +621,7 @@ pub fn render_diagnostic(
                     help: String::new(),
                     fix: None,
                 },
-                wipple_typecheck::Error::Mismatch {
+                wipple_typecheck::Diagnostic::Mismatch {
                     actual_roles,
                     actual,
                     expected_roles,
@@ -701,7 +702,7 @@ pub fn render_diagnostic(
                         fix: None,
                     }
                 },
-                wipple_typecheck::Error::DisallowedCoercion(r#type) => Diagnostic {
+                wipple_typecheck::Diagnostic::DisallowedCoercion(r#type) => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -713,7 +714,7 @@ pub fn render_diagnostic(
                     help: String::from("Try wrapping this code in a function that performs the conversion."),
                     fix: None,
                 },
-                wipple_typecheck::Error::UnresolvedInstance { instance, candidates, stack } => {
+                wipple_typecheck::Diagnostic::UnresolvedInstance { instance, candidates, stack } => {
                     // TODO: Custom messages
 
                     let r#trait = instance.r#trait.last().unwrap().name().unwrap_or("_");
@@ -771,7 +772,7 @@ pub fn render_diagnostic(
                         }
                     }
                 },
-                wipple_typecheck::Error::NotAStructure(r#type) => Diagnostic {
+                wipple_typecheck::Diagnostic::NotAStructure(r#type) => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -783,7 +784,7 @@ pub fn render_diagnostic(
                     help: format!("Try adjusting the code so it produces a value of type `{}`.", render_type(&r#type.item, true)),
                     fix: None,
                 },
-                wipple_typecheck::Error::MissingFields(mut fields) => Diagnostic {
+                wipple_typecheck::Diagnostic::MissingFields(mut fields) => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -802,7 +803,7 @@ pub fn render_diagnostic(
                     help: String::from("Try adding these fields using `:`."),
                     fix: None,
                 },
-                wipple_typecheck::Error::ExtraField => Diagnostic {
+                wipple_typecheck::Diagnostic::ExtraField => Diagnostic {
                     error: true,
                     group,
                     primary_label: Label {
@@ -814,7 +815,7 @@ pub fn render_diagnostic(
                     help: String::from("Try removing this field or renaming it to one of the existing fields."),
                     fix: None,
                 },
-                wipple_typecheck::Error::OverlappingInstances { other, .. } => {
+                wipple_typecheck::Diagnostic::OverlappingInstances { other, .. } => {
                     let other = query.info_at_path(&other).unwrap();
 
                     Diagnostic {
@@ -834,7 +835,7 @@ pub fn render_diagnostic(
                         fix: None,
                     }
                 },
-                wipple_typecheck::Error::MissingPatterns(mut patterns) => {
+                wipple_typecheck::Diagnostic::MissingPatterns(mut patterns) => {
                     Diagnostic {
                         error: true,
                         group,
@@ -859,7 +860,7 @@ pub fn render_diagnostic(
                         fix: None,
                     }
                 }
-                wipple_typecheck::Error::ExtraPattern => {
+                wipple_typecheck::Diagnostic::ExtraPattern => {
                     Diagnostic {
                         error: false,
                         group,
@@ -879,7 +880,7 @@ pub fn render_diagnostic(
     }
 }
 
-pub fn colorize_errors<'a>(
+pub fn colorize_diagnostics<'a>(
     errors: impl IntoIterator<Item = &'a Diagnostic>,
     source_code_for_file: impl Fn(&str) -> String,
 ) -> String {

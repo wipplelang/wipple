@@ -1,4 +1,3 @@
-import util from "util";
 import fs from "fs";
 import path from "path";
 import {
@@ -12,7 +11,7 @@ import {
     positional,
 } from "cmd-ts";
 import { File } from "cmd-ts/batteries/fs";
-import { compile, link, renderErrors, colorizeErrors } from "wipple-compiler";
+import { compile, link, renderDiagnostics, colorizeDiagnostics } from "wipple-compiler";
 import { evaluate, InterpreterError, IoRequest } from "wipple-interpreter";
 
 Error.stackTraceLimit = Infinity;
@@ -47,7 +46,7 @@ const app = subcommands({
 
                 const result = compile(sources, dependencies);
 
-                if (result.errors.length > 0) {
+                if (result.diagnostics.length > 0) {
                     const sourceCodeForFile = (file: string) => {
                         try {
                             return fs.readFileSync(file, "utf8");
@@ -56,18 +55,20 @@ const app = subcommands({
                         }
                     };
 
-                    const renderedErrors = renderErrors(
-                        result.errors,
+                    const renderedDiagnostics = renderDiagnostics(
+                        result.diagnostics,
                         result.interface,
                         result.library,
                         sourceCodeForFile
                     );
 
-                    const output = colorizeErrors(renderedErrors, sourceCodeForFile);
+                    const output = colorizeDiagnostics(renderedDiagnostics, sourceCodeForFile);
 
                     console.log(output);
 
-                    process.exit(1);
+                    if (renderedDiagnostics.some((diagnostic: any) => diagnostic.error)) {
+                        process.exit(1);
+                    }
                 }
 
                 if (outputInterfacePath) {

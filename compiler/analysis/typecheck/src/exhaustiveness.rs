@@ -12,7 +12,7 @@ use wipple_util::WithInfo;
 pub fn check_exhaustiveness<D: Driver>(
     driver: &D,
     expression: WithInfo<D::Info, &crate::TypedExpression<D>>,
-) -> Vec<WithInfo<D::Info, crate::Error<D>>> {
+) -> Vec<WithInfo<D::Info, crate::Diagnostic<D>>> {
     let mut errors = Vec::new();
 
     expression.traverse(&mut |expression| {
@@ -40,14 +40,14 @@ pub fn check_exhaustiveness<D: Driver>(
             for info in extra_patterns {
                 errors.push(WithInfo {
                     info,
-                    item: crate::Error::ExtraPattern,
+                    item: crate::Diagnostic::ExtraPattern,
                 });
             }
 
             if !missing_patterns.is_empty() {
                 errors.push(WithInfo {
                     info: expression.info,
-                    item: crate::Error::MissingPatterns(missing_patterns),
+                    item: crate::Diagnostic::MissingPatterns(missing_patterns),
                 });
             }
         }

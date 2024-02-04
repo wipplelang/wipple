@@ -62,7 +62,7 @@ fn test_grammar<T: std::fmt::Debug + PartialEq>(
     expected: T,
 ) {
     let result = crate::reader::tokenize(code);
-    assert!(result.errors.is_empty(), "error tokenizing");
+    assert!(result.diagnostics.is_empty(), "error tokenizing");
 
     let result = crate::reader::read_top_level(
         result.tokens,
@@ -71,7 +71,7 @@ fn test_grammar<T: std::fmt::Debug + PartialEq>(
         },
     );
 
-    assert!(result.errors.is_empty(), "error reading");
+    assert!(result.diagnostics.is_empty(), "error reading");
 
     let top_level = match result.node {
         Node::Block(_, mut nodes) => {
@@ -119,7 +119,7 @@ impl Info {
 
 /// An error occurring during [`parse`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Error {
+pub struct Diagnostic {
     /// The location in the source code where the error occurred.
     pub span: Range<u32>,
 
@@ -154,7 +154,7 @@ pub struct Result<D: wipple_syntax::Driver> {
     pub top_level: WithInfo<D::Info, syntax::TopLevel<D>>,
 
     /// Any errors encountered while parsing the program.
-    pub errors: Vec<Error>,
+    pub diagnostics: Vec<Diagnostic>,
 }
 
 /// Convert a syntax tree into a [`wipple_syntax::syntax::TopLevel`].
@@ -191,7 +191,7 @@ where
         _ => {
             let span = node.span().cloned().unwrap_or(0..0);
 
-            parser.errors.push(Error {
+            parser.errors.push(Diagnostic {
                 span: span.clone(),
                 expected: SyntaxKind::Block,
             });
@@ -212,13 +212,13 @@ where
 
     Result {
         top_level,
-        errors: parser.errors,
+        diagnostics: parser.errors,
     }
 }
 
 struct Parser<'a, D: wipple_syntax::Driver> {
     driver: &'a D,
-    errors: Vec<Error>,
+    errors: Vec<Diagnostic>,
 }
 
 impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
@@ -370,7 +370,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             item: name.to_string(),
                         },
                         _ => {
-                            parser.errors.push(Error {
+                            parser.errors.push(Diagnostic {
                                 span: token.span,
                                 expected: SyntaxKind::Text,
                             });
@@ -379,7 +379,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         }
                     },
                     _ => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: name.span().cloned().unwrap_or_else(|| span.clone()),
                             expected: SyntaxKind::Text,
                         });
@@ -402,7 +402,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                 "trait" => syntax::LanguageDeclarationKind::Trait,
                                 "constant" => syntax::LanguageDeclarationKind::Constant,
                                 _ => {
-                                    parser.errors.push(Error {
+                                    parser.errors.push(Diagnostic {
                                         span: token.span,
                                         expected: SyntaxKind::Name,
                                     });
@@ -412,7 +412,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             },
                         },
                         _ => {
-                            parser.errors.push(Error {
+                            parser.errors.push(Diagnostic {
                                 span: token.span,
                                 expected: SyntaxKind::Name,
                             });
@@ -421,7 +421,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         }
                     },
                     _ => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: item.span().cloned().unwrap_or_else(|| span.clone()),
                             expected: SyntaxKind::Name,
                         });
@@ -442,7 +442,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             item: name.to_string(),
                         },
                         _ => {
-                            parser.errors.push(Error {
+                            parser.errors.push(Diagnostic {
                                 span: token.span,
                                 expected: SyntaxKind::Name,
                             });
@@ -451,7 +451,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         }
                     },
                     _ => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: item.span().cloned().unwrap_or_else(|| span.clone()),
                             expected: SyntaxKind::Name,
                         });
@@ -501,7 +501,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             item: name.to_string(),
                         }),
                         _ => {
-                            parser.errors.push(Error {
+                            parser.errors.push(Diagnostic {
                                 span: token.span.clone(),
                                 expected: SyntaxKind::Name,
                             });
@@ -510,7 +510,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         }
                     },
                     _ => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: name.span().cloned().unwrap_or_else(|| span.clone()),
                             expected: SyntaxKind::Name,
                         });
@@ -575,7 +575,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                 r#type,
                             ),
                             None => {
-                                parser.errors.push(Error {
+                                parser.errors.push(Diagnostic {
                                     span: declaration
                                         .span()
                                         .cloned()
@@ -968,7 +968,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         })
                         .collect::<Vec<_>>(),
                     None => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: span.clone(),
                             expected: SyntaxKind::Pattern,
                         });
@@ -991,7 +991,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         expression,
                     ),
                     None => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: span.clone(),
                             expected: SyntaxKind::Expression,
                         });
@@ -1043,7 +1043,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         pattern,
                     ),
                     None => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: span.clone(),
                             expected: SyntaxKind::Pattern,
                         });
@@ -1199,7 +1199,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             item: name.to_string(),
                         },
                         _ => {
-                            parser.errors.push(Error {
+                            parser.errors.push(Diagnostic {
                                 span: token.span,
                                 expected: SyntaxKind::Text,
                             });
@@ -1216,7 +1216,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         }
                     },
                     _ => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: name
                                 .and_then(|name| name.span().cloned())
                                 .unwrap_or_else(|| span.clone()),
@@ -1274,7 +1274,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             item: name.to_string(),
                         },
                         _ => {
-                            parser.errors.push(Error {
+                            parser.errors.push(Diagnostic {
                                 span: token.span,
                                 expected: SyntaxKind::Text,
                             });
@@ -1291,7 +1291,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         }
                     },
                     _ => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: name
                                 .and_then(|name| name.span().cloned())
                                 .unwrap_or_else(|| span.clone()),
@@ -1316,7 +1316,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         body,
                     ),
                     None => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: span.clone(),
                             expected: SyntaxKind::Expression,
                         });
@@ -1334,7 +1334,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 };
 
                 for input in inputs {
-                    parser.errors.push(Error {
+                    parser.errors.push(Diagnostic {
                         span: input.span().cloned().unwrap_or_else(|| span.clone()),
                         expected: SyntaxKind::Nothing,
                     });
@@ -1367,7 +1367,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         input,
                     ),
                     None => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: span.clone(),
                             expected: SyntaxKind::Expression,
                         });
@@ -1393,7 +1393,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         })
                         .collect(),
                     None => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: span.clone(),
                             expected: SyntaxKind::Block,
                         });
@@ -1403,7 +1403,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 };
 
                 for node in extra {
-                    parser.errors.push(Error {
+                    parser.errors.push(Diagnostic {
                         span: node.span().cloned().unwrap_or_else(|| span.clone()),
                         expected: SyntaxKind::Nothing,
                     });
@@ -1570,7 +1570,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 let r#type = match r#type {
                     Some(r#type) => r#type,
                     None => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: span.clone(),
                             expected: SyntaxKind::Block,
                         });
@@ -1649,7 +1649,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     item: syntax::Expression::Text(text.to_string()),
                 },
                 _ => {
-                    parser.errors.push(Error {
+                    parser.errors.push(Diagnostic {
                         span: span.clone(),
                         expected: SyntaxKind::Expression,
                     });
@@ -1714,7 +1714,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 ),
             },
             _ => {
-                parser.errors.push(Error {
+                parser.errors.push(Diagnostic {
                     span: span.clone(),
                     expected: SyntaxKind::Expression,
                 });
@@ -1829,7 +1829,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
         let mut vars = match TYPE_PARAMETER.parse(&node) {
             Some(vars) => vars,
             None => {
-                self.errors.push(Error {
+                self.errors.push(Diagnostic {
                     span,
                     expected: SyntaxKind::TypeParameter,
                 });
@@ -1869,7 +1869,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     item: name.to_string(),
                 },
                 _ => {
-                    self.errors.push(Error {
+                    self.errors.push(Diagnostic {
                         span: token.span,
                         expected: SyntaxKind::Name,
                     });
@@ -1878,7 +1878,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 }
             },
             _ => {
-                self.errors.push(Error {
+                self.errors.push(Diagnostic {
                     span: name.span().cloned().unwrap_or(span),
                     expected: SyntaxKind::Name,
                 });
@@ -1940,7 +1940,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     },
                 }),
                 _ => {
-                    self.errors.push(Error {
+                    self.errors.push(Diagnostic {
                         span: token.span,
                         expected: SyntaxKind::Instance,
                     });
@@ -1963,7 +1963,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             item: String::from(symbol),
                         },
                         _ => {
-                            self.errors.push(Error {
+                            self.errors.push(Diagnostic {
                                 span: token.span,
                                 expected: SyntaxKind::Instance,
                             });
@@ -1972,7 +1972,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         }
                     },
                     _ => {
-                        self.errors.push(Error {
+                        self.errors.push(Diagnostic {
                             span,
                             expected: SyntaxKind::Trait,
                         });
@@ -2001,7 +2001,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 })
             }
             _ => {
-                self.errors.push(Error {
+                self.errors.push(Diagnostic {
                     span,
                     expected: SyntaxKind::Instance,
                 });
@@ -2054,7 +2054,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                     item: name.to_string(),
                                 }),
                                 _ => {
-                                    parser.errors.push(Error {
+                                    parser.errors.push(Diagnostic {
                                         span: token.span,
                                         expected: SyntaxKind::Name,
                                     });
@@ -2063,7 +2063,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                 }
                             },
                             _ => {
-                                parser.errors.push(Error {
+                                parser.errors.push(Diagnostic {
                                     span: variant.span().cloned().unwrap_or_else(|| span.clone()),
                                     expected: SyntaxKind::Name,
                                 });
@@ -2114,7 +2114,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
         simple_enumeration(self)
             .or_else(|| compound(self))
             .unwrap_or_else(|| {
-                self.errors.push(Error {
+                self.errors.push(Diagnostic {
                     span: span.clone(),
                     expected: SyntaxKind::TypeRepresentation,
                 });
@@ -2172,7 +2172,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             item: name.to_string(),
                         },
                         _ => {
-                            parser.errors.push(Error {
+                            parser.errors.push(Diagnostic {
                                 span: token.span,
                                 expected: SyntaxKind::Name,
                             });
@@ -2181,7 +2181,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         }
                     },
                     _ => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: name.span().cloned().unwrap_or_else(|| span.clone()),
                             expected: SyntaxKind::Name,
                         });
@@ -2227,7 +2227,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             item: name.to_string(),
                         },
                         _ => {
-                            parser.errors.push(Error {
+                            parser.errors.push(Diagnostic {
                                 span: token.span,
                                 expected: SyntaxKind::Name,
                             });
@@ -2236,7 +2236,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         }
                     },
                     _ => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: name.span().cloned().unwrap_or_else(|| span.clone()),
                             expected: SyntaxKind::Name,
                         });
@@ -2271,7 +2271,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
         };
 
         field(self).or_else(|| variant(self)).unwrap_or_else(|| {
-            self.errors.push(Error {
+            self.errors.push(Diagnostic {
                 span: span.clone(),
                 expected: SyntaxKind::TypeMember,
             });
@@ -2328,7 +2328,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     Some(input) => parser
                         .parse_type(input.span().cloned().unwrap_or_else(|| span.clone()), input),
                     None => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: span.clone(),
                             expected: SyntaxKind::Type,
                         });
@@ -2351,7 +2351,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         output,
                     ),
                     None => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: span.clone(),
                             expected: SyntaxKind::Type,
                         });
@@ -2457,7 +2457,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     },
                 },
                 _ => {
-                    parser.errors.push(Error {
+                    parser.errors.push(Diagnostic {
                         span: span.clone(),
                         expected: SyntaxKind::Type,
                     });
@@ -2488,7 +2488,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             item: name.to_string(),
                         },
                         _ => {
-                            parser.errors.push(Error {
+                            parser.errors.push(Diagnostic {
                                 span: token.span.clone(),
                                 expected: SyntaxKind::Name,
                             });
@@ -2505,7 +2505,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         }
                     },
                     Some(token) => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: token.span().cloned().unwrap_or_else(|| span.clone()),
                             expected: SyntaxKind::Type,
                         });
@@ -2553,7 +2553,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 }
             }
             _ => {
-                parser.errors.push(Error {
+                parser.errors.push(Diagnostic {
                     span: span.clone(),
                     expected: SyntaxKind::Type,
                 });
@@ -2636,7 +2636,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     Some(left) => parser
                         .parse_pattern(left.span().cloned().unwrap_or_else(|| span.clone()), left),
                     None => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: span.clone(),
                             expected: SyntaxKind::Pattern,
                         });
@@ -2659,7 +2659,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         right,
                     ),
                     None => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: span.clone(),
                             expected: SyntaxKind::Pattern,
                         });
@@ -2720,7 +2720,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                             item: name.to_string(),
                                         },
                                         _ => {
-                                            parser.errors.push(Error {
+                                            parser.errors.push(Diagnostic {
                                                 span: span.clone(),
                                                 expected: SyntaxKind::Name,
                                             });
@@ -2729,7 +2729,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                                         }
                                     },
                                     _ => {
-                                        parser.errors.push(Error {
+                                        parser.errors.push(Diagnostic {
                                             span: span.clone(),
                                             expected: SyntaxKind::Name,
                                         });
@@ -2819,7 +2819,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     item: syntax::Pattern::Text(text.to_string()),
                 },
                 _ => {
-                    parser.errors.push(Error {
+                    parser.errors.push(Diagnostic {
                         span: span.clone(),
                         expected: SyntaxKind::Type,
                     });
@@ -2850,7 +2850,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                             item: name.to_string(),
                         },
                         _ => {
-                            parser.errors.push(Error {
+                            parser.errors.push(Diagnostic {
                                 span: token.span.clone(),
                                 expected: SyntaxKind::Name,
                             });
@@ -2867,7 +2867,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                         }
                     },
                     Some(token) => {
-                        parser.errors.push(Error {
+                        parser.errors.push(Diagnostic {
                             span: token.span().cloned().unwrap_or_else(|| span.clone()),
                             expected: SyntaxKind::Name,
                         });
@@ -2922,7 +2922,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 }
             }
             _ => {
-                parser.errors.push(Error {
+                parser.errors.push(Diagnostic {
                     span: span.clone(),
                     expected: SyntaxKind::Pattern,
                 });
@@ -2988,7 +2988,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
         let mut vars = match ARM.parse(&node) {
             Some(vars) => vars,
             None => {
-                self.errors.push(Error {
+                self.errors.push(Diagnostic {
                     span,
                     expected: SyntaxKind::Arm,
                 });
@@ -3009,7 +3009,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 pattern,
             ),
             None => {
-                self.errors.push(Error {
+                self.errors.push(Diagnostic {
                     span: span.clone(),
                     expected: SyntaxKind::Pattern,
                 });
@@ -3038,7 +3038,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                 self.parse_expression(body.span().cloned().unwrap_or_else(|| span.clone()), body)
             }
             None => {
-                self.errors.push(Error {
+                self.errors.push(Diagnostic {
                     span: span.clone(),
                     expected: SyntaxKind::Expression,
                 });

@@ -33,7 +33,7 @@ pub struct Result<D: Driver> {
     pub top_level: WithInfo<D::Info, TopLevel<D>>,
 
     /// Any errors encountered while parsing the source code.
-    pub errors: Vec<WithInfo<D::Info, Error>>,
+    pub diagnostics: Vec<WithInfo<D::Info, Diagnostic>>,
 }
 
 /// The context in which an [`Error`] occurred.
@@ -55,7 +55,7 @@ pub enum ErrorContext {
 /// An error occuring during parsing.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub enum Error {
+pub enum Diagnostic {
     /// The parser found a bound, but bounds aren't allowed here.
     UnexpectedBound,
 

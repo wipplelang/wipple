@@ -1,5 +1,0 @@
-[should warn]
-
-(show) :: Text -> ()
-1 + 2
-show (1 + 2)

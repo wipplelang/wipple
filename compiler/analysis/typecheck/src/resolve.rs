@@ -139,7 +139,7 @@ pub fn resolve<D: Driver>(
         if recursion_stack.borrow().len() as u32 > recursion_limit {
             errors.borrow_mut().push(WithInfo {
                 info: queued.body.info.clone(),
-                item: crate::Error::RecursionLimit,
+                item: crate::Diagnostic::RecursionLimit,
             });
 
             let finalize_context = FinalizeContext {
@@ -249,14 +249,17 @@ pub fn resolve<D: Driver>(
         &mut errors,
     );
 
-    crate::Result { item, errors }
+    crate::Result {
+        item,
+        diagnostics: errors,
+    }
 }
 
 pub fn instances_overlap<D: Driver>(
     driver: &D,
     r#trait: &D::Path,
     instances: impl IntoIterator<Item = D::Path>,
-) -> Vec<WithInfo<D::Info, crate::Error<D>>> {
+) -> Vec<WithInfo<D::Info, crate::Diagnostic<D>>> {
     let trait_declaration = driver.get_trait_declaration(r#trait);
     let opaque_parameters = trait_declaration
         .item
@@ -346,7 +349,7 @@ pub fn instances_overlap<D: Driver>(
 
                 errors.push(WithInfo {
                     info: info.clone(),
-                    item: crate::Error::OverlappingInstances {
+                    item: crate::Diagnostic::OverlappingInstances {
                         instance: path.clone(),
                         other: other_path.clone(),
                     },
@@ -443,7 +446,7 @@ fn report_queued_errors<D: Driver>(
     driver: &D,
     type_context: &TypeContext<D>,
     error_queue: Vec<WithInfo<D::Info, QueuedError<D>>>,
-    errors: &mut Vec<WithInfo<D::Info, crate::Error<D>>>,
+    errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
 ) {
     let finalize_context = FinalizeContext {
         driver,
@@ -458,8 +461,8 @@ fn report_queued_errors<D: Driver>(
 
     errors.extend(error_queue.into_iter().map(|error| {
         error.map(|error| match error {
-            QueuedError::RecursionLimit => crate::Error::RecursionLimit,
-            QueuedError::Mismatch { actual, expected } => crate::Error::Mismatch {
+            QueuedError::RecursionLimit => crate::Diagnostic::RecursionLimit,
+            QueuedError::Mismatch { actual, expected } => crate::Diagnostic::Mismatch {
                 actual_roles: actual.roles.clone(),
                 actual: finalize_type(actual, &finalize_context),
                 expected_roles: expected.roles.clone(),
@@ -469,7 +472,7 @@ fn report_queued_errors<D: Driver>(
                 instance,
                 candidates,
                 stack,
-            } => crate::Error::UnresolvedInstance {
+            } => crate::Diagnostic::UnresolvedInstance {
                 instance: finalize_instance(instance, &finalize_context),
                 candidates,
                 stack: stack
@@ -480,10 +483,10 @@ fn report_queued_errors<D: Driver>(
                     .collect(),
             },
             QueuedError::NotAStructure(r#type) => {
-                crate::Error::NotAStructure(finalize_type(r#type, &finalize_context))
+                crate::Diagnostic::NotAStructure(finalize_type(r#type, &finalize_context))
             }
-            QueuedError::MissingFields(fields) => crate::Error::MissingFields(fields),
-            QueuedError::ExtraField => crate::Error::ExtraField,
+            QueuedError::MissingFields(fields) => crate::Diagnostic::MissingFields(fields),
+            QueuedError::ExtraField => crate::Diagnostic::ExtraField,
         })
     }));
 }
@@ -654,7 +657,7 @@ struct InstantiationContext<'a, D: Driver> {
     type_context: &'a TypeContext<D>,
     types: Vec<(D::Path, Type<D>)>,
     info: &'a D::Info,
-    errors: &'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>,
+    errors: &'a RefCell<Vec<WithInfo<D::Info, crate::Diagnostic<D>>>>,
 }
 
 #[derive(Clone, Copy, Default)]
@@ -669,7 +672,7 @@ impl<'a, D: Driver> InstantiationContext<'a, D> {
         parameters: impl IntoIterator<Item = D::Path>,
         type_context: &'a TypeContext<D>,
         info: &'a D::Info,
-        errors: &'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>,
+        errors: &'a RefCell<Vec<WithInfo<D::Info, crate::Diagnostic<D>>>>,
     ) -> Self {
         InstantiationContext::from_parameters_with_options(
             driver,
@@ -686,7 +689,7 @@ impl<'a, D: Driver> InstantiationContext<'a, D> {
         parameters: impl IntoIterator<Item = D::Path>,
         type_context: &'a TypeContext<D>,
         info: &'a D::Info,
-        errors: &'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>,
+        errors: &'a RefCell<Vec<WithInfo<D::Info, crate::Diagnostic<D>>>>,
         options: InstantiationOptions,
     ) -> Self {
         let mut context = InstantiationContext {
@@ -748,7 +751,7 @@ impl<'a, D: Driver> InstantiationContext<'a, D> {
             .unwrap_or_else(|| {
                 self.errors.borrow_mut().push(WithInfo {
                     info: self.info.clone(),
-                    item: crate::Error::UndeclaredTypeParameter(parameter.clone()),
+                    item: crate::Diagnostic::UndeclaredTypeParameter(parameter.clone()),
                 });
 
                 Type::new(TypeKind::Unknown, self.info.clone(), Vec::new())
@@ -1320,7 +1323,7 @@ struct InferContext<'a, D: Driver> {
     driver: &'a D,
     type_context: &'a TypeContext<D>,
     error_queue: &'a RefCell<Vec<WithInfo<D::Info, QueuedError<D>>>>,
-    errors: &'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>,
+    errors: &'a RefCell<Vec<WithInfo<D::Info, crate::Diagnostic<D>>>>,
     variables: &'a RefCell<HashMap<D::Path, Type<D>>>,
 }
 
@@ -2276,14 +2279,14 @@ fn instantiated_language_type<D: Driver>(
     info: &D::Info,
     driver: &D,
     type_context: &TypeContext<D>,
-    errors: &RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>,
+    errors: &RefCell<Vec<WithInfo<D::Info, crate::Diagnostic<D>>>>,
 ) -> Option<Type<D>> {
     match try_instantiated_language_type(language_item, info, driver, type_context, errors) {
         Some(path) => Some(path),
         None => {
             errors.borrow_mut().push(WithInfo {
                 info: info.clone(),
-                item: crate::Error::MissingLanguageItem(language_item.to_string()),
+                item: crate::Diagnostic::MissingLanguageItem(language_item.to_string()),
             });
 
             None
@@ -2296,7 +2299,7 @@ fn try_instantiated_language_type<D: Driver>(
     info: &D::Info,
     driver: &D,
     type_context: &TypeContext<D>,
-    errors: &RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>,
+    errors: &RefCell<Vec<WithInfo<D::Info, crate::Diagnostic<D>>>>,
 ) -> Option<Type<D>> {
     let path = driver.path_for_language_type(language_item)?;
     let type_declaration = driver.get_type_declaration(&path);
@@ -2337,7 +2340,7 @@ fn instantiated_language_trait<D: Driver>(
         None => {
             context.errors.borrow_mut().push(WithInfo {
                 info: info.clone(),
-                item: crate::Error::MissingLanguageItem(language_item.to_string()),
+                item: crate::Diagnostic::MissingLanguageItem(language_item.to_string()),
             });
 
             WithInfo {
@@ -2368,7 +2371,7 @@ fn instantiated_language_constant<D: Driver>(
         None => {
             context.errors.borrow_mut().push(WithInfo {
                 info: info.clone(),
-                item: crate::Error::MissingLanguageItem(language_item.to_string()),
+                item: crate::Diagnostic::MissingLanguageItem(language_item.to_string()),
             });
 
             WithInfo {
@@ -2389,7 +2392,7 @@ struct ResolveContext<'a, D: Driver> {
     driver: &'a D,
     type_context: &'a TypeContext<D>,
     error_queue: &'a RefCell<Vec<WithInfo<D::Info, QueuedError<D>>>>,
-    errors: &'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>,
+    errors: &'a RefCell<Vec<WithInfo<D::Info, crate::Diagnostic<D>>>>,
     variables: &'a RefCell<HashMap<D::Path, Type<D>>>,
     recursion_stack: &'a RefCell<Vec<D::Info>>,
     bound_instances: RefCell<Vec<Vec<WithInfo<D::Info, Instance<D>>>>>,
@@ -3285,7 +3288,7 @@ struct FinalizeContext<'a, D: Driver> {
     type_context: &'a TypeContext<D>,
     bound_instances: RefCell<Vec<Vec<WithInfo<D::Info, Instance<D>>>>>,
     error_queue: Option<&'a RefCell<Vec<WithInfo<D::Info, QueuedError<D>>>>>,
-    errors: Option<&'a RefCell<Vec<WithInfo<D::Info, crate::Error<D>>>>>,
+    errors: Option<&'a RefCell<Vec<WithInfo<D::Info, crate::Diagnostic<D>>>>>,
     unresolved_variables: Option<&'a RefCell<HashSet<TypeVariable<D>>>>,
     contains_unknown: &'a Cell<bool>,
     subexpression_types: Option<&'a RefCell<Vec<crate::Type<D>>>>, // in the order of traversal
@@ -3357,7 +3360,7 @@ fn finalize_type<D: Driver>(
         if let Some(errors) = &context.errors {
             errors.borrow_mut().push(WithInfo {
                 info: finalized_type.info.clone(),
-                item: crate::Error::UnknownType(finalized_type.item.clone()),
+                item: crate::Diagnostic::UnknownType(finalized_type.item.clone()),
             });
         }
     }
@@ -3419,7 +3422,7 @@ fn finalize_expression<D: Driver>(
         ExpressionKind::UnresolvedTrait(path) => {
             let error = WithInfo {
                 info: expression.info.clone(),
-                item: crate::Error::UnknownType(
+                item: crate::Diagnostic::UnknownType(
                     finalize_type(expression.item.r#type.clone(), context).item,
                 ),
             };
@@ -3490,7 +3493,7 @@ fn finalize_expression<D: Driver>(
         ExpressionKind::UnresolvedStructure(_) => {
             let error = WithInfo {
                 info: expression.info.clone(),
-                item: crate::Error::UnknownType(
+                item: crate::Diagnostic::UnknownType(
                     finalize_type(expression.item.r#type.clone(), context).item,
                 ),
             };

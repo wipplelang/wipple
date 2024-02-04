@@ -61,12 +61,12 @@ pub fn resolve<D: Driver>(
     let mut errors = Vec::new();
 
     let result = resolve::resolve(files, dependencies);
-    errors.extend(result.errors);
+    errors.extend(result.diagnostics);
 
     Result {
         interface: result.interface,
         library: result.library,
-        errors,
+        diagnostics: errors,
     }
 }
 
@@ -82,7 +82,7 @@ pub struct Result<D: Driver> {
     pub library: Library<D>,
 
     /// Any errors encountered while resolving the files.
-    pub errors: Vec<WithInfo<D::Info, Error>>,
+    pub diagnostics: Vec<WithInfo<D::Info, Diagnostic>>,
 }
 
 /// An error occurring during lowering.
@@ -95,7 +95,7 @@ pub struct Result<D: Driver> {
     Hash(bound = "")
 )]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub enum Error {
+pub enum Diagnostic {
     /// The expression refers to a name that is not defined in the current
     /// scope.
     UnresolvedName(String),

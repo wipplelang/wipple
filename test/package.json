@@ -8,9 +8,11 @@
     },
     "devDependencies": {
         "@types/bun": "^1.0.4",
+        "@types/lodash": "^4.14.202",
         "typescript": "^5.3.3"
     },
     "dependencies": {
+        "lodash": "^4.17.21",
         "wipple-compiler": "file:../compiler",
         "wipple-interpreter": "file:../interpreter"
     }

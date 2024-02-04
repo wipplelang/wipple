@@ -1,7 +1,8 @@
 import fs from "fs";
 import fsp from "fs/promises";
 import path from "path";
-import { compile, link } from "wipple-compiler";
+import _ from "lodash";
+import { compile, link, renderDiagnostics } from "wipple-compiler";
 import { evaluate, InterpreterError, IoRequest } from "wipple-interpreter";
 
 Error.stackTraceLimit = Infinity;
@@ -27,7 +28,7 @@ for (let file of fs.readdirSync("tests").sort()) {
 
             const header = code.match(/\[([\w\s]+)\]/)?.[1];
             let shouldCompile: boolean;
-            let shouldWarn: boolean;
+            let shouldWarn: boolean | undefined;
             switch (header) {
                 case "should compile": {
                     shouldCompile = true;
@@ -41,7 +42,7 @@ for (let file of fs.readdirSync("tests").sort()) {
                 }
                 case "should error": {
                     shouldCompile = false;
-                    shouldWarn = true;
+                    shouldWarn = undefined;
                     break;
                 }
                 default: {
@@ -53,9 +54,30 @@ for (let file of fs.readdirSync("tests").sort()) {
 
             const compileResult = compile([{ path: file, code }], baseInterface);
 
-            if (compileResult.errors.length > 0) {
-                expect(shouldCompile).toBeFalsy();
-                expect({ errors: compileResult.errors }).toMatchSnapshot();
+            const renderedDiagnostics = renderDiagnostics(
+                compileResult.diagnostics,
+                compileResult.interface,
+                compileResult.library,
+                (path) => (path === file ? code : "")
+            );
+
+            const [errors, warnings] = _.partition(
+                renderedDiagnostics,
+                (diagnostic) => diagnostic.error
+            );
+
+            const compiled = errors.length === 0;
+            const compiledWithWarnings = warnings.length > 0;
+
+            expect(shouldCompile).toBe(compiled);
+
+            if (shouldWarn != null) {
+                expect(shouldWarn).toBe(compiledWithWarnings);
+            }
+
+            expect({ errors, warnings }).toMatchSnapshot();
+
+            if (!compiled) {
                 return;
             }
 
