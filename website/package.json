@@ -1,0 +1,33 @@
+{
+    "name": "wipple-website",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "firebase": "^10.8.0",
+        "immer": "^10.0.3",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "react-loading-skeleton": "^3.4.0",
+        "react-material-symbols": "^4.3.1",
+        "react-router-dom": "^6.22.0",
+        "react-transition-group": "^4.4.5"
+    },
+    "devDependencies": {
+        "@types/react": "^18.2.43",
+        "@types/react-dom": "^18.2.17",
+        "@types/react-transition-group": "^4.4.10",
+        "@vitejs/plugin-react-swc": "^3.5.0",
+        "autoprefixer": "^10.4.17",
+        "postcss": "^8.4.34",
+        "tailwindcss": "^3.4.1",
+        "tailwindcss-animate": "^1.0.7",
+        "typescript": "^5.2.2",
+        "vite": "^5.0.8"
+    }
+}

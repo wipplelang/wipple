@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Inter */
+
+:root {
+    font-family: Inter, system-ui, sans-serif;
+    font-feature-settings: "liga" 1, "calt" 1; /* fix for Chrome */
+}
+
+@supports (font-variation-settings: normal) {
+    :root {
+        font-family: InterVariable, sans-serif;
+    }
+}
+
+/* Styles */
+
+:root {
+    @apply antialiased scroll-smooth;
+}
+
+body {
+    @apply bg-white dark:bg-gray-950 text-black dark:text-white font-medium;
+}

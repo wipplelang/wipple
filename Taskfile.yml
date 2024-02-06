@@ -44,6 +44,18 @@ tasks:
     cmds:
       - code $WIPPLE_TEST_PREFIX/.wipple
 
+  website:serve:
+    run: once
+    dir: website
+    cmds:
+      - npm run dev
+
+  website:build:
+    run: once
+    dir: website
+    cmds:
+      - npm run build
+
   base:compile:
     run: once
     preconditions:
