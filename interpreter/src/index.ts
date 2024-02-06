@@ -128,7 +128,7 @@ export interface Context {
     getItem: (
         path: string,
         substitutions: TypeDescriptor[] | Record<string, TypeDescriptor>,
-        typeDescriptor: TypeDescriptor
+        typeDescriptor: TypeDescriptor,
     ) => Promise<TypedValue>;
     error: (
         options:
@@ -139,7 +139,7 @@ export interface Context {
                   message: string;
                   stack: TypedValue[];
                   value?: TypedValue;
-              }
+              },
     ) => Error;
 }
 
@@ -164,7 +164,7 @@ export type IoRequest =
           type: "ui";
           url: string;
           completion: (
-              sendMessage: (message: string, value: TypedValue) => Promise<TypedValue>
+              sendMessage: (message: string, value: TypedValue) => Promise<TypedValue>,
           ) => Promise<void>;
       }
     | {
@@ -181,7 +181,7 @@ export const evaluate = async (
     executable: Executable,
     options: {
         io: (request: IoRequest) => Promise<void>;
-    }
+    },
 ) => {
     const context: Context = {
         executable,
@@ -198,7 +198,7 @@ export const evaluate = async (
                         [input],
                         { ...func.scope },
                         func.substitutions,
-                        context
+                        context,
                     ))!;
                 }
                 case "nativeFunction": {
@@ -220,7 +220,7 @@ export const evaluate = async (
                 [],
                 { ...defer.scope },
                 defer.substitutions,
-                context
+                context,
             ))!;
         },
         getItem: async (path, parametersOrSubstitutions, typeDescriptor) => {
@@ -230,8 +230,8 @@ export const evaluate = async (
                 ? Object.fromEntries(
                       item.parameters.map(
                           (parameter, index) =>
-                              [parameter, parametersOrSubstitutions[index]] as const
-                      )
+                              [parameter, parametersOrSubstitutions[index]] as const,
+                      ),
                   )
                 : parametersOrSubstitutions;
 
@@ -248,8 +248,8 @@ export const evaluate = async (
                     "## initializing constant:",
                     util.inspect(
                         { path, typeDescriptor, substitutions },
-                        { depth: Infinity, colors: true }
-                    )
+                        { depth: Infinity, colors: true },
+                    ),
                 );
             }
 
@@ -267,7 +267,7 @@ export const evaluate = async (
                 return new InterpreterError(
                     `${label}: ${JSON.stringify(instruction)}: ${message}\n${
                         value ? `while evaluating ${JSON.stringify(value, null, 4)}\n` : ""
-                    }stack: ${JSON.stringify(stack, null, 4)}`
+                    }stack: ${JSON.stringify(stack, null, 4)}`,
                 );
             }
         },
@@ -285,7 +285,7 @@ const evaluateItem = async (
     stack: TypedValue[],
     scope: Record<number, TypedValue>,
     substitutions: Record<string, TypeDescriptor>,
-    context: Context
+    context: Context,
 ) => {
     outer: while (true) {
         const instructions = item[label];
@@ -324,8 +324,8 @@ const evaluateItem = async (
                             scope,
                             substitutions,
                         },
-                        { depth: Infinity, colors: true }
-                    )
+                        { depth: Infinity, colors: true },
+                    ),
                 );
             }
 
@@ -401,7 +401,7 @@ const evaluateItem = async (
                 }
                 case "typed": {
                     const typeDescriptor = produce(instruction.value[0], (typeDescriptor) =>
-                        substituteTypeDescriptor(typeDescriptor, substitutions)
+                        substituteTypeDescriptor(typeDescriptor, substitutions),
                     );
 
                     switch (instruction.value[1].type) {
@@ -419,7 +419,7 @@ const evaluateItem = async (
                             const result = await intrinsic(
                                 inputs.reverse(),
                                 typeDescriptor,
-                                context
+                                context,
                             );
 
                             stack.push(result);
@@ -539,9 +539,9 @@ const evaluateItem = async (
                             const value = await context.getItem(
                                 path,
                                 parameters.map((parameter) =>
-                                    substituteTypeDescriptor(parameter, substitutions)
+                                    substituteTypeDescriptor(parameter, substitutions),
                                 ),
-                                typeDescriptor
+                                typeDescriptor,
                             );
 
                             stack.push(value);
@@ -551,13 +551,13 @@ const evaluateItem = async (
                             const [path, substitutions] = findInstance(
                                 instruction.value[1].value,
                                 typeDescriptor,
-                                context.executable
+                                context.executable,
                             );
 
                             const value = await context.getItem(
                                 path,
                                 substitutions,
-                                typeDescriptor
+                                typeDescriptor,
                             );
 
                             stack.push(value);
@@ -636,16 +636,14 @@ const findInstance = (trait: string, typeDescriptor: TypeDescriptor, executable:
     }
 
     throw new InterpreterError(
-        `no instance found for trait ${trait} with type descriptor ${JSON.stringify(
-            typeDescriptor
-        )}`
+        `no instance found for trait ${trait} with type descriptor ${JSON.stringify(typeDescriptor)}`,
     );
 };
 
 const unify = (
     left: TypeDescriptor,
     right: TypeDescriptor,
-    substitutions: Record<string, TypeDescriptor>
+    substitutions: Record<string, TypeDescriptor>,
 ): boolean => {
     switch (right.type) {
         case "parameter":
@@ -673,7 +671,7 @@ const unify = (
                 left.value[0] === right.value[0] &&
                 left.value[1].length === right.value[1].length &&
                 left.value[1].every((typeDescriptor, index) =>
-                    unify(typeDescriptor, right.value[1][index], substitutions)
+                    unify(typeDescriptor, right.value[1][index], substitutions),
                 )
             );
         case "tuple":
@@ -681,7 +679,7 @@ const unify = (
                 left.type === "tuple" &&
                 left.value.length === right.value.length &&
                 left.value.every((typeDescriptor, index) =>
-                    unify(typeDescriptor, right.value[index], substitutions)
+                    unify(typeDescriptor, right.value[index], substitutions),
                 )
             );
         case "deferred":
@@ -696,7 +694,7 @@ const unify = (
 
 const substituteTypeDescriptor = (
     typeDescriptor: TypeDescriptor,
-    substitutions: Record<string, TypeDescriptor>
+    substitutions: Record<string, TypeDescriptor>,
 ): TypeDescriptor => {
     switch (typeDescriptor.type) {
         case "function":
@@ -710,7 +708,7 @@ const substituteTypeDescriptor = (
         case "parameter":
             if (!substitutions[typeDescriptor.value]) {
                 throw new InterpreterError(
-                    `no substitution for type parameter ${typeDescriptor.value}`
+                    `no substitution for type parameter ${typeDescriptor.value}`,
                 );
             }
 
@@ -721,7 +719,7 @@ const substituteTypeDescriptor = (
                 value: [
                     typeDescriptor.value[0],
                     typeDescriptor.value[1].map((typeDescriptor) =>
-                        substituteTypeDescriptor(typeDescriptor, substitutions)
+                        substituteTypeDescriptor(typeDescriptor, substitutions),
                     ),
                 ],
             };
@@ -729,7 +727,7 @@ const substituteTypeDescriptor = (
             return {
                 type: "tuple",
                 value: typeDescriptor.value.map((typeDescriptor) =>
-                    substituteTypeDescriptor(typeDescriptor, substitutions)
+                    substituteTypeDescriptor(typeDescriptor, substitutions),
                 ),
             };
         case "deferred":

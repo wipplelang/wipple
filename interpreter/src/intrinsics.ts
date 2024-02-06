@@ -7,7 +7,7 @@ import type { Context, TaskGroup, TypeDescriptor, TypedValue } from "./index.js"
 export type Intrinsic = (
     inputs: TypedValue[],
     expectedTypeDescriptor: TypeDescriptor,
-    context: Context
+    context: Context,
 ) => Promise<TypedValue>;
 
 export const intrinsics: Record<string, Intrinsic> = {
@@ -47,9 +47,9 @@ export const intrinsics: Record<string, Intrinsic> = {
                         value = maybeToJs(
                             await context.call(
                                 validate,
-                                jsToText(expectedTypeDescriptor, input, context)
+                                jsToText(expectedTypeDescriptor, input, context),
                             ),
-                            context
+                            context,
                         );
 
                         return value != null;
@@ -115,7 +115,7 @@ export const intrinsics: Record<string, Intrinsic> = {
                 jsToFunction(typeDescriptor, async (result) => {
                     resolve(result);
                     return unit;
-                })
+                }),
             );
         });
     },
@@ -181,7 +181,7 @@ export const intrinsics: Record<string, Intrinsic> = {
             return jsToSome(
                 expectedTypeDescriptor,
                 jsToNumber(numberTypeDescriptor, new Decimal(NaN), context),
-                context
+                context,
             );
         }
 
@@ -195,49 +195,49 @@ export const intrinsics: Record<string, Intrinsic> = {
         return jsToSome(
             expectedTypeDescriptor,
             jsToNumber(numberTypeDescriptor, number, context),
-            context
+            context,
         );
     },
     "add-number": async ([left, right], expectedTypeDescriptor, context) => {
         return jsToNumber(
             expectedTypeDescriptor,
             numberToJs(left, context).add(numberToJs(right, context)),
-            context
+            context,
         );
     },
     "subtract-number": async ([left, right], expectedTypeDescriptor, context) => {
         return jsToNumber(
             expectedTypeDescriptor,
             numberToJs(left, context).sub(numberToJs(right, context)),
-            context
+            context,
         );
     },
     "multiply-number": async ([left, right], expectedTypeDescriptor, context) => {
         return jsToNumber(
             expectedTypeDescriptor,
             numberToJs(left, context).mul(numberToJs(right, context)),
-            context
+            context,
         );
     },
     "divide-number": async ([left, right], expectedTypeDescriptor, context) => {
         return jsToNumber(
             expectedTypeDescriptor,
             numberToJs(left, context).div(numberToJs(right, context)),
-            context
+            context,
         );
     },
     "remainder-number": async ([left, right], expectedTypeDescriptor, context) => {
         return jsToNumber(
             expectedTypeDescriptor,
             numberToJs(left, context).mod(numberToJs(right, context)),
-            context
+            context,
         );
     },
     "power-number": async ([left, right], expectedTypeDescriptor, context) => {
         return jsToNumber(
             expectedTypeDescriptor,
             numberToJs(left, context).pow(numberToJs(right, context)),
-            context
+            context,
         );
     },
     "floor-number": async ([number], expectedTypeDescriptor, context) => {
@@ -275,7 +275,7 @@ export const intrinsics: Record<string, Intrinsic> = {
         return jsToBoolean(
             expectedTypeDescriptor,
             (leftNumber.isNaN() && rightNumber.isNaN()) || leftNumber.eq(rightNumber),
-            context
+            context,
         );
     },
     "text-ordering": async ([left, right], expectedTypeDescriptor, context) => {
@@ -386,9 +386,9 @@ export const intrinsics: Record<string, Intrinsic> = {
                   jsToList(
                       listTypeDescriptor,
                       [...listValue.slice(0, index), element, ...listValue.slice(index)],
-                      context
+                      context,
                   ),
-                  context
+                  context,
               )
             : jsToNone(expectedTypeDescriptor, context);
     },
@@ -414,9 +414,9 @@ export const intrinsics: Record<string, Intrinsic> = {
                   jsToList(
                       listTypeDescriptor,
                       [...listValue.slice(0, index), ...listValue.slice(index + 1)],
-                      context
+                      context,
                   ),
-                  context
+                  context,
               )
             : jsToNone(expectedTypeDescriptor, context);
     },
@@ -424,7 +424,7 @@ export const intrinsics: Record<string, Intrinsic> = {
         return jsToNumber(
             expectedTypeDescriptor,
             new Decimal(listToJs(list, context).length),
-            context
+            context,
         );
     },
     "list-slice": async ([list, start, end], expectedTypeDescriptor, context) => {
@@ -457,7 +457,7 @@ export const intrinsics: Record<string, Intrinsic> = {
         return jsToList(
             expectedTypeDescriptor,
             [...textValue].map((character) => jsToText(textTypeDescriptor, character, context)),
-            context
+            context,
         );
     },
     "random-number": async ([min, max], expectedTypeDescriptor, context) => {
@@ -474,7 +474,7 @@ export const intrinsics: Record<string, Intrinsic> = {
         return jsToNumber(
             expectedTypeDescriptor,
             sd === 0 ? random.floor() : random.toSignificantDigits(sd),
-            context
+            context,
         );
     },
     "undefined-number": async ([], expectedTypeDescriptor, context) => {
@@ -484,7 +484,7 @@ export const intrinsics: Record<string, Intrinsic> = {
         return jsToHasher(
             expectedTypeDescriptor,
             [randomInteger(), randomInteger(), randomInteger(), randomInteger()],
-            context
+            context,
         );
     },
     "hash-number": async ([hasher, number], expectedTypeDescriptor, context) => {
@@ -493,7 +493,7 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         const hashValue = hash_uint(
             hasherValue.key,
-            new Uint8Array(Float64Array.of(numberValue.toNumber()).buffer)
+            new Uint8Array(Float64Array.of(numberValue.toNumber()).buffer),
         );
 
         return jsToNumber(expectedTypeDescriptor, new Decimal(hashValue), context);
@@ -520,7 +520,7 @@ const unit: TypedValue = {
 const jsToText = (
     typeDescriptor: TypeDescriptor,
     string: string,
-    _context: Context
+    _context: Context,
 ): TypedValue => ({
     type: "text",
     typeDescriptor,
@@ -538,7 +538,7 @@ const textToJs = (value: TypedValue, context: Context): string => {
 const jsToNumber = (
     typeDescriptor: TypeDescriptor,
     number: Decimal,
-    _context: Context
+    _context: Context,
 ): TypedValue => ({
     type: "number",
     typeDescriptor,
@@ -556,7 +556,7 @@ const numberToJs = (value: TypedValue, context: Context): Decimal => {
 const jsToBoolean = (
     typeDescriptor: TypeDescriptor,
     boolean: boolean,
-    context: Context
+    context: Context,
 ): TypedValue => ({
     typeDescriptor,
     type: "variant",
@@ -584,7 +584,7 @@ const booleanToJs = (value: TypedValue, context: Context): boolean => {
 const jsToSome = (
     typeDescriptor: TypeDescriptor,
     value: TypedValue,
-    context: Context
+    context: Context,
 ): TypedValue => ({
     typeDescriptor,
     type: "variant",
@@ -638,7 +638,7 @@ const maybeToJs = (value: TypedValue, context: Context): TypedValue | undefined 
 const jsToList = (
     typeDescriptor: TypeDescriptor,
     values: TypedValue[],
-    _context: Context
+    _context: Context,
 ): TypedValue => ({
     typeDescriptor,
     type: "list",
@@ -655,7 +655,7 @@ const listToJs = (value: TypedValue, context: Context): TypedValue[] => {
 
 const jsToFunction = (
     typeDescriptor: TypeDescriptor,
-    func: (input: TypedValue) => Promise<TypedValue>
+    func: (input: TypedValue) => Promise<TypedValue>,
 ): TypedValue => ({
     type: "nativeFunction",
     typeDescriptor,
@@ -665,7 +665,7 @@ const jsToFunction = (
 const jsToUiHandle = (
     typeDescriptor: TypeDescriptor,
     sendMessage: (message: string, value: TypedValue) => Promise<TypedValue>,
-    _context: Context
+    _context: Context,
 ): TypedValue => ({
     typeDescriptor,
     type: "uiHandle",
@@ -683,7 +683,7 @@ const uiHandleToJs = (value: TypedValue, context: Context) => {
 const jsToTaskGroup = (
     typeDescriptor: TypeDescriptor,
     taskGroup: TaskGroup,
-    _context: Context
+    _context: Context,
 ): TypedValue => ({
     type: "taskGroup",
     typeDescriptor,
@@ -693,7 +693,7 @@ const jsToTaskGroup = (
 const jsToReference = (
     typeDescriptor: TypeDescriptor,
     value: TypedValue,
-    _context: Context
+    _context: Context,
 ): TypedValue => ({
     type: "reference",
     typeDescriptor,
@@ -711,7 +711,7 @@ const referenceToJs = (value: TypedValue, context: Context): { current: TypedVal
 const jsToHasher = (
     typeDescriptor: TypeDescriptor,
     key: number[],
-    _context: Context
+    _context: Context,
 ): TypedValue => ({
     type: "hasher",
     typeDescriptor,

@@ -15,7 +15,7 @@ if (!prefix) {
 prefix = path.join(prefix, ".wipple");
 
 const baseInterface = JSON.parse(
-    fs.readFileSync(path.join(prefix, "base.wippleinterface"), "utf8")
+    fs.readFileSync(path.join(prefix, "base.wippleinterface"), "utf8"),
 );
 
 const baseLibrary = JSON.parse(fs.readFileSync(path.join(prefix, "base.wipplelibrary"), "utf8"));
@@ -47,7 +47,7 @@ for (let file of fs.readdirSync("tests").sort()) {
                 }
                 default: {
                     throw new Error(
-                        "expected test to begin with [should compile], [should warn], or [should error]"
+                        "expected test to begin with [should compile], [should warn], or [should error]",
                     );
                 }
             }
@@ -58,7 +58,7 @@ for (let file of fs.readdirSync("tests").sort()) {
                 compileResult.diagnostics,
                 compileResult.interface,
                 compileResult.library,
-                (path) => (path === file ? code : "")
+                (path) => (path === file ? code : ""),
             ).map((diagnostic) => {
                 // Hide the actual path from the snapshot so tests can be
                 // reproduced across machines
@@ -74,7 +74,7 @@ for (let file of fs.readdirSync("tests").sort()) {
 
             const [errors, warnings] = _.partition(
                 renderedDiagnostics,
-                (diagnostic) => diagnostic.error
+                (diagnostic) => diagnostic.error,
             );
 
             const compiled = errors.length === 0;

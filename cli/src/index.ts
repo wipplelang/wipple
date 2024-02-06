@@ -37,9 +37,7 @@ const app = subcommands({
             }) => {
                 const sources = sourcePaths.map((sourcePath) => ({
                     path: sourcePath,
-                    visiblePath: `${path.basename(path.dirname(sourcePath))}/${path.basename(
-                        sourcePath
-                    )}`,
+                    visiblePath: `${path.basename(path.dirname(sourcePath))}/${path.basename(sourcePath)}`,
                     code: fs.readFileSync(sourcePath, "utf8"),
                 }));
 
@@ -62,7 +60,7 @@ const app = subcommands({
                         result.diagnostics,
                         result.interface,
                         result.library,
-                        sourceCodeForFile
+                        sourceCodeForFile,
                     );
 
                     const output = colorizeDiagnostics(renderedDiagnostics, sourceCodeForFile);
@@ -78,7 +76,7 @@ const app = subcommands({
                     fs.mkdirSync(path.dirname(outputInterfacePath), { recursive: true });
                     fs.writeFileSync(
                         outputInterfacePath,
-                        JSON.stringify(result.interface, null, 4)
+                        JSON.stringify(result.interface, null, 4),
                     );
                 }
 
@@ -96,7 +94,7 @@ const app = subcommands({
             },
             handler: async ({ libraryPaths, outputExecutablePath }) => {
                 const libraries = libraryPaths.map((path) =>
-                    JSON.parse(fs.readFileSync(path, "utf8"))
+                    JSON.parse(fs.readFileSync(path, "utf8")),
                 );
 
                 const result = link(libraries);
@@ -122,7 +120,7 @@ const app = subcommands({
             },
             handler: async ({ executablePath }) => {
                 const executable = JSON.parse(
-                    fs.readFileSync(executablePath, "utf8").replace(shebang, "")
+                    fs.readFileSync(executablePath, "utf8").replace(shebang, ""),
                 );
 
                 const handleIo = async (request: IoRequest) => {
@@ -140,7 +138,7 @@ const app = subcommands({
                         }
                         case "ui": {
                             throw new InterpreterError(
-                                "UI is not supported outside the Wipple Playground"
+                                "UI is not supported outside the Wipple Playground",
                             );
                         }
                         case "sleep": {
