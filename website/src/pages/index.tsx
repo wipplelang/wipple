@@ -3,24 +3,19 @@ export * from "./playground";
 
 import { useEffect, useState } from "react";
 import { Outlet, ScrollRestoration } from "react-router-dom";
-import { getAuth, signInAnonymously } from "firebase/auth";
+import { produce } from "immer";
 import { Button, Footer, Navbar, useAlert as useAlert } from "../components";
 import { useStore } from "../store";
-import { produce } from "immer";
+import { getUser, signInAsGuest, signInWithGoogle } from "../helpers";
 
 export const Root = () => {
-    const [_store, setStore] = useStore();
+    const [store, setStore] = useStore();
     const { displayAlert } = useAlert();
 
     useEffect(() => {
         (async () => {
             try {
-                const auth = getAuth();
-                await auth.authStateReady();
-
-                const user = auth.currentUser;
-
-                console.log("user:", user);
+                const user = await getUser();
 
                 if (user) {
                     setStore(
@@ -35,7 +30,7 @@ export const Root = () => {
                 console.error(error);
             }
         })();
-    }, []);
+    }, [store.user]);
 
     return (
         <div className="w-screen flex flex-col items-stretch">
@@ -51,15 +46,21 @@ export const Root = () => {
 const WelcomeAlert = (props: { dismiss: () => void }) => {
     const [_store, setStore] = useStore();
 
-    const onSignIn = async () => {
-        alert("TODO");
+    const handleSignIn = async () => {
+        const user = await signInWithGoogle();
+
+        setStore(
+            produce((store) => {
+                store.user = user;
+            })
+        );
+
         props.dismiss();
     };
 
-    const onContinueAsGuest = async () => {
-        const auth = getAuth();
+    const handleContinueAsGuest = async () => {
+        const user = await signInAsGuest();
 
-        const { user } = await signInAnonymously(auth);
         setStore(
             produce((store) => {
                 store.user = user;
@@ -79,11 +80,11 @@ const WelcomeAlert = (props: { dismiss: () => void }) => {
             </p>
 
             <div className="flex flex-col items-stretch gap-2">
-                <Button role="primary" onClick={onSignIn}>
+                <Button role="primary" onClick={handleSignIn}>
                     Sign In
                 </Button>
 
-                <Button role="secondary" onClick={onContinueAsGuest}>
+                <Button role="secondary" onClick={handleContinueAsGuest}>
                     Continue as Guest
                 </Button>
             </div>
