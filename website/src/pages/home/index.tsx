@@ -1,6 +1,8 @@
-import { useEffect } from "react";
-import { useNavbar } from "../../components";
+import { useEffect, useState } from "react";
+import { Button, useNavbar } from "../../components";
 import { MaterialSymbol } from "react-material-symbols";
+import { ListPlaygroundsFilter, PlaygroundListItem, listPlaygrounds } from "../../models";
+import Skeleton from "react-loading-skeleton";
 
 export const Home = () => {
     const { setPrimaryActions } = useNavbar();
@@ -12,6 +14,17 @@ export const Home = () => {
             setPrimaryActions(null);
         };
     }, []);
+
+    const [filter, setFilter] = useState<ListPlaygroundsFilter>("all");
+
+    const [playgrounds, setPlaygrounds] = useState<PlaygroundListItem[]>();
+
+    useEffect(() => {
+        (async () => {
+            const playgrounds = await listPlaygrounds({ filter });
+            setPlaygrounds(playgrounds);
+        })();
+    }, [filter]);
 
     return (
         <div className="flex flex-col gap-2.5">
@@ -40,12 +53,32 @@ export const Home = () => {
 
             <div className="flex flex-col items-center">
                 <div className="w-full max-w-screen-lg">
-                    <div className="flex flex-col gap-4 p-4">
-                        <p>Hello</p>
-                        <p>Hello</p>
-                        <p>Hello</p>
-                        <p>Hello</p>
-                    </div>
+                    {playgrounds ? (
+                        playgrounds.length > 0 ? (
+                            <div className="flex flex-col gap-4 p-4">
+                                <FilterControl filter={filter} onChange={setFilter} />
+
+                                {playgrounds.map((playground) => (
+                                    <p>{playground.name}</p>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center gap-4 p-4 my-8 text-gray-400 dark:text-gray-600">
+                                <MaterialSymbol icon="code_blocks" className="text-8xl" />
+                                <p className="text-3xl">No Playgrounds</p>
+                                <p className="text-xl">
+                                    You can create a new playground or browse the lessons.
+                                </p>
+                            </div>
+                        )
+                    ) : (
+                        <div className="flex flex-col gap-4 p-4">
+                            <Skeleton height={60} />
+                            <Skeleton height={60} />
+                            <Skeleton height={60} />
+                            <Skeleton height={60} />
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -64,5 +97,36 @@ const PrimaryCard = (props: React.PropsWithChildren<{ title: string; onClick: ()
         </button>
 
         <p>{props.title}</p>
+    </div>
+);
+
+const FilterControl = (props: {
+    filter: ListPlaygroundsFilter;
+    onChange: (filter: ListPlaygroundsFilter) => void;
+}) => (
+    <div className="flex flex-row gap-4">
+        <Button
+            role={props.filter === "all" ? "primary" : "secondary"}
+            fill={props.filter === "all"}
+            onClick={() => props.onChange("all")}
+        >
+            All
+        </Button>
+
+        <Button
+            role={props.filter === "owned" ? "primary" : "secondary"}
+            fill={props.filter === "owned"}
+            onClick={() => props.onChange("owned")}
+        >
+            Created by me
+        </Button>
+
+        <Button
+            role={props.filter === "shared" ? "primary" : "secondary"}
+            fill={props.filter === "shared"}
+            onClick={() => props.onChange("shared")}
+        >
+            Shared with me
+        </Button>
     </div>
 );

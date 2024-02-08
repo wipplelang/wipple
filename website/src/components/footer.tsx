@@ -1,5 +1,5 @@
 export const Footer = () => (
-    <div className="flex flex-row justify-center flex-1 mt-4">
+    <div className="flex flex-row justify-center mt-4 mb-8">
         <p className="text-gray-400 dark:text-gray-600">
             Made by{" "}
             <a
