@@ -36,7 +36,12 @@ export const listPlaygrounds = onCall<ListPlaygroundsRequest>(async (request) =>
             break;
     }
 
-    const result = await query.select("id", "owner", "name", "lastModified").get();
+    const result = await query.select("owner", "name", "lastModified").get();
 
-    return { playgrounds: result.docs.map((doc) => doc.data()) };
+    return {
+        playgrounds: result.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+        })),
+    };
 });

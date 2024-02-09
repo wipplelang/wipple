@@ -1,6 +1,9 @@
+import { MaterialSymbol, MaterialSymbolProps } from "react-material-symbols";
+
 export interface ButtonProps {
     role: "primary" | "secondary" | "destructive";
     fill?: boolean;
+    icon?: MaterialSymbolProps["icon"];
     onClick: () => void;
 }
 
@@ -43,9 +46,10 @@ export const Button = (props: React.PropsWithChildren<ButtonProps>) => {
 
     return (
         <button
-            className={`px-4 py-2 rounded-md transition-colors ${backgroundColor} ${textColor} ${fontWeight}`}
+            className={`flex flex-row items-center justify-center gap-1 px-4 py-2 rounded-md transition-colors ${backgroundColor} ${textColor} ${fontWeight}`}
             onClick={props.onClick}
         >
+            {props.icon ? <MaterialSymbol icon={props.icon} className="text-xl" /> : null}
             {props.children}
         </button>
     );

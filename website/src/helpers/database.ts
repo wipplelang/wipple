@@ -1,16 +1,20 @@
 import { DocumentData, FirestoreDataConverter } from "firebase/firestore";
 import { produce } from "immer";
 
-export const pureConverter = <T extends DocumentData & { id: string }>(): FirestoreDataConverter<
-    T,
-    Omit<T, "id">
+interface Metadata {
+    id: string;
+}
+
+export const pureConverter = <T extends DocumentData>(): FirestoreDataConverter<
+    T & Metadata,
+    T
 > => ({
     fromFirestore: (snapshot, options) => ({
         id: snapshot.id,
         ...(snapshot.data(options) as any),
     }),
-    toFirestore: (item: T) =>
+    toFirestore: (item: T & Metadata) =>
         produce(item, (item) => {
-            delete (item as Omit<T, "id">).id;
+            delete (item as T).id;
         }),
 });

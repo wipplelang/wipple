@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, getDoc, getFirestore } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDoc, getFirestore } from "firebase/firestore";
 import { getUser } from "../helpers";
 import { pureConverter } from "../helpers/database";
 import { getFunctions, httpsCallable } from "firebase/functions";
@@ -109,7 +109,7 @@ export const getPlayground = async (id: string) => {
     return playground.data();
 };
 
-export const createPlayground = async (name: string) => {
+export const createPlayground = async () => {
     const user = await getUser();
     if (!user) {
         throw new Error("must be logged in to create a playground");
@@ -120,11 +120,41 @@ export const createPlayground = async (name: string) => {
     const playground: Omit<Playground, "id"> = {
         owner: user.uid,
         collaborators: [],
-        name,
+        name: "Untitled",
         lastModified: new Date().toISOString(),
         pages: [],
     };
 
     const result = await addDoc(collection(firestore, "playgrounds"), playground);
     return result.id;
+};
+
+export const duplicatePlayground = async (id: string) => {
+    const user = await getUser();
+    if (!user) {
+        throw new Error("must be logged in to duplicate a playground");
+    }
+
+    const firestore = getFirestore();
+
+    const playground = await getPlayground(id);
+    if (!playground) {
+        throw new Error(`no such playground ${id}`);
+    }
+
+    const newPlayground: Omit<Playground, "id"> = {
+        owner: user.uid,
+        collaborators: [], // TODO: Allow user to share copy with the same people
+        name: `${playground.name} (Copy)`,
+        lastModified: new Date().toISOString(),
+        pages: playground.pages,
+    };
+
+    const result = await addDoc(collection(firestore, "playgrounds"), newPlayground);
+    return result.id;
+};
+
+export const deletePlayground = async (id: string) => {
+    const firestore = getFirestore();
+    await deleteDoc(doc(firestore, "playgrounds", id));
 };

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useStore } from "../store";
 import Skeleton from "react-loading-skeleton";
 import { Button, useAlert } from ".";
@@ -75,7 +75,10 @@ export const Navbar = () => {
             }`}
         >
             <div className="flex flex-row items-center gap-4">
-                <img src="/images/logo.svg" alt="Wipple" className="w-10 h-10" />
+                <Link to="/">
+                    <img src="/images/logo.svg" alt="Wipple" className="w-10 h-10" />
+                </Link>
+
                 {primaryActions}
             </div>
 
@@ -160,8 +163,8 @@ const UserSettings = (props: { dismiss: () => void }) => {
                     Sign Out
                 </Button>
 
-                <Button role="primary" onClick={props.dismiss}>
-                    Done
+                <Button role="secondary" fill={false} onClick={props.dismiss}>
+                    Cancel
                 </Button>
             </div>
         </div>
