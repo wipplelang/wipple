@@ -8,7 +8,7 @@ import { Button, Footer, Navbar, useAlert as useAlert } from "../components";
 import { useStore } from "../store";
 import { getUser, signInAsGuest, signInWithGoogle } from "../helpers";
 
-export const Root = () => {
+export const RootPage = () => {
     const [store, setStore] = useStore();
     const { displayAlert } = useAlert();
 

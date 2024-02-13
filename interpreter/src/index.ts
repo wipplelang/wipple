@@ -296,7 +296,7 @@ const evaluateItem = async (
 
             const peek = () => {
                 const value = stack[stack.length - 1];
-                if (!value) {
+                if (value == null) {
                     throw error("stack is empty");
                 }
 
@@ -305,7 +305,8 @@ const evaluateItem = async (
 
             const pop = () => {
                 const value = stack.pop();
-                if (!value) {
+                if (value == null) {
+                    console.log("STACK LENGTH:", stack.length);
                     throw error("stack is empty");
                 }
 
@@ -636,7 +637,9 @@ const findInstance = (trait: string, typeDescriptor: TypeDescriptor, executable:
     }
 
     throw new InterpreterError(
-        `no instance found for trait ${trait} with type descriptor ${JSON.stringify(typeDescriptor)}`,
+        `no instance found for trait ${trait} with type descriptor ${JSON.stringify(
+            typeDescriptor,
+        )}`,
     );
 };
 

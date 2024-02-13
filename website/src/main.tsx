@@ -7,7 +7,7 @@ import {
     createRoutesFromElements,
 } from "react-router-dom";
 import { initializeApp } from "firebase/app";
-import { Home, Playground, Root } from "./pages";
+import { HomePage, PlaygroundPage, RootPage } from "./pages";
 import { NavbarProvider, AlertProvider } from "./components";
 import "react-material-symbols/outlined";
 import "react-loading-skeleton/dist/skeleton.css";
@@ -26,9 +26,9 @@ initializeApp({
 
 const router = createBrowserRouter(
     createRoutesFromElements(
-        <Route path="/" element={<Root />}>
-            <Route index element={<Home />} />
-            <Route path="playground/:id" element={<Playground />} />
+        <Route path="/" element={<RootPage />}>
+            <Route index element={<HomePage />} />
+            <Route path="playground/:id" element={<PlaygroundPage />} />
         </Route>
     )
 );

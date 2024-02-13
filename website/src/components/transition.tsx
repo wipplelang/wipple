@@ -37,7 +37,7 @@ export function Transition<T>(props: TransitionProps<T>) {
             timeout={{ exit: props.exitAnimationDuration }}
             onExited={() => setContents(<></>)}
         >
-            {contents}
+            <div>{contents}</div>
         </CSSTransition>
     );
 }

@@ -39,39 +39,33 @@ interface PlaygroundPageCodeItem {
     code: string;
 }
 
-interface PlaygroundPageTurtleItem {
-    type: "turtle";
-    code: string;
+interface PlaygroundPageTurtleItem extends PlaygroundPageCodeItem {
+    setup: "turtle";
     canvasWidth: number;
     canvasHeight: number;
 }
 
-interface PlaygroundPageMusicItem {
-    type: "music";
-    code: string;
+interface PlaygroundPageMusicItem extends PlaygroundPageCodeItem {
+    setup: "music";
 }
 
-interface PlaygroundPageMathItem {
-    type: "math";
-    code: string;
+interface PlaygroundPageMathItem extends PlaygroundPageCodeItem {
+    setup: "math";
 }
 
-interface PlaygroundPageGameItem {
-    type: "game";
-    code: string;
+interface PlaygroundPageGameItem extends PlaygroundPageCodeItem {
+    setup: "game";
     canvasScale: number;
 }
 
-interface PlaygroundPagePhysicsItem {
-    type: "physics";
-    code: string;
+interface PlaygroundPagePhysicsItem extends PlaygroundPageCodeItem {
+    setup: "physics";
     canvasWidth: number;
     canvasHeight: number;
 }
 
-interface PlaygroundPageEnergyItem {
-    type: "energy";
-    code: string;
+interface PlaygroundPageEnergyItem extends PlaygroundPageCodeItem {
+    setup: "energy";
 }
 
 interface PlaygroundPageTextItem {

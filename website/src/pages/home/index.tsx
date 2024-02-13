@@ -14,7 +14,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { useStore } from "../../store";
 
-export const Home = () => {
+export const HomePage = () => {
     const { displayAlert } = useAlert();
     const { setPrimaryActions } = useNavbar();
 
