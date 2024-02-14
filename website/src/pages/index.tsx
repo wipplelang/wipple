@@ -4,7 +4,7 @@ export * from "./playground";
 import { useEffect, useState } from "react";
 import { Outlet, ScrollRestoration } from "react-router-dom";
 import { produce } from "immer";
-import { Button, Footer, Navbar, useAlert as useAlert } from "../components";
+import { Button, Navbar, useAlert as useAlert } from "../components";
 import { useStore } from "../store";
 import { getUser, signInAsGuest, signInWithGoogle } from "../helpers";
 
@@ -21,7 +21,7 @@ export const RootPage = () => {
                     setStore(
                         produce((store) => {
                             store.user = user;
-                        })
+                        }),
                     );
                 } else {
                     displayAlert(WelcomeAlert);
@@ -36,7 +36,6 @@ export const RootPage = () => {
         <div className="w-screen flex flex-col items-stretch">
             <Navbar />
             <Outlet />
-            <Footer />
 
             <ScrollRestoration />
         </div>
@@ -52,7 +51,7 @@ const WelcomeAlert = (props: { dismiss: () => void }) => {
         setStore(
             produce((store) => {
                 store.user = user;
-            })
+            }),
         );
 
         props.dismiss();
@@ -64,7 +63,7 @@ const WelcomeAlert = (props: { dismiss: () => void }) => {
         setStore(
             produce((store) => {
                 store.user = user;
-            })
+            }),
         );
 
         props.dismiss();

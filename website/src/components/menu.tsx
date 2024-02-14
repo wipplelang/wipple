@@ -8,6 +8,12 @@ export interface MenuItem {
     children?: MenuItem[];
 }
 
+export const MenuContainer = (props: React.PropsWithChildren<{}>) => (
+    <div className="flex flex-row items-center bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 transition-all rounded-md shadow-md shadow-gray-100 dark:shadow-gray-950 h-7 text-gray-500 text-opacity-50 overflow-clip">
+        {props.children}
+    </div>
+);
+
 export const Menu = (props: { items: MenuItem[] }) => {
     const [stack, setStack] = useState<MenuItem[][] | undefined>([props.items]);
     const [wentBack, setWentBack] = useState(false);
@@ -53,7 +59,7 @@ export const Menu = (props: { items: MenuItem[] }) => {
             } fade-out`}
         >
             {(stack) => (
-                <div className="flex flex-row items-center bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 transition-all rounded-md shadow-lg shadow-gray-100 dark:shadow-gray-950 h-7 text-gray-500 text-opacity-50 overflow-clip">
+                <MenuContainer>
                     {stack.length > 1 ? (
                         <MenuButton onClick={popMenuItems}>
                             <MaterialSymbol icon="arrow_back" className="text-xl my-1" />
@@ -76,7 +82,7 @@ export const Menu = (props: { items: MenuItem[] }) => {
                             {item.name}
                         </MenuButton>
                     ))}
-                </div>
+                </MenuContainer>
             )}
         </Transition>
     );

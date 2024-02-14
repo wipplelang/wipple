@@ -56,7 +56,7 @@ export const Navbar = () => {
                 setStore(
                     produce((store) => {
                         store.user = user;
-                    })
+                    }),
                 );
             } catch (error) {
                 console.error(error);
@@ -92,7 +92,7 @@ export const Navbar = () => {
                 ) : (
                     <button
                         onClick={openUserSettings}
-                        className="flex flex-row items-center gap-4 -mx-2 -my-1 px-2 p-1 rounded-lg transition hover:bg-gray-200"
+                        className="flex flex-row items-center gap-4 -mx-2 -my-1 px-2 p-1 rounded-lg transition hover:bg-gray-200 dark:hover:bg-gray-800"
                     >
                         {store.user ? (
                             <MaterialSymbol icon="apps" className="text-3xl text-gray-500" />
@@ -136,7 +136,7 @@ const UserSettings = (props: { dismiss: () => void }) => {
                 setStore(
                     produce((store) => {
                         store.user = undefined;
-                    })
+                    }),
                 );
 
                 props.dismiss();

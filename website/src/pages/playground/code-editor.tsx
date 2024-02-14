@@ -1,8 +1,16 @@
 import { useEffect, useState } from "react";
-import { Menu, Transition, defaultAnimationDuration } from "../../components";
+import {
+    Animated,
+    Menu,
+    MenuContainer,
+    Transition,
+    defaultAnimationDuration,
+} from "../../components";
 import { CodeMirror } from "./codemirror";
 
 export const CodeEditor = (props: {
+    children: string;
+    onChange?: (value: string) => void;
     autofocus?: boolean;
     onFocus?: () => void;
     onBlur?: () => void;
@@ -29,121 +37,152 @@ export const CodeEditor = (props: {
             onMouseEnter={() => setHovering(true)}
             onMouseLeave={() => setHovering(false)}
         >
-            <div className="ml-auto mr-[14px] h-[14px] z-10">
+            <div className="mx-[14px] h-[14px] z-10">
                 <Transition
                     value={isFocused || isHovering ? {} : undefined}
                     exitAnimationDuration={defaultAnimationDuration}
-                    inClassName="animate-in fade-in ease-linear"
-                    outClassName="animate-out fade-out"
+                    inClassName="animate-in fade-in slide-in-from-bottom-[1px] ease-linear"
+                    outClassName="animate-out fade-out slide-out-to-bottom-[1px] ease-linear"
                 >
                     {() => (
-                        <Menu
-                            items={[
-                                {
-                                    name: "Code",
-                                    onClick: () => setFocused(true),
-                                    children: [
-                                        {
-                                            name: "TODO 1",
-                                            onClick: () => {
-                                                setFocused(true);
+                        <div className="flex flex-row items-center justify-between">
+                            <Menu
+                                items={[
+                                    {
+                                        name: "Code",
+                                        onClick: () => setFocused(true),
+                                        children: [
+                                            {
+                                                name: "TODO 1",
+                                                onClick: () => {
+                                                    setFocused(true);
+                                                },
                                             },
-                                        },
-                                        {
-                                            name: "TODO 2",
-                                            onClick: () => {
-                                                setFocused(true);
+                                            {
+                                                name: "TODO 2",
+                                                onClick: () => {
+                                                    setFocused(true);
+                                                },
                                             },
-                                        },
-                                    ],
-                                },
-                                {
-                                    name: "Edit",
-                                    onClick: () => setFocused(true),
-                                    children: [
-                                        {
-                                            name: "TODO 1",
-                                            onClick: () => {
-                                                setFocused(true);
+                                        ],
+                                    },
+                                    {
+                                        name: "Edit",
+                                        onClick: () => setFocused(true),
+                                        children: [
+                                            {
+                                                name: "TODO 1",
+                                                onClick: () => {
+                                                    setFocused(true);
+                                                },
                                             },
-                                        },
-                                        {
-                                            name: "TODO 2",
-                                            onClick: () => {
-                                                setFocused(true);
+                                            {
+                                                name: "TODO 2",
+                                                onClick: () => {
+                                                    setFocused(true);
+                                                },
                                             },
-                                        },
-                                    ],
-                                },
-                                {
-                                    name: "Select",
-                                    onClick: () => setFocused(true),
-                                    children: [
-                                        {
-                                            name: "TODO 1",
-                                            onClick: () => {
-                                                setFocused(true);
+                                        ],
+                                    },
+                                    {
+                                        name: "Select",
+                                        onClick: () => setFocused(true),
+                                        children: [
+                                            {
+                                                name: "TODO 1",
+                                                onClick: () => {
+                                                    setFocused(true);
+                                                },
                                             },
-                                        },
-                                        {
-                                            name: "TODO 2",
-                                            onClick: () => {
-                                                setFocused(true);
+                                            {
+                                                name: "TODO 2",
+                                                onClick: () => {
+                                                    setFocused(true);
+                                                },
                                             },
-                                        },
-                                    ],
-                                },
-                                {
-                                    name: "View",
-                                    onClick: () => setFocused(true),
-                                    children: [
-                                        {
-                                            name: "TODO 1",
-                                            onClick: () => {
-                                                setFocused(true);
+                                        ],
+                                    },
+                                    {
+                                        name: "View",
+                                        onClick: () => setFocused(true),
+                                        children: [
+                                            {
+                                                name: "TODO 1",
+                                                onClick: () => {
+                                                    setFocused(true);
+                                                },
                                             },
-                                        },
-                                        {
-                                            name: "TODO 2",
-                                            onClick: () => {
-                                                setFocused(true);
+                                            {
+                                                name: "TODO 2",
+                                                onClick: () => {
+                                                    setFocused(true);
+                                                },
                                             },
-                                        },
-                                    ],
-                                },
-                                {
-                                    name: "Help",
-                                    onClick: () => setFocused(true),
-                                    children: [
-                                        {
-                                            name: "TODO 1",
-                                            onClick: () => {
-                                                setFocused(true);
+                                        ],
+                                    },
+                                    {
+                                        name: "Help",
+                                        onClick: () => setFocused(true),
+                                        children: [
+                                            {
+                                                name: "TODO 1",
+                                                onClick: () => {
+                                                    setFocused(true);
+                                                },
                                             },
-                                        },
-                                        {
-                                            name: "TODO 2",
-                                            onClick: () => {
-                                                setFocused(true);
+                                            {
+                                                name: "TODO 2",
+                                                onClick: () => {
+                                                    setFocused(true);
+                                                },
                                             },
-                                        },
-                                    ],
-                                },
-                            ]}
-                        />
+                                        ],
+                                    },
+                                ]}
+                            />
+
+                            <InsertMenu />
+                        </div>
                     )}
                 </Transition>
             </div>
 
-            <div className="flex flex-col bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 rounded-md px-3 py-2.5">
-                <CodeMirror
-                    onChange={() => {
-                        // TODO
-                    }}
-                >
-                    Hello, world!
-                </CodeMirror>
+            <div className="flex flex-col bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 rounded-md py-[3px]">
+                <CodeMirror onChange={props.onChange}>{props.children}</CodeMirror>
             </div>
         </div>
     );
 };
+
+const InsertMenu = () => {
+    const [isExpanded, setExpanded] = useState(false);
+
+    return (
+        <MenuContainer>
+            <Animated direction="horizontal">
+                {isExpanded ? (
+                    <button className="px-2" onClick={() => setExpanded(false)}>
+                        <p className="whitespace-nowrap">TODO: Palette</p>
+                    </button>
+                ) : (
+                    <button
+                        className="group hover:bg-gray-100 dark:hover:bg-gray-800 h-[28px] mt-[2px] transition-colors"
+                        onClick={() => setExpanded(true)}
+                    >
+                        <div className="flex flex-row px-1 ml-3">
+                            <ColorBlock className="bg-red-500 z-[3] group-hover:-rotate-[5deg] group-hover:-translate-x-0.5" />
+                            <ColorBlock className="bg-green-500 z-[2] group-hover:rotate-[5deg]" />
+                            <ColorBlock className="bg-blue-500 z-[1] group-hover:-rotate-[10deg] group-hover:translate-x-0.5" />
+                        </div>
+                    </button>
+                )}
+            </Animated>
+        </MenuContainer>
+    );
+};
+
+const ColorBlock = (props: { className: string }) => (
+    <div
+        className={`-ml-3 w-5 h-5 rounded-md border-2 border-gray-100 dark:border-gray-800 transition-transform ${props.className}`}
+    />
+);

@@ -9,7 +9,7 @@ import { defaultThemeConfig, theme } from "./theme";
 
 export interface CodeMirrorProps {
     children: string;
-    onChange: (value: string) => void;
+    onChange?: (value: string) => void;
 }
 
 export const CodeMirror = (props: CodeMirrorProps) => {
@@ -35,7 +35,7 @@ export const CodeMirror = (props: CodeMirrorProps) => {
 
                     EditorView.updateListener.of((update) => {
                         if (update.docChanged) {
-                            props.onChange(update.state.doc.toString());
+                            props.onChange?.(update.state.doc.toString());
                         }
                     }),
                 ],
