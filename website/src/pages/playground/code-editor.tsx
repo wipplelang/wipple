@@ -8,6 +8,7 @@ import {
 } from "../../components";
 import { CodeMirror } from "./codemirror";
 import { Runner } from "./runner";
+import { Turtle } from "../../runtimes";
 
 export const CodeEditor = (props: {
     children: string;
@@ -28,7 +29,12 @@ export const CodeEditor = (props: {
 
     const [isHovering, setHovering] = useState(false);
 
-    const runnerOptions = useMemo(() => ({ dependenciesPath: "turtle" }), []);
+    const runnerOptions = useMemo(
+        () => ({
+            dependenciesPath: "turtle",
+        }),
+        [],
+    );
 
     return (
         <div
@@ -156,9 +162,9 @@ export const CodeEditor = (props: {
                 </div>
 
                 <Animated direction="vertical" clip>
-                    <div className="p-4">
-                        <Runner options={runnerOptions}>{props.children}</Runner>
-                    </div>
+                    <Runner options={runnerOptions} runtime={Turtle}>
+                        {props.children}
+                    </Runner>
                 </Animated>
             </div>
         </div>

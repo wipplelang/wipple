@@ -105,10 +105,6 @@ type Value =
           values: TypedValue[];
       }
     | {
-          type: "uiHandle";
-          onMessage: (message: string, value: TypedValue) => Promise<TypedValue>;
-      }
-    | {
           type: "taskGroup";
           value: TaskGroup;
       }
@@ -162,10 +158,9 @@ export type IoRequest =
       }
     | {
           type: "ui";
-          url: string;
-          completion: (
-              sendMessage: (message: string, value: TypedValue) => Promise<TypedValue>,
-          ) => Promise<void>;
+          message: string;
+          value: any;
+          completion: (value: any) => void;
       }
     | {
           type: "sleep";

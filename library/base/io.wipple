@@ -23,3 +23,22 @@ Value where (Show Value) => instance (Show (Maybe Value)) : m -> when m (
     Some value -> "Some _" value
     None -> "None"
 )
+
+[Convert to a value from `Text`.]
+[on-unimplemented : "cannot produce a _ value from `Text`" A]
+Read : A => trait (Text -> Maybe A)
+
+instance (Read Text) : Some
+instance (Read Number) : text -> intrinsic "text-to-number" text
+
+[Prompt the user to enter a value.]
+prompt :: A where (Read A)=> Text -> A
+prompt : prompt -> intrinsic "prompt" prompt Read
+
+[Ask the user to pick from a list of choices.]
+choice :: Element where (Show Element) => Text -> List Element -> Element
+choice : prompt items -> (
+    descriptions : (items . transform Show . collect :: List Text)
+    index : intrinsic "choice" prompt descriptions
+    items . nth index . unwrap
+)

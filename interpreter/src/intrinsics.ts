@@ -51,13 +51,17 @@ export const intrinsics: Record<string, Intrinsic> = {
                             context,
                         );
 
-                        return value != null;
+                        const valid = value != null;
+
+                        if (valid) {
+                            resolve();
+                        }
+
+                        return valid;
                     },
                 });
-
-                resolve();
             });
-        } while (!value);
+        } while (value == null);
 
         return value;
     },
@@ -75,22 +79,18 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         return jsToNumber(expectedTypeDescriptor, new Decimal(index), context);
     },
-    ui: async ([url], expectedTypeDescriptor, context) => {
+    ui: async ([message, value], expectedTypeDescriptor, context) => {
+        const messageValue = textToJs(message, context);
+        const serializedValue = serialize(value, context);
+
         return await new Promise<TypedValue>(async (resolve) => {
             context.io({
                 type: "ui",
-                url: textToJs(url, context),
-                completion: async (onMessage) => {
-                    resolve(jsToUiHandle(expectedTypeDescriptor, onMessage, context));
-                },
+                message: messageValue,
+                value: serializedValue,
+                completion: (value) => resolve(deserialize(value, expectedTypeDescriptor, context)),
             });
         });
-    },
-    "message-ui": async ([handle, message, value], _expectedTypeDescriptor, context) => {
-        const sendMessage = uiHandleToJs(handle, context);
-        const messageName = textToJs(message, context);
-
-        return await sendMessage(messageName, value);
     },
     "with-continuation": async ([callback], _expectedTypeDescriptor, context) => {
         if (callback.typeDescriptor.type !== "function") {
@@ -652,6 +652,24 @@ const listToJs = (value: TypedValue, context: Context): TypedValue[] => {
     return value.values;
 };
 
+const jsToTuple = (
+    typeDescriptor: TypeDescriptor,
+    values: TypedValue[],
+    _context: Context,
+): TypedValue => ({
+    typeDescriptor,
+    type: "tuple",
+    values,
+});
+
+const tupleToJs = (value: TypedValue, context: Context): TypedValue[] => {
+    if (value.type !== "tuple") {
+        throw context.error("expected tuple");
+    }
+
+    return value.values;
+};
+
 const jsToFunction = (
     typeDescriptor: TypeDescriptor,
     func: (input: TypedValue) => Promise<TypedValue>,
@@ -660,24 +678,6 @@ const jsToFunction = (
     typeDescriptor,
     value: func,
 });
-
-const jsToUiHandle = (
-    typeDescriptor: TypeDescriptor,
-    sendMessage: (message: string, value: TypedValue) => Promise<TypedValue>,
-    _context: Context,
-): TypedValue => ({
-    typeDescriptor,
-    type: "uiHandle",
-    onMessage: sendMessage,
-});
-
-const uiHandleToJs = (value: TypedValue, context: Context) => {
-    if (value.type !== "uiHandle") {
-        throw context.error("expected ui handle");
-    }
-
-    return value.onMessage;
-};
 
 const jsToTaskGroup = (
     typeDescriptor: TypeDescriptor,
@@ -726,3 +726,54 @@ const hasherToJs = (value: TypedValue, context: Context): { key: number[] } => {
 };
 
 const randomInteger = () => Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+
+const functions: ((input: TypedValue) => Promise<TypedValue>)[] = [];
+
+const serialize = (value: TypedValue, context: Context): any => {
+    switch (value.type) {
+        case "number":
+            return numberToJs(value, context).toNumber();
+        case "text":
+            return textToJs(value, context);
+        case "function": {
+            const index = functions.length;
+            functions.push((input) => context.call(value, input));
+            return { $wippleFunction: index };
+        }
+        case "list":
+            return listToJs(value, context).map((value) => serialize(value, context));
+        case "tuple":
+            return tupleToJs(value, context).map((value) => serialize(value, context));
+        default:
+            throw new Error("cannot serialize value");
+    }
+};
+
+const deserialize = (value: any, typeDescriptor: TypeDescriptor, context: Context): TypedValue => {
+    if (value == null) {
+        return unit;
+    } else if (typeof value === "number") {
+        return jsToNumber(typeDescriptor, new Decimal(value), context);
+    } else if (typeof value === "string") {
+        return jsToText(typeDescriptor, value, context);
+    } else if (typeof value === "function") {
+        return jsToFunction(typeDescriptor, async (input) => {
+            return deserialize(await value(serialize(input, context)), typeDescriptor, context);
+        });
+    } else if (typeof value === "boolean") {
+        return jsToBoolean(typeDescriptor, value, context);
+    } else if (Array.isArray(value)) {
+        return jsToTuple(
+            typeDescriptor,
+            value.map((value) => deserialize(value, typeDescriptor, context)),
+            context,
+        );
+    } else if (typeof value === "object" && "$wippleFunction" in value) {
+        const func = functions[value.$wippleFunction];
+        return jsToFunction(typeDescriptor, async (input) => {
+            return deserialize(await func(input), typeDescriptor, context);
+        });
+    } else {
+        throw new Error("cannot deserialize value");
+    }
+};

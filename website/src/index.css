@@ -24,3 +24,26 @@
 body {
     @apply bg-white dark:bg-gray-950 text-black dark:text-white font-medium;
 }
+
+/* Animations */
+
+@keyframes shake {
+    0% {
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-4px);
+    }
+    75% {
+        transform: translateX(4px);
+    }
+    100% {
+        transform: translateX(0);
+    }
+}
+
+.shake {
+    animation: shake 0.5s both;
+    animation-iteration-count: 2;
+    animation-duration: 175ms;
+}
