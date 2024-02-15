@@ -9,7 +9,7 @@ export interface MenuItem {
 }
 
 export const MenuContainer = (props: React.PropsWithChildren<{}>) => (
-    <div className="flex flex-row items-center bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 transition-all rounded-md shadow-md shadow-gray-100 dark:shadow-gray-950 h-7 text-gray-500 text-opacity-50 overflow-clip">
+    <div className="flex flex-row items-center bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 transition-all rounded-md shadow-md shadow-gray-100 dark:shadow-gray-950 h-7 text-gray-600 dark:text-gray-400 text-opacity-50 overflow-clip">
         {props.children}
     </div>
 );

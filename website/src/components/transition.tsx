@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { CSSTransition } from "react-transition-group";
 
 export const defaultAnimationDuration = 150; // FIXME: Obtain from tailwindcss-animate
@@ -24,8 +24,6 @@ export function Transition<T>(props: TransitionProps<T>) {
         }
     }, [props.value]);
 
-    const ref = useRef<HTMLDivElement>(null);
-
     return (
         <CSSTransition
             in={display}
@@ -35,11 +33,11 @@ export function Transition<T>(props: TransitionProps<T>) {
                 exit: props.outClassName,
                 exitActive: props.outClassName,
             }}
-            nodeRef={ref}
+            addEndListener={(node, done) => node.addEventListener("transitionend", done, false)}
             timeout={{ exit: props.exitAnimationDuration }}
             onExited={() => setContents(<></>)}
         >
-            <div ref={ref}>{contents}</div>
+            <div>{contents}</div>
         </CSSTransition>
     );
 }

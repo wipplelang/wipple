@@ -11,6 +11,7 @@ import { useDarkMode } from "usehooks-ts";
 export interface CodeMirrorProps {
     children: string;
     onChange?: (value: string) => void;
+    mode: "blocks" | "text";
 }
 
 export const CodeMirror = (props: CodeMirrorProps) => {
@@ -70,5 +71,5 @@ export const CodeMirror = (props: CodeMirrorProps) => {
         });
     }, [editorView, isDarkMode]);
 
-    return <div ref={containerRef}></div>;
+    return <div ref={containerRef} />;
 };

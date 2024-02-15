@@ -3,12 +3,13 @@ import {
     Animated,
     Menu,
     MenuContainer,
+    Tooltip,
     Transition,
     defaultAnimationDuration,
 } from "../../components";
 import { CodeMirror } from "./codemirror";
 import { Runner } from "./runner";
-import { Turtle } from "../../runtimes";
+import { MaterialSymbol } from "react-material-symbols";
 
 export const CodeEditor = (props: {
     children: string;
@@ -150,7 +151,10 @@ export const CodeEditor = (props: {
                                 ]}
                             />
 
-                            <InsertMenu />
+                            <div className="flex flex-row gap-2">
+                                <InsertMenu />
+                                <ModeToggle mode="blocks" onChange={() => alert("TODO")} />
+                            </div>
                         </div>
                     )}
                 </Transition>
@@ -158,11 +162,13 @@ export const CodeEditor = (props: {
 
             <div className="flex flex-col bg-gray-50 dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 rounded-md overflow-clip">
                 <div className="py-[3px] bg-white dark:bg-[#0d1117]">
-                    <CodeMirror onChange={props.onChange}>{props.children}</CodeMirror>
+                    <CodeMirror onChange={props.onChange} mode="blocks">
+                        {props.children}
+                    </CodeMirror>
                 </div>
 
                 <Animated direction="vertical" clip>
-                    <Runner options={runnerOptions} runtime={Turtle}>
+                    <Runner options={runnerOptions} runtime={undefined}>
                         {props.children}
                     </Runner>
                 </Animated>
@@ -175,26 +181,43 @@ const InsertMenu = () => {
     const [isExpanded, setExpanded] = useState(false);
 
     return (
-        <MenuContainer>
-            <Animated direction="horizontal">
-                {isExpanded ? (
-                    <button className="px-2" onClick={() => setExpanded(false)}>
-                        <p className="whitespace-nowrap">TODO: Palette</p>
-                    </button>
-                ) : (
-                    <button
-                        className="group hover:bg-gray-100 dark:hover:bg-gray-800 h-[28px] mt-[2px] transition-colors"
-                        onClick={() => setExpanded(true)}
-                    >
-                        <div className="flex flex-row px-1 ml-3">
-                            <ColorBlock className="bg-red-500 z-[3] group-hover:-rotate-[5deg] group-hover:-translate-x-0.5" />
-                            <ColorBlock className="bg-green-500 z-[2] group-hover:rotate-[5deg]" />
-                            <ColorBlock className="bg-blue-500 z-[1] group-hover:-rotate-[10deg] group-hover:translate-x-0.5" />
-                        </div>
-                    </button>
-                )}
-            </Animated>
-        </MenuContainer>
+        <Tooltip description="Insert">
+            <MenuContainer>
+                <Animated direction="horizontal">
+                    {isExpanded ? (
+                        <button className="px-2" onClick={() => setExpanded(false)}>
+                            <p className="whitespace-nowrap">TODO: Palette</p>
+                        </button>
+                    ) : (
+                        <button
+                            className="group hover:bg-gray-100 dark:hover:bg-gray-800 h-[28px] mt-[2px] transition-colors"
+                            onClick={() => setExpanded(true)}
+                        >
+                            <div className="flex flex-row px-1 ml-3">
+                                <ColorBlock className="bg-red-500 z-[3] group-hover:-rotate-[5deg] group-hover:-translate-x-0.5" />
+                                <ColorBlock className="bg-green-500 z-[2] group-hover:rotate-[5deg]" />
+                                <ColorBlock className="bg-blue-500 z-[1] group-hover:-rotate-[10deg] group-hover:translate-x-0.5" />
+                            </div>
+                        </button>
+                    )}
+                </Animated>
+            </MenuContainer>
+        </Tooltip>
+    );
+};
+
+const ModeToggle = (props: {
+    mode: "blocks" | "text";
+    onChange: (mode: "blocks" | "text") => void;
+}) => {
+    return (
+        <Tooltip description={`Select as ${props.mode === "blocks" ? "text" : "blocks"}`}>
+            <MenuContainer>
+                <button className="group flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 w-[24px] h-[28px] transition-colors">
+                    <MaterialSymbol icon={props.mode === "blocks" ? "notes" : "dashboard"} />
+                </button>
+            </MenuContainer>
+        </Tooltip>
     );
 };
 

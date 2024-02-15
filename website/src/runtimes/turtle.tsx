@@ -2,7 +2,7 @@ import type { RuntimeComponent } from ".";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { produce } from "immer";
 
-export const Turtle: RuntimeComponent = forwardRef((props, ref) => {
+export const Turtle: RuntimeComponent = forwardRef((_props, ref) => {
     const [messages, setMessages] = useState<[string, any][]>([]);
 
     useImperativeHandle(ref, () => ({
@@ -19,10 +19,6 @@ export const Turtle: RuntimeComponent = forwardRef((props, ref) => {
 
     return (
         <div className="flex flex-col">
-            <p>
-                <em>ID: {props.id}</em>
-            </p>
-
             {messages.map(([message, value], index) => (
                 <div key={index}>
                     <p>
