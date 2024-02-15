@@ -1,12 +1,10 @@
 @top Program { expression* }
 
-expression { List | Comment | Placeholder | QuoteName | RepeatName | Text | Number | Asset | Keyword | Operator | Type | Name }
+expression { List | Comment | Placeholder | Text | Number | Asset | Keyword | Operator | Type | Name }
 
 List { "(" expression* ")" }
 
-Keyword { @specialize<Name, "_" | "use" | "when" | "type" | "trait" | "instance" | "where" | "external" | "syntax" | "format" | "with" | "intrinsic" | "semantics" | "snippet"> }
-
-Operator { @specialize<OperatorName, ":" | "::" | "->" | "=>" | "."> }
+Keyword { @specialize<Name, "_" | "when" | "type" | "trait" | "instance" | "where" | "intrinsic" | "semantics" | "snippet" | "language"> }
 
 @tokens {
   "[" "]"
@@ -18,16 +16,14 @@ Operator { @specialize<OperatorName, ":" | "::" | "->" | "=>" | "."> }
 
   Comment { "[" ![\]]* "]"}
   Placeholder { "{%" ![\{\}%]* "%}" }
-  QuoteName { "'" $[A-Za-z0-9\-_]+ $[!?']? }
-  RepeatName { "..." $[A-Za-z0-9\-_]+ $[!?']? }
   Text { '"' (!["\\] | "\\" _)* '"' }
   Number { "-"? $[0-9]+ ("." $[0-9]+)? }
   Asset { '`' (![`\\] | "\\" _)* '`' }
+  Operator { $[~`!@#$%^&*\-+=\\\|:;<,>.?/]+ }
   Type { $[A-Z] ![\r\n\t \(\)\[\]\{\}'"/]* }
-  OperatorName { $[~`!@#$%^&*\-+=\\\|:;<,>.?/]+ }
   Name { $[A-Za-z0-9\-_!?']+ }
 
-  @precedence { Space, LineContinue, Comment, Placeholder, Text, Number, Asset, QuoteName, RepeatName, Type, OperatorName, Name }
+  @precedence { Space, LineContinue, Comment, Placeholder, Text, Number, Asset, Operator, Type, Name }
 }
 
 @skip { Space | LineContinue }

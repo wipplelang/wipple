@@ -1,4 +1,3 @@
-import util from "util";
 import { Decimal } from "decimal.js";
 import { intrinsics } from "./intrinsics.js";
 import { produce } from "immer";
@@ -122,6 +121,7 @@ export interface Context {
     executable: Executable;
     topLevel: Item[];
     initializedItems: Record<string, [Record<string, TypeDescriptor>, TypedValue][]>;
+    debug: boolean;
     io: (request: IoRequest) => void;
     call: (func: TypedValue, input: TypedValue) => Promise<TypedValue>;
     produce: (deferred: TypedValue) => Promise<TypedValue>;
@@ -180,6 +180,7 @@ export class InterpreterError extends Error {}
 export const evaluate = async (
     executable: Executable,
     options: {
+        debug: boolean;
         io: (request: IoRequest) => Promise<void>;
     },
 ) => {
@@ -188,6 +189,7 @@ export const evaluate = async (
         topLevel: executable.code,
         initializedItems: {},
         io: options.io,
+        debug: options.debug,
         call: async (func, input) => {
             switch (func.type) {
                 case "function": {
@@ -243,14 +245,8 @@ export const evaluate = async (
                 return value;
             }
 
-            if (process.env.WIPPLE_DEBUG_INTERPRETER) {
-                console.error(
-                    "## initializing constant:",
-                    util.inspect(
-                        { path, typeDescriptor, substitutions },
-                        { depth: Infinity, colors: true },
-                    ),
-                );
+            if (context.debug) {
+                console.error("## initializing constant:", { path, typeDescriptor, substitutions });
             }
 
             const value = (await evaluateItem(path, item.ir, 0, [], {}, substitutions, context))!;
@@ -313,21 +309,15 @@ const evaluateItem = async (
                 return value;
             };
 
-            if (process.env.WIPPLE_DEBUG_INTERPRETER) {
-                console.error(
-                    "## evaluating:",
-                    util.inspect(
-                        {
-                            path,
-                            label,
-                            instruction,
-                            stack,
-                            scope,
-                            substitutions,
-                        },
-                        { depth: Infinity, colors: true },
-                    ),
-                );
+            if (context.debug) {
+                console.error("## evaluating:", {
+                    path,
+                    label,
+                    instruction,
+                    stack,
+                    scope,
+                    substitutions,
+                });
             }
 
             switch (instruction.type) {

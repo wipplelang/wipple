@@ -9,6 +9,8 @@ import {
     string,
     optional,
     positional,
+    multioption,
+    array,
 } from "cmd-ts";
 import { File } from "cmd-ts/batteries/fs";
 import { compile, link, renderDiagnostics, colorizeDiagnostics } from "wipple-compiler";
@@ -37,7 +39,9 @@ const app = subcommands({
             }) => {
                 const sources = sourcePaths.map((sourcePath) => ({
                     path: sourcePath,
-                    visiblePath: `${path.basename(path.dirname(sourcePath))}/${path.basename(sourcePath)}`,
+                    visiblePath: `${path.basename(path.dirname(sourcePath))}/${path.basename(
+                        sourcePath,
+                    )}`,
                     code: fs.readFileSync(sourcePath, "utf8"),
                 }));
 
@@ -84,6 +88,76 @@ const app = subcommands({
                     fs.mkdirSync(path.dirname(outputLibraryPath), { recursive: true });
                     fs.writeFileSync(outputLibraryPath, JSON.stringify(result.library, null, 4));
                 }
+            },
+        }),
+        "bundle-for-playground": command({
+            name: "bundle-for-playground",
+            args: {
+                dependencyInterfacePath: option({ long: "dependency", type: optional(File) }),
+                dependencyLibrariesPaths: multioption({ long: "link", type: array(File) }),
+                outputPath: option({ long: "output", short: "o", type: string }),
+                sourcePaths: restPositionals({ type: File }),
+            },
+            handler: async ({
+                dependencyInterfacePath,
+                dependencyLibrariesPaths,
+                outputPath,
+                sourcePaths,
+            }) => {
+                const sources = sourcePaths.map((sourcePath) => ({
+                    path: sourcePath,
+                    visiblePath: `${path.basename(path.dirname(sourcePath))}/${path.basename(
+                        sourcePath,
+                    )}`,
+                    code: fs.readFileSync(sourcePath, "utf8"),
+                }));
+
+                const dependencies = dependencyInterfacePath
+                    ? JSON.parse(fs.readFileSync(dependencyInterfacePath, "utf8"))
+                    : null;
+
+                const libraries = dependencyLibrariesPaths.map((path) =>
+                    JSON.parse(fs.readFileSync(path, "utf8")),
+                );
+
+                const result = compile(sources, dependencies);
+
+                if (result.diagnostics.length > 0) {
+                    const sourceCodeForFile = (file: string) => {
+                        try {
+                            return fs.readFileSync(file, "utf8");
+                        } catch {
+                            return "";
+                        }
+                    };
+
+                    const renderedDiagnostics = renderDiagnostics(
+                        result.diagnostics,
+                        result.interface,
+                        result.library,
+                        sourceCodeForFile,
+                    );
+
+                    const output = colorizeDiagnostics(renderedDiagnostics, sourceCodeForFile);
+
+                    console.log(output);
+
+                    if (renderedDiagnostics.some((diagnostic: any) => diagnostic.error)) {
+                        process.exit(1);
+                    }
+                }
+
+                const output = {
+                    interface: result.interface,
+                    libraries: [...libraries, result.library],
+                    sourceFiles: sources.map((source) => ({
+                        path: source.path,
+                        code: source.code,
+                    })),
+                };
+
+                fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+                fs.writeFileSync(outputPath, JSON.stringify(output, null, 4));
             },
         }),
         link: command({
@@ -150,6 +224,7 @@ const app = subcommands({
 
                 try {
                     await evaluate(executable, {
+                        debug: process.env.WIPPLE_DEBUG_INTERPRETER != null,
                         io: handleIo,
                     });
                 } catch (error) {

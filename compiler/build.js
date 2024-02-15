@@ -4,8 +4,8 @@ import { wasmLoader } from "esbuild-plugin-wasm";
 await esbuild.build({
     entryPoints: ["index.ts"],
     bundle: true,
-    platform: "node",
-    target: ["node20"],
+    platform: "neutral",
+    target: ["es2022"],
     format: "esm",
     sourcemap: true,
     outfile: "dist/index.js",

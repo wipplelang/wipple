@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     Animated,
     Menu,
@@ -7,6 +7,7 @@ import {
     defaultAnimationDuration,
 } from "../../components";
 import { CodeMirror } from "./codemirror";
+import { Runner } from "./runner";
 
 export const CodeEditor = (props: {
     children: string;
@@ -26,6 +27,8 @@ export const CodeEditor = (props: {
     }, [isFocused]);
 
     const [isHovering, setHovering] = useState(false);
+
+    const runnerOptions = useMemo(() => ({ dependenciesPath: "turtle" }), []);
 
     return (
         <div
@@ -147,8 +150,16 @@ export const CodeEditor = (props: {
                 </Transition>
             </div>
 
-            <div className="flex flex-col bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 rounded-md py-[3px]">
-                <CodeMirror onChange={props.onChange}>{props.children}</CodeMirror>
+            <div className="flex flex-col bg-gray-50 dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 rounded-md overflow-clip">
+                <div className="py-[3px] bg-white dark:bg-[#0d1117]">
+                    <CodeMirror onChange={props.onChange}>{props.children}</CodeMirror>
+                </div>
+
+                <Animated direction="vertical" clip>
+                    <div className="p-4">
+                        <Runner options={runnerOptions}>{props.children}</Runner>
+                    </div>
+                </Animated>
             </div>
         </div>
     );

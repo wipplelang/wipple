@@ -46,15 +46,31 @@ tasks:
 
   website:serve:
     run: once
+    deps:
+      - website:bundle-for-playground
     dir: website
     cmds:
       - npm run dev
 
   website:build:
     run: once
+    deps:
+      - website:bundle-for-playground
     dir: website
     cmds:
       - npm run build
+
+  website:bundle-for-playground:
+    run: once
+    dir: website
+    deps:
+      - cli:build
+      - base:compile
+    cmds:
+      - rm -rf $WIPPLE_TEST_PREFIX/.wipple
+      - wipple compile ../library/base/*.wipple --interface $WIPPLE_TEST_PREFIX/.wipple/base.wippleinterface --library $WIPPLE_TEST_PREFIX/.wipple/base.wipplelibrary
+      - wipple bundle-for-playground ../library/base/*.wipple --output ./public/library/base.json
+      - wipple bundle-for-playground ../library/playground/turtle.wipple --dependency $WIPPLE_TEST_PREFIX/.wipple/base.wippleinterface --link $WIPPLE_TEST_PREFIX/.wipple/base.wipplelibrary --output ./public/library/turtle.json
 
   base:compile:
     run: once

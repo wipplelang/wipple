@@ -5,7 +5,8 @@ import { EditorState } from "@codemirror/state";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { wippleLanguage } from "./language";
-import { defaultThemeConfig, theme } from "./theme";
+import { defaultThemeConfig, theme, themeFromConfig } from "./theme";
+import { useDarkMode } from "usehooks-ts";
 
 export interface CodeMirrorProps {
     children: string;
@@ -13,6 +14,8 @@ export interface CodeMirrorProps {
 }
 
 export const CodeMirror = (props: CodeMirrorProps) => {
+    const { isDarkMode } = useDarkMode();
+
     const editorView = useMemo(() => {
         type EditorViewConfig = ConstructorParameters<typeof EditorView>[0] & {};
 
@@ -23,7 +26,7 @@ export const CodeMirror = (props: CodeMirrorProps) => {
                     minimalSetup,
 
                     wippleLanguage,
-                    theme.of(defaultThemeConfig()),
+                    theme.of(themeFromConfig(defaultThemeConfig())),
 
                     EditorView.lineWrapping,
                     EditorState.allowMultipleSelections.of(false),
@@ -58,6 +61,14 @@ export const CodeMirror = (props: CodeMirrorProps) => {
             containerRef.current?.removeChild(editorView.dom);
         };
     }, [containerRef.current]);
+
+    useEffect(() => {
+        editorView.dispatch({
+            effects: theme.reconfigure(
+                themeFromConfig({ ...defaultThemeConfig(), dark: isDarkMode }),
+            ),
+        });
+    }, [editorView, isDarkMode]);
 
     return <div ref={containerRef}></div>;
 };

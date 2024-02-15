@@ -1,4 +1,3 @@
-import util from "util";
 import { Decimal } from "decimal.js";
 // @ts-ignore
 import { hash_uint } from "siphash";
@@ -12,7 +11,7 @@ export type Intrinsic = (
 
 export const intrinsics: Record<string, Intrinsic> = {
     debug: async ([value], _expectedTypeDescriptor, _context) => {
-        console.error(util.inspect(value, { depth: Infinity, colors: true }));
+        console.error(value);
         return value;
     },
     crash: async ([message], _expectedTypeDescriptor, context) => {

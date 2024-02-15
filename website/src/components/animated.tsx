@@ -3,7 +3,11 @@ import { animated, useSpring } from "@react-spring/web";
 import useMeasure from "react-use-measure";
 
 export const Animated = (
-    props: React.PropsWithChildren<{ direction: "horizontal" | "vertical"; open?: boolean }>,
+    props: React.PropsWithChildren<{
+        direction: "horizontal" | "vertical";
+        clip?: boolean;
+        open?: boolean;
+    }>,
 ) => {
     const isOpen = props.open ?? true;
     const [initialIsOpen, setInitialIsOpen] = useState(() => isOpen);
@@ -20,8 +24,11 @@ export const Animated = (
     });
 
     return (
-        <animated.div style={style}>
-            <div ref={ref} className="w-fit">
+        <animated.div style={style} className={props.clip ? "overflow-clip" : ""}>
+            <div
+                ref={ref}
+                className={props.direction === "horizontal" ? "w-fit h-full" : "w-full h-fit"}
+            >
                 {props.children}
             </div>
         </animated.div>

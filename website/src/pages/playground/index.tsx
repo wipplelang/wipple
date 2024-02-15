@@ -43,12 +43,14 @@ export const PlaygroundPage = () => {
         };
     }, [playground?.name]);
 
+    const [tempCode, setTempCode] = useState('show "Hello, world!"');
+
     return (
         <div className="flex flex-row justify-center">
             <div className="flex flex-col items-stretch gap-4 container max-w-4xl px-4">
                 {playground ? (
                     <>
-                        <CodeEditor>show "Hello, world!"</CodeEditor>
+                        <CodeEditor onChange={setTempCode}>{tempCode}</CodeEditor>
                         <AddButton />
                     </>
                 ) : (

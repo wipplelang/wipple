@@ -6,6 +6,6 @@ import { lezer } from "@lezer/generator/rollup";
 export default defineConfig({
     plugins: [react(), lezer()],
     server: {
-        port: 3000,
+        port: 8080,
     },
 });
