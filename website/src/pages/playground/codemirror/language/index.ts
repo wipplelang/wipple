@@ -2,22 +2,20 @@ import { LRLanguage, LanguageSupport } from "@codemirror/language";
 import { styleTags, tags as t } from "@lezer/highlight";
 import { parser } from "./wipple.grammar";
 
+export const wippleTags = {
+    Comment: t.comment,
+    Text: t.string,
+    Number: t.number,
+    Keyword: t.keyword,
+    Operator: t.operator,
+    Type: t.typeName,
+};
+
 export const wippleLanguage = new LanguageSupport(
     LRLanguage.define({
         name: "Wipple",
         parser: parser.configure({
-            props: [
-                styleTags({
-                    Comment: t.comment,
-                    Placeholder: t.name,
-                    Text: t.string,
-                    Number: t.number,
-                    Asset: t.string,
-                    Keyword: t.macroName,
-                    Operator: t.operator,
-                    Type: t.className,
-                }),
-            ],
+            props: [styleTags(wippleTags)],
         }),
         languageData: {
             commentTokens: { block: { open: "[", close: "]" } },

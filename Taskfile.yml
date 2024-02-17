@@ -69,8 +69,9 @@ tasks:
     cmds:
       - rm -rf $WIPPLE_TEST_PREFIX/.wipple
       - wipple compile ../library/base/*.wipple --interface $WIPPLE_TEST_PREFIX/.wipple/base.wippleinterface --library $WIPPLE_TEST_PREFIX/.wipple/base.wipplelibrary
-      - wipple bundle-for-playground ../library/base/*.wipple --output ./public/library/base.json
-      - wipple bundle-for-playground ../library/playground/turtle.wipple --dependency $WIPPLE_TEST_PREFIX/.wipple/base.wippleinterface --link $WIPPLE_TEST_PREFIX/.wipple/base.wipplelibrary --output ./public/library/turtle.json
+      - wipple bundle-for-playground ../library/base/*.wipple --output ./public/library/base.wipplebundle
+      - wipple bundle-for-playground ../library/playground/turtle.wipple --dependency $WIPPLE_TEST_PREFIX/.wipple/base.wippleinterface --link $WIPPLE_TEST_PREFIX/.wipple/base.wipplelibrary --output ./public/library/turtle.wipplebundle
+      - cp -r ../library/help ./public/library
 
   base:compile:
     run: once

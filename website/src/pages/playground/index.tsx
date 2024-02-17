@@ -43,14 +43,29 @@ export const PlaygroundPage = () => {
         };
     }, [playground?.name]);
 
-    const [tempCode, setTempCode] = useState('show "Hello, world!"');
+    const [tempCode, setTempCode] = useState(`fib :: Number -> Number
+fib : n -> when n (
+    0 or 1 -> 1
+    _ -> fib (n - 2) + fib (n - 1)
+)
+
+show (fib 5)`);
+
+    const [tempQuickHelpEnabled, setTempQuickHelpEnabled] = useState(false);
 
     return (
         <div className="flex flex-row justify-center">
             <div className="flex flex-col items-stretch gap-4 container max-w-4xl px-4">
                 {playground ? (
                     <>
-                        <CodeEditor onChange={setTempCode}>{tempCode}</CodeEditor>
+                        <CodeEditor
+                            onChange={setTempCode}
+                            quickHelpEnabled={tempQuickHelpEnabled}
+                            onChangeQuickHelpEnabled={setTempQuickHelpEnabled}
+                        >
+                            {tempCode}
+                        </CodeEditor>
+
                         <AddButton />
                     </>
                 ) : (

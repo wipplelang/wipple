@@ -1,6 +1,6 @@
 @top Program { expression* }
 
-expression { List | Comment | Placeholder | Text | Number | Asset | Keyword | Operator | Type | Name }
+expression { List | Comment | Text | Number | Asset | Keyword | Operator | Type | Name }
 
 List { "(" expression* ")" }
 
@@ -11,11 +11,9 @@ Keyword { @specialize<Name, "_" | "when" | "type" | "trait" | "instance" | "wher
   "(" ")"
   "{" "}"
 
-  Space { $[ \t\n\r]+ }
-  LineContinue { "\\" }
+  Space { $[ \t\r\n]+ }
 
   Comment { "[" ![\]]* "]"}
-  Placeholder { "{%" ![\{\}%]* "%}" }
   Text { '"' (!["\\] | "\\" _)* '"' }
   Number { "-"? $[0-9]+ ("." $[0-9]+)? }
   Asset { '`' (![`\\] | "\\" _)* '`' }
@@ -23,9 +21,9 @@ Keyword { @specialize<Name, "_" | "when" | "type" | "trait" | "instance" | "wher
   Type { $[A-Z] ![\r\n\t \(\)\[\]\{\}'"/]* }
   Name { $[A-Za-z0-9\-_!?']+ }
 
-  @precedence { Space, LineContinue, Comment, Placeholder, Text, Number, Asset, Operator, Type, Name }
+  @precedence { Space, Comment, Text, Number, Asset, Operator, Type, Name }
 }
 
-@skip { Space | LineContinue }
+@skip { Space }
 
 @detectDelim

@@ -25,6 +25,9 @@ type Output =
 export const Runner = (props: {
     children: string;
     runtime?: RuntimeComponent;
+    hasFocus: boolean;
+    onFocus: () => void;
+    onBlur: () => void;
     options: RunOptions;
 }) => {
     const id = useId();
@@ -59,69 +62,77 @@ export const Runner = (props: {
         return newWorker;
     }, [id]);
 
-    useEffect(() => {
-        (async () => {
-            try {
-                const sources = [
-                    {
-                        path: "playground",
-                        visiblePath: "playground",
-                        code,
-                    },
-                ];
+    const [isRunning, setRunning] = useState(false);
+    const [showRunAgain, setShowRunAgain] = useState(false);
 
-                const dependencies = props.options.dependenciesPath
-                    ? await fetchDependencies(props.options.dependenciesPath)
-                    : null;
+    const run = useCallback(async () => {
+        props.onBlur();
+        setRunning(true);
+        setShowRunAgain(false);
 
-                const sourceFiles = [{ path: "playground", code }];
+        try {
+            const sources = [
+                {
+                    path: "playground",
+                    visiblePath: "playground",
+                    code,
+                },
+            ];
 
-                if (dependencies != null) {
-                    sourceFiles.push(...dependencies.sourceFiles);
-                }
+            const dependencies = props.options.dependenciesPath
+                ? await fetchDependencies(props.options.dependenciesPath)
+                : null;
 
-                const compileResult = compile(sources, dependencies?.interface);
+            const sourceFiles = [{ path: "playground", code }];
 
-                if (compileResult.diagnostics.length > 0) {
-                    const sourceCodeForFile = (file: string) => {
-                        const sourceFile = sourceFiles.find(({ path }) => path === file);
-                        return sourceFile?.code ?? "";
-                    };
+            if (dependencies != null) {
+                sourceFiles.push(...dependencies.sourceFiles);
+            }
 
-                    const renderedDiagnostics = renderDiagnostics(
-                        compileResult.diagnostics,
-                        compileResult.interface,
-                        compileResult.library,
-                        sourceCodeForFile,
-                    );
+            const compileResult = compile(sources, dependencies?.interface);
 
-                    setDiagnostics(renderedDiagnostics);
+            if (compileResult.diagnostics.length > 0) {
+                const sourceCodeForFile = (file: string) => {
+                    const sourceFile = sourceFiles.find(({ path }) => path === file);
+                    return sourceFile?.code ?? "";
+                };
 
-                    if (renderedDiagnostics.some((diagnostic: any) => diagnostic.error)) {
-                        return;
-                    }
-                } else {
-                    setDiagnostics([]);
-                }
-
-                const linkResult = link([
+                const renderedDiagnostics = renderDiagnostics(
+                    compileResult.diagnostics,
+                    compileResult.interface,
                     compileResult.library,
-                    ...(dependencies?.libraries ?? []),
-                ]);
+                    sourceCodeForFile,
+                );
 
-                if (linkResult.Err) {
-                    throw new Error(`failed to link libraries: ${linkResult.Err}`);
+                setDiagnostics(renderedDiagnostics);
+
+                if (renderedDiagnostics.some((diagnostic: any) => diagnostic.error)) {
+                    return;
                 }
+            } else {
+                setDiagnostics([]);
+            }
 
-                const executable = linkResult.Ok;
+            const linkResult = link([compileResult.library, ...(dependencies?.libraries ?? [])]);
 
-                const runnerWorker = resetRunnerWorker();
-                clearOutput();
+            if (linkResult.Err) {
+                throw new Error(`failed to link libraries: ${linkResult.Err}`);
+            }
 
+            const executable = linkResult.Ok;
+
+            const runnerWorker = resetRunnerWorker();
+            clearOutput();
+
+            await new Promise<void>((resolve) => {
                 runnerWorker.onmessage = async (event) => {
                     const { type } = event.data;
 
                     switch (type) {
+                        case "completion": {
+                            resolve();
+                            break;
+                        }
                         case "display": {
                             const { text } = event.data;
 
@@ -202,16 +213,21 @@ export const Runner = (props: {
                 };
 
                 runnerWorker.postMessage({ type: "run", executable });
+            });
 
-                // TODO: Run via worker
-            } catch (error) {
-                console.error(error);
-            }
-        })();
+            setRunning(false);
+            setShowRunAgain(true);
+        } catch (error) {
+            console.error(error);
+        }
     }, [code, runtime, props.options, runnerWorker, resetRunnerWorker]);
 
-    return output.length > 0 || diagnostics.length > 0 ? (
-        <div className="flex flex-col p-4 gap-2">
+    useEffect(() => {
+        run();
+    }, [run]);
+
+    return output.length > 0 || diagnostics.length > 0 || isRunning ? (
+        <div className="flex flex-col px-4 pb-4 gap-3">
             {diagnostics.length > 0 ? (
                 <div className="bg-red-100 border border-red-200 p-2 rounded-md">
                     <ul>
@@ -222,32 +238,70 @@ export const Runner = (props: {
                 </div>
             ) : null}
 
-            {props.runtime ? <props.runtime id={id} ref={runtime} /> : null}
+            <div className="flex flex-col gap-3">
+                {props.runtime ? <props.runtime id={id} ref={runtime} /> : null}
 
-            {output.map((item, index) => {
-                let content: JSX.Element;
-                switch (item.type) {
-                    case "text":
-                        content = <div>{item.text}</div>;
-                        break;
-                    case "prompt":
-                        content = <Prompt prompt={item.prompt} validate={item.onSubmit} />;
-                        break;
-                    case "choice":
-                        content = <div>TODO</div>;
-                        break;
-                    default:
-                        item satisfies never;
-                        throw new Error("unreachable");
-                }
+                {output.map((item, index) => {
+                    let content: JSX.Element;
+                    switch (item.type) {
+                        case "text":
+                            content = (
+                                <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
+                                    {item.text}
+                                </div>
+                            );
+                            break;
+                        case "prompt":
+                            content = (
+                                <Prompt
+                                    autoFocus={props.hasFocus}
+                                    prompt={item.prompt}
+                                    validate={item.onSubmit}
+                                    onFocus={props.onFocus}
+                                />
+                            );
+                            break;
+                        case "choice":
+                            content = <div>TODO</div>;
+                            break;
+                        default:
+                            item satisfies never;
+                            throw new Error("unreachable");
+                    }
 
-                return <div key={index}>{content}</div>;
-            })}
+                    return <div key={index}>{content}</div>;
+                })}
+
+                {isRunning ? (
+                    <div className="bouncing-loader">
+                        <div />
+                        <div />
+                        <div />
+                    </div>
+                ) : null}
+
+                {showRunAgain ? (
+                    <div className="flex flex-col items-start">
+                        <button
+                            onClick={run}
+                            className="flex flex-row items-center gap-2 bg-blue-500 bg-opacity-10 text-blue-500 dark:text-blue-400 hover:bg-opacity-100 hover:text-white rounded-lg px-3 py-1.5 transition-colors"
+                        >
+                            <MaterialSymbol icon="replay" className="text-lg -scale-x-100" />
+                            Run Again
+                        </button>
+                    </div>
+                ) : null}
+            </div>
         </div>
     ) : null;
 };
 
-const Prompt = (props: { prompt: string; validate: (value: string) => Promise<boolean> }) => {
+const Prompt = (props: {
+    autoFocus: boolean;
+    prompt: string;
+    validate: (value: string) => Promise<boolean>;
+    onFocus: () => void;
+}) => {
     const [value, setValue] = useState("");
     const [valid, setValid] = useState(true);
     const [disabled, setDisabled] = useState(false);
@@ -280,14 +334,16 @@ const Prompt = (props: { prompt: string; validate: (value: string) => Promise<bo
                 e.preventDefault();
                 onSubmit();
             }}
-            className={`relative ${valid ? "" : "shake"}`}
+            className={`relative ${valid ? "" : "shake"} mt-1`}
         >
             <input
                 ref={inputRef}
+                autoFocus={props.autoFocus}
+                onFocus={props.onFocus}
                 disabled={disabled}
                 placeholder={props.prompt}
                 onChange={(e) => setValue(e.target.value)}
-                className={`w-full rounded-md p-2 outline ${
+                className={`w-full rounded-md px-3 py-2.5 outline ${
                     valid ? "outline-gray-300 dark:outline-gray-700" : "outline-red-500"
                 } ${
                     disabled
@@ -301,7 +357,7 @@ const Prompt = (props: { prompt: string; validate: (value: string) => Promise<bo
             <button
                 type="submit"
                 disabled={disabled}
-                className="absolute top-0 bottom-0 right-2 my-auto flex items-center justify-center w-6 h-6 bg-blue-500 disabled:bg-gray-300 disabled:dark:bg-gray-800 rounded-md"
+                className="absolute top-0 bottom-0 right-3 my-auto flex items-center justify-center w-6 h-6 bg-blue-500 disabled:bg-gray-300 disabled:dark:bg-gray-800 rounded-md"
             >
                 <MaterialSymbol icon="arrow_forward" className="text-white text-xl" />
             </button>
@@ -322,5 +378,7 @@ const fetchDependencies = async (name: string): Promise<FetchDependenciesResult>
         throw new Error("missing VITE_DEPENDENCIES_BASE_URL");
     }
 
-    return fetch(new URL(`${name}.json`, baseUrlString)).then((response) => response.json());
+    return fetch(new URL(`${name}.wipplebundle`, baseUrlString)).then((response) =>
+        response.json(),
+    );
 };

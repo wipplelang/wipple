@@ -5,18 +5,17 @@ import { EditorState } from "@codemirror/state";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { wippleLanguage } from "./language";
-import { defaultThemeConfig, theme, themeFromConfig } from "./theme";
-import { useDarkMode } from "usehooks-ts";
+import { ThemeConfig, theme, themeFromConfig } from "./theme";
+import { selectionMode, selectionModeFromEnabled } from "./mode";
 
 export interface CodeMirrorProps {
     children: string;
     onChange?: (value: string) => void;
-    mode: "blocks" | "text";
+    quickHelpEnabled?: boolean;
+    theme: ThemeConfig;
 }
 
 export const CodeMirror = (props: CodeMirrorProps) => {
-    const { isDarkMode } = useDarkMode();
-
     const editorView = useMemo(() => {
         type EditorViewConfig = ConstructorParameters<typeof EditorView>[0] & {};
 
@@ -27,7 +26,11 @@ export const CodeMirror = (props: CodeMirrorProps) => {
                     minimalSetup,
 
                     wippleLanguage,
-                    theme.of(themeFromConfig(defaultThemeConfig())),
+                    theme.of(themeFromConfig(props.theme)),
+
+                    selectionMode.of(
+                        selectionModeFromEnabled(props.quickHelpEnabled ?? false, props.theme),
+                    ),
 
                     EditorView.lineWrapping,
                     EditorState.allowMultipleSelections.of(false),
@@ -65,11 +68,17 @@ export const CodeMirror = (props: CodeMirrorProps) => {
 
     useEffect(() => {
         editorView.dispatch({
-            effects: theme.reconfigure(
-                themeFromConfig({ ...defaultThemeConfig(), dark: isDarkMode }),
+            effects: theme.reconfigure(themeFromConfig(props.theme)),
+        });
+    }, [editorView, props.theme]);
+
+    useEffect(() => {
+        editorView.dispatch({
+            effects: selectionMode.reconfigure(
+                selectionModeFromEnabled(props.quickHelpEnabled ?? false, props.theme),
             ),
         });
-    }, [editorView, isDarkMode]);
+    }, [editorView, props.quickHelpEnabled, props.theme]);
 
     return <div ref={containerRef} />;
 };

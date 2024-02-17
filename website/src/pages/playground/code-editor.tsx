@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
     Animated,
     Menu,
@@ -8,12 +8,15 @@ import {
     defaultAnimationDuration,
 } from "../../components";
 import { CodeMirror } from "./codemirror";
-import { Runner } from "./runner";
+import { RunOptions, Runner } from "./runner";
 import { MaterialSymbol } from "react-material-symbols";
+import { defaultThemeConfig } from "./codemirror/theme";
 
 export const CodeEditor = (props: {
     children: string;
     onChange?: (value: string) => void;
+    quickHelpEnabled?: boolean;
+    onChangeQuickHelpEnabled?: (quickHelpEnabled: boolean) => void;
     autofocus?: boolean;
     onFocus?: () => void;
     onBlur?: () => void;
@@ -30,12 +33,11 @@ export const CodeEditor = (props: {
 
     const [isHovering, setHovering] = useState(false);
 
-    const runnerOptions = useMemo(
-        () => ({
-            dependenciesPath: "turtle",
-        }),
-        [],
-    );
+    const [runOptions, setRunOptions] = useState<RunOptions>({
+        dependenciesPath: "turtle",
+    });
+
+    const [runnerHasFocus, setRunnerHasFocus] = useState(false);
 
     return (
         <div
@@ -56,119 +58,159 @@ export const CodeEditor = (props: {
                 >
                     {() => (
                         <div className="flex flex-row items-center justify-between">
-                            <Menu
-                                items={[
-                                    {
-                                        name: "Code",
-                                        onClick: () => setFocused(true),
-                                        children: [
-                                            {
-                                                name: "TODO 1",
-                                                onClick: () => {
-                                                    setFocused(true);
+                            <div className="flex flex-row gap-2">
+                                <QuickHelpToggle
+                                    quickHelpEnabled={props.quickHelpEnabled ?? false}
+                                    onChange={props.onChangeQuickHelpEnabled}
+                                />
+
+                                <Transition
+                                    value={props.quickHelpEnabled ?? false ? undefined : {}}
+                                    exitAnimationDuration={defaultAnimationDuration}
+                                    inClassName="animate-in fade-in slide-in-from-left-4"
+                                    outClassName="animate-out fade-out slide-out-to-left-4"
+                                >
+                                    {() => (
+                                        <Menu
+                                            items={[
+                                                {
+                                                    name: "Code",
+                                                    onClick: () => setFocused(true),
+                                                    children: [
+                                                        {
+                                                            name: "TODO 1",
+                                                            onClick: () => {
+                                                                setFocused(true);
+                                                            },
+                                                        },
+                                                        {
+                                                            name: "TODO 2",
+                                                            onClick: () => {
+                                                                setFocused(true);
+                                                            },
+                                                        },
+                                                    ],
                                                 },
-                                            },
-                                            {
-                                                name: "TODO 2",
-                                                onClick: () => {
-                                                    setFocused(true);
+                                                {
+                                                    name: "Edit",
+                                                    onClick: () => setFocused(true),
+                                                    children: [
+                                                        {
+                                                            name: "TODO 1",
+                                                            onClick: () => {
+                                                                setFocused(true);
+                                                            },
+                                                        },
+                                                        {
+                                                            name: "TODO 2",
+                                                            onClick: () => {
+                                                                setFocused(true);
+                                                            },
+                                                        },
+                                                    ],
                                                 },
-                                            },
-                                        ],
-                                    },
-                                    {
-                                        name: "Edit",
-                                        onClick: () => setFocused(true),
-                                        children: [
-                                            {
-                                                name: "TODO 1",
-                                                onClick: () => {
-                                                    setFocused(true);
+                                                {
+                                                    name: "Select",
+                                                    onClick: () => setFocused(true),
+                                                    children: [
+                                                        {
+                                                            name: "TODO 1",
+                                                            onClick: () => {
+                                                                setFocused(true);
+                                                            },
+                                                        },
+                                                        {
+                                                            name: "TODO 2",
+                                                            onClick: () => {
+                                                                setFocused(true);
+                                                            },
+                                                        },
+                                                    ],
                                                 },
-                                            },
-                                            {
-                                                name: "TODO 2",
-                                                onClick: () => {
-                                                    setFocused(true);
+                                                {
+                                                    name: "View",
+                                                    onClick: () => setFocused(true),
+                                                    children: [
+                                                        {
+                                                            name: "TODO 1",
+                                                            onClick: () => {
+                                                                setFocused(true);
+                                                            },
+                                                        },
+                                                        {
+                                                            name: "TODO 2",
+                                                            onClick: () => {
+                                                                setFocused(true);
+                                                            },
+                                                        },
+                                                    ],
                                                 },
-                                            },
-                                        ],
-                                    },
-                                    {
-                                        name: "Select",
-                                        onClick: () => setFocused(true),
-                                        children: [
-                                            {
-                                                name: "TODO 1",
-                                                onClick: () => {
-                                                    setFocused(true);
+                                                {
+                                                    name: "Help",
+                                                    onClick: () => setFocused(true),
+                                                    children: [
+                                                        {
+                                                            name: "TODO 1",
+                                                            onClick: () => {
+                                                                setFocused(true);
+                                                            },
+                                                        },
+                                                        {
+                                                            name: "TODO 2",
+                                                            onClick: () => {
+                                                                setFocused(true);
+                                                            },
+                                                        },
+                                                    ],
                                                 },
-                                            },
-                                            {
-                                                name: "TODO 2",
-                                                onClick: () => {
-                                                    setFocused(true);
-                                                },
-                                            },
-                                        ],
-                                    },
-                                    {
-                                        name: "View",
-                                        onClick: () => setFocused(true),
-                                        children: [
-                                            {
-                                                name: "TODO 1",
-                                                onClick: () => {
-                                                    setFocused(true);
-                                                },
-                                            },
-                                            {
-                                                name: "TODO 2",
-                                                onClick: () => {
-                                                    setFocused(true);
-                                                },
-                                            },
-                                        ],
-                                    },
-                                    {
-                                        name: "Help",
-                                        onClick: () => setFocused(true),
-                                        children: [
-                                            {
-                                                name: "TODO 1",
-                                                onClick: () => {
-                                                    setFocused(true);
-                                                },
-                                            },
-                                            {
-                                                name: "TODO 2",
-                                                onClick: () => {
-                                                    setFocused(true);
-                                                },
-                                            },
-                                        ],
-                                    },
-                                ]}
-                            />
+                                            ]}
+                                        />
+                                    )}
+                                </Transition>
+                            </div>
 
                             <div className="flex flex-row gap-2">
-                                <InsertMenu />
-                                <ModeToggle mode="blocks" onChange={() => alert("TODO")} />
+                                <Transition
+                                    value={props.quickHelpEnabled ?? false ? undefined : {}}
+                                    exitAnimationDuration={defaultAnimationDuration}
+                                    inClassName="animate-in fade-in"
+                                    outClassName="animate-out fade-out"
+                                >
+                                    {() => <InsertMenu />}
+                                </Transition>
                             </div>
                         </div>
                     )}
                 </Transition>
             </div>
 
-            <div className="flex flex-col bg-gray-50 dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 rounded-md overflow-clip">
-                <div className="py-[3px] bg-white dark:bg-[#0d1117]">
-                    <CodeMirror onChange={props.onChange} mode="blocks">
+            <div className="flex flex-col border-2 border-gray-100 dark:border-gray-800 rounded-md overflow-clip">
+                <Animated direction="vertical">
+                    {props.quickHelpEnabled ?? false ? (
+                        <p className="pt-5 px-4 text-sm text-gray-500 dark:text-gray-400">
+                            Hover over a piece of code for help.
+                        </p>
+                    ) : null}
+                </Animated>
+
+                <div className="py-[3px]">
+                    <CodeMirror
+                        onChange={props.onChange}
+                        quickHelpEnabled={props.quickHelpEnabled}
+                        theme={defaultThemeConfig()}
+                    >
                         {props.children}
                     </CodeMirror>
                 </div>
 
                 <Animated direction="vertical" clip>
-                    <Runner options={runnerOptions} runtime={undefined}>
+                    <Runner
+                        options={runOptions}
+                        runtime={undefined}
+                        hasFocus={runnerHasFocus}
+                        onFocus={() => setRunnerHasFocus(true)}
+                        onBlur={() => setRunnerHasFocus(false)}
+                    >
                         {props.children}
                     </Runner>
                 </Animated>
@@ -206,17 +248,30 @@ const InsertMenu = () => {
     );
 };
 
-const ModeToggle = (props: {
-    mode: "blocks" | "text";
-    onChange: (mode: "blocks" | "text") => void;
+const QuickHelpToggle = (props: {
+    quickHelpEnabled: boolean;
+    onChange?: (quickHelpEnabled: boolean) => void;
 }) => {
     return (
-        <Tooltip description={`Select as ${props.mode === "blocks" ? "text" : "blocks"}`}>
-            <MenuContainer>
-                <button className="group flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 w-[24px] h-[28px] transition-colors">
-                    <MaterialSymbol icon={props.mode === "blocks" ? "notes" : "dashboard"} />
-                </button>
-            </MenuContainer>
+        <Tooltip description={props.quickHelpEnabled ? undefined : "Quick Help"}>
+            <Animated direction="horizontal">
+                <MenuContainer>
+                    <button
+                        className={`group flex flex-row items-center justify-center gap-1 h-[28px] transition-colors ${
+                            props.quickHelpEnabled
+                                ? "px-2 bg-blue-500 text-white"
+                                : "w-[24px] hover:bg-gray-100 dark:hover:bg-gray-800"
+                        }`}
+                        onClick={() => props.onChange?.(!props.quickHelpEnabled)}
+                    >
+                        {props.quickHelpEnabled ? (
+                            <p className="whitespace-nowrap">Done</p>
+                        ) : (
+                            <MaterialSymbol icon="frame_inspect" className="text-lg" />
+                        )}
+                    </button>
+                </MenuContainer>
+            </Animated>
         </Tooltip>
     );
 };

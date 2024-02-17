@@ -98,6 +98,8 @@ onmessage = async (event) => {
                 }
             },
         });
+
+        postMessage({ type: "completion" });
     } catch (error) {
         if (error instanceof InterpreterError) {
             // TODO: Show output

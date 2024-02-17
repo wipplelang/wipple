@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { animated, useSpring } from "@react-spring/web";
-import useMeasure from "react-use-measure";
+import { useResizeObserver } from "usehooks-ts";
 
 export const Animated = (
     props: React.PropsWithChildren<{
@@ -12,7 +12,8 @@ export const Animated = (
     const isOpen = props.open ?? true;
     const [initialIsOpen, setInitialIsOpen] = useState(() => isOpen);
 
-    const [ref, { width, height }] = useMeasure();
+    const ref = useRef<HTMLDivElement>(null);
+    const { width, height } = useResizeObserver({ ref });
 
     const style = useSpring({
         width: props.direction === "horizontal" ? (isOpen ? width : 0) : undefined,

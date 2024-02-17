@@ -1,15 +1,14 @@
 import { Compartment, Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { githubLight, githubDark } from "@uiw/codemirror-theme-github";
+import { syntaxHighlighting } from "@codemirror/language";
+import { classHighlighter } from "@lezer/highlight";
 
 export interface ThemeConfig {
-    dark: boolean;
     fontSize: number;
     fontFamily: string;
 }
 
 export const defaultThemeConfig = (): ThemeConfig => ({
-    dark: window.matchMedia("(prefers-color-scheme: dark)").matches,
     fontSize: 16,
     fontFamily: "JetBrains Mono",
 });
@@ -40,7 +39,7 @@ export const themeFromConfig = (config: ThemeConfig): Extension => [
             backgroundColor: "unset",
         },
     }),
-    config.dark ? githubDark : githubLight,
+    syntaxHighlighting(classHighlighter),
 ];
 
 export const theme = new Compartment();
