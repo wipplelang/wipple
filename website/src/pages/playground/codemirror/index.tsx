@@ -1,19 +1,25 @@
 import { useEffect, useMemo, useRef } from "react";
 import { EditorView, minimalSetup } from "codemirror";
 import { placeholder, keymap } from "@codemirror/view";
-import { EditorState } from "@codemirror/state";
+import { Compartment, EditorState } from "@codemirror/state";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { wippleLanguage } from "./language";
 import { ThemeConfig, theme, themeFromConfig } from "./theme";
 import { selectionMode, selectionModeFromEnabled } from "./mode";
+import { Diagnostic } from "../../../models";
+import { highlight, highlightFromDiagnostics } from "./highlight";
 
 export interface CodeMirrorProps {
     children: string;
     onChange?: (value: string) => void;
     quickHelpEnabled?: boolean;
+    readOnly: boolean;
+    diagnostics: Diagnostic[];
     theme: ThemeConfig;
 }
+
+const editable = new Compartment();
 
 export const CodeMirror = (props: CodeMirrorProps) => {
     const editorView = useMemo(() => {
@@ -32,6 +38,8 @@ export const CodeMirror = (props: CodeMirrorProps) => {
                         selectionModeFromEnabled(props.quickHelpEnabled ?? false, props.theme),
                     ),
 
+                    highlight.of(highlightFromDiagnostics(props.diagnostics)),
+
                     EditorView.lineWrapping,
                     EditorState.allowMultipleSelections.of(false),
 
@@ -39,6 +47,8 @@ export const CodeMirror = (props: CodeMirrorProps) => {
                     closeBrackets(),
 
                     placeholder("Write your code here!"),
+
+                    editable.of(EditorView.editable.of(!props.readOnly)),
 
                     EditorView.updateListener.of((update) => {
                         if (update.docChanged) {
@@ -68,6 +78,12 @@ export const CodeMirror = (props: CodeMirrorProps) => {
 
     useEffect(() => {
         editorView.dispatch({
+            effects: editable.reconfigure(EditorView.editable.of(!props.readOnly)),
+        });
+    }, [editorView, props.readOnly]);
+
+    useEffect(() => {
+        editorView.dispatch({
             effects: theme.reconfigure(themeFromConfig(props.theme)),
         });
     }, [editorView, props.theme]);
@@ -79,6 +95,12 @@ export const CodeMirror = (props: CodeMirrorProps) => {
             ),
         });
     }, [editorView, props.quickHelpEnabled, props.theme]);
+
+    useEffect(() => {
+        editorView.dispatch({
+            effects: highlight.reconfigure(highlightFromDiagnostics(props.diagnostics)),
+        });
+    }, [editorView, props.diagnostics]);
 
     return <div ref={containerRef} />;
 };

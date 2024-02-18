@@ -71,7 +71,7 @@ export const Navbar = () => {
     return (
         <div
             className={`flex flex-row items-center justify-between px-4 h-20 ${
-                isHome ? "bg-gray-50 dark:bg-gray-900" : "bg-white dark:bg-black"
+                isHome ? "bg-gray-50 dark:bg-gray-900" : ""
             }`}
         >
             <div className="flex flex-row items-center gap-4">

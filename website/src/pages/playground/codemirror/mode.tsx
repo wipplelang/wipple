@@ -25,7 +25,6 @@ export const selectionModeFromEnabled = (enabled: boolean, theme: ThemeConfig): 
               blocks,
               blocksListener,
               EditorView.decorations.compute([blocks], (state) => state.field(blocks)),
-              EditorView.editable.of(false),
           ]
         : [];
 
@@ -98,6 +97,8 @@ const computeBlocks = (syntaxTree: Tree, state: EditorState) => {
 };
 
 class BlockWidget extends WidgetType {
+    private root?: ReactDOM.Root;
+
     constructor(
         public from: number,
         public to: number,
@@ -120,7 +121,8 @@ class BlockWidget extends WidgetType {
 
     toDOM() {
         const container = document.createElement("span");
-        ReactDOM.createRoot(container).render(
+        this.root = ReactDOM.createRoot(container);
+        this.root.render(
             <BlockWidgetComponent
                 from={this.from}
                 to={this.to}
@@ -131,6 +133,12 @@ class BlockWidget extends WidgetType {
         );
 
         return container;
+    }
+
+    destroy() {
+        requestAnimationFrame(() => {
+            this.root?.unmount();
+        });
     }
 }
 

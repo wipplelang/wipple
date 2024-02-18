@@ -5,22 +5,11 @@ import { RunnerWorker } from "../../helpers";
 import { InterpreterError } from "wipple-interpreter";
 import { Runtime, RuntimeComponent } from "../../runtimes";
 import { MaterialSymbol } from "react-material-symbols";
+import { Diagnostic, Output } from "../../models";
 
 export interface RunOptions {
     dependenciesPath: string;
 }
-
-type Diagnostic = unknown; // TODO
-
-type Output =
-    | { type: "text"; text: string }
-    | { type: "prompt"; prompt: string; onSubmit: (value: string) => Promise<boolean> }
-    | {
-          type: "choice";
-          prompt: string;
-          choices: string[];
-          onSubmit: (choice: number) => Promise<void>;
-      };
 
 export const Runner = (props: {
     children: string;
@@ -29,6 +18,7 @@ export const Runner = (props: {
     onFocus: () => void;
     onBlur: () => void;
     options: RunOptions;
+    onChangeDiagnostics: (diagnostics: Diagnostic[]) => void;
 }) => {
     const id = useId();
     const [code, setCode] = useDebounceValue(props.children, 300);
@@ -40,6 +30,10 @@ export const Runner = (props: {
     }, [props.children]);
 
     const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
+
+    useEffect(() => {
+        props.onChangeDiagnostics(diagnostics);
+    }, [diagnostics]);
 
     const [output, setOutput] = useState<Output[]>([]);
 
@@ -105,12 +99,14 @@ export const Runner = (props: {
                 );
 
                 setDiagnostics(renderedDiagnostics);
+                setRunning(false);
 
                 if (renderedDiagnostics.some((diagnostic: any) => diagnostic.error)) {
                     return;
                 }
             } else {
                 setDiagnostics([]);
+                setRunning(false);
             }
 
             const linkResult = link([compileResult.library, ...(dependencies?.libraries ?? [])]);
@@ -228,70 +224,58 @@ export const Runner = (props: {
 
     return output.length > 0 || diagnostics.length > 0 || isRunning ? (
         <div className="flex flex-col px-4 pb-4 gap-3">
-            {diagnostics.length > 0 ? (
-                <div className="bg-red-100 border border-red-200 p-2 rounded-md">
-                    <ul>
-                        {diagnostics.map((diagnostic, index) => (
-                            <li key={index}>{JSON.stringify(diagnostic, null, 4)}</li>
-                        ))}
-                    </ul>
+            {props.runtime ? <props.runtime id={id} ref={runtime} /> : null}
+
+            {output.map((item, index) => {
+                let content: JSX.Element;
+                switch (item.type) {
+                    case "text":
+                        content = (
+                            <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
+                                {item.text}
+                            </div>
+                        );
+                        break;
+                    case "prompt":
+                        content = (
+                            <Prompt
+                                autoFocus={props.hasFocus}
+                                prompt={item.prompt}
+                                validate={item.onSubmit}
+                                onFocus={props.onFocus}
+                            />
+                        );
+                        break;
+                    case "choice":
+                        content = <div>TODO</div>;
+                        break;
+                    default:
+                        item satisfies never;
+                        throw new Error("unreachable");
+                }
+
+                return <div key={index}>{content}</div>;
+            })}
+
+            {isRunning ? (
+                <div className="bouncing-loader">
+                    <div />
+                    <div />
+                    <div />
                 </div>
             ) : null}
 
-            <div className="flex flex-col gap-3">
-                {props.runtime ? <props.runtime id={id} ref={runtime} /> : null}
-
-                {output.map((item, index) => {
-                    let content: JSX.Element;
-                    switch (item.type) {
-                        case "text":
-                            content = (
-                                <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
-                                    {item.text}
-                                </div>
-                            );
-                            break;
-                        case "prompt":
-                            content = (
-                                <Prompt
-                                    autoFocus={props.hasFocus}
-                                    prompt={item.prompt}
-                                    validate={item.onSubmit}
-                                    onFocus={props.onFocus}
-                                />
-                            );
-                            break;
-                        case "choice":
-                            content = <div>TODO</div>;
-                            break;
-                        default:
-                            item satisfies never;
-                            throw new Error("unreachable");
-                    }
-
-                    return <div key={index}>{content}</div>;
-                })}
-
-                {isRunning ? (
-                    <div className="bouncing-loader">
-                        <div />
-                        <div />
-                        <div />
-                    </div>
-                ) : null}
-
-                {showRunAgain ? (
-                    <div className="flex flex-col items-start">
-                        <button
-                            onClick={run}
-                            className="flex flex-row items-center gap-2 bg-blue-500 bg-opacity-10 text-blue-500 dark:text-blue-400 hover:bg-opacity-100 hover:text-white rounded-lg px-3 py-1.5 transition-colors"
-                        >
-                            <MaterialSymbol icon="replay" className="text-lg -scale-x-100" />
-                            Run Again
-                        </button>
-                    </div>
-                ) : null}
-            </div>
+            {showRunAgain ? (
+                <div className="flex flex-col items-start">
+                    <button
+                        onClick={run}
+                        className="flex flex-row items-center gap-2 bg-blue-500 bg-opacity-10 text-blue-500 dark:text-blue-400 hover:bg-opacity-100 hover:text-white rounded-lg px-3 py-1.5 transition-colors"
+                    >
+                        <MaterialSymbol icon="replay" className="text-lg -scale-x-100" />
+                        Run Again
+                    </button>
+                </div>
+            ) : null}
         </div>
     ) : null;
 };

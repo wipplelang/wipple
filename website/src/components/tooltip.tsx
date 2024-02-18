@@ -24,7 +24,7 @@ export const Tooltip = (props: React.PropsWithChildren<{ description: React.Reac
                 {props.children}
             </span>
 
-            {props.description
+            {isHovering
                 ? createPortal(
                       <TooltipContent
                           relativeTo={childrenRef}

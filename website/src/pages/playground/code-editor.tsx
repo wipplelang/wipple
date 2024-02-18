@@ -11,17 +11,17 @@ import { CodeMirror } from "./codemirror";
 import { RunOptions, Runner } from "./runner";
 import { MaterialSymbol } from "react-material-symbols";
 import { defaultThemeConfig } from "./codemirror/theme";
+import { Diagnostic } from "../../models";
+import { useHotkeys } from "react-hotkeys-hook";
 
 export const CodeEditor = (props: {
     children: string;
     onChange?: (value: string) => void;
-    quickHelpEnabled?: boolean;
-    onChangeQuickHelpEnabled?: (quickHelpEnabled: boolean) => void;
     autofocus?: boolean;
     onFocus?: () => void;
     onBlur?: () => void;
 }) => {
-    const [isFocused, setFocused] = useState(props.autofocus);
+    const [isFocused, setFocused] = useState(props.autofocus ?? false);
 
     useEffect(() => {
         if (isFocused) {
@@ -39,6 +39,27 @@ export const CodeEditor = (props: {
 
     const [runnerHasFocus, setRunnerHasFocus] = useState(false);
 
+    const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
+
+    const [quickHelpEnabled, setQuickHelpEnabled] = useState(false);
+    const [quickHelpLocked, setQuickHelpLocked] = useState(false);
+
+    useHotkeys(
+        "alt",
+        (e) => {
+            if (!quickHelpLocked) {
+                setQuickHelpEnabled(e.type === "keydown");
+            }
+        },
+        {
+            enabled: isFocused || quickHelpEnabled,
+            enableOnContentEditable: true,
+            keydown: true,
+            keyup: true,
+        },
+        [isFocused, quickHelpEnabled, quickHelpLocked],
+    );
+
     return (
         <div
             autoFocus={props.autofocus}
@@ -51,7 +72,7 @@ export const CodeEditor = (props: {
         >
             <div className="mx-[14px] h-[14px] z-10">
                 <Transition
-                    value={isFocused || isHovering ? {} : undefined}
+                    value={quickHelpEnabled || isFocused || isHovering ? {} : undefined}
                     exitAnimationDuration={defaultAnimationDuration}
                     inClassName="animate-in fade-in slide-in-from-bottom-[1px] ease-linear"
                     outClassName="animate-out fade-out slide-out-to-bottom-[1px] ease-linear"
@@ -60,12 +81,13 @@ export const CodeEditor = (props: {
                         <div className="flex flex-row items-center justify-between">
                             <div className="flex flex-row gap-2">
                                 <QuickHelpToggle
-                                    quickHelpEnabled={props.quickHelpEnabled ?? false}
-                                    onChange={props.onChangeQuickHelpEnabled}
+                                    enabled={quickHelpEnabled}
+                                    locked={quickHelpLocked}
+                                    onChange={setQuickHelpLocked}
                                 />
 
                                 <Transition
-                                    value={props.quickHelpEnabled ?? false ? undefined : {}}
+                                    value={quickHelpLocked ? undefined : {}}
                                     exitAnimationDuration={defaultAnimationDuration}
                                     inClassName="animate-in fade-in slide-in-from-left-4"
                                     outClassName="animate-out fade-out slide-out-to-left-4"
@@ -171,7 +193,7 @@ export const CodeEditor = (props: {
 
                             <div className="flex flex-row gap-2">
                                 <Transition
-                                    value={props.quickHelpEnabled ?? false ? undefined : {}}
+                                    value={quickHelpLocked ?? false ? undefined : {}}
                                     exitAnimationDuration={defaultAnimationDuration}
                                     inClassName="animate-in fade-in"
                                     outClassName="animate-out fade-out"
@@ -186,7 +208,7 @@ export const CodeEditor = (props: {
 
             <div className="flex flex-col border-2 border-gray-100 dark:border-gray-800 rounded-md overflow-clip">
                 <Animated direction="vertical">
-                    {props.quickHelpEnabled ?? false ? (
+                    {quickHelpLocked ?? false ? (
                         <p className="pt-5 px-4 text-sm text-gray-500 dark:text-gray-400">
                             Hover over a piece of code for help.
                         </p>
@@ -195,9 +217,14 @@ export const CodeEditor = (props: {
 
                 <div className="py-[3px]">
                     <CodeMirror
-                        onChange={props.onChange}
-                        quickHelpEnabled={props.quickHelpEnabled}
+                        onChange={(code) => {
+                            props.onChange?.(code);
+                            setDiagnostics([]);
+                        }}
+                        readOnly={quickHelpLocked}
+                        quickHelpEnabled={quickHelpEnabled || quickHelpLocked}
                         theme={defaultThemeConfig()}
+                        diagnostics={diagnostics}
                     >
                         {props.children}
                     </CodeMirror>
@@ -210,6 +237,7 @@ export const CodeEditor = (props: {
                         hasFocus={runnerHasFocus}
                         onFocus={() => setRunnerHasFocus(true)}
                         onBlur={() => setRunnerHasFocus(false)}
+                        onChangeDiagnostics={setDiagnostics}
                     >
                         {props.children}
                     </Runner>
@@ -249,22 +277,36 @@ const InsertMenu = () => {
 };
 
 const QuickHelpToggle = (props: {
-    quickHelpEnabled: boolean;
+    enabled: boolean;
+    locked: boolean;
     onChange?: (quickHelpEnabled: boolean) => void;
 }) => {
     return (
-        <Tooltip description={props.quickHelpEnabled ? undefined : "Quick Help"}>
+        <Tooltip
+            description={
+                props.locked
+                    ? undefined
+                    : `Quick Help ${
+                          /mac/.test(navigator.userAgent.toLowerCase()) ? "(⌥)" : "(Alt)"
+                      }`
+            }
+        >
             <Animated direction="horizontal">
                 <MenuContainer>
                     <button
                         className={`group flex flex-row items-center justify-center gap-1 h-[28px] transition-colors ${
-                            props.quickHelpEnabled
+                            props.locked
                                 ? "px-2 bg-blue-500 text-white"
-                                : "w-[24px] hover:bg-gray-100 dark:hover:bg-gray-800"
+                                : `w-[24px] ${
+                                      props.enabled
+                                          ? "bg-gray-100 dark:bg-gray-800"
+                                          : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                                  }`
                         }`}
-                        onClick={() => props.onChange?.(!props.quickHelpEnabled)}
+                        disabled={props.enabled && !props.locked}
+                        onClick={() => props.onChange?.(!props.locked)}
                     >
-                        {props.quickHelpEnabled ? (
+                        {props.locked ? (
                             <p className="whitespace-nowrap">Done</p>
                         ) : (
                             <MaterialSymbol icon="frame_inspect" className="text-lg" />
