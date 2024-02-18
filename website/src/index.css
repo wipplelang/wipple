@@ -90,6 +90,10 @@ body {
 
 /* Syntax highlighting */
 
+.cm-editor .cm-cursor {
+    @apply border-l-blue-500 border-l-2 rounded-full;
+}
+
 .tok-comment {
     color: #6a737d;
 }

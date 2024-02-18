@@ -7,7 +7,7 @@ export const highlight = new Compartment();
 export const highlightFromDiagnostics = (diagnostics: Diagnostic[]): Extension => {
     const decorations = diagnostics.map((diagnostic) =>
         Decoration.mark({
-            class: `underline decoration-wavy ${
+            class: `underline underline-offset-4 decoration-line decoration-2 ${
                 diagnostic.error ? "decoration-red-500" : "decoration-yellow-500"
             }`,
         }).range(diagnostic.primaryLabel.span.start, diagnostic.primaryLabel.span.end),

@@ -12,7 +12,7 @@ import { CodeMirror, CodeMirrorRef } from "./codemirror";
 import { RunOptions, Runner } from "./runner";
 import { MaterialSymbol } from "react-material-symbols";
 import { ThemeConfig } from "./codemirror/theme";
-import { Diagnostic } from "../../models";
+import { Diagnostic, Fix } from "../../models";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useWindowSize } from "usehooks-ts";
 
@@ -113,12 +113,21 @@ export const CodeEditor = (props: {
         });
     }, [diagnostics, windowSize]);
 
-    const [selectedDiagnostic, setSelectedDiagnostic] = useState<Diagnostic>();
+    const applyFix = (fix: Fix, start: number, end: number) => {
+        const editorView = codeMirrorRef.current?.editorView;
+        if (!editorView) {
+            return;
+        }
 
-    const theme = useMemo(
-        () => ({ ...props.theme, highlight: selectedDiagnostic == null }),
-        [props.theme, selectedDiagnostic],
-    );
+        const replacement =
+            (fix.before ?? "") +
+            (fix.replacement ?? editorView.state.sliceDoc(start, end)) +
+            (fix.after ?? "");
+
+        editorView.dispatch({
+            changes: { from: start, to: end, insert: replacement },
+        });
+    };
 
     return (
         <div
@@ -132,11 +141,7 @@ export const CodeEditor = (props: {
         >
             <div className="mx-[14px] h-[14px] z-10">
                 <Transition
-                    value={
-                        selectedDiagnostic != null || quickHelpEnabled || isFocused || isHovering
-                            ? {}
-                            : undefined
-                    }
+                    value={quickHelpEnabled || isFocused || isHovering ? {} : undefined}
                     exitAnimationDuration={defaultAnimationDuration}
                     inClassName="animate-in fade-in slide-in-from-bottom-[1px] ease-linear"
                     outClassName="animate-out fade-out slide-out-to-bottom-[1px] ease-linear"
@@ -146,22 +151,12 @@ export const CodeEditor = (props: {
                             <div className="flex flex-row gap-2">
                                 <QuickHelpToggle
                                     enabled={quickHelpEnabled}
-                                    locked={quickHelpLocked || selectedDiagnostic != null}
-                                    onChange={(enabled) => {
-                                        if (!enabled && selectedDiagnostic != null) {
-                                            setSelectedDiagnostic(undefined);
-                                        } else {
-                                            setQuickHelpLocked(enabled);
-                                        }
-                                    }}
+                                    locked={quickHelpLocked}
+                                    onChange={setQuickHelpLocked}
                                 />
 
                                 <Transition
-                                    value={
-                                        quickHelpLocked || selectedDiagnostic != null
-                                            ? undefined
-                                            : {}
-                                    }
+                                    value={quickHelpLocked ? undefined : {}}
                                     exitAnimationDuration={defaultAnimationDuration}
                                     inClassName="animate-in fade-in slide-in-from-left-4"
                                     outClassName="animate-out fade-out slide-out-to-left-4"
@@ -280,7 +275,7 @@ export const CodeEditor = (props: {
                 </Transition>
             </div>
 
-            <div className="flex flex-col border-2 border-gray-100 dark:border-gray-800 rounded-md overflow-clip">
+            <div className="flex flex-col border-2 border-gray-100 dark:border-gray-800 rounded-md">
                 <Animated direction="vertical">
                     {quickHelpLocked ?? false ? (
                         <p className="pt-5 px-4 text-sm text-gray-500 dark:text-gray-400">
@@ -289,11 +284,7 @@ export const CodeEditor = (props: {
                     ) : null}
                 </Animated>
 
-                <div
-                    className={`relative py-[3px] ${
-                        selectedDiagnostic != null ? "text-gray-300 dark:text-gray-600" : ""
-                    }`}
-                >
+                <div className="relative py-[3px]">
                     <CodeMirror
                         ref={codeMirrorRef}
                         onChange={(code) => {
@@ -301,52 +292,36 @@ export const CodeEditor = (props: {
                             setDiagnostics([]);
                         }}
                         readOnly={quickHelpLocked}
-                        inErrorMode={selectedDiagnostic != null}
                         quickHelpEnabled={quickHelpEnabled || quickHelpLocked}
                         onClickQuickHelp={(selected) => {
                             setQuickHelpEnabled(selected);
                             setListeningForQuickHelp(!selected);
                         }}
-                        theme={theme}
+                        theme={props.theme}
                         diagnostics={diagnostics}
                     >
                         {props.children}
                     </CodeMirror>
 
-                    {selectedDiagnostic == null
-                        ? lineDiagnostics.map(({ top, width, height, diagnostic }, index) => (
-                              <Transition
-                                  key={index}
-                                  value={{}}
-                                  exitAnimationDuration={defaultAnimationDuration}
-                                  inClassName="animate-in slide-in-from-right-4 fade-in-50"
-                              >
-                                  {() => (
-                                      <div
-                                          className="absolute right-4"
-                                          style={{
-                                              top: top + props.theme.fontSize / 4 - 1,
-                                              maxWidth: width,
-                                              height,
-                                              paddingLeft: "3rem",
-                                          }}
-                                      >
-                                          <div className="w-10 pointer-events-none" />
-
-                                          <div
-                                              className="flex flex-row items-center justify-end"
-                                              style={{ height }}
-                                          >
-                                              <DiagnosticBubble
-                                                  diagnostic={diagnostic}
-                                                  onSelect={() => setSelectedDiagnostic(diagnostic)}
-                                              />
-                                          </div>
-                                      </div>
-                                  )}
-                              </Transition>
-                          ))
-                        : null}
+                    {lineDiagnostics.map(({ top, width, height, diagnostic }, index) => (
+                        <Transition
+                            key={index}
+                            value={{}}
+                            exitAnimationDuration={defaultAnimationDuration}
+                            inClassName="animate-in slide-in-from-right-4 fade-in-50"
+                        >
+                            {() => (
+                                <DiagnosticBubble
+                                    top={top}
+                                    width={width}
+                                    height={height}
+                                    theme={props.theme}
+                                    diagnostic={diagnostic}
+                                    onApplyFix={applyFix}
+                                />
+                            )}
+                        </Transition>
+                    ))}
                 </div>
 
                 <Animated direction="vertical" clip>
@@ -443,19 +418,103 @@ const ColorBlock = (props: { className: string }) => (
     />
 );
 
-const DiagnosticBubble = (props: { diagnostic: Diagnostic; onSelect: () => void }) => {
-    return (
-        <button
-            className={`flex flex-row items-center h-full gap-1.5 px-2 rounded-lg overflow-x-scroll whitespace-nowrap transition-colors hover:bg-opacity-100 hover:text-white ${
-                props.diagnostic.error
-                    ? "bg-red-500 bg-opacity-10 text-red-600 dark:text-red-500"
-                    : "bg-yellow-500 bg-opacity-10 text-yellow-600 dark:text-yellow-400"
-            }`}
-            onClick={props.onSelect}
-        >
-            <MaterialSymbol icon={props.diagnostic.error ? "error" : "info"} className="text-lg" />
+const DiagnosticBubble = (props: {
+    top: number;
+    width: number;
+    height: number;
+    theme: ThemeConfig;
+    diagnostic: Diagnostic;
+    onApplyFix: (fix: Fix, start: number, end: number) => void;
+}) => {
+    const [isExpanded, setExpanded] = useState(false);
 
-            <Markdown>{props.diagnostic.primaryLabel.message}</Markdown>
-        </button>
+    return (
+        <div
+            className="absolute right-4"
+            style={{
+                top: props.top + props.theme.fontSize / 4 - 1,
+                maxWidth: isExpanded ? undefined : props.width,
+                height: props.height,
+                paddingLeft: "3rem",
+            }}
+        >
+            <div className="w-10 pointer-events-none" />
+
+            <div
+                className="flex flex-row items-center justify-end"
+                style={{ height: props.height }}
+            >
+                <button
+                    className={`flex flex-row items-center gap-1.5 px-2 rounded-lg overflow-x-scroll whitespace-nowrap transition-colors ${
+                        props.diagnostic.error
+                            ? " text-red-600 dark:text-red-500"
+                            : " text-yellow-600 dark:text-yellow-400"
+                    } ${
+                        isExpanded
+                            ? "z-50 max-w-none w-max bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-800 shadow-lg"
+                            : `h-full hover:text-white ${
+                                  props.diagnostic.error
+                                      ? "bg-red-50 dark:bg-red-950 hover:bg-red-500"
+                                      : "bg-yellow-50 dark:bg-yellow-950 hover:bg-yellow-500"
+                              }`
+                    }`}
+                    onClick={isExpanded ? undefined : () => setExpanded(true)}
+                >
+                    <div className="flex flex-col gap-1 py-1">
+                        <div className="flex flex-row items-center justify-stretch gap-2">
+                            <div className="flex flex-row items-center gap-1.5 flex-1">
+                                {isExpanded ? null : (
+                                    <MaterialSymbol
+                                        icon={props.diagnostic.error ? "error" : "info"}
+                                        className="text-lg"
+                                    />
+                                )}
+
+                                <Markdown>{props.diagnostic.primaryLabel.message}</Markdown>
+                            </div>
+
+                            {isExpanded ? (
+                                <button
+                                    className="flex items-center justify-center w-5 h-5 -m-1 -mt-2 text-black dark:text-gray-50 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                    onClick={() => setExpanded(false)}
+                                >
+                                    <MaterialSymbol icon="close" className="text-lg" />
+                                </button>
+                            ) : null}
+                        </div>
+
+                        {isExpanded ? (
+                            <div className="flex flex-row w-full">
+                                {props.diagnostic.fix ? (
+                                    <div className="flex flex-row items-center justify-stretch gap-2 pb-1 text-black dark:text-gray-50">
+                                        <div className="flex-1">
+                                            <Markdown>{props.diagnostic.fix.message}</Markdown>
+                                        </div>
+
+                                        <button
+                                            className="px-2 rounded-lg text-white bg-blue-500 hover:bg-blue-600 transition-colors"
+                                            onClick={() => {
+                                                setExpanded(false);
+                                                props.onApplyFix(
+                                                    props.diagnostic.fix!,
+                                                    props.diagnostic.primaryLabel.span.start,
+                                                    props.diagnostic.primaryLabel.span.end,
+                                                );
+                                            }}
+                                        >
+                                            Fix
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-400 dark:text-gray-600">
+                                        No fixes available
+                                    </p>
+                                )}
+                            </div>
+                        ) : null}
+                    </div>
+                </button>
+            </div>
+        </div>
     );
 };
