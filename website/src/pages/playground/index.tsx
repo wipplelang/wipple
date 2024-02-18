@@ -5,6 +5,7 @@ import { Animated, useNavbar } from "../../components";
 import { Playground, getPlayground } from "../../models";
 import Skeleton from "react-loading-skeleton";
 import { MaterialSymbol } from "react-material-symbols";
+import { defaultThemeConfig } from "./codemirror/theme";
 
 export const PlaygroundPage = () => {
     const id = useParams().id!;
@@ -46,7 +47,7 @@ export const PlaygroundPage = () => {
     const [tempCode, setTempCode] = useState(`fib :: Number -> Number
 fib : n -> when n (
     0 or 1 -> 1
-    _ -> fib (n - 2) + fib (n - 1)
+    _ -> fibb (n - 2) + fib (n - 1)
 )
 
 show (fib 5)`);
@@ -56,7 +57,10 @@ show (fib 5)`);
             <div className="flex flex-col items-stretch gap-4 container max-w-4xl px-4">
                 {playground ? (
                     <>
-                        <CodeEditor onChange={setTempCode}>{tempCode}</CodeEditor>
+                        <CodeEditor onChange={setTempCode} theme={defaultThemeConfig()}>
+                            {tempCode}
+                        </CodeEditor>
+
                         <AddButton />
                     </>
                 ) : (

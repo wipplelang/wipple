@@ -6,11 +6,13 @@ import { classHighlighter } from "@lezer/highlight";
 export interface ThemeConfig {
     fontSize: number;
     fontFamily: string;
+    highlight: boolean;
 }
 
 export const defaultThemeConfig = (): ThemeConfig => ({
     fontSize: 16,
     fontFamily: "JetBrains Mono",
+    highlight: true,
 });
 
 export const themeFromConfig = (config: ThemeConfig): Extension => [
@@ -39,7 +41,7 @@ export const themeFromConfig = (config: ThemeConfig): Extension => [
             backgroundColor: "unset",
         },
     }),
-    syntaxHighlighting(classHighlighter),
+    config.highlight ? syntaxHighlighting(classHighlighter) : [],
 ];
 
 export const theme = new Compartment();

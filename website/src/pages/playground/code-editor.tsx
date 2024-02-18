@@ -1,22 +1,25 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     Animated,
+    Markdown,
     Menu,
     MenuContainer,
     Tooltip,
     Transition,
     defaultAnimationDuration,
 } from "../../components";
-import { CodeMirror } from "./codemirror";
+import { CodeMirror, CodeMirrorRef } from "./codemirror";
 import { RunOptions, Runner } from "./runner";
 import { MaterialSymbol } from "react-material-symbols";
-import { defaultThemeConfig } from "./codemirror/theme";
+import { ThemeConfig } from "./codemirror/theme";
 import { Diagnostic } from "../../models";
 import { useHotkeys } from "react-hotkeys-hook";
+import { useWindowSize } from "usehooks-ts";
 
 export const CodeEditor = (props: {
     children: string;
     onChange?: (value: string) => void;
+    theme: ThemeConfig;
     autofocus?: boolean;
     onFocus?: () => void;
     onBlur?: () => void;
@@ -65,6 +68,58 @@ export const CodeEditor = (props: {
         [isFocused, quickHelpEnabled, quickHelpLocked, isListeningForQuickHelp],
     );
 
+    const codeMirrorRef = useRef<CodeMirrorRef>(null);
+
+    const windowSize = useWindowSize();
+
+    const lineDiagnostics = useMemo(() => {
+        const editorView = codeMirrorRef.current?.editorView;
+        if (!editorView) {
+            return [];
+        }
+
+        const editorRect = editorView.dom.getBoundingClientRect();
+
+        const coveredLines: number[] = [];
+
+        return diagnostics.flatMap((diagnostic) => {
+            const line = editorView.state.doc.lineAt(diagnostic.primaryLabel.span.start);
+
+            if (coveredLines.includes(line.number)) {
+                return [];
+            }
+
+            coveredLines.push(line.number);
+
+            const top = editorView.coordsAtPos(diagnostic.primaryLabel.span.start)?.top;
+            if (!top) {
+                return [];
+            }
+
+            const lineStartRect = editorView.coordsAtPos(line.from)!;
+            const lineEndRect = editorView.coordsAtPos(line.to)!;
+
+            const width = lineEndRect.right - lineStartRect.left;
+            const height = lineEndRect.bottom - lineStartRect.top;
+
+            return [
+                {
+                    top: top - editorRect.top,
+                    width: editorRect.width - width,
+                    height,
+                    diagnostic,
+                },
+            ];
+        });
+    }, [diagnostics, windowSize]);
+
+    const [selectedDiagnostic, setSelectedDiagnostic] = useState<Diagnostic>();
+
+    const theme = useMemo(
+        () => ({ ...props.theme, highlight: selectedDiagnostic == null }),
+        [props.theme, selectedDiagnostic],
+    );
+
     return (
         <div
             autoFocus={props.autofocus}
@@ -77,7 +132,11 @@ export const CodeEditor = (props: {
         >
             <div className="mx-[14px] h-[14px] z-10">
                 <Transition
-                    value={quickHelpEnabled || isFocused || isHovering ? {} : undefined}
+                    value={
+                        selectedDiagnostic != null || quickHelpEnabled || isFocused || isHovering
+                            ? {}
+                            : undefined
+                    }
                     exitAnimationDuration={defaultAnimationDuration}
                     inClassName="animate-in fade-in slide-in-from-bottom-[1px] ease-linear"
                     outClassName="animate-out fade-out slide-out-to-bottom-[1px] ease-linear"
@@ -87,12 +146,22 @@ export const CodeEditor = (props: {
                             <div className="flex flex-row gap-2">
                                 <QuickHelpToggle
                                     enabled={quickHelpEnabled}
-                                    locked={quickHelpLocked}
-                                    onChange={setQuickHelpLocked}
+                                    locked={quickHelpLocked || selectedDiagnostic != null}
+                                    onChange={(enabled) => {
+                                        if (!enabled && selectedDiagnostic != null) {
+                                            setSelectedDiagnostic(undefined);
+                                        } else {
+                                            setQuickHelpLocked(enabled);
+                                        }
+                                    }}
                                 />
 
                                 <Transition
-                                    value={quickHelpLocked ? undefined : {}}
+                                    value={
+                                        quickHelpLocked || selectedDiagnostic != null
+                                            ? undefined
+                                            : {}
+                                    }
                                     exitAnimationDuration={defaultAnimationDuration}
                                     inClassName="animate-in fade-in slide-in-from-left-4"
                                     outClassName="animate-out fade-out slide-out-to-left-4"
@@ -220,23 +289,64 @@ export const CodeEditor = (props: {
                     ) : null}
                 </Animated>
 
-                <div className="py-[3px]">
+                <div
+                    className={`relative py-[3px] ${
+                        selectedDiagnostic != null ? "text-gray-300 dark:text-gray-600" : ""
+                    }`}
+                >
                     <CodeMirror
+                        ref={codeMirrorRef}
                         onChange={(code) => {
                             props.onChange?.(code);
                             setDiagnostics([]);
                         }}
                         readOnly={quickHelpLocked}
+                        inErrorMode={selectedDiagnostic != null}
                         quickHelpEnabled={quickHelpEnabled || quickHelpLocked}
                         onClickQuickHelp={(selected) => {
                             setQuickHelpEnabled(selected);
                             setListeningForQuickHelp(!selected);
                         }}
-                        theme={defaultThemeConfig()}
+                        theme={theme}
                         diagnostics={diagnostics}
                     >
                         {props.children}
                     </CodeMirror>
+
+                    {selectedDiagnostic == null
+                        ? lineDiagnostics.map(({ top, width, height, diagnostic }, index) => (
+                              <Transition
+                                  key={index}
+                                  value={{}}
+                                  exitAnimationDuration={defaultAnimationDuration}
+                                  inClassName="animate-in slide-in-from-right-4 fade-in-50"
+                              >
+                                  {() => (
+                                      <div
+                                          className="absolute right-4"
+                                          style={{
+                                              top: top + props.theme.fontSize / 4 - 1,
+                                              maxWidth: width,
+                                              height,
+                                              paddingLeft: "3rem",
+                                          }}
+                                      >
+                                          <div className="w-10 pointer-events-none" />
+
+                                          <div
+                                              className="flex flex-row items-center justify-end"
+                                              style={{ height }}
+                                          >
+                                              <DiagnosticBubble
+                                                  diagnostic={diagnostic}
+                                                  onSelect={() => setSelectedDiagnostic(diagnostic)}
+                                              />
+                                          </div>
+                                      </div>
+                                  )}
+                              </Transition>
+                          ))
+                        : null}
                 </div>
 
                 <Animated direction="vertical" clip>
@@ -332,3 +442,20 @@ const ColorBlock = (props: { className: string }) => (
         className={`-ml-3 w-5 h-5 rounded-md border-2 border-gray-100 dark:border-gray-800 transition-transform ${props.className}`}
     />
 );
+
+const DiagnosticBubble = (props: { diagnostic: Diagnostic; onSelect: () => void }) => {
+    return (
+        <button
+            className={`flex flex-row items-center h-full gap-1.5 px-2 rounded-lg overflow-x-scroll whitespace-nowrap transition-colors hover:bg-opacity-100 hover:text-white ${
+                props.diagnostic.error
+                    ? "bg-red-500 bg-opacity-10 text-red-600 dark:text-red-500"
+                    : "bg-yellow-500 bg-opacity-10 text-yellow-600 dark:text-yellow-400"
+            }`}
+            onClick={props.onSelect}
+        >
+            <MaterialSymbol icon={props.diagnostic.error ? "error" : "info"} className="text-lg" />
+
+            <Markdown>{props.diagnostic.primaryLabel.message}</Markdown>
+        </button>
+    );
+};

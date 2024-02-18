@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { EditorView, minimalSetup } from "codemirror";
 import { placeholder, keymap } from "@codemirror/view";
 import { Compartment, EditorState } from "@codemirror/state";
@@ -7,24 +7,31 @@ import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { wippleLanguage } from "./language";
 import { ThemeConfig, theme, themeFromConfig } from "./theme";
 import { selectionMode, selectionModeFromEnabled } from "./mode";
-import { Diagnostic } from "../../../models";
+import { Diagnostic, Fix } from "../../../models";
 import { highlight, highlightFromDiagnostics } from "./highlight";
+import { errors, errorsFromConfig } from "./errors";
 
 export interface CodeMirrorProps {
     children: string;
-    onChange?: (value: string) => void;
-    quickHelpEnabled?: boolean;
-    onClickQuickHelp?: (selected: boolean) => void;
+    onChange: (value: string) => void;
+    quickHelpEnabled: boolean;
+    onClickQuickHelp: (selected: boolean) => void;
+    inErrorMode: boolean;
     readOnly: boolean;
     diagnostics: Diagnostic[];
     theme: ThemeConfig;
 }
 
+export interface CodeMirrorRef {
+    editorView: EditorView;
+}
+
+const language = new Compartment();
 const editable = new Compartment();
 
-export const CodeMirror = (props: CodeMirrorProps) => {
-    const handleClickQuickHelp = (selected: boolean) => {
-        props.onClickQuickHelp?.(selected);
+export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref) => {
+    const applyFix = (fix: Fix) => {
+        alert("TODO");
     };
 
     const editorView = useMemo(() => {
@@ -36,18 +43,35 @@ export const CodeMirror = (props: CodeMirrorProps) => {
                 extensions: [
                     minimalSetup,
 
-                    wippleLanguage,
+                    language.of(wippleLanguage(props.theme.highlight)),
                     theme.of(themeFromConfig(props.theme)),
 
                     selectionMode.of(
                         selectionModeFromEnabled(
                             props.quickHelpEnabled ?? false,
                             props.theme,
-                            handleClickQuickHelp,
+                            props.onClickQuickHelp,
                         ),
                     ),
 
                     highlight.of(highlightFromDiagnostics(props.diagnostics)),
+
+                    errors.of(
+                        errorsFromConfig({
+                            enabled: props.inErrorMode,
+                            diagnostics: props.diagnostics,
+                            onApplyFix: applyFix,
+                            editorView: () => {
+                                // HACK for Fast Refresh
+                                try {
+                                    return editorView;
+                                } catch {
+                                    return null;
+                                }
+                            },
+                            theme: props.theme,
+                        }),
+                    ),
 
                     EditorView.lineWrapping,
                     EditorState.allowMultipleSelections.of(false),
@@ -71,6 +95,8 @@ export const CodeMirror = (props: CodeMirrorProps) => {
         return new EditorView(config);
     }, []);
 
+    useImperativeHandle(ref, () => ({ editorView }), [editorView]);
+
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -84,6 +110,12 @@ export const CodeMirror = (props: CodeMirrorProps) => {
             containerRef.current?.removeChild(editorView.dom);
         };
     }, [containerRef.current]);
+
+    useEffect(() => {
+        editorView.dispatch({
+            effects: language.reconfigure(wippleLanguage(props.theme.highlight)),
+        });
+    }, [editorView, props.theme.highlight]);
 
     useEffect(() => {
         editorView.dispatch({
@@ -103,7 +135,7 @@ export const CodeMirror = (props: CodeMirrorProps) => {
                 selectionModeFromEnabled(
                     props.quickHelpEnabled ?? false,
                     props.theme,
-                    handleClickQuickHelp,
+                    props.onClickQuickHelp,
                 ),
             ),
         });
@@ -115,5 +147,19 @@ export const CodeMirror = (props: CodeMirrorProps) => {
         });
     }, [editorView, props.diagnostics]);
 
+    useEffect(() => {
+        editorView.dispatch({
+            effects: errors.reconfigure(
+                errorsFromConfig({
+                    enabled: props.inErrorMode,
+                    diagnostics: props.diagnostics,
+                    onApplyFix: applyFix,
+                    editorView: () => editorView,
+                    theme: props.theme,
+                }),
+            ),
+        });
+    }, [editorView, props.inErrorMode, props.diagnostics, props.theme]);
+
     return <div ref={containerRef} />;
-};
+});

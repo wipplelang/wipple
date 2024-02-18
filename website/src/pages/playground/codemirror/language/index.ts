@@ -11,18 +11,24 @@ export const wippleTags = {
     Type: t.typeName,
 };
 
-export const wippleLanguage = new LanguageSupport(
-    LRLanguage.define({
-        name: "Wipple",
-        parser: parser.configure({
-            props: [styleTags(wippleTags)],
-        }),
-        languageData: {
-            commentTokens: { block: { open: "[", close: "]" } },
-            wordChars: "-!?",
-            closeBrackets: {
-                brackets: ["(", "[", "{", '"'],
+export const wippleLanguage = (highlight: boolean) =>
+    new LanguageSupport(
+        LRLanguage.define({
+            name: "Wipple",
+            parser: parser.configure({
+                props: highlight ? [styleTags(wippleTags)] : [],
+            }),
+            languageData: {
+                commentTokens: {
+                    block: {
+                        open: "[",
+                        close: "]",
+                    },
+                },
+                wordChars: "-!?",
+                closeBrackets: {
+                    brackets: ["(", "[", "{", '"'],
+                },
             },
-        },
-    }),
-);
+        }),
+    );
