@@ -41,6 +41,7 @@ export const CodeEditor = (props: {
 
     const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
 
+    const [isListeningForQuickHelp, setListeningForQuickHelp] = useState(true);
     const [quickHelpEnabled, setQuickHelpEnabled] = useState(false);
     const [quickHelpLocked, setQuickHelpLocked] = useState(false);
 
@@ -48,7 +49,11 @@ export const CodeEditor = (props: {
         "alt",
         (e) => {
             if (!quickHelpLocked) {
-                setQuickHelpEnabled(e.type === "keydown");
+                if (isListeningForQuickHelp) {
+                    setQuickHelpEnabled(e.type === "keydown");
+                } else {
+                    setListeningForQuickHelp(true);
+                }
             }
         },
         {
@@ -57,7 +62,7 @@ export const CodeEditor = (props: {
             keydown: true,
             keyup: true,
         },
-        [isFocused, quickHelpEnabled, quickHelpLocked],
+        [isFocused, quickHelpEnabled, quickHelpLocked, isListeningForQuickHelp],
     );
 
     return (
@@ -223,6 +228,10 @@ export const CodeEditor = (props: {
                         }}
                         readOnly={quickHelpLocked}
                         quickHelpEnabled={quickHelpEnabled || quickHelpLocked}
+                        onClickQuickHelp={(selected) => {
+                            setQuickHelpEnabled(selected);
+                            setListeningForQuickHelp(!selected);
+                        }}
                         theme={defaultThemeConfig()}
                         diagnostics={diagnostics}
                     >

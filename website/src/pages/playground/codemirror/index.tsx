@@ -14,6 +14,7 @@ export interface CodeMirrorProps {
     children: string;
     onChange?: (value: string) => void;
     quickHelpEnabled?: boolean;
+    onClickQuickHelp?: (selected: boolean) => void;
     readOnly: boolean;
     diagnostics: Diagnostic[];
     theme: ThemeConfig;
@@ -22,6 +23,10 @@ export interface CodeMirrorProps {
 const editable = new Compartment();
 
 export const CodeMirror = (props: CodeMirrorProps) => {
+    const handleClickQuickHelp = (selected: boolean) => {
+        props.onClickQuickHelp?.(selected);
+    };
+
     const editorView = useMemo(() => {
         type EditorViewConfig = ConstructorParameters<typeof EditorView>[0] & {};
 
@@ -35,7 +40,11 @@ export const CodeMirror = (props: CodeMirrorProps) => {
                     theme.of(themeFromConfig(props.theme)),
 
                     selectionMode.of(
-                        selectionModeFromEnabled(props.quickHelpEnabled ?? false, props.theme),
+                        selectionModeFromEnabled(
+                            props.quickHelpEnabled ?? false,
+                            props.theme,
+                            handleClickQuickHelp,
+                        ),
                     ),
 
                     highlight.of(highlightFromDiagnostics(props.diagnostics)),
@@ -91,7 +100,11 @@ export const CodeMirror = (props: CodeMirrorProps) => {
     useEffect(() => {
         editorView.dispatch({
             effects: selectionMode.reconfigure(
-                selectionModeFromEnabled(props.quickHelpEnabled ?? false, props.theme),
+                selectionModeFromEnabled(
+                    props.quickHelpEnabled ?? false,
+                    props.theme,
+                    handleClickQuickHelp,
+                ),
             ),
         });
     }, [editorView, props.quickHelpEnabled, props.theme]);

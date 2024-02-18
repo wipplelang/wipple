@@ -18,17 +18,26 @@ import { ThemeConfig, defaultThemeConfig } from "./theme";
 
 export const selectionMode = new Compartment();
 
-export const selectionModeFromEnabled = (enabled: boolean, theme: ThemeConfig): Extension =>
+export const selectionModeFromEnabled = (
+    enabled: boolean,
+    theme: ThemeConfig,
+    onChangeSelected: (selected: boolean) => void,
+): Extension =>
     enabled
         ? [
-              themeFacet.of(theme),
+              configFacet.of({ theme, onChangeSelected }),
               blocks,
               blocksListener,
               EditorView.decorations.compute([blocks], (state) => state.field(blocks)),
           ]
         : [];
 
-const themeFacet = Facet.define<ThemeConfig, ThemeConfig>({
+interface Config {
+    theme: ThemeConfig;
+    onChangeSelected: (selected: boolean) => void;
+}
+
+const configFacet = Facet.define<Config, Config>({
     combine: (values) => values[values.length - 1] ?? defaultThemeConfig(),
 });
 
@@ -69,7 +78,7 @@ const blocksListener = EditorView.updateListener.of((update) => {
 });
 
 const computeBlocks = (syntaxTree: Tree, state: EditorState) => {
-    const theme = state.facet(themeFacet);
+    const { theme, onChangeSelected } = state.facet(configFacet);
 
     const decorations: Range<Decoration>[] = [];
     syntaxTree.iterate({
@@ -88,7 +97,7 @@ const computeBlocks = (syntaxTree: Tree, state: EditorState) => {
 
             const code = state.sliceDoc(from, to);
 
-            const widget = new BlockWidget(from, to, code, node.node, theme);
+            const widget = new BlockWidget(from, to, code, node.node, theme, onChangeSelected);
             decorations.push(Decoration.replace({ widget }).range(from, to));
         },
     });
@@ -105,6 +114,7 @@ class BlockWidget extends WidgetType {
         public code: string,
         public node: SyntaxNode,
         public theme: ThemeConfig,
+        public onChangeSelected: (selected: boolean) => void,
     ) {
         super();
     }
@@ -115,7 +125,8 @@ class BlockWidget extends WidgetType {
             this.to === other.to &&
             this.code === other.code &&
             this.node === other.node &&
-            this.theme === other.theme
+            this.theme === other.theme &&
+            this.onChangeSelected === other.onChangeSelected
         );
     }
 
@@ -129,6 +140,7 @@ class BlockWidget extends WidgetType {
                 code={this.code}
                 node={this.node}
                 theme={this.theme}
+                onChangeSelected={this.onChangeSelected}
             />,
         );
 
@@ -148,28 +160,37 @@ const BlockWidgetComponent = (props: {
     code: string;
     node: SyntaxNode;
     theme: ThemeConfig;
+    onChangeSelected: (selected: boolean) => void;
 }) => {
     const tag = wippleTags[props.node.type.name as keyof typeof wippleTags];
 
     const codeStyles = (tag && classHighlighter.style([tag])) ?? "";
 
+    const renderedCode = (
+        <code
+            className={codeStyles}
+            style={{
+                fontFamily: props.theme.fontFamily,
+                fontFeatureSettings: "normal",
+                fontVariationSettings: "normal",
+                fontVariantLigatures: "none",
+            }}
+        >
+            {props.code}
+        </code>
+    );
+
     return (
         <Tooltip
-            description={
-                <div className="whitespace-nowrap text-sm">
-                    <code
-                        className={codeStyles}
-                        style={{
-                            fontFamily: props.theme.fontFamily,
-                            fontFeatureSettings: "normal",
-                            fontVariationSettings: "normal",
-                            fontVariantLigatures: "none",
-                        }}
-                    >
-                        {props.code}
-                    </code>
+            description={<div className="whitespace-nowrap text-sm">{renderedCode}</div>}
+            content={({ dismiss }) => (
+                <div>
+                    <p>Hello, world!</p>
+
+                    <button onClick={dismiss}>Dismiss</button>
                 </div>
-            }
+            )}
+            onClick={props.onChangeSelected}
         >
             <span className="rounded-lg hover:-m-0.5 hover:border-2 hover:border-gray-100 hover:dark:border-gray-800">
                 <span className={codeStyles}>{props.code}</span>
