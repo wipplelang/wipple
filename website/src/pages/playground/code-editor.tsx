@@ -460,59 +460,61 @@ const DiagnosticBubble = (props: {
                     }`}
                     onClick={isExpanded ? undefined : () => setExpanded(true)}
                 >
-                    <div className="flex flex-col gap-1 py-1">
-                        <div className="flex flex-row items-center justify-stretch gap-2">
-                            <div className="flex flex-row items-center gap-1.5 flex-1">
-                                {isExpanded ? null : (
-                                    <MaterialSymbol
-                                        icon={props.diagnostic.error ? "error" : "info"}
-                                        className="text-lg"
-                                    />
-                                )}
+                    <Animated direction={["horizontal", "vertical"]} unsized>
+                        <div className="flex flex-col gap-1 py-1">
+                            <div className="flex flex-row items-center justify-stretch gap-2">
+                                <div className="flex flex-row items-center gap-1.5 flex-1">
+                                    {isExpanded ? null : (
+                                        <MaterialSymbol
+                                            icon={props.diagnostic.error ? "error" : "info"}
+                                            className="text-lg"
+                                        />
+                                    )}
 
-                                <Markdown>{props.diagnostic.primaryLabel.message}</Markdown>
+                                    <Markdown>{props.diagnostic.primaryLabel.message}</Markdown>
+                                </div>
+
+                                {isExpanded ? (
+                                    <button
+                                        className="flex items-center justify-center w-5 h-5 -m-1 -mt-2 text-black dark:text-gray-50 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                        onClick={() => setExpanded(false)}
+                                    >
+                                        <MaterialSymbol icon="close" className="text-lg" />
+                                    </button>
+                                ) : null}
                             </div>
 
                             {isExpanded ? (
-                                <button
-                                    className="flex items-center justify-center w-5 h-5 -m-1 -mt-2 text-black dark:text-gray-50 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                    onClick={() => setExpanded(false)}
-                                >
-                                    <MaterialSymbol icon="close" className="text-lg" />
-                                </button>
+                                <div className="flex flex-row w-full">
+                                    {props.diagnostic.fix ? (
+                                        <div className="flex flex-row items-center justify-stretch gap-2 pb-1 text-black dark:text-gray-50">
+                                            <div className="flex-1">
+                                                <Markdown>{props.diagnostic.fix.message}</Markdown>
+                                            </div>
+
+                                            <button
+                                                className="px-2 rounded-lg text-white bg-blue-500 hover:bg-blue-600 transition-colors"
+                                                onClick={() => {
+                                                    setExpanded(false);
+                                                    props.onApplyFix(
+                                                        props.diagnostic.fix!,
+                                                        props.diagnostic.primaryLabel.span.start,
+                                                        props.diagnostic.primaryLabel.span.end,
+                                                    );
+                                                }}
+                                            >
+                                                Fix
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <p className="text-gray-400 dark:text-gray-600">
+                                            No fixes available
+                                        </p>
+                                    )}
+                                </div>
                             ) : null}
                         </div>
-
-                        {isExpanded ? (
-                            <div className="flex flex-row w-full">
-                                {props.diagnostic.fix ? (
-                                    <div className="flex flex-row items-center justify-stretch gap-2 pb-1 text-black dark:text-gray-50">
-                                        <div className="flex-1">
-                                            <Markdown>{props.diagnostic.fix.message}</Markdown>
-                                        </div>
-
-                                        <button
-                                            className="px-2 rounded-lg text-white bg-blue-500 hover:bg-blue-600 transition-colors"
-                                            onClick={() => {
-                                                setExpanded(false);
-                                                props.onApplyFix(
-                                                    props.diagnostic.fix!,
-                                                    props.diagnostic.primaryLabel.span.start,
-                                                    props.diagnostic.primaryLabel.span.end,
-                                                );
-                                            }}
-                                        >
-                                            Fix
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <p className="text-gray-400 dark:text-gray-600">
-                                        No fixes available
-                                    </p>
-                                )}
-                            </div>
-                        ) : null}
-                    </div>
+                    </Animated>
                 </button>
             </div>
         </div>

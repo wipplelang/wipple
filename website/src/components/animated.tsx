@@ -4,8 +4,9 @@ import { useResizeObserver } from "usehooks-ts";
 
 export const Animated = (
     props: React.PropsWithChildren<{
-        direction: "horizontal" | "vertical";
+        direction: "horizontal" | "vertical" | ("horizontal" | "vertical")[];
         clip?: boolean;
+        unsized?: boolean;
         open?: boolean;
     }>,
 ) => {
@@ -15,9 +16,17 @@ export const Animated = (
     const ref = useRef<HTMLDivElement>(null);
     const { width, height } = useResizeObserver({ ref });
 
+    const expandHorizontal =
+        (Array.isArray(props.direction) && props.direction.includes("horizontal")) ||
+        props.direction === "horizontal";
+
+    const expandVertical =
+        (Array.isArray(props.direction) && props.direction.includes("vertical")) ||
+        props.direction === "vertical";
+
     const style = useSpring({
-        width: props.direction === "horizontal" ? (isOpen ? width : 0) : undefined,
-        height: props.direction === "vertical" ? (isOpen ? height : 0) : undefined,
+        width: expandHorizontal ? (isOpen ? width : 0) : undefined,
+        height: expandVertical ? (isOpen ? height : 0) : undefined,
         opacity: isOpen ? 1 : 0,
         immediate: initialIsOpen,
         onRest: () => setInitialIsOpen(false),
@@ -28,7 +37,11 @@ export const Animated = (
         <animated.div style={style} className={props.clip ? "overflow-clip" : ""}>
             <div
                 ref={ref}
-                className={props.direction === "horizontal" ? "w-fit h-full" : "w-full h-fit"}
+                className={
+                    expandHorizontal
+                        ? `w-fit ${props.unsized ? "" : "h-full"}`
+                        : `${props.unsized ? "" : "w-full"} h-fit`
+                }
             >
                 {props.children}
             </div>
