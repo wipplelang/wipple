@@ -18,6 +18,9 @@ import { evaluate, InterpreterError, IoRequest } from "wipple-interpreter";
 
 Error.stackTraceLimit = Infinity;
 
+const stringify = (value: any) =>
+    process.env.WIPPLE_DEBUG_PRETTY ? JSON.stringify(value, null, 4) : JSON.stringify(value);
+
 const shebang = `#!/usr/bin/env wipple run\n`;
 
 const app = subcommands({
@@ -78,15 +81,12 @@ const app = subcommands({
 
                 if (outputInterfacePath) {
                     fs.mkdirSync(path.dirname(outputInterfacePath), { recursive: true });
-                    fs.writeFileSync(
-                        outputInterfacePath,
-                        JSON.stringify(result.interface, null, 4),
-                    );
+                    fs.writeFileSync(outputInterfacePath, stringify(result.interface));
                 }
 
                 if (outputLibraryPath) {
                     fs.mkdirSync(path.dirname(outputLibraryPath), { recursive: true });
-                    fs.writeFileSync(outputLibraryPath, JSON.stringify(result.library, null, 4));
+                    fs.writeFileSync(outputLibraryPath, stringify(result.library));
                 }
             },
         }),
@@ -157,7 +157,7 @@ const app = subcommands({
                 };
 
                 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-                fs.writeFileSync(outputPath, JSON.stringify(output, null, 4));
+                fs.writeFileSync(outputPath, stringify(output));
             },
         }),
         link: command({
@@ -180,7 +180,7 @@ const app = subcommands({
 
                 const executable = result.Ok;
 
-                const output = shebang + JSON.stringify(executable, null, 4);
+                const output = shebang + stringify(executable);
 
                 fs.mkdirSync(path.dirname(outputExecutablePath), { recursive: true });
                 fs.writeFileSync(outputExecutablePath, output);
