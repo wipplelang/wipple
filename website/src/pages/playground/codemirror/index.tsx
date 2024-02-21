@@ -7,7 +7,7 @@ import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { wippleLanguage } from "./language";
 import { ThemeConfig, theme, themeFromConfig } from "./theme";
 import { selectionMode, selectionModeFromEnabled } from "./mode";
-import { Diagnostic } from "../../../models";
+import { Diagnostic, Help } from "../../../models";
 import { highlight, highlightFromDiagnostics } from "./highlight";
 
 export interface CodeMirrorProps {
@@ -15,6 +15,7 @@ export interface CodeMirrorProps {
     onChange: (value: string) => void;
     quickHelpEnabled: boolean;
     onClickQuickHelp: (selected: boolean) => void;
+    help: (code: string) => Help | undefined;
     readOnly: boolean;
     diagnostics: Diagnostic[];
     theme: ThemeConfig;
@@ -43,6 +44,7 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                         selectionModeFromEnabled(
                             props.quickHelpEnabled ?? false,
                             props.theme,
+                            props.help,
                             props.onClickQuickHelp,
                         ),
                     ),
@@ -105,6 +107,7 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                 selectionModeFromEnabled(
                     props.quickHelpEnabled ?? false,
                     props.theme,
+                    props.help,
                     props.onClickQuickHelp,
                 ),
             ),

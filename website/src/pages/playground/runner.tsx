@@ -1,17 +1,29 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import {
+    forwardRef,
+    useCallback,
+    useEffect,
+    useId,
+    useImperativeHandle,
+    useRef,
+    useState,
+} from "react";
 import { useDebounceValue } from "usehooks-ts";
 import { compile, link, renderDiagnostics } from "wipple-compiler";
 import { RunnerWorker } from "../../helpers";
 import { InterpreterError } from "wipple-interpreter";
 import { Runtime, RuntimeComponent } from "../../runtimes";
 import { MaterialSymbol } from "react-material-symbols";
-import { Diagnostic, Output } from "../../models";
+import { Diagnostic, Help, Output } from "../../models";
 
 export interface RunOptions {
     dependenciesPath: string;
 }
 
-export const Runner = (props: {
+export interface RunnerRef {
+    help: (code: string) => Help | undefined;
+}
+
+export interface RunnerProps {
     children: string;
     runtime?: RuntimeComponent;
     hasFocus: boolean;
@@ -19,7 +31,9 @@ export const Runner = (props: {
     onBlur: () => void;
     options: RunOptions;
     onChangeDiagnostics: (diagnostics: Diagnostic[]) => void;
-}) => {
+}
+
+export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     const id = useId();
     const [code, setCode] = useDebounceValue(props.children, 300);
 
@@ -59,6 +73,9 @@ export const Runner = (props: {
     const [isRunning, setRunning] = useState(false);
     const [showRunAgain, setShowRunAgain] = useState(false);
 
+    const [cachedInterface, setCachedInterface] = useState<any>();
+    const [cachedBuiltinsHelp, setCachedBuiltinsHelp] = useState<Record<string, string>>();
+
     const run = useCallback(async () => {
         props.onBlur();
         setRunning(true);
@@ -73,6 +90,10 @@ export const Runner = (props: {
                 },
             ];
 
+            if (!cachedBuiltinsHelp) {
+                setCachedBuiltinsHelp(await fetchBuiltinsHelp());
+            }
+
             const dependencies = props.options.dependenciesPath
                 ? await fetchDependencies(props.options.dependenciesPath)
                 : null;
@@ -84,6 +105,7 @@ export const Runner = (props: {
             }
 
             const compileResult = compile(sources, dependencies?.interface);
+            setCachedInterface(compileResult.interface);
 
             if (compileResult.diagnostics.length > 0) {
                 const sourceCodeForFile = (file: string) => {
@@ -216,11 +238,40 @@ export const Runner = (props: {
         } catch (error) {
             console.error(error);
         }
-    }, [code, runtime, props.options, runnerWorker, resetRunnerWorker]);
+    }, [code, runtime, props.options, runnerWorker, resetRunnerWorker, cachedBuiltinsHelp]);
 
     useEffect(() => {
         run();
     }, [run]);
+
+    useImperativeHandle(ref, () => ({
+        help: (code: string) => {
+            if (cachedBuiltinsHelp != null && cachedBuiltinsHelp[code] != null) {
+                return {
+                    name: code,
+                    doc: cachedBuiltinsHelp[code],
+                };
+            }
+
+            if (!cachedInterface) {
+                return undefined;
+            }
+
+            const comments =
+                cachedInterface.topLevel[code]?.[0]?.info.parserInfo.documentation.flatMap(
+                    (documentation: any) => (documentation.comment ? [documentation.comment] : []),
+                ) ?? [];
+
+            if (comments.length === 0) {
+                return undefined;
+            }
+
+            return {
+                name: code,
+                doc: comments.join("\n"),
+            };
+        },
+    }));
 
     return output.length > 0 || diagnostics.length > 0 || isRunning ? (
         <div className="flex flex-col px-4 pb-4 gap-3">
@@ -278,7 +329,7 @@ export const Runner = (props: {
             ) : null}
         </div>
     ) : null;
-};
+});
 
 const Prompt = (props: {
     autoFocus: boolean;
@@ -365,4 +416,14 @@ const fetchDependencies = async (name: string): Promise<FetchDependenciesResult>
     return fetch(new URL(`${name}.wipplebundle`, baseUrlString)).then((response) =>
         response.json(),
     );
+};
+
+const fetchBuiltinsHelp = async (): Promise<Record<string, string>> => {
+    const baseUrlString = import.meta.env.VITE_DEPENDENCIES_BASE_URL as string;
+
+    if (!baseUrlString) {
+        throw new Error("missing VITE_DEPENDENCIES_BASE_URL");
+    }
+
+    return fetch(new URL("help/builtins.json", baseUrlString)).then((response) => response.json());
 };

@@ -1,28 +1,31 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { CSSTransition } from "react-transition-group";
 
 export const defaultAnimationDuration = 150; // FIXME: Obtain from tailwindcss-animate
 
-export interface TransitionProps<T> {
-    value: T | undefined;
+export interface TransitionProps {
+    in: boolean;
     exitAnimationDuration: number;
     inClassName?: string;
     outClassName?: string;
-    children: (value: T) => JSX.Element;
 }
 
-export function Transition<T>(props: TransitionProps<T>) {
-    const [display, setDisplay] = useState(props.value != null);
-    const [contents, setContents] = useState(<></>);
+export const Transition = (props: React.PropsWithChildren<TransitionProps>) => {
+    const [display, setDisplay] = useState(props.in);
+    const [cachedChildren, setCachedChildren] = useState<React.ReactNode>(null);
 
     useEffect(() => {
-        if (props.value != null) {
-            setContents(() => props.children(props.value!));
+        if (props.in) {
+            setCachedChildren(props.children);
             setDisplay(true);
         } else {
             setDisplay(false);
+
+            setTimeout(() => {
+                setCachedChildren(null);
+            }, props.exitAnimationDuration);
         }
-    }, [props.value]);
+    }, [props.in, props.children, props.exitAnimationDuration]);
 
     return (
         <CSSTransition
@@ -35,9 +38,8 @@ export function Transition<T>(props: TransitionProps<T>) {
             }}
             addEndListener={(node, done) => node.addEventListener("transitionend", done, false)}
             timeout={{ exit: props.exitAnimationDuration }}
-            onExited={() => setContents(<></>)}
         >
-            <div>{contents}</div>
+            <div>{cachedChildren}</div>
         </CSSTransition>
     );
-}
+};

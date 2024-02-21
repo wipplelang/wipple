@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Button, useAlert, useNavbar } from "../../components";
+import { Button, Skeleton, useAlert, useNavbar } from "../../components";
 import { MaterialSymbol } from "react-material-symbols";
 import {
     ListPlaygroundsFilter,
@@ -9,7 +9,6 @@ import {
     duplicatePlayground,
     listPlaygrounds,
 } from "../../models";
-import Skeleton from "react-loading-skeleton";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { useStore } from "../../store";

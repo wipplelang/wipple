@@ -1,9 +1,8 @@
 import { useParams } from "react-router-dom";
 import { CodeEditor } from "./code-editor";
 import { useEffect, useState } from "react";
-import { Animated, useNavbar } from "../../components";
+import { Animated, Skeleton, useNavbar } from "../../components";
 import { Playground, getPlayground } from "../../models";
-import Skeleton from "react-loading-skeleton";
 import { MaterialSymbol } from "react-material-symbols";
 import { defaultThemeConfig } from "./codemirror/theme";
 
@@ -44,7 +43,8 @@ export const PlaygroundPage = () => {
         };
     }, [playground?.name]);
 
-    const [tempCode, setTempCode] = useState(`fib :: Number -> Number
+    const [tempCode, setTempCode] = useState(`[Calculate the nth Fibonacci number.]
+fib :: Number -> Number
 fib : n -> when n (
     0 or 1 -> 1
     _ -> fibb (n - 2) + fib (n - 1)

@@ -9,7 +9,7 @@ import {
     defaultAnimationDuration,
 } from "../../components";
 import { CodeMirror, CodeMirrorRef } from "./codemirror";
-import { RunOptions, Runner } from "./runner";
+import { RunOptions, Runner, RunnerRef } from "./runner";
 import { MaterialSymbol } from "react-material-symbols";
 import { ThemeConfig } from "./codemirror/theme";
 import { Diagnostic, Fix } from "../../models";
@@ -69,6 +69,7 @@ export const CodeEditor = (props: {
     );
 
     const codeMirrorRef = useRef<CodeMirrorRef>(null);
+    const runnerRef = useRef<RunnerRef>(null);
 
     const windowSize = useWindowSize();
 
@@ -129,6 +130,8 @@ export const CodeEditor = (props: {
         });
     };
 
+    const getHelpForCode = (code: string) => runnerRef.current!.help(code);
+
     return (
         <div
             autoFocus={props.autofocus}
@@ -141,137 +144,133 @@ export const CodeEditor = (props: {
         >
             <div className="mx-[14px] h-[14px] z-10">
                 <Transition
-                    value={quickHelpEnabled || isFocused || isHovering ? {} : undefined}
+                    in={quickHelpEnabled || isFocused || isHovering}
                     exitAnimationDuration={defaultAnimationDuration}
                     inClassName="animate-in fade-in slide-in-from-bottom-[1px] ease-linear"
                     outClassName="animate-out fade-out slide-out-to-bottom-[1px] ease-linear"
                 >
-                    {() => (
-                        <div className="flex flex-row items-center justify-between">
-                            <div className="flex flex-row gap-2">
-                                <QuickHelpToggle
-                                    enabled={quickHelpEnabled}
-                                    locked={quickHelpLocked}
-                                    onChange={setQuickHelpLocked}
+                    <div className="flex flex-row items-center justify-between">
+                        <div className="flex flex-row gap-2">
+                            <QuickHelpToggle
+                                enabled={quickHelpEnabled}
+                                locked={quickHelpLocked}
+                                onChange={setQuickHelpLocked}
+                            />
+
+                            <Transition
+                                in={!quickHelpLocked}
+                                exitAnimationDuration={defaultAnimationDuration}
+                                inClassName="animate-in fade-in slide-in-from-left-4"
+                                outClassName="animate-out fade-out slide-out-to-left-4"
+                            >
+                                <Menu
+                                    items={[
+                                        {
+                                            name: "Code",
+                                            onClick: () => setFocused(true),
+                                            children: [
+                                                {
+                                                    name: "TODO 1",
+                                                    onClick: () => {
+                                                        setFocused(true);
+                                                    },
+                                                },
+                                                {
+                                                    name: "TODO 2",
+                                                    onClick: () => {
+                                                        setFocused(true);
+                                                    },
+                                                },
+                                            ],
+                                        },
+                                        {
+                                            name: "Edit",
+                                            onClick: () => setFocused(true),
+                                            children: [
+                                                {
+                                                    name: "TODO 1",
+                                                    onClick: () => {
+                                                        setFocused(true);
+                                                    },
+                                                },
+                                                {
+                                                    name: "TODO 2",
+                                                    onClick: () => {
+                                                        setFocused(true);
+                                                    },
+                                                },
+                                            ],
+                                        },
+                                        {
+                                            name: "Select",
+                                            onClick: () => setFocused(true),
+                                            children: [
+                                                {
+                                                    name: "TODO 1",
+                                                    onClick: () => {
+                                                        setFocused(true);
+                                                    },
+                                                },
+                                                {
+                                                    name: "TODO 2",
+                                                    onClick: () => {
+                                                        setFocused(true);
+                                                    },
+                                                },
+                                            ],
+                                        },
+                                        {
+                                            name: "View",
+                                            onClick: () => setFocused(true),
+                                            children: [
+                                                {
+                                                    name: "TODO 1",
+                                                    onClick: () => {
+                                                        setFocused(true);
+                                                    },
+                                                },
+                                                {
+                                                    name: "TODO 2",
+                                                    onClick: () => {
+                                                        setFocused(true);
+                                                    },
+                                                },
+                                            ],
+                                        },
+                                        {
+                                            name: "Help",
+                                            onClick: () => setFocused(true),
+                                            children: [
+                                                {
+                                                    name: "TODO 1",
+                                                    onClick: () => {
+                                                        setFocused(true);
+                                                    },
+                                                },
+                                                {
+                                                    name: "TODO 2",
+                                                    onClick: () => {
+                                                        setFocused(true);
+                                                    },
+                                                },
+                                            ],
+                                        },
+                                    ]}
                                 />
-
-                                <Transition
-                                    value={quickHelpLocked ? undefined : {}}
-                                    exitAnimationDuration={defaultAnimationDuration}
-                                    inClassName="animate-in fade-in slide-in-from-left-4"
-                                    outClassName="animate-out fade-out slide-out-to-left-4"
-                                >
-                                    {() => (
-                                        <Menu
-                                            items={[
-                                                {
-                                                    name: "Code",
-                                                    onClick: () => setFocused(true),
-                                                    children: [
-                                                        {
-                                                            name: "TODO 1",
-                                                            onClick: () => {
-                                                                setFocused(true);
-                                                            },
-                                                        },
-                                                        {
-                                                            name: "TODO 2",
-                                                            onClick: () => {
-                                                                setFocused(true);
-                                                            },
-                                                        },
-                                                    ],
-                                                },
-                                                {
-                                                    name: "Edit",
-                                                    onClick: () => setFocused(true),
-                                                    children: [
-                                                        {
-                                                            name: "TODO 1",
-                                                            onClick: () => {
-                                                                setFocused(true);
-                                                            },
-                                                        },
-                                                        {
-                                                            name: "TODO 2",
-                                                            onClick: () => {
-                                                                setFocused(true);
-                                                            },
-                                                        },
-                                                    ],
-                                                },
-                                                {
-                                                    name: "Select",
-                                                    onClick: () => setFocused(true),
-                                                    children: [
-                                                        {
-                                                            name: "TODO 1",
-                                                            onClick: () => {
-                                                                setFocused(true);
-                                                            },
-                                                        },
-                                                        {
-                                                            name: "TODO 2",
-                                                            onClick: () => {
-                                                                setFocused(true);
-                                                            },
-                                                        },
-                                                    ],
-                                                },
-                                                {
-                                                    name: "View",
-                                                    onClick: () => setFocused(true),
-                                                    children: [
-                                                        {
-                                                            name: "TODO 1",
-                                                            onClick: () => {
-                                                                setFocused(true);
-                                                            },
-                                                        },
-                                                        {
-                                                            name: "TODO 2",
-                                                            onClick: () => {
-                                                                setFocused(true);
-                                                            },
-                                                        },
-                                                    ],
-                                                },
-                                                {
-                                                    name: "Help",
-                                                    onClick: () => setFocused(true),
-                                                    children: [
-                                                        {
-                                                            name: "TODO 1",
-                                                            onClick: () => {
-                                                                setFocused(true);
-                                                            },
-                                                        },
-                                                        {
-                                                            name: "TODO 2",
-                                                            onClick: () => {
-                                                                setFocused(true);
-                                                            },
-                                                        },
-                                                    ],
-                                                },
-                                            ]}
-                                        />
-                                    )}
-                                </Transition>
-                            </div>
-
-                            <div className="flex flex-row gap-2">
-                                <Transition
-                                    value={quickHelpLocked ?? false ? undefined : {}}
-                                    exitAnimationDuration={defaultAnimationDuration}
-                                    inClassName="animate-in fade-in"
-                                    outClassName="animate-out fade-out"
-                                >
-                                    {() => <InsertMenu />}
-                                </Transition>
-                            </div>
+                            </Transition>
                         </div>
-                    )}
+
+                        <div className="flex flex-row gap-2">
+                            <Transition
+                                in={!(quickHelpLocked ?? false)}
+                                exitAnimationDuration={defaultAnimationDuration}
+                                inClassName="animate-in fade-in"
+                                outClassName="animate-out fade-out"
+                            >
+                                <InsertMenu />
+                            </Transition>
+                        </div>
+                    </div>
                 </Transition>
             </div>
 
@@ -297,35 +296,37 @@ export const CodeEditor = (props: {
                             setQuickHelpEnabled(selected);
                             setListeningForQuickHelp(!selected);
                         }}
+                        help={getHelpForCode}
                         theme={props.theme}
                         diagnostics={diagnostics}
                     >
                         {props.children}
                     </CodeMirror>
 
-                    {lineDiagnostics.map(({ top, width, height, diagnostic }, index) => (
-                        <Transition
-                            key={index}
-                            value={{}}
-                            exitAnimationDuration={defaultAnimationDuration}
-                            inClassName="animate-in slide-in-from-right-4 fade-in-50"
-                        >
-                            {() => (
-                                <DiagnosticBubble
-                                    top={top}
-                                    width={width}
-                                    height={height}
-                                    theme={props.theme}
-                                    diagnostic={diagnostic}
-                                    onApplyFix={applyFix}
-                                />
-                            )}
-                        </Transition>
-                    ))}
+                    {quickHelpLocked
+                        ? null
+                        : lineDiagnostics.map(({ top, width, height, diagnostic }, index) => (
+                              <Transition
+                                  key={index}
+                                  in
+                                  exitAnimationDuration={defaultAnimationDuration}
+                                  inClassName="animate-in slide-in-from-right-4 fade-in-50"
+                              >
+                                  <DiagnosticBubble
+                                      top={top}
+                                      width={width}
+                                      height={height}
+                                      theme={props.theme}
+                                      diagnostic={diagnostic}
+                                      onApplyFix={applyFix}
+                                  />
+                              </Transition>
+                          ))}
                 </div>
 
                 <Animated direction="vertical" clip>
                     <Runner
+                        ref={runnerRef}
                         options={runOptions}
                         runtime={undefined}
                         hasFocus={runnerHasFocus}

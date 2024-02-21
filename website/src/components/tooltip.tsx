@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Transition, defaultAnimationDuration } from ".";
-import { useDebounceValue, useResizeObserver } from "usehooks-ts";
+import { useDebounceValue } from "usehooks-ts";
 import {
     safePolygon,
     useFloating,
@@ -9,10 +9,13 @@ import {
     useInteractions,
     FloatingPortal,
     useClick,
+    shift,
+    autoUpdate,
 } from "@floating-ui/react";
 
 export const Tooltip = (
     props: React.PropsWithChildren<{
+        disabled?: () => boolean;
         description: React.ReactNode;
         content?: (props: { dismiss: () => void }) => React.ReactNode;
         onClick?: (open: boolean) => void;
@@ -29,7 +32,12 @@ export const Tooltip = (
 
     const { refs, floatingStyles, context } = useFloating({
         open: isHovering,
+        whileElementsMounted: autoUpdate,
         onOpenChange: (open, _event, reason) => {
+            if (props.disabled?.() ?? false) {
+                return;
+            }
+
             setHovering(open);
             setExpanded(reason === "click");
 
@@ -38,6 +46,7 @@ export const Tooltip = (
             }
         },
         placement: "bottom",
+        middleware: [shift({ padding: 8 })],
     });
 
     const hover = useHover(context, {
@@ -52,10 +61,6 @@ export const Tooltip = (
 
     const { getReferenceProps, getFloatingProps } = useInteractions([hover, click, dismiss]);
 
-    const { width } = useResizeObserver({
-        ref: refs.domReference as React.MutableRefObject<HTMLDivElement>,
-    });
-
     return (
         <>
             <span ref={refs.setReference} {...getReferenceProps()}>
@@ -65,7 +70,7 @@ export const Tooltip = (
             {isHovering || debouncedHovering ? (
                 <FloatingPortal>
                     <div ref={refs.setFloating} style={floatingStyles} {...getFloatingProps()}>
-                        <div style={{ width, marginTop: 4 }}>
+                        <div style={{ marginTop: 4 }}>
                             <TooltipContent open={isHovering && debouncedHovering}>
                                 {isExpanded && props.content != null ? (
                                     <props.content
@@ -87,25 +92,21 @@ export const Tooltip = (
     );
 };
 
-const TooltipContent = (props: { open: boolean; children: React.ReactNode }) => {
-    return (
-        <div className="flex items-center justify-center w-full">
-            <Transition
-                value={props.open ? {} : undefined}
-                exitAnimationDuration={defaultAnimationDuration}
-                inClassName="animate-in zoom-in-95 fade-in-25"
-                outClassName="animate-out zoom-out-95 fade-out-25"
-            >
-                {() => (
-                    <div className="border border-gray-50 dark:border-gray-900 bg-white dark:bg-gray-800 px-2.5 py-1 rounded-xl shadow-lg shadow-gray-100 dark:shadow-gray-950 text-gray-600 dark:text-gray-400 text-sm">
-                        {typeof props.children === "string" ? (
-                            <p className="whitespace-nowrap">{props.children}</p>
-                        ) : (
-                            props.children
-                        )}
-                    </div>
+const TooltipContent = (props: { open: boolean; children: React.ReactNode }) => (
+    <div className="flex items-center justify-center w-fit">
+        <Transition
+            in={props.open}
+            exitAnimationDuration={defaultAnimationDuration}
+            inClassName="animate-in zoom-in-95 fade-in-25"
+            outClassName="animate-out zoom-out-95 fade-out-25"
+        >
+            <div className="border border-gray-50 dark:border-gray-900 bg-white dark:bg-gray-800 px-2.5 py-1 rounded-xl shadow-lg shadow-gray-100 dark:shadow-gray-950 text-gray-600 dark:text-gray-400 text-sm">
+                {typeof props.children === "string" ? (
+                    <p className="whitespace-nowrap">{props.children}</p>
+                ) : (
+                    props.children
                 )}
-            </Transition>
-        </div>
-    );
-};
+            </div>
+        </Transition>
+    </div>
+);

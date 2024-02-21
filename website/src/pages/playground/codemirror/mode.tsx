@@ -12,20 +12,23 @@ import {
 } from "@codemirror/state";
 import { SyntaxNode, Tree } from "@lezer/common";
 import { classHighlighter } from "@lezer/highlight";
-import { Tooltip } from "../../../components";
+import { Markdown, Tooltip } from "../../../components";
 import { wippleTags } from "./language";
 import { ThemeConfig, defaultThemeConfig } from "./theme";
+import { useState } from "react";
+import { Help } from "../../../models";
 
 export const selectionMode = new Compartment();
 
 export const selectionModeFromEnabled = (
     enabled: boolean,
     theme: ThemeConfig,
+    help: (code: string) => Help | undefined,
     onChangeSelected: (selected: boolean) => void,
 ): Extension =>
     enabled
         ? [
-              configFacet.of({ theme, onChangeSelected }),
+              configFacet.of({ theme, help, onChangeSelected }),
               blocks,
               blocksListener,
               EditorView.decorations.compute([blocks], (state) => state.field(blocks)),
@@ -34,6 +37,7 @@ export const selectionModeFromEnabled = (
 
 interface Config {
     theme: ThemeConfig;
+    help: (code: string) => Help | undefined;
     onChangeSelected: (selected: boolean) => void;
 }
 
@@ -78,7 +82,7 @@ const blocksListener = EditorView.updateListener.of((update) => {
 });
 
 const computeBlocks = (syntaxTree: Tree, state: EditorState) => {
-    const { theme, onChangeSelected } = state.facet(configFacet);
+    const { theme, help, onChangeSelected } = state.facet(configFacet);
 
     const decorations: Range<Decoration>[] = [];
     syntaxTree.iterate({
@@ -97,7 +101,15 @@ const computeBlocks = (syntaxTree: Tree, state: EditorState) => {
 
             const code = state.sliceDoc(from, to);
 
-            const widget = new BlockWidget(from, to, code, node.node, theme, onChangeSelected);
+            const widget = new BlockWidget(
+                from,
+                to,
+                code,
+                node.node,
+                theme,
+                () => help(code),
+                onChangeSelected,
+            );
             decorations.push(Decoration.replace({ widget }).range(from, to));
         },
     });
@@ -114,6 +126,7 @@ class BlockWidget extends WidgetType {
         public code: string,
         public node: SyntaxNode,
         public theme: ThemeConfig,
+        public help: () => Help | undefined,
         public onChangeSelected: (selected: boolean) => void,
     ) {
         super();
@@ -126,6 +139,7 @@ class BlockWidget extends WidgetType {
             this.code === other.code &&
             this.node === other.node &&
             this.theme === other.theme &&
+            this.help === other.help &&
             this.onChangeSelected === other.onChangeSelected
         );
     }
@@ -140,6 +154,7 @@ class BlockWidget extends WidgetType {
                 code={this.code}
                 node={this.node}
                 theme={this.theme}
+                help={this.help}
                 onChangeSelected={this.onChangeSelected}
             />,
         );
@@ -160,6 +175,7 @@ const BlockWidgetComponent = (props: {
     code: string;
     node: SyntaxNode;
     theme: ThemeConfig;
+    help: () => Help | undefined;
     onChangeSelected: (selected: boolean) => void;
 }) => {
     const tag = wippleTags[props.node.type.name as keyof typeof wippleTags];
@@ -180,20 +196,36 @@ const BlockWidgetComponent = (props: {
         </code>
     );
 
+    const [help, setHelp] = useState<Help>();
+    const [helpInitialized, setHelpInitialized] = useState(false);
+
     return (
         <Tooltip
-            description={<div className="whitespace-nowrap text-sm">{renderedCode}</div>}
-            content={({ dismiss }) => (
-                <div>
-                    <p>Hello, world!</p>
+            disabled={() => {
+                if (helpInitialized) {
+                    return help == null;
+                }
 
-                    <button onClick={dismiss}>Dismiss</button>
+                const newHelp = props.help();
+                setHelp(newHelp);
+                setHelpInitialized(true);
+                return newHelp == null;
+            }}
+            description={
+                <div className="whitespace-nowrap text-sm">
+                    {help ? <Markdown>{help.doc}</Markdown> : null}
                 </div>
-            )}
+            }
             onClick={props.onChangeSelected}
         >
-            <span className="rounded-lg hover:-m-0.5 hover:border-2 hover:border-gray-100 hover:dark:border-gray-800">
-                <span className={codeStyles}>{props.code}</span>
+            <span
+                className={`rounded-lg ${
+                    !helpInitialized || help == null
+                        ? ""
+                        : "hover:-m-0.5 hover:border-2 hover:border-gray-100 hover:dark:border-gray-800"
+                }`}
+            >
+                {renderedCode}
             </span>
         </Tooltip>
     );

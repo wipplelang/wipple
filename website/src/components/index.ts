@@ -4,5 +4,6 @@ export * from "./button";
 export * from "./markdown";
 export * from "./menu";
 export * from "./navbar";
+export * from "./skeleton";
 export * from "./tooltip";
 export * from "./transition";

@@ -49,7 +49,7 @@ export const Menu = (props: { items: MenuItem[] }) => {
 
     return (
         <Transition
-            value={stack}
+            in={stack != null}
             exitAnimationDuration={defaultAnimationDuration}
             inClassName={`animate-in ${
                 wentBack ? "slide-in-from-right-4" : "slide-in-from-left-4"
@@ -58,7 +58,7 @@ export const Menu = (props: { items: MenuItem[] }) => {
                 wentBack ? "slide-out-to-left-4" : "slide-out-to-right-4"
             } fade-out`}
         >
-            {(stack) => (
+            {stack ? (
                 <MenuContainer>
                     {stack.length > 1 ? (
                         <MenuButton onClick={popMenuItems}>
@@ -83,7 +83,7 @@ export const Menu = (props: { items: MenuItem[] }) => {
                         </MenuButton>
                     ))}
                 </MenuContainer>
-            )}
+            ) : null}
         </Transition>
     );
 };

@@ -41,16 +41,16 @@ export const AlertProvider = (props: React.PropsWithChildren<{}>) => {
             >
                 <div className="flex items-center justify-center w-screen h-screen p-4">
                     <Transition
-                        value={Contents}
+                        in={Contents != null}
                         exitAnimationDuration={defaultAnimationDuration}
                         inClassName="animate-in slide-in-from-bottom fade-in-10"
                         outClassName="animate-out slide-out-to-bottom fade-out-10"
                     >
-                        {(Contents) => (
+                        {Contents ? (
                             <div className="bg-white dark:bg-gray-900 rounded-lg p-4">
                                 <Contents dismiss={() => setContents(undefined)} />
                             </div>
-                        )}
+                        ) : null}
                     </Transition>
                 </div>
             </div>
