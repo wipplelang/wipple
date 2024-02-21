@@ -13,6 +13,7 @@ import { highlight, highlightFromDiagnostics } from "./highlight";
 export interface CodeMirrorProps {
     children: string;
     onChange: (value: string) => void;
+    autoFocus: boolean;
     quickHelpEnabled: boolean;
     onClickQuickHelp: (selected: boolean) => void;
     help: (code: string) => Help | undefined;
@@ -119,6 +120,14 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
             effects: highlight.reconfigure(highlightFromDiagnostics(props.diagnostics)),
         });
     }, [editorView, props.diagnostics]);
+
+    useEffect(() => {
+        if (props.autoFocus) {
+            requestAnimationFrame(() => {
+                editorView.focus();
+            });
+        }
+    }, [editorView, props.autoFocus]);
 
     return <div ref={containerRef} />;
 });

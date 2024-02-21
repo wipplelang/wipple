@@ -286,6 +286,7 @@ export const CodeEditor = (props: {
                 <div className="relative py-[3px]">
                     <CodeMirror
                         ref={codeMirrorRef}
+                        autoFocus
                         onChange={(code) => {
                             props.onChange?.(code);
                             setDiagnostics([]);
