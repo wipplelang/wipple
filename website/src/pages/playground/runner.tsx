@@ -275,7 +275,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         },
     }));
 
-    return output.length > 0 || diagnostics.length > 0 || isRunning ? (
+    return output.length > 0 || isRunning ? (
         <div className="flex flex-col px-4 pb-4 gap-3">
             {props.runtime ? <props.runtime id={id} ref={runtime} /> : null}
 
