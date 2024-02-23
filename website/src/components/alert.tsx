@@ -47,8 +47,10 @@ export const AlertProvider = (props: React.PropsWithChildren<{}>) => {
                         outClassName="animate-out slide-out-to-bottom fade-out-10"
                     >
                         {Contents ? (
-                            <div className="bg-white dark:bg-gray-900 rounded-lg p-4">
-                                <Contents dismiss={() => setContents(undefined)} />
+                            <div className="max-w-xl p-4">
+                                <div className="bg-white dark:bg-gray-900 rounded-lg p-4">
+                                    <Contents dismiss={() => setContents(undefined)} />
+                                </div>{" "}
                             </div>
                         ) : null}
                     </Transition>

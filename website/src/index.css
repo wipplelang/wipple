@@ -29,11 +29,23 @@ body {
     @apply bg-white dark:bg-gray-950 text-black dark:text-white font-medium;
 }
 
-.markdown code {
+code {
     font-family: "JetBrains Mono", monospace;
     font-feature-settings: normal;
     font-variation-settings: normal;
     font-variant-ligatures: none;
+}
+
+.help .markdown {
+    @apply leading-relaxed;
+}
+
+.help .markdown code {
+    @apply my-1 px-2 inline-block bg-gray-50 dark:bg-gray-900 rounded-lg p-1;
+}
+
+.help .markdown pre:has(code) {
+    @apply my-4 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg;
 }
 
 /* Animations */

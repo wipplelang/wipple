@@ -7,6 +7,7 @@ import {
     Tooltip,
     Transition,
     defaultAnimationDuration,
+    useAlert,
 } from "../../components";
 import { CodeMirror, CodeMirrorRef } from "./codemirror";
 import { RunOptions, Runner, RunnerRef } from "./runner";
@@ -15,6 +16,7 @@ import { ThemeConfig } from "./codemirror/theme";
 import { Diagnostic, Fix } from "../../models";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useWindowSize } from "usehooks-ts";
+import { HelpAlert } from "./help-alert";
 
 export const CodeEditor = (props: {
     children: string;
@@ -34,7 +36,7 @@ export const CodeEditor = (props: {
         }
     }, [isFocused]);
 
-    const [isHovering, setHovering] = useState(false);
+    const [isHovering, setHovering] = useState(props.autofocus ?? false);
 
     const [runOptions, setRunOptions] = useState<RunOptions>({
         dependenciesPath: "turtle",
@@ -131,6 +133,16 @@ export const CodeEditor = (props: {
     };
 
     const getHelpForCode = (code: string) => runnerRef.current!.help(code);
+
+    const [animationsSettled, setAnimationsSettled] = useState(false);
+
+    useEffect(() => {
+        setTimeout(() => {
+            setAnimationsSettled(true);
+        }, defaultAnimationDuration);
+    }, []);
+
+    const { displayAlert } = useAlert();
 
     return (
         <div
@@ -293,9 +305,20 @@ export const CodeEditor = (props: {
                         }}
                         readOnly={quickHelpLocked}
                         quickHelpEnabled={quickHelpEnabled || quickHelpLocked}
-                        onClickQuickHelp={(selected) => {
-                            setQuickHelpEnabled(selected);
-                            setListeningForQuickHelp(!selected);
+                        onClickQuickHelp={(help) => {
+                            setQuickHelpEnabled(true);
+                            setListeningForQuickHelp(false);
+
+                            displayAlert(({ dismiss }) => (
+                                <HelpAlert
+                                    help={help}
+                                    dismiss={() => {
+                                        setQuickHelpEnabled(false);
+                                        setQuickHelpLocked(false);
+                                        dismiss();
+                                    }}
+                                />
+                            ));
                         }}
                         help={getHelpForCode}
                         theme={props.theme}
@@ -304,14 +327,16 @@ export const CodeEditor = (props: {
                         {props.children}
                     </CodeMirror>
 
-                    {quickHelpLocked
+                    {!animationsSettled
                         ? null
                         : lineDiagnostics.map(({ top, width, height, diagnostic }, index) => (
                               <Transition
                                   key={index}
-                                  in
+                                  in={!quickHelpEnabled && !quickHelpLocked}
+                                  animateOnMount
                                   exitAnimationDuration={defaultAnimationDuration}
                                   inClassName="animate-in slide-in-from-right-4 fade-in-50"
+                                  outClassName="animate-out slide-out-to-right-4 fade-out-50"
                               >
                                   <DiagnosticBubble
                                       top={top}

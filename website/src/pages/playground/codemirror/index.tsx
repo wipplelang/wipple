@@ -6,7 +6,7 @@ import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { wippleLanguage } from "./language";
 import { ThemeConfig, theme, themeFromConfig } from "./theme";
-import { selectionMode, selectionModeFromEnabled } from "./mode";
+import { displayHelp, displayHelpFromEnabled } from "./help";
 import { Diagnostic, Help } from "../../../models";
 import { highlight, highlightFromDiagnostics } from "./highlight";
 
@@ -15,7 +15,7 @@ export interface CodeMirrorProps {
     onChange: (value: string) => void;
     autoFocus: boolean;
     quickHelpEnabled: boolean;
-    onClickQuickHelp: (selected: boolean) => void;
+    onClickQuickHelp: (help: Help) => void;
     help: (code: string) => Help | undefined;
     readOnly: boolean;
     diagnostics: Diagnostic[];
@@ -41,8 +41,8 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                     wippleLanguage,
                     theme.of(themeFromConfig(props.theme)),
 
-                    selectionMode.of(
-                        selectionModeFromEnabled(
+                    displayHelp.of(
+                        displayHelpFromEnabled(
                             props.quickHelpEnabled ?? false,
                             props.theme,
                             props.help,
@@ -104,9 +104,9 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
     useEffect(() => {
         editorView.dispatch({
-            effects: selectionMode.reconfigure(
-                selectionModeFromEnabled(
-                    props.quickHelpEnabled ?? false,
+            effects: displayHelp.reconfigure(
+                displayHelpFromEnabled(
+                    props.quickHelpEnabled,
                     props.theme,
                     props.help,
                     props.onClickQuickHelp,

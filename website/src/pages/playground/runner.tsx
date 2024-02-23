@@ -74,7 +74,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     const [showRunAgain, setShowRunAgain] = useState(false);
 
     const [cachedInterface, setCachedInterface] = useState<any>();
-    const [cachedBuiltinsHelp, setCachedBuiltinsHelp] = useState<Record<string, string>>();
+    const [cachedBuiltinsHelp, setCachedBuiltinsHelp] = useState<Record<string, any>>();
 
     const run = useCallback(async () => {
         props.onBlur();
@@ -245,11 +245,12 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     }, [run]);
 
     useImperativeHandle(ref, () => ({
-        help: (code: string) => {
+        help: (code: string): Help | undefined => {
             if (cachedBuiltinsHelp != null && cachedBuiltinsHelp[code] != null) {
                 return {
                     name: code,
-                    doc: cachedBuiltinsHelp[code],
+                    summary: cachedBuiltinsHelp[code].summary,
+                    doc: cachedBuiltinsHelp[code].doc,
                 };
             }
 
@@ -268,7 +269,8 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
             return {
                 name: code,
-                doc: comments.join("\n"),
+                summary: comments[0],
+                doc: comments.slice(1).join("\n"),
             };
         },
     }));

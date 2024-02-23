@@ -15,14 +15,12 @@ import {
 
 export const Tooltip = (
     props: React.PropsWithChildren<{
-        disabled?: () => boolean;
+        disabled?: boolean;
         description: React.ReactNode;
-        content?: (props: { dismiss: () => void }) => React.ReactNode;
-        onClick?: (open: boolean) => void;
+        onClick?: () => void;
     }>,
 ) => {
     const [isHovering, setHovering] = useState(false);
-    const [isExpanded, setExpanded] = useState(false);
 
     const [debouncedHovering, setDebouncedHovering] = useDebounceValue(isHovering, 300);
 
@@ -34,15 +32,14 @@ export const Tooltip = (
         open: isHovering,
         whileElementsMounted: autoUpdate,
         onOpenChange: (open, _event, reason) => {
-            if (props.disabled?.() ?? false) {
+            if (props.disabled ?? false) {
                 return;
             }
 
             setHovering(open);
-            setExpanded(reason === "click");
 
             if (reason === "click") {
-                props.onClick?.(open);
+                props.onClick?.();
             }
         },
         placement: "bottom",
@@ -53,9 +50,7 @@ export const Tooltip = (
         handleClose: safePolygon({ buffer: 5 }),
     });
 
-    const click = useClick(context, {
-        enabled: props.content != null,
-    });
+    const click = useClick(context);
 
     const dismiss = useDismiss(context);
 
@@ -72,17 +67,7 @@ export const Tooltip = (
                     <div ref={refs.setFloating} style={floatingStyles} {...getFloatingProps()}>
                         <div style={{ marginTop: 4 }}>
                             <TooltipContent open={isHovering && debouncedHovering}>
-                                {isExpanded && props.content != null ? (
-                                    <props.content
-                                        dismiss={() => {
-                                            setHovering(false);
-                                            setExpanded(false);
-                                            props.onClick?.(false);
-                                        }}
-                                    />
-                                ) : (
-                                    props.description
-                                )}
+                                {props.description}
                             </TooltipContent>
                         </div>
                     </div>
