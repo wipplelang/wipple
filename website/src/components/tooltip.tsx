@@ -56,6 +56,12 @@ export const Tooltip = (
 
     const { getReferenceProps, getFloatingProps } = useInteractions([hover, click, dismiss]);
 
+    useEffect(() => {
+        if (props.disabled) {
+            setHovering(false);
+        }
+    }, [props.disabled]);
+
     return (
         <>
             <span ref={refs.setReference} {...getReferenceProps()}>

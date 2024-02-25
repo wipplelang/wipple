@@ -1,14 +1,15 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { EditorView, minimalSetup } from "codemirror";
-import { placeholder, keymap } from "@codemirror/view";
-import { Compartment, EditorState } from "@codemirror/state";
+import { placeholder, keymap, dropCursor } from "@codemirror/view";
+import { Compartment, EditorState, Extension } from "@codemirror/state";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { wippleLanguage } from "./language";
 import { ThemeConfig, theme, themeFromConfig } from "./theme";
 import { displayHelp, displayHelpFromEnabled } from "./help";
 import { Diagnostic, Help } from "../../../models";
-import { highlight, highlightFromDiagnostics } from "./highlight";
+import { diagnostics, diagnosticsFromConfig } from "./diagnostics";
+import { assets, assetsFromConfig } from "./assets";
 
 export interface CodeMirrorProps {
     children: string;
@@ -17,6 +18,7 @@ export interface CodeMirrorProps {
     quickHelpEnabled: boolean;
     onClickQuickHelp: (help: Help) => void;
     help: (code: string) => Help | undefined;
+    onClickAsset: (type: string, value: string) => void;
     readOnly: boolean;
     diagnostics: Diagnostic[];
     theme: ThemeConfig;
@@ -27,6 +29,49 @@ export interface CodeMirrorRef {
 }
 
 const editable = new Compartment();
+
+const editableFromConfig = (config: { readOnly: boolean }): Extension => [
+    EditorView.editable.of(!config.readOnly),
+    config.readOnly
+        ? []
+        : [
+              EditorView.domEventHandlers({
+                  dragover: (event) => event.preventDefault(),
+                  drop: (event, view) => {
+                      if (config.readOnly) {
+                          return;
+                      }
+
+                      if (!event.dataTransfer) {
+                          return;
+                      }
+
+                      const asset = event.dataTransfer.getData("wipple/asset");
+                      if (!asset) {
+                          return;
+                      }
+
+                      const position = view.posAtCoords({ x: event.clientX, y: event.clientY });
+                      if (position == null) {
+                          return;
+                      }
+
+                      const padding = (s: string) => (s === "" || /\s/.test(s) ? "" : " ");
+                      const leftPadding = padding(view.state.sliceDoc(position - 1, position));
+                      const rightPadding = padding(view.state.sliceDoc(position, position + 1));
+
+                      view.dispatch({
+                          changes: {
+                              from: position,
+                              to: position,
+                              insert: `${leftPadding}\`${asset}\`${rightPadding}`,
+                          },
+                      });
+                  },
+              }),
+              dropCursor(),
+          ],
+];
 
 export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref) => {
     const editorView = useMemo(() => {
@@ -50,7 +95,9 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                         ),
                     ),
 
-                    highlight.of(highlightFromDiagnostics(props.diagnostics)),
+                    diagnostics.of(diagnosticsFromConfig({ diagnostics: props.diagnostics })),
+
+                    assets.of(assetsFromConfig({ onClick: props.onClickAsset })),
 
                     EditorView.lineWrapping,
                     EditorState.allowMultipleSelections.of(false),
@@ -60,7 +107,7 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
                     placeholder("Write your code here!"),
 
-                    editable.of(EditorView.editable.of(!props.readOnly)),
+                    editable.of(editableFromConfig({ readOnly: props.readOnly })),
 
                     EditorView.updateListener.of((update) => {
                         if (update.docChanged) {
@@ -92,7 +139,7 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
     useEffect(() => {
         editorView.dispatch({
-            effects: editable.reconfigure(EditorView.editable.of(!props.readOnly)),
+            effects: editable.reconfigure(editableFromConfig({ readOnly: props.readOnly })),
         });
     }, [editorView, props.readOnly]);
 
@@ -117,9 +164,17 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
     useEffect(() => {
         editorView.dispatch({
-            effects: highlight.reconfigure(highlightFromDiagnostics(props.diagnostics)),
+            effects: diagnostics.reconfigure(
+                diagnosticsFromConfig({ diagnostics: props.diagnostics }),
+            ),
         });
     }, [editorView, props.diagnostics]);
+
+    useEffect(() => {
+        editorView.dispatch({
+            effects: assets.reconfigure(assetsFromConfig({ onClick: props.onClickAsset })),
+        });
+    }, [editorView, props.onClickAsset]);
 
     useEffect(() => {
         if (props.autoFocus) {

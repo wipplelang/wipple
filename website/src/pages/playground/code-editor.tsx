@@ -17,6 +17,8 @@ import { Diagnostic, Fix } from "../../models";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useWindowSize } from "usehooks-ts";
 import { HelpAlert } from "./help-alert";
+import { Palette } from "./palette";
+import { flushSync } from "react-dom";
 
 export const CodeEditor = (props: {
     children: string;
@@ -300,8 +302,13 @@ export const CodeEditor = (props: {
                         ref={codeMirrorRef}
                         autoFocus
                         onChange={(code) => {
+                            // flushSync required so that diagnostics are removed
+                            // immediately
+                            flushSync(() => {
+                                setDiagnostics([]);
+                            });
+
                             props.onChange?.(code);
-                            setDiagnostics([]);
                         }}
                         readOnly={quickHelpLocked}
                         quickHelpEnabled={quickHelpEnabled || quickHelpLocked}
@@ -321,6 +328,9 @@ export const CodeEditor = (props: {
                             ));
                         }}
                         help={getHelpForCode}
+                        onClickAsset={(type, value) => {
+                            console.log("asset clicked:", { type, value });
+                        }}
                         theme={props.theme}
                         diagnostics={diagnostics}
                     >
@@ -372,13 +382,13 @@ const InsertMenu = () => {
     const [isExpanded, setExpanded] = useState(false);
 
     return (
-        <Tooltip description="Insert">
+        <Tooltip description="Insert" disabled={isExpanded}>
             <MenuContainer>
                 <Animated direction="horizontal">
                     {isExpanded ? (
-                        <button className="px-2" onClick={() => setExpanded(false)}>
-                            <p className="whitespace-nowrap">TODO: Palette</p>
-                        </button>
+                        <div className="px-1">
+                            <Palette onClose={() => setExpanded(false)} />
+                        </div>
                     ) : (
                         <button
                             className="group hover:bg-gray-100 dark:hover:bg-gray-800 h-[28px] mt-[2px] transition-colors"
