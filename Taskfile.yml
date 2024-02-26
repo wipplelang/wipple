@@ -44,25 +44,25 @@ tasks:
     cmds:
       - code $WIPPLE_TEST_PREFIX/.wipple
 
-  website:serve:
+  app:serve:
     run: once
     deps:
-      - website:bundle-for-playground
-    dir: website
+      - app:bundle-for-playground
+    dir: app
     cmds:
       - npm run dev
 
-  website:build:
+  app:build:
     run: once
     deps:
-      - website:bundle-for-playground
-    dir: website
+      - app:bundle-for-playground
+    dir: app
     cmds:
       - npm run build
 
-  website:bundle-for-playground:
+  app:bundle-for-playground:
     run: once
-    dir: website
+    dir: app
     deps:
       - cli:build
       - base:compile
