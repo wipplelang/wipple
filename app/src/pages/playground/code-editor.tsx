@@ -18,6 +18,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { useWindowSize } from "usehooks-ts";
 import { HelpAlert } from "./help-alert";
 import { Palette } from "./palette";
+import { flushSync } from "react-dom";
 
 export const CodeEditor = (props: {
     children: string;
@@ -324,14 +325,20 @@ export const CodeEditor = (props: {
                     <CodeMirror
                         ref={codeMirrorRef}
                         autoFocus
-                        onChange={props.onChange}
+                        onChange={(value) => {
+                            flushSync(() => {
+                                setDiagnostics([]);
+                            });
+
+                            props.onChange(value);
+                        }}
                         readOnly={quickHelpLocked}
                         quickHelpEnabled={quickHelpEnabled || quickHelpLocked}
                         onClickQuickHelp={onClickQuickHelp}
                         help={getHelpForCode}
                         onClickAsset={onClickAsset}
                         theme={props.theme}
-                        diagnostics={[]}
+                        diagnostics={diagnostics}
                     >
                         {props.children}
                     </CodeMirror>

@@ -74,10 +74,6 @@ const editableFromConfig = (config: { readOnly: boolean }): Extension => [
 ];
 
 export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref) => {
-    // HACK: This gives the editor a chance to update its ranges before we provide
-    // diagnostics referencing new ranges
-    const [currentDiagnostics, setCurrentDiagnostics] = useState(props.diagnostics);
-
     const editorView = useMemo(() => {
         type EditorViewConfig = ConstructorParameters<typeof EditorView>[0] & {};
 
@@ -92,14 +88,14 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
                     displayHelp.of(
                         displayHelpFromEnabled(
-                            props.quickHelpEnabled ?? false,
+                            props.quickHelpEnabled,
                             props.theme,
                             props.help,
                             props.onClickQuickHelp,
                         ),
                     ),
 
-                    diagnostics.of(diagnosticsFromConfig({ diagnostics: currentDiagnostics })),
+                    diagnostics.of(diagnosticsFromConfig({ diagnostics: props.diagnostics })),
 
                     assets.of(assetsFromConfig({ onClick: props.onClickAsset })),
 
@@ -184,11 +180,7 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                 diagnosticsFromConfig({ diagnostics: props.diagnostics }),
             ),
         });
-    }, [editorView, currentDiagnostics]);
-
-    useEffect(() => {
-        setCurrentDiagnostics(props.diagnostics);
-    }, [props.diagnostics]);
+    }, [editorView, props.diagnostics]);
 
     useEffect(() => {
         editorView.dispatch({

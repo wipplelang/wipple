@@ -54,15 +54,14 @@ const helpDecorationsFacet = Facet.define<DecorationSet, DecorationSet>({
 const helpDecorations = StateField.define<DecorationSet>({
     create: (state) => computeHelpDecorations(syntaxTree(state), state),
     update: (value, update) => {
-        // let newValue = value.map(update.changes);
-        // for (const effect of update.effects) {
-        //     if (effect.is(updateHelpDecorations)) {
-        //         newValue = effect.value;
-        //     }
-        // }
+        let newValue = value.map(update.changes);
+        for (const effect of update.effects) {
+            if (effect.is(updateHelpDecorations)) {
+                newValue = effect.value;
+            }
+        }
 
-        // return newValue;
-        return Decoration.none;
+        return newValue;
     },
     provide: (f) => helpDecorationsFacet.from(f),
 });
