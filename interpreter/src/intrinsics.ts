@@ -79,7 +79,7 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         return jsToNumber(expectedTypeDescriptor, new Decimal(index), context);
     },
-    ui: async ([message, value], expectedTypeDescriptor, context) => {
+    "runtime-message": async ([message, value], expectedTypeDescriptor, context) => {
         const messageValue = textToJs(message, context);
         const serializedValue = serialize(value, context);
 

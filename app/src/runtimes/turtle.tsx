@@ -6,6 +6,9 @@ export const Turtle: RuntimeComponent = forwardRef((_props, ref) => {
     const [messages, setMessages] = useState<[string, any][]>([]);
 
     useImperativeHandle(ref, () => ({
+        reset: async () => {
+            setMessages([]);
+        },
         onMessage: async (message, value) => {
             setMessages(
                 produce((messages) => {
@@ -22,9 +25,7 @@ export const Turtle: RuntimeComponent = forwardRef((_props, ref) => {
             {messages.map(([message, value], index) => (
                 <div key={index}>
                     <p>
-                        <strong>{message}</strong>:
-                        <br />
-                        <pre>{JSON.stringify(value)}</pre>
+                        <strong>{message}</strong>: <code>{JSON.stringify(value)}</code>
                     </p>
                 </div>
             ))}

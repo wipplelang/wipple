@@ -1,4 +1,5 @@
 export interface Runtime {
+    reset: () => Promise<void>;
     onMessage: (message: string, value: any) => Promise<any>;
 }
 

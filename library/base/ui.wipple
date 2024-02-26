@@ -1,3 +1,0 @@
-[Send a message to the UI runtime.]
-ui :: Input (Output : ()) => Text -> Input -> Output
-ui : message data -> intrinsic "message-ui" message data

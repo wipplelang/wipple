@@ -43,14 +43,7 @@ export const PlaygroundPage = () => {
         };
     }, [playground?.name]);
 
-    const [tempCode, setTempCode] = useState(`[Calculate the nth Fibonacci number.]
-fib :: Number -> Number
-fib : n -> when n (
-    0 or 1 -> 1
-    _ -> fibb (n - 2) + fib (n - 1)
-)
-
-show (fib 5)`);
+    const [tempCode, setTempCode] = useState("");
 
     const theme = useMemo(() => defaultThemeConfig(), []);
 

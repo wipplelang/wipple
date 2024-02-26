@@ -51,6 +51,10 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
     const clearOutput = () => {
         setOutput([]);
+
+        if (runtime.current) {
+            runtime.current.reset();
+        }
     };
 
     const runnerWorker = useRef<Worker>();
@@ -232,7 +236,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         } catch (error) {
             console.error(error);
         }
-    }, [code, runtime, props.options, runnerWorker, resetRunnerWorker, cachedBuiltinsHelp]);
+    }, [code, props.options, resetRunnerWorker, cachedBuiltinsHelp]);
 
     useEffect(() => {
         run();
@@ -269,7 +273,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         },
     }));
 
-    return output.length > 0 || isRunning ? (
+    return output.length > 0 || props.runtime != null || isRunning ? (
         <div className="flex flex-col px-4 pb-4 gap-3">
             {props.runtime ? <props.runtime id={id} ref={runtime} /> : null}
 

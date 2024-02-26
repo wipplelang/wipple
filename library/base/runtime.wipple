@@ -1,0 +1,3 @@
+[Send a message to the runtime.]
+runtime-message :: Input (Output : ()) => Text -> Input -> Output
+runtime-message : message data -> intrinsic "runtime-message" message data

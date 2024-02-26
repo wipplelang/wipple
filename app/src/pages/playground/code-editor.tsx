@@ -19,6 +19,7 @@ import { useWindowSize } from "usehooks-ts";
 import { HelpAlert } from "./help-alert";
 import { Palette } from "./palette";
 import { flushSync } from "react-dom";
+import { Turtle } from "../../runtimes";
 
 export const CodeEditor = (props: {
     children: string;
@@ -370,7 +371,7 @@ export const CodeEditor = (props: {
                     <Runner
                         ref={runnerRef}
                         options={runOptions}
-                        runtime={undefined} // TODO
+                        runtime={Turtle} // TODO
                         hasFocus={runnerHasFocus}
                         onFocus={() => setRunnerHasFocus(true)}
                         onBlur={() => setRunnerHasFocus(false)}
