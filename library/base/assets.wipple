@@ -1,0 +1,13 @@
+[A color value.]
+Color : type (color :: Text)
+
+[Create a color from a piece of text. In the Wipple Playground, you can drag a color from the palette into the editor instead of calling this function directly.]
+color :: Text -> Color
+color : color -> (color : color)
+
+[An image value.]
+Image : type (url :: Text)
+
+[Create an image from a URL. In the Wipple Playground, you can drag an image from the palette into the editor instead of calling this function directly.]
+image :: Text -> Image
+image : url -> (url : url)

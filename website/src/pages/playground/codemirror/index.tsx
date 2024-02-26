@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { EditorView, minimalSetup } from "codemirror";
 import { placeholder, keymap, dropCursor } from "@codemirror/view";
 import { Compartment, EditorState, Extension } from "@codemirror/state";
@@ -46,15 +46,15 @@ const editableFromConfig = (config: { readOnly: boolean }): Extension => [
                           return;
                       }
 
-                      const asset = event.dataTransfer.getData("wipple/asset");
-                      if (!asset) {
+                      const snippet = event.dataTransfer.getData("wipple/snippet");
+                      if (!snippet) {
                           return;
                       }
 
-                      const position = view.posAtCoords({ x: event.clientX, y: event.clientY });
-                      if (position == null) {
-                          return;
-                      }
+                      const position = view.posAtCoords(
+                          { x: event.clientX, y: event.clientY },
+                          false,
+                      );
 
                       const padding = (s: string) => (s === "" || /\s/.test(s) ? "" : " ");
                       const leftPadding = padding(view.state.sliceDoc(position - 1, position));
@@ -64,7 +64,7 @@ const editableFromConfig = (config: { readOnly: boolean }): Extension => [
                           changes: {
                               from: position,
                               to: position,
-                              insert: `${leftPadding}\`${asset}\`${rightPadding}`,
+                              insert: leftPadding + snippet + rightPadding,
                           },
                       });
                   },
@@ -74,6 +74,10 @@ const editableFromConfig = (config: { readOnly: boolean }): Extension => [
 ];
 
 export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref) => {
+    // HACK: This gives the editor a chance to update its ranges before we provide
+    // diagnostics referencing new ranges
+    const [currentDiagnostics, setCurrentDiagnostics] = useState(props.diagnostics);
+
     const editorView = useMemo(() => {
         type EditorViewConfig = ConstructorParameters<typeof EditorView>[0] & {};
 
@@ -95,7 +99,7 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                         ),
                     ),
 
-                    diagnostics.of(diagnosticsFromConfig({ diagnostics: props.diagnostics })),
+                    diagnostics.of(diagnosticsFromConfig({ diagnostics: currentDiagnostics })),
 
                     assets.of(assetsFromConfig({ onClick: props.onClickAsset })),
 
@@ -111,7 +115,7 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
                     EditorView.updateListener.of((update) => {
                         if (update.docChanged) {
-                            props.onChange?.(update.state.doc.toString());
+                            props.onChange(update.state.doc.toString());
                         }
                     }),
                 ],
@@ -136,6 +140,18 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
             containerRef.current?.removeChild(editorView.dom);
         };
     }, [containerRef.current]);
+
+    useEffect(() => {
+        if (editorView.state.doc.toString() !== props.children) {
+            editorView.dispatch({
+                changes: {
+                    from: 0,
+                    to: editorView.state.doc.length,
+                    insert: props.children,
+                },
+            });
+        }
+    }, [editorView, props.children]);
 
     useEffect(() => {
         editorView.dispatch({
@@ -168,7 +184,11 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                 diagnosticsFromConfig({ diagnostics: props.diagnostics }),
             ),
         });
-    }, [editorView, props.diagnostics]);
+    }, [editorView, currentDiagnostics]);
+
+    useEffect(() => {
+        setCurrentDiagnostics(props.diagnostics);
+    }, [props.diagnostics]);
 
     useEffect(() => {
         editorView.dispatch({

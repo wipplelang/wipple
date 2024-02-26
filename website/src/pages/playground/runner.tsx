@@ -43,12 +43,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         setCode(props.children);
     }, [props.children]);
 
-    const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
-
-    useEffect(() => {
-        props.onChangeDiagnostics(diagnostics);
-    }, [diagnostics]);
-
     const [output, setOutput] = useState<Output[]>([]);
 
     const appendToOutput = (item: Output) => {
@@ -120,14 +114,14 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                     sourceCodeForFile,
                 );
 
-                setDiagnostics(renderedDiagnostics);
+                props.onChangeDiagnostics(renderedDiagnostics);
                 setRunning(false);
 
                 if (renderedDiagnostics.some((diagnostic: any) => diagnostic.error)) {
                     return;
                 }
             } else {
-                setDiagnostics([]);
+                props.onChangeDiagnostics([]);
                 setRunning(false);
             }
 

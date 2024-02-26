@@ -1,8 +1,9 @@
 @top Program { expression* }
 
-expression { List | Comment | Text | Number | Asset | Keyword | Operator | Type | Name }
+expression { List | Asset | Comment | Text | Number | Keyword | Operator | Type | Name }
 
 List { "(" expression* ")" }
+Asset { "{" expression* "}" }
 
 Keyword { @specialize<Name, "_" | "when" | "type" | "trait" | "instance" | "where" | "intrinsic" | "semantics" | "snippet" | "language"> }
 
@@ -16,12 +17,11 @@ Keyword { @specialize<Name, "_" | "when" | "type" | "trait" | "instance" | "wher
   Comment { "[" ![\]]* "]"}
   Text { '"' (!["\\] | "\\" _)* '"' }
   Number { "-"? $[0-9]+ ("." $[0-9]+)? }
-  Asset { '`' (![`\\] | "\\" _)* '`' }
   Operator { $[~`!@#$%^&*\-+=\\\|:;<,>.?/]+ }
   Type { $[A-Z] ![\r\n\t \(\)\[\]\{\}'"/]* }
   Name { $[A-Za-z0-9\-_!?']+ }
 
-  @precedence { Space, Comment, Text, Number, Asset, Operator, Type, Name }
+  @precedence { Space, Comment, Text, Number, Operator, Type, Name }
 }
 
 @skip { Space }

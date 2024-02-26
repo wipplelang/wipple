@@ -1,11 +1,18 @@
-import { useMemo } from "react";
 import { Tooltip } from "../../components";
+
+export const isAsset = (value: string) => value.startsWith("{") && value.endsWith("}");
 
 export const Asset = (props: {
     children: string;
     onClick?: (type: string, value: string) => void;
 }) => {
-    const [type, value] = useMemo(() => props.children.split(":", 2), [props.children]);
+    let [type, value] = props.children.split(" ", 2);
+    type ??= "";
+    value ??= "";
+
+    if (value) {
+        value = value.slice(1, value.length - 1); // remove quotes
+    }
 
     let content: JSX.Element;
     switch (type) {

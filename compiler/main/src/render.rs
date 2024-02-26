@@ -146,6 +146,12 @@ pub fn render_diagnostic(
                         wipple_parser::reader::TokenKind::RightParenthesis => {
                             format!("{a}closing `)`")
                         }
+                        wipple_parser::reader::TokenKind::LeftBrace => {
+                            format!("{an}opening `{{`")
+                        }
+                        wipple_parser::reader::TokenKind::RightBrace => {
+                            format!("{a}closing `}}`")
+                        }
                         wipple_parser::reader::TokenKind::LineBreak => {
                             format!("{a}new line")
                         }
@@ -160,9 +166,6 @@ pub fn render_diagnostic(
                         }
                         wipple_parser::reader::TokenKind::Number(_) => {
                             format!("{a}number")
-                        }
-                        wipple_parser::reader::TokenKind::Asset(_) => {
-                            format!("{a}color, image, or emoji")
                         }
                     };
 
@@ -195,6 +198,7 @@ pub fn render_diagnostic(
                             (Some(token), None) => {
                                 let replacement = match token {
                                     wipple_parser::reader::TokenKind::RightParenthesis => ")",
+                                    wipple_parser::reader::TokenKind::RightBrace => "}",
                                     _ => unimplemented!(),
                                 };
 
@@ -203,6 +207,7 @@ pub fn render_diagnostic(
                             (Some(expected), Some(found)) => {
                                 let replacement = match expected {
                                     wipple_parser::reader::TokenKind::RightParenthesis => ")",
+                                    wipple_parser::reader::TokenKind::RightBrace => "}",
                                     _ => unimplemented!(),
                                 };
 

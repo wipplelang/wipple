@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Animated,
     Markdown,
@@ -13,16 +13,15 @@ import { CodeMirror, CodeMirrorRef } from "./codemirror";
 import { RunOptions, Runner, RunnerRef } from "./runner";
 import { MaterialSymbol } from "react-material-symbols";
 import { ThemeConfig } from "./codemirror/theme";
-import { Diagnostic, Fix } from "../../models";
+import { Diagnostic, Fix, Help } from "../../models";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useWindowSize } from "usehooks-ts";
 import { HelpAlert } from "./help-alert";
 import { Palette } from "./palette";
-import { flushSync } from "react-dom";
 
 export const CodeEditor = (props: {
     children: string;
-    onChange?: (value: string) => void;
+    onChange: (value: string) => void;
     theme: ThemeConfig;
     autofocus?: boolean;
     onFocus?: () => void;
@@ -88,6 +87,10 @@ export const CodeEditor = (props: {
         const coveredLines: number[] = [];
 
         return diagnostics.flatMap((diagnostic) => {
+            if (diagnostic.primaryLabel.span.start > editorView.state.doc.length) {
+                return [];
+            }
+
             const line = editorView.state.doc.lineAt(diagnostic.primaryLabel.span.start);
 
             if (coveredLines.includes(line.number)) {
@@ -134,7 +137,7 @@ export const CodeEditor = (props: {
         });
     };
 
-    const getHelpForCode = (code: string) => runnerRef.current!.help(code);
+    const getHelpForCode = useCallback((code: string) => runnerRef.current!.help(code), []);
 
     const [animationsSettled, setAnimationsSettled] = useState(false);
 
@@ -145,6 +148,26 @@ export const CodeEditor = (props: {
     }, []);
 
     const { displayAlert } = useAlert();
+
+    const onClickQuickHelp = useCallback((help: Help) => {
+        setQuickHelpEnabled(true);
+        setListeningForQuickHelp(false);
+
+        displayAlert(({ dismiss }) => (
+            <HelpAlert
+                help={help}
+                dismiss={() => {
+                    setQuickHelpEnabled(false);
+                    setQuickHelpLocked(false);
+                    dismiss();
+                }}
+            />
+        ));
+    }, []);
+
+    const onClickAsset = useCallback((type: string, value: string) => {
+        console.log("asset clicked:", { type, value });
+    }, []);
 
     return (
         <div
@@ -301,38 +324,14 @@ export const CodeEditor = (props: {
                     <CodeMirror
                         ref={codeMirrorRef}
                         autoFocus
-                        onChange={(code) => {
-                            // flushSync required so that diagnostics are removed
-                            // immediately
-                            flushSync(() => {
-                                setDiagnostics([]);
-                            });
-
-                            props.onChange?.(code);
-                        }}
+                        onChange={props.onChange}
                         readOnly={quickHelpLocked}
                         quickHelpEnabled={quickHelpEnabled || quickHelpLocked}
-                        onClickQuickHelp={(help) => {
-                            setQuickHelpEnabled(true);
-                            setListeningForQuickHelp(false);
-
-                            displayAlert(({ dismiss }) => (
-                                <HelpAlert
-                                    help={help}
-                                    dismiss={() => {
-                                        setQuickHelpEnabled(false);
-                                        setQuickHelpLocked(false);
-                                        dismiss();
-                                    }}
-                                />
-                            ));
-                        }}
+                        onClickQuickHelp={onClickQuickHelp}
                         help={getHelpForCode}
-                        onClickAsset={(type, value) => {
-                            console.log("asset clicked:", { type, value });
-                        }}
+                        onClickAsset={onClickAsset}
                         theme={props.theme}
-                        diagnostics={diagnostics}
+                        diagnostics={[]}
                     >
                         {props.children}
                     </CodeMirror>
@@ -364,7 +363,7 @@ export const CodeEditor = (props: {
                     <Runner
                         ref={runnerRef}
                         options={runOptions}
-                        runtime={undefined}
+                        runtime={undefined} // TODO
                         hasFocus={runnerHasFocus}
                         onFocus={() => setRunnerHasFocus(true)}
                         onBlur={() => setRunnerHasFocus(false)}

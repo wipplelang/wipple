@@ -1690,7 +1690,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     .into(),
                     item: syntax::Expression::Number(number.to_string()),
                 },
-                TokenKind::Text(text) | TokenKind::Asset(text) => WithInfo {
+                TokenKind::Text(text) => WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
                         visible_path: parser.driver.visible_path(),
@@ -2904,7 +2904,7 @@ impl<'a, D: wipple_syntax::Driver> Parser<'a, D> {
                     .into(),
                     item: syntax::Pattern::Number(number.to_string()),
                 },
-                TokenKind::Text(text) | TokenKind::Asset(text) => WithInfo {
+                TokenKind::Text(text) => WithInfo {
                     info: Info {
                         path: parser.driver.file_path(),
                         visible_path: parser.driver.visible_path(),

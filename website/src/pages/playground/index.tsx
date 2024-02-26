@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { CodeEditor } from "./code-editor";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Animated, Skeleton, useNavbar } from "../../components";
 import { Playground, getPlayground } from "../../models";
 import { MaterialSymbol } from "react-material-symbols";
@@ -52,12 +52,14 @@ fib : n -> when n (
 
 show (fib 5)`);
 
+    const theme = useMemo(() => defaultThemeConfig(), []);
+
     return (
         <div className="flex flex-row justify-center">
             <div className="flex flex-col items-stretch gap-4 container max-w-4xl px-4">
                 {playground ? (
                     <>
-                        <CodeEditor onChange={setTempCode} theme={defaultThemeConfig()}>
+                        <CodeEditor onChange={setTempCode} theme={theme}>
                             {tempCode}
                         </CodeEditor>
 

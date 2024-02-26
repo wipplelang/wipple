@@ -28,6 +28,12 @@ pub enum TokenKind<'src> {
     #[token(")")]
     RightParenthesis,
 
+    #[token("{")]
+    LeftBrace,
+
+    #[token("}")]
+    RightBrace,
+
     #[regex(r#"\n"#)]
     LineBreak,
 
@@ -42,9 +48,6 @@ pub enum TokenKind<'src> {
 
     #[regex(r#"-?[0-9]+(\.[0-9]+)?"#, |lex| Cow::Borrowed(lex.slice()), priority = 2)]
     Number(Cow<'src, str>),
-
-    #[regex(r#"`[^`]*`"#, |lex| Cow::Borrowed(&lex.slice()[1..(lex.slice().len() - 1)]))]
-    Asset(Cow<'src, str>),
 }
 
 #[allow(missing_docs)]
@@ -288,7 +291,7 @@ pub fn read_top_level(tokens: Vec<Token<'_>>, options: ReadOptions) -> read::Res
     let end_span = tokens.last().map_or(0..0, |token| token.span.clone());
     let (last_span, statements) = read_block(
         &mut tokens.into_iter().peekable(),
-        true,
+        None,
         end_span,
         &mut errors,
     );
@@ -314,7 +317,7 @@ pub fn read_tokens(tokens: Vec<Token<'_>>, options: ReadOptions) -> read::Result
     let end_span = tokens.last().map_or(0..0, |token| token.span.clone());
     let (last_span, elements) = read_list(
         &mut tokens.into_iter().peekable(),
-        true,
+        None,
         end_span,
         &mut errors,
     );
@@ -538,7 +541,7 @@ fn is_operator(symbol: &str) -> bool {
 
 fn read_list<'src>(
     tokens: &mut Peekable<impl Iterator<Item = Token<'src>>>,
-    top_level: bool,
+    end_token: Option<TokenKind<'static>>,
     end_span: Range<u32>,
     errors: &mut Vec<Diagnostic>,
 ) -> (Range<u32>, Vec<Node<'src>>) {
@@ -546,29 +549,47 @@ fn read_list<'src>(
     loop {
         match tokens.next() {
             Some(next) => match next.kind {
-                TokenKind::LeftParenthesis => {
+                TokenKind::LeftParenthesis | TokenKind::LeftBrace => {
+                    let end_token = match next.kind {
+                        TokenKind::LeftParenthesis => TokenKind::RightParenthesis,
+                        TokenKind::LeftBrace => TokenKind::RightBrace,
+                        _ => unreachable!(),
+                    };
+
                     if let Some(Token {
                         kind: TokenKind::LineBreak,
                         ..
                     }) = tokens.peek()
                     {
                         let (last_span, statements) =
-                            read_block(tokens, false, end_span.clone(), errors);
+                            read_block(tokens, Some(end_token), end_span.clone(), errors);
                         contents.push(Node::Block(next.span.start..last_span.end, statements));
                     } else {
-                        let (last_span, nodes) = read_list(tokens, false, end_span.clone(), errors);
+                        let (last_span, nodes) = read_list(tokens, Some(end_token), end_span.clone(), errors);
                         contents.push(Node::List(next.span.start..last_span.end, nodes));
                     }
                 }
-                TokenKind::RightParenthesis => return (next.span, contents),
+                TokenKind::RightParenthesis | TokenKind::RightBrace => {
+                    if end_token.as_ref().map_or(true, |token| token != &next.kind) {
+                        errors.push(Diagnostic::new(
+                            next.span.clone(),
+                            ErrorKind::Mismatch {
+                                expected: end_token,
+                                found: Some(next.clone().into_owned().kind),
+                            },
+                        ));
+                    }
+
+                    return (next.span, contents);
+                },
                 _ => contents.push(Node::Token(next)),
             },
             None => {
-                if !top_level {
+                if let Some(end_token) = end_token {
                     errors.push(Diagnostic::new(
                         end_span.clone(),
                         ErrorKind::Mismatch {
-                            expected: Some(TokenKind::RightParenthesis),
+                            expected: Some(end_token),
                             found: None,
                         },
                     ));
@@ -582,7 +603,7 @@ fn read_list<'src>(
 
 fn read_block<'src>(
     tokens: &mut Peekable<impl Iterator<Item = Token<'src>>>,
-    top_level: bool,
+    end_token: Option<TokenKind<'static>>,
     end_span: Range<u32>,
     errors: &mut Vec<Diagnostic>,
 ) -> (Range<u32>, Vec<(Vec<Documentation>, Node<'src>)>) {
@@ -635,8 +656,14 @@ fn read_block<'src>(
                             .extend(consume_documentation!());
 
                         match &next.kind {
-                            TokenKind::LeftParenthesis => {
+                            TokenKind::LeftParenthesis | TokenKind::LeftBrace => {
                                 let first_span = next.span.clone();
+
+                                let end_token = match next.kind {
+                                    TokenKind::LeftParenthesis => TokenKind::RightParenthesis,
+                                    TokenKind::LeftBrace => TokenKind::RightBrace,
+                                    _ => unreachable!(),
+                                };
 
                                 if let Some(Token {
                                     kind: TokenKind::LineBreak,
@@ -644,14 +671,14 @@ fn read_block<'src>(
                                 }) = tokens.peek()
                                 {
                                     let (last_span, statements) =
-                                        read_block(tokens, false, end_span.clone(), errors);
+                                        read_block(tokens, Some(end_token), end_span.clone(), errors);
 
                                     contents.last_mut().unwrap().1.as_list_mut().unwrap().push(
                                         Node::Block(first_span.start..last_span.end, statements),
                                     );
                                 } else {
                                     let (last_span, nodes) =
-                                        read_list(tokens, false, end_span.clone(), errors);
+                                        read_list(tokens, Some(end_token), end_span.clone(), errors);
 
                                     contents
                                         .last_mut()
@@ -662,18 +689,18 @@ fn read_block<'src>(
                                         .push(Node::List(first_span.start..last_span.end, nodes));
                                 }
                             }
-                            TokenKind::RightParenthesis => {
-                                if top_level {
+                            TokenKind::RightParenthesis | TokenKind::RightBrace => {
+                                if end_token.as_ref().map_or(true, |token| token != &next.kind) {
                                     errors.push(Diagnostic::new(
                                         next.span.clone(),
                                         ErrorKind::Mismatch {
-                                            expected: None,
-                                            found: Some(TokenKind::RightParenthesis),
+                                            expected: end_token,
+                                            found: Some(next.clone().into_owned().kind),
                                         },
                                     ));
-                                } else {
-                                    return (next.span, contents);
                                 }
+
+                                return (next.span, contents);
                             }
                             // Allow splitting statements containing operators over
                             // multiple lines
@@ -742,11 +769,11 @@ fn read_block<'src>(
                         }
                     }
                     None => {
-                        if !top_level {
+                        if let Some(end_token) = end_token {
                             errors.push(Diagnostic::new(
                                 end_span.clone(),
                                 ErrorKind::Mismatch {
-                                    expected: Some(TokenKind::RightParenthesis),
+                                    expected: Some(end_token),
                                     found: None,
                                 },
                             ));
@@ -1149,12 +1176,13 @@ impl std::fmt::Display for Token<'_> {
         match &self.kind {
             TokenKind::LeftParenthesis => write!(f, "`(`"),
             TokenKind::RightParenthesis => write!(f, "`)`"),
+            TokenKind::LeftBrace => write!(f, "`{{`"),
+            TokenKind::RightBrace => write!(f, "`}}`"),
             TokenKind::LineBreak => write!(f, "line break"),
             TokenKind::Comment(s) => write!(f, "[{s}]"),
             TokenKind::Symbol(s) => write!(f, "{s}"),
             TokenKind::Text(s) => write!(f, "{s:?}"),
             TokenKind::Number(s) => write!(f, "{s}"),
-            TokenKind::Asset(s) => write!(f, "`{s}`"),
         }
     }
 }
@@ -1208,12 +1236,13 @@ impl Token<'_> {
         match &self.kind {
             TokenKind::LeftParenthesis => SExp::string("("),
             TokenKind::RightParenthesis => SExp::string(")"),
+            TokenKind::LeftBrace => SExp::string("{"),
+            TokenKind::RightBrace => SExp::string("}"),
             TokenKind::LineBreak => SExp::symbol("line-break"),
             TokenKind::Comment(_) => SExp::symbol("comment"),
             TokenKind::Symbol(name) => SExp::symbol(name),
             TokenKind::Text(text) => SExp::string(text),
             TokenKind::Number(s) => SExp::symbol(s),
-            TokenKind::Asset(_) => SExp::symbol("asset"),
         }
     }
 }
@@ -1288,12 +1317,13 @@ impl<'src> Token<'src> {
             kind: match self.kind {
                 TokenKind::LeftParenthesis => TokenKind::LeftParenthesis,
                 TokenKind::RightParenthesis => TokenKind::RightParenthesis,
+                TokenKind::LeftBrace => TokenKind::LeftBrace,
+                TokenKind::RightBrace => TokenKind::RightBrace,
                 TokenKind::LineBreak => TokenKind::LineBreak,
                 TokenKind::Comment(comment) => TokenKind::Comment(comment.into_owned().into()),
                 TokenKind::Symbol(symbol) => TokenKind::Symbol(symbol.into_owned().into()),
                 TokenKind::Text(text) => TokenKind::Text(text.into_owned().into()),
                 TokenKind::Number(number) => TokenKind::Number(number.into_owned().into()),
-                TokenKind::Asset(asset) => TokenKind::Asset(asset.into_owned().into()),
             },
         }
     }

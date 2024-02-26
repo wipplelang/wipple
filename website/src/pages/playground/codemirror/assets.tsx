@@ -53,6 +53,10 @@ const getDecorations = (view: EditorView, onClick: (type: string, value: string)
 
             const code = view.state.sliceDoc(from, to);
 
+            if (code.includes("\n")) {
+                return;
+            }
+
             decorations.push(
                 Decoration.replace({
                     widget: new AssetWidget(from, to, code, onClick),
@@ -104,4 +108,4 @@ class AssetWidget extends WidgetType {
 const AssetWidgetComponent = (props: {
     code: string;
     onClick: (type: string, value: string) => void;
-}) => <Asset onClick={props.onClick}>{props.code.slice(1, -1)}</Asset>;
+}) => <Asset onClick={props.onClick}>{props.code.slice(1, props.code.length - 1)}</Asset>;
