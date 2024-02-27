@@ -47,10 +47,12 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
     const appendToOutput = (item: Output) => {
         setOutput((output) => [...output, item]);
+        setShowOutput(true);
     };
 
     const clearOutput = () => {
         setOutput([]);
+        setShowOutput(false);
 
         if (runtime.current) {
             runtime.current.reset();
@@ -69,6 +71,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     }, [id]);
 
     const [isRunning, setRunning] = useState(false);
+    const [showOutput, setShowOutput] = useState(false);
     const [showRunAgain, setShowRunAgain] = useState(false);
 
     const [cachedInterface, setCachedInterface] = useState<any>();
@@ -80,6 +83,8 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         setShowRunAgain(false);
 
         try {
+            let showRunAgain = false;
+
             const sources = [
                 {
                     path: "playground",
@@ -139,6 +144,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
             const runnerWorker = resetRunnerWorker();
             clearOutput();
+            setShowOutput(props.runtime != null);
 
             await new Promise<void>((resolve) => {
                 runnerWorker.onmessage = async (event) => {
@@ -186,6 +192,8 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                                     }),
                             });
 
+                            showRunAgain = true;
+
                             break;
                         }
                         case "choice": {
@@ -202,6 +210,8 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                                     });
                                 },
                             });
+
+                            showRunAgain = true;
 
                             break;
                         }
@@ -221,6 +231,15 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                                 value: result,
                             });
 
+                            showRunAgain = true;
+
+                            break;
+                        }
+                        case "error": {
+                            const { message } = event.data;
+
+                            appendToOutput({ type: "error", message });
+
                             break;
                         }
                         default:
@@ -232,11 +251,11 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
             });
 
             setRunning(false);
-            setShowRunAgain(true);
+            setShowRunAgain(showRunAgain);
         } catch (error) {
             console.error(error);
         }
-    }, [code, props.options, resetRunnerWorker, cachedBuiltinsHelp]);
+    }, [code, props.runtime, props.options, resetRunnerWorker, cachedBuiltinsHelp]);
 
     useEffect(() => {
         run();
@@ -273,7 +292,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         },
     }));
 
-    return output.length > 0 || props.runtime != null || isRunning ? (
+    return isRunning || showOutput ? (
         <div className="flex flex-col px-4 pb-4 gap-3">
             {props.runtime ? <props.runtime id={id} ref={runtime} /> : null}
 
@@ -299,6 +318,14 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                         break;
                     case "choice":
                         content = <div>TODO</div>;
+                        break;
+                    case "error":
+                        content = (
+                            <div className="flex flex-row items-center gap-2 bg-red-50 dark:bg-red-950 text-red-500 p-3 rounded-lg">
+                                <MaterialSymbol icon="error_circle_rounded" size={20} />
+                                {item.message}
+                            </div>
+                        );
                         break;
                     default:
                         item satisfies never;

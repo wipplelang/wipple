@@ -19,7 +19,7 @@ export const intrinsics: Record<string, Intrinsic> = {
             throw context.error("expected text");
         }
 
-        throw context.error(`error: ${message.value}`);
+        throw context.error(message.value);
     },
     produce: async ([defer], _expectedTypeDescriptor, context) => {
         return await context.produce(defer);

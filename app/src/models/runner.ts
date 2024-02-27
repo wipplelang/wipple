@@ -33,4 +33,5 @@ export type Output =
           prompt: string;
           choices: string[];
           onSubmit: (choice: number) => Promise<void>;
-      };
+      }
+    | { type: "error"; message: string };

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Animated,
     Markdown,
@@ -17,7 +17,7 @@ import { Diagnostic, Fix, Help } from "../../models";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useWindowSize } from "usehooks-ts";
 import { HelpAlert } from "./help-alert";
-import { Palette } from "./palette";
+import { AssetPalette, SnippetPalette } from "./palette";
 import { flushSync } from "react-dom";
 import { Turtle } from "../../runtimes";
 
@@ -306,7 +306,7 @@ export const CodeEditor = (props: {
                                 inClassName="animate-in fade-in"
                                 outClassName="animate-out fade-out"
                             >
-                                <InsertMenu />
+                                <PaletteMenu />
                             </Transition>
                         </div>
                     </div>
@@ -371,7 +371,7 @@ export const CodeEditor = (props: {
                     <Runner
                         ref={runnerRef}
                         options={runOptions}
-                        runtime={Turtle} // TODO
+                        runtime={undefined} // TODO
                         hasFocus={runnerHasFocus}
                         onFocus={() => setRunnerHasFocus(true)}
                         onBlur={() => setRunnerHasFocus(false)}
@@ -385,28 +385,41 @@ export const CodeEditor = (props: {
     );
 };
 
-const InsertMenu = () => {
-    const [isExpanded, setExpanded] = useState(false);
+const PaletteMenu = () => {
+    const [Selection, setSelection] = useState<React.FC<{ onClose: () => void }>>();
 
     return (
-        <Tooltip description="Insert" disabled={isExpanded}>
+        <Tooltip description="Palette" disabled={Selection != null}>
             <MenuContainer>
                 <Animated direction="horizontal">
-                    {isExpanded ? (
+                    {Selection ? (
                         <div className="px-1">
-                            <Palette onClose={() => setExpanded(false)} />
+                            <Selection onClose={() => setSelection(undefined)} />
                         </div>
                     ) : (
-                        <button
-                            className="group hover:bg-gray-100 dark:hover:bg-gray-800 h-[28px] mt-[2px] transition-colors"
-                            onClick={() => setExpanded(true)}
-                        >
-                            <div className="flex flex-row px-1 ml-3">
-                                <ColorBlock className="bg-red-500 z-[3] group-hover:-rotate-[5deg] group-hover:-translate-x-0.5" />
-                                <ColorBlock className="bg-green-500 z-[2] group-hover:rotate-[5deg]" />
-                                <ColorBlock className="bg-blue-500 z-[1] group-hover:-rotate-[10deg] group-hover:translate-x-0.5" />
-                            </div>
-                        </button>
+                        <div className="flex flex-row items-center">
+                            <button
+                                className="group h-[28px] mt-[2px] transition-colors"
+                                onClick={() => setSelection(() => AssetPalette)}
+                            >
+                                <div className="flex flex-row px-1 ml-3 mb-0.5">
+                                    <ColorBlock className="bg-red-500 z-[3] group-hover:-rotate-[5deg] group-hover:-translate-x-0.5" />
+                                    <ColorBlock className="bg-green-500 z-[2] group-hover:rotate-[5deg]" />
+                                    <ColorBlock className="bg-blue-500 z-[1] group-hover:-rotate-[10deg] group-hover:translate-x-0.5" />
+                                </div>
+                            </button>
+
+                            <div className="rounded-full border-l-2 border-gray-100 dark:border-gray-800 h-[18px]" />
+
+                            <button
+                                className="group hover:scale-110 h-[28px] mt-[2px] transition-all"
+                                onClick={() => setSelection(() => SnippetPalette)}
+                            >
+                                <div className="flex items-center px-1 mb-0.5">
+                                    <code className="text-xs">abc</code>
+                                </div>
+                            </button>
+                        </div>
                     )}
                 </Animated>
             </MenuContainer>

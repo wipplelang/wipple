@@ -38,7 +38,7 @@ export const Asset = (props: {
 
 const ColorAsset = (props: { color: string }) => (
     <Tooltip description={props.color}>
-        <div className="ui-font w-4 h-4" style={{ backgroundColor: props.color }} />
+        <div className="w-4 h-4" style={{ backgroundColor: props.color }} />
     </Tooltip>
 );
 

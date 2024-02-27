@@ -46,7 +46,7 @@ const editableFromConfig = (config: { readOnly: boolean }): Extension => [
                           return;
                       }
 
-                      const snippet = event.dataTransfer.getData("wipple/snippet");
+                      let snippet = event.dataTransfer.getData("wipple/snippet");
                       if (!snippet) {
                           return;
                       }
@@ -56,17 +56,41 @@ const editableFromConfig = (config: { readOnly: boolean }): Extension => [
                           false,
                       );
 
-                      const padding = (s: string) => (s === "" || /\s/.test(s) ? "" : " ");
-                      const leftPadding = padding(view.state.sliceDoc(position - 1, position));
-                      const rightPadding = padding(view.state.sliceDoc(position, position + 1));
+                      if (
+                          !view.state.selection.main.empty &&
+                          position >= view.state.selection.main.from &&
+                          position <= view.state.selection.main.to
+                      ) {
+                          snippet = snippet.replace(
+                              "_",
+                              view.state.sliceDoc(
+                                  view.state.selection.main.from,
+                                  view.state.selection.main.to,
+                              ),
+                          );
 
-                      view.dispatch({
-                          changes: {
-                              from: position,
-                              to: position,
-                              insert: leftPadding + snippet + rightPadding,
-                          },
-                      });
+                          view.dispatch({
+                              changes: {
+                                  from: view.state.selection.main.from,
+                                  to: view.state.selection.main.to,
+                                  insert: snippet,
+                              },
+                          });
+                      } else {
+                          snippet = snippet.replace("_", "...");
+
+                          const padding = (s: string) => (s === "" || /\s/.test(s) ? "" : " ");
+                          const leftPadding = padding(view.state.sliceDoc(position - 1, position));
+                          const rightPadding = padding(view.state.sliceDoc(position, position + 1));
+
+                          view.dispatch({
+                              changes: {
+                                  from: position,
+                                  to: position,
+                                  insert: leftPadding + snippet + rightPadding,
+                              },
+                          });
+                      }
                   },
               }),
               dropCursor(),
