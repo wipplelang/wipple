@@ -1,4 +1,55 @@
+import { useMemo } from "react";
 import { Tooltip } from "../../components";
+import namer from "color-namer";
+import {
+    slate,
+    gray,
+    zinc,
+    neutral,
+    stone,
+    red,
+    orange,
+    amber,
+    yellow,
+    lime,
+    green,
+    emerald,
+    teal,
+    cyan,
+    sky,
+    blue,
+    indigo,
+    violet,
+    purple,
+    fuchsia,
+    pink,
+    rose,
+} from "tailwindcss/colors";
+
+const colors = {
+    slate: slate,
+    gray: gray,
+    zinc: zinc,
+    neutral: neutral,
+    stone: stone,
+    red: red,
+    orange: orange,
+    amber: amber,
+    yellow: yellow,
+    lime: lime,
+    green: green,
+    emerald: emerald,
+    teal: teal,
+    cyan: cyan,
+    sky: sky,
+    blue: blue,
+    indigo: indigo,
+    violet: violet,
+    purple: purple,
+    fuchsia: fuchsia,
+    pink: pink,
+    rose: rose,
+};
 
 export const isAsset = (value: string) => value.startsWith("{") && value.endsWith("}");
 
@@ -36,11 +87,30 @@ export const Asset = (props: {
     );
 };
 
-const ColorAsset = (props: { color: string }) => (
-    <Tooltip description={props.color}>
-        <div className="w-4 h-4" style={{ backgroundColor: props.color }} />
-    </Tooltip>
-);
+const ColorAsset = (props: { color: string }) => {
+    const colorName = useMemo(() => {
+        // Return named colors as-is
+        if (!props.color.startsWith("#")) {
+            return props.color;
+        }
+
+        // Then try Tailwind color names
+        for (const [name, shades] of Object.entries(colors)) {
+            if ((Object.values(shades) as string[]).includes(props.color)) {
+                return name;
+            }
+        }
+
+        // Finally, use the name of the closest named color
+        return namer(props.color, { pick: ["basic"] }).basic[0].name.toLowerCase();
+    }, [props.color]);
+
+    return (
+        <Tooltip description={colorName}>
+            <div className="w-4 h-4" style={{ backgroundColor: props.color }} />
+        </Tooltip>
+    );
+};
 
 const UnknownAsset = (props: { value: string }) => (
     <div className="ui-font w-4 h-4">{props.value}</div>
