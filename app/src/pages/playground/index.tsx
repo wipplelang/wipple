@@ -43,7 +43,10 @@ export const PlaygroundPage = () => {
         };
     }, [playground?.name]);
 
-    const [tempCode, setTempCode] = useState("");
+    const [tempCode, setTempCode] = useState(`repeat (4 times) (
+    forward (50 pixels)
+    left (90 degrees)
+)`);
 
     const theme = useMemo(() => defaultThemeConfig(), []);
 

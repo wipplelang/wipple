@@ -56,20 +56,13 @@ ceil : n -> semantics "pure" (intrinsic "ceil-number" n)
 sqrt :: Number -> Number
 sqrt : n -> semantics "pure" (intrinsic "sqrt-number" n)
 
-[An angle, represented in degrees or radians.]
+[An angle represented in degrees.]
 [convert-from : Number (_ degrees)]
-Angle : type (
-    Radians Number
-    Degrees Number
-)
-
-[An angle in radians.]
-radians :: Number -> Angle
-radians : Radians
+Angle : type (degrees :: Number)
 
 [An angle in degrees.]
 degrees :: Number -> Angle
-degrees : Degrees
+degrees : degrees -> (degrees : degrees)
 
 [Calculate the sine of an angle.]
 sin :: Angle -> Number

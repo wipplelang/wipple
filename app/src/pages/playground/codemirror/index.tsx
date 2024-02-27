@@ -1,9 +1,10 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { EditorView, minimalSetup } from "codemirror";
 import { placeholder, keymap, dropCursor } from "@codemirror/view";
 import { Compartment, EditorState, Extension } from "@codemirror/state";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
+import { indentOnInput } from "@codemirror/language";
 import { wippleLanguage } from "./language";
 import { ThemeConfig, theme, themeFromConfig } from "./theme";
 import { displayHelp, displayHelpFromEnabled } from "./help";
@@ -128,6 +129,7 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
                     keymap.of([...defaultKeymap, indentWithTab, ...closeBracketsKeymap]),
                     closeBrackets(),
+                    indentOnInput(),
 
                     placeholder("Write your code here!"),
 

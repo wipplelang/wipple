@@ -14,6 +14,7 @@ import { InterpreterError } from "wipple-interpreter";
 import { Runtime, RuntimeComponent } from "../../runtimes";
 import { MaterialSymbol } from "react-material-symbols";
 import { Diagnostic, Help, Output } from "../../models";
+import { Mutex } from "async-mutex";
 
 export interface RunOptions {
     dependenciesPath: string;
@@ -37,7 +38,8 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     const id = useId();
     const [code, setCode] = useDebounceValue(props.children, 300);
 
-    const runtime = useRef<Runtime | null>(null);
+    const runtimeMutexRef = useRef(new Mutex());
+    const runtimeRef = useRef<Runtime | null>(null);
 
     useEffect(() => {
         setCode(props.children);
@@ -53,10 +55,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     const clearOutput = () => {
         setOutput([]);
         setShowOutput(false);
-
-        if (runtime.current) {
-            runtime.current.reset();
-        }
     };
 
     const runnerWorker = useRef<Worker>();
@@ -144,7 +142,17 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
             const runnerWorker = resetRunnerWorker();
             clearOutput();
+
             setShowOutput(props.runtime != null);
+
+            if (runtimeRef.current) {
+                const mutex = runtimeMutexRef.current;
+                const runtime = runtimeRef.current;
+
+                await mutex.runExclusive(async () => {
+                    await runtime.initialize();
+                });
+            }
 
             await new Promise<void>((resolve) => {
                 runnerWorker.onmessage = async (event) => {
@@ -218,13 +226,18 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                         case "ui": {
                             const { message, value } = event.data;
 
-                            if (!runtime.current) {
+                            if (!runtimeRef.current) {
                                 throw new InterpreterError(
                                     "cannot send a UI message without a runtime",
                                 );
                             }
 
-                            const result = await runtime.current.onMessage(message, value);
+                            const mutex = runtimeMutexRef.current;
+                            const runtime = runtimeRef.current;
+
+                            const result = await mutex.runExclusive(async () => {
+                                return await runtime.onMessage(message, value);
+                            });
 
                             runnerWorker.postMessage({
                                 type: "response",
@@ -254,6 +267,15 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
             setShowRunAgain(showRunAgain);
         } catch (error) {
             console.error(error);
+        } finally {
+            if (runtimeRef.current) {
+                const mutex = runtimeMutexRef.current;
+                const runtime = runtimeRef.current;
+
+                await mutex.runExclusive(async () => {
+                    await runtime.cleanup();
+                });
+            }
         }
     }, [code, props.runtime, props.options, resetRunnerWorker, cachedBuiltinsHelp]);
 
@@ -294,7 +316,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
     return isRunning || showOutput ? (
         <div className="flex flex-col px-4 pb-4 gap-3">
-            {props.runtime ? <props.runtime id={id} ref={runtime} /> : null}
+            {props.runtime ? <props.runtime id={id} ref={runtimeRef} /> : null}
 
             {output.map((item, index) => {
                 let content: JSX.Element;

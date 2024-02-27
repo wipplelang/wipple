@@ -28,6 +28,7 @@ export const wippleLanguage = new LanguageSupport(
             closeBrackets: {
                 brackets: ["(", "[", "{", '"'],
             },
+            indentOnInput: /^\s*[\}\]\)]$/,
         },
     }),
 );

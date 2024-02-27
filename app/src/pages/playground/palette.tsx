@@ -1,5 +1,6 @@
 import { MaterialSymbol } from "react-material-symbols";
 import { Asset, isAsset } from "./asset";
+import React from "react";
 
 const assets = [`{color "#ef4444"}`, `{color "#22c55e"}`, `{color "#3b82f6"}`];
 const snippets = [`show _`, `repeat (1 times) (\n  _\n)`];
@@ -15,13 +16,12 @@ export const SnippetPalette = (props: { onClose: () => void }) => (
 const Palette = (props: { items: string[]; showSeparator?: boolean; onClose: () => void }) => (
     <div className="flex flex-row items-center gap-0.5">
         {props.items.map((item, index) => (
-            <>
+            <React.Fragment key={item}>
                 {props.showSeparator && index > 0 ? (
                     <div className="rounded-full mx-0.5 border-l-2 border-gray-100 dark:border-gray-800 h-[18px]" />
                 ) : null}
 
                 <div
-                    key={item}
                     draggable
                     onDragStart={(event) => {
                         event.dataTransfer.setData("wipple/snippet", item);
@@ -38,7 +38,7 @@ const Palette = (props: { items: string[]; showSeparator?: boolean; onClose: () 
                         </div>
                     )}
                 </div>
-            </>
+            </React.Fragment>
         ))}
 
         <button

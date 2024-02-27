@@ -1,4 +1,72 @@
-pi :: Number
-pi : 3.14
+[The distance (in pixels) the turtle should move.]
+[description : "a distance in `pixels`"]
+Distance : type (pixels :: Number)
 
-[TODO]
+[Specify a distance in pixels.]
+pixels :: Number -> Distance
+pixels : pixels -> (pixels : pixels)
+
+[Move the turtle forward by the specified distance.]
+forward :: Distance -> ()
+forward : (pixels : pixels) -> runtime-message "forward" pixels
+
+[Move the turtle backward by the specified distance.]
+backward :: Distance -> ()
+backward : (pixels : pixels) -> runtime-message "backward" pixels
+
+[An arc.]
+Arc : type (
+    radius :: Distance
+    angle :: Angle
+)
+
+[Move the turtle along an arc.]
+arc :: Arc -> ()
+arc : (
+    radius : (pixels : radius)
+    angle : (degrees : angle)
+) -> runtime-message "arc" (radius ; angle)
+
+[Rotate the turtle counterclockwise by the specified angle.]
+left :: Angle -> ()
+left : (degrees : degrees) -> runtime-message "left" degrees
+
+[Rotate the turtle clockwise by the specified angle.]
+right :: Angle -> ()
+right : (degrees : degrees) -> runtime-message "right" degrees
+
+[Set the pen color.]
+pen :: Color -> ()
+pen : (color : color) -> runtime-message "color" color
+
+[Draw a path and fill it with the specified color.]
+fill :: Result => Color -> defer Result -> Result
+fill : (color : color) -> body -> (
+    runtime-message "begin-path" ()
+    result : produce body
+    runtime-message "end-path" color
+    result
+)
+
+[The speed of the turtle, from `very-slow` to `very-fast`.]
+Speed : type (value :: Number)
+
+[A very slow speed.]
+very-slow :: Speed
+very-slow : (value : 0)
+
+[A slow speed.]
+slow :: Speed
+slow : (value : 0.25)
+
+[A fast speed.]
+fast :: Speed
+fast : (value : 0.75)
+
+[A very fast speed.]
+very-fast :: Speed
+very-fast : (value : 1)
+
+[Set the speed of the turtle.]
+speed :: Speed -> ()
+speed : (value : value) -> runtime-message "speed" value

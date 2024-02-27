@@ -1,6 +1,7 @@
 export interface Runtime {
-    reset: () => Promise<void>;
+    initialize: () => Promise<void>;
     onMessage: (message: string, value: any) => Promise<any>;
+    cleanup: () => Promise<void>;
 }
 
 export type RuntimeComponent = React.ForwardRefExoticComponent<

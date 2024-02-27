@@ -371,7 +371,7 @@ export const CodeEditor = (props: {
                     <Runner
                         ref={runnerRef}
                         options={runOptions}
-                        runtime={undefined} // TODO
+                        runtime={Turtle} // TODO
                         hasFocus={runnerHasFocus}
                         onFocus={() => setRunnerHasFocus(true)}
                         onBlur={() => setRunnerHasFocus(false)}
