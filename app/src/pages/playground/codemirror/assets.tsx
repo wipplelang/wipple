@@ -9,11 +9,18 @@ import {
 } from "@codemirror/view";
 import { Compartment, Range } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
-import { Asset } from "../asset";
+import { Asset } from "../assets";
 
 export const assets = new Compartment();
 
-export const assetsFromConfig = (config: { onClick: (type: string, value: string) => void }) =>
+export type AssetClickHandler = (config: {
+    start: number;
+    end: number;
+    type: string;
+    value: string;
+}) => void;
+
+export const assetsFromConfig = (config: { onClick: AssetClickHandler }) =>
     ViewPlugin.fromClass(
         class {
             decorations: DecorationSet;
@@ -40,7 +47,7 @@ export const assetsFromConfig = (config: { onClick: (type: string, value: string
         },
     );
 
-const getDecorations = (view: EditorView, onClick: (type: string, value: string) => void) => {
+const getDecorations = (view: EditorView, onClick: AssetClickHandler) => {
     const decorations: Range<Decoration>[] = [];
 
     syntaxTree(view.state).iterate({
@@ -75,7 +82,7 @@ class AssetWidget extends WidgetType {
         public from: number,
         public to: number,
         public code: string,
-        public onClick: (type: string, value: string) => void,
+        public onClick: AssetClickHandler,
     ) {
         super();
     }
@@ -93,7 +100,19 @@ class AssetWidget extends WidgetType {
         const container = document.createElement("span");
 
         this.root = ReactDOM.createRoot(container);
-        this.root.render(<AssetWidgetComponent code={this.code} onClick={this.onClick} />);
+        this.root.render(
+            <AssetWidgetComponent
+                code={this.code}
+                onClick={(type, value) =>
+                    this.onClick({
+                        start: this.from,
+                        end: this.to,
+                        type,
+                        value,
+                    })
+                }
+            />,
+        );
 
         return container;
     }

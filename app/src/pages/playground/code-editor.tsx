@@ -20,6 +20,9 @@ import { HelpAlert } from "./help-alert";
 import { AssetPalette, SnippetPalette } from "./palette";
 import { flushSync } from "react-dom";
 import { Turtle } from "../../runtimes";
+import { ColorPicker } from "./color-picker";
+import { AssetClickHandler } from "./codemirror/assets";
+import { colorAsset } from "./assets";
 
 export const CodeEditor = (props: {
     children: string;
@@ -167,8 +170,26 @@ export const CodeEditor = (props: {
         ));
     }, []);
 
-    const onClickAsset = useCallback((type: string, value: string) => {
-        console.log("asset clicked:", { type, value });
+    const onClickAsset: AssetClickHandler = useCallback(({ start, end, type, value }) => {
+        switch (type) {
+            case "color":
+                displayAlert(({ dismiss }) => (
+                    <ColorPicker
+                        selection={value}
+                        onDismiss={(color) => {
+                            codeMirrorRef.current?.editorView.dispatch({
+                                changes: { from: start, to: end, insert: colorAsset(color) },
+                            });
+
+                            dismiss();
+                        }}
+                    />
+                ));
+
+                break;
+            default:
+                break;
+        }
     }, []);
 
     return (
@@ -371,7 +392,7 @@ export const CodeEditor = (props: {
                     <Runner
                         ref={runnerRef}
                         options={runOptions}
-                        runtime={Turtle} // TODO
+                        runtime={Turtle}
                         hasFocus={runnerHasFocus}
                         onFocus={() => setRunnerHasFocus(true)}
                         onBlur={() => setRunnerHasFocus(false)}

@@ -10,7 +10,7 @@ import { ThemeConfig, theme, themeFromConfig } from "./theme";
 import { displayHelp, displayHelpFromEnabled } from "./help";
 import { Diagnostic, Help } from "../../../models";
 import { diagnostics, diagnosticsFromConfig } from "./diagnostics";
-import { assets, assetsFromConfig } from "./assets";
+import { AssetClickHandler, assets, assetsFromConfig } from "./assets";
 
 export interface CodeMirrorProps {
     children: string;
@@ -19,7 +19,7 @@ export interface CodeMirrorProps {
     quickHelpEnabled: boolean;
     onClickQuickHelp: (help: Help) => void;
     help: (code: string) => Help | undefined;
-    onClickAsset: (type: string, value: string) => void;
+    onClickAsset: AssetClickHandler;
     readOnly: boolean;
     diagnostics: Diagnostic[];
     theme: ThemeConfig;

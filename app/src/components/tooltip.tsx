@@ -18,6 +18,7 @@ export const Tooltip = (
         disabled?: boolean;
         description: React.ReactNode;
         onClick?: () => void;
+        className?: string;
     }>,
 ) => {
     const [isHovering, setHovering] = useState(false);
@@ -36,10 +37,11 @@ export const Tooltip = (
                 return;
             }
 
-            setHovering(open);
-
             if (reason === "click") {
                 props.onClick?.();
+                setHovering(false);
+            } else {
+                setHovering(open);
             }
         },
         placement: "bottom",
@@ -64,13 +66,18 @@ export const Tooltip = (
 
     return (
         <>
-            <span ref={refs.setReference} {...getReferenceProps()}>
+            <span ref={refs.setReference} {...getReferenceProps()} className={props.className}>
                 {props.children}
             </span>
 
             {isHovering || debouncedHovering ? (
                 <FloatingPortal>
-                    <div ref={refs.setFloating} style={floatingStyles} {...getFloatingProps()}>
+                    <div
+                        ref={refs.setFloating}
+                        style={floatingStyles}
+                        {...getFloatingProps()}
+                        className="z-20"
+                    >
                         <div style={{ marginTop: 4 }}>
                             <TooltipContent open={isHovering && debouncedHovering}>
                                 {props.description}

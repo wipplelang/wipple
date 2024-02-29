@@ -1,5 +1,5 @@
 import { MaterialSymbol } from "react-material-symbols";
-import { Asset, isAsset } from "./asset";
+import { Asset, isAsset } from "./assets";
 import React from "react";
 
 const assets = [`{color "#ef4444"}`, `{color "#22c55e"}`, `{color "#3b82f6"}`];

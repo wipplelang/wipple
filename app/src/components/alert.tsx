@@ -36,8 +36,7 @@ export const AlertProvider = (props: React.PropsWithChildren<{}>) => {
             <div
                 className={`absolute inset-0 transition ${
                     Contents ? "bg-black bg-opacity-10 backdrop-blur" : "pointer-events-none"
-                }`}
-                style={{ zIndex: 9999 }}
+                } z-10`}
             >
                 <div className="flex items-center justify-center w-screen h-screen p-4">
                     <Transition
