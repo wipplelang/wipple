@@ -208,8 +208,8 @@ pub enum TypeDescriptor<D: Driver> {
     /// A tuple type.
     Tuple(Vec<TypeDescriptor<D>>),
 
-    /// The type of a defer value.
-    Deferred(Box<TypeDescriptor<D>>),
+    /// The type of a block value.
+    Block(Box<TypeDescriptor<D>>),
 }
 
 impl<D: Driver> std::fmt::Display for Instruction<D>
@@ -312,7 +312,7 @@ where
                     .collect::<Vec<_>>()
                     .join(" , "),
             ),
-            TypeDescriptor::Deferred(r#type) => write!(f, "(defer {type})"),
+            TypeDescriptor::Block(r#type) => write!(f, "{{{type}}}"),
         }
     }
 }

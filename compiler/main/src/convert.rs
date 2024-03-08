@@ -96,8 +96,8 @@ pub mod interface {
             wipple_typecheck::Type::Tuple(elements) => {
                 wipple_lower::Type::Tuple(elements.into_iter().map(convert_type).collect())
             }
-            wipple_typecheck::Type::Deferred(r#type) => {
-                wipple_lower::Type::Deferred(convert_type(r#type.unboxed()).boxed())
+            wipple_typecheck::Type::Block(r#type) => {
+                wipple_lower::Type::Block(convert_type(r#type.unboxed()).boxed())
             }
         })
     }
@@ -335,7 +335,7 @@ pub mod lower {
                 elements.into_iter().map(convert_type).collect(),
             ),
             wipple_syntax::Type::Block(r#type) => {
-                wipple_lower::UnresolvedType::Deferred(convert_type(r#type.unboxed()).boxed())
+                wipple_lower::UnresolvedType::Block(convert_type(r#type.unboxed()).boxed())
             }
         })
     }
@@ -705,8 +705,8 @@ pub mod typecheck {
             wipple_lower::Type::Tuple(elements) => {
                 wipple_typecheck::Type::Tuple(elements.into_iter().map(convert_type).collect())
             }
-            wipple_lower::Type::Deferred(r#type) => {
-                wipple_typecheck::Type::Deferred(convert_type(r#type.unboxed()).boxed())
+            wipple_lower::Type::Block(r#type) => {
+                wipple_typecheck::Type::Block(convert_type(r#type.unboxed()).boxed())
             }
         })
     }

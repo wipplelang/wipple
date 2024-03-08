@@ -1147,77 +1147,58 @@ fn resolve_type<D: Driver>(
     r#type: WithInfo<D::Info, crate::UnresolvedType<D>>,
     info: &mut Info<D>,
 ) -> WithInfo<D::Info, crate::Type<D>> {
-    fn resolve_type_inner<D: Driver>(
-        r#type: WithInfo<D::Info, crate::UnresolvedType<D>>,
-        is_function_input: bool,
-        info: &mut Info<D>,
-    ) -> WithInfo<D::Info, crate::Type<D>> {
-        let type_info = r#type.info.clone();
+    r#type.map(|r#type| match r#type {
+        crate::UnresolvedType::Error => crate::Type::Error,
+        crate::UnresolvedType::Placeholder => crate::Type::Placeholder,
+        crate::UnresolvedType::Declared { name, parameters } => {
+            let name = match name.try_unwrap() {
+                Some(name) => name,
+                None => return crate::Type::Error,
+            };
 
-        r#type.map(|r#type| match r#type {
-            crate::UnresolvedType::Error => crate::Type::Error,
-            crate::UnresolvedType::Placeholder => crate::Type::Placeholder,
-            crate::UnresolvedType::Declared { name, parameters } => {
-                let name = match name.try_unwrap() {
-                    Some(name) => name,
-                    None => return crate::Type::Error,
-                };
-
-                match resolve_name(name, info, |candidates| {
-                    candidates
-                        .iter()
-                        .filter_map(|path| match path.item.last().unwrap() {
-                            crate::PathComponent::Type(_)
-                            | crate::PathComponent::TypeParameter(_) => Some(path.clone()),
-                            _ => None,
-                        })
-                        .collect::<Vec<_>>()
-                }) {
-                    Some(path) => match path.item.last().unwrap() {
-                        crate::PathComponent::Type(_) => crate::Type::Declared {
-                            path,
-                            parameters: parameters
-                                .into_iter()
-                                .map(|parameter| resolve_type_inner(parameter, false, info))
-                                .collect(),
-                        },
-                        crate::PathComponent::TypeParameter(_) => crate::Type::Parameter(path.item), // FIXME: disallow parameters passed to type parameters
-                        _ => unreachable!(),
+            match resolve_name(name, info, |candidates| {
+                candidates
+                    .iter()
+                    .filter_map(|path| match path.item.last().unwrap() {
+                        crate::PathComponent::Type(_) | crate::PathComponent::TypeParameter(_) => {
+                            Some(path.clone())
+                        }
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+            }) {
+                Some(path) => match path.item.last().unwrap() {
+                    crate::PathComponent::Type(_) => crate::Type::Declared {
+                        path,
+                        parameters: parameters
+                            .into_iter()
+                            .map(|parameter| resolve_type(parameter, info))
+                            .collect(),
                     },
-                    None => crate::Type::Error,
-                }
+                    crate::PathComponent::TypeParameter(_) => crate::Type::Parameter(path.item), // FIXME: disallow parameters passed to type parameters
+                    _ => unreachable!(),
+                },
+                None => crate::Type::Error,
             }
-            crate::UnresolvedType::Function { inputs, output } => crate::Type::Function {
-                inputs: inputs
-                    .into_iter()
-                    .map(|input| resolve_type_inner(input, true, info))
-                    .collect(),
-                output: resolve_type_inner(output.unboxed(), false, info).boxed(),
-            },
-            crate::UnresolvedType::Tuple(elements) => crate::Type::Tuple(
-                elements
-                    .into_iter()
-                    .map(|element| resolve_type_inner(element, false, info))
-                    .collect(),
-            ),
-            crate::UnresolvedType::Deferred(r#type) => {
-                let r#type = resolve_type_inner(r#type.unboxed(), false, info);
-
-                if is_function_input {
-                    crate::Type::Deferred(r#type.boxed())
-                } else {
-                    info.errors.push(WithInfo {
-                        info: type_info,
-                        item: crate::Diagnostic::InvalidDeferredType,
-                    });
-
-                    r#type.item
-                }
-            }
-        })
-    }
-
-    resolve_type_inner(r#type, false, info)
+        }
+        crate::UnresolvedType::Function { inputs, output } => crate::Type::Function {
+            inputs: inputs
+                .into_iter()
+                .map(|input| resolve_type(input, info))
+                .collect(),
+            output: resolve_type(output.unboxed(), info).boxed(),
+        },
+        crate::UnresolvedType::Tuple(elements) => crate::Type::Tuple(
+            elements
+                .into_iter()
+                .map(|element| resolve_type(element, info))
+                .collect(),
+        ),
+        crate::UnresolvedType::Block(r#type) => {
+            let r#type = resolve_type(r#type.unboxed(), info);
+            crate::Type::Block(r#type.boxed())
+        }
+    })
 }
 
 fn resolve_type_parameter<D: Driver>(

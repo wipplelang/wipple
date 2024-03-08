@@ -422,8 +422,8 @@ pub fn type_descriptor<D: crate::Driver>(
                 .map(|r#type| type_descriptor(&r#type.item))
                 .collect::<Option<_>>()?,
         )),
-        wipple_typecheck::Type::Deferred(r#type) => Some(crate::TypeDescriptor::Deferred(
-            Box::new(type_descriptor(&r#type.item)?),
-        )),
+        wipple_typecheck::Type::Block(r#type) => Some(crate::TypeDescriptor::Block(Box::new(
+            type_descriptor(&r#type.item)?,
+        ))),
     }
 }

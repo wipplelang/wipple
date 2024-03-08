@@ -471,7 +471,7 @@ pub enum Type<D: Driver> {
     /// A tuple type.
     Tuple(Vec<WithInfo<D::Info, Type<D>>>),
 
-    /// A type whose values are computed later.
+    /// A type whose values are computed by a block.
     Block(WithInfo<D::Info, Box<Type<D>>>),
 }
 

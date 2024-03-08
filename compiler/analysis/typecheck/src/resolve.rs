@@ -208,7 +208,7 @@ pub fn resolve<D: Driver>(
             if !substituted_defaults {
                 if item_declaration.item.top_level {
                     // The top level has type `()` by default, but any other type is also OK
-                    let _ = unify_ignoring_coercion(
+                    let _ = unify(
                         driver,
                         &queued.body.item.r#type,
                         &Type::new(
@@ -388,7 +388,7 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
     {
         let r#type = instantiation_context.type_for_parameter(driver, &trait_parameter);
 
-        assert!(unify_ignoring_coercion(
+        assert!(unify(
             driver,
             &r#type,
             &infer_type(instance_parameter.as_ref(), role.clone(), None),
@@ -538,7 +538,7 @@ impl<D: Driver> Type<D> {
             TypeKind::Tuple(elements) => elements
                 .iter()
                 .any(|r#type| r#type.contains_variable(variable)),
-            TypeKind::Deferred(r#type) => r#type.contains_variable(variable),
+            TypeKind::Block(r#type) => r#type.contains_variable(variable),
             TypeKind::Opaque(_) | TypeKind::Parameter(_) | TypeKind::Unknown => false,
         }
     }
@@ -589,7 +589,7 @@ impl<D: Driver> Type<D> {
                     r#type.apply_in_context_mut(context);
                 }
             }
-            TypeKind::Deferred(r#type) => {
+            TypeKind::Block(r#type) => {
                 r#type.apply_in_context_mut(context);
             }
             TypeKind::Unknown => {}
@@ -612,7 +612,7 @@ enum TypeKind<D: Driver> {
         output: Box<Type<D>>,
     },
     Tuple(Vec<Type<D>>),
-    Deferred(Box<Type<D>>),
+    Block(Box<Type<D>>),
     Unknown,
 }
 
@@ -811,7 +811,7 @@ impl<D: Driver> Type<D> {
                     r#type.instantiate_mut(driver, instantiation_context);
                 }
             }
-            TypeKind::Deferred(r#type) => {
+            TypeKind::Block(r#type) => {
                 r#type.instantiate_mut(driver, instantiation_context);
             }
             TypeKind::Unknown => {}
@@ -851,7 +851,7 @@ impl<D: Driver> Type<D> {
                     r#type.instantiate_opaque_in_context_mut(context);
                 }
             }
-            TypeKind::Deferred(r#type) => {
+            TypeKind::Block(r#type) => {
                 r#type.instantiate_opaque_in_context_mut(context);
             }
             TypeKind::Unknown => {}
@@ -932,13 +932,7 @@ impl<D: Driver> TypeVariable<D> {
 #[derive(Clone, Copy, Default)]
 #[non_exhaustive]
 struct UnifyOptions {
-    allow_coercion: bool,
     require_equal_type_parameters: bool,
-}
-
-#[derive(Debug, Clone, Default)]
-struct Coercion {
-    deferred: bool,
 }
 
 #[must_use]
@@ -948,7 +942,7 @@ fn unify_with_options<D: Driver>(
     expected_type: &Type<D>,
     context: &TypeContext<D>,
     options: UnifyOptions,
-) -> Option<Coercion> {
+) -> bool {
     fn unify_variable<D: Driver>(
         variable: &TypeVariable<D>,
         r#type: &Type<D>,
@@ -981,7 +975,6 @@ fn unify_with_options<D: Driver>(
         driver: &D,
         r#type: &Type<D>,
         expected_type: &Type<D>,
-        allow_coercion: bool,
         context: &TypeContext<D>,
         options: UnifyOptions,
     ) -> bool {
@@ -991,17 +984,6 @@ fn unify_with_options<D: Driver>(
         match (&r#type.kind, &expected_type.kind) {
             // Opaque types don't unify with anything
             (TypeKind::Opaque(_), _) | (_, TypeKind::Opaque(_)) => true,
-
-            // `A` is a subtype of `defer A`. All expressions of type `A`
-            // are wrapped in `Deferred` during finalization
-            (TypeKind::Deferred(r#type), TypeKind::Deferred(expected_type)) => {
-                unify_inner(driver, r#type, expected_type, false, context, options)
-            }
-            (_, TypeKind::Deferred(expected_type)) if allow_coercion => {
-                // The value will be coerced to `defer` during finalization
-                options.allow_coercion
-                    && unify_inner(driver, &r#type, expected_type, false, context, options)
-            }
 
             // Type variables unify with anything and are substituted with the
             // other type in `apply_in_context`
@@ -1022,7 +1004,7 @@ fn unify_with_options<D: Driver>(
             }
             (_, TypeKind::Parameter(_)) | (TypeKind::Parameter(_), _) => false,
 
-            // Unify declared types, functions and tuples structurally
+            // Unify declared types, functions, blocks and tuples structurally
             (
                 TypeKind::Declared { path, parameters },
                 TypeKind::Declared {
@@ -1037,7 +1019,7 @@ fn unify_with_options<D: Driver>(
                 assert_eq!(parameters.len(), expected_parameters.len());
                 let mut unified = true;
                 for (r#type, expected_type) in parameters.iter().zip(expected_parameters) {
-                    unified &= unify_inner(driver, r#type, expected_type, false, context, options);
+                    unified &= unify_inner(driver, r#type, expected_type, context, options);
                 }
 
                 unified
@@ -1055,10 +1037,13 @@ fn unify_with_options<D: Driver>(
 
                 let mut unified = true;
                 for (r#type, expected_type) in inputs.iter().zip(expected_inputs) {
-                    unified &= unify_inner(driver, r#type, expected_type, false, context, options);
+                    unified &= unify_inner(driver, r#type, expected_type, context, options);
                 }
 
-                unified & unify_inner(driver, output, expected_output, false, context, options)
+                unified & unify_inner(driver, output, expected_output, context, options)
+            }
+            (TypeKind::Block(r#type), TypeKind::Block(expected_type)) => {
+                unify_inner(driver, r#type, expected_type, context, options)
             }
             (TypeKind::Tuple(elements), TypeKind::Tuple(expected_elements)) => {
                 if elements.len() != expected_elements.len() {
@@ -1067,7 +1052,7 @@ fn unify_with_options<D: Driver>(
 
                 let mut unified = true;
                 for (r#type, expected_type) in elements.iter().zip(expected_elements) {
-                    unified &= unify_inner(driver, r#type, expected_type, false, context, options);
+                    unified &= unify_inner(driver, r#type, expected_type, context, options);
                 }
 
                 unified
@@ -1081,40 +1066,11 @@ fn unify_with_options<D: Driver>(
         }
     }
 
-    unify_inner(driver, r#type, expected_type, true, context, options).then(|| {
-        let mut coercion = Coercion::default();
-
-        if matches!(expected_type.kind, TypeKind::Deferred(_))
-            && !matches!(r#type.kind, TypeKind::Deferred(_))
-        {
-            coercion.deferred = true;
-        }
-
-        coercion
-    })
+    unify_inner(driver, r#type, expected_type, context, options)
 }
 
 #[must_use]
-fn unify_with_coercion<D: Driver>(
-    driver: &D,
-    r#type: &Type<D>,
-    expected_type: &Type<D>,
-    context: &TypeContext<D>,
-) -> Option<Coercion> {
-    unify_with_options(
-        driver,
-        r#type,
-        expected_type,
-        context,
-        UnifyOptions {
-            allow_coercion: true,
-            ..Default::default()
-        },
-    )
-}
-
-#[must_use]
-fn unify_ignoring_coercion<D: Driver>(
+fn unify<D: Driver>(
     driver: &D,
     r#type: &Type<D>,
     expected_type: &Type<D>,
@@ -1127,7 +1083,6 @@ fn unify_ignoring_coercion<D: Driver>(
         context,
         UnifyOptions::default(),
     )
-    .is_some()
 }
 
 #[must_use]
@@ -1140,7 +1095,7 @@ fn unify_parameters_with_options<D: Driver>(
 ) -> bool {
     let mut unified = true;
     for (r#type, expected_type) in parameters.iter().zip(expected_parameters) {
-        unified &= unify_with_options(driver, r#type, expected_type, context, options).is_some();
+        unified &= unify_with_options(driver, r#type, expected_type, context, options);
     }
 
     unified
@@ -1187,11 +1142,7 @@ fn try_unify_expression<D: Driver>(
     context: &TypeContext<D>,
     error_queue: &RefCell<Vec<WithInfo<D::Info, QueuedError<D>>>>,
 ) {
-    if let Some(coercion) =
-        unify_with_coercion(driver, &expression.item.r#type, expected_type, context)
-    {
-        expression.item.coercion = coercion;
-    } else {
+    if !unify(driver, &expression.item.r#type, expected_type, context) {
         error_queue.borrow_mut().push(WithInfo {
             info: expression.info.clone(),
             item: QueuedError::Mismatch {
@@ -1209,7 +1160,7 @@ fn try_unify_ignoring_coercion<D: Driver>(
     context: &TypeContext<D>,
     error_queue: &RefCell<Vec<WithInfo<D::Info, QueuedError<D>>>>,
 ) {
-    if !unify_ignoring_coercion(driver, r#type.item, expected_type, context) {
+    if !unify(driver, r#type.item, expected_type, context) {
         error_queue.borrow_mut().push(WithInfo {
             info: r#type.info.clone(),
             item: QueuedError::Mismatch {
@@ -1230,7 +1181,7 @@ fn substitute_defaults<D: Driver>(
     match &mut r#type.kind {
         TypeKind::Variable(variable) => variable
             .default(context)
-            .is_some_and(|default| unify_ignoring_coercion(driver, r#type, &default, context)),
+            .is_some_and(|default| unify(driver, r#type, &default, context)),
         TypeKind::Declared { parameters, .. } => {
             for r#type in parameters {
                 if substitute_defaults(driver, r#type, context) {
@@ -1258,7 +1209,7 @@ fn substitute_defaults<D: Driver>(
 
             false
         }
-        TypeKind::Deferred(r#type) => substitute_defaults(driver, r#type, context),
+        TypeKind::Block(r#type) => substitute_defaults(driver, r#type, context),
         TypeKind::Opaque(_) | TypeKind::Parameter(_) | TypeKind::Unknown => false,
     }
 }
@@ -1269,7 +1220,6 @@ fn substitute_defaults<D: Driver>(
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 struct Expression<D: Driver> {
     r#type: Type<D>,
-    coercion: Coercion,
     kind: ExpressionKind<D>,
 }
 
@@ -1407,8 +1357,8 @@ fn infer_type<D: Driver>(
                     .map(|r#type| infer_type(r#type.as_ref(), None, type_context))
                     .collect(),
             ),
-            crate::Type::Deferred(r#type) => {
-                TypeKind::Deferred(Box::new(infer_type(r#type.as_deref(), None, type_context)))
+            crate::Type::Block(r#type) => {
+                TypeKind::Block(Box::new(infer_type(r#type.as_deref(), None, type_context)))
             }
             crate::Type::Unknown(_) => match type_context {
                 Some(type_context) => TypeKind::Variable(type_context.variable()),
@@ -1442,7 +1392,6 @@ fn infer_expression<D: Driver>(
     let mut expression = expression.map(|expression| match expression {
         crate::UntypedExpression::Unknown => Expression {
             r#type: Type::new(TypeKind::Unknown, info.clone(), Vec::new()),
-            coercion: Default::default(),
             kind: ExpressionKind::Unknown(None),
         },
         crate::UntypedExpression::Annotate { value, r#type } => {
@@ -1474,7 +1423,6 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
-                coercion: Default::default(),
                 kind: ExpressionKind::Variable(name, variable),
             }
         }
@@ -1498,7 +1446,6 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
-                coercion: Default::default(),
                 kind: ExpressionKind::UnresolvedConstant(path),
             }
         }
@@ -1522,7 +1469,6 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
-                coercion: Default::default(),
                 kind: ExpressionKind::UnresolvedTrait(path),
             }
         }
@@ -1544,7 +1490,6 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
-                coercion: Default::default(),
                 kind: ExpressionKind::Number(number),
             }
         }
@@ -1566,7 +1511,6 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
-                coercion: Default::default(),
                 kind: ExpressionKind::Text(text),
             }
         }
@@ -1581,7 +1525,7 @@ fn infer_expression<D: Driver>(
 
                     if index + 1 < statement_count {
                         // Statements have type `()` by default, but any other type is also OK
-                        let _ = unify_ignoring_coercion(
+                        let _ = unify(
                             context.driver,
                             &statement.item.r#type,
                             &Type::new(
@@ -1612,8 +1556,7 @@ fn infer_expression<D: Driver>(
             );
 
             Expression {
-                r#type,
-                coercion: Default::default(),
+                r#type: Type::new(TypeKind::Block(Box::new(r#type)), info.clone(), Vec::new()),
                 kind: ExpressionKind::Block(statements),
             }
         }
@@ -1649,7 +1592,6 @@ fn infer_expression<D: Driver>(
                     info.clone(),
                     Vec::new(),
                 ),
-                coercion: Default::default(),
                 kind: ExpressionKind::Function {
                     inputs,
                     body: body.boxed(),
@@ -1680,7 +1622,6 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
-                coercion: Default::default(),
                 kind: ExpressionKind::Call {
                     function: function.boxed(),
                     inputs,
@@ -1726,7 +1667,6 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
-                coercion: Default::default(),
                 kind: ExpressionKind::When {
                     input: input.boxed(),
                     arms,
@@ -1739,7 +1679,6 @@ fn infer_expression<D: Driver>(
                 info.clone(),
                 Vec::new(),
             ),
-            coercion: Default::default(),
             kind: ExpressionKind::Intrinsic {
                 name,
                 inputs: inputs
@@ -1759,7 +1698,6 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type: Type::new(TypeKind::Tuple(Vec::new()), info.clone(), Vec::new()),
-                coercion: Default::default(),
                 kind: ExpressionKind::Initialize {
                     pattern,
                     value: value.boxed(),
@@ -1772,7 +1710,6 @@ fn infer_expression<D: Driver>(
                 info.clone(),
                 Vec::new(),
             ),
-            coercion: Default::default(),
             kind: ExpressionKind::UnresolvedStructure(
                 fields
                     .into_iter()
@@ -1848,7 +1785,6 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type,
-                coercion: Default::default(),
                 kind: ExpressionKind::Variant { variant, values },
             }
         }
@@ -1869,7 +1805,6 @@ fn infer_expression<D: Driver>(
                     info.clone(),
                     Vec::new(),
                 ),
-                coercion: Default::default(),
                 kind: ExpressionKind::Tuple(elements),
             }
         }
@@ -1910,7 +1845,6 @@ fn infer_expression<D: Driver>(
                         info: expression.info.clone(),
                         item: Expression {
                             r#type: collection_type.clone(),
-                            coercion: Default::default(),
                             kind: ExpressionKind::Call {
                                 function: WithInfo {
                                     info: current.info.clone(),
@@ -1923,7 +1857,6 @@ fn infer_expression<D: Driver>(
                                             current.info.clone(),
                                             Vec::new(),
                                         ),
-                                        coercion: Default::default(),
                                         kind: ExpressionKind::Call {
                                             function: build_collection_trait.boxed(),
                                             inputs: vec![expression],
@@ -1970,7 +1903,6 @@ fn infer_expression<D: Driver>(
                                     value.info.clone(),
                                     Vec::new(),
                                 ),
-                                coercion: Default::default(),
                                 kind: ExpressionKind::Call {
                                     function: show_trait.boxed(),
                                     inputs: vec![value],
@@ -1983,7 +1915,6 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type: text_type,
-                coercion: Default::default(),
                 kind: ExpressionKind::Format { segments, trailing },
             }
         }
@@ -1992,7 +1923,6 @@ fn infer_expression<D: Driver>(
 
             Expression {
                 r#type: body.item.r#type.clone(),
-                coercion: Default::default(),
                 kind: ExpressionKind::Semantics {
                     name,
                     body: body.boxed(),
@@ -2105,7 +2035,7 @@ fn resolve_pattern<D: Driver>(
                     );
 
                     for (path, r#type) in type_declaration.item.parameters.iter().zip(parameters) {
-                        assert!(unify_ignoring_coercion(
+                        assert!(unify(
                             context.driver,
                             &instantiation_context.type_for_parameter(context.driver, path),
                             r#type,
@@ -2166,7 +2096,7 @@ fn resolve_pattern<D: Driver>(
                     );
 
                     for (path, r#type) in type_declaration.item.parameters.iter().zip(parameters) {
-                        assert!(unify_ignoring_coercion(
+                        assert!(unify(
                             context.driver,
                             &instantiation_context.type_for_parameter(context.driver, path),
                             r#type,
@@ -2369,7 +2299,6 @@ fn instantiated_language_trait<D: Driver>(
                 info: info.clone(),
                 item: Expression {
                     r#type: Type::new(TypeKind::Unknown, info.clone(), Vec::new()),
-                    coercion: Default::default(),
                     kind: ExpressionKind::Unknown(None),
                 },
             }
@@ -2400,7 +2329,6 @@ fn instantiated_language_constant<D: Driver>(
                 info: info.clone(),
                 item: Expression {
                     r#type: Type::new(TypeKind::Unknown, info.clone(), Vec::new()),
-                    coercion: Default::default(),
                     kind: ExpressionKind::Unknown(None),
                 },
             }
@@ -2885,7 +2813,6 @@ fn resolve_expression<D: Driver>(
         info: expression.info,
         item: Expression {
             r#type: expression.item.r#type,
-            coercion: expression.item.coercion,
             kind,
         },
     }
@@ -2973,7 +2900,7 @@ fn resolve_item<D: Driver>(
                             // Attempt to get a better error message by unifying the
                             // declared type with the use type again, now that the
                             // bounds have influenced the type
-                            if !unify_ignoring_coercion(
+                            if !unify(
                                 context.driver,
                                 &use_type,
                                 &instantiated_declared_type,
@@ -3389,7 +3316,7 @@ fn finalize_type<D: Driver>(
                         .map(|r#type| finalize_type_inner(r#type, context, fully_resolved))
                         .collect(),
                 ),
-                TypeKind::Deferred(r#type) => crate::Type::Deferred(
+                TypeKind::Block(r#type) => crate::Type::Block(
                     finalize_type_inner(*r#type, context, fully_resolved).boxed(),
                 ),
                 TypeKind::Unknown => {
@@ -3597,25 +3524,10 @@ fn finalize_expression<D: Driver>(
 
     let r#type = finalize_type(expression.item.r#type.clone(), context).item;
 
-    let Coercion { deferred: defer } = expression.item.coercion;
-
-    let mut expression = WithInfo {
+    WithInfo {
         info: expression.info,
         item: crate::TypedExpression { r#type, kind },
-    };
-
-    if defer {
-        expression.item.r#type = crate::Type::Deferred(
-            expression
-                .as_ref()
-                .replace(expression.item.r#type.clone())
-                .boxed(),
-        );
-
-        expression.item.kind = crate::TypedExpressionKind::Deferred(expression.clone().boxed());
     }
-
-    expression
 }
 
 fn finalize_instance<D: Driver>(
@@ -3686,7 +3598,7 @@ fn debug_type<D: Driver>(r#type: &Type<D>, context: &TypeContext<D>) -> String {
                 result
             })
         ),
-        TypeKind::Deferred(r#type) => format!("(defer {})", debug_type(&r#type, context)),
+        TypeKind::Block(r#type) => format!("{{{}}}", debug_type(&r#type, context)),
         TypeKind::Unknown => String::from("_"),
     }
 }

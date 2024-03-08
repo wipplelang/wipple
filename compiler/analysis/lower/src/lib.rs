@@ -130,12 +130,6 @@ pub enum Diagnostic {
 
     /// Language declarations must be at the top level.
     NestedLanguageDeclaration,
-
-    /// The function composition operator `|` expects inputs on both sides.
-    InvalidComposition,
-
-    /// `defer` may only appear on the input to a function.
-    InvalidDeferredType,
 }
 
 /// An unresolved file.
@@ -497,8 +491,8 @@ pub enum UnresolvedType<D: Driver> {
     /// A tuple type.
     Tuple(Vec<WithInfo<D::Info, UnresolvedType<D>>>),
 
-    /// A type whose values are computed later.
-    Deferred(WithInfo<D::Info, Box<UnresolvedType<D>>>),
+    /// A type whose values are computed by a block.
+    Block(WithInfo<D::Info, Box<UnresolvedType<D>>>),
 }
 
 /// An unresolved instance.
@@ -1024,8 +1018,8 @@ pub enum Type<D: Driver> {
     /// A tuple type.
     Tuple(Vec<WithInfo<D::Info, Type<D>>>),
 
-    /// A type whose values are computed later.
-    Deferred(WithInfo<D::Info, Box<Type<D>>>),
+    /// A type whose values are computed by a block.
+    Block(WithInfo<D::Info, Box<Type<D>>>),
 }
 
 /// A resolved instance.
