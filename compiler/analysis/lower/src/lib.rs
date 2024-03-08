@@ -496,6 +496,9 @@ pub enum UnresolvedType<D: Driver> {
 
     /// A type whose values are computed by a block.
     Block(WithInfo<D::Info, Box<UnresolvedType<D>>>),
+
+    /// An intrinsic type provided by the runtime.
+    Intrinsic(WithInfo<D::Info, Option<String>>),
 }
 
 /// An unresolved instance.
@@ -1026,6 +1029,9 @@ pub enum Type<D: Driver> {
 
     /// A type whose values are computed by a block.
     Block(WithInfo<D::Info, Box<Type<D>>>),
+
+    /// An intrinsic type provided by the runtime.
+    Intrinsic(WithInfo<D::Info, String>),
 }
 
 /// A resolved instance.

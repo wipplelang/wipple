@@ -210,6 +210,9 @@ pub enum TypeDescriptor<D: Driver> {
 
     /// The type of a block value.
     Block(Box<TypeDescriptor<D>>),
+
+    /// An intrinsic type provided by the runtime.
+    Intrinsic(String),
 }
 
 impl<D: Driver> std::fmt::Display for Instruction<D>
@@ -313,6 +316,7 @@ where
                     .join(" , "),
             ),
             TypeDescriptor::Block(r#type) => write!(f, "{{{type}}}"),
+            TypeDescriptor::Intrinsic(name) => write!(f, "(intrinsic {name:?})"),
         }
     }
 }

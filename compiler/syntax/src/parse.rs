@@ -344,6 +344,7 @@ pub(crate) enum Type<D: Driver> {
     },
     Tuple(Vec<WithInfo<D::Info, Type<D>>>),
     Block(WithInfo<D::Info, Box<Type<D>>>),
+    Intrinsic(WithInfo<D::Info, Option<String>>),
 }
 
 impl<D: Driver> DefaultFromInfo<D::Info> for Type<D> {
@@ -527,6 +528,7 @@ pub enum SyntaxKind {
     FunctionType,
     TupleType,
     BlockType,
+    IntrinsicType,
     TypeMember,
     FieldDeclaration,
     VariantDeclaration,
@@ -724,6 +726,7 @@ mod rules {
             function_type::<D>().render(),
             tuple_type::<D>().render(),
             block_type::<D>().render(),
+            intrinsic_type::<D>().render(),
             type_function::<D>().render(),
             type_parameter::<D>().render(),
             type_representation::<D>().render(),
@@ -1146,6 +1149,7 @@ mod rules {
                 function_type,
                 tuple_type,
                 block_type,
+                intrinsic_type,
             ],
         )
         .named("A type.")
@@ -1264,6 +1268,19 @@ mod rules {
             },
         )
         .named("A type whose value is computed from a block expression.")
+    }
+
+    pub fn intrinsic_type<D: Driver>() -> Rule<D, Type<D>> {
+        Rule::keyword1(
+            SyntaxKind::IntrinsicType,
+            Keyword::Intrinsic,
+            || text().wrapped(),
+            |_, info, name, _| WithInfo {
+                info,
+                item: Type::Intrinsic(name),
+            },
+        )
+        .named("An intrinsic type provided by the runtime.")
     }
 
     pub fn type_function<D: Driver>() -> Rule<D, TypeFunction<D>> {

@@ -539,7 +539,10 @@ impl<D: Driver> Type<D> {
                 .iter()
                 .any(|r#type| r#type.contains_variable(variable)),
             TypeKind::Block(r#type) => r#type.contains_variable(variable),
-            TypeKind::Opaque(_) | TypeKind::Parameter(_) | TypeKind::Unknown => false,
+            TypeKind::Opaque(_)
+            | TypeKind::Parameter(_)
+            | TypeKind::Unknown
+            | TypeKind::Intrinsic(_) => false,
         }
     }
 
@@ -592,7 +595,7 @@ impl<D: Driver> Type<D> {
             TypeKind::Block(r#type) => {
                 r#type.apply_in_context_mut(context);
             }
-            TypeKind::Unknown => {}
+            TypeKind::Unknown | TypeKind::Intrinsic(_) => {}
         }
     }
 }
@@ -613,6 +616,7 @@ enum TypeKind<D: Driver> {
     },
     Tuple(Vec<Type<D>>),
     Block(Box<Type<D>>),
+    Intrinsic(WithInfo<D::Info, Rc<str>>),
     Unknown,
 }
 
@@ -814,7 +818,7 @@ impl<D: Driver> Type<D> {
             TypeKind::Block(r#type) => {
                 r#type.instantiate_mut(driver, instantiation_context);
             }
-            TypeKind::Unknown => {}
+            TypeKind::Unknown | TypeKind::Intrinsic(_) => {}
         }
     }
 
@@ -854,7 +858,7 @@ impl<D: Driver> Type<D> {
             TypeKind::Block(r#type) => {
                 r#type.instantiate_opaque_in_context_mut(context);
             }
-            TypeKind::Unknown => {}
+            TypeKind::Unknown | TypeKind::Intrinsic(_) => {}
         }
     }
 }
@@ -1004,7 +1008,8 @@ fn unify_with_options<D: Driver>(
             }
             (_, TypeKind::Parameter(_)) | (TypeKind::Parameter(_), _) => false,
 
-            // Unify declared types, functions, blocks and tuples structurally
+            // Unify declared types, functions, tuples, blocks, and intrinsics
+            // structurally
             (
                 TypeKind::Declared { path, parameters },
                 TypeKind::Declared {
@@ -1042,9 +1047,6 @@ fn unify_with_options<D: Driver>(
 
                 unified & unify_inner(driver, output, expected_output, context, options)
             }
-            (TypeKind::Block(r#type), TypeKind::Block(expected_type)) => {
-                unify_inner(driver, r#type, expected_type, context, options)
-            }
             (TypeKind::Tuple(elements), TypeKind::Tuple(expected_elements)) => {
                 if elements.len() != expected_elements.len() {
                     return false;
@@ -1056,6 +1058,12 @@ fn unify_with_options<D: Driver>(
                 }
 
                 unified
+            }
+            (TypeKind::Block(r#type), TypeKind::Block(expected_type)) => {
+                unify_inner(driver, r#type, expected_type, context, options)
+            }
+            (TypeKind::Intrinsic(name), TypeKind::Intrinsic(expected_name)) => {
+                name.item == expected_name.item
             }
 
             // Unknown types unify with everything
@@ -1210,7 +1218,10 @@ fn substitute_defaults<D: Driver>(
             false
         }
         TypeKind::Block(r#type) => substitute_defaults(driver, r#type, context),
-        TypeKind::Opaque(_) | TypeKind::Parameter(_) | TypeKind::Unknown => false,
+        TypeKind::Opaque(_)
+        | TypeKind::Parameter(_)
+        | TypeKind::Unknown
+        | TypeKind::Intrinsic(_) => false,
     }
 }
 
@@ -1364,6 +1375,7 @@ fn infer_type<D: Driver>(
                 Some(type_context) => TypeKind::Variable(type_context.variable()),
                 None => TypeKind::Unknown,
             },
+            crate::Type::Intrinsic(name) => TypeKind::Intrinsic(name.as_deref().map(Rc::from)),
         },
         r#type.info,
         Vec::from_iter(role.into()),
@@ -3323,6 +3335,9 @@ fn finalize_type<D: Driver>(
                     context.contains_unknown.set(true);
                     crate::Type::Unknown(UnknownTypeId::none())
                 }
+                TypeKind::Intrinsic(name) => {
+                    crate::Type::Intrinsic(name.as_deref().map(ToString::to_string))
+                }
             },
         }
     }
@@ -3600,6 +3615,7 @@ fn debug_type<D: Driver>(r#type: &Type<D>, context: &TypeContext<D>) -> String {
         ),
         TypeKind::Block(r#type) => format!("{{{}}}", debug_type(&r#type, context)),
         TypeKind::Unknown => String::from("_"),
+        TypeKind::Intrinsic(name) => format!("(intrinsic {:?})", name),
     }
 }
 

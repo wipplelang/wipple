@@ -1201,6 +1201,14 @@ fn resolve_type<D: Driver>(
             let r#type = resolve_type(r#type.unboxed(), info);
             crate::Type::Block(r#type.boxed())
         }
+        crate::UnresolvedType::Intrinsic(name) => {
+            let name = match name.try_unwrap() {
+                Some(name) => name,
+                None => return crate::Type::Error,
+            };
+
+            crate::Type::Intrinsic(name)
+        }
     })
 }
 

@@ -613,6 +613,7 @@ fn r#type<D: Driver>(
         parse::Type::Block(type_syntax) => {
             crate::Type::Block(r#type(type_syntax.unboxed(), info).boxed())
         }
+        parse::Type::Intrinsic(name) => crate::Type::Intrinsic(name),
     })
 }
 

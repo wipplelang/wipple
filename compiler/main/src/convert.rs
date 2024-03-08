@@ -99,6 +99,7 @@ pub mod interface {
             wipple_typecheck::Type::Block(r#type) => {
                 wipple_lower::Type::Block(convert_type(r#type.unboxed()).boxed())
             }
+            wipple_typecheck::Type::Intrinsic(name) => wipple_lower::Type::Intrinsic(name),
         })
     }
 
@@ -343,6 +344,7 @@ pub mod lower {
             wipple_syntax::Type::Block(r#type) => {
                 wipple_lower::UnresolvedType::Block(convert_type(r#type.unboxed()).boxed())
             }
+            wipple_syntax::Type::Intrinsic(name) => wipple_lower::UnresolvedType::Intrinsic(name),
         })
     }
 
@@ -717,6 +719,7 @@ pub mod typecheck {
             wipple_lower::Type::Block(r#type) => {
                 wipple_typecheck::Type::Block(convert_type(r#type.unboxed()).boxed())
             }
+            wipple_lower::Type::Intrinsic(name) => wipple_typecheck::Type::Intrinsic(name),
         })
     }
 
