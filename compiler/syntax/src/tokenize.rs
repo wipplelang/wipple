@@ -1278,7 +1278,7 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                     stack.push((info, TokenTree::Block(Vec::new())));
                 }
                 Token::RightBrace => {
-                    let (begin_info, statements) = match stack.pop() {
+                    let (begin_info, mut statements) = match stack.pop() {
                         Some((begin_info, TokenTree::Block(statements))) => {
                             (begin_info, statements)
                         }
@@ -1310,6 +1310,13 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                             continue;
                         }
                     };
+
+                    // Allow line break before closing brace
+                    if statements.last().is_some_and(|tree| {
+                        matches!(&tree.item, TokenTree::List(_, elements) if elements.is_empty())
+                    }) {
+                        statements.pop().unwrap();
+                    }
 
                     push!(WithInfo {
                         info: D::merge_info(begin_info, info),
@@ -1398,7 +1405,7 @@ impl<'src, D: Driver> TokenTree<'src, D> {
             }
         }
 
-        let tree = match stack.pop() {
+        let mut tree = match stack.pop() {
             Some((begin_info, tree)) => {
                 if let Some((begin_info, tree)) = stack.pop() {
                     let end_token = match tree {
@@ -1451,6 +1458,15 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                 }
             }
         };
+
+        // Allow trailing line break
+        if let TokenTree::Block(statements) = &mut tree.item {
+            if statements.last().is_some_and(
+                |tree| matches!(&tree.item, TokenTree::List(_, elements) if elements.is_empty()),
+            ) {
+                statements.pop().unwrap();
+            }
+        }
 
         (tree, diagnostics)
     }

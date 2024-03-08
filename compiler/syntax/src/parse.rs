@@ -584,6 +584,8 @@ where
         item: SyntaxKind::TopLevel,
     });
 
+    wipple_util::log!("{:#?}", tree);
+
     let top_level = rules::top_level().parse(&mut parser, tree, &stack);
 
     Result {
