@@ -821,6 +821,9 @@ pub mod typecheck {
                     elements.into_iter().map(convert_expression).collect(),
                 )
             }
+            wipple_lower::Expression::Marker(path) => {
+                wipple_typecheck::UntypedExpression::Marker(path)
+            }
             wipple_lower::Expression::Structure(elements) => {
                 wipple_typecheck::UntypedExpression::Structure(
                     elements
@@ -842,10 +845,10 @@ pub mod typecheck {
                     values: values.into_iter().map(convert_expression).collect(),
                 }
             }
-            wipple_lower::Expression::Semantics { name, body } => {
-                wipple_typecheck::UntypedExpression::Semantics {
-                    name: name.item,
-                    body: convert_expression(body.unboxed()).boxed(),
+            wipple_lower::Expression::Wrapper { r#type, value } => {
+                wipple_typecheck::UntypedExpression::Wrapper {
+                    r#type,
+                    value: convert_expression(value.unboxed()).boxed(),
                 }
             }
         })

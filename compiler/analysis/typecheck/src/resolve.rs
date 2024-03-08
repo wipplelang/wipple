@@ -1161,7 +1161,7 @@ fn try_unify_expression<D: Driver>(
     }
 }
 
-fn try_unify_ignoring_coercion<D: Driver>(
+fn try_unify<D: Driver>(
     driver: &D,
     r#type: WithInfo<D::Info, &Type<D>>,
     expected_type: &Type<D>,
@@ -1269,6 +1269,7 @@ enum ExpressionKind<D: Driver> {
         pattern: WithInfo<D::Info, crate::Pattern<D>>,
         value: WithInfo<D::Info, Box<Expression<D>>>,
     },
+    Marker(WithInfo<D::Info, D::Path>),
     UnresolvedStructure(Vec<WithInfo<D::Info, StructureFieldValue<D>>>),
     ResolvedStructure {
         structure: D::Path,
@@ -1278,14 +1279,11 @@ enum ExpressionKind<D: Driver> {
         variant: WithInfo<D::Info, D::Path>,
         values: Vec<WithInfo<D::Info, Expression<D>>>,
     },
+    Wrapper(WithInfo<D::Info, Box<Expression<D>>>),
     Tuple(Vec<WithInfo<D::Info, Expression<D>>>),
     Format {
         segments: Vec<FormatSegment<D>>,
         trailing: String,
-    },
-    Semantics {
-        name: String,
-        body: WithInfo<D::Info, Box<Expression<D>>>,
     },
 }
 
@@ -1716,6 +1714,36 @@ fn infer_expression<D: Driver>(
                 },
             }
         }
+        crate::UntypedExpression::Marker(path) => {
+            let type_declaration = context.driver.get_type_declaration(&path.item);
+
+            let instantiation_context = InstantiationContext::from_parameters(
+                context.driver,
+                type_declaration.item.parameters.clone(),
+                context.type_context,
+                &info,
+                context.errors,
+            );
+
+            let r#type = Type::new(
+                TypeKind::Declared {
+                    path: path.item.clone(),
+                    parameters: type_declaration
+                        .item
+                        .parameters
+                        .into_iter()
+                        .map(|path| instantiation_context.type_for_parameter(context.driver, &path))
+                        .collect(),
+                },
+                info.clone(),
+                Vec::new(),
+            );
+
+            Expression {
+                r#type,
+                kind: ExpressionKind::Marker(path),
+            }
+        }
         crate::UntypedExpression::Structure(fields) => Expression {
             r#type: Type::new(
                 TypeKind::Variable(context.type_context.variable()),
@@ -1798,6 +1826,73 @@ fn infer_expression<D: Driver>(
             Expression {
                 r#type,
                 kind: ExpressionKind::Variant { variant, values },
+            }
+        }
+        crate::UntypedExpression::Wrapper {
+            r#type: path,
+            value,
+        } => {
+            let type_declaration = context.driver.get_type_declaration(&path.item);
+
+            let instantiation_context = InstantiationContext::from_parameters(
+                context.driver,
+                type_declaration.item.parameters.clone(),
+                context.type_context,
+                &info,
+                context.errors,
+            );
+
+            let r#type = Type::new(
+                TypeKind::Declared {
+                    path: path.item,
+                    parameters: type_declaration
+                        .item
+                        .parameters
+                        .into_iter()
+                        .map(|path| instantiation_context.type_for_parameter(context.driver, &path))
+                        .collect(),
+                },
+                info.clone(),
+                Vec::new(),
+            );
+
+            let value = match type_declaration.item.representation.item {
+                crate::TypeRepresentation::Wrapper(declared_type) => {
+                    let declared_type = infer_type(
+                        declared_type.as_ref(),
+                        declared_type.replace(Role::WrappedType),
+                        Some(context.type_context),
+                    )
+                    .instantiate(context.driver, &instantiation_context);
+
+                    let mut value = infer_expression(value.unboxed(), context);
+
+                    try_unify_expression(
+                        context.driver,
+                        value.as_mut(),
+                        &declared_type,
+                        context.type_context,
+                        context.error_queue,
+                    );
+
+                    value
+                }
+                _ => WithInfo {
+                    info: info.clone(),
+                    item: Expression {
+                        r#type: Type::new(
+                            TypeKind::Variable(context.type_context.variable()),
+                            info.clone(),
+                            Vec::new(),
+                        ),
+                        kind: ExpressionKind::Unknown(None),
+                    },
+                },
+            };
+
+            Expression {
+                r#type,
+                kind: ExpressionKind::Wrapper(value.boxed()),
             }
         }
         crate::UntypedExpression::Tuple(elements) => {
@@ -1930,17 +2025,6 @@ fn infer_expression<D: Driver>(
                 kind: ExpressionKind::Format { segments, trailing },
             }
         }
-        crate::UntypedExpression::Semantics { name, body } => {
-            let body = infer_expression(body.unboxed(), context);
-
-            Expression {
-                r#type: body.item.r#type.clone(),
-                kind: ExpressionKind::Semantics {
-                    name,
-                    body: body.boxed(),
-                },
-            }
-        }
     });
 
     expression.item.r#type.info = info;
@@ -1978,7 +2062,7 @@ fn resolve_pattern<D: Driver>(
                 |r#type| r#type,
             );
 
-            try_unify_ignoring_coercion(
+            try_unify(
                 context.driver,
                 r#type.replace(&number_type),
                 &r#type.item,
@@ -2005,7 +2089,7 @@ fn resolve_pattern<D: Driver>(
                 |r#type| r#type,
             );
 
-            try_unify_ignoring_coercion(
+            try_unify(
                 context.driver,
                 r#type.replace(&text_type),
                 &r#type.item,
@@ -2020,7 +2104,7 @@ fn resolve_pattern<D: Driver>(
 
             match variables.entry(variable.clone()) {
                 Entry::Occupied(entry) => {
-                    try_unify_ignoring_coercion(
+                    try_unify(
                         context.driver,
                         r#type.as_ref(),
                         entry.get(),
@@ -2180,7 +2264,7 @@ fn resolve_pattern<D: Driver>(
                         Vec::new(),
                     );
 
-                    try_unify_ignoring_coercion(
+                    try_unify(
                         context.driver,
                         r#type.as_ref(),
                         &enumeration_type,
@@ -2219,7 +2303,7 @@ fn resolve_pattern<D: Driver>(
                 Vec::new(),
             );
 
-            try_unify_ignoring_coercion(
+            try_unify(
                 context.driver,
                 r#type.replace(&tuple_type),
                 &r#type.item,
@@ -2530,15 +2614,7 @@ fn resolve_expression<D: Driver>(
                 output: output_type,
             } = &function.item.r#type.kind
             {
-                if input_types.len() != inputs.len() {
-                    context.error_queue.borrow_mut().push(WithInfo {
-                        info: expression.info.clone(),
-                        item: QueuedError::WrongNumberOfInputs {
-                            actual: inputs.len() as u32,
-                            expected: input_types.len() as u32,
-                        },
-                    });
-                } else {
+                if input_types.len() == inputs.len() {
                     for (input, input_type) in inputs.iter_mut().zip(input_types) {
                         try_unify_expression(
                             context.driver,
@@ -2548,31 +2624,39 @@ fn resolve_expression<D: Driver>(
                             context.error_queue,
                         );
                     }
-                }
 
-                // `defer` may only appear on function inputs, so it's OK to
-                // ignore coercions here
-                try_unify_ignoring_coercion(
-                    context.driver,
-                    WithInfo {
+                    try_unify(
+                        context.driver,
+                        WithInfo {
+                            info: expression.info.clone(),
+                            item: &expression.item.r#type,
+                        },
+                        output_type,
+                        context.type_context,
+                        context.error_queue,
+                    );
+
+                    let inputs = inputs
+                        .into_iter()
+                        .map(|input| resolve_expression(input, context))
+                        .collect::<Vec<_>>();
+
+                    let function = resolve_expression(function.unboxed(), context);
+
+                    ExpressionKind::Call {
+                        function: function.boxed(),
+                        inputs,
+                    }
+                } else {
+                    context.error_queue.borrow_mut().push(WithInfo {
                         info: expression.info.clone(),
-                        item: &expression.item.r#type,
-                    },
-                    output_type,
-                    context.type_context,
-                    context.error_queue,
-                );
+                        item: QueuedError::WrongNumberOfInputs {
+                            actual: inputs.len() as u32,
+                            expected: input_types.len() as u32,
+                        },
+                    });
 
-                let inputs = inputs
-                    .into_iter()
-                    .map(|input| resolve_expression(input, context))
-                    .collect::<Vec<_>>();
-
-                let function = resolve_expression(function.unboxed(), context);
-
-                ExpressionKind::Call {
-                    function: function.boxed(),
-                    inputs,
+                    ExpressionKind::Unknown(None)
                 }
             } else {
                 let function_type = Type::new(
@@ -2658,6 +2742,7 @@ fn resolve_expression<D: Driver>(
 
             ExpressionKind::Initialize { pattern, value }
         }
+        ExpressionKind::Marker(r#type) => ExpressionKind::Marker(r#type),
         ExpressionKind::UnresolvedStructure(fields) => {
             expression
                 .item
@@ -2752,7 +2837,7 @@ fn resolve_expression<D: Driver>(
                         Vec::new(),
                     );
 
-                    try_unify_ignoring_coercion(
+                    try_unify(
                         context.driver,
                         WithInfo {
                             info: expression.info.clone(),
@@ -2799,6 +2884,9 @@ fn resolve_expression<D: Driver>(
                 .map(|expression| resolve_expression(expression, context))
                 .collect(),
         },
+        ExpressionKind::Wrapper(value) => {
+            ExpressionKind::Wrapper(resolve_expression(value.unboxed(), context).boxed())
+        }
         ExpressionKind::Tuple(elements) => ExpressionKind::Tuple(
             elements
                 .into_iter()
@@ -2814,10 +2902,6 @@ fn resolve_expression<D: Driver>(
                 })
                 .collect(),
             trailing,
-        },
-        ExpressionKind::Semantics { name, body } => ExpressionKind::Semantics {
-            name,
-            body: resolve_expression(body.unboxed(), context).boxed(),
         },
     };
 
@@ -3239,15 +3323,15 @@ fn substitute_defaults_in_expression<D: Driver>(
         ExpressionKind::Variant { values, .. } => values
             .iter_mut()
             .any(|value| substitute_defaults_in_expression(driver, value.as_mut(), context)),
+        ExpressionKind::Wrapper(value) => {
+            substitute_defaults_in_expression(driver, value.as_deref_mut(), context)
+        }
         ExpressionKind::Tuple(elements) => elements
             .iter_mut()
             .any(|element| substitute_defaults_in_expression(driver, element.as_mut(), context)),
         ExpressionKind::Format { segments, .. } => segments.iter_mut().any(|segment| {
             substitute_defaults_in_expression(driver, segment.value.as_mut(), context)
         }),
-        ExpressionKind::Semantics { body, .. } => {
-            substitute_defaults_in_expression(driver, body.as_deref_mut(), context)
-        }
         ExpressionKind::ResolvedConstant { parameters, .. } => parameters
             .iter_mut()
             .any(|r#type| substitute_defaults(driver, r#type, context.type_context)),
@@ -3256,6 +3340,7 @@ fn substitute_defaults_in_expression<D: Driver>(
         | ExpressionKind::UnresolvedConstant(_)
         | ExpressionKind::UnresolvedTrait(_)
         | ExpressionKind::ResolvedTrait(_)
+        | ExpressionKind::Marker(_)
         | ExpressionKind::Number(_)
         | ExpressionKind::Text(_) => false,
     };
@@ -3480,6 +3565,7 @@ fn finalize_expression<D: Driver>(
             pattern,
             value: finalize_expression(value.unboxed(), context).boxed(),
         },
+        ExpressionKind::Marker(r#type) => crate::TypedExpressionKind::Marker(r#type),
         ExpressionKind::UnresolvedStructure(_) => {
             let error = WithInfo {
                 info: expression.info.clone(),
@@ -3508,6 +3594,9 @@ fn finalize_expression<D: Driver>(
                     .collect(),
             }
         }
+        ExpressionKind::Wrapper(value) => crate::TypedExpressionKind::Wrapper(
+            finalize_expression(value.unboxed(), context).boxed(),
+        ),
         ExpressionKind::Variant { variant, values } => crate::TypedExpressionKind::Variant {
             variant,
             values: values
@@ -3530,10 +3619,6 @@ fn finalize_expression<D: Driver>(
                 })
                 .collect(),
             trailing,
-        },
-        ExpressionKind::Semantics { name, body } => crate::TypedExpressionKind::Semantics {
-            name,
-            body: finalize_expression(body.unboxed(), context).boxed(),
         },
     };
 

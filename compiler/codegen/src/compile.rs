@@ -97,6 +97,11 @@ fn compile_expression<D: crate::Driver>(
             ));
         }
         wipple_typecheck::TypedExpressionKind::Block(statements) => {
+            let lazy_label = info.push_label();
+            let previous_label = mem::replace(&mut info.current_label, lazy_label);
+
+            let prev_captures = mem::take(&mut info.captures);
+
             if statements.is_empty() {
                 info.push_instruction(crate::Instruction::Tuple(0));
             } else {
@@ -113,6 +118,15 @@ fn compile_expression<D: crate::Driver>(
                     }
                 }
             }
+
+            info.push_instruction(crate::Instruction::Return);
+            let captures = mem::replace(&mut info.captures, prev_captures);
+            info.current_label = previous_label;
+
+            info.push_instruction(crate::Instruction::Typed(
+                type_descriptor(&expression.item.r#type)?,
+                crate::TypedInstruction::Block(captures, info.path.clone(), lazy_label),
+            ));
         }
         wipple_typecheck::TypedExpressionKind::Function { inputs, body } => {
             let function_label = info.push_label();
@@ -160,6 +174,12 @@ fn compile_expression<D: crate::Driver>(
             compile_expression(value.as_deref(), info)?;
             compile_exhaustive_pattern(pattern.as_ref(), info)?;
         }
+        wipple_typecheck::TypedExpressionKind::Marker(_) => {
+            info.push_instruction(crate::Instruction::Typed(
+                type_descriptor(&expression.item.r#type)?,
+                crate::TypedInstruction::Marker,
+            ));
+        }
         wipple_typecheck::TypedExpressionKind::Structure { fields, .. } => {
             let fields = fields
                 .iter()
@@ -184,6 +204,14 @@ fn compile_expression<D: crate::Driver>(
                 crate::TypedInstruction::Variant(variant.item.clone(), values.len() as u32),
             ));
         }
+        wipple_typecheck::TypedExpressionKind::Wrapper(value) => {
+            compile_expression(value.as_deref(), info)?;
+
+            info.push_instruction(crate::Instruction::Typed(
+                type_descriptor(&expression.item.r#type)?,
+                crate::TypedInstruction::Wrapper,
+            ));
+        }
         wipple_typecheck::TypedExpressionKind::Tuple(elements) => {
             for element in elements {
                 compile_expression(element.as_ref(), info)?;
@@ -203,26 +231,6 @@ fn compile_expression<D: crate::Driver>(
             info.push_instruction(crate::Instruction::Typed(
                 type_descriptor(&expression.item.r#type)?,
                 crate::TypedInstruction::Format(segments, trailing.clone()),
-            ));
-        }
-        wipple_typecheck::TypedExpressionKind::Semantics { name, body } => {
-            let _ = name; // semantics are only for compile-time analysis and have no effect at runtime
-
-            compile_expression(body.as_deref(), info)?;
-        }
-        wipple_typecheck::TypedExpressionKind::Deferred(expression) => {
-            let lazy_label = info.push_label();
-            let previous_label = mem::replace(&mut info.current_label, lazy_label);
-
-            let prev_captures = mem::take(&mut info.captures);
-            compile_expression(expression.as_deref(), info)?;
-            info.push_instruction(crate::Instruction::Return);
-            let captures = mem::replace(&mut info.captures, prev_captures);
-            info.current_label = previous_label;
-
-            info.push_instruction(crate::Instruction::Typed(
-                type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Deferred(captures, info.path.clone(), lazy_label),
             ));
         }
     }

@@ -924,6 +924,9 @@ pub enum Expression<D: Driver> {
     /// Collection construction.
     Collection(Vec<WithInfo<D::Info, Expression<D>>>),
 
+    /// A value of a marker type.
+    Marker(WithInfo<D::Info, Path>),
+
     /// Structure construction.
     Structure(Vec<WithInfo<D::Info, FieldValue<D>>>),
 
@@ -936,15 +939,13 @@ pub enum Expression<D: Driver> {
         values: Vec<WithInfo<D::Info, Expression<D>>>,
     },
 
-    /// Provide additional information about the semantics of an expression to
-    /// the compiler.
-    #[serde(rename_all = "camelCase")]
-    Semantics {
-        /// The name of the semantic.
-        name: WithInfo<D::Info, String>,
+    /// Wrapper type construction.
+    Wrapper {
+        /// The type to construct.
+        r#type: WithInfo<D::Info, Path>,
 
-        /// The expression that has the defined semantics.
-        body: WithInfo<D::Info, Box<Expression<D>>>,
+        /// The type's value.
+        value: WithInfo<D::Info, Box<Expression<D>>>,
     },
 }
 

@@ -195,21 +195,6 @@ pub enum Diagnostic<D: Driver> {
         expected: u32,
     },
 
-    /// A coercion would be required for a contravariant type. Currently, the
-    /// only coercion is `A` to `defer A`, so this error effectively means that
-    /// the following program is invalid because `x` cannot be implicitly
-    /// `evaluate`d:
-    ///
-    /// ```wipple
-    /// x :: () -> defer Number
-    /// x : () -> 42
-    ///
-    /// y : () -> Number
-    /// y : x ()
-    /// ```
-    #[serde(rename_all = "camelCase")]
-    DisallowedCoercion(WithInfo<D::Info, Type<D>>),
-
     /// No instance satisfying the provided parameters could be resolved.
     #[serde(rename_all = "camelCase")]
     UnresolvedInstance {
@@ -533,6 +518,9 @@ pub enum UntypedExpression<D: Driver> {
         value: WithInfo<D::Info, Box<UntypedExpression<D>>>,
     },
 
+    /// Create a marker value.
+    Marker(WithInfo<D::Info, D::Path>),
+
     /// Create a structure value.
     Structure(Vec<WithInfo<D::Info, UntypedStructureFieldValue<D>>>),
 
@@ -544,6 +532,15 @@ pub enum UntypedExpression<D: Driver> {
 
         /// The variant's associated values.
         values: Vec<WithInfo<D::Info, UntypedExpression<D>>>,
+    },
+
+    /// Create a wrapper value.
+    Wrapper {
+        /// The wrapper type.
+        r#type: WithInfo<D::Info, D::Path>,
+
+        /// The type's value.
+        value: WithInfo<D::Info, Box<UntypedExpression<D>>>,
     },
 
     /// A tuple expression.
@@ -560,17 +557,6 @@ pub enum UntypedExpression<D: Driver> {
 
         /// Any trailing text after the segments.
         trailing: String,
-    },
-
-    /// Provide additional information about the semantics of an expression to
-    /// the compiler.
-    #[serde(rename_all = "camelCase")]
-    Semantics {
-        /// The name of the semantic.
-        name: String,
-
-        /// The expression that has the defined semantics.
-        body: WithInfo<D::Info, Box<UntypedExpression<D>>>,
     },
 }
 
@@ -705,6 +691,9 @@ pub enum TypedExpressionKind<D: Driver> {
         value: WithInfo<D::Info, Box<TypedExpression<D>>>,
     },
 
+    /// Create a marker value.
+    Marker(WithInfo<D::Info, D::Path>),
+
     /// Create a structure value.
     Structure {
         /// The structure this value refers to.
@@ -724,6 +713,9 @@ pub enum TypedExpressionKind<D: Driver> {
         values: Vec<WithInfo<D::Info, TypedExpression<D>>>,
     },
 
+    /// Create a wrapper value.
+    Wrapper(WithInfo<D::Info, Box<TypedExpression<D>>>),
+
     /// A tuple expression.
     Tuple(Vec<WithInfo<D::Info, TypedExpression<D>>>),
 
@@ -736,20 +728,6 @@ pub enum TypedExpressionKind<D: Driver> {
         /// Any trailing text after the segments.
         trailing: String,
     },
-
-    /// Provide additional information about the semantics of an expression to
-    /// the compiler.
-    #[serde(rename_all = "camelCase")]
-    Semantics {
-        /// The name of the semantic.
-        name: String,
-
-        /// The expression that has the defined semantics.
-        body: WithInfo<D::Info, Box<TypedExpression<D>>>,
-    },
-
-    /// A deferred value.
-    Deferred(WithInfo<D::Info, Box<TypedExpression<D>>>),
 }
 
 /// A segment in a string interpolation expression.
@@ -869,6 +847,7 @@ pub enum Role {
     Instance,
     StructureField,
     VariantElement,
+    WrappedType,
     FunctionInput,
     FunctionOutput,
     Bound,
@@ -936,6 +915,9 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a TypedExpress
                     value.as_ref().traverse(f);
                 }
             }
+            TypedExpressionKind::Wrapper(value) => {
+                value.as_deref().traverse(f);
+            }
             TypedExpressionKind::Tuple(elements) => {
                 for element in elements {
                     element.as_ref().traverse(f);
@@ -946,16 +928,11 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a TypedExpress
                     segment.value.as_ref().traverse(f);
                 }
             }
-            TypedExpressionKind::Semantics { body, .. } => {
-                body.as_deref().traverse(f);
-            }
-            TypedExpressionKind::Deferred(value) => {
-                value.as_deref().traverse(f);
-            }
             TypedExpressionKind::Unknown(_)
             | TypedExpressionKind::Variable(_, _)
             | TypedExpressionKind::Constant { .. }
             | TypedExpressionKind::Trait(_)
+            | TypedExpressionKind::Marker(_)
             | TypedExpressionKind::Number(_)
             | TypedExpressionKind::Text(_) => {}
         }

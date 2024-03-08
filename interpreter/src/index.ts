@@ -20,7 +20,7 @@ export type TypeDescriptor =
     | { type: "named"; value: [string, TypeDescriptor[]] }
     | { type: "function"; value: [TypeDescriptor, TypeDescriptor] }
     | { type: "tuple"; value: TypeDescriptor[] }
-    | { type: "deferred"; value: TypeDescriptor };
+    | { type: "block"; value: TypeDescriptor };
 
 export type Instruction =
     | { type: "copy"; value: undefined }
@@ -47,7 +47,7 @@ export type TypedInstruction =
     | { type: "structure"; value: string[] }
     | { type: "variant"; value: [string, number] }
     | { type: "function"; value: [number[], string, number] }
-    | { type: "deferred"; value: [number[], string, number] }
+    | { type: "block"; value: [number[], string, number] }
     | { type: "constant"; value: [string, TypeDescriptor[]] }
     | { type: "instance"; value: string };
 
@@ -76,7 +76,7 @@ type Value =
           value: (value: TypedValue) => Promise<TypedValue>;
       }
     | {
-          type: "deferred";
+          type: "block";
           scope: Record<number, TypedValue>;
           path: string;
           ir: Instruction[][];
@@ -120,7 +120,7 @@ export interface Context {
     debug: boolean;
     io: (request: IoRequest) => void;
     call: (func: TypedValue, input: TypedValue) => Promise<TypedValue>;
-    produce: (deferred: TypedValue) => Promise<TypedValue>;
+    do: (block: TypedValue) => Promise<TypedValue>;
     getItem: (
         path: string,
         substitutions: TypeDescriptor[] | Record<string, TypeDescriptor>,
@@ -205,18 +205,18 @@ export const evaluate = async (
                     throw new InterpreterError("expected function");
             }
         },
-        produce: async (defer) => {
-            if (defer.type !== "deferred") {
-                throw new InterpreterError("expected defer value");
+        do: async (block) => {
+            if (block.type !== "block") {
+                throw new InterpreterError("expected block value");
             }
 
             return (await evaluateItem(
-                defer.path,
-                defer.ir,
-                defer.label,
+                block.path,
+                block.ir,
+                block.label,
                 [],
-                { ...defer.scope },
-                defer.substitutions,
+                { ...block.scope },
+                block.substitutions,
                 context,
             ))!;
         },
@@ -504,11 +504,11 @@ const evaluateItem = async (
 
                             break;
                         }
-                        case "deferred": {
+                        case "block": {
                             const path = instruction.value[1].value[1];
 
                             stack.push({
-                                type: "deferred",
+                                type: "block",
                                 typeDescriptor,
                                 path,
                                 ir: path ? context.executable.items[path].ir : item,
@@ -670,10 +670,8 @@ const unify = (
                     unify(typeDescriptor, right.value[index], substitutions),
                 )
             );
-        case "deferred":
-            // Coercions are done at compile time, so at runtime `defer` only
-            // unifies with `defer`
-            return left.type === "deferred" && unify(left.value, right.value, substitutions);
+        case "block":
+            return left.type === "block" && unify(left.value, right.value, substitutions);
         default:
             right satisfies never;
             throw new InterpreterError(`unknown type descriptor ${JSON.stringify(right)}`);
@@ -718,9 +716,9 @@ const substituteTypeDescriptor = (
                     substituteTypeDescriptor(typeDescriptor, substitutions),
                 ),
             };
-        case "deferred":
+        case "block":
             return {
-                type: "deferred",
+                type: "block",
                 value: substituteTypeDescriptor(typeDescriptor.value, substitutions),
             };
         default:

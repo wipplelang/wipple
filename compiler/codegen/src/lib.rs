@@ -160,17 +160,23 @@ pub enum TypedInstruction<D: Driver> {
     /// (Consuming) String interpolation.
     Format(Vec<String>, String),
 
+    /// Create a marker value.
+    Marker,
+
     /// Create a structure, mapping each field to the next value on the stack.
     Structure(Vec<String>),
 
     /// Create a variant from the top _n_ values on the stack.
     Variant(D::Path, u32),
 
+    /// Create a wrapper value from the top value on the stack.
+    Wrapper,
+
     /// A function that can potentially capture variables.
     Function(Vec<u32>, D::Path, Label),
 
-    /// A deferred expression.
-    Deferred(Vec<u32>, D::Path, Label),
+    /// A block expression.
+    Block(Vec<u32>, D::Path, Label),
 
     /// A constant.
     Constant(D::Path, Vec<TypeDescriptor<D>>),
@@ -262,15 +268,17 @@ where
                     result
                 }),
             ),
+            TypedInstruction::Marker => write!(f, "marker"),
             TypedInstruction::Structure(fields) => write!(f, "structure {fields:?}"),
             TypedInstruction::Variant(variant, elements) => {
                 write!(f, "variant {variant:?} {elements}")
             }
+            TypedInstruction::Wrapper => write!(f, "wrapper"),
             TypedInstruction::Function(captures, path, label) => {
                 write!(f, "function {captures:?} ({path}) {label}")
             }
-            TypedInstruction::Deferred(captures, path, label) => {
-                write!(f, "defer {captures:?} ({path}) {label}")
+            TypedInstruction::Block(captures, path, label) => {
+                write!(f, "block {captures:?} ({path}) {label}")
             }
             TypedInstruction::Constant(path, _) => write!(f, "constant {path}"),
             TypedInstruction::Instance(path) => write!(f, "instance {path}"),
