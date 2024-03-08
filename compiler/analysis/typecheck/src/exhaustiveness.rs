@@ -135,7 +135,7 @@ fn convert_type<D: Driver>(
                 .collect::<HashMap<_, _>>();
 
             match declaration.item.representation.item {
-                crate::TypeRepresentation::Opaque => Some(Type::Unmatchable),
+                crate::TypeRepresentation::Marker => Some(Type::Marker { substitutions }),
                 crate::TypeRepresentation::Structure(fields) => Some(Type::Structure {
                     substitutions,
                     fields: fields
@@ -159,6 +159,10 @@ fn convert_type<D: Driver>(
                             )
                         })
                         .collect(),
+                }),
+                crate::TypeRepresentation::Wrapper(value) => Some(Type::Wrapper {
+                    substitutions,
+                    value: value.item,
                 }),
             }
         }
@@ -223,6 +227,9 @@ fn convert_pattern<D: Driver>(pattern: &crate::Pattern<D>) -> Option<Pattern<D>>
     Eq(bound = "")
 )]
 enum Type<D: Driver> {
+    Marker {
+        substitutions: HashMap<D::Path, crate::Type<D>>,
+    },
     Enumeration {
         substitutions: HashMap<D::Path, crate::Type<D>>,
         variants: HashMap<D::Path, Vec<crate::Type<D>>>,
@@ -230,6 +237,10 @@ enum Type<D: Driver> {
     Structure {
         substitutions: HashMap<D::Path, crate::Type<D>>,
         fields: HashMap<String, crate::Type<D>>,
+    },
+    Wrapper {
+        substitutions: HashMap<D::Path, crate::Type<D>>,
+        value: crate::Type<D>,
     },
     Tuple(Vec<crate::Type<D>>),
     Unmatchable,
@@ -275,6 +286,9 @@ pub enum Constructor<D: Driver> {
 
     /// A structure.
     Structure,
+
+    /// A wrapper type.
+    Wrapper,
 
     /// A type that cannot be matched except with a variable binding or
     /// wildcard (eg. `Number`).
@@ -532,6 +546,7 @@ impl<'a, D: Driver> MatchCompiler<'a, D> {
             .clone();
 
         match &branch_variable.r#type {
+            Type::Marker { .. } => Some(Decision::Matched(rows.first().unwrap().id)),
             Type::Enumeration {
                 substitutions,
                 variants,
@@ -612,6 +627,23 @@ impl<'a, D: Driver> MatchCompiler<'a, D> {
                     cases,
                     Some(Box::new(fallback)),
                 ))
+            }
+            Type::Wrapper {
+                substitutions,
+                value,
+            } => {
+                let cases = HashMap::from([(
+                    None,
+                    (
+                        Constructor::Wrapper,
+                        vec![self.new_variable(convert_type(self.driver, value, substitutions)?)],
+                        Vec::new(),
+                    ),
+                )]);
+
+                let cases = self.compile_constructor_cases(rows, &branch_variable, cases)?;
+
+                Some(Decision::Switch(branch_variable.clone(), cases, None))
             }
         }
     }

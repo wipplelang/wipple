@@ -243,8 +243,8 @@ fn statements<D: Driver>(
                                     let representation =
                                         representation_syntax.filter_map(|representation_syntax| {
                                             Some(match representation_syntax {
-                                                parse::TypeRepresentation::Opaque => {
-                                                    crate::TypeRepresentation::Opaque
+                                                parse::TypeRepresentation::Marker => {
+                                                    crate::TypeRepresentation::Marker
                                                 }
                                                 parse::TypeRepresentation::Compound(member_syntaxes) => {
                                                     let mut member_syntaxes = member_syntaxes.into_iter();
@@ -296,7 +296,7 @@ fn statements<D: Driver>(
                                                                 item: crate::Diagnostic::EmptyTypeRepresentation,
                                                             });
 
-                                                            crate::TypeRepresentation::Opaque
+                                                            crate::TypeRepresentation::Marker
                                                         }
                                                     };
 
@@ -313,9 +313,6 @@ fn statements<D: Driver>(
                                                             parse::TypeMemberKind::Error => continue,
                                                             parse::TypeMemberKind::Field(type_syntax) => {
                                                                 let fields = match &mut type_representation {
-                                                                    crate::TypeRepresentation::Opaque => {
-                                                                        unreachable!()
-                                                                    }
                                                                     crate::TypeRepresentation::Structure(
                                                                         fields,
                                                                     ) => fields,
@@ -329,6 +326,7 @@ fn statements<D: Driver>(
 
                                                                         continue;
                                                                     }
+                                                                    _ => unreachable!(),
                                                                 };
 
                                                                 fields.push(WithInfo {
@@ -341,9 +339,6 @@ fn statements<D: Driver>(
                                                             }
                                                             parse::TypeMemberKind::Variant(type_syntaxes) => {
                                                                 let variants = match &mut type_representation {
-                                                                    crate::TypeRepresentation::Opaque => {
-                                                                        unreachable!()
-                                                                    }
                                                                     crate::TypeRepresentation::Structure(_) => {
                                                                         info.errors.push(WithInfo {
                                                                             info: member_syntax.info.clone(),
@@ -355,6 +350,7 @@ fn statements<D: Driver>(
                                                                     crate::TypeRepresentation::Enumeration(
                                                                         variants,
                                                                     ) => variants,
+                                                                    _ => unreachable!(),
                                                                 };
 
                                                                 variants.push(WithInfo {
@@ -374,6 +370,12 @@ fn statements<D: Driver>(
                                                     }
 
                                                     type_representation
+                                                }
+                                                parse::TypeRepresentation::Wrapper(type_syntax) => {
+                                                    crate::TypeRepresentation::Wrapper(r#type(
+                                                        type_syntax,
+                                                        info,
+                                                    ))
                                                 }
                                             })
                                         });

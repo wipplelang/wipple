@@ -423,14 +423,17 @@ pub struct UnresolvedTypeParameter<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum UnresolvedTypeRepresentation<D: Driver> {
-    /// A type that cannot be constructed directly.
-    Opaque,
+    /// A marker type.
+    Marker,
 
     /// A structure type.
     Structure(Vec<WithInfo<D::Info, UnresolvedField<D>>>),
 
     /// An enumeration type.
     Enumeration(Vec<WithInfo<D::Info, UnresolvedVariant<D>>>),
+
+    /// A wrapper type.
+    Wrapper(WithInfo<D::Info, UnresolvedType<D>>),
 }
 
 /// An unresolved structure field.
@@ -947,14 +950,17 @@ pub enum Expression<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum TypeRepresentation<D: Driver> {
-    /// A type that cannot be constructed directly.
-    Opaque,
+    /// A marker type.
+    Marker,
 
     /// A structure type.
     Structure(Vec<WithInfo<D::Info, Field<D>>>),
 
     /// An enumeration type.
     Enumeration(Vec<WithInfo<D::Info, Variant<D>>>),
+
+    /// A wrapper type.
+    Wrapper(WithInfo<D::Info, Type<D>>),
 }
 
 /// A resolved structure field.

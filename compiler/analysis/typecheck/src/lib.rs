@@ -384,14 +384,17 @@ pub struct TypeParameterDeclaration<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub enum TypeRepresentation<D: Driver> {
-    /// The type cannot be constructed directly.
-    Opaque,
+    /// The type has a single value.
+    Marker,
 
     /// The type contains an ordered list of fields.
     Structure(HashMap<String, WithInfo<D::Info, StructureField<D>>>),
 
     /// The type can be one of several variants.
     Enumeration(HashMap<D::Path, WithInfo<D::Info, EnumerationVariant<D>>>),
+
+    /// The type wraps another type.
+    Wrapper(WithInfo<D::Info, Type<D>>),
 }
 
 /// A single field in a type represented as a structure.

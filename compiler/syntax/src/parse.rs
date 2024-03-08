@@ -185,15 +185,16 @@ impl<D: Driver> DefaultFromInfo<D::Info> for Instance<D> {
 )]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub(crate) enum TypeRepresentation<D: Driver> {
-    Opaque, // FIXME: Change this to Marker and implement type aliases
+    Marker,
     Compound(Vec<WithInfo<D::Info, TypeMember<D>>>),
+    Wrapper(WithInfo<D::Info, Type<D>>),
 }
 
 impl<D: Driver> DefaultFromInfo<D::Info> for TypeRepresentation<D> {
     fn default_from_info(info: D::Info) -> WithInfo<D::Info, Self> {
         WithInfo {
             info,
-            item: TypeRepresentation::Opaque,
+            item: TypeRepresentation::Marker,
         }
     }
 }
@@ -1403,48 +1404,60 @@ mod rules {
     }
 
     pub fn type_representation<D: Driver>() -> Rule<D, TypeRepresentation<D>> {
-        Rule::block(
+        Rule::switch(
             SyntaxKind::TypeRepresentation,
-            || {
-                Rule::switch(
-                    SyntaxKind::TypeMember,
-                    [
+            [
+                || {
+                    Rule::block(
+                        SyntaxKind::TypeRepresentation,
                         || {
-                            Rule::non_associative_operator(
-                                SyntaxKind::FieldDeclaration,
-                                NonAssociativeOperator::Annotate,
-                                || name().wrapped(),
-                                r#type,
-                                |_, info, name, r#type, _| WithInfo {
-                                    info,
-                                    item: TypeMember {
-                                        name,
-                                        kind: TypeMemberKind::Field(r#type),
+                            Rule::switch(
+                                SyntaxKind::TypeMember,
+                                [
+                                    || {
+                                        Rule::non_associative_operator(
+                                            SyntaxKind::FieldDeclaration,
+                                            NonAssociativeOperator::Annotate,
+                                            || name().wrapped(),
+                                            r#type,
+                                            |_, info, name, r#type, _| WithInfo {
+                                                info,
+                                                item: TypeMember {
+                                                    name,
+                                                    kind: TypeMemberKind::Field(r#type),
+                                                },
+                                            },
+                                        )
                                     },
-                                },
+                                    || {
+                                        Rule::list_prefix(
+                                            SyntaxKind::VariantDeclaration,
+                                            || name().wrapped(),
+                                            r#type,
+                                            |_, info, name, types, _| WithInfo {
+                                                info,
+                                                item: TypeMember {
+                                                    name,
+                                                    kind: TypeMemberKind::Variant(types),
+                                                },
+                                            },
+                                        )
+                                    },
+                                ],
                             )
                         },
-                        || {
-                            Rule::list_prefix(
-                                SyntaxKind::VariantDeclaration,
-                                || name().wrapped(),
-                                r#type,
-                                |_, info, name, types, _| WithInfo {
-                                    info,
-                                    item: TypeMember {
-                                        name,
-                                        kind: TypeMemberKind::Variant(types),
-                                    },
-                                },
-                            )
+                        |_, info, members, _| WithInfo {
+                            info,
+                            item: TypeRepresentation::Compound(members),
                         },
-                    ],
-                )
-            },
-            |_, info, members, _| WithInfo {
-                info,
-                item: TypeRepresentation::Compound(members),
-            },
+                    )
+                },
+                || {
+                    r#type().map(SyntaxKind::Type, |r#type| {
+                        TypeRepresentation::Wrapper(r#type)
+                    })
+                },
+            ],
         )
         .named("A set of fields or variants in a type.")
     }

@@ -269,8 +269,8 @@ fn resolve_statements<D: Driver>(
 
                 let mut constructors = Vec::new();
                 let representation = representation.map(|representation| match representation {
-                    crate::UnresolvedTypeRepresentation::Opaque => {
-                        crate::TypeRepresentation::Opaque
+                    crate::UnresolvedTypeRepresentation::Marker => {
+                        crate::TypeRepresentation::Marker
                     }
                     crate::UnresolvedTypeRepresentation::Structure(fields) => {
                         constructors.push(generate_structure_constructor(
@@ -326,6 +326,9 @@ fn resolve_statements<D: Driver>(
                                 })
                                 .collect(),
                         )
+                    }
+                    crate::UnresolvedTypeRepresentation::Wrapper(r#type) => {
+                        crate::TypeRepresentation::Wrapper(resolve_type(r#type, info))
                     }
                 });
 
