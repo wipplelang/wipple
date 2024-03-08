@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::{fmt::Debug, hash::Hash, rc::Rc};
 use wipple_util::{DefaultFromInfo, WithInfo};
 
+#[allow(missing_docs)]
 #[derive(Deserialize, Derivative)]
 #[derivative(
     Debug(bound = "D::Info: Debug"),
@@ -18,7 +19,7 @@ use wipple_util::{DefaultFromInfo, WithInfo};
 )]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct TopLevel<D: Driver> {
-    pub statements: Vec<WithInfo<D::Info, Statement<D>>>,
+    pub(crate) statements: Vec<WithInfo<D::Info, Statement<D>>>,
 }
 
 impl<D: Driver> DefaultFromInfo<D::Info> for TopLevel<D> {
@@ -40,7 +41,7 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TopLevel<D> {
     Eq(bound = "D::Info: Eq")
 )]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub enum Statement<D: Driver> {
+pub(crate) enum Statement<D: Driver> {
     Error,
     #[serde(rename_all = "camelCase")]
     TypeDeclaration {
@@ -92,7 +93,7 @@ impl<D: Driver> DefaultFromInfo<D::Info> for Statement<D> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumString, Deserialize)]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 #[strum(serialize_all = "kebab-case")]
-pub enum LanguageDeclarationKind {
+pub(crate) enum LanguageDeclarationKind {
     Type,
     Trait,
     Constant,
@@ -106,9 +107,9 @@ pub enum LanguageDeclarationKind {
     Eq(bound = "D::Info: Eq")
 )]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub struct TypeFunction<D: Driver> {
-    pub parameters: Vec<WithInfo<D::Info, TypeParameter<D>>>,
-    pub bounds: Vec<WithInfo<D::Info, Instance<D>>>,
+pub(crate) struct TypeFunction<D: Driver> {
+    pub(crate) parameters: Vec<WithInfo<D::Info, TypeParameter<D>>>,
+    pub(crate) bounds: Vec<WithInfo<D::Info, Instance<D>>>,
 }
 
 impl<D: Driver> DefaultFromInfo<D::Info> for TypeFunction<D> {
@@ -131,10 +132,10 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TypeFunction<D> {
     Eq(bound = "D::Info: Eq")
 )]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub struct TypeParameter<D: Driver> {
-    pub name: WithInfo<D::Info, Option<String>>,
-    pub infer: Option<WithInfo<D::Info, ()>>,
-    pub default: Option<WithInfo<D::Info, Type<D>>>,
+pub(crate) struct TypeParameter<D: Driver> {
+    pub(crate) name: WithInfo<D::Info, Option<String>>,
+    pub(crate) infer: Option<WithInfo<D::Info, ()>>,
+    pub(crate) default: Option<WithInfo<D::Info, Type<D>>>,
 }
 
 impl<D: Driver> DefaultFromInfo<D::Info> for TypeParameter<D> {
@@ -158,9 +159,9 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TypeParameter<D> {
     Eq(bound = "D::Info: Eq")
 )]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub struct Instance<D: Driver> {
-    pub r#trait: WithInfo<D::Info, Option<String>>,
-    pub parameters: Vec<WithInfo<D::Info, Type<D>>>,
+pub(crate) struct Instance<D: Driver> {
+    pub(crate) r#trait: WithInfo<D::Info, Option<String>>,
+    pub(crate) parameters: Vec<WithInfo<D::Info, Type<D>>>,
 }
 
 impl<D: Driver> DefaultFromInfo<D::Info> for Instance<D> {
@@ -183,7 +184,7 @@ impl<D: Driver> DefaultFromInfo<D::Info> for Instance<D> {
     Eq(bound = "D::Info: Eq")
 )]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub enum TypeRepresentation<D: Driver> {
+pub(crate) enum TypeRepresentation<D: Driver> {
     Opaque, // FIXME: Change this to Marker and implement type aliases
     Compound(Vec<WithInfo<D::Info, TypeMember<D>>>),
 }
@@ -205,9 +206,9 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TypeRepresentation<D> {
     Eq(bound = "D::Info: Eq")
 )]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub struct TypeMember<D: Driver> {
-    pub name: WithInfo<D::Info, Option<String>>,
-    pub kind: TypeMemberKind<D>,
+pub(crate) struct TypeMember<D: Driver> {
+    pub(crate) name: WithInfo<D::Info, Option<String>>,
+    pub(crate) kind: TypeMemberKind<D>,
 }
 
 impl<D: Driver> DefaultFromInfo<D::Info> for TypeMember<D> {
@@ -230,7 +231,7 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TypeMember<D> {
     Eq(bound = "D::Info: Eq")
 )]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub enum TypeMemberKind<D: Driver> {
+pub(crate) enum TypeMemberKind<D: Driver> {
     Error,
     Field(WithInfo<D::Info, Type<D>>),
     Variant(Vec<WithInfo<D::Info, Type<D>>>),
@@ -253,7 +254,7 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TypeMemberKind<D> {
     Eq(bound = "D::Info: Eq")
 )]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub enum Expression<D: Driver> {
+pub(crate) enum Expression<D: Driver> {
     Error,
     #[serde(rename_all = "camelCase")]
     Annotate {
@@ -326,7 +327,7 @@ impl<D: Driver> DefaultFromInfo<D::Info> for Expression<D> {
     Eq(bound = "D::Info: Eq")
 )]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub enum Type<D: Driver> {
+pub(crate) enum Type<D: Driver> {
     Error,
     Placeholder,
     Unit,
@@ -361,7 +362,7 @@ impl<D: Driver> DefaultFromInfo<D::Info> for Type<D> {
     Eq(bound = "D::Info: Eq")
 )]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub enum Pattern<D: Driver> {
+pub(crate) enum Pattern<D: Driver> {
     Error,
     Wildcard,
     Unit,
@@ -399,9 +400,9 @@ impl<D: Driver> DefaultFromInfo<D::Info> for Pattern<D> {
     Eq(bound = "D::Info: Eq")
 )]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub struct FieldPattern<D: Driver> {
-    pub name: WithInfo<D::Info, Option<String>>,
-    pub pattern: WithInfo<D::Info, Pattern<D>>,
+pub(crate) struct FieldPattern<D: Driver> {
+    pub(crate) name: WithInfo<D::Info, Option<String>>,
+    pub(crate) pattern: WithInfo<D::Info, Pattern<D>>,
 }
 
 impl<D: Driver> DefaultFromInfo<D::Info> for FieldPattern<D> {
@@ -424,9 +425,9 @@ impl<D: Driver> DefaultFromInfo<D::Info> for FieldPattern<D> {
     Eq(bound = "D::Info: Eq")
 )]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub struct Arm<D: Driver> {
-    pub pattern: WithInfo<D::Info, Pattern<D>>,
-    pub body: WithInfo<D::Info, Expression<D>>,
+pub(crate) struct Arm<D: Driver> {
+    pub(crate) pattern: WithInfo<D::Info, Pattern<D>>,
+    pub(crate) body: WithInfo<D::Info, Expression<D>>,
 }
 
 impl<D: Driver> DefaultFromInfo<D::Info> for Arm<D> {
@@ -449,9 +450,9 @@ impl<D: Driver> DefaultFromInfo<D::Info> for Arm<D> {
     Eq(bound = "D::Info: Eq")
 )]
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
-pub struct FieldValue<D: Driver> {
-    pub name: WithInfo<D::Info, Option<String>>,
-    pub value: WithInfo<D::Info, Expression<D>>,
+pub(crate) struct FieldValue<D: Driver> {
+    pub(crate) name: WithInfo<D::Info, Option<String>>,
+    pub(crate) value: WithInfo<D::Info, Expression<D>>,
 }
 
 impl<D: Driver> DefaultFromInfo<D::Info> for FieldValue<D> {
@@ -466,6 +467,7 @@ impl<D: Driver> DefaultFromInfo<D::Info> for FieldValue<D> {
     }
 }
 
+/// A diagnostic generated by the parser.
 #[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Debug(bound = ""),
@@ -475,11 +477,20 @@ impl<D: Driver> DefaultFromInfo<D::Info> for FieldValue<D> {
     Hash(bound = "D::Info: Hash")
 )]
 pub struct Diagnostic<D: Driver> {
+    /// The expected piece of syntax at this location.
     pub expected: SyntaxKind,
+
+    /// Whether the diagnostic refers to the token before or after the expected
+    /// syntax.
     pub direction: Option<Direction>,
+
+    /// The syntax rules matched so far.
     pub stack: Vec<WithInfo<D::Info, SyntaxKind>>,
 }
 
+/// Whether a [`Diagnostic`] refers to the token before of after the expected
+/// syntax.
+#[allow(missing_docs)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Direction {
     Before,
@@ -550,12 +561,14 @@ pub enum SyntaxKind {
     Nothing,
 }
 
+#[allow(missing_docs)]
 #[derive(Debug)]
 pub struct Result<D: Driver> {
     pub top_level: WithInfo<D::Info, TopLevel<D>>,
     pub diagnostics: Vec<WithInfo<D::Info, Diagnostic<D>>>,
 }
 
+/// Parse a token tree into a concrete syntax tree.
 pub fn parse<D: Driver>(driver: &D, tree: WithInfo<D::Info, &TokenTree<'_, D>>) -> Result<D>
 where
     D::Info: From<Info>,
@@ -575,6 +588,7 @@ where
     }
 }
 
+/// An HTML-rendered version of the parser's grammar.
 pub struct Grammar {
     rules: Vec<(&'static str, SyntaxKind, RuleToRender)>,
 }
@@ -598,6 +612,7 @@ impl RuleToRender {
 }
 
 impl Grammar {
+    /// Render the grammar to HTML.
     pub fn render_to_html(&self, f: &mut impl std::fmt::Write) -> std::fmt::Result {
         write!(f, "<ul class=\"grammar\">")?;
 
@@ -615,6 +630,7 @@ impl Grammar {
         Ok(())
     }
 
+    /// Render the grammar to an HTML string.
     pub fn render_to_html_string(&self) -> String {
         let mut s = String::new();
         self.render_to_html(&mut s).unwrap();
@@ -678,6 +694,7 @@ impl RuleToRender {
     }
 }
 
+/// The parser's syntax rules.
 pub fn grammar<D: Driver>(_driver: &D) -> Grammar {
     let mut rules = rules::render::<D>();
     rules.sort_by_key(|(_, kind, _)| kind.to_string());

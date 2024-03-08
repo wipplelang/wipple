@@ -5,7 +5,7 @@ mod convert;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, hash::Hash, rc::Rc};
-use wasm_bindgen::{prelude::wasm_bindgen, JsCast};
+use wasm_bindgen::prelude::wasm_bindgen;
 
 pub use wipple_codegen as codegen;
 pub use wipple_linker as linker;
@@ -188,9 +188,7 @@ impl Driver {
             };
 
             let (tokens, tokenize_diagnostics): (Vec<_>, Vec<_>) =
-                syntax::tokenize::tokenize(&syntax_driver, &file.code)
-                    .into_iter()
-                    .partition_result();
+                syntax::tokenize::tokenize(&syntax_driver, &file.code).partition_result();
 
             diagnostics.extend(
                 tokenize_diagnostics
@@ -512,7 +510,8 @@ impl Driver {
     }
 }
 
-struct SyntaxDriver {
+#[doc(hidden)]
+pub struct SyntaxDriver {
     file_path: Rc<str>,
     visible_path: Rc<str>,
 }

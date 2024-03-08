@@ -26,18 +26,26 @@ pub trait Driver: Sized + 'static {
     fn merge_info(left: Self::Info, right: Self::Info) -> Self::Info;
 }
 
+/// Location information about a parsed item.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Info {
+    /// The path of the file this item belongs to.
     pub path: Rc<str>,
+
+    /// The path to be displayed to the user.
     pub visible_path: Rc<str>,
+
+    /// The location of the item in the source code.
     pub span: Range<u32>,
 }
 
 impl Info {
+    /// Check if `self` is contained within `other`.
     pub fn span_is_within(&self, other: &Self) -> bool {
         self.span.start >= other.span.start && self.span.end <= other.span.end
     }
 
+    /// Merge two [`Info`]s together.
     pub fn merge(left: Self, right: Self) -> Self {
         Self {
             path: left.path,

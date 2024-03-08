@@ -1,7 +1,11 @@
+//! Construct an abstract syntax tree from the concrete syntax tree generated
+//! by [`parse`].
+
 use crate::{parse, Driver};
 use derivative::Derivative;
 use wipple_util::WithInfo;
 
+/// Convert a [`parse::TopLevel`] into a [`crate::TopLevel`].
 pub fn top_level<D: Driver>(
     top_level_syntax: WithInfo<D::Info, parse::TopLevel<D>>,
 ) -> crate::Result<D> {

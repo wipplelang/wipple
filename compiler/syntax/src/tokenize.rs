@@ -1,3 +1,7 @@
+//! Convert a source file to a sequence of tokens.
+
+#![allow(missing_docs)]
+
 use crate::{Driver, Info};
 use derivative::Derivative;
 use generator::Gn;
@@ -30,6 +34,7 @@ pub enum Token<'src> {
 }
 
 impl<'src> Token<'src> {
+    /// Clone the strings referenced by this token.
     pub fn into_owned(self) -> Token<'static> {
         match self {
             Token::LeftParenthesis => Token::LeftParenthesis,
@@ -91,7 +96,6 @@ pub enum Keyword {
 }
 
 /// A binary operator.
-#[allow(missing_docs)]
 #[derive(
     Debug,
     Clone,
