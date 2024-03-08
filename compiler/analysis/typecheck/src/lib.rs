@@ -519,7 +519,7 @@ pub enum UntypedExpression<D: Driver> {
     },
 
     /// Create a marker value.
-    Marker(WithInfo<D::Info, D::Path>),
+    Marker(D::Path),
 
     /// Create a structure value.
     Structure(Vec<WithInfo<D::Info, UntypedStructureFieldValue<D>>>),
@@ -537,7 +537,7 @@ pub enum UntypedExpression<D: Driver> {
     /// Create a wrapper value.
     Wrapper {
         /// The wrapper type.
-        r#type: WithInfo<D::Info, D::Path>,
+        r#type: D::Path,
 
         /// The type's value.
         value: WithInfo<D::Info, Box<UntypedExpression<D>>>,
@@ -692,7 +692,7 @@ pub enum TypedExpressionKind<D: Driver> {
     },
 
     /// Create a marker value.
-    Marker(WithInfo<D::Info, D::Path>),
+    Marker(D::Path),
 
     /// Create a structure value.
     Structure {

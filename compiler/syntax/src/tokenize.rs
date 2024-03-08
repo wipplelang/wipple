@@ -4,7 +4,6 @@
 
 use crate::{Driver, Info};
 use derivative::Derivative;
-use generator::Gn;
 use itertools::Itertools;
 use logos::Logos;
 use serde::{Deserialize, Serialize};
@@ -750,56 +749,56 @@ where
 pub fn to_logical_lines<'a, 'src: 'a, D: Driver>(
     _driver: &'a D,
     tokens: impl IntoIterator<Item = WithInfo<D::Info, Token<'src>>> + 'a,
-) -> impl Iterator<Item = WithInfo<D::Info, Token<'src>>> + 'a {
-    Gn::new_scoped_local(|mut s| {
-        let mut tokens = tokens.into_iter().peekable();
-        while let Some(token) = tokens.next() {
-            match &token.item {
-                Token::Comment(_) => {}
-                Token::Operator(_) => {
-                    s.yield_with(token);
+) -> Vec<WithInfo<D::Info, Token<'src>>> {
+    let mut result = Vec::new();
 
-                    while let Some(WithInfo {
-                        item: Token::LineBreak,
-                        ..
-                    }) = tokens.peek()
-                    {
-                        tokens.next();
-                    }
-                }
-                Token::LineBreak => {
-                    while let Some(WithInfo {
-                        item: Token::LineBreak,
-                        ..
-                    }) = tokens.peek()
-                    {
-                        tokens.next();
-                    }
+    let mut tokens = tokens.into_iter().peekable();
+    while let Some(token) = tokens.next() {
+        match &token.item {
+            Token::Comment(_) => {}
+            Token::Operator(_) => {
+                result.push(token);
 
-                    if let Some(operator) =
-                        tokens.next_if(|token| matches!(token.item, Token::Operator(_)))
-                    {
-                        s.yield_with(operator);
-                    } else {
-                        s.yield_with(token);
-                    }
-
-                    while let Some(WithInfo {
-                        item: Token::LineBreak,
-                        ..
-                    }) = tokens.peek()
-                    {
-                        tokens.next();
-                    }
-                }
-                _ => {
-                    s.yield_with(token);
+                while let Some(WithInfo {
+                    item: Token::LineBreak,
+                    ..
+                }) = tokens.peek()
+                {
+                    tokens.next();
                 }
             }
-        }
+            Token::LineBreak => {
+                while let Some(WithInfo {
+                    item: Token::LineBreak,
+                    ..
+                }) = tokens.peek()
+                {
+                    tokens.next();
+                }
 
-        generator::done()
-    })
+                if let Some(operator) =
+                    tokens.next_if(|token| matches!(token.item, Token::Operator(_)))
+                {
+                    result.push(operator);
+                } else {
+                    result.push(token);
+                }
+
+                while let Some(WithInfo {
+                    item: Token::LineBreak,
+                    ..
+                }) = tokens.peek()
+                {
+                    tokens.next();
+                }
+            }
+            _ => {
+                result.push(token);
+            }
+        }
+    }
+
+    result
 }
 
 /// A token tree.

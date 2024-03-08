@@ -606,7 +606,7 @@ impl wipple_typecheck::Driver for Driver {
         self.interface
             .type_declarations
             .get(path)
-            .expect("missing type declaration")
+            .unwrap_or_else(|| panic!("missing type declaration {:?}", path))
             .clone()
     }
 

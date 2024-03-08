@@ -8,7 +8,6 @@ workspace = true
 
 [dependencies]
 derivative = "2"
-generator = "0.8"
 itertools = "0.12"
 logos = "0.14"
 rustc_lexer = "0.1"

@@ -1269,7 +1269,7 @@ enum ExpressionKind<D: Driver> {
         pattern: WithInfo<D::Info, crate::Pattern<D>>,
         value: WithInfo<D::Info, Box<Expression<D>>>,
     },
-    Marker(WithInfo<D::Info, D::Path>),
+    Marker(D::Path),
     UnresolvedStructure(Vec<WithInfo<D::Info, StructureFieldValue<D>>>),
     ResolvedStructure {
         structure: D::Path,
@@ -1715,7 +1715,7 @@ fn infer_expression<D: Driver>(
             }
         }
         crate::UntypedExpression::Marker(path) => {
-            let type_declaration = context.driver.get_type_declaration(&path.item);
+            let type_declaration = context.driver.get_type_declaration(&path);
 
             let instantiation_context = InstantiationContext::from_parameters(
                 context.driver,
@@ -1727,7 +1727,7 @@ fn infer_expression<D: Driver>(
 
             let r#type = Type::new(
                 TypeKind::Declared {
-                    path: path.item.clone(),
+                    path: path.clone(),
                     parameters: type_declaration
                         .item
                         .parameters
@@ -1832,7 +1832,7 @@ fn infer_expression<D: Driver>(
             r#type: path,
             value,
         } => {
-            let type_declaration = context.driver.get_type_declaration(&path.item);
+            let type_declaration = context.driver.get_type_declaration(&path);
 
             let instantiation_context = InstantiationContext::from_parameters(
                 context.driver,
@@ -1844,7 +1844,7 @@ fn infer_expression<D: Driver>(
 
             let r#type = Type::new(
                 TypeKind::Declared {
-                    path: path.item,
+                    path,
                     parameters: type_declaration
                         .item
                         .parameters

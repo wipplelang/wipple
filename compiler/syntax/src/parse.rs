@@ -494,6 +494,7 @@ pub struct Diagnostic<D: Driver> {
 /// syntax.
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Direction {
     Before,
     After,
@@ -790,7 +791,7 @@ mod rules {
         Rule::non_associative_operator(
             SyntaxKind::TypeDeclaration,
             NonAssociativeOperator::Assign,
-            || name().wrapped(),
+            || name().wrapped().in_list(),
             || {
                 Rule::switch(
                     SyntaxKind::TypeDeclaration,
@@ -840,7 +841,7 @@ mod rules {
                                     Rule::keyword1(
                                         SyntaxKind::TypeRepresentation,
                                         Keyword::Type,
-                                        || type_representation(),
+                                        type_representation,
                                         |_, _, representation, _| representation,
                                     )
                                 },
@@ -873,7 +874,7 @@ mod rules {
         Rule::non_associative_operator(
             SyntaxKind::TraitDeclaration,
             NonAssociativeOperator::Assign,
-            || name().wrapped(),
+            || name().wrapped().in_list(),
             || {
                 Rule::switch(
                     SyntaxKind::TraitDeclaration,
@@ -1034,7 +1035,7 @@ mod rules {
         Rule::non_associative_operator(
             SyntaxKind::ConstantDeclaration,
             NonAssociativeOperator::Annotate,
-            || name().wrapped(),
+            || name().wrapped().in_list(),
             || {
                 Rule::switch(
                     SyntaxKind::ConstantDeclaration,
@@ -1435,7 +1436,7 @@ mod rules {
                                         Rule::non_associative_operator(
                                             SyntaxKind::FieldDeclaration,
                                             NonAssociativeOperator::Annotate,
-                                            || name().wrapped(),
+                                            || name().wrapped().in_list(),
                                             r#type,
                                             |_, info, name, r#type, _| WithInfo {
                                                 info,
@@ -1577,7 +1578,7 @@ mod rules {
                 Rule::non_associative_operator(
                     SyntaxKind::StructureField,
                     NonAssociativeOperator::Assign,
-                    || name().wrapped(),
+                    || name().wrapped().in_list(),
                     pattern,
                     |_, info, name, pattern, _| WithInfo {
                         info,
@@ -1897,7 +1898,7 @@ mod rules {
                 Rule::non_associative_operator(
                     SyntaxKind::StructureField,
                     NonAssociativeOperator::Assign,
-                    || name().wrapped(),
+                    || name().wrapped().in_list(),
                     expression,
                     |_, info, name, value, _| WithInfo {
                         info,
@@ -2157,6 +2158,41 @@ mod base {
                 r#try: self.r#try,
                 parse: ParseFn::new(move |parser, tree, stack| {
                     Some(self.parse_option(parser, tree, stack))
+                }),
+            }
+        }
+
+        pub fn in_list(self) -> Rule<D, Output>
+        where
+            Output: DefaultFromInfo<D::Info>,
+        {
+            Rule {
+                doc: self.doc,
+                syntax_kind: self.syntax_kind,
+                rendered: RuleToRender::List(vec![Rc::new({
+                    let rendered = self.rendered.clone();
+                    move || rendered.clone()
+                })]),
+                r#try: self.r#try,
+                parse: ParseFn::new(move |parser, tree, stack| {
+                    let mut elements = match &tree.item {
+                        TokenTree::List(_, elements) => elements.iter(),
+                        _ => return None,
+                    };
+
+                    let output = self.parse(parser, elements.next().map(WithInfo::as_ref)?, stack);
+
+                    for element in elements {
+                        parser.add_diagnostic(stack.error_expected(
+                            WithInfo {
+                                info: D::Info::clone(&element.info),
+                                item: SyntaxKind::Nothing,
+                            },
+                            Direction::After,
+                        ));
+                    }
+
+                    Some(output)
                 }),
             }
         }

@@ -925,7 +925,7 @@ pub enum Expression<D: Driver> {
     Collection(Vec<WithInfo<D::Info, Expression<D>>>),
 
     /// A value of a marker type.
-    Marker(WithInfo<D::Info, Path>),
+    Marker(Path),
 
     /// Structure construction.
     Structure(Vec<WithInfo<D::Info, FieldValue<D>>>),
@@ -942,7 +942,7 @@ pub enum Expression<D: Driver> {
     /// Wrapper type construction.
     Wrapper {
         /// The type to construct.
-        r#type: WithInfo<D::Info, Path>,
+        r#type: Path,
 
         /// The type's value.
         value: WithInfo<D::Info, Box<Expression<D>>>,

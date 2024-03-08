@@ -272,7 +272,6 @@ fn resolve_statements<D: Driver>(
                     crate::UnresolvedTypeRepresentation::Marker => {
                         constructors.push(generate_marker_constructor(
                             name.clone(),
-                            name.map(|name| info.make_path(crate::PathComponent::Type(name))),
                             parameters.clone(),
                             info,
                         ));
@@ -339,7 +338,6 @@ fn resolve_statements<D: Driver>(
 
                         generate_wrapper_constructor(
                             name.clone(),
-                            name.map(|name| info.make_path(crate::PathComponent::Type(name))),
                             value_type.clone(),
                             parameters.clone(),
                             info,
@@ -558,7 +556,6 @@ fn resolve_statements<D: Driver>(
 
 fn generate_marker_constructor<D: Driver>(
     name: WithInfo<D::Info, String>,
-    marker_path: WithInfo<D::Info, crate::Path>,
     parameters: Vec<crate::Path>,
     info: &mut Info<D>,
 ) -> (String, WithInfo<D::Info, crate::Path>) {
@@ -587,7 +584,7 @@ fn generate_marker_constructor<D: Driver>(
 
     let constructor_body = WithInfo {
         info: name.info.clone(),
-        item: crate::Expression::Marker(marker_path),
+        item: crate::Expression::Marker(info.path.clone()),
     };
 
     info.constant_declarations.insert(
@@ -805,7 +802,6 @@ fn generate_variant_constructor<D: Driver>(
 
 fn generate_wrapper_constructor<D: Driver>(
     name: WithInfo<D::Info, String>,
-    wrapper_path: WithInfo<D::Info, crate::Path>,
     value_type: WithInfo<D::Info, crate::Type<D>>,
     parameters: Vec<crate::Path>,
     info: &mut Info<D>,
@@ -855,7 +851,7 @@ fn generate_wrapper_constructor<D: Driver>(
                 body: WithInfo {
                     info: name.info.clone(),
                     item: crate::Expression::Wrapper {
-                        r#type: wrapper_path,
+                        r#type: info.path.clone(),
                         value: WithInfo {
                             info: name.info.clone(),
                             item: crate::Expression::Variable(name.item.clone(), input_variable),

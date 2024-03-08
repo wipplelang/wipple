@@ -13,7 +13,7 @@ import {
     array,
 } from "cmd-ts";
 import { File } from "cmd-ts/batteries/fs";
-import { compile, link, renderDiagnostics, colorizeDiagnostics } from "wipple-compiler";
+import { compile, link } from "wipple-compiler";
 import { evaluate, InterpreterError, IoRequest } from "wipple-interpreter";
 
 Error.stackTraceLimit = Infinity;
@@ -55,28 +55,7 @@ const app = subcommands({
                 const result = compile(sources, dependencies);
 
                 if (result.diagnostics.length > 0) {
-                    const sourceCodeForFile = (file: string) => {
-                        try {
-                            return fs.readFileSync(file, "utf8");
-                        } catch {
-                            return "";
-                        }
-                    };
-
-                    const renderedDiagnostics = renderDiagnostics(
-                        result.diagnostics,
-                        result.interface,
-                        result.library,
-                        sourceCodeForFile,
-                    );
-
-                    const output = colorizeDiagnostics(renderedDiagnostics, sourceCodeForFile);
-
-                    console.log(output);
-
-                    if (renderedDiagnostics.some((diagnostic: any) => diagnostic.error)) {
-                        process.exit(1);
-                    }
+                    console.log(JSON.stringify(result.diagnostics, null, 4));
                 }
 
                 if (outputInterfacePath) {
@@ -123,28 +102,8 @@ const app = subcommands({
                 const result = compile(sources, dependencies);
 
                 if (result.diagnostics.length > 0) {
-                    const sourceCodeForFile = (file: string) => {
-                        try {
-                            return fs.readFileSync(file, "utf8");
-                        } catch {
-                            return "";
-                        }
-                    };
-
-                    const renderedDiagnostics = renderDiagnostics(
-                        result.diagnostics,
-                        result.interface,
-                        result.library,
-                        sourceCodeForFile,
-                    );
-
-                    const output = colorizeDiagnostics(renderedDiagnostics, sourceCodeForFile);
-
-                    console.log(output);
-
-                    if (renderedDiagnostics.some((diagnostic: any) => diagnostic.error)) {
-                        process.exit(1);
-                    }
+                    console.log(JSON.stringify(result.diagnostics, null, 4));
+                    process.exit(1);
                 }
 
                 const output = {
