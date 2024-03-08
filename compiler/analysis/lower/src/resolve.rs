@@ -173,69 +173,69 @@ fn resolve_statements<D: Driver>(
     statements: Vec<WithInfo<D::Info, crate::UnresolvedStatement<D>>>,
     info: &mut Info<D>,
 ) -> Vec<WithInfo<D::Info, crate::Expression<D>>> {
-    let mut statements = statements
-        .into_iter()
-        .filter_map(|statement| {
-            macro_rules! insert_declaration {
-                ($declarations:ident, $name:expr, $path:expr $(,)?) => {{
-                    use std::collections::hash_map::Entry;
+    let mut statements =
+        statements
+            .into_iter()
+            .filter_map(|statement| {
+                macro_rules! insert_declaration {
+                    ($declarations:ident, $name:expr, $path:expr $(,)?) => {{
+                        use std::collections::hash_map::Entry;
 
-                    let path = $path;
+                        let path = $path;
 
-                    match info.$declarations.entry(path.clone()) {
-                        Entry::Occupied(entry) => {
-                            info.errors.push(
-                                statement
-                                    .replace(crate::Diagnostic::AlreadyDefined(entry.key().clone())),
-                            );
+                        match info.$declarations.entry(path.clone()) {
+                            Entry::Occupied(entry) => {
+                                info.errors.push(statement.replace(
+                                    crate::Diagnostic::AlreadyDefined(entry.key().clone()),
+                                ));
 
-                            None
+                                None
+                            }
+                            Entry::Vacant(entry) => {
+                                entry.insert(statement.replace(None));
+                                info.scopes.define($name.clone(), statement.replace(path));
+                                Some(statement)
+                            }
                         }
-                        Entry::Vacant(entry) => {
-                            entry.insert(statement.replace(None));
-                            info.scopes.define($name.clone(), statement.replace(path));
-                            Some(statement)
-                        }
-                    }
-                }};
-            }
-
-            match &statement.item {
-                crate::UnresolvedStatement::Type { name, .. } => insert_declaration!(
-                    type_declarations,
-                    &name.item,
-                    info.make_path(crate::PathComponent::Type(name.item.clone())),
-                ),
-                crate::UnresolvedStatement::Trait { name, .. } => insert_declaration!(
-                    trait_declarations,
-                    &name.item,
-                    info.make_path(crate::PathComponent::Trait(name.item.clone())),
-                ),
-                crate::UnresolvedStatement::Constant { name, .. } => insert_declaration!(
-                    constant_declarations,
-                    &name.item,
-                    info.make_path(crate::PathComponent::Constant(name.item.clone())),
-                ),
-                crate::UnresolvedStatement::Language { name, .. } => {
-                    if info.path.len() > 1 {
-                        info.errors.push(WithInfo {
-                            info: statement.info,
-                            item: crate::Diagnostic::NestedLanguageDeclaration,
-                        });
-
-                        return None;
-                    }
-
-                    info.language_declarations.insert(name.item.clone(), None);
-
-                    Some(statement)
+                    }};
                 }
-                crate::UnresolvedStatement::Instance { .. }
-                | crate::UnresolvedStatement::Assignment { .. }
-                | crate::UnresolvedStatement::Expression(_) => Some(statement),
-            }
-        })
-        .collect::<Vec<_>>();
+
+                match &statement.item {
+                    crate::UnresolvedStatement::Type { name, .. } => insert_declaration!(
+                        type_declarations,
+                        &name.item,
+                        info.make_path(crate::PathComponent::Type(name.item.clone())),
+                    ),
+                    crate::UnresolvedStatement::Trait { name, .. } => insert_declaration!(
+                        trait_declarations,
+                        &name.item,
+                        info.make_path(crate::PathComponent::Trait(name.item.clone())),
+                    ),
+                    crate::UnresolvedStatement::Constant { name, .. } => insert_declaration!(
+                        constant_declarations,
+                        &name.item,
+                        info.make_path(crate::PathComponent::Constant(name.item.clone())),
+                    ),
+                    crate::UnresolvedStatement::Language { name, .. } => {
+                        if info.path.len() > 1 {
+                            info.errors.push(WithInfo {
+                                info: statement.info,
+                                item: crate::Diagnostic::NestedLanguageDeclaration,
+                            });
+
+                            return None;
+                        }
+
+                        info.language_declarations.insert(name.item.clone(), None);
+
+                        Some(statement)
+                    }
+                    crate::UnresolvedStatement::Instance { .. }
+                    | crate::UnresolvedStatement::Assignment { .. }
+                    | crate::UnresolvedStatement::Expression(_) => Some(statement),
+                }
+            })
+            .collect::<Vec<_>>();
 
     // Ensure that executable code is resolved after type and trait definitions,
     // so that references to types and traits can use the resolved definition
@@ -264,7 +264,7 @@ fn resolve_statements<D: Driver>(
 
                 let parameters = parameters
                     .into_iter()
-                    .map(|type_parameter| resolve_type_parameter(type_parameter, info))
+                    .filter_map(|type_parameter| resolve_type_parameter(type_parameter, info))
                     .collect::<Vec<_>>();
 
                 let mut constructors = Vec::new();
@@ -358,7 +358,7 @@ fn resolve_statements<D: Driver>(
 
                 let parameters = parameters
                     .into_iter()
-                    .map(|type_parameter| resolve_type_parameter(type_parameter, info))
+                    .filter_map(|type_parameter| resolve_type_parameter(type_parameter, info))
                     .collect::<Vec<_>>();
 
                 let r#type = resolve_type(r#type, info);
@@ -394,7 +394,7 @@ fn resolve_statements<D: Driver>(
 
                 let parameters = parameters
                     .into_iter()
-                    .map(|type_parameter| resolve_type_parameter(type_parameter, info))
+                    .filter_map(|type_parameter| resolve_type_parameter(type_parameter, info))
                     .collect::<Vec<_>>();
 
                 let bounds = bounds
@@ -435,7 +435,7 @@ fn resolve_statements<D: Driver>(
 
                 let parameters = parameters
                     .into_iter()
-                    .map(|type_parameter| resolve_type_parameter(type_parameter, info))
+                    .filter_map(|type_parameter| resolve_type_parameter(type_parameter, info))
                     .collect::<Vec<_>>();
 
                 let bounds = bounds
@@ -549,7 +549,7 @@ fn generate_structure_constructor<D: Driver>(
         r#type: WithInfo {
             info: name.info.clone(),
             item: crate::Type::Function {
-                input: WithInfo {
+                inputs: vec![WithInfo {
                     info: name.info.clone(),
                     item: crate::Type::Declared {
                         path: WithInfo {
@@ -565,8 +565,7 @@ fn generate_structure_constructor<D: Driver>(
                             })
                             .collect(),
                     },
-                }
-                .boxed(),
+                }],
                 output: WithInfo {
                     info: name.info.clone(),
                     item: crate::Type::Declared {
@@ -596,10 +595,10 @@ fn generate_structure_constructor<D: Driver>(
         WithInfo {
             info: name.info.clone(),
             item: crate::Expression::Function {
-                pattern: WithInfo {
+                inputs: vec![WithInfo {
                     info: name.info.clone(),
                     item: crate::Pattern::Variable(name.item.clone(), input_variable.clone()),
-                },
+                }],
                 body: WithInfo {
                     info: name.info.clone(),
                     item: crate::Expression::Variable(name.item.clone(), input_variable),
@@ -642,31 +641,29 @@ fn generate_variant_constructor<D: Driver>(
     let constructor_declaration = crate::ConstantDeclaration {
         parameters: parameters.clone(),
         bounds: Vec::new(),
-        r#type: value_types.clone().into_iter().rfold(
-            WithInfo {
-                info: name.info.clone(),
-                item: crate::Type::Declared {
-                    path: WithInfo {
-                        info: name.info.clone(),
-                        item: info.path.clone(),
-                    },
-                    parameters: parameters
-                        .into_iter()
-                        .map(|parameter| WithInfo {
+        r#type: WithInfo {
+            info: name.info.clone(),
+            item: crate::Type::Function {
+                inputs: value_types.clone(),
+                output: WithInfo {
+                    info: name.info.clone(),
+                    item: crate::Type::Declared {
+                        path: WithInfo {
                             info: name.info.clone(),
-                            item: crate::Type::Parameter(parameter),
-                        })
-                        .collect(),
-                },
+                            item: info.path.clone(),
+                        },
+                        parameters: parameters
+                            .into_iter()
+                            .map(|parameter| WithInfo {
+                                info: name.info.clone(),
+                                item: crate::Type::Parameter(parameter),
+                            })
+                            .collect(),
+                    },
+                }
+                .boxed(),
             },
-            |result, next| WithInfo {
-                info: name.info.clone(),
-                item: crate::Type::Function {
-                    input: next.boxed(),
-                    output: result.boxed(),
-                },
-            },
-        ),
+        },
     };
 
     let constructor_body = {
@@ -679,31 +676,35 @@ fn generate_variant_constructor<D: Driver>(
             })
             .collect::<Vec<_>>();
 
-        input_variables.clone().into_iter().rfold(
-            WithInfo {
-                info: name.info.clone(),
-                item: crate::Expression::Variant {
-                    variant: variant_path,
-                    values: input_variables
-                        .into_iter()
-                        .map(|input_variable| WithInfo {
-                            info: name.info.clone(),
-                            item: crate::Expression::Variable(name.item.clone(), input_variable),
-                        })
-                        .collect(),
-                },
-            },
-            |result, next| WithInfo {
-                info: name.info.clone(),
-                item: crate::Expression::Function {
-                    pattern: WithInfo {
+        WithInfo {
+            info: name.info.clone(),
+            item: crate::Expression::Function {
+                inputs: input_variables
+                    .iter()
+                    .map(|variable| WithInfo {
                         info: name.info.clone(),
-                        item: crate::Pattern::Variable(name.item.clone(), next),
+                        item: crate::Pattern::Variable(name.item.clone(), variable.clone()),
+                    })
+                    .collect(),
+                body: WithInfo {
+                    info: name.info.clone(),
+                    item: crate::Expression::Variant {
+                        variant: variant_path,
+                        values: input_variables
+                            .into_iter()
+                            .map(|input_variable| WithInfo {
+                                info: name.info.clone(),
+                                item: crate::Expression::Variable(
+                                    name.item.clone(),
+                                    input_variable,
+                                ),
+                            })
+                            .collect(),
                     },
-                    body: result.boxed(),
-                },
+                }
+                .boxed(),
             },
-        )
+        }
     };
 
     info.constant_declarations.insert(
@@ -835,168 +836,39 @@ fn resolve_expression<D: Driver>(
 
             crate::Expression::Block(block)
         }
-        crate::UnresolvedExpression::Function { pattern, body } => {
+        crate::UnresolvedExpression::Function { inputs, body } => {
             info.scopes.push_block_scope();
-            let pattern = resolve_pattern(pattern, info);
+
+            let inputs = inputs
+                .into_iter()
+                .map(|pattern| resolve_pattern(pattern, info))
+                .collect();
+
             let body = resolve_expression(body.unboxed(), info);
+
             info.scopes.pop_scope();
 
             crate::Expression::Function {
-                pattern,
+                inputs,
                 body: body.boxed(),
             }
         }
-        crate::UnresolvedExpression::Call { function, input } => crate::Expression::Call {
+        crate::UnresolvedExpression::Call { function, inputs } => crate::Expression::Call {
             function: resolve_expression(function.unboxed(), info).boxed(),
-            input: resolve_expression(input.unboxed(), info).boxed(),
+            inputs: inputs
+                .into_iter()
+                .map(|input| resolve_expression(input, info))
+                .collect(),
         },
-        crate::UnresolvedExpression::Apply { input, function } => match (input, function) {
-            (Some(input), Some(function)) => crate::Expression::Call {
-                function: resolve_expression(function.unboxed(), info).boxed(),
-                input: resolve_expression(input.unboxed(), info).boxed(),
-            },
-            (Some(input), None) => {
-                let input_variable = info.next_variable;
-                info.next_variable += 1;
-                let input_variable = info.make_path(crate::PathComponent::Variable(input_variable));
-
-                crate::Expression::Function {
-                    pattern: input.replace(crate::Pattern::Variable(
-                        String::from("function"),
-                        input_variable.clone(),
-                    )),
-                    body: WithInfo {
-                        info: input.info.clone(),
-                        item: crate::Expression::Call {
-                            function: input
-                                .replace(crate::Expression::Variable(
-                                    String::from("function"),
-                                    input_variable,
-                                ))
-                                .boxed(),
-                            input: resolve_expression(input.unboxed(), info).boxed(),
-                        },
-                    }
-                    .boxed(),
-                }
-            }
-            (None, Some(function)) => resolve_expression(function.unboxed(), info).item,
-            (None, None) => {
-                let function_variable = info.next_variable;
-                info.next_variable += 1;
-                let function_variable =
-                    info.make_path(crate::PathComponent::Variable(function_variable));
-
-                let input_variable = info.next_variable;
-                info.next_variable += 1;
-                let input_variable = info.make_path(crate::PathComponent::Variable(input_variable));
-
-                crate::Expression::Function {
-                    pattern: WithInfo {
-                        info: expression_info.clone(),
-                        item: crate::Pattern::Variable(
-                            String::from("function"),
-                            function_variable.clone(),
-                        ),
-                    },
-                    body: WithInfo {
-                        info: expression_info.clone(),
-                        item: crate::Expression::Function {
-                            pattern: WithInfo {
-                                info: expression_info.clone(),
-                                item: crate::Pattern::Variable(
-                                    String::from("input"),
-                                    input_variable.clone(),
-                                ),
-                            },
-                            body: WithInfo {
-                                info: expression_info.clone(),
-                                item: crate::Expression::Call {
-                                    function: WithInfo {
-                                        info: expression_info.clone(),
-                                        item: crate::Expression::Variable(
-                                            String::from("function"),
-                                            function_variable,
-                                        ),
-                                    }
-                                    .boxed(),
-                                    input: WithInfo {
-                                        info: expression_info,
-                                        item: crate::Expression::Variable(
-                                            String::from("input"),
-                                            input_variable,
-                                        ),
-                                    }
-                                    .boxed(),
-                                },
-                            }
-                            .boxed(),
-                        },
-                    }
-                    .boxed(),
-                }
-            }
-        },
-        crate::UnresolvedExpression::Compose { outer, inner } => match (outer, inner) {
-            (Some(outer), Some(inner)) => {
-                let outer = resolve_expression(outer.unboxed(), info);
-                let inner = resolve_expression(inner.unboxed(), info);
-
-                let input_variable = info.next_variable;
-                info.next_variable += 1;
-                let input_variable = info.make_path(crate::PathComponent::Variable(input_variable));
-
-                crate::Expression::Function {
-                    pattern: WithInfo {
-                        info: expression_info.clone(),
-                        item: crate::Pattern::Variable(
-                            String::from("input"),
-                            input_variable.clone(),
-                        ),
-                    },
-                    body: WithInfo {
-                        info: expression_info.clone(),
-                        item: crate::Expression::Call {
-                            function: outer.boxed(),
-                            input: WithInfo {
-                                info: expression_info.clone(),
-                                item: crate::Expression::Call {
-                                    function: inner.boxed(),
-                                    input: WithInfo {
-                                        info: expression_info,
-                                        item: crate::Expression::Variable(
-                                            String::from("input"),
-                                            input_variable,
-                                        ),
-                                    }
-                                    .boxed(),
-                                },
-                            }
-                            .boxed(),
-                        },
-                    }
-                    .boxed(),
-                }
-            }
-            _ => {
-                info.errors.push(WithInfo {
-                    info: expression_info,
-                    item: crate::Diagnostic::InvalidComposition,
-                });
-
-                crate::Expression::Error
-            }
+        crate::UnresolvedExpression::Apply { input, function } => crate::Expression::Call {
+            function: resolve_expression(function.unboxed(), info).boxed(),
+            inputs: vec![resolve_expression(input.unboxed(), info)],
         },
         crate::UnresolvedExpression::BinaryOperator {
             operator,
             left,
             right,
-        } => resolve_binary_operator(
-            operator,
-            left.map(WithInfo::unboxed),
-            right.map(WithInfo::unboxed),
-            info,
-        ),
+        } => resolve_binary_operator(operator, left.unboxed(), right.unboxed(), info),
         crate::UnresolvedExpression::As { value, r#type } => {
             let operator = WithInfo {
                 info: expression_info,
@@ -1011,45 +883,14 @@ fn resolve_expression<D: Driver>(
 
             let r#type = resolve_type(r#type, info);
 
-            match value {
-                Some(value) => crate::Expression::Annotate {
-                    value: operator
-                        .replace(crate::Expression::Call {
-                            function: operator_trait.boxed(),
-                            input: resolve_expression(value.unboxed(), info).boxed(),
-                        })
-                        .boxed(),
-                    r#type,
-                },
-                None => {
-                    let input_variable = info.next_variable;
-                    info.next_variable += 1;
-                    let input_variable =
-                        info.make_path(crate::PathComponent::Variable(input_variable));
-
-                    crate::Expression::Function {
-                        pattern: operator.replace(crate::Pattern::Variable(
-                            String::from("input"),
-                            input_variable.clone(),
-                        )),
-                        body: operator
-                            .replace(crate::Expression::Annotate {
-                                value: operator
-                                    .replace(crate::Expression::Call {
-                                        function: operator_trait.boxed(),
-                                        input: operator
-                                            .replace(crate::Expression::Variable(
-                                                String::from("input"),
-                                                input_variable,
-                                            ))
-                                            .boxed(),
-                                    })
-                                    .boxed(),
-                                r#type,
-                            })
-                            .boxed(),
-                    }
-                }
+            crate::Expression::Annotate {
+                value: operator
+                    .replace(crate::Expression::Call {
+                        function: operator_trait.boxed(),
+                        inputs: vec![resolve_expression(value.unboxed(), info)],
+                    })
+                    .boxed(),
+                r#type,
             }
         }
         crate::UnresolvedExpression::Is { value, pattern } => {
@@ -1082,7 +923,6 @@ fn resolve_expression<D: Driver>(
                     arms: vec![
                         r#true.replace(crate::Arm {
                             pattern: resolve_pattern(pattern, info),
-                            condition: None,
                             body: true_value,
                         }),
                         r#false.replace(crate::Arm {
@@ -1090,43 +930,13 @@ fn resolve_expression<D: Driver>(
                                 info: value_info,
                                 item: crate::Pattern::Wildcard,
                             },
-                            condition: None,
                             body: false_value,
                         }),
                     ],
                 }
             };
 
-            let input_variable = info.next_variable;
-            info.next_variable += 1;
-            let input_variable = info.make_path(crate::PathComponent::Variable(input_variable));
-
-            match value {
-                Some(value) => when_expression(resolve_expression(value.unboxed(), info), info),
-                None => crate::Expression::Function {
-                    pattern: WithInfo {
-                        info: expression_info.clone(),
-                        item: crate::Pattern::Variable(
-                            String::from("input"),
-                            input_variable.clone(),
-                        ),
-                    },
-                    body: WithInfo {
-                        info: expression_info.clone(),
-                        item: when_expression(
-                            WithInfo {
-                                info: expression_info,
-                                item: crate::Expression::Variable(
-                                    String::from("input"),
-                                    input_variable,
-                                ),
-                            },
-                            info,
-                        ),
-                    }
-                    .boxed(),
-                },
-            }
+            when_expression(resolve_expression(value.unboxed(), info), info)
         }
         crate::UnresolvedExpression::When { input, arms } => {
             let input = resolve_expression(input.unboxed(), info);
@@ -1139,19 +949,11 @@ fn resolve_expression<D: Driver>(
 
                         let pattern = resolve_pattern(arm.pattern, info);
 
-                        let condition = arm
-                            .condition
-                            .map(|condition| resolve_expression(condition, info));
-
                         let body = resolve_expression(arm.body, info);
 
                         info.scopes.pop_scope();
 
-                        crate::Arm {
-                            pattern,
-                            condition,
-                            body,
-                        }
+                        crate::Arm { pattern, body }
                     })
                 })
                 .collect::<Vec<_>>();
@@ -1162,10 +964,16 @@ fn resolve_expression<D: Driver>(
             }
         }
         crate::UnresolvedExpression::Intrinsic { name, inputs } => {
+            let name = match name.try_unwrap() {
+                Some(name) => name,
+                None => return crate::Expression::Error,
+            };
+
             let inputs = inputs
                 .into_iter()
                 .map(|input| resolve_expression(input, info))
                 .collect::<Vec<_>>();
+
             crate::Expression::Intrinsic { name, inputs }
         }
         crate::UnresolvedExpression::Tuple(tuple) => {
@@ -1173,6 +981,7 @@ fn resolve_expression<D: Driver>(
                 .into_iter()
                 .map(|element| resolve_expression(element, info))
                 .collect::<Vec<_>>();
+
             crate::Expression::Tuple(tuple)
         }
         crate::UnresolvedExpression::Collection(collection) => {
@@ -1195,10 +1004,6 @@ fn resolve_expression<D: Driver>(
                 .collect::<Vec<_>>();
             crate::Expression::Structure(structure)
         }
-        crate::UnresolvedExpression::Semantics { name, body } => crate::Expression::Semantics {
-            name,
-            body: resolve_expression(body.unboxed(), info).boxed(),
-        },
     })
 }
 
@@ -1244,6 +1049,11 @@ fn resolve_pattern_inner<D: Driver>(
             crate::Pattern::Variable(name, path)
         }
         crate::UnresolvedPattern::VariantOrName(name) => {
+            let name = match name {
+                Some(name) => name,
+                None => return crate::Pattern::Error,
+            };
+
             match try_resolve_name(
                 WithInfo {
                     info: pattern_info.clone(),
@@ -1292,6 +1102,11 @@ fn resolve_pattern_inner<D: Driver>(
             variant,
             value_patterns,
         } => {
+            let variant = match variant.try_unwrap() {
+                Some(variant) => variant,
+                None => return crate::Pattern::Error,
+            };
+
             let variant = match resolve_name(variant, info, |candidates| {
                 candidates
                     .iter()
@@ -1343,6 +1158,11 @@ fn resolve_type<D: Driver>(
             crate::UnresolvedType::Error => crate::Type::Error,
             crate::UnresolvedType::Placeholder => crate::Type::Placeholder,
             crate::UnresolvedType::Declared { name, parameters } => {
+                let name = match name.try_unwrap() {
+                    Some(name) => name,
+                    None => return crate::Type::Error,
+                };
+
                 match resolve_name(name, info, |candidates| {
                     candidates
                         .iter()
@@ -1367,8 +1187,11 @@ fn resolve_type<D: Driver>(
                     None => crate::Type::Error,
                 }
             }
-            crate::UnresolvedType::Function { input, output } => crate::Type::Function {
-                input: resolve_type_inner(input.unboxed(), true, info).boxed(),
+            crate::UnresolvedType::Function { inputs, output } => crate::Type::Function {
+                inputs: inputs
+                    .into_iter()
+                    .map(|input| resolve_type_inner(input, true, info))
+                    .collect(),
                 output: resolve_type_inner(output.unboxed(), false, info).boxed(),
             },
             crate::UnresolvedType::Tuple(elements) => crate::Type::Tuple(
@@ -1400,16 +1223,16 @@ fn resolve_type<D: Driver>(
 fn resolve_type_parameter<D: Driver>(
     type_parameter: WithInfo<D::Info, crate::UnresolvedTypeParameter<D>>,
     info: &mut Info<D>,
-) -> crate::Path {
+) -> Option<crate::Path> {
     let type_parameter_info = type_parameter.info.clone();
 
+    let name = type_parameter.item.name.try_unwrap()?;
+
     let mut path = info.path.clone();
-    path.push(crate::PathComponent::TypeParameter(
-        type_parameter.item.name.item.clone(),
-    ));
+    path.push(crate::PathComponent::TypeParameter(name.item.clone()));
 
     info.scopes.define(
-        type_parameter.item.name.item,
+        name.item,
         WithInfo {
             info: type_parameter_info.clone(),
             item: path.clone(),
@@ -1432,7 +1255,7 @@ fn resolve_type_parameter<D: Driver>(
         },
     );
 
-    path
+    Some(path)
 }
 
 fn resolve_instance<D: Driver>(
@@ -1440,7 +1263,7 @@ fn resolve_instance<D: Driver>(
     info: &mut Info<D>,
 ) -> Option<WithInfo<D::Info, crate::Instance<D>>> {
     instance.filter_map(|instance| {
-        let r#trait = match resolve_name(instance.r#trait, info, |candidates| {
+        let r#trait = match resolve_name(instance.r#trait.try_unwrap()?, info, |candidates| {
             candidates
                 .iter()
                 .filter_map(|path| match path.item.last().unwrap() {
@@ -1523,8 +1346,8 @@ fn try_resolve_name<D: Driver, T>(
 
 fn resolve_binary_operator<D: Driver>(
     operator: WithInfo<D::Info, crate::UnresolvedBinaryOperator>,
-    left: Option<WithInfo<D::Info, crate::UnresolvedExpression<D>>>,
-    right: Option<WithInfo<D::Info, crate::UnresolvedExpression<D>>>,
+    left: WithInfo<D::Info, crate::UnresolvedExpression<D>>,
+    right: WithInfo<D::Info, crate::UnresolvedExpression<D>>,
     info: &mut Info<D>,
 ) -> crate::Expression<D> {
     let operator_trait = operator.replace(
@@ -1543,49 +1366,12 @@ fn resolve_binary_operator<D: Driver>(
         },
     );
 
-    match (left, right) {
-        (Some(left), Some(right)) => crate::Expression::Call {
-            function: operator
-                .replace(crate::Expression::Call {
-                    function: operator_trait.boxed(),
-                    input: resolve_expression(right, info).boxed(),
-                })
-                .boxed(),
-            input: resolve_expression(left, info).boxed(),
-        },
-        (Some(left), None) => {
-            let input_variable = info.next_variable;
-            info.next_variable += 1;
-            let input_variable = info.make_path(crate::PathComponent::Variable(input_variable));
-
-            crate::Expression::Function {
-                pattern: operator.replace(crate::Pattern::Variable(
-                    String::from("input"),
-                    input_variable.clone(),
-                )),
-                body: operator
-                    .replace(crate::Expression::Call {
-                        function: operator
-                            .replace(crate::Expression::Call {
-                                function: operator_trait.boxed(),
-                                input: operator
-                                    .replace(crate::Expression::Variable(
-                                        String::from("input"),
-                                        input_variable,
-                                    ))
-                                    .boxed(),
-                            })
-                            .boxed(),
-                        input: resolve_expression(left, info).boxed(),
-                    })
-                    .boxed(),
-            }
-        }
-        (None, Some(right)) => crate::Expression::Call {
-            function: operator_trait.boxed(),
-            input: resolve_expression(right, info).boxed(),
-        },
-        (None, None) => operator_trait.item,
+    crate::Expression::Call {
+        function: operator_trait.boxed(),
+        inputs: vec![
+            resolve_expression(right, info),
+            resolve_expression(left, info),
+        ],
     }
 }
 

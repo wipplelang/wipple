@@ -18,19 +18,32 @@ pub fn check_exhaustiveness<D: Driver>(
     expression.traverse(&mut |expression| {
         let result = match &expression.item.kind {
             crate::TypedExpressionKind::Initialize { pattern, value } => {
-                missing_extra_patterns_in(driver, [(pattern.as_ref(), false)], &value.item.r#type)
+                missing_extra_patterns_in(driver, [pattern.as_ref()], &value.item.r#type)
             }
-            crate::TypedExpressionKind::Function { pattern, .. } => {
-                if let crate::Type::Function { input, .. } = &expression.item.r#type {
-                    missing_extra_patterns_in(driver, [(pattern.as_ref(), false)], &input.item)
+            crate::TypedExpressionKind::Function {
+                inputs: patterns, ..
+            } => {
+                if let crate::Type::Function { inputs, .. } = &expression.item.r#type {
+                    let mut extra_patterns = Vec::new();
+                    let mut missing_patterns = Vec::new();
+
+                    for (pattern, input) in patterns.iter().zip(inputs) {
+                        if let Some((extra, missing)) =
+                            missing_extra_patterns_in(driver, [pattern.as_ref()], &input.item)
+                        {
+                            extra_patterns.extend(extra);
+                            missing_patterns.extend(missing);
+                        }
+                    }
+
+                    Some((extra_patterns, missing_patterns))
                 } else {
                     None
                 }
             }
             crate::TypedExpressionKind::When { input, arms } => missing_extra_patterns_in(
                 driver,
-                arms.iter()
-                    .map(|arm| (arm.item.pattern.as_ref(), arm.item.condition.is_some())),
+                arms.iter().map(|arm| arm.item.pattern.as_ref()),
                 &input.item.r#type,
             ),
             _ => None,
@@ -58,7 +71,7 @@ pub fn check_exhaustiveness<D: Driver>(
 
 fn missing_extra_patterns_in<'a, D: Driver + 'a>(
     driver: &D,
-    patterns: impl IntoIterator<Item = (WithInfo<D::Info, &'a crate::Pattern<D>>, bool)>,
+    patterns: impl IntoIterator<Item = WithInfo<D::Info, &'a crate::Pattern<D>>>,
     input_type: &'a crate::Type<D>,
 ) -> Option<(Vec<D::Info>, Vec<Pattern<D>>)> {
     let input_type = convert_type(driver, input_type, &HashMap::new())?;
@@ -76,10 +89,10 @@ fn missing_extra_patterns_in<'a, D: Driver + 'a>(
     let mut row_ids = HashMap::new();
     let patterns = patterns
         .into_iter()
-        .map(|(pattern, condition)| {
+        .map(|pattern| {
             let id = match_compiler.new_row_id();
             row_ids.insert(id, pattern.info);
-            Some((id, convert_pattern(pattern.item)?, condition))
+            Some((id, convert_pattern(pattern.item)?))
         })
         .collect::<Option<Vec<_>>>()?;
 
@@ -303,7 +316,6 @@ impl<D: Driver> Pattern<D> {
 struct Row<D: Driver> {
     id: u32,
     columns: Vec<Column<D>>,
-    condition: bool,
 }
 
 impl<D: Driver> Row<D> {
@@ -350,7 +362,6 @@ struct Case<D: Driver> {
 enum Decision<D: Driver> {
     Matched(u32),
     NotMatched,
-    Guard(u32, Box<Decision<D>>),
     Switch(
         Variable<D>,
         HashMap<Option<D::Path>, Case<D>>,
@@ -414,9 +425,6 @@ impl<D: Driver> Match<D> {
 
                     missing.insert(constructor);
                 }
-                Decision::Guard(_, fallback) => {
-                    add_missing_patterns(fallback, terms, missing);
-                }
                 Decision::Switch(variable, cases, fallback) => {
                     for (variant, case) in cases {
                         terms.insert(
@@ -466,17 +474,16 @@ impl<'a, D: Driver> MatchCompiler<'a, D> {
     fn compile(
         mut self,
         input: Variable<D>,
-        patterns: impl IntoIterator<Item = (u32, Pattern<D>, bool)>,
+        patterns: impl IntoIterator<Item = (u32, Pattern<D>)>,
     ) -> Option<Match<D>> {
         let rows = patterns
             .into_iter()
-            .map(|(id, pattern, condition)| Row {
+            .map(|(id, pattern)| Row {
                 id,
                 columns: vec![Column {
                     variable: input.clone(),
                     pattern,
                 }],
-                condition,
             })
             .collect::<Vec<_>>();
 
@@ -511,11 +518,7 @@ impl<'a, D: Driver> MatchCompiler<'a, D> {
             let row = rows.remove(0);
             self.reachable.push(row.id);
 
-            return Some(if row.condition {
-                Decision::Guard(row.id, Box::new(self.compile_rows(rows)?))
-            } else {
-                Decision::Matched(row.id)
-            });
+            return Some(Decision::Matched(row.id));
         }
 
         // All columns in a row share the same variable

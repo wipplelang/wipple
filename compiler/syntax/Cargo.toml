@@ -1,0 +1,17 @@
+[package]
+name = "wipple-syntax"
+version = "0.0.0"
+edition = "2021"
+
+[lints]
+workspace = true
+
+[dependencies]
+derivative = "2"
+generator = "0.8"
+itertools = "0.12"
+logos = "0.14"
+rustc_lexer = "0.1"
+serde = { version = "1", features = ["derive", "rc"] }
+strum = { version = "0.26", features = ["derive"] }
+wipple-util = { path = "../util" }

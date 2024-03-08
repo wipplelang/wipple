@@ -429,6 +429,11 @@ enum QueuedError<D: Driver> {
         expected: Type<D>,
     },
 
+    WrongNumberOfInputs {
+        actual: u32,
+        expected: u32,
+    },
+
     UnresolvedInstance {
         instance: Instance<D>,
         candidates: Vec<D::Info>,
@@ -468,6 +473,9 @@ fn report_queued_errors<D: Driver>(
                 expected_roles: expected.roles.clone(),
                 expected: finalize_type(expected, &finalize_context),
             },
+            QueuedError::WrongNumberOfInputs { actual, expected } => {
+                crate::Diagnostic::WrongNumberOfInputs { actual, expected }
+            }
             QueuedError::UnresolvedInstance {
                 instance,
                 candidates,
@@ -521,8 +529,11 @@ impl<D: Driver> Type<D> {
             TypeKind::Declared { parameters, .. } => parameters
                 .iter()
                 .any(|r#type| r#type.contains_variable(variable)),
-            TypeKind::Function { input, output } => {
-                input.contains_variable(variable) || output.contains_variable(variable)
+            TypeKind::Function { inputs, output } => {
+                inputs
+                    .iter()
+                    .any(|r#type| r#type.contains_variable(variable))
+                    || output.contains_variable(variable)
             }
             TypeKind::Tuple(elements) => elements
                 .iter()
@@ -566,8 +577,11 @@ impl<D: Driver> Type<D> {
                     r#type.apply_in_context_mut(context);
                 }
             }
-            TypeKind::Function { input, output } => {
-                input.apply_in_context_mut(context);
+            TypeKind::Function { inputs, output } => {
+                for r#type in inputs {
+                    r#type.apply_in_context_mut(context);
+                }
+
                 output.apply_in_context_mut(context);
             }
             TypeKind::Tuple(elements) => {
@@ -594,7 +608,7 @@ enum TypeKind<D: Driver> {
         parameters: Vec<Type<D>>,
     },
     Function {
-        input: Box<Type<D>>,
+        inputs: Vec<Type<D>>,
         output: Box<Type<D>>,
     },
     Tuple(Vec<Type<D>>),
@@ -785,8 +799,11 @@ impl<D: Driver> Type<D> {
                     r#type.instantiate_mut(driver, instantiation_context);
                 }
             }
-            TypeKind::Function { input, output } => {
-                input.instantiate_mut(driver, instantiation_context);
+            TypeKind::Function { inputs, output } => {
+                for r#type in inputs {
+                    r#type.instantiate_mut(driver, instantiation_context);
+                }
+
                 output.instantiate_mut(driver, instantiation_context);
             }
             TypeKind::Tuple(elements) => {
@@ -822,8 +839,11 @@ impl<D: Driver> Type<D> {
                     r#type.instantiate_opaque_in_context_mut(context);
                 }
             }
-            TypeKind::Function { input, output } => {
-                input.instantiate_opaque_in_context_mut(context);
+            TypeKind::Function { inputs, output } => {
+                for r#type in inputs {
+                    r#type.instantiate_opaque_in_context_mut(context);
+                }
+
                 output.instantiate_opaque_in_context_mut(context);
             }
             TypeKind::Tuple(elements) => {
@@ -1023,14 +1043,22 @@ fn unify_with_options<D: Driver>(
                 unified
             }
             (
-                TypeKind::Function { input, output },
+                TypeKind::Function { inputs, output },
                 TypeKind::Function {
-                    input: expected_input,
+                    inputs: expected_inputs,
                     output: expected_output,
                 },
             ) => {
-                unify_inner(driver, input, expected_input, false, context, options)
-                    & unify_inner(driver, output, expected_output, false, context, options)
+                if inputs.len() != expected_inputs.len() {
+                    return false;
+                }
+
+                let mut unified = true;
+                for (r#type, expected_type) in inputs.iter().zip(expected_inputs) {
+                    unified &= unify_inner(driver, r#type, expected_type, false, context, options);
+                }
+
+                unified & unify_inner(driver, output, expected_output, false, context, options)
             }
             (TypeKind::Tuple(elements), TypeKind::Tuple(expected_elements)) => {
                 if elements.len() != expected_elements.len() {
@@ -1212,9 +1240,14 @@ fn substitute_defaults<D: Driver>(
 
             false
         }
-        TypeKind::Function { input, output } => {
-            substitute_defaults(driver, input, context)
-                || substitute_defaults(driver, output, context)
+        TypeKind::Function { inputs, output } => {
+            for r#type in inputs {
+                if substitute_defaults(driver, r#type, context) {
+                    return true;
+                }
+            }
+
+            substitute_defaults(driver, output, context)
         }
         TypeKind::Tuple(elements) => {
             for r#type in elements {
@@ -1256,12 +1289,12 @@ enum ExpressionKind<D: Driver> {
     Text(String),
     Block(Vec<WithInfo<D::Info, Expression<D>>>),
     Function {
-        pattern: WithInfo<D::Info, crate::Pattern<D>>,
+        inputs: Vec<WithInfo<D::Info, crate::Pattern<D>>>,
         body: WithInfo<D::Info, Box<Expression<D>>>,
     },
     Call {
         function: WithInfo<D::Info, Box<Expression<D>>>,
-        input: WithInfo<D::Info, Box<Expression<D>>>,
+        inputs: Vec<WithInfo<D::Info, Expression<D>>>,
     },
     When {
         input: WithInfo<D::Info, Box<Expression<D>>>,
@@ -1313,7 +1346,6 @@ struct StructureFieldValue<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 struct Arm<D: Driver> {
     pattern: WithInfo<D::Info, crate::Pattern<D>>,
-    condition: Option<WithInfo<D::Info, Expression<D>>>,
     body: WithInfo<D::Info, Expression<D>>,
 }
 
@@ -1362,8 +1394,11 @@ fn infer_type<D: Driver>(
                     .map(|r#type| infer_type(r#type.as_ref(), None, type_context))
                     .collect(),
             },
-            crate::Type::Function { input, output } => TypeKind::Function {
-                input: Box::new(infer_type(input.as_deref(), None, type_context)),
+            crate::Type::Function { inputs, output } => TypeKind::Function {
+                inputs: inputs
+                    .iter()
+                    .map(|r#type| infer_type(r#type.as_ref(), None, type_context))
+                    .collect(),
                 output: Box::new(infer_type(output.as_deref(), None, type_context)),
             },
             crate::Type::Tuple(elements) => TypeKind::Tuple(
@@ -1582,21 +1617,28 @@ fn infer_expression<D: Driver>(
                 kind: ExpressionKind::Block(statements),
             }
         }
-        crate::UntypedExpression::Function { pattern, body } => {
-            let input_type = Type::new(
-                TypeKind::Variable(context.type_context.variable()),
-                info.clone(),
-                Vec::new(),
-            );
+        crate::UntypedExpression::Function { inputs, body } => {
+            let input_types = inputs
+                .iter()
+                .map(|_| {
+                    Type::new(
+                        TypeKind::Variable(context.type_context.variable()),
+                        info.clone(),
+                        Vec::new(),
+                    )
+                })
+                .collect::<Vec<_>>();
 
-            resolve_pattern(pattern.as_ref(), pattern.replace(&input_type), context);
+            for (pattern, input_type) in inputs.iter().zip(&input_types) {
+                resolve_pattern(pattern.as_ref(), pattern.replace(input_type), context);
+            }
 
             let body = infer_expression(body.unboxed(), context);
 
             Expression {
                 r#type: Type::new(
                     TypeKind::Function {
-                        input: Box::new(input_type),
+                        inputs: input_types,
                         output: Box::new(
                             body.item
                                 .r#type
@@ -1609,17 +1651,23 @@ fn infer_expression<D: Driver>(
                 ),
                 coercion: Default::default(),
                 kind: ExpressionKind::Function {
-                    pattern,
+                    inputs,
                     body: body.boxed(),
                 },
             }
         }
-        crate::UntypedExpression::Call { function, input } => {
+        crate::UntypedExpression::Call { function, inputs } => {
             let function = infer_expression(function.unboxed(), context);
 
-            let mut input = infer_expression(input.unboxed(), context);
-            let role = input.replace(Role::FunctionInput);
-            input.item.r#type = input.item.r#type.with_role(role);
+            let inputs = inputs
+                .into_iter()
+                .map(|input| {
+                    let mut input = infer_expression(input, context);
+                    let role = input.replace(Role::FunctionInput);
+                    input.item.r#type = input.item.r#type.with_role(role);
+                    input
+                })
+                .collect::<Vec<_>>();
 
             let r#type = match &function.item.r#type.kind {
                 TypeKind::Function { output, .. } => output.as_ref().clone(),
@@ -1635,7 +1683,7 @@ fn infer_expression<D: Driver>(
                 coercion: Default::default(),
                 kind: ExpressionKind::Call {
                     function: function.boxed(),
-                    input: input.boxed(),
+                    inputs,
                 },
             }
         }
@@ -1660,34 +1708,8 @@ fn infer_expression<D: Driver>(
 
                         let mut arm = Arm {
                             pattern: arm.pattern,
-                            condition: arm.condition.map(|guard| infer_expression(guard, context)),
                             body: infer_expression(arm.body, context),
                         };
-
-                        if let Some(guard) = &mut arm.condition {
-                            let boolean_type = instantiated_language_type(
-                                "boolean",
-                                &info,
-                                context.driver,
-                                context.type_context,
-                                context.errors,
-                            )
-                            .unwrap_or_else(|| {
-                                Type::new(
-                                    TypeKind::Variable(context.type_context.variable()),
-                                    guard.info.clone(),
-                                    Vec::new(),
-                                )
-                            });
-
-                            try_unify_expression(
-                                context.driver,
-                                guard.as_mut(),
-                                &boolean_type,
-                                context.type_context,
-                                context.error_queue,
-                            );
-                        }
 
                         try_unify_expression(
                             context.driver,
@@ -1895,7 +1917,7 @@ fn infer_expression<D: Driver>(
                                     item: Box::new(Expression {
                                         r#type: Type::new(
                                             TypeKind::Function {
-                                                input: Box::new(collection_type.clone()),
+                                                inputs: vec![collection_type.clone()],
                                                 output: Box::new(collection_type.clone()),
                                             },
                                             current.info.clone(),
@@ -1904,11 +1926,11 @@ fn infer_expression<D: Driver>(
                                         coercion: Default::default(),
                                         kind: ExpressionKind::Call {
                                             function: build_collection_trait.boxed(),
-                                            input: expression.boxed(),
+                                            inputs: vec![expression],
                                         },
                                     }),
                                 },
-                                input: current.boxed(),
+                                inputs: vec![current],
                             },
                         },
                     }
@@ -1951,7 +1973,7 @@ fn infer_expression<D: Driver>(
                                 coercion: Default::default(),
                                 kind: ExpressionKind::Call {
                                     function: show_trait.boxed(),
-                                    input: value.boxed(),
+                                    inputs: vec![value],
                                 },
                             },
                         },
@@ -2470,33 +2492,38 @@ fn resolve_expression<D: Driver>(
                 .map(|expression| resolve_expression(expression, context))
                 .collect(),
         ),
-        ExpressionKind::Function { pattern, body } => {
+        ExpressionKind::Function { inputs, body } => {
             if let TypeKind::Function {
-                input: input_type, ..
+                inputs: input_types,
+                ..
             } = &expression.item.r#type.kind
             {
-                resolve_pattern(
-                    pattern.as_ref(),
-                    pattern.replace(input_type),
-                    InferContext::from_resolve_context(context),
-                );
+                for (pattern, input_type) in inputs.iter().zip(input_types) {
+                    resolve_pattern(
+                        pattern.as_ref(),
+                        pattern.replace(input_type),
+                        InferContext::from_resolve_context(context),
+                    );
+                }
             }
 
             ExpressionKind::Function {
-                pattern,
+                inputs,
                 body: resolve_expression(body.unboxed(), context).boxed(),
             }
         }
         ExpressionKind::Call {
             mut function,
-            mut input,
+            mut inputs,
         } => {
             function
                 .item
                 .r#type
                 .apply_in_context_mut(context.type_context);
 
-            input.item.r#type.apply_in_context_mut(context.type_context);
+            for input in &mut inputs {
+                input.item.r#type.apply_in_context_mut(context.type_context);
+            }
 
             // If we encounter a unit after a number, treat the unit as a
             // function
@@ -2524,19 +2551,19 @@ fn resolve_expression<D: Driver>(
                 )
             })();
 
-            if function_is_number {
-                let mut unit = resolve_expression(input.unboxed(), context);
+            if inputs.len() == 1 && function_is_number {
+                let input = inputs.pop().unwrap();
+
+                let mut unit = resolve_expression(input, context);
                 let number = resolve_expression(function.unboxed(), context);
 
                 let unit_type = Type::new(
                     TypeKind::Function {
-                        input: Box::new(
-                            number
-                                .item
-                                .r#type
-                                .clone()
-                                .with_role(number.replace(Role::FunctionInput)),
-                        ),
+                        inputs: vec![number
+                            .item
+                            .r#type
+                            .clone()
+                            .with_role(number.replace(Role::FunctionInput))],
                         output: Box::new(expression.item.r#type.clone().with_role(WithInfo {
                             info: expression.info.clone(),
                             item: Role::FunctionOutput,
@@ -2556,20 +2583,32 @@ fn resolve_expression<D: Driver>(
 
                 ExpressionKind::Call {
                     function: unit.boxed(),
-                    input: number.boxed(),
+                    inputs: vec![number],
                 }
             } else if let TypeKind::Function {
-                input: input_type,
+                inputs: input_types,
                 output: output_type,
             } = &function.item.r#type.kind
             {
-                try_unify_expression(
-                    context.driver,
-                    input.as_deref_mut(),
-                    input_type,
-                    context.type_context,
-                    context.error_queue,
-                );
+                if input_types.len() != inputs.len() {
+                    context.error_queue.borrow_mut().push(WithInfo {
+                        info: expression.info.clone(),
+                        item: QueuedError::WrongNumberOfInputs {
+                            actual: inputs.len() as u32,
+                            expected: input_types.len() as u32,
+                        },
+                    });
+                } else {
+                    for (input, input_type) in inputs.iter_mut().zip(input_types) {
+                        try_unify_expression(
+                            context.driver,
+                            input.as_mut(),
+                            input_type,
+                            context.type_context,
+                            context.error_queue,
+                        );
+                    }
+                }
 
                 // `defer` may only appear on function inputs, so it's OK to
                 // ignore coercions here
@@ -2584,23 +2623,30 @@ fn resolve_expression<D: Driver>(
                     context.error_queue,
                 );
 
-                let input = resolve_expression(input.unboxed(), context);
+                let inputs = inputs
+                    .into_iter()
+                    .map(|input| resolve_expression(input, context))
+                    .collect::<Vec<_>>();
+
                 let function = resolve_expression(function.unboxed(), context);
 
                 ExpressionKind::Call {
                     function: function.boxed(),
-                    input: input.boxed(),
+                    inputs,
                 }
             } else {
                 let function_type = Type::new(
                     TypeKind::Function {
-                        input: Box::new(
-                            input
-                                .item
-                                .r#type
-                                .clone()
-                                .with_role(input.replace(Role::FunctionInput)),
-                        ),
+                        inputs: inputs
+                            .iter()
+                            .map(|input| {
+                                input
+                                    .item
+                                    .r#type
+                                    .clone()
+                                    .with_role(input.replace(Role::FunctionInput))
+                            })
+                            .collect(),
                         output: Box::new(expression.item.r#type.clone().with_role(WithInfo {
                             info: expression.info.clone(),
                             item: Role::FunctionOutput,
@@ -2618,12 +2664,16 @@ fn resolve_expression<D: Driver>(
                     context.error_queue,
                 );
 
-                let input = resolve_expression(input.unboxed(), context);
+                let inputs = inputs
+                    .into_iter()
+                    .map(|input| resolve_expression(input, context))
+                    .collect::<Vec<_>>();
+
                 let function = resolve_expression(function.unboxed(), context);
 
                 ExpressionKind::Call {
                     function: function.boxed(),
-                    input: input.boxed(),
+                    inputs,
                 }
             }
         }
@@ -2642,9 +2692,6 @@ fn resolve_expression<D: Driver>(
 
                         Arm {
                             pattern: arm.pattern,
-                            condition: arm
-                                .condition
-                                .map(|guard| resolve_expression(guard, context)),
                             body: resolve_expression(arm.body, context),
                         }
                     })
@@ -3226,18 +3273,15 @@ fn substitute_defaults_in_expression<D: Driver>(
         ExpressionKind::Function { body, .. } => {
             substitute_defaults_in_expression(driver, body.as_deref_mut(), context)
         }
-        ExpressionKind::Call { function, input } => {
-            substitute_defaults_in_expression(driver, input.as_deref_mut(), context)
+        ExpressionKind::Call { function, inputs } => {
+            inputs
+                .iter_mut()
+                .any(|input| substitute_defaults_in_expression(driver, input.as_mut(), context))
                 || substitute_defaults_in_expression(driver, function.as_deref_mut(), context)
         }
         ExpressionKind::When { input, arms } => {
             substitute_defaults_in_expression(driver, input.as_deref_mut(), context)
                 || arms.iter_mut().any(|arm| {
-                    if let Some(condition) = &mut arm.item.condition {
-                        if substitute_defaults_in_expression(driver, condition.as_mut(), context) {
-                            return true;
-                        }
-                    }
                     substitute_defaults_in_expression(driver, arm.item.body.as_mut(), context)
                 })
         }
@@ -3332,8 +3376,11 @@ fn finalize_type<D: Driver>(
                         .map(|r#type| finalize_type_inner(r#type, context, fully_resolved))
                         .collect(),
                 },
-                TypeKind::Function { input, output } => crate::Type::Function {
-                    input: finalize_type_inner(*input, context, fully_resolved).boxed(),
+                TypeKind::Function { inputs, output } => crate::Type::Function {
+                    inputs: inputs
+                        .into_iter()
+                        .map(|input| finalize_type_inner(input, context, fully_resolved))
+                        .collect(),
                     output: finalize_type_inner(*output, context, fully_resolved).boxed(),
                 },
                 TypeKind::Tuple(elements) => crate::Type::Tuple(
@@ -3451,17 +3498,21 @@ fn finalize_expression<D: Driver>(
                 .map(|expression| finalize_expression(expression, context))
                 .collect(),
         ),
-        ExpressionKind::Function { pattern, body } => crate::TypedExpressionKind::Function {
-            pattern,
+        ExpressionKind::Function { inputs, body } => crate::TypedExpressionKind::Function {
+            inputs,
             body: finalize_expression(body.unboxed(), context).boxed(),
         },
-        ExpressionKind::Call { function, input } => {
-            let input = finalize_expression(input.unboxed(), context);
+        ExpressionKind::Call { function, inputs } => {
+            let inputs = inputs
+                .into_iter()
+                .map(|input| finalize_expression(input, context))
+                .collect::<Vec<_>>();
+
             let function = finalize_expression(function.unboxed(), context);
 
             crate::TypedExpressionKind::Call {
                 function: function.boxed(),
-                input: input.boxed(),
+                inputs,
             }
         }
         ExpressionKind::When { input, arms } => crate::TypedExpressionKind::When {
@@ -3471,9 +3522,6 @@ fn finalize_expression<D: Driver>(
                 .map(|arm| {
                     arm.map(|arm| crate::TypedArm {
                         pattern: arm.pattern,
-                        condition: arm
-                            .condition
-                            .map(|expression| finalize_expression(expression, context)),
                         body: finalize_expression(arm.body, context),
                     })
                 })
@@ -3619,10 +3667,14 @@ fn debug_type<D: Driver>(r#type: &Type<D>, context: &TypeContext<D>) -> String {
                     result
                 })
         ),
-        TypeKind::Function { input, output } => {
+        TypeKind::Function { inputs, output } => {
             format!(
-                "({} -> {})",
-                debug_type(&input, context),
+                "({}-> {})",
+                inputs.into_iter().fold(String::new(), |mut result, input| {
+                    use std::fmt::Write;
+                    write!(&mut result, "{} ", debug_type(&input, context)).unwrap();
+                    result
+                }),
                 debug_type(&output, context),
             )
         }

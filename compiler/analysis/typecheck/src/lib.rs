@@ -186,6 +186,15 @@ pub enum Diagnostic<D: Driver> {
         expected: WithInfo<D::Info, Type<D>>,
     },
 
+    /// The wrong number of inputs were provided to a function.
+    WrongNumberOfInputs {
+        /// The number of inputs provided to the function.
+        actual: u32,
+
+        /// The number of inputs expected by the function.
+        expected: u32,
+    },
+
     /// A coercion would be required for a contravariant type. Currently, the
     /// only coercion is `A` to `defer A`, so this error effectively means that
     /// the following program is invalid because `x` cannot be implicitly
@@ -273,8 +282,8 @@ pub enum Type<D: Driver> {
     /// A function type.
     #[serde(rename_all = "camelCase")]
     Function {
-        /// The type of the function's input.
-        input: WithInfo<D::Info, Box<Type<D>>>,
+        /// The types of the function's inputs.
+        inputs: Vec<WithInfo<D::Info, Type<D>>>,
 
         /// The type of the function's output.
         output: WithInfo<D::Info, Box<Type<D>>>,
@@ -471,8 +480,8 @@ pub enum UntypedExpression<D: Driver> {
     /// A function.
     #[serde(rename_all = "camelCase")]
     Function {
-        /// The function's input.
-        pattern: WithInfo<D::Info, Pattern<D>>,
+        /// The function's inputs.
+        inputs: Vec<WithInfo<D::Info, Pattern<D>>>,
 
         /// The function's output.
         body: WithInfo<D::Info, Box<UntypedExpression<D>>>,
@@ -484,8 +493,8 @@ pub enum UntypedExpression<D: Driver> {
         /// The function to call.
         function: WithInfo<D::Info, Box<UntypedExpression<D>>>,
 
-        /// The input to the function.
-        input: WithInfo<D::Info, Box<UntypedExpression<D>>>,
+        /// The inputs to the function.
+        inputs: Vec<WithInfo<D::Info, UntypedExpression<D>>>,
     },
 
     /// A `when` expression.
@@ -591,9 +600,6 @@ pub struct UntypedArm<D: Driver> {
     /// The pattern to match on the input.
     pub pattern: WithInfo<D::Info, Pattern<D>>,
 
-    /// A condition to evaluate after the pattern matches.
-    pub condition: Option<WithInfo<D::Info, UntypedExpression<D>>>,
-
     /// The arm's body.
     pub body: WithInfo<D::Info, UntypedExpression<D>>,
 }
@@ -646,8 +652,8 @@ pub enum TypedExpressionKind<D: Driver> {
     /// A function.
     #[serde(rename_all = "camelCase")]
     Function {
-        /// The function's input.
-        pattern: WithInfo<D::Info, Pattern<D>>,
+        /// The function's inputs,
+        inputs: Vec<WithInfo<D::Info, Pattern<D>>>,
 
         /// The function's output.
         body: WithInfo<D::Info, Box<TypedExpression<D>>>,
@@ -659,8 +665,8 @@ pub enum TypedExpressionKind<D: Driver> {
         /// The function to call.
         function: WithInfo<D::Info, Box<TypedExpression<D>>>,
 
-        /// The input to the function.
-        input: WithInfo<D::Info, Box<TypedExpression<D>>>,
+        /// The inputs to the function.
+        inputs: Vec<WithInfo<D::Info, TypedExpression<D>>>,
     },
 
     /// A `when` expression.
@@ -771,9 +777,6 @@ pub struct TypedStructureFieldValue<D: Driver> {
 pub struct TypedArm<D: Driver> {
     /// The pattern to match on the input.
     pub pattern: WithInfo<D::Info, Pattern<D>>,
-
-    /// A condition to evaluate after the pattern matches.
-    pub condition: Option<WithInfo<D::Info, TypedExpression<D>>>,
 
     /// The arm's body.
     pub body: WithInfo<D::Info, TypedExpression<D>>,
@@ -895,18 +898,17 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a TypedExpress
             TypedExpressionKind::Function { body, .. } => {
                 body.as_deref().traverse(f);
             }
-            TypedExpressionKind::Call { function, input } => {
+            TypedExpressionKind::Call { function, inputs } => {
                 function.as_deref().traverse(f);
-                input.as_deref().traverse(f);
+
+                for input in inputs {
+                    input.as_ref().traverse(f);
+                }
             }
             TypedExpressionKind::When { input, arms } => {
                 input.as_deref().traverse(f);
 
                 for arm in arms {
-                    if let Some(condition) = &arm.item.condition {
-                        condition.as_ref().traverse(f);
-                    }
-
                     arm.item.body.as_ref().traverse(f);
                 }
             }

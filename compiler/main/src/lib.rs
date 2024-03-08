@@ -1,24 +1,18 @@
 //! Coordinates the compiler passes.
 
 mod convert;
-mod query;
-mod render;
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, hash::Hash};
+use std::{collections::HashMap, hash::Hash, rc::Rc};
 use wasm_bindgen::{prelude::wasm_bindgen, JsCast};
 
 pub use wipple_codegen as codegen;
 pub use wipple_linker as linker;
 pub use wipple_lower as lower;
-pub use wipple_parser as parser;
 pub use wipple_syntax as syntax;
 pub use wipple_typecheck as typecheck;
 pub use wipple_util as util;
-
-pub use query::*;
-pub use render::*;
 
 /// The default recursion limit.
 // TODO: Make this configurable
@@ -62,64 +56,6 @@ pub fn link(libraries: &str) -> String {
     serialize(&executable)
 }
 
-/// JavaScript entrypoint to render diagnostics.
-#[wasm_bindgen(js_name = "renderDiagnostics")]
-pub fn render_diagnostics(
-    diagnostics: &str,
-    interface_: &str,
-    library: &str,
-    source_code_for_file: wasm_bindgen::JsValue,
-) -> String {
-    initialize();
-
-    let diagnostics: Vec<util::WithInfo<Info, Diagnostic>> = deserialize(diagnostics);
-    let interface: Interface = deserialize(interface_);
-    let library: Library = deserialize(library);
-
-    let source_code_for_file = |file: &str| {
-        source_code_for_file
-            .dyn_ref::<js_sys::Function>()
-            .unwrap()
-            .call1(&wasm_bindgen::JsValue::NULL, &file.into())
-            .unwrap()
-            .as_string()
-            .unwrap()
-    };
-
-    let query = Query::new(&interface, &library, source_code_for_file);
-
-    let diagnostics = diagnostics
-        .into_iter()
-        .map(|diagnostic| render::render_diagnostic(diagnostic, &query))
-        .collect::<Vec<_>>();
-
-    serialize(&diagnostics)
-}
-
-/// JavaScript entrypoint to render diagnostics with console colors.
-#[wasm_bindgen(js_name = "colorizeDiagnostics")]
-pub fn colorize_diagnostics(
-    diagnostics: &str,
-    source_code_for_file: wasm_bindgen::JsValue,
-) -> String {
-    initialize();
-
-    let diagnostics: Vec<render::Diagnostic> = deserialize(diagnostics);
-
-    let source_code_for_file = |file: &str| {
-        source_code_for_file
-            .dyn_ref::<js_sys::Function>()
-            .unwrap()
-            .call1(&wasm_bindgen::JsValue::NULL, &file.into())
-            .unwrap()
-            .as_string()
-            .unwrap()
-    };
-
-    let colorized = render::colorize_diagnostics(&diagnostics, source_code_for_file);
-    serialize(&colorized)
-}
-
 /// The driver.
 #[non_exhaustive]
 #[derive(Debug)]
@@ -147,13 +83,13 @@ impl Driver {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Info {
-    /// Information produced by the parser.
-    pub parser_info: parser::syntax::Info,
+    /// Location information produced by the parser.
+    pub location: syntax::Info,
 }
 
-impl From<parser::syntax::Info> for Info {
-    fn from(parser_info: parser::syntax::Info) -> Self {
-        Info { parser_info }
+impl From<syntax::Info> for Info {
+    fn from(location: syntax::Info) -> Self {
+        Info { location }
     }
 }
 
@@ -229,8 +165,8 @@ pub struct Result {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Diagnostic {
-    Read(parser::reader::Diagnostic),
-    Parse(parser::syntax::Diagnostic),
+    Tokenize(syntax::tokenize::Diagnostic<SyntaxDriver>),
+    Parse(syntax::parse::Diagnostic<SyntaxDriver>),
     Syntax(syntax::Diagnostic),
     Lower(lower::Diagnostic),
     Typecheck(typecheck::Diagnostic<Driver>),
@@ -245,73 +181,54 @@ impl Driver {
     ) -> Result {
         let mut diagnostics = Vec::new();
 
-        let files =
-            files.into_iter().map(|file| {
-                let options = parser::reader::ReadOptions {
-                    strip_comments: true,
-                };
+        let files = files.into_iter().map(|file| {
+            let syntax_driver = SyntaxDriver {
+                file_path: Rc::from(file.path.as_str()),
+                visible_path: Rc::from(file.visible_path.as_str()),
+            };
 
-                let tokenize_result = parser::reader::tokenize(&file.code);
-                diagnostics.extend(tokenize_result.diagnostics.into_iter().map(|error| {
-                    util::WithInfo {
-                        info: Info {
-                            parser_info: parser::syntax::Info {
-                                path: file.path.clone(),
-                                visible_path: file.visible_path.clone(),
-                                span: error.span.clone(),
-                                documentation: Vec::new(),
-                            },
-                        },
-                        item: Diagnostic::Read(error),
-                    }
-                }));
+            let (tokens, tokenize_diagnostics): (Vec<_>, Vec<_>) =
+                syntax::tokenize::tokenize(&syntax_driver, &file.code)
+                    .into_iter()
+                    .partition_result();
 
-                let read_result =
-                    wipple_parser::reader::read_top_level(tokenize_result.tokens, options);
-                diagnostics.extend(read_result.diagnostics.into_iter().map(|error| {
-                    util::WithInfo {
-                        info: Info {
-                            parser_info: parser::syntax::Info {
-                                path: file.path.clone(),
-                                visible_path: file.visible_path.clone(),
-                                span: error.span.clone(),
-                                documentation: Vec::new(),
-                            },
-                        },
-                        item: Diagnostic::Read(error),
-                    }
-                }));
+            diagnostics.extend(
+                tokenize_diagnostics
+                    .into_iter()
+                    .map(|diagnostic| diagnostic.map(Diagnostic::Tokenize)),
+            );
 
-                let syntax_driver = SyntaxDriver {
-                    file_path: file.path.clone(),
-                    visible_path: file.visible_path.clone(),
-                };
+            let logical_tokens = syntax::tokenize::to_logical_lines(&syntax_driver, tokens);
 
-                let syntax_result = wipple_parser::syntax::parse(&syntax_driver, read_result.node);
-                diagnostics.extend(syntax_result.diagnostics.into_iter().map(|error| {
-                    util::WithInfo {
-                        info: Info {
-                            parser_info: parser::syntax::Info {
-                                path: file.path.clone(),
-                                visible_path: file.visible_path.clone(),
-                                span: error.span.clone(),
-                                documentation: Vec::new(),
-                            },
-                        },
-                        item: Diagnostic::Parse(error),
-                    }
-                }));
+            let (tree, tokenize_diagnostics) =
+                syntax::tokenize::TokenTree::from_top_level(&syntax_driver, logical_tokens);
 
-                let parse_result = wipple_syntax::parse(&syntax_driver, syntax_result.top_level);
-                diagnostics.extend(
-                    parse_result
-                        .diagnostics
-                        .into_iter()
-                        .map(|error| error.map(Diagnostic::Syntax).map_info(Info::from)),
-                );
+            diagnostics.extend(
+                tokenize_diagnostics
+                    .into_iter()
+                    .map(|diagnostic| diagnostic.map(Diagnostic::Tokenize)),
+            );
 
-                convert::lower::convert(parse_result.top_level)
-            });
+            let parse_result = syntax::parse::parse(&syntax_driver, tree.as_ref());
+
+            diagnostics.extend(
+                parse_result
+                    .diagnostics
+                    .into_iter()
+                    .map(|error| error.map(Diagnostic::Parse)),
+            );
+
+            let syntax_result = syntax::parse(&syntax_driver, parse_result.top_level);
+
+            diagnostics.extend(
+                syntax_result
+                    .diagnostics
+                    .into_iter()
+                    .map(|diagnostic| diagnostic.map(Diagnostic::Syntax)),
+            );
+
+            convert::lower::convert(syntax_result.top_level)
+        });
 
         let lower_result = wipple_lower::resolve(
             &self,
@@ -596,28 +513,27 @@ impl Driver {
 }
 
 struct SyntaxDriver {
-    file_path: String,
-    visible_path: String,
+    file_path: Rc<str>,
+    visible_path: Rc<str>,
 }
 
-impl wipple_syntax::Driver for SyntaxDriver {
+impl syntax::Driver for SyntaxDriver {
     type Info = Info;
 
-    fn file_path(&self) -> String {
+    fn file_path(&self) -> Rc<str> {
         self.file_path.clone()
     }
 
-    fn visible_path(&self) -> String {
+    fn visible_path(&self) -> Rc<str> {
         self.visible_path.clone()
     }
 
     fn merge_info(left: Self::Info, right: Self::Info) -> Self::Info {
         Info {
-            parser_info: parser::syntax::Info {
-                path: left.parser_info.path,
-                visible_path: left.parser_info.visible_path,
-                span: left.parser_info.span.start..right.parser_info.span.end,
-                documentation: Vec::new(),
+            location: syntax::Info {
+                path: left.location.path,
+                visible_path: left.location.visible_path,
+                span: left.location.span.start..right.location.span.end,
             },
         }
     }
@@ -636,11 +552,10 @@ impl wipple_typecheck::Driver for Driver {
     }
 
     fn top_level_info(&self) -> Self::Info {
-        parser::syntax::Info {
-            path: String::from("top-level"),
-            visible_path: String::from("top-level"),
+        syntax::Info {
+            path: Rc::from("top-level"),
+            visible_path: Rc::from("top-level"),
             span: 0..0,
-            documentation: Vec::new(),
         }
         .into()
     }

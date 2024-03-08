@@ -1,0 +1,2717 @@
+//! Parse a token tree into an abstract syntax tree.
+
+use crate::{
+    tokenize::{self, TokenTree},
+    BinaryOperator, Driver, Info,
+};
+use derivative::Derivative;
+use serde::{Deserialize, Serialize};
+use std::{fmt::Debug, hash::Hash, rc::Rc};
+use wipple_util::{DefaultFromInfo, WithInfo};
+
+#[derive(Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = "D::Info: Debug"),
+    Clone(bound = ""),
+    PartialEq(bound = "D::Info: PartialEq"),
+    Eq(bound = "D::Info: Eq")
+)]
+#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+pub struct TopLevel<D: Driver> {
+    pub statements: Vec<WithInfo<D::Info, Statement<D>>>,
+}
+
+impl<D: Driver> DefaultFromInfo<D::Info> for TopLevel<D> {
+    fn default_from_info(info: D::Info) -> WithInfo<D::Info, Self> {
+        WithInfo {
+            info,
+            item: TopLevel {
+                statements: Vec::new(),
+            },
+        }
+    }
+}
+
+#[derive(Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = "D::Info: Debug"),
+    Clone(bound = ""),
+    PartialEq(bound = "D::Info: PartialEq"),
+    Eq(bound = "D::Info: Eq")
+)]
+#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+pub enum Statement<D: Driver> {
+    Error,
+    #[serde(rename_all = "camelCase")]
+    TypeDeclaration {
+        name: WithInfo<D::Info, Option<String>>,
+        parameters: WithInfo<D::Info, TypeFunction<D>>,
+        representation: WithInfo<D::Info, TypeRepresentation<D>>,
+    },
+    #[serde(rename_all = "camelCase")]
+    TraitDeclaration {
+        name: WithInfo<D::Info, Option<String>>,
+        parameters: WithInfo<D::Info, TypeFunction<D>>,
+        r#type: WithInfo<D::Info, Type<D>>,
+    },
+    #[serde(rename_all = "camelCase")]
+    InstanceDeclaration {
+        parameters: WithInfo<D::Info, TypeFunction<D>>,
+        instance: WithInfo<D::Info, Option<Instance<D>>>,
+        body: WithInfo<D::Info, Expression<D>>,
+    },
+    #[serde(rename_all = "camelCase")]
+    ConstantDeclaration {
+        name: WithInfo<D::Info, Option<String>>,
+        parameters: WithInfo<D::Info, TypeFunction<D>>,
+        r#type: WithInfo<D::Info, Type<D>>,
+    },
+    #[serde(rename_all = "camelCase")]
+    LanguageDeclaration {
+        name: WithInfo<D::Info, Option<String>>,
+        kind: WithInfo<D::Info, Option<LanguageDeclarationKind>>,
+        item: WithInfo<D::Info, Option<String>>,
+    },
+    #[serde(rename_all = "camelCase")]
+    Assignment {
+        pattern: WithInfo<D::Info, Pattern<D>>,
+        value: WithInfo<D::Info, Expression<D>>,
+    },
+    Expression(WithInfo<D::Info, Expression<D>>),
+}
+
+impl<D: Driver> DefaultFromInfo<D::Info> for Statement<D> {
+    fn default_from_info(info: D::Info) -> WithInfo<D::Info, Self> {
+        WithInfo {
+            info,
+            item: Statement::Error,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumString, Deserialize)]
+#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[strum(serialize_all = "kebab-case")]
+pub enum LanguageDeclarationKind {
+    Type,
+    Trait,
+    Constant,
+}
+
+#[derive(Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = "D::Info: Debug"),
+    Clone(bound = ""),
+    PartialEq(bound = "D::Info: PartialEq"),
+    Eq(bound = "D::Info: Eq")
+)]
+#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+pub struct TypeFunction<D: Driver> {
+    pub parameters: Vec<WithInfo<D::Info, TypeParameter<D>>>,
+    pub bounds: Vec<WithInfo<D::Info, Instance<D>>>,
+}
+
+impl<D: Driver> DefaultFromInfo<D::Info> for TypeFunction<D> {
+    fn default_from_info(info: D::Info) -> WithInfo<D::Info, Self> {
+        WithInfo {
+            info,
+            item: TypeFunction {
+                parameters: Vec::new(),
+                bounds: Vec::new(),
+            },
+        }
+    }
+}
+
+#[derive(Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = "D::Info: Debug"),
+    Clone(bound = ""),
+    PartialEq(bound = "D::Info: PartialEq"),
+    Eq(bound = "D::Info: Eq")
+)]
+#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+pub struct TypeParameter<D: Driver> {
+    pub name: WithInfo<D::Info, Option<String>>,
+    pub infer: Option<WithInfo<D::Info, ()>>,
+    pub default: Option<WithInfo<D::Info, Type<D>>>,
+}
+
+impl<D: Driver> DefaultFromInfo<D::Info> for TypeParameter<D> {
+    fn default_from_info(info: D::Info) -> WithInfo<D::Info, Self> {
+        WithInfo {
+            info: info.clone(),
+            item: TypeParameter {
+                name: Option::default_from_info(info),
+                infer: None,
+                default: None,
+            },
+        }
+    }
+}
+
+#[derive(Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = "D::Info: Debug"),
+    Clone(bound = ""),
+    PartialEq(bound = "D::Info: PartialEq"),
+    Eq(bound = "D::Info: Eq")
+)]
+#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+pub struct Instance<D: Driver> {
+    pub r#trait: WithInfo<D::Info, Option<String>>,
+    pub parameters: Vec<WithInfo<D::Info, Type<D>>>,
+}
+
+impl<D: Driver> DefaultFromInfo<D::Info> for Instance<D> {
+    fn default_from_info(info: D::Info) -> WithInfo<D::Info, Self> {
+        WithInfo {
+            info: info.clone(),
+            item: Instance {
+                r#trait: Option::default_from_info(info),
+                parameters: Vec::new(),
+            },
+        }
+    }
+}
+
+#[derive(Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = "D::Info: Debug"),
+    Clone(bound = ""),
+    PartialEq(bound = "D::Info: PartialEq"),
+    Eq(bound = "D::Info: Eq")
+)]
+#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+pub enum TypeRepresentation<D: Driver> {
+    Opaque, // FIXME: Change this to Marker and implement type aliases
+    Compound(Vec<WithInfo<D::Info, TypeMember<D>>>),
+}
+
+impl<D: Driver> DefaultFromInfo<D::Info> for TypeRepresentation<D> {
+    fn default_from_info(info: D::Info) -> WithInfo<D::Info, Self> {
+        WithInfo {
+            info,
+            item: TypeRepresentation::Opaque,
+        }
+    }
+}
+
+#[derive(Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = "D::Info: Debug"),
+    Clone(bound = ""),
+    PartialEq(bound = "D::Info: PartialEq"),
+    Eq(bound = "D::Info: Eq")
+)]
+#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+pub struct TypeMember<D: Driver> {
+    pub name: WithInfo<D::Info, Option<String>>,
+    pub kind: TypeMemberKind<D>,
+}
+
+impl<D: Driver> DefaultFromInfo<D::Info> for TypeMember<D> {
+    fn default_from_info(info: D::Info) -> WithInfo<D::Info, Self> {
+        WithInfo {
+            info: info.clone(),
+            item: TypeMember {
+                name: Option::default_from_info(info),
+                kind: TypeMemberKind::Error,
+            },
+        }
+    }
+}
+
+#[derive(Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = "D::Info: Debug"),
+    Clone(bound = ""),
+    PartialEq(bound = "D::Info: PartialEq"),
+    Eq(bound = "D::Info: Eq")
+)]
+#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+pub enum TypeMemberKind<D: Driver> {
+    Error,
+    Field(WithInfo<D::Info, Type<D>>),
+    Variant(Vec<WithInfo<D::Info, Type<D>>>),
+}
+
+impl<D: Driver> DefaultFromInfo<D::Info> for TypeMemberKind<D> {
+    fn default_from_info(info: D::Info) -> WithInfo<D::Info, Self> {
+        WithInfo {
+            info,
+            item: TypeMemberKind::Error,
+        }
+    }
+}
+
+#[derive(Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = "D::Info: Debug"),
+    Clone(bound = ""),
+    PartialEq(bound = "D::Info: PartialEq"),
+    Eq(bound = "D::Info: Eq")
+)]
+#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+pub enum Expression<D: Driver> {
+    Error,
+    #[serde(rename_all = "camelCase")]
+    Annotate {
+        value: WithInfo<D::Info, Box<Expression<D>>>,
+        r#type: WithInfo<D::Info, Type<D>>,
+    },
+    Name(String),
+    Number(String),
+    Text(String),
+    Unit,
+    Block(Vec<WithInfo<D::Info, Statement<D>>>),
+    #[serde(rename_all = "camelCase")]
+    Function {
+        inputs: Vec<WithInfo<D::Info, Pattern<D>>>,
+        body: WithInfo<D::Info, Box<Expression<D>>>,
+    },
+    Call {
+        function: WithInfo<D::Info, Box<Expression<D>>>,
+        inputs: Vec<WithInfo<D::Info, Expression<D>>>,
+    },
+    Apply {
+        input: WithInfo<D::Info, Box<Expression<D>>>,
+        function: WithInfo<D::Info, Box<Expression<D>>>,
+    },
+    #[serde(rename_all = "camelCase")]
+    BinaryOperator {
+        operator: WithInfo<D::Info, BinaryOperator>,
+        left: WithInfo<D::Info, Box<Expression<D>>>,
+        right: WithInfo<D::Info, Box<Expression<D>>>,
+    },
+    #[serde(rename_all = "camelCase")]
+    As {
+        value: WithInfo<D::Info, Box<Expression<D>>>,
+        r#type: WithInfo<D::Info, Type<D>>,
+    },
+    #[serde(rename_all = "camelCase")]
+    Is {
+        value: WithInfo<D::Info, Box<Expression<D>>>,
+        pattern: WithInfo<D::Info, Pattern<D>>,
+    },
+    #[serde(rename_all = "camelCase")]
+    When {
+        input: WithInfo<D::Info, Box<Expression<D>>>,
+        arms: Vec<WithInfo<D::Info, Arm<D>>>,
+    },
+    #[serde(rename_all = "camelCase")]
+    Intrinsic {
+        name: WithInfo<D::Info, Option<String>>,
+        inputs: Vec<WithInfo<D::Info, Expression<D>>>,
+    },
+    Tuple(Vec<WithInfo<D::Info, Expression<D>>>),
+    Collection(Vec<WithInfo<D::Info, Expression<D>>>),
+    Structure(Vec<WithInfo<D::Info, FieldValue<D>>>),
+}
+
+impl<D: Driver> DefaultFromInfo<D::Info> for Expression<D> {
+    fn default_from_info(info: D::Info) -> WithInfo<D::Info, Self> {
+        WithInfo {
+            info,
+            item: Expression::Error,
+        }
+    }
+}
+
+#[derive(Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = "D::Info: Debug"),
+    Clone(bound = ""),
+    PartialEq(bound = "D::Info: PartialEq"),
+    Eq(bound = "D::Info: Eq")
+)]
+#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+pub enum Type<D: Driver> {
+    Error,
+    Placeholder,
+    Unit,
+    #[serde(rename_all = "camelCase")]
+    Declared {
+        name: WithInfo<D::Info, Option<String>>,
+        parameters: Vec<WithInfo<D::Info, Type<D>>>,
+    },
+    #[serde(rename_all = "camelCase")]
+    Function {
+        inputs: Vec<WithInfo<D::Info, Type<D>>>,
+        output: WithInfo<D::Info, Box<Type<D>>>,
+    },
+    Tuple(Vec<WithInfo<D::Info, Type<D>>>),
+    Block(WithInfo<D::Info, Box<Type<D>>>),
+}
+
+impl<D: Driver> DefaultFromInfo<D::Info> for Type<D> {
+    fn default_from_info(info: D::Info) -> WithInfo<D::Info, Self> {
+        WithInfo {
+            info,
+            item: Type::Error,
+        }
+    }
+}
+
+#[derive(Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = "D::Info: Debug"),
+    Clone(bound = ""),
+    PartialEq(bound = "D::Info: PartialEq"),
+    Eq(bound = "D::Info: Eq")
+)]
+#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+pub enum Pattern<D: Driver> {
+    Error,
+    Wildcard,
+    Unit,
+    Number(String),
+    Text(String),
+    Name(String),
+    VariantOrName(WithInfo<D::Info, Option<String>>),
+    Destructure(Vec<WithInfo<D::Info, FieldPattern<D>>>),
+    #[serde(rename_all = "camelCase")]
+    Variant {
+        variant: WithInfo<D::Info, Option<String>>,
+        value_patterns: Vec<WithInfo<D::Info, Pattern<D>>>,
+    },
+    Tuple(Vec<WithInfo<D::Info, Pattern<D>>>),
+    Or {
+        left: WithInfo<D::Info, Box<Pattern<D>>>,
+        right: WithInfo<D::Info, Box<Pattern<D>>>,
+    },
+}
+
+impl<D: Driver> DefaultFromInfo<D::Info> for Pattern<D> {
+    fn default_from_info(info: D::Info) -> WithInfo<D::Info, Self> {
+        WithInfo {
+            info,
+            item: Pattern::Error,
+        }
+    }
+}
+
+#[derive(Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = "D::Info: Debug"),
+    Clone(bound = ""),
+    PartialEq(bound = "D::Info: PartialEq"),
+    Eq(bound = "D::Info: Eq")
+)]
+#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+pub struct FieldPattern<D: Driver> {
+    pub name: WithInfo<D::Info, Option<String>>,
+    pub pattern: WithInfo<D::Info, Pattern<D>>,
+}
+
+impl<D: Driver> DefaultFromInfo<D::Info> for FieldPattern<D> {
+    fn default_from_info(info: D::Info) -> WithInfo<D::Info, Self> {
+        WithInfo {
+            info: info.clone(),
+            item: FieldPattern {
+                name: Option::default_from_info(info.clone()),
+                pattern: Pattern::default_from_info(info),
+            },
+        }
+    }
+}
+
+#[derive(Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = "D::Info: Debug"),
+    Clone(bound = ""),
+    PartialEq(bound = "D::Info: PartialEq"),
+    Eq(bound = "D::Info: Eq")
+)]
+#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+pub struct Arm<D: Driver> {
+    pub pattern: WithInfo<D::Info, Pattern<D>>,
+    pub body: WithInfo<D::Info, Expression<D>>,
+}
+
+impl<D: Driver> DefaultFromInfo<D::Info> for Arm<D> {
+    fn default_from_info(info: D::Info) -> WithInfo<D::Info, Self> {
+        WithInfo {
+            info: info.clone(),
+            item: Arm {
+                pattern: Pattern::default_from_info(info.clone()),
+                body: Expression::default_from_info(info),
+            },
+        }
+    }
+}
+
+#[derive(Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = "D::Info: Debug"),
+    Clone(bound = ""),
+    PartialEq(bound = "D::Info: PartialEq"),
+    Eq(bound = "D::Info: Eq")
+)]
+#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+pub struct FieldValue<D: Driver> {
+    pub name: WithInfo<D::Info, Option<String>>,
+    pub value: WithInfo<D::Info, Expression<D>>,
+}
+
+impl<D: Driver> DefaultFromInfo<D::Info> for FieldValue<D> {
+    fn default_from_info(info: D::Info) -> WithInfo<D::Info, Self> {
+        WithInfo {
+            info: info.clone(),
+            item: FieldValue {
+                name: Option::default_from_info(info.clone()),
+                value: Expression::default_from_info(info),
+            },
+        }
+    }
+}
+
+#[derive(Derivative, Serialize, Deserialize)]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = "D::Info: PartialEq"),
+    Eq(bound = "D::Info: Eq"),
+    Hash(bound = "D::Info: Hash")
+)]
+pub struct Diagnostic<D: Driver> {
+    pub expected: SyntaxKind,
+    pub direction: Option<Direction>,
+    pub stack: Vec<WithInfo<D::Info, SyntaxKind>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Direction {
+    Before,
+    After,
+}
+
+#[allow(missing_docs)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "kebab-case")]
+pub enum SyntaxKind {
+    TopLevel,
+    Name,
+    Number,
+    Text,
+    Statement,
+    Keyword,
+    Operator,
+    Instance,
+    TypeParameter,
+    Pattern,
+    WildcardPattern,
+    NumberPattern,
+    TextPattern,
+    VariantPattern,
+    DestructurePattern,
+    TuplePattern,
+    OrPattern,
+    Expression,
+    Type,
+    PlaceholderType,
+    DeclaredType,
+    FunctionType,
+    TupleType,
+    BlockType,
+    TypeMember,
+    FieldDeclaration,
+    VariantDeclaration,
+    Arm,
+    TypeFunction,
+    TypeRepresentation,
+    TypeDeclaration,
+    TraitDeclaration,
+    InstanceDeclaration,
+    ConstantDeclaration,
+    LanguageDeclaration,
+    Assignment,
+    AnnotateExpression,
+    NameExpression,
+    NumberExpression,
+    TextExpression,
+    CallExpression,
+    ApplyExpression,
+    BinaryOperatorExpression,
+    AsExpression,
+    IsExpression,
+    WhenExpression,
+    IntrinsicExpression,
+    TupleExpression,
+    CollectionExpression,
+    StructureExpression,
+    StructureField,
+    WhenBody,
+    WhenArm,
+    BlockExpression,
+    FunctionExpression,
+    FunctionInputs,
+    Nothing,
+}
+
+#[derive(Debug)]
+pub struct Result<D: Driver> {
+    pub top_level: WithInfo<D::Info, TopLevel<D>>,
+    pub diagnostics: Vec<WithInfo<D::Info, Diagnostic<D>>>,
+}
+
+pub fn parse<D: Driver>(driver: &D, tree: WithInfo<D::Info, &TokenTree<'_, D>>) -> Result<D>
+where
+    D::Info: From<Info>,
+{
+    let mut parser = base::Parser::new(driver);
+
+    let stack = base::ParseStack::<D>::new(WithInfo {
+        info: tree.info.clone(),
+        item: SyntaxKind::TopLevel,
+    });
+
+    let top_level = rules::top_level().parse(&mut parser, tree, &stack);
+
+    Result {
+        top_level,
+        diagnostics: parser.into_diagnostics(),
+    }
+}
+
+pub struct Grammar {
+    rules: Vec<(&'static str, SyntaxKind, RuleToRender)>,
+}
+
+#[derive(Clone)]
+enum RuleToRender {
+    Ellipsis,
+    Token(&'static str),
+    Keyword(String),
+    Terminal(SyntaxKind),
+    List(Vec<Rc<dyn Fn() -> RuleToRender>>),
+    Block(Vec<Rc<dyn Fn() -> RuleToRender>>),
+    Switch(Vec<Rc<dyn Fn() -> RuleToRender>>),
+}
+
+impl RuleToRender {
+    const NAME: Self = RuleToRender::Token("name");
+    const NUMBER: Self = RuleToRender::Token("number");
+    const TEXT: Self = RuleToRender::Token("text");
+    const UNDERSCORE: Self = RuleToRender::Token("_");
+}
+
+impl Grammar {
+    pub fn render_to_html(&self, f: &mut impl std::fmt::Write) -> std::fmt::Result {
+        write!(f, "<ul class=\"grammar\">")?;
+
+        for (doc, kind, rule) in &self.rules {
+            write!(f, "<li id=\"{}\">", kind)?;
+            write!(f, "<a href=\"#{}\"><em>{}</em></a> &rarr; ", kind, kind)?;
+            rule.render_to_html(f)?;
+            write!(f, "<br>")?;
+            write!(f, "<p>{}</p>", doc)?;
+            write!(f, "</li>")?;
+        }
+
+        write!(f, "</ul>")?;
+
+        Ok(())
+    }
+
+    pub fn render_to_html_string(&self) -> String {
+        let mut s = String::new();
+        self.render_to_html(&mut s).unwrap();
+        s
+    }
+}
+
+impl RuleToRender {
+    fn render_to_html(&self, f: &mut dyn std::fmt::Write) -> std::fmt::Result {
+        match self {
+            RuleToRender::Ellipsis => write!(f, "<em>...</em>")?,
+            RuleToRender::Token(token) => write!(f, "<em>{}</em>", token)?,
+            RuleToRender::Keyword(keyword) => write!(f, "<code>{}</code>", keyword)?,
+            RuleToRender::Terminal(kind) => {
+                write!(f, "<a href=\"#{}\"><em>{}</em></a>", kind, kind)?
+            }
+            RuleToRender::List(rules) => {
+                write!(f, "<code>(</code>")?;
+
+                for rule in rules {
+                    write!(f, " ")?;
+                    rule().render_to_html(f)?;
+                }
+
+                if !rules.is_empty() {
+                    write!(f, " ")?;
+                }
+
+                write!(f, "<code>)</code>")?;
+            }
+            RuleToRender::Block(rules) => {
+                write!(f, "<code>{{</code>")?;
+
+                for rule in rules {
+                    write!(f, " ")?;
+                    rule().render_to_html(f)?;
+                }
+
+                if !rules.is_empty() {
+                    write!(f, " ")?;
+                }
+
+                write!(f, "<code>}}</code>")?;
+            }
+            RuleToRender::Switch(rules) => {
+                write!(f, "(")?;
+
+                for (index, rule) in rules.iter().enumerate() {
+                    if index > 0 {
+                        write!(f, "&emsp;|&emsp;")?;
+                    }
+
+                    rule().render_to_html(f)?;
+                }
+
+                write!(f, ")")?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+pub fn grammar<D: Driver>(_driver: &D) -> Grammar {
+    let mut rules = rules::render::<D>();
+    rules.sort_by_key(|(_, kind, _)| kind.to_string());
+
+    Grammar { rules }
+}
+
+mod rules {
+    use super::*;
+    use crate::tokenize::{Keyword, NonAssociativeOperator, Operator, VariadicOperator};
+    use base::Rule;
+
+    pub fn render<D: Driver>() -> Vec<(&'static str, SyntaxKind, RuleToRender)> {
+        vec![
+            top_level::<D>().render(),
+            statement::<D>().render(),
+            type_declaration::<D>().render(),
+            trait_declaration::<D>().render(),
+            instance_declaration::<D>().render(),
+            constant_declaration::<D>().render(),
+            language_declaration::<D>().render(),
+            assignment::<D>().render(),
+            r#type::<D>().render(),
+            placeholder_type::<D>().render(),
+            declared_type::<D>().render(),
+            function_type::<D>().render(),
+            tuple_type::<D>().render(),
+            block_type::<D>().render(),
+            type_function::<D>().render(),
+            type_parameter::<D>().render(),
+            type_representation::<D>().render(),
+            instance::<D>().render(),
+            pattern::<D>().render(),
+            wildcard_pattern::<D>().render(),
+            number_pattern::<D>().render(),
+            text_pattern::<D>().render(),
+            variant_pattern::<D>().render(),
+            destructure_pattern::<D>().render(),
+            tuple_pattern::<D>().render(),
+            or_pattern::<D>().render(),
+            expression::<D>().render(),
+            annotate_expression::<D>().render(),
+            name_expression::<D>().render(),
+            number_expression::<D>().render(),
+            text_expression::<D>().render(),
+            call_expression::<D>().render(),
+            apply_expression::<D>().render(),
+            binary_operator_expression::<D>().render(),
+            as_expression::<D>().render(),
+            is_expression::<D>().render(),
+            when_expression::<D>().render(),
+            when_arm::<D>().render(),
+            intrinsic_expression::<D>().render(),
+            tuple_expression::<D>().render(),
+            collection_expression::<D>().render(),
+            structure_expression::<D>().render(),
+            block_expression::<D>().render(),
+            function_expression::<D>().render(),
+        ]
+    }
+
+    pub fn top_level<D: Driver>() -> Rule<D, TopLevel<D>> {
+        Rule::block(SyntaxKind::TopLevel, statement, |_, info, statements, _| {
+            WithInfo {
+                info,
+                item: TopLevel { statements },
+            }
+        })
+        .named("A file or code box.")
+    }
+
+    pub fn statement<D: Driver>() -> Rule<D, Statement<D>> {
+        Rule::switch(
+            SyntaxKind::Statement,
+            [
+                type_declaration,
+                trait_declaration,
+                instance_declaration,
+                constant_declaration,
+                language_declaration,
+                assignment,
+                || expression().map(SyntaxKind::Statement, Statement::Expression),
+            ],
+        )
+        .named("A statement.")
+    }
+
+    pub fn type_declaration<D: Driver>() -> Rule<D, Statement<D>> {
+        Rule::non_associative_operator(
+            SyntaxKind::TypeDeclaration,
+            NonAssociativeOperator::Assign,
+            || name().wrapped(),
+            || {
+                Rule::switch(
+                    SyntaxKind::TypeDeclaration,
+                    [
+                        || {
+                            Rule::keyword0(
+                                SyntaxKind::TypeRepresentation,
+                                Keyword::Type,
+                                |_, info, _| <(_, _)>::default_from_info(info),
+                            )
+                        },
+                        || {
+                            Rule::keyword1(
+                                SyntaxKind::TypeRepresentation,
+                                Keyword::Type,
+                                type_representation,
+                                |_, info: D::Info, representation, _| WithInfo {
+                                    info: info.clone(),
+                                    item: (TypeFunction::default_from_info(info), representation),
+                                },
+                            )
+                        },
+                        || {
+                            Rule::non_associative_operator(
+                                SyntaxKind::TypeRepresentation,
+                                NonAssociativeOperator::TypeFunction,
+                                type_function,
+                                || {
+                                    Rule::keyword0(
+                                        SyntaxKind::TypeRepresentation,
+                                        Keyword::Type,
+                                        |_, info, _| TypeRepresentation::default_from_info(info),
+                                    )
+                                },
+                                |_, info, type_function, representation, _| WithInfo {
+                                    info,
+                                    item: (type_function, representation),
+                                },
+                            )
+                        },
+                        || {
+                            Rule::non_associative_operator(
+                                SyntaxKind::TypeRepresentation,
+                                NonAssociativeOperator::TypeFunction,
+                                type_function,
+                                || {
+                                    Rule::keyword1(
+                                        SyntaxKind::TypeRepresentation,
+                                        Keyword::Type,
+                                        || type_representation(),
+                                        |_, _, representation, _| representation,
+                                    )
+                                },
+                                |_, info, type_function, representation, _| WithInfo {
+                                    info,
+                                    item: (type_function, representation),
+                                },
+                            )
+                        },
+                    ],
+                )
+            },
+            |_, info, name, declaration, _| {
+                let (parameters, representation) = declaration.item;
+
+                WithInfo {
+                    info,
+                    item: Statement::TypeDeclaration {
+                        name,
+                        parameters,
+                        representation,
+                    },
+                }
+            },
+        )
+        .named("A type declaration.")
+    }
+
+    pub fn trait_declaration<D: Driver>() -> Rule<D, Statement<D>> {
+        Rule::non_associative_operator(
+            SyntaxKind::TraitDeclaration,
+            NonAssociativeOperator::Assign,
+            || name().wrapped(),
+            || {
+                Rule::switch(
+                    SyntaxKind::TraitDeclaration,
+                    [
+                        || {
+                            Rule::keyword0(
+                                SyntaxKind::TraitDeclaration,
+                                Keyword::Trait,
+                                |parser, info: D::Info, stack| {
+                                    parser.add_diagnostic(stack.error_expected(
+                                        WithInfo {
+                                            info: info.clone(),
+                                            item: SyntaxKind::Type,
+                                        },
+                                        Direction::After,
+                                    ));
+
+                                    <(_, _)>::default_from_info(info)
+                                },
+                            )
+                        },
+                        || {
+                            Rule::keyword1(
+                                SyntaxKind::TraitDeclaration,
+                                Keyword::Trait,
+                                r#type,
+                                |_, info: D::Info, r#type, _| WithInfo {
+                                    info: info.clone(),
+                                    item: (TypeFunction::default_from_info(info), r#type),
+                                },
+                            )
+                        },
+                        || {
+                            Rule::non_associative_operator(
+                                SyntaxKind::TraitDeclaration,
+                                NonAssociativeOperator::TypeFunction,
+                                type_function,
+                                || {
+                                    Rule::keyword0(
+                                        SyntaxKind::TraitDeclaration,
+                                        Keyword::Trait,
+                                        |parser, info: D::Info, stack| {
+                                            parser.add_diagnostic(stack.error_expected(
+                                                WithInfo {
+                                                    info: info.clone(),
+                                                    item: SyntaxKind::Type,
+                                                },
+                                                Direction::After,
+                                            ));
+
+                                            Type::default_from_info(info)
+                                        },
+                                    )
+                                },
+                                |_, info, type_function, r#type, _| WithInfo {
+                                    info,
+                                    item: (type_function, r#type),
+                                },
+                            )
+                        },
+                        || {
+                            Rule::non_associative_operator(
+                                SyntaxKind::TraitDeclaration,
+                                NonAssociativeOperator::TypeFunction,
+                                type_function,
+                                || {
+                                    Rule::keyword1(
+                                        SyntaxKind::TraitDeclaration,
+                                        Keyword::Trait,
+                                        r#type,
+                                        |_, _, r#type, _| r#type,
+                                    )
+                                },
+                                |_, info, type_function, r#type, _| WithInfo {
+                                    info,
+                                    item: (type_function, r#type),
+                                },
+                            )
+                        },
+                    ],
+                )
+            },
+            |_, info, name, declaration, _| {
+                let (parameters, r#type) = declaration.item;
+
+                WithInfo {
+                    info,
+                    item: Statement::TraitDeclaration {
+                        name,
+                        parameters,
+                        r#type,
+                    },
+                }
+            },
+        )
+        .named("A trait declaration.")
+    }
+
+    pub fn instance_declaration<D: Driver>() -> Rule<D, Statement<D>> {
+        Rule::non_associative_operator(
+            SyntaxKind::InstanceDeclaration,
+            NonAssociativeOperator::Assign,
+            || {
+                Rule::switch(
+                    SyntaxKind::InstanceDeclaration,
+                    [
+                        || {
+                            Rule::non_associative_operator(
+                                SyntaxKind::InstanceDeclaration,
+                                NonAssociativeOperator::TypeFunction,
+                                type_function,
+                                || {
+                                    Rule::keyword1(
+                                        SyntaxKind::InstanceDeclaration,
+                                        Keyword::Instance,
+                                        || instance().wrapped(),
+                                        |_, _, instance, _| instance,
+                                    )
+                                },
+                                |_, info, type_function, instance, _| WithInfo {
+                                    info,
+                                    item: (type_function, instance),
+                                },
+                            )
+                        },
+                        || {
+                            Rule::keyword1(
+                                SyntaxKind::InstanceDeclaration,
+                                Keyword::Instance,
+                                || instance().wrapped(),
+                                |_, info: D::Info, instance, _| WithInfo {
+                                    info: info.clone(),
+                                    item: (TypeFunction::default_from_info(info), instance),
+                                },
+                            )
+                        },
+                    ],
+                )
+            },
+            expression,
+            |_, info, declaration, body, _| {
+                let (parameters, instance) = declaration.item;
+
+                WithInfo {
+                    info,
+                    item: Statement::InstanceDeclaration {
+                        parameters,
+                        instance,
+                        body,
+                    },
+                }
+            },
+        )
+        .named("An instance declaration.")
+    }
+
+    pub fn constant_declaration<D: Driver>() -> Rule<D, Statement<D>> {
+        Rule::non_associative_operator(
+            SyntaxKind::ConstantDeclaration,
+            NonAssociativeOperator::Annotate,
+            || name().wrapped(),
+            || {
+                Rule::switch(
+                    SyntaxKind::ConstantDeclaration,
+                    [
+                        || {
+                            Rule::non_associative_operator(
+                                SyntaxKind::TypeFunction,
+                                NonAssociativeOperator::TypeFunction,
+                                type_function,
+                                r#type,
+                                |_, info, type_function, r#type, _| WithInfo {
+                                    info,
+                                    item: (type_function, r#type),
+                                },
+                            )
+                        },
+                        || {
+                            r#type().map(SyntaxKind::Type, |r#type| {
+                                (
+                                    TypeFunction::default_from_info(D::Info::clone(&r#type.info)),
+                                    r#type,
+                                )
+                            })
+                        },
+                    ],
+                )
+            },
+            |_, info, name, declaration, _| {
+                let (parameters, r#type) = declaration.item;
+
+                WithInfo {
+                    info,
+                    item: Statement::ConstantDeclaration {
+                        name,
+                        parameters,
+                        r#type,
+                    },
+                }
+            },
+        )
+        .named("A constant declaration.")
+    }
+
+    pub fn language_declaration<D: Driver>() -> Rule<D, Statement<D>> {
+        Rule::non_associative_operator(
+            SyntaxKind::LanguageDeclaration,
+            NonAssociativeOperator::Assign,
+            || {
+                Rule::keyword2(
+                    SyntaxKind::LanguageDeclaration,
+                    Keyword::Intrinsic,
+                    || {
+                        Rule::match_terminal(
+                            SyntaxKind::Text,
+                            RuleToRender::TEXT,
+                            |parser, tree, stack| match tree.item {
+                                TokenTree::Text(text) => {
+                                    let kind = text.parse::<LanguageDeclarationKind>().ok();
+                                    if kind.is_none() {
+                                        parser.add_diagnostic(stack.error_expected(
+                                            tree.replace(SyntaxKind::LanguageDeclaration),
+                                            None,
+                                        ));
+                                    }
+
+                                    Some(tree.replace(kind))
+                                }
+                                _ => None,
+                            },
+                        )
+                    },
+                    || text().wrapped(),
+                    |_, info, kind, item, _| WithInfo {
+                        info,
+                        item: (kind, item),
+                    },
+                )
+            },
+            || name().wrapped(),
+            |_, info, declaration, name, _| {
+                let (kind, item) = declaration.item;
+
+                WithInfo {
+                    info,
+                    item: Statement::LanguageDeclaration { name, kind, item },
+                }
+            },
+        )
+        .named("A language declaration.")
+    }
+
+    pub fn assignment<D: Driver>() -> Rule<D, Statement<D>> {
+        Rule::non_associative_operator(
+            SyntaxKind::Assignment,
+            NonAssociativeOperator::Assign,
+            pattern,
+            expression,
+            |_, info, pattern, value, _| WithInfo {
+                info,
+                item: Statement::Assignment { pattern, value },
+            },
+        )
+        .named("Assign a value to a pattern.")
+    }
+
+    pub fn r#type<D: Driver>() -> Rule<D, Type<D>> {
+        Rule::switch(
+            SyntaxKind::Type,
+            [
+                placeholder_type,
+                declared_type,
+                function_type,
+                tuple_type,
+                block_type,
+            ],
+        )
+        .named("A type.")
+    }
+
+    pub fn placeholder_type<D: Driver>() -> Rule<D, Type<D>> {
+        Rule::match_terminal(
+            SyntaxKind::PlaceholderType,
+            RuleToRender::UNDERSCORE,
+            |_, tree, _| match tree.item {
+                TokenTree::Keyword(Keyword::Underscore) => Some(tree.replace(Type::Placeholder)),
+                _ => None,
+            },
+        )
+        .named("An inferred type.")
+    }
+
+    pub fn declared_type<D: Driver>() -> Rule<D, Type<D>> {
+        Rule::switch(
+            SyntaxKind::DeclaredType,
+            [
+                || {
+                    Rule::empty_list(SyntaxKind::DeclaredType, |info| WithInfo {
+                        info,
+                        item: Type::Unit,
+                    })
+                },
+                || {
+                    Rule::list_prefix(
+                        SyntaxKind::DeclaredType,
+                        || name().wrapped(),
+                        r#type,
+                        |_, info, name, types, _| WithInfo {
+                            info,
+                            item: Type::Declared {
+                                name,
+                                parameters: types,
+                            },
+                        },
+                    )
+                },
+            ],
+        )
+        .named("A declared type, optionally with parameters.")
+    }
+
+    pub fn function_type<D: Driver>() -> Rule<D, Type<D>> {
+        Rule::operator(
+            SyntaxKind::FunctionType,
+            Operator::Function,
+            || {
+                Rule::list(SyntaxKind::FunctionInputs, r#type, |_, info, types, _| {
+                    WithInfo { info, item: types }
+                })
+            },
+            r#type,
+            |_, info, inputs, output, _| WithInfo {
+                info,
+                item: Type::Function {
+                    inputs: inputs.item,
+                    output: output.boxed(),
+                },
+            },
+        )
+        .named("A function type.")
+    }
+
+    pub fn tuple_type<D: Driver>() -> Rule<D, Type<D>> {
+        Rule::variadic_operator(
+            SyntaxKind::TupleType,
+            VariadicOperator::Tuple,
+            r#type,
+            |_, info, types, _| WithInfo {
+                info,
+                item: Type::Tuple(types),
+            },
+        )
+        .named("A tuple type.")
+    }
+
+    pub fn block_type<D: Driver>() -> Rule<D, Type<D>> {
+        Rule::block(
+            SyntaxKind::BlockType,
+            r#type,
+            |parser, info, types, stack| {
+                let mut types = types.into_iter();
+
+                let r#type = match types.next() {
+                    Some(r#type) => r#type,
+                    None => {
+                        parser.add_diagnostic(stack.error_expected(
+                            WithInfo {
+                                info: D::Info::clone(&info),
+                                item: SyntaxKind::Type,
+                            },
+                            None,
+                        ));
+
+                        WithInfo {
+                            info: info.clone(),
+                            item: Type::Error,
+                        }
+                    }
+                };
+
+                for r#type in types {
+                    parser.add_diagnostic(
+                        stack.error_expected(r#type.replace(SyntaxKind::Nothing), None),
+                    );
+                }
+
+                WithInfo {
+                    info,
+                    item: Type::Block(r#type.boxed()),
+                }
+            },
+        )
+        .named("A type whose value is computed from a block expression.")
+    }
+
+    pub fn type_function<D: Driver>() -> Rule<D, TypeFunction<D>> {
+        Rule::switch(
+            SyntaxKind::TypeFunction,
+            [
+                || {
+                    Rule::list(
+                        SyntaxKind::TypeParameter,
+                        type_parameter,
+                        |_, info, parameters, _| WithInfo {
+                            info,
+                            item: TypeFunction {
+                                parameters,
+                                bounds: Vec::new(),
+                            },
+                        },
+                    )
+                },
+                || {
+                    Rule::non_associative_operator(
+                        SyntaxKind::TypeFunction,
+                        NonAssociativeOperator::Where,
+                        || {
+                            Rule::list(
+                                SyntaxKind::TypeParameter,
+                                type_parameter,
+                                |_, info, parameters, _| WithInfo {
+                                    info,
+                                    item: parameters,
+                                },
+                            )
+                        },
+                        || {
+                            Rule::list(SyntaxKind::Instance, instance, |_, info, bounds, _| {
+                                WithInfo { info, item: bounds }
+                            })
+                        },
+                        |_, info, parameters, bounds, _| WithInfo {
+                            info,
+                            item: TypeFunction {
+                                parameters: parameters.item,
+                                bounds: bounds.item,
+                            },
+                        },
+                    )
+                },
+            ],
+        )
+        .named("Provides generic type parameters and bounds to a declaration.")
+    }
+
+    pub fn type_parameter<D: Driver>() -> Rule<D, TypeParameter<D>> {
+        Rule::switch(
+            SyntaxKind::TypeParameter,
+            [
+                || {
+                    name()
+                        .wrapped()
+                        .map(SyntaxKind::TypeParameter, |name| TypeParameter {
+                            name,
+                            default: None,
+                            infer: None,
+                        })
+                },
+                || {
+                    Rule::keyword1(
+                        SyntaxKind::TypeParameter,
+                        Keyword::Infer,
+                        || name().wrapped(),
+                        |_, info, name, _| WithInfo {
+                            info: D::Info::clone(&info),
+                            item: TypeParameter {
+                                name,
+                                default: None,
+                                infer: Some(WithInfo { info, item: () }),
+                            },
+                        },
+                    )
+                },
+                || {
+                    Rule::non_associative_operator(
+                        SyntaxKind::TypeParameter,
+                        NonAssociativeOperator::Assign,
+                        || {
+                            Rule::switch(
+                                SyntaxKind::TypeParameter,
+                                [
+                                    || {
+                                        name().wrapped().map(SyntaxKind::TypeParameter, |name| {
+                                            (
+                                                name.clone(),
+                                                WithInfo {
+                                                    info: name.info,
+                                                    item: None,
+                                                },
+                                            )
+                                        })
+                                    },
+                                    || {
+                                        Rule::keyword1(
+                                            SyntaxKind::TypeParameter,
+                                            Keyword::Infer,
+                                            || name().wrapped(),
+                                            |_, info, name, _| WithInfo {
+                                                info: D::Info::clone(&info),
+                                                item: (
+                                                    name,
+                                                    WithInfo {
+                                                        info,
+                                                        item: Some(()),
+                                                    },
+                                                ),
+                                            },
+                                        )
+                                    },
+                                ],
+                            )
+                        },
+                        r#type,
+                        |_, info, name, r#type, _| {
+                            let (name, default) = name.item;
+
+                            WithInfo {
+                                info,
+                                item: TypeParameter {
+                                    name,
+                                    default: Some(r#type),
+                                    infer: default.try_unwrap(),
+                                },
+                            }
+                        },
+                    )
+                },
+            ],
+        )
+        .named("A type parameter.")
+    }
+
+    pub fn type_representation<D: Driver>() -> Rule<D, TypeRepresentation<D>> {
+        Rule::block(
+            SyntaxKind::TypeRepresentation,
+            || {
+                Rule::switch(
+                    SyntaxKind::TypeMember,
+                    [
+                        || {
+                            Rule::non_associative_operator(
+                                SyntaxKind::FieldDeclaration,
+                                NonAssociativeOperator::Annotate,
+                                || name().wrapped(),
+                                r#type,
+                                |_, info, name, r#type, _| WithInfo {
+                                    info,
+                                    item: TypeMember {
+                                        name,
+                                        kind: TypeMemberKind::Field(r#type),
+                                    },
+                                },
+                            )
+                        },
+                        || {
+                            Rule::list_prefix(
+                                SyntaxKind::VariantDeclaration,
+                                || name().wrapped(),
+                                r#type,
+                                |_, info, name, types, _| WithInfo {
+                                    info,
+                                    item: TypeMember {
+                                        name,
+                                        kind: TypeMemberKind::Variant(types),
+                                    },
+                                },
+                            )
+                        },
+                    ],
+                )
+            },
+            |_, info, members, _| WithInfo {
+                info,
+                item: TypeRepresentation::Compound(members),
+            },
+        )
+        .named("A set of fields or variants in a type.")
+    }
+
+    pub fn instance<D: Driver>() -> Rule<D, Instance<D>> {
+        Rule::list_prefix(
+            SyntaxKind::Instance,
+            || name().wrapped(),
+            r#type,
+            |_, info, r#trait, parameters, _| WithInfo {
+                info,
+                item: Instance {
+                    r#trait,
+                    parameters,
+                },
+            },
+        )
+        .named("An instance.")
+    }
+
+    pub fn pattern<D: Driver>() -> Rule<D, Pattern<D>> {
+        Rule::switch(
+            SyntaxKind::Pattern,
+            [
+                wildcard_pattern,
+                number_pattern,
+                text_pattern,
+                variant_pattern,
+                destructure_pattern,
+                tuple_pattern,
+                or_pattern,
+            ],
+        )
+        .named("A pattern.")
+    }
+
+    pub fn wildcard_pattern<D: Driver>() -> Rule<D, Pattern<D>> {
+        Rule::match_terminal(
+            SyntaxKind::WildcardPattern,
+            RuleToRender::UNDERSCORE,
+            |_, tree, _| match tree.item {
+                TokenTree::Keyword(Keyword::Underscore) => Some(tree.replace(Pattern::Wildcard)),
+                _ => None,
+            },
+        )
+        .named("A pattern that matches any value.")
+    }
+
+    pub fn number_pattern<D: Driver>() -> Rule<D, Pattern<D>> {
+        number()
+            .map(SyntaxKind::NumberPattern, |number| {
+                Pattern::Number(number.item)
+            })
+            .named("A pattern that matches a number.")
+    }
+
+    pub fn text_pattern<D: Driver>() -> Rule<D, Pattern<D>> {
+        text()
+            .map(SyntaxKind::TextPattern, |text| Pattern::Text(text.item))
+            .named("A pattern that matches a piece of text.")
+    }
+
+    pub fn variant_pattern<D: Driver>() -> Rule<D, Pattern<D>> {
+        Rule::switch(
+            SyntaxKind::VariantPattern,
+            [
+                || {
+                    Rule::empty_list(SyntaxKind::VariantPattern, |info| WithInfo {
+                        info,
+                        item: Pattern::Unit,
+                    })
+                },
+                || {
+                    Rule::list_prefix(
+                        SyntaxKind::VariantPattern,
+                        || name().wrapped(),
+                        pattern,
+                        |_, info, variant, value_patterns, _| WithInfo {
+                            info,
+                            item: if value_patterns.is_empty() {
+                                Pattern::VariantOrName(variant)
+                            } else {
+                                Pattern::Variant {
+                                    variant,
+                                    value_patterns,
+                                }
+                            },
+                        },
+                    )
+                },
+            ],
+        )
+        .named("A pattern that matches a variant or binds to a variable.")
+    }
+
+    pub fn destructure_pattern<D: Driver>() -> Rule<D, Pattern<D>> {
+        Rule::block(
+            SyntaxKind::DestructurePattern,
+            || {
+                Rule::non_associative_operator(
+                    SyntaxKind::StructureField,
+                    NonAssociativeOperator::Assign,
+                    || name().wrapped(),
+                    pattern,
+                    |_, info, name, pattern, _| WithInfo {
+                        info,
+                        item: FieldPattern { name, pattern },
+                    },
+                )
+            },
+            |_, info, patterns, _| WithInfo {
+                info,
+                item: Pattern::Destructure(patterns),
+            },
+        )
+        .named("A pattern that matches the fields of a structure.")
+    }
+
+    pub fn tuple_pattern<D: Driver>() -> Rule<D, Pattern<D>> {
+        Rule::variadic_operator(
+            SyntaxKind::TuplePattern,
+            VariadicOperator::Tuple,
+            pattern,
+            |_, info, patterns, _| WithInfo {
+                info,
+                item: Pattern::Tuple(patterns),
+            },
+        )
+        .named("A pattern that matches a tuple.")
+    }
+
+    pub fn or_pattern<D: Driver>() -> Rule<D, Pattern<D>> {
+        Rule::operator(
+            SyntaxKind::OrPattern,
+            Operator::Or,
+            pattern,
+            pattern,
+            |_, info, left, right, _| WithInfo {
+                info,
+                item: Pattern::Or {
+                    left: left.boxed(),
+                    right: right.boxed(),
+                },
+            },
+        )
+        .named("A pattern that matches either one of its subpatterns.")
+    }
+
+    pub fn expression<D: Driver>() -> Rule<D, Expression<D>> {
+        Rule::switch(
+            SyntaxKind::Expression,
+            [
+                annotate_expression,
+                name_expression,
+                number_expression,
+                text_expression,
+                call_expression,
+                apply_expression,
+                binary_operator_expression,
+                as_expression,
+                is_expression,
+                when_expression,
+                intrinsic_expression,
+                tuple_expression,
+                collection_expression,
+                structure_expression,
+                block_expression,
+            ],
+        )
+        .named("An expression.")
+    }
+
+    pub fn annotate_expression<D: Driver>() -> Rule<D, Expression<D>> {
+        Rule::non_associative_operator(
+            SyntaxKind::AnnotateExpression,
+            NonAssociativeOperator::Annotate,
+            expression,
+            r#type,
+            |_, info, value, r#type, _| WithInfo {
+                info,
+                item: Expression::Annotate {
+                    value: value.boxed(),
+                    r#type,
+                },
+            },
+        )
+        .named("Annotate an expression with a type.")
+    }
+
+    pub fn name_expression<D: Driver>() -> Rule<D, Expression<D>> {
+        name()
+            .map(SyntaxKind::NameExpression, |name| {
+                Expression::Name(name.item)
+            })
+            .named("A name.")
+    }
+
+    pub fn number_expression<D: Driver>() -> Rule<D, Expression<D>> {
+        number()
+            .map(SyntaxKind::NumberExpression, |number| {
+                Expression::Number(number.item)
+            })
+            .named("A number.")
+    }
+
+    pub fn text_expression<D: Driver>() -> Rule<D, Expression<D>> {
+        text()
+            .map(SyntaxKind::TextExpression, |text| {
+                Expression::Text(text.item)
+            })
+            .named("A piece of text.")
+    }
+
+    pub fn call_expression<D: Driver>() -> Rule<D, Expression<D>> {
+        Rule::list(
+            SyntaxKind::CallExpression,
+            expression,
+            |_, info, expressions, _| match expressions.len() {
+                0 => WithInfo {
+                    info,
+                    item: Expression::Unit,
+                },
+                1 => expressions.into_iter().next().unwrap(),
+                _ => {
+                    let mut expressions = expressions.into_iter();
+
+                    WithInfo {
+                        info,
+                        item: Expression::Call {
+                            function: expressions.next().unwrap().boxed(),
+                            inputs: expressions.collect(),
+                        },
+                    }
+                }
+            },
+        )
+        .named("Call a function with at least one input.")
+    }
+
+    pub fn apply_expression<D: Driver>() -> Rule<D, Expression<D>> {
+        Rule::operator(
+            SyntaxKind::ApplyExpression,
+            Operator::Apply,
+            expression,
+            expression,
+            |_, info, input, function, _| WithInfo {
+                info,
+                item: Expression::Apply {
+                    input: input.boxed(),
+                    function: function.boxed(),
+                },
+            },
+        )
+        .named("Function application using the <code>.</code> operator.")
+    }
+
+    pub fn binary_operator_expression<D: Driver>() -> Rule<D, Expression<D>> {
+        macro_rules! binary_operator {
+            ($op:ident) => {
+                Rule::operator(
+                    SyntaxKind::BinaryOperatorExpression,
+                    Operator::$op,
+                    expression,
+                    expression,
+                    |_, info, left, right, _| WithInfo {
+                        info: D::Info::clone(&info),
+                        item: Expression::BinaryOperator {
+                            operator: WithInfo {
+                                info,
+                                item: BinaryOperator::$op,
+                            },
+                            left: left.boxed(),
+                            right: right.boxed(),
+                        },
+                    },
+                )
+            };
+            ($($op:ident),* $(,)?) => {
+                [$(|| binary_operator!($op),)*]
+            };
+        }
+
+        Rule::switch(
+            SyntaxKind::BinaryOperatorExpression,
+            binary_operator!(
+                To,
+                By,
+                Power,
+                Multiply,
+                Divide,
+                Remainder,
+                Add,
+                Subtract,
+                LessThan,
+                LessThanOrEqual,
+                GreaterThan,
+                GreaterThanOrEqual,
+                Equal,
+                NotEqual,
+                And,
+                Or,
+            ),
+        )
+        .named("An expression involving a binary operator.")
+    }
+
+    pub fn as_expression<D: Driver>() -> Rule<D, Expression<D>> {
+        Rule::operator(
+            SyntaxKind::AsExpression,
+            Operator::As,
+            expression,
+            r#type,
+            |_, info, value, r#type, _| WithInfo {
+                info,
+                item: Expression::As {
+                    value: value.boxed(),
+                    r#type,
+                },
+            },
+        )
+        .named("Convert a value of one type to a value of a different type.")
+    }
+
+    pub fn is_expression<D: Driver>() -> Rule<D, Expression<D>> {
+        Rule::operator(
+            SyntaxKind::IsExpression,
+            Operator::Is,
+            expression,
+            pattern,
+            |_, info, value, pattern, _| WithInfo {
+                info,
+                item: Expression::Is {
+                    value: value.boxed(),
+                    pattern,
+                },
+            },
+        )
+        .named("Check if a value matches a pattern.")
+    }
+
+    pub fn when_expression<D: Driver>() -> Rule<D, Expression<D>> {
+        Rule::keyword2(
+            SyntaxKind::WhenExpression,
+            Keyword::When,
+            expression,
+            || {
+                Rule::block(SyntaxKind::WhenBody, when_arm, |_, info, arms, _| {
+                    WithInfo { info, item: arms }
+                })
+            },
+            |_, info, input, arms, _| WithInfo {
+                info,
+                item: Expression::When {
+                    input: input.boxed(),
+                    arms: arms.item,
+                },
+            },
+        )
+        .named("Match a value against a set of patterns.")
+    }
+
+    pub fn when_arm<D: Driver>() -> Rule<D, Arm<D>> {
+        Rule::operator(
+            SyntaxKind::WhenArm,
+            Operator::Function,
+            pattern,
+            expression,
+            |_, info, pattern, body, _| WithInfo {
+                info,
+                item: Arm { pattern, body },
+            },
+        )
+        .named("An arm in a <code>when</code> expression.")
+    }
+
+    pub fn intrinsic_expression<D: Driver>() -> Rule<D, Expression<D>> {
+        Rule::keyword_prefixn(
+            SyntaxKind::IntrinsicExpression,
+            Keyword::Intrinsic,
+            || text().wrapped(),
+            expression,
+            |_, info, name, inputs, _| WithInfo {
+                info,
+                item: Expression::Intrinsic { name, inputs },
+            },
+        )
+        .named("Call an intrinsic function provided by the runtime.")
+    }
+
+    pub fn tuple_expression<D: Driver>() -> Rule<D, Expression<D>> {
+        Rule::variadic_operator(
+            SyntaxKind::TupleExpression,
+            VariadicOperator::Tuple,
+            expression,
+            |_, info, expressions, _| WithInfo {
+                info,
+                item: Expression::Tuple(expressions),
+            },
+        )
+        .named("A tuple.")
+    }
+
+    pub fn collection_expression<D: Driver>() -> Rule<D, Expression<D>> {
+        Rule::variadic_operator(
+            SyntaxKind::CollectionExpression,
+            VariadicOperator::Collection,
+            expression,
+            |_, info, expressions, _| WithInfo {
+                info,
+                item: Expression::Collection(expressions),
+            },
+        )
+        .named("A collection.")
+    }
+
+    pub fn structure_expression<D: Driver>() -> Rule<D, Expression<D>> {
+        Rule::try_block(
+            SyntaxKind::StructureExpression,
+            || {
+                Rule::non_associative_operator(
+                    SyntaxKind::StructureField,
+                    NonAssociativeOperator::Assign,
+                    || name().wrapped(),
+                    expression,
+                    |_, info, name, value, _| WithInfo {
+                        info,
+                        item: FieldValue { name, value },
+                    },
+                )
+                .r#try()
+                .wrapped()
+            },
+            |_, info, fields, _| WithInfo {
+                info,
+                item: Expression::Structure(fields),
+            },
+        )
+        .named("A structure.")
+    }
+
+    pub fn block_expression<D: Driver>() -> Rule<D, Expression<D>> {
+        Rule::block(
+            SyntaxKind::BlockExpression,
+            statement,
+            |_, info, statements, _| WithInfo {
+                info,
+                item: Expression::Block(statements),
+            },
+        )
+        .named("A block expression.")
+    }
+
+    pub fn function_expression<D: Driver>() -> Rule<D, Expression<D>> {
+        Rule::operator(
+            SyntaxKind::FunctionExpression,
+            Operator::Function,
+            || {
+                Rule::list(
+                    SyntaxKind::FunctionInputs,
+                    pattern,
+                    |_, info, patterns, _| WithInfo {
+                        info,
+                        item: patterns,
+                    },
+                )
+            },
+            expression,
+            |_, info, inputs, body, _| WithInfo {
+                info,
+                item: Expression::Function {
+                    inputs: inputs.item,
+                    body: body.boxed(),
+                },
+            },
+        )
+        .named("A function expression.")
+    }
+
+    pub fn name<D: Driver>() -> Rule<D, String> {
+        Rule::match_terminal(SyntaxKind::Name, RuleToRender::NAME, |_, tree, _| {
+            tree.filter_map(|tree| match tree {
+                TokenTree::Name(name) => Some(name.clone().into_owned()),
+                _ => None,
+            })
+        })
+    }
+
+    pub fn text<D: Driver>() -> Rule<D, String> {
+        Rule::match_terminal(SyntaxKind::Text, RuleToRender::TEXT, |_, tree, _| {
+            tree.filter_map(|tree| match tree {
+                TokenTree::Text(text) => Some(text.clone().into_owned()),
+                _ => None,
+            })
+        })
+    }
+
+    pub fn number<D: Driver>() -> Rule<D, String> {
+        Rule::match_terminal(SyntaxKind::Number, RuleToRender::NUMBER, |_, tree, _| {
+            tree.filter_map(|tree| match tree {
+                TokenTree::Number(number) => Some(number.clone().into_owned()),
+                _ => None,
+            })
+        })
+    }
+}
+
+mod base {
+    use super::*;
+
+    /// Tracks the parser's progress.
+    pub struct ParseStack<D: Driver> {
+        parent: Option<Rc<ParseStack<D>>>,
+        current: WithInfo<D::Info, SyntaxKind>,
+    }
+
+    impl<D: Driver> ParseStack<D> {
+        pub fn new(root: WithInfo<D::Info, SyntaxKind>) -> Rc<Self> {
+            Rc::new(ParseStack {
+                parent: None,
+                current: root,
+            })
+        }
+
+        pub fn push(self: &Rc<Self>, child: WithInfo<D::Info, SyntaxKind>) -> Rc<Self> {
+            Rc::new(ParseStack {
+                parent: Some(self.clone()),
+                current: child,
+            })
+        }
+
+        pub fn error_expected(
+            &self,
+            expected: WithInfo<D::Info, SyntaxKind>,
+            direction: impl Into<Option<Direction>>,
+        ) -> WithInfo<D::Info, Diagnostic<D>> {
+            let mut stack = std::iter::successors(Some(self), |stack| stack.parent.as_deref())
+                .map(|stack| stack.current.clone())
+                .collect::<Vec<_>>();
+
+            stack.reverse();
+
+            WithInfo {
+                info: expected.info,
+                item: Diagnostic {
+                    expected: expected.item,
+                    direction: direction.into(),
+                    stack,
+                },
+            }
+        }
+    }
+
+    pub struct Parser<'a, D: Driver> {
+        _driver: &'a D,
+        diagnostics: Vec<WithInfo<D::Info, Diagnostic<D>>>,
+    }
+
+    impl<'a, D: Driver + 'a> Parser<'a, D> {
+        pub fn new(driver: &'a D) -> Self {
+            Parser {
+                _driver: driver,
+                diagnostics: Vec::new(),
+            }
+        }
+
+        pub fn add_diagnostic(&mut self, diagnostic: WithInfo<D::Info, Diagnostic<D>>) {
+            self.diagnostics.push(diagnostic);
+        }
+
+        pub fn into_diagnostics(self) -> Vec<WithInfo<D::Info, Diagnostic<D>>> {
+            self.diagnostics
+        }
+    }
+
+    #[derive(Derivative)]
+    #[derivative(Clone(bound = ""))]
+    pub struct ParseFn<D: Driver, Output>(
+        Rc<
+            dyn Fn(
+                    &mut Parser<'_, D>,
+                    WithInfo<D::Info, &TokenTree<'_, D>>,
+                    &Rc<ParseStack<D>>,
+                ) -> Option<WithInfo<D::Info, Output>>
+                + 'static,
+        >,
+    );
+
+    fn assert_static<T: 'static>(_x: &T) {}
+
+    impl<D: Driver, Output> ParseFn<D, Output> {
+        pub fn new(
+            f: impl Fn(
+                    &mut Parser<'_, D>,
+                    WithInfo<D::Info, &TokenTree<'_, D>>,
+                    &Rc<ParseStack<D>>,
+                ) -> Option<WithInfo<D::Info, Output>>
+                + 'static,
+        ) -> Self {
+            ParseFn(Rc::new(f))
+        }
+
+        pub fn try_parse(
+            &self,
+            parser: &mut Parser<'_, D>,
+            tree: WithInfo<D::Info, &TokenTree<'_, D>>,
+            stack: &Rc<ParseStack<D>>,
+        ) -> Option<WithInfo<D::Info, Output>> {
+            (self.0)(parser, tree, stack)
+        }
+    }
+
+    #[derive(Derivative)]
+    #[derivative(Clone(bound = ""))]
+    pub struct Rule<D: Driver, Output> {
+        doc: Option<&'static str>,
+        syntax_kind: SyntaxKind,
+        rendered: RuleToRender,
+        r#try: bool,
+        parse: ParseFn<D, Output>,
+    }
+
+    impl<D: Driver, Output: 'static> Rule<D, Output> {
+        fn nonterminal(
+            syntax_kind: SyntaxKind,
+            rendered: RuleToRender,
+            parse: ParseFn<D, Output>,
+        ) -> Self {
+            Rule {
+                doc: None,
+                syntax_kind,
+                rendered,
+                r#try: false,
+                parse,
+            }
+        }
+
+        fn terminal(
+            syntax_kind: SyntaxKind,
+            rendered: RuleToRender,
+            parse: ParseFn<D, Output>,
+        ) -> Self {
+            Rule {
+                doc: None,
+                syntax_kind,
+                rendered,
+                r#try: false,
+                parse,
+            }
+        }
+
+        pub fn render(self) -> (&'static str, SyntaxKind, RuleToRender) {
+            let doc = self.doc.expect("rule must be named");
+            (doc, self.syntax_kind, self.rendered)
+        }
+
+        fn render_nested(&self) -> RuleToRender {
+            if self.doc.is_some() {
+                RuleToRender::Terminal(self.syntax_kind)
+            } else {
+                self.rendered.clone()
+            }
+        }
+
+        #[allow(unused)]
+        pub fn todo(syntax_kind: SyntaxKind) -> Self {
+            Rule {
+                doc: None,
+                syntax_kind,
+                rendered: RuleToRender::Token("TODO"),
+                r#try: false,
+                parse: ParseFn::new(|_, _, _| todo!()),
+            }
+        }
+
+        pub fn wrapped(self) -> Rule<D, Option<Output>> {
+            Rule {
+                doc: self.doc,
+                syntax_kind: self.syntax_kind,
+                rendered: self.rendered.clone(),
+                r#try: self.r#try,
+                parse: ParseFn::new(move |parser, tree, stack| {
+                    Some(self.parse_option(parser, tree, stack))
+                }),
+            }
+        }
+
+        pub fn map<T>(
+            self,
+            syntax_kind: SyntaxKind,
+            f: impl Fn(WithInfo<D::Info, Output>) -> T + 'static,
+        ) -> Rule<D, T> {
+            Rule {
+                doc: self.doc,
+                syntax_kind,
+                rendered: self.rendered,
+                r#try: self.r#try,
+                parse: ParseFn::new({
+                    let parse = self.parse;
+                    assert_static(&parse);
+
+                    move |parser, tree, stack| {
+                        let output = parse.try_parse(parser, tree, stack)?;
+                        Some(WithInfo {
+                            info: output.info.clone(),
+                            item: f(output),
+                        })
+                    }
+                }),
+            }
+        }
+
+        pub fn r#try(mut self) -> Self {
+            self.r#try = true;
+            self
+        }
+
+        pub fn named(mut self, doc: &'static str) -> Self {
+            self.doc = Some(doc);
+            self
+        }
+    }
+
+    impl<D: Driver, Output: 'static> Rule<D, Output> {
+        pub fn try_parse(
+            &self,
+            parser: &mut Parser<'_, D>,
+            tree: WithInfo<D::Info, &TokenTree<'_, D>>,
+            stack: &Rc<ParseStack<D>>,
+        ) -> Option<WithInfo<D::Info, Output>> {
+            let stack = stack.push(WithInfo {
+                info: tree.info.clone(),
+                item: self.syntax_kind,
+            });
+
+            self.parse.try_parse(parser, tree, &stack)
+        }
+
+        pub fn parse(
+            &self,
+            parser: &mut Parser<'_, D>,
+            tree: WithInfo<D::Info, &TokenTree<'_, D>>,
+            stack: &Rc<ParseStack<D>>,
+        ) -> WithInfo<D::Info, Output>
+        where
+            Output: DefaultFromInfo<D::Info>,
+        {
+            let info = tree.info.clone();
+
+            self.try_parse(parser, tree, stack).unwrap_or_else(|| {
+                if !self.r#try {
+                    parser.add_diagnostic(stack.error_expected(
+                        WithInfo {
+                            info: info.clone(),
+                            item: self.syntax_kind,
+                        },
+                        None,
+                    ));
+                }
+
+                Output::default_from_info(info)
+            })
+        }
+
+        fn parse_option(
+            &self,
+            parser: &mut Parser<'_, D>,
+            tree: WithInfo<D::Info, &TokenTree<'_, D>>,
+            stack: &Rc<ParseStack<D>>,
+        ) -> WithInfo<D::Info, Option<Output>> {
+            let info = tree.info.clone();
+
+            self.try_parse(parser, tree, stack)
+                .map(|result| result.map(Some))
+                .unwrap_or_else(|| {
+                    parser.add_diagnostic(stack.error_expected(
+                        WithInfo {
+                            info: info.clone(),
+                            item: self.syntax_kind,
+                        },
+                        None,
+                    ));
+
+                    Option::default_from_info(info)
+                })
+        }
+    }
+
+    impl<D: Driver, Output: 'static> Rule<D, Output> {
+        pub fn match_terminal(
+            syntax_kind: SyntaxKind,
+            rendered: RuleToRender,
+            f: impl Fn(
+                    &mut Parser<'_, D>,
+                    WithInfo<D::Info, &TokenTree<'_, D>>,
+                    &Rc<ParseStack<D>>,
+                ) -> Option<WithInfo<D::Info, Output>>
+                + 'static,
+        ) -> Self {
+            Rule::terminal(
+                syntax_kind,
+                rendered,
+                ParseFn::new(move |parser, tree, stack| f(parser, tree, stack)),
+            )
+        }
+
+        pub fn operator<L, R>(
+            syntax_kind: SyntaxKind,
+            expected: tokenize::Operator,
+            parse_left: fn() -> Rule<D, L>,
+            parse_right: fn() -> Rule<D, R>,
+            output: impl Fn(
+                    &mut Parser<'_, D>,
+                    D::Info,
+                    WithInfo<D::Info, L>,
+                    WithInfo<D::Info, R>,
+                    &Rc<ParseStack<D>>,
+                ) -> WithInfo<D::Info, Output>
+                + 'static,
+        ) -> Self
+        where
+            L: DefaultFromInfo<D::Info> + 'static,
+            R: DefaultFromInfo<D::Info> + 'static,
+        {
+            Rule::nonterminal(
+                syntax_kind,
+                RuleToRender::List(vec![
+                    Rc::new(move || parse_left().render_nested()),
+                    Rc::new(move || RuleToRender::Keyword(expected.to_string())),
+                    Rc::new(move || parse_right().render_nested()),
+                ]),
+                ParseFn::new(move |parser, tree, stack| {
+                    let (found, left, right) = match &tree.item {
+                        TokenTree::Operator(operator, left, right) => (operator, left, right),
+                        _ => return None,
+                    };
+
+                    if found.item != expected {
+                        return None;
+                    }
+
+                    let left = parse_left().parse(parser, left.as_deref(), stack);
+                    let right = parse_right().parse(parser, right.as_deref(), stack);
+
+                    Some(output(parser, tree.info, left, right, stack))
+                }),
+            )
+        }
+
+        pub fn variadic_operator<E>(
+            syntax_kind: SyntaxKind,
+            expected: tokenize::VariadicOperator,
+            parse_element: fn() -> Rule<D, E>,
+            output: impl Fn(
+                    &mut Parser<'_, D>,
+                    D::Info,
+                    Vec<WithInfo<D::Info, E>>,
+                    &Rc<ParseStack<D>>,
+                ) -> WithInfo<D::Info, Output>
+                + 'static,
+        ) -> Self
+        where
+            E: DefaultFromInfo<D::Info> + 'static,
+        {
+            Rule::nonterminal(
+                syntax_kind,
+                RuleToRender::List(vec![
+                    Rc::new(move || parse_element().render_nested()),
+                    Rc::new(move || RuleToRender::Keyword(expected.to_string())),
+                    Rc::new(|| RuleToRender::Ellipsis),
+                ]),
+                ParseFn::new(move |parser, tree, stack| {
+                    let (found, elements) = match &tree.item {
+                        TokenTree::VariadicOperator(operator, children) => (operator, children),
+                        _ => return None,
+                    };
+
+                    if found.item != expected {
+                        return None;
+                    }
+
+                    let elements = elements
+                        .iter()
+                        .map(|element| parse_element().parse(parser, element.as_ref(), stack))
+                        .collect();
+
+                    Some(output(parser, tree.info, elements, stack))
+                }),
+            )
+        }
+
+        pub fn non_associative_operator<L, R>(
+            syntax_kind: SyntaxKind,
+            expected: tokenize::NonAssociativeOperator,
+            parse_left: fn() -> Rule<D, L>,
+            parse_right: fn() -> Rule<D, R>,
+            output: impl Fn(
+                    &mut Parser<'_, D>,
+                    D::Info,
+                    WithInfo<D::Info, L>,
+                    WithInfo<D::Info, R>,
+                    &Rc<ParseStack<D>>,
+                ) -> WithInfo<D::Info, Output>
+                + 'static,
+        ) -> Self
+        where
+            L: DefaultFromInfo<D::Info> + 'static,
+            R: DefaultFromInfo<D::Info> + 'static,
+        {
+            Rule::nonterminal(
+                syntax_kind,
+                RuleToRender::List(vec![
+                    Rc::new(move || parse_left().render_nested()),
+                    Rc::new(move || RuleToRender::Keyword(expected.to_string())),
+                    Rc::new(move || parse_right().render_nested()),
+                ]),
+                ParseFn::new(move |parser, tree, stack| {
+                    let (found, left, right) = match &tree.item {
+                        TokenTree::NonAssociativeOperator(operator, left, right) => {
+                            (operator, left, right)
+                        }
+                        _ => return None,
+                    };
+
+                    if found.item != expected {
+                        return None;
+                    }
+
+                    let left = parse_left().parse(parser, left.as_deref(), stack);
+                    let right = parse_right().parse(parser, right.as_deref(), stack);
+
+                    Some(output(parser, tree.info, left, right, stack))
+                }),
+            )
+        }
+
+        pub fn empty_list(
+            syntax_kind: SyntaxKind,
+            output: impl Fn(D::Info) -> WithInfo<D::Info, Output> + 'static,
+        ) -> Self {
+            Rule::nonterminal(
+                syntax_kind,
+                RuleToRender::List(Vec::new()),
+                ParseFn::new(move |_, tree, _| match tree.item {
+                    TokenTree::List(_, elements) if elements.is_empty() => Some(output(tree.info)),
+                    _ => None,
+                }),
+            )
+        }
+
+        pub fn list<E>(
+            syntax_kind: SyntaxKind,
+            parse_element: fn() -> Rule<D, E>,
+            output: impl Fn(
+                    &mut Parser<'_, D>,
+                    D::Info,
+                    Vec<WithInfo<D::Info, E>>,
+                    &Rc<ParseStack<D>>,
+                ) -> WithInfo<D::Info, Output>
+                + 'static,
+        ) -> Self
+        where
+            E: DefaultFromInfo<D::Info> + 'static,
+        {
+            Rule::nonterminal(
+                syntax_kind,
+                RuleToRender::List(vec![
+                    Rc::new(move || parse_element().render_nested()),
+                    Rc::new(|| RuleToRender::Ellipsis),
+                ]),
+                ParseFn::new(move |parser, tree, stack| {
+                    let elements = match &tree.item {
+                        TokenTree::List(_, elements) => elements,
+                        _ => return None,
+                    };
+
+                    let elements = elements
+                        .iter()
+                        .map(|element| parse_element().parse(parser, element.as_ref(), stack))
+                        .collect();
+
+                    Some(output(parser, tree.info, elements, stack))
+                }),
+            )
+        }
+
+        pub fn list_prefix<P, E>(
+            syntax_kind: SyntaxKind,
+            parse_prefix: fn() -> Rule<D, P>,
+            parse_element: fn() -> Rule<D, E>,
+            output: impl Fn(
+                    &mut Parser<'_, D>,
+                    D::Info,
+                    WithInfo<D::Info, P>,
+                    Vec<WithInfo<D::Info, E>>,
+                    &Rc<ParseStack<D>>,
+                ) -> WithInfo<D::Info, Output>
+                + 'static,
+        ) -> Self
+        where
+            P: DefaultFromInfo<D::Info> + 'static,
+            E: DefaultFromInfo<D::Info> + 'static,
+        {
+            Rule::nonterminal(
+                syntax_kind,
+                RuleToRender::List(vec![
+                    Rc::new(move || parse_prefix().render_nested()),
+                    Rc::new(move || parse_element().render_nested()),
+                    Rc::new(|| RuleToRender::Ellipsis),
+                ]),
+                ParseFn::new(move |parser, tree, stack| {
+                    let elements = match &tree.item {
+                        TokenTree::List(_, elements) => elements,
+                        _ => return None,
+                    };
+
+                    let mut elements = elements.iter();
+
+                    let prefix = match elements.next() {
+                        Some(prefix) => parse_prefix().parse(parser, prefix.as_ref(), stack),
+                        None => {
+                            parser.add_diagnostic(stack.error_expected(
+                                WithInfo {
+                                    info: tree.info.clone(),
+                                    item: parse_prefix().syntax_kind,
+                                },
+                                None,
+                            ));
+
+                            P::default_from_info(tree.info.clone())
+                        }
+                    };
+
+                    let elements = elements
+                        .map(|element| parse_element().parse(parser, element.as_ref(), stack))
+                        .collect();
+
+                    Some(output(parser, tree.info, prefix, elements, stack))
+                }),
+            )
+        }
+
+        pub fn block<E>(
+            syntax_kind: SyntaxKind,
+            parse_statement: fn() -> Rule<D, E>,
+            output: impl Fn(
+                    &mut Parser<'_, D>,
+                    D::Info,
+                    Vec<WithInfo<D::Info, E>>,
+                    &Rc<ParseStack<D>>,
+                ) -> WithInfo<D::Info, Output>
+                + 'static,
+        ) -> Self
+        where
+            E: DefaultFromInfo<D::Info> + 'static,
+        {
+            Rule::nonterminal(
+                syntax_kind,
+                RuleToRender::Block(vec![
+                    Rc::new(move || parse_statement().render_nested()),
+                    Rc::new(|| RuleToRender::Ellipsis),
+                ]),
+                ParseFn::new(move |parser, tree, stack| {
+                    let statements = match &tree.item {
+                        TokenTree::Block(statements) => statements,
+                        _ => return None,
+                    };
+
+                    let statements = statements
+                        .iter()
+                        .map(|statement| parse_statement().parse(parser, statement.as_ref(), stack))
+                        .collect();
+
+                    Some(output(parser, tree.info, statements, stack))
+                }),
+            )
+        }
+
+        pub fn try_block<E>(
+            syntax_kind: SyntaxKind,
+            parse_statement: fn() -> Rule<D, Option<E>>,
+            output: impl Fn(
+                    &mut Parser<'_, D>,
+                    D::Info,
+                    Vec<WithInfo<D::Info, E>>,
+                    &Rc<ParseStack<D>>,
+                ) -> WithInfo<D::Info, Output>
+                + 'static,
+        ) -> Self
+        where
+            E: DefaultFromInfo<D::Info> + 'static,
+        {
+            Rule::nonterminal(
+                syntax_kind,
+                RuleToRender::Block(vec![
+                    Rc::new(move || parse_statement().render_nested()),
+                    Rc::new(|| RuleToRender::Ellipsis),
+                ]),
+                ParseFn::new(move |parser, tree, stack| {
+                    let statements = match &tree.item {
+                        TokenTree::Block(statements) => statements,
+                        _ => return None,
+                    };
+
+                    let statements = statements
+                        .iter()
+                        .map(|statement| {
+                            parse_statement()
+                                .parse(parser, statement.as_ref(), stack)
+                                .try_unwrap()
+                        })
+                        .collect::<Option<_>>()?;
+
+                    Some(output(parser, tree.info, statements, stack))
+                }),
+            )
+        }
+
+        pub fn switch<const N: usize>(
+            syntax_kind: SyntaxKind,
+            alternatives: [fn() -> Rule<D, Output>; N],
+        ) -> Self {
+            Rule::nonterminal(
+                syntax_kind,
+                RuleToRender::Switch(
+                    alternatives
+                        .iter()
+                        .cloned()
+                        .map(|alternative| {
+                            Rc::new(move || alternative().render_nested()) as Rc<dyn Fn() -> _>
+                        })
+                        .collect(),
+                ),
+                ParseFn::new(move |parser, tree, stack| {
+                    alternatives.iter().find_map(|alternative| {
+                        alternative().try_parse(parser, tree.as_deref(), stack)
+                    })
+                }),
+            )
+        }
+    }
+
+    macro_rules! impl_keyword_rule {
+        ($name:ident($($n:ident),*)) => {
+            impl<_D: Driver, Output: 'static> Rule<_D, Output> {
+                #[allow(unused, non_snake_case, clippy::redundant_clone, clippy::too_many_arguments)]
+                pub fn $name<$($n),*>(
+                    syntax_kind: SyntaxKind,
+                    expected: tokenize::Keyword,
+                    $($n: fn() -> Rule<_D, $n>,)*
+                    output: impl Fn(&mut Parser<'_, _D>, _D::Info, $(WithInfo<_D::Info, $n>, )* &Rc<ParseStack<_D>>) -> WithInfo<_D::Info, Output> + 'static,
+                ) -> Rule<_D, Output>
+                where
+                    $($n: DefaultFromInfo<_D::Info> + 'static,)*
+                {
+                    Rule::nonterminal(
+                        syntax_kind,
+                        RuleToRender::List(vec![
+                            Rc::new(move || RuleToRender::Keyword(expected.to_string())),
+                            $(Rc::new(move || $n().render_nested()),)*
+                        ]),
+                        ParseFn::new(move |parser, tree, stack| {
+                            let mut elements = match &tree.item {
+                                TokenTree::List(_, elements) => elements.iter(),
+                                _ => return None,
+                            };
+
+                            let info = match elements.next()? {
+                                WithInfo {
+                                    item: TokenTree::Keyword(found),
+                                    info,
+                                } if *found == expected => info,
+                                _ => return None,
+                            };
+
+                            $(
+                                let $n = match elements.next() {
+                                    Some(input) => $n().parse(parser, input.as_ref(), stack),
+                                    None => {
+                                        parser.add_diagnostic(
+                                            stack.error_expected(
+                                                WithInfo {
+                                                    info: info.clone(),
+                                                    item: $n().syntax_kind,
+                                                },
+                                                None,
+                                            ),
+                                        );
+
+                                        $n::default_from_info(info.clone())
+                                    }
+                                };
+                            )*
+
+                            for element in elements {
+                                parser.add_diagnostic(
+                                    stack.error_expected(
+                                        WithInfo {
+                                            info: _D::Info::clone(&element.info),
+                                            item: SyntaxKind::Nothing,
+                                        },
+                                        Direction::After,
+                                    )
+                                );
+                            }
+
+                            Some(output(parser, tree.info, $($n,)* stack))
+                        }),
+                    )
+                }
+            }
+        };
+    }
+
+    impl_keyword_rule!(keyword0());
+    impl_keyword_rule!(keyword1(A));
+    impl_keyword_rule!(keyword2(A, B));
+    impl_keyword_rule!(keyword3(A, B, C));
+    impl_keyword_rule!(keyword4(A, B, C, D));
+    impl_keyword_rule!(keyword5(A, B, C, D, E));
+    impl_keyword_rule!(keyword6(A, B, C, D, E, F));
+
+    impl<D: Driver, Output: 'static> Rule<D, Output> {
+        pub fn keyword_prefixn<P, E>(
+            syntax_kind: SyntaxKind,
+            expected: tokenize::Keyword,
+            parse_prefix: fn() -> Rule<D, P>,
+            parse_element: fn() -> Rule<D, E>,
+            output: impl Fn(
+                    &mut Parser<'_, D>,
+                    D::Info,
+                    WithInfo<D::Info, P>,
+                    Vec<WithInfo<D::Info, E>>,
+                    &Rc<ParseStack<D>>,
+                ) -> WithInfo<D::Info, Output>
+                + 'static,
+        ) -> Rule<D, Output>
+        where
+            P: DefaultFromInfo<D::Info> + 'static,
+            E: DefaultFromInfo<D::Info> + 'static,
+        {
+            Rule::nonterminal(
+                syntax_kind,
+                RuleToRender::List(vec![
+                    Rc::new(move || RuleToRender::Keyword(expected.to_string())),
+                    Rc::new(move || parse_prefix().render_nested()),
+                    Rc::new(move || parse_element().render_nested()),
+                    Rc::new(|| RuleToRender::Ellipsis),
+                ]),
+                ParseFn::new(move |parser, tree, stack| {
+                    let mut elements = match &tree.item {
+                        TokenTree::List(_, elements) => elements.iter(),
+                        _ => return None,
+                    };
+
+                    let info = match elements.next()? {
+                        WithInfo {
+                            item: TokenTree::Keyword(found),
+                            info,
+                        } if *found == expected => info,
+                        _ => return None,
+                    };
+
+                    let prefix = match elements.next() {
+                        Some(prefix) => parse_prefix().parse(parser, prefix.as_ref(), stack),
+                        None => {
+                            parser.add_diagnostic(stack.error_expected(
+                                WithInfo {
+                                    info: info.clone(),
+                                    item: parse_prefix().syntax_kind,
+                                },
+                                Direction::After,
+                            ));
+
+                            P::default_from_info(info.clone())
+                        }
+                    };
+
+                    let elements = elements
+                        .map(|element| parse_element().parse(parser, element.as_ref(), stack))
+                        .collect();
+
+                    Some(output(parser, tree.info, prefix, elements, stack))
+                }),
+            )
+        }
+    }
+}

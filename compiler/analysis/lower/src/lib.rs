@@ -297,8 +297,8 @@ pub enum UnresolvedExpression<D: Driver> {
     /// A function.
     #[serde(rename_all = "camelCase")]
     Function {
-        /// The function's input.
-        pattern: WithInfo<D::Info, UnresolvedPattern<D>>,
+        /// The function's inputs.
+        inputs: Vec<WithInfo<D::Info, UnresolvedPattern<D>>>,
 
         /// The function's output.
         body: WithInfo<D::Info, Box<UnresolvedExpression<D>>>,
@@ -309,26 +309,17 @@ pub enum UnresolvedExpression<D: Driver> {
         /// The function to call.
         function: WithInfo<D::Info, Box<UnresolvedExpression<D>>>,
 
-        /// The function's input.
-        input: WithInfo<D::Info, Box<UnresolvedExpression<D>>>,
+        /// The function's inputs.
+        inputs: Vec<WithInfo<D::Info, UnresolvedExpression<D>>>,
     },
 
     /// Function application.
     Apply {
         /// The input.
-        input: Option<WithInfo<D::Info, Box<UnresolvedExpression<D>>>>,
+        input: WithInfo<D::Info, Box<UnresolvedExpression<D>>>,
 
         /// The function.
-        function: Option<WithInfo<D::Info, Box<UnresolvedExpression<D>>>>,
-    },
-
-    /// Function composition.
-    Compose {
-        /// The outer function.
-        outer: Option<WithInfo<D::Info, Box<UnresolvedExpression<D>>>>,
-
-        /// The inner function.
-        inner: Option<WithInfo<D::Info, Box<UnresolvedExpression<D>>>>,
+        function: WithInfo<D::Info, Box<UnresolvedExpression<D>>>,
     },
 
     /// A binary operator expression.
@@ -338,17 +329,17 @@ pub enum UnresolvedExpression<D: Driver> {
         operator: WithInfo<D::Info, UnresolvedBinaryOperator>,
 
         /// The left-hand side.
-        left: Option<WithInfo<D::Info, Box<UnresolvedExpression<D>>>>,
+        left: WithInfo<D::Info, Box<UnresolvedExpression<D>>>,
 
         /// The right-hand side.
-        right: Option<WithInfo<D::Info, Box<UnresolvedExpression<D>>>>,
+        right: WithInfo<D::Info, Box<UnresolvedExpression<D>>>,
     },
 
     /// Convert a value of one type into a value of another type.
     #[serde(rename_all = "camelCase")]
     As {
         /// The value to convert.
-        value: Option<WithInfo<D::Info, Box<UnresolvedExpression<D>>>>,
+        value: WithInfo<D::Info, Box<UnresolvedExpression<D>>>,
 
         /// The type to convert to.
         r#type: WithInfo<D::Info, UnresolvedType<D>>,
@@ -358,7 +349,7 @@ pub enum UnresolvedExpression<D: Driver> {
     #[serde(rename_all = "camelCase")]
     Is {
         /// The value to match.
-        value: Option<WithInfo<D::Info, Box<UnresolvedExpression<D>>>>,
+        value: WithInfo<D::Info, Box<UnresolvedExpression<D>>>,
 
         /// The pattern to match.
         pattern: WithInfo<D::Info, UnresolvedPattern<D>>,
@@ -378,7 +369,7 @@ pub enum UnresolvedExpression<D: Driver> {
     #[serde(rename_all = "camelCase")]
     Intrinsic {
         /// The name of the compiler intrinsic to call.
-        name: WithInfo<D::Info, String>,
+        name: WithInfo<D::Info, Option<String>>,
 
         /// The inputs to the intrinsic.
         inputs: Vec<WithInfo<D::Info, UnresolvedExpression<D>>>,
@@ -392,17 +383,6 @@ pub enum UnresolvedExpression<D: Driver> {
 
     /// Structure construction.
     Structure(Vec<WithInfo<D::Info, UnresolvedFieldValue<D>>>),
-
-    /// Provide additional information about the semantics of an expression to
-    /// the compiler.
-    #[serde(rename_all = "camelCase")]
-    Semantics {
-        /// The name of the semantic.
-        name: WithInfo<D::Info, String>,
-
-        /// The expression that has the defined semantics.
-        body: WithInfo<D::Info, Box<UnresolvedExpression<D>>>,
-    },
 }
 
 /// An unresolved binary operator.
@@ -411,7 +391,6 @@ pub enum UnresolvedExpression<D: Driver> {
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "kebab-case")]
 pub enum UnresolvedBinaryOperator {
-    Compose,
     LessThan,
     GreaterThan,
     LessThanOrEqual,
@@ -436,7 +415,7 @@ pub enum UnresolvedBinaryOperator {
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct UnresolvedTypeParameter<D: Driver> {
     /// The name of the type parameter.
-    pub name: WithInfo<D::Info, String>,
+    pub name: WithInfo<D::Info, Option<String>>,
 
     /// Whether the type parameter was marked as `infer`.
     pub infer: Option<WithInfo<D::Info, ()>>,
@@ -499,7 +478,7 @@ pub enum UnresolvedType<D: Driver> {
     #[serde(rename_all = "camelCase")]
     Declared {
         /// The name of the type.
-        name: WithInfo<D::Info, String>,
+        name: WithInfo<D::Info, Option<String>>,
 
         /// The parameters provided to the type.
         parameters: Vec<WithInfo<D::Info, UnresolvedType<D>>>,
@@ -508,8 +487,8 @@ pub enum UnresolvedType<D: Driver> {
     /// A function type.
     #[serde(rename_all = "camelCase")]
     Function {
-        /// The type of the function's input.
-        input: WithInfo<D::Info, Box<UnresolvedType<D>>>,
+        /// The types of the function's inputs.
+        inputs: Vec<WithInfo<D::Info, UnresolvedType<D>>>,
 
         /// The type of the function's output.
         output: WithInfo<D::Info, Box<UnresolvedType<D>>>,
@@ -528,7 +507,7 @@ pub enum UnresolvedType<D: Driver> {
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct UnresolvedInstance<D: Driver> {
     /// The trait this instance refers to.
-    pub r#trait: WithInfo<D::Info, String>,
+    pub r#trait: WithInfo<D::Info, Option<String>>,
 
     /// The parameters provided to the trait the instance refers to.
     pub parameters: Vec<WithInfo<D::Info, UnresolvedType<D>>>,
@@ -556,7 +535,7 @@ pub enum UnresolvedPattern<D: Driver> {
 
     /// A variant pattern, or a variable if a variant with this name doesn't
     /// exist.
-    VariantOrName(String),
+    VariantOrName(Option<String>),
 
     /// A destructuring pattern.
     Destructure(Vec<WithInfo<D::Info, UnresolvedFieldPattern<D>>>),
@@ -565,7 +544,7 @@ pub enum UnresolvedPattern<D: Driver> {
     #[serde(rename_all = "camelCase")]
     Variant {
         /// The variant this pattern matches.
-        variant: WithInfo<D::Info, String>,
+        variant: WithInfo<D::Info, Option<String>>,
 
         /// The patterns matching each of the variant's associated values.
         value_patterns: Vec<WithInfo<D::Info, UnresolvedPattern<D>>>,
@@ -590,7 +569,7 @@ pub enum UnresolvedPattern<D: Driver> {
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct UnresolvedFieldPattern<D: Driver> {
     /// The name of the field.
-    pub name: WithInfo<D::Info, String>,
+    pub name: WithInfo<D::Info, Option<String>>,
 
     /// The pattern matching the field's value.
     pub pattern: WithInfo<D::Info, UnresolvedPattern<D>>,
@@ -604,9 +583,6 @@ pub struct UnresolvedArm<D: Driver> {
     /// The pattern to match on the input.
     pub pattern: WithInfo<D::Info, UnresolvedPattern<D>>,
 
-    /// The condition to check if the input matches.
-    pub condition: Option<WithInfo<D::Info, UnresolvedExpression<D>>>,
-
     /// The arm's body.
     pub body: WithInfo<D::Info, UnresolvedExpression<D>>,
 }
@@ -617,7 +593,7 @@ pub struct UnresolvedArm<D: Driver> {
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct UnresolvedFieldValue<D: Driver> {
     /// The name of the field.
-    pub name: WithInfo<D::Info, String>,
+    pub name: WithInfo<D::Info, Option<String>>,
 
     /// The field's value.
     pub value: WithInfo<D::Info, UnresolvedExpression<D>>,
@@ -906,8 +882,8 @@ pub enum Expression<D: Driver> {
     /// A function.
     #[serde(rename_all = "camelCase")]
     Function {
-        /// The function's input.
-        pattern: WithInfo<D::Info, Pattern<D>>,
+        /// The function's inputs.
+        inputs: Vec<WithInfo<D::Info, Pattern<D>>>,
 
         /// The function's output.
         body: WithInfo<D::Info, Box<Expression<D>>>,
@@ -918,8 +894,8 @@ pub enum Expression<D: Driver> {
         /// The function to call.
         function: WithInfo<D::Info, Box<Expression<D>>>,
 
-        /// The function's input.
-        input: WithInfo<D::Info, Box<Expression<D>>>,
+        /// The function's inputs.
+        inputs: Vec<WithInfo<D::Info, Expression<D>>>,
     },
 
     /// A `when` expression.
@@ -1038,8 +1014,8 @@ pub enum Type<D: Driver> {
     /// A function type.
     #[serde(rename_all = "camelCase")]
     Function {
-        /// The type of the function's input.
-        input: WithInfo<D::Info, Box<Type<D>>>,
+        /// The types of the function's inputs.
+        inputs: Vec<WithInfo<D::Info, Type<D>>>,
 
         /// The type of the function's output.
         output: WithInfo<D::Info, Box<Type<D>>>,
@@ -1127,7 +1103,7 @@ pub enum Pattern<D: Driver> {
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct FieldPattern<D: Driver> {
     /// The name of the field.
-    pub name: WithInfo<D::Info, String>,
+    pub name: WithInfo<D::Info, Option<String>>,
 
     /// The pattern matching the field's value.
     pub pattern: WithInfo<D::Info, Pattern<D>>,
@@ -1141,9 +1117,6 @@ pub struct Arm<D: Driver> {
     /// The pattern to match on the input.
     pub pattern: WithInfo<D::Info, Pattern<D>>,
 
-    /// The condition to check if the input matches.
-    pub condition: Option<WithInfo<D::Info, Expression<D>>>,
-
     /// The arm's body.
     pub body: WithInfo<D::Info, Expression<D>>,
 }
@@ -1154,7 +1127,7 @@ pub struct Arm<D: Driver> {
 #[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
 pub struct FieldValue<D: Driver> {
     /// The name of the field.
-    pub name: WithInfo<D::Info, String>,
+    pub name: WithInfo<D::Info, Option<String>>,
 
     /// The field's value.
     pub value: WithInfo<D::Info, Expression<D>>,

@@ -114,10 +114,13 @@ fn compile_expression<D: crate::Driver>(
                 }
             }
         }
-        wipple_typecheck::TypedExpressionKind::Function { pattern, body } => {
+        wipple_typecheck::TypedExpressionKind::Function { inputs, body } => {
             let function_label = info.push_label();
             let previous_label = mem::replace(&mut info.current_label, function_label);
-            compile_exhaustive_pattern(pattern.as_ref(), info)?;
+
+            for pattern in inputs {
+                compile_exhaustive_pattern(pattern.as_ref(), info)?;
+            }
 
             let prev_captures = mem::take(&mut info.captures);
             compile_expression(body.as_deref(), info)?;
@@ -130,11 +133,14 @@ fn compile_expression<D: crate::Driver>(
                 crate::TypedInstruction::Function(captures, info.path.clone(), function_label),
             ));
         }
-        wipple_typecheck::TypedExpressionKind::Call { function, input } => {
+        wipple_typecheck::TypedExpressionKind::Call { function, inputs } => {
             compile_expression(function.as_deref(), info)?;
-            compile_expression(input.as_deref(), info)?;
 
-            info.push_instruction(crate::Instruction::Call);
+            for input in inputs {
+                compile_expression(input.as_ref(), info)?;
+            }
+
+            info.push_instruction(crate::Instruction::Call(inputs.len() as u32));
         }
         wipple_typecheck::TypedExpressionKind::When { input, arms } => {
             compile_expression(input.as_deref(), info)?;
@@ -255,15 +261,6 @@ fn compile_exhaustive_arms<'a, D: crate::Driver + 'a>(
         else_label = info.push_label();
         compile_pattern(arm.item.pattern.as_ref(), else_label, info)?;
         info.push_instruction(crate::Instruction::Drop);
-
-        if let Some(condition) = arm.item.condition.as_ref() {
-            compile_expression(condition.as_ref(), info)?;
-
-            info.push_instruction(crate::Instruction::JumpIfNot(
-                info.driver.true_variant()?,
-                else_label,
-            ));
-        }
 
         compile_expression(arm.item.body.as_ref(), info)?;
         info.push_instruction(crate::Instruction::Jump(continue_label));
@@ -410,9 +407,12 @@ pub fn type_descriptor<D: crate::Driver>(
                     .collect::<Option<_>>()?,
             ))
         }
-        wipple_typecheck::Type::Function { input, output } => {
+        wipple_typecheck::Type::Function { inputs, output } => {
             Some(crate::TypeDescriptor::Function(
-                Box::new(type_descriptor(&input.item)?),
+                inputs
+                    .iter()
+                    .map(|r#type| type_descriptor(&r#type.item))
+                    .collect::<Option<_>>()?,
                 Box::new(type_descriptor(&output.item)?),
             ))
         }

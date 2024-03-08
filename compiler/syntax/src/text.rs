@@ -1,21 +1,21 @@
-use crate::{syntax, Driver, WithInfo};
+use crate::{parse, Driver, WithInfo};
 use rustc_lexer::unescape::EscapeError;
 use serde::{Deserialize, Serialize};
 
 pub struct ParseFormatExpressionResult<D: Driver> {
-    pub segments: Vec<crate::FormatSegment<WithInfo<D::Info, syntax::Expression<D>>>>,
+    pub segments: Vec<crate::FormatSegment<WithInfo<D::Info, parse::Expression<D>>>>,
     pub trailing: String,
 }
 
 pub(crate) fn parse_format_expression<D: Driver>(
-    raw: &WithInfo<D::Info, String>,
-    mut inputs: Vec<WithInfo<D::Info, syntax::Expression<D>>>,
+    raw: WithInfo<D::Info, &str>,
+    mut inputs: Vec<WithInfo<D::Info, parse::Expression<D>>>,
     errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic>>,
 ) -> ParseFormatExpressionResult<D> {
     let mut string = String::with_capacity(raw.item.len());
     let mut escaped_underscores = Vec::new();
 
-    rustc_lexer::unescape::unescape_str(&raw.item, &mut |range, result| match result {
+    rustc_lexer::unescape::unescape_str(raw.item, &mut |range, result| match result {
         Ok(ch) => string.push(ch),
         Err(rustc_lexer::unescape::EscapeError::InvalidEscape)
             if &raw.item[range.clone()] == r"\_" =>
@@ -64,7 +64,7 @@ pub(crate) fn parse_format_expression<D: Driver>(
     for _ in 0..segments.len().saturating_sub(inputs.len()) {
         inputs.push(WithInfo {
             info: raw.info.clone(),
-            item: syntax::Expression::Error,
+            item: parse::Expression::Error,
         });
     }
 

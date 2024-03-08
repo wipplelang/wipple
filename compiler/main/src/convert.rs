@@ -89,8 +89,8 @@ pub mod interface {
                 },
                 parameters: parameters.into_iter().map(convert_type).collect(),
             },
-            wipple_typecheck::Type::Function { input, output } => wipple_lower::Type::Function {
-                input: convert_type(input.unboxed()).boxed(),
+            wipple_typecheck::Type::Function { inputs, output } => wipple_lower::Type::Function {
+                inputs: inputs.into_iter().map(convert_type).collect(),
                 output: convert_type(output.unboxed()).boxed(),
             },
             wipple_typecheck::Type::Tuple(elements) => {
@@ -325,16 +325,16 @@ pub mod lower {
                     parameters: parameters.into_iter().map(convert_type).collect(),
                 }
             }
-            wipple_syntax::Type::Function { input, output } => {
+            wipple_syntax::Type::Function { inputs, output } => {
                 wipple_lower::UnresolvedType::Function {
-                    input: convert_type(input.unboxed()).boxed(),
+                    inputs: inputs.into_iter().map(convert_type).collect(),
                     output: convert_type(output.unboxed()).boxed(),
                 }
             }
             wipple_syntax::Type::Tuple(elements) => wipple_lower::UnresolvedType::Tuple(
                 elements.into_iter().map(convert_type).collect(),
             ),
-            wipple_syntax::Type::Deferred(r#type) => {
+            wipple_syntax::Type::Block(r#type) => {
                 wipple_lower::UnresolvedType::Deferred(convert_type(r#type.unboxed()).boxed())
             }
         })
@@ -385,29 +385,22 @@ pub mod lower {
                     statements.into_iter().map(convert_statement).collect(),
                 )
             }
-            wipple_syntax::Expression::Function { pattern, body } => {
+            wipple_syntax::Expression::Function { inputs, body } => {
                 wipple_lower::UnresolvedExpression::Function {
-                    pattern: convert_pattern(pattern),
+                    inputs: inputs.into_iter().map(convert_pattern).collect(),
                     body: convert_expression(body.unboxed()).boxed(),
                 }
             }
-            wipple_syntax::Expression::Call { function, input } => {
+            wipple_syntax::Expression::Call { function, inputs } => {
                 wipple_lower::UnresolvedExpression::Call {
                     function: convert_expression(function.unboxed()).boxed(),
-                    input: convert_expression(input.unboxed()).boxed(),
+                    inputs: inputs.into_iter().map(convert_expression).collect(),
                 }
             }
             wipple_syntax::Expression::Apply { input, function } => {
                 wipple_lower::UnresolvedExpression::Apply {
-                    input: input.map(|input| convert_expression(input.unboxed()).boxed()),
-                    function: function
-                        .map(|function| convert_expression(function.unboxed()).boxed()),
-                }
-            }
-            wipple_syntax::Expression::Compose { outer, inner } => {
-                wipple_lower::UnresolvedExpression::Compose {
-                    outer: outer.map(|outer| convert_expression(outer.unboxed()).boxed()),
-                    inner: inner.map(|inner| convert_expression(inner.unboxed()).boxed()),
+                    input: convert_expression(input.unboxed()).boxed(),
+                    function: convert_expression(function.unboxed()).boxed(),
                 }
             }
             wipple_syntax::Expression::BinaryOperator {
@@ -416,18 +409,18 @@ pub mod lower {
                 right,
             } => wipple_lower::UnresolvedExpression::BinaryOperator {
                 operator: convert_binary_operator(operator),
-                left: left.map(|left| convert_expression(left.unboxed()).boxed()),
-                right: right.map(|right| convert_expression(right.unboxed()).boxed()),
+                left: convert_expression(left.unboxed()).boxed(),
+                right: convert_expression(right.unboxed()).boxed(),
             },
             wipple_syntax::Expression::As { value, r#type } => {
                 wipple_lower::UnresolvedExpression::As {
-                    value: value.map(|value| convert_expression(value.unboxed()).boxed()),
+                    value: convert_expression(value.unboxed()).boxed(),
                     r#type: convert_type(r#type),
                 }
             }
             wipple_syntax::Expression::Is { value, pattern } => {
                 wipple_lower::UnresolvedExpression::Is {
-                    value: value.map(|value| convert_expression(value.unboxed()).boxed()),
+                    value: convert_expression(value.unboxed()).boxed(),
                     pattern: convert_pattern(pattern),
                 }
             }
@@ -439,7 +432,6 @@ pub mod lower {
                         .map(|arm| {
                             arm.map(|arm| wipple_lower::UnresolvedArm {
                                 pattern: convert_pattern(arm.pattern),
-                                condition: arm.condition.map(convert_expression),
                                 body: convert_expression(arm.body),
                             })
                         })
@@ -475,12 +467,6 @@ pub mod lower {
                         .collect(),
                 )
             }
-            wipple_syntax::Expression::Semantics { name, body } => {
-                wipple_lower::UnresolvedExpression::Semantics {
-                    name,
-                    body: convert_expression(body.unboxed()).boxed(),
-                }
-            }
         })
     }
 
@@ -496,7 +482,7 @@ pub mod lower {
             wipple_syntax::Pattern::Text(text) => wipple_lower::UnresolvedPattern::Text(text),
             wipple_syntax::Pattern::Wildcard => wipple_lower::UnresolvedPattern::Wildcard,
             wipple_syntax::Pattern::VariantOrName(name) => {
-                wipple_lower::UnresolvedPattern::VariantOrName(name)
+                wipple_lower::UnresolvedPattern::VariantOrName(name.item)
             }
             wipple_syntax::Pattern::Destructure(fields) => {
                 wipple_lower::UnresolvedPattern::Destructure(
@@ -532,9 +518,6 @@ pub mod lower {
         binary_operator: wipple_util::WithInfo<crate::Info, wipple_syntax::BinaryOperator>,
     ) -> wipple_util::WithInfo<Info, wipple_lower::UnresolvedBinaryOperator> {
         binary_operator.map(|binary_operator| match binary_operator {
-            wipple_syntax::BinaryOperator::Compose => {
-                wipple_lower::UnresolvedBinaryOperator::Compose
-            }
             wipple_syntax::BinaryOperator::LessThan => {
                 wipple_lower::UnresolvedBinaryOperator::LessThan
             }
@@ -715,8 +698,8 @@ pub mod typecheck {
             wipple_lower::Type::Parameter(parameter) => {
                 wipple_typecheck::Type::Parameter(parameter)
             }
-            wipple_lower::Type::Function { input, output } => wipple_typecheck::Type::Function {
-                input: convert_type(input.unboxed()).boxed(),
+            wipple_lower::Type::Function { inputs, output } => wipple_typecheck::Type::Function {
+                inputs: inputs.into_iter().map(convert_type).collect(),
                 output: convert_type(output.unboxed()).boxed(),
             },
             wipple_lower::Type::Tuple(elements) => {
@@ -784,16 +767,16 @@ pub mod typecheck {
                     statements.into_iter().map(convert_expression).collect(),
                 )
             }
-            wipple_lower::Expression::Function { pattern, body } => {
+            wipple_lower::Expression::Function { inputs, body } => {
                 wipple_typecheck::UntypedExpression::Function {
-                    pattern: convert_pattern(pattern),
+                    inputs: inputs.into_iter().map(convert_pattern).collect(),
                     body: convert_expression(body.unboxed()).boxed(),
                 }
             }
-            wipple_lower::Expression::Call { function, input } => {
+            wipple_lower::Expression::Call { function, inputs } => {
                 wipple_typecheck::UntypedExpression::Call {
                     function: convert_expression(function.unboxed()).boxed(),
-                    input: convert_expression(input.unboxed()).boxed(),
+                    inputs: inputs.into_iter().map(convert_expression).collect(),
                 }
             }
             wipple_lower::Expression::When { input, arms } => {
@@ -804,7 +787,6 @@ pub mod typecheck {
                         .map(|arm| {
                             arm.map(|arm| wipple_typecheck::UntypedArm {
                                 pattern: convert_pattern(arm.pattern),
-                                condition: arm.condition.map(convert_expression),
                                 body: convert_expression(arm.body),
                             })
                         })
@@ -831,10 +813,12 @@ pub mod typecheck {
                 wipple_typecheck::UntypedExpression::Structure(
                     elements
                         .into_iter()
-                        .map(|element| {
-                            element.map(|element| wipple_typecheck::UntypedStructureFieldValue {
-                                name: element.name.item,
-                                value: convert_expression(element.value),
+                        .filter_map(|element| {
+                            element.filter_map(|element| {
+                                Some(wipple_typecheck::UntypedStructureFieldValue {
+                                    name: element.name.item?,
+                                    value: convert_expression(element.value),
+                                })
                             })
                         })
                         .collect(),
@@ -869,10 +853,12 @@ pub mod typecheck {
             wipple_lower::Pattern::Destructure(fields) => wipple_typecheck::Pattern::Destructure(
                 fields
                     .into_iter()
-                    .map(|field| {
-                        field.map(|field| wipple_typecheck::FieldPattern {
-                            name: field.name.item,
-                            pattern: convert_pattern(field.pattern),
+                    .filter_map(|field| {
+                        field.filter_map(|field| {
+                            Some(wipple_typecheck::FieldPattern {
+                                name: field.name.item?,
+                                pattern: convert_pattern(field.pattern),
+                            })
                         })
                     })
                     .collect(),

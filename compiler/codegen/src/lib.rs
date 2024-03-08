@@ -100,9 +100,8 @@ pub enum Instruction<D: Driver> {
     /// A variable.
     Variable(u32),
 
-    /// (Consuming) Call the function on the top of the stack with the input on
-    /// the top of the stack.
-    Call,
+    /// (Consuming) Call the function on the top of the stack with _n_ inputs.
+    Call(u32),
 
     /// (Values) A tuple.
     Tuple(u32),
@@ -204,7 +203,7 @@ pub enum TypeDescriptor<D: Driver> {
     Named(D::Path, Vec<TypeDescriptor<D>>),
 
     /// A function type.
-    Function(Box<TypeDescriptor<D>>, Box<TypeDescriptor<D>>),
+    Function(Vec<TypeDescriptor<D>>, Box<TypeDescriptor<D>>),
 
     /// A tuple type.
     Tuple(Vec<TypeDescriptor<D>>),
@@ -225,7 +224,7 @@ where
             Instruction::Field(field) => write!(f, "field {field}"),
             Instruction::Element(element) => write!(f, "element {element}"),
             Instruction::Variable(variable) => write!(f, "variable {variable}"),
-            Instruction::Call => write!(f, "call"),
+            Instruction::Call(inputs) => write!(f, "call {inputs}"),
             Instruction::Tuple(elements) => write!(f, "tuple {elements}"),
             Instruction::Typed(descriptor, instruction) => {
                 write!(f, "{instruction} :: {descriptor}")
@@ -294,7 +293,16 @@ where
                         result
                     }),
             ),
-            TypeDescriptor::Function(input, output) => write!(f, "({input} -> {output})"),
+            TypeDescriptor::Function(inputs, output) => write!(
+                f,
+                "({} -> {})",
+                inputs
+                    .iter()
+                    .map(|input| input.to_string())
+                    .collect::<Vec<_>>()
+                    .join(" "),
+                output
+            ),
             TypeDescriptor::Tuple(elements) => write!(
                 f,
                 "({})",

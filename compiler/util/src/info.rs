@@ -116,3 +116,57 @@ impl<I, T> WithInfo<I, Box<T>> {
         self.map(|value| *value)
     }
 }
+
+impl<I, T> WithInfo<I, Option<T>> {
+    /// Unwrap the [`Option`] value contained within the [`WithInfo`].
+    pub fn try_unwrap(self) -> Option<WithInfo<I, T>> {
+        self.item.map(|item| WithInfo {
+            info: self.info,
+            item,
+        })
+    }
+}
+
+/// Like [`Default`], but for types wrapped in [`WithInfo`].
+pub trait DefaultFromInfo<I>: Sized {
+    /// Produce the default value of `Self` with the given info.
+    fn default_from_info(info: I) -> WithInfo<I, Self>;
+}
+
+impl<I> DefaultFromInfo<I> for () {
+    fn default_from_info(info: I) -> WithInfo<I, Self> {
+        WithInfo { info, item: () }
+    }
+}
+
+impl<I, A, B> DefaultFromInfo<I> for (WithInfo<I, A>, WithInfo<I, B>)
+where
+    I: Clone,
+    A: DefaultFromInfo<I>,
+    B: DefaultFromInfo<I>,
+{
+    fn default_from_info(info: I) -> WithInfo<I, Self> {
+        WithInfo {
+            info: info.clone(),
+            item: (
+                A::default_from_info(info.clone()),
+                B::default_from_info(info),
+            ),
+        }
+    }
+}
+
+impl<I, T> DefaultFromInfo<I> for Option<T> {
+    fn default_from_info(info: I) -> WithInfo<I, Self> {
+        WithInfo { info, item: None }
+    }
+}
+
+impl<I, T> DefaultFromInfo<I> for Vec<WithInfo<I, T>> {
+    fn default_from_info(info: I) -> WithInfo<I, Self> {
+        WithInfo {
+            info,
+            item: Vec::new(),
+        }
+    }
+}
