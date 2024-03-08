@@ -584,8 +584,6 @@ where
         item: SyntaxKind::TopLevel,
     });
 
-    wipple_util::log!("{:#?}", tree);
-
     let top_level = rules::top_level().parse(&mut parser, tree, &stack);
 
     Result {
@@ -793,7 +791,7 @@ mod rules {
         Rule::non_associative_operator(
             SyntaxKind::TypeDeclaration,
             NonAssociativeOperator::Assign,
-            || name().wrapped().in_list(),
+            || name().wrapped().in_list().r#try(),
             || {
                 Rule::switch(
                     SyntaxKind::TypeDeclaration,
@@ -855,6 +853,7 @@ mod rules {
                         },
                     ],
                 )
+                .r#try()
             },
             |_, info, name, declaration, _| {
                 let (parameters, representation) = declaration.item;
@@ -876,7 +875,7 @@ mod rules {
         Rule::non_associative_operator(
             SyntaxKind::TraitDeclaration,
             NonAssociativeOperator::Assign,
-            || name().wrapped().in_list(),
+            || name().wrapped().in_list().r#try(),
             || {
                 Rule::switch(
                     SyntaxKind::TraitDeclaration,
@@ -958,6 +957,7 @@ mod rules {
                         },
                     ],
                 )
+                .r#try()
             },
             |_, info, name, declaration, _| {
                 let (parameters, r#type) = declaration.item;
@@ -1015,6 +1015,7 @@ mod rules {
                         },
                     ],
                 )
+                .r#try()
             },
             expression,
             |_, info, declaration, body, _| {
@@ -1037,7 +1038,7 @@ mod rules {
         Rule::non_associative_operator(
             SyntaxKind::ConstantDeclaration,
             NonAssociativeOperator::Annotate,
-            || name().wrapped().in_list(),
+            || name().wrapped().in_list().r#try(),
             || {
                 Rule::switch(
                     SyntaxKind::ConstantDeclaration,
@@ -1064,6 +1065,7 @@ mod rules {
                         },
                     ],
                 )
+                .r#try()
             },
             |_, info, name, declaration, _| {
                 let (parameters, r#type) = declaration.item;
@@ -1115,8 +1117,9 @@ mod rules {
                         item: (kind, item),
                     },
                 )
+                .r#try()
             },
-            || name().wrapped(),
+            || name().wrapped().r#try(),
             |_, info, declaration, name, _| {
                 let (kind, item) = declaration.item;
 
