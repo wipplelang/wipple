@@ -784,6 +784,7 @@ mod rules {
                 || expression().map(SyntaxKind::Statement, Statement::Expression),
             ],
         )
+        .exact()
         .named("A statement.")
     }
 
@@ -1178,6 +1179,7 @@ mod rules {
                 intrinsic_type,
             ],
         )
+        .exact()
         .unwrap_parentheses()
         .named("A type.")
     }
@@ -1203,6 +1205,14 @@ mod rules {
                         info,
                         item: Type::Unit,
                     })
+                },
+                || {
+                    name()
+                        .wrapped()
+                        .map(SyntaxKind::DeclaredType, |name| Type::Declared {
+                            name,
+                            parameters: Vec::new(),
+                        })
                 },
                 || {
                     Rule::list_prefix(
@@ -1525,6 +1535,7 @@ mod rules {
                 },
             },
         )
+        .exact()
         .named("An instance.")
     }
 
@@ -1541,6 +1552,7 @@ mod rules {
                 or_pattern,
             ],
         )
+        .exact()
         .unwrap_parentheses()
         .named("A pattern.")
     }
@@ -1580,6 +1592,11 @@ mod rules {
                         info,
                         item: Pattern::Unit,
                     })
+                },
+                || {
+                    name()
+                        .wrapped()
+                        .map(SyntaxKind::VariantPattern, Pattern::VariantOrName)
                 },
                 || {
                     Rule::list_prefix(
@@ -1678,6 +1695,7 @@ mod rules {
                 block_expression,
             ],
         )
+        .exact()
         .unwrap_parentheses()
         .named("An expression.")
     }
@@ -2302,6 +2320,11 @@ mod base {
             }
         }
 
+        pub fn exact(mut self) -> Self {
+            self.exact = true;
+            self
+        }
+
         pub fn named(mut self, doc: &'static str) -> Self {
             self.doc = Some(doc);
             self
@@ -2739,14 +2762,23 @@ mod base {
                         .collect(),
                 ),
                 ParseFn::new(move |parser, tree, stack, exact| {
-                    let result = alternatives.iter().find_map(|alternative| {
+                    let mut result = alternatives.iter().find_map(|alternative| {
                         alternative().try_parse(parser, tree.as_deref(), stack)
                     });
 
                     if result.is_none() {
                         if !exact {
                             return None;
-                        } else {
+                        }
+
+                        // Produce better error messages by parsing again
+                        result = alternatives.iter().find_map(|alternative| {
+                            let mut alternative = alternative();
+                            alternative.exact = true;
+                            alternative.try_parse(parser, tree.as_deref(), stack)
+                        });
+
+                        if result.is_none() {
                             parser.add_diagnostic(stack.error_expected(
                                 WithInfo {
                                     info: tree.info,
