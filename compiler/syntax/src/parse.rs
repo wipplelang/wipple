@@ -791,7 +791,7 @@ mod rules {
         Rule::non_associative_operator(
             SyntaxKind::TypeDeclaration,
             NonAssociativeOperator::Assign,
-            || name().wrapped().in_list().r#try(),
+            || name().wrapped().in_list(),
             || {
                 Rule::switch(
                     SyntaxKind::TypeDeclaration,
@@ -800,7 +800,7 @@ mod rules {
                             Rule::keyword0(
                                 SyntaxKind::TypeRepresentation,
                                 Keyword::Type,
-                                |_, info, _| <(_, _)>::default_from_info(info),
+                                |_, info, _, _| Some(<(_, _)>::default_from_info(info)),
                             )
                         },
                         || {
@@ -808,9 +808,14 @@ mod rules {
                                 SyntaxKind::TypeRepresentation,
                                 Keyword::Type,
                                 type_representation,
-                                |_, info: D::Info, representation, _| WithInfo {
-                                    info: info.clone(),
-                                    item: (TypeFunction::default_from_info(info), representation),
+                                |_, info: D::Info, representation, _, _| {
+                                    Some(WithInfo {
+                                        info: info.clone(),
+                                        item: (
+                                            TypeFunction::default_from_info(info),
+                                            representation,
+                                        ),
+                                    })
                                 },
                             )
                         },
@@ -823,7 +828,9 @@ mod rules {
                                     Rule::keyword0(
                                         SyntaxKind::TypeRepresentation,
                                         Keyword::Type,
-                                        |_, info, _| TypeRepresentation::default_from_info(info),
+                                        |_, info, _, _| {
+                                            Some(TypeRepresentation::default_from_info(info))
+                                        },
                                     )
                                 },
                                 |_, info, type_function, representation, _| WithInfo {
@@ -842,7 +849,7 @@ mod rules {
                                         SyntaxKind::TypeRepresentation,
                                         Keyword::Type,
                                         type_representation,
-                                        |_, _, representation, _| representation,
+                                        |_, _, representation, _, _| Some(representation),
                                     )
                                 },
                                 |_, info, type_function, representation, _| WithInfo {
@@ -853,7 +860,6 @@ mod rules {
                         },
                     ],
                 )
-                .r#try()
             },
             |_, info, name, declaration, _| {
                 let (parameters, representation) = declaration.item;
@@ -875,7 +881,7 @@ mod rules {
         Rule::non_associative_operator(
             SyntaxKind::TraitDeclaration,
             NonAssociativeOperator::Assign,
-            || name().wrapped().in_list().r#try(),
+            || name().wrapped().in_list(),
             || {
                 Rule::switch(
                     SyntaxKind::TraitDeclaration,
@@ -884,16 +890,20 @@ mod rules {
                             Rule::keyword0(
                                 SyntaxKind::TraitDeclaration,
                                 Keyword::Trait,
-                                |parser, info: D::Info, stack| {
-                                    parser.add_diagnostic(stack.error_expected(
-                                        WithInfo {
-                                            info: info.clone(),
-                                            item: SyntaxKind::Type,
-                                        },
-                                        Direction::After,
-                                    ));
+                                |parser, info: D::Info, stack, exact| {
+                                    if !exact {
+                                        return None;
+                                    } else {
+                                        parser.add_diagnostic(stack.error_expected(
+                                            WithInfo {
+                                                info: info.clone(),
+                                                item: SyntaxKind::Type,
+                                            },
+                                            Direction::After,
+                                        ));
+                                    }
 
-                                    <(_, _)>::default_from_info(info)
+                                    Some(<(_, _)>::default_from_info(info))
                                 },
                             )
                         },
@@ -902,9 +912,11 @@ mod rules {
                                 SyntaxKind::TraitDeclaration,
                                 Keyword::Trait,
                                 r#type,
-                                |_, info: D::Info, r#type, _| WithInfo {
-                                    info: info.clone(),
-                                    item: (TypeFunction::default_from_info(info), r#type),
+                                |_, info: D::Info, r#type, _, _| {
+                                    Some(WithInfo {
+                                        info: info.clone(),
+                                        item: (TypeFunction::default_from_info(info), r#type),
+                                    })
                                 },
                             )
                         },
@@ -917,16 +929,20 @@ mod rules {
                                     Rule::keyword0(
                                         SyntaxKind::TraitDeclaration,
                                         Keyword::Trait,
-                                        |parser, info: D::Info, stack| {
-                                            parser.add_diagnostic(stack.error_expected(
-                                                WithInfo {
-                                                    info: info.clone(),
-                                                    item: SyntaxKind::Type,
-                                                },
-                                                Direction::After,
-                                            ));
+                                        |parser, info: D::Info, stack, exact| {
+                                            if !exact {
+                                                return None;
+                                            } else {
+                                                parser.add_diagnostic(stack.error_expected(
+                                                    WithInfo {
+                                                        info: info.clone(),
+                                                        item: SyntaxKind::Type,
+                                                    },
+                                                    Direction::After,
+                                                ));
+                                            }
 
-                                            Type::default_from_info(info)
+                                            Some(Type::default_from_info(info))
                                         },
                                     )
                                 },
@@ -946,7 +962,7 @@ mod rules {
                                         SyntaxKind::TraitDeclaration,
                                         Keyword::Trait,
                                         r#type,
-                                        |_, _, r#type, _| r#type,
+                                        |_, _, r#type, _, _| Some(r#type),
                                     )
                                 },
                                 |_, info, type_function, r#type, _| WithInfo {
@@ -957,7 +973,6 @@ mod rules {
                         },
                     ],
                 )
-                .r#try()
             },
             |_, info, name, declaration, _| {
                 let (parameters, r#type) = declaration.item;
@@ -993,7 +1008,7 @@ mod rules {
                                         SyntaxKind::InstanceDeclaration,
                                         Keyword::Instance,
                                         || instance().wrapped(),
-                                        |_, _, instance, _| instance,
+                                        |_, _, instance, _, _| Some(instance),
                                     )
                                 },
                                 |_, info, type_function, instance, _| WithInfo {
@@ -1007,15 +1022,16 @@ mod rules {
                                 SyntaxKind::InstanceDeclaration,
                                 Keyword::Instance,
                                 || instance().wrapped(),
-                                |_, info: D::Info, instance, _| WithInfo {
-                                    info: info.clone(),
-                                    item: (TypeFunction::default_from_info(info), instance),
+                                |_, info: D::Info, instance, _, _| {
+                                    Some(WithInfo {
+                                        info: info.clone(),
+                                        item: (TypeFunction::default_from_info(info), instance),
+                                    })
                                 },
                             )
                         },
                     ],
                 )
-                .r#try()
             },
             expression,
             |_, info, declaration, body, _| {
@@ -1038,7 +1054,7 @@ mod rules {
         Rule::non_associative_operator(
             SyntaxKind::ConstantDeclaration,
             NonAssociativeOperator::Annotate,
-            || name().wrapped().in_list().r#try(),
+            || name().wrapped().in_list(),
             || {
                 Rule::switch(
                     SyntaxKind::ConstantDeclaration,
@@ -1065,7 +1081,6 @@ mod rules {
                         },
                     ],
                 )
-                .r#try()
             },
             |_, info, name, declaration, _| {
                 let (parameters, r#type) = declaration.item;
@@ -1095,14 +1110,18 @@ mod rules {
                         Rule::match_terminal(
                             SyntaxKind::Text,
                             RuleToRender::TEXT,
-                            |parser, tree, stack| match tree.item {
+                            |parser, tree, stack, exact| match tree.item {
                                 TokenTree::Text(text) => {
                                     let kind = text.parse::<LanguageDeclarationKind>().ok();
                                     if kind.is_none() {
-                                        parser.add_diagnostic(stack.error_expected(
-                                            tree.replace(SyntaxKind::LanguageDeclaration),
-                                            None,
-                                        ));
+                                        if !exact {
+                                            return None;
+                                        } else {
+                                            parser.add_diagnostic(stack.error_expected(
+                                                tree.replace(SyntaxKind::LanguageDeclaration),
+                                                None,
+                                            ));
+                                        }
                                     }
 
                                     Some(tree.replace(kind))
@@ -1112,14 +1131,15 @@ mod rules {
                         )
                     },
                     || text().wrapped(),
-                    |_, info, kind, item, _| WithInfo {
-                        info,
-                        item: (kind, item),
+                    |_, info, kind, item, _, _| {
+                        Some(WithInfo {
+                            info,
+                            item: (kind, item),
+                        })
                     },
                 )
-                .r#try()
             },
-            || name().wrapped().r#try(),
+            || name().wrapped(),
             |_, info, declaration, name, _| {
                 let (kind, item) = declaration.item;
 
@@ -1165,7 +1185,7 @@ mod rules {
         Rule::match_terminal(
             SyntaxKind::PlaceholderType,
             RuleToRender::UNDERSCORE,
-            |_, tree, _| match tree.item {
+            |_, tree, _, _| match tree.item {
                 TokenTree::Keyword(Keyword::Underscore) => Some(tree.replace(Type::Placeholder)),
                 _ => None,
             },
@@ -1281,9 +1301,11 @@ mod rules {
             SyntaxKind::IntrinsicType,
             Keyword::Intrinsic,
             || text().wrapped(),
-            |_, info, name, _| WithInfo {
-                info,
-                item: Type::Intrinsic(name),
+            |_, info, name, _, _| {
+                Some(WithInfo {
+                    info,
+                    item: Type::Intrinsic(name),
+                })
             },
         )
         .named("An intrinsic type provided by the runtime.")
@@ -1357,13 +1379,15 @@ mod rules {
                         SyntaxKind::TypeParameter,
                         Keyword::Infer,
                         || name().wrapped(),
-                        |_, info, name, _| WithInfo {
-                            info: D::Info::clone(&info),
-                            item: TypeParameter {
-                                name,
-                                default: None,
-                                infer: Some(WithInfo { info, item: () }),
-                            },
+                        |_, info, name, _, _| {
+                            Some(WithInfo {
+                                info: D::Info::clone(&info),
+                                item: TypeParameter {
+                                    name,
+                                    default: None,
+                                    infer: Some(WithInfo { info, item: () }),
+                                },
+                            })
                         },
                     )
                 },
@@ -1391,15 +1415,17 @@ mod rules {
                                             SyntaxKind::TypeParameter,
                                             Keyword::Infer,
                                             || name().wrapped(),
-                                            |_, info, name, _| WithInfo {
-                                                info: D::Info::clone(&info),
-                                                item: (
-                                                    name,
-                                                    WithInfo {
-                                                        info,
-                                                        item: Some(()),
-                                                    },
-                                                ),
+                                            |_, info, name, _, _| {
+                                                Some(WithInfo {
+                                                    info: D::Info::clone(&info),
+                                                    item: (
+                                                        name,
+                                                        WithInfo {
+                                                            info,
+                                                            item: Some(()),
+                                                        },
+                                                    ),
+                                                })
                                             },
                                         )
                                     },
@@ -1521,7 +1547,7 @@ mod rules {
         Rule::match_terminal(
             SyntaxKind::WildcardPattern,
             RuleToRender::UNDERSCORE,
-            |_, tree, _| match tree.item {
+            |_, tree, _, _| match tree.item {
                 TokenTree::Keyword(Keyword::Underscore) => Some(tree.replace(Pattern::Wildcard)),
                 _ => None,
             },
@@ -1831,12 +1857,14 @@ mod rules {
                     WithInfo { info, item: arms }
                 })
             },
-            |_, info, input, arms, _| WithInfo {
-                info,
-                item: Expression::When {
-                    input: input.boxed(),
-                    arms: arms.item,
-                },
+            |_, info, input, arms, _, _| {
+                Some(WithInfo {
+                    info,
+                    item: Expression::When {
+                        input: input.boxed(),
+                        arms: arms.item,
+                    },
+                })
             },
         )
         .named("Match a value against a set of patterns.")
@@ -1910,7 +1938,6 @@ mod rules {
                         item: FieldValue { name, value },
                     },
                 )
-                .r#try()
                 .wrapped()
             },
             |_, info, fields, _| WithInfo {
@@ -1960,7 +1987,7 @@ mod rules {
     }
 
     pub fn name<D: Driver>() -> Rule<D, String> {
-        Rule::match_terminal(SyntaxKind::Name, RuleToRender::NAME, |_, tree, _| {
+        Rule::match_terminal(SyntaxKind::Name, RuleToRender::NAME, |_, tree, _, _| {
             tree.filter_map(|tree| match tree {
                 TokenTree::Name(name) => Some(name.clone().into_owned()),
                 _ => None,
@@ -1969,7 +1996,7 @@ mod rules {
     }
 
     pub fn text<D: Driver>() -> Rule<D, String> {
-        Rule::match_terminal(SyntaxKind::Text, RuleToRender::TEXT, |_, tree, _| {
+        Rule::match_terminal(SyntaxKind::Text, RuleToRender::TEXT, |_, tree, _, _| {
             tree.filter_map(|tree| match tree {
                 TokenTree::Text(text) => Some(text.clone().into_owned()),
                 _ => None,
@@ -1978,7 +2005,7 @@ mod rules {
     }
 
     pub fn number<D: Driver>() -> Rule<D, String> {
-        Rule::match_terminal(SyntaxKind::Number, RuleToRender::NUMBER, |_, tree, _| {
+        Rule::match_terminal(SyntaxKind::Number, RuleToRender::NUMBER, |_, tree, _, _| {
             tree.filter_map(|tree| match tree {
                 TokenTree::Number(number) => Some(number.clone().into_owned()),
                 _ => None,
@@ -2009,6 +2036,11 @@ mod base {
                 parent: Some(self.clone()),
                 current: child,
             })
+        }
+
+        #[allow(unused)]
+        pub fn len(&self) -> usize {
+            std::iter::successors(Some(self), |stack| stack.parent.as_deref()).count()
         }
 
         pub fn error_expected(
@@ -2063,12 +2095,11 @@ mod base {
                     &mut Parser<'_, D>,
                     WithInfo<D::Info, &TokenTree<'_, D>>,
                     &Rc<ParseStack<D>>,
+                    bool,
                 ) -> Option<WithInfo<D::Info, Output>>
                 + 'static,
         >,
     );
-
-    fn assert_static<T: 'static>(_x: &T) {}
 
     impl<D: Driver, Output> ParseFn<D, Output> {
         pub fn new(
@@ -2076,6 +2107,7 @@ mod base {
                     &mut Parser<'_, D>,
                     WithInfo<D::Info, &TokenTree<'_, D>>,
                     &Rc<ParseStack<D>>,
+                    bool,
                 ) -> Option<WithInfo<D::Info, Output>>
                 + 'static,
         ) -> Self {
@@ -2087,8 +2119,9 @@ mod base {
             parser: &mut Parser<'_, D>,
             tree: WithInfo<D::Info, &TokenTree<'_, D>>,
             stack: &Rc<ParseStack<D>>,
+            exact: bool,
         ) -> Option<WithInfo<D::Info, Output>> {
-            (self.0)(parser, tree, stack)
+            (self.0)(parser, tree, stack, exact)
         }
     }
 
@@ -2098,7 +2131,7 @@ mod base {
         doc: Option<&'static str>,
         syntax_kind: SyntaxKind,
         rendered: RuleToRender,
-        r#try: bool,
+        exact: bool,
         parse: ParseFn<D, Output>,
     }
 
@@ -2112,7 +2145,7 @@ mod base {
                 doc: None,
                 syntax_kind,
                 rendered,
-                r#try: false,
+                exact: false,
                 parse,
             }
         }
@@ -2126,7 +2159,7 @@ mod base {
                 doc: None,
                 syntax_kind,
                 rendered,
-                r#try: false,
+                exact: false,
                 parse,
             }
         }
@@ -2150,8 +2183,8 @@ mod base {
                 doc: None,
                 syntax_kind,
                 rendered: RuleToRender::Token("TODO"),
-                r#try: false,
-                parse: ParseFn::new(|_, _, _| todo!()),
+                exact: false,
+                parse: ParseFn::new(|_, _, _, _| todo!()),
             }
         }
 
@@ -2160,8 +2193,8 @@ mod base {
                 doc: self.doc,
                 syntax_kind: self.syntax_kind,
                 rendered: self.rendered.clone(),
-                r#try: self.r#try,
-                parse: ParseFn::new(move |parser, tree, stack| {
+                exact: false,
+                parse: ParseFn::new(move |parser, tree, stack, _| {
                     Some(self.parse_option(parser, tree, stack))
                 }),
             }
@@ -2178,8 +2211,8 @@ mod base {
                     let rendered = self.rendered.clone();
                     move || rendered.clone()
                 })]),
-                r#try: self.r#try,
-                parse: ParseFn::new(move |parser, tree, stack| {
+                exact: false,
+                parse: ParseFn::new(move |parser, tree, stack, exact| {
                     let mut elements = match &tree.item {
                         TokenTree::List(_, elements) => elements.iter(),
                         _ => return None,
@@ -2188,13 +2221,17 @@ mod base {
                     let output = self.parse(parser, elements.next().map(WithInfo::as_ref)?, stack);
 
                     for element in elements {
-                        parser.add_diagnostic(stack.error_expected(
-                            WithInfo {
-                                info: D::Info::clone(&element.info),
-                                item: SyntaxKind::Nothing,
-                            },
-                            Direction::After,
-                        ));
+                        if !exact {
+                            return None;
+                        } else {
+                            parser.add_diagnostic(stack.error_expected(
+                                WithInfo {
+                                    info: D::Info::clone(&element.info),
+                                    item: SyntaxKind::Nothing,
+                                },
+                                Direction::After,
+                            ));
+                        }
                     }
 
                     Some(output)
@@ -2211,13 +2248,11 @@ mod base {
                 doc: self.doc,
                 syntax_kind,
                 rendered: self.rendered,
-                r#try: self.r#try,
+                exact: self.exact,
                 parse: ParseFn::new({
-                    let parse = self.parse;
-                    assert_static(&parse);
+                    move |parser, tree, stack, exact| {
+                        let output = self.parse.try_parse(parser, tree, stack, exact)?;
 
-                    move |parser, tree, stack| {
-                        let output = parse.try_parse(parser, tree, stack)?;
                         Some(WithInfo {
                             info: output.info.clone(),
                             item: f(output),
@@ -2225,11 +2260,6 @@ mod base {
                     }
                 }),
             }
-        }
-
-        pub fn r#try(mut self) -> Self {
-            self.r#try = true;
-            self
         }
 
         pub fn named(mut self, doc: &'static str) -> Self {
@@ -2250,7 +2280,7 @@ mod base {
                 item: self.syntax_kind,
             });
 
-            self.parse.try_parse(parser, tree, &stack)
+            self.parse.try_parse(parser, tree, &stack, self.exact)
         }
 
         pub fn parse(
@@ -2265,15 +2295,13 @@ mod base {
             let info = tree.info.clone();
 
             self.try_parse(parser, tree, stack).unwrap_or_else(|| {
-                if !self.r#try {
-                    parser.add_diagnostic(stack.error_expected(
-                        WithInfo {
-                            info: info.clone(),
-                            item: self.syntax_kind,
-                        },
-                        None,
-                    ));
-                }
+                parser.add_diagnostic(stack.error_expected(
+                    WithInfo {
+                        info: info.clone(),
+                        item: self.syntax_kind,
+                    },
+                    None,
+                ));
 
                 Output::default_from_info(info)
             })
@@ -2289,17 +2317,7 @@ mod base {
 
             self.try_parse(parser, tree, stack)
                 .map(|result| result.map(Some))
-                .unwrap_or_else(|| {
-                    parser.add_diagnostic(stack.error_expected(
-                        WithInfo {
-                            info: info.clone(),
-                            item: self.syntax_kind,
-                        },
-                        None,
-                    ));
-
-                    Option::default_from_info(info)
-                })
+                .unwrap_or_else(|| Option::default_from_info(info))
         }
     }
 
@@ -2311,13 +2329,14 @@ mod base {
                     &mut Parser<'_, D>,
                     WithInfo<D::Info, &TokenTree<'_, D>>,
                     &Rc<ParseStack<D>>,
+                    bool,
                 ) -> Option<WithInfo<D::Info, Output>>
                 + 'static,
         ) -> Self {
             Rule::terminal(
                 syntax_kind,
                 rendered,
-                ParseFn::new(move |parser, tree, stack| f(parser, tree, stack)),
+                ParseFn::new(move |parser, tree, stack, exact| f(parser, tree, stack, exact)),
             )
         }
 
@@ -2346,7 +2365,7 @@ mod base {
                     Rc::new(move || RuleToRender::Keyword(expected.to_string())),
                     Rc::new(move || parse_right().render_nested()),
                 ]),
-                ParseFn::new(move |parser, tree, stack| {
+                ParseFn::new(move |parser, tree, stack, exact| {
                     let (found, left, right) = match &tree.item {
                         TokenTree::Operator(operator, left, right) => (operator, left, right),
                         _ => return None,
@@ -2356,8 +2375,17 @@ mod base {
                         return None;
                     }
 
-                    let left = parse_left().parse(parser, left.as_deref(), stack);
-                    let right = parse_right().parse(parser, right.as_deref(), stack);
+                    let left = if exact {
+                        parse_left().parse(parser, left.as_deref(), stack)
+                    } else {
+                        parse_left().try_parse(parser, left.as_deref(), stack)?
+                    };
+
+                    let right = if exact {
+                        parse_right().parse(parser, right.as_deref(), stack)
+                    } else {
+                        parse_right().try_parse(parser, right.as_deref(), stack)?
+                    };
 
                     Some(output(parser, tree.info, left, right, stack))
                 }),
@@ -2386,7 +2414,7 @@ mod base {
                     Rc::new(move || RuleToRender::Keyword(expected.to_string())),
                     Rc::new(|| RuleToRender::Ellipsis),
                 ]),
-                ParseFn::new(move |parser, tree, stack| {
+                ParseFn::new(move |parser, tree, stack, exact| {
                     let (found, elements) = match &tree.item {
                         TokenTree::VariadicOperator(operator, children) => (operator, children),
                         _ => return None,
@@ -2396,10 +2424,19 @@ mod base {
                         return None;
                     }
 
-                    let elements = elements
-                        .iter()
-                        .map(|element| parse_element().parse(parser, element.as_ref(), stack))
-                        .collect();
+                    let elements = if exact {
+                        elements
+                            .iter()
+                            .map(|element| parse_element().parse(parser, element.as_ref(), stack))
+                            .collect()
+                    } else {
+                        elements
+                            .iter()
+                            .map(|element| {
+                                parse_element().try_parse(parser, element.as_ref(), stack)
+                            })
+                            .collect::<Option<_>>()?
+                    };
 
                     Some(output(parser, tree.info, elements, stack))
                 }),
@@ -2431,7 +2468,7 @@ mod base {
                     Rc::new(move || RuleToRender::Keyword(expected.to_string())),
                     Rc::new(move || parse_right().render_nested()),
                 ]),
-                ParseFn::new(move |parser, tree, stack| {
+                ParseFn::new(move |parser, tree, stack, exact| {
                     let (found, left, right) = match &tree.item {
                         TokenTree::NonAssociativeOperator(operator, left, right) => {
                             (operator, left, right)
@@ -2443,8 +2480,17 @@ mod base {
                         return None;
                     }
 
-                    let left = parse_left().parse(parser, left.as_deref(), stack);
-                    let right = parse_right().parse(parser, right.as_deref(), stack);
+                    let left = if exact {
+                        parse_left().parse(parser, left.as_deref(), stack)
+                    } else {
+                        parse_left().try_parse(parser, left.as_deref(), stack)?
+                    };
+
+                    let right = if exact {
+                        parse_right().parse(parser, right.as_deref(), stack)
+                    } else {
+                        parse_right().try_parse(parser, right.as_deref(), stack)?
+                    };
 
                     Some(output(parser, tree.info, left, right, stack))
                 }),
@@ -2458,7 +2504,7 @@ mod base {
             Rule::nonterminal(
                 syntax_kind,
                 RuleToRender::List(Vec::new()),
-                ParseFn::new(move |_, tree, _| match tree.item {
+                ParseFn::new(move |_, tree, _, _| match tree.item {
                     TokenTree::List(_, elements) if elements.is_empty() => Some(output(tree.info)),
                     _ => None,
                 }),
@@ -2485,7 +2531,7 @@ mod base {
                     Rc::new(move || parse_element().render_nested()),
                     Rc::new(|| RuleToRender::Ellipsis),
                 ]),
-                ParseFn::new(move |parser, tree, stack| {
+                ParseFn::new(move |parser, tree, stack, _| {
                     let elements = match &tree.item {
                         TokenTree::List(_, elements) => elements,
                         _ => return None,
@@ -2525,7 +2571,7 @@ mod base {
                     Rc::new(move || parse_element().render_nested()),
                     Rc::new(|| RuleToRender::Ellipsis),
                 ]),
-                ParseFn::new(move |parser, tree, stack| {
+                ParseFn::new(move |parser, tree, stack, exact| {
                     let elements = match &tree.item {
                         TokenTree::List(_, elements) => elements,
                         _ => return None,
@@ -2536,15 +2582,19 @@ mod base {
                     let prefix = match elements.next() {
                         Some(prefix) => parse_prefix().parse(parser, prefix.as_ref(), stack),
                         None => {
-                            parser.add_diagnostic(stack.error_expected(
-                                WithInfo {
-                                    info: tree.info.clone(),
-                                    item: parse_prefix().syntax_kind,
-                                },
-                                None,
-                            ));
+                            if !exact {
+                                return None;
+                            } else {
+                                parser.add_diagnostic(stack.error_expected(
+                                    WithInfo {
+                                        info: tree.info.clone(),
+                                        item: parse_prefix().syntax_kind,
+                                    },
+                                    None,
+                                ));
 
-                            P::default_from_info(tree.info.clone())
+                                P::default_from_info(tree.info.clone())
+                            }
                         }
                     };
 
@@ -2577,7 +2627,7 @@ mod base {
                     Rc::new(move || parse_statement().render_nested()),
                     Rc::new(|| RuleToRender::Ellipsis),
                 ]),
-                ParseFn::new(move |parser, tree, stack| {
+                ParseFn::new(move |parser, tree, stack, _| {
                     let statements = match &tree.item {
                         TokenTree::Block(statements) => statements,
                         _ => return None,
@@ -2613,7 +2663,7 @@ mod base {
                     Rc::new(move || parse_statement().render_nested()),
                     Rc::new(|| RuleToRender::Ellipsis),
                 ]),
-                ParseFn::new(move |parser, tree, stack| {
+                ParseFn::new(move |parser, tree, stack, _| {
                     let statements = match &tree.item {
                         TokenTree::Block(statements) => statements,
                         _ => return None,
@@ -2648,10 +2698,26 @@ mod base {
                         })
                         .collect(),
                 ),
-                ParseFn::new(move |parser, tree, stack| {
-                    alternatives.iter().find_map(|alternative| {
+                ParseFn::new(move |parser, tree, stack, exact| {
+                    let result = alternatives.iter().find_map(|alternative| {
                         alternative().try_parse(parser, tree.as_deref(), stack)
-                    })
+                    });
+
+                    if result.is_none() {
+                        if !exact {
+                            return None;
+                        } else {
+                            parser.add_diagnostic(stack.error_expected(
+                                WithInfo {
+                                    info: tree.info,
+                                    item: syntax_kind,
+                                },
+                                None,
+                            ));
+                        }
+                    }
+
+                    result
                 }),
             )
         }
@@ -2665,7 +2731,7 @@ mod base {
                     syntax_kind: SyntaxKind,
                     expected: tokenize::Keyword,
                     $($n: fn() -> Rule<_D, $n>,)*
-                    output: impl Fn(&mut Parser<'_, _D>, _D::Info, $(WithInfo<_D::Info, $n>, )* &Rc<ParseStack<_D>>) -> WithInfo<_D::Info, Output> + 'static,
+                    output: impl Fn(&mut Parser<'_, _D>, _D::Info, $(WithInfo<_D::Info, $n>, )* &Rc<ParseStack<_D>>, bool) -> Option<WithInfo<_D::Info, Output>> + 'static,
                 ) -> Rule<_D, Output>
                 where
                     $($n: DefaultFromInfo<_D::Info> + 'static,)*
@@ -2676,7 +2742,7 @@ mod base {
                             Rc::new(move || RuleToRender::Keyword(expected.to_string())),
                             $(Rc::new(move || $n().render_nested()),)*
                         ]),
-                        ParseFn::new(move |parser, tree, stack| {
+                        ParseFn::new(move |parser, tree, stack, exact| {
                             let mut elements = match &tree.item {
                                 TokenTree::List(_, elements) => elements.iter(),
                                 _ => return None,
@@ -2694,34 +2760,42 @@ mod base {
                                 let $n = match elements.next() {
                                     Some(input) => $n().parse(parser, input.as_ref(), stack),
                                     None => {
-                                        parser.add_diagnostic(
-                                            stack.error_expected(
-                                                WithInfo {
-                                                    info: info.clone(),
-                                                    item: $n().syntax_kind,
-                                                },
-                                                None,
-                                            ),
-                                        );
+                                        if !exact {
+                                            return None;
+                                        } else {
+                                            parser.add_diagnostic(
+                                                stack.error_expected(
+                                                    WithInfo {
+                                                        info: info.clone(),
+                                                        item: $n().syntax_kind,
+                                                    },
+                                                    None,
+                                                ),
+                                            );
 
-                                        $n::default_from_info(info.clone())
+                                            $n::default_from_info(info.clone())
+                                        }
                                     }
                                 };
                             )*
 
                             for element in elements {
-                                parser.add_diagnostic(
-                                    stack.error_expected(
-                                        WithInfo {
-                                            info: _D::Info::clone(&element.info),
-                                            item: SyntaxKind::Nothing,
-                                        },
-                                        Direction::After,
-                                    )
-                                );
+                                if !exact {
+                                    return None;
+                                } else {
+                                    parser.add_diagnostic(
+                                        stack.error_expected(
+                                            WithInfo {
+                                                info: _D::Info::clone(&element.info),
+                                                item: SyntaxKind::Nothing,
+                                            },
+                                            Direction::After,
+                                        )
+                                    );
+                                }
                             }
 
-                            Some(output(parser, tree.info, $($n,)* stack))
+                            output(parser, tree.info, $($n,)* stack, exact)
                         }),
                     )
                 }
@@ -2764,7 +2838,7 @@ mod base {
                     Rc::new(move || parse_element().render_nested()),
                     Rc::new(|| RuleToRender::Ellipsis),
                 ]),
-                ParseFn::new(move |parser, tree, stack| {
+                ParseFn::new(move |parser, tree, stack, exact| {
                     let mut elements = match &tree.item {
                         TokenTree::List(_, elements) => elements.iter(),
                         _ => return None,
@@ -2781,15 +2855,19 @@ mod base {
                     let prefix = match elements.next() {
                         Some(prefix) => parse_prefix().parse(parser, prefix.as_ref(), stack),
                         None => {
-                            parser.add_diagnostic(stack.error_expected(
-                                WithInfo {
-                                    info: info.clone(),
-                                    item: parse_prefix().syntax_kind,
-                                },
-                                Direction::After,
-                            ));
+                            if !exact {
+                                return None;
+                            } else {
+                                parser.add_diagnostic(stack.error_expected(
+                                    WithInfo {
+                                        info: info.clone(),
+                                        item: parse_prefix().syntax_kind,
+                                    },
+                                    Direction::After,
+                                ));
 
-                            P::default_from_info(info.clone())
+                                P::default_from_info(info.clone())
+                            }
                         }
                     };
 
