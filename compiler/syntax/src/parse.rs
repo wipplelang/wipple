@@ -1178,6 +1178,7 @@ mod rules {
                 intrinsic_type,
             ],
         )
+        .unwrap_parentheses()
         .named("A type.")
     }
 
@@ -1540,6 +1541,7 @@ mod rules {
                 or_pattern,
             ],
         )
+        .unwrap_parentheses()
         .named("A pattern.")
     }
 
@@ -1676,6 +1678,7 @@ mod rules {
                 block_expression,
             ],
         )
+        .unwrap_parentheses()
         .named("An expression.")
     }
 
@@ -2067,6 +2070,7 @@ mod base {
 
     pub struct Parser<'a, D: Driver> {
         _driver: &'a D,
+        debug: bool,
         diagnostics: Vec<WithInfo<D::Info, Diagnostic<D>>>,
     }
 
@@ -2074,8 +2078,16 @@ mod base {
         pub fn new(driver: &'a D) -> Self {
             Parser {
                 _driver: driver,
+                debug: false,
                 diagnostics: Vec::new(),
             }
+        }
+
+        #[allow(unused)]
+        #[deprecated(note = "use of `debug`")]
+        pub fn debug(mut self) -> Self {
+            self.debug = true;
+            self
         }
 
         pub fn add_diagnostic(&mut self, diagnostic: WithInfo<D::Info, Diagnostic<D>>) {
@@ -2121,6 +2133,11 @@ mod base {
             stack: &Rc<ParseStack<D>>,
             exact: bool,
         ) -> Option<WithInfo<D::Info, Output>> {
+            #[allow(deprecated)]
+            if parser.debug {
+                wipple_util::log!("{}{}", " ".repeat(stack.len()), stack.current.item);
+            }
+
             (self.0)(parser, tree, stack, exact)
         }
     }
@@ -2235,6 +2252,29 @@ mod base {
                     }
 
                     Some(output)
+                }),
+            }
+        }
+
+        pub fn unwrap_parentheses(self) -> Rule<D, Output>
+        where
+            Output: DefaultFromInfo<D::Info>,
+        {
+            Rule {
+                doc: self.doc,
+                syntax_kind: self.syntax_kind,
+                rendered: self.rendered.clone(),
+                exact: false,
+                parse: ParseFn::new(move |parser, mut tree, stack, _| {
+                    while let TokenTree::List(_, elements) = &tree.item {
+                        if elements.len() != 1 {
+                            break;
+                        }
+
+                        tree = elements.iter().next().unwrap().as_ref();
+                    }
+
+                    self.try_parse(parser, tree, stack)
                 }),
             }
         }
