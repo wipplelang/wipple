@@ -1,7 +1,7 @@
 //! Parse a token tree into an abstract syntax tree.
 
 use crate::{
-    tokenize::{self, TokenTree},
+    tokenize::{self, Keyword, NonAssociativeOperator, Operator, TokenTree, VariadicOperator},
     BinaryOperator, Driver, Info,
 };
 use derivative::Derivative;
@@ -596,7 +596,7 @@ pub fn parse<D: Driver>(driver: &D, tree: WithInfo<D::Info, &TokenTree<'_, D>>) 
 where
     D::Info: From<Info>,
 {
-    let mut parser = base::Parser::new(driver);
+    let mut parser = base::Parser::new(driver).debug();
 
     let stack = base::ParseStack::<D>::new(WithInfo {
         info: tree.info.clone(),
@@ -727,7 +727,6 @@ pub fn grammar<D: Driver>(_driver: &D) -> Grammar {
 
 mod rules {
     use super::*;
-    use crate::tokenize::{Keyword, NonAssociativeOperator, Operator, VariadicOperator};
     use base::Rule;
 
     pub fn render<D: Driver>() -> Vec<(&'static str, SyntaxKind, RuleToRender)> {
@@ -1009,7 +1008,7 @@ mod rules {
         Rule::non_associative_operator(
             SyntaxKind::ConstantDeclaration,
             NonAssociativeOperator::Annotate,
-            || name().wrapped().in_list(),
+            || name().wrapped().in_list().no_backtrack(),
             || {
                 Rule::switch(
                     SyntaxKind::ConstantDeclaration,
@@ -1127,6 +1126,7 @@ mod rules {
             ],
         )
         .unwrap_parentheses()
+        .no_backtrack()
         .named("A type.")
     }
 
@@ -1492,6 +1492,7 @@ mod rules {
             ],
         )
         .unwrap_parentheses()
+        .no_backtrack()
         .named("A pattern.")
     }
 
@@ -1638,6 +1639,7 @@ mod rules {
             ],
         )
         .unwrap_parentheses()
+        .no_backtrack()
         .named("An expression.")
     }
 
@@ -2134,6 +2136,7 @@ mod base {
         doc: Option<&'static str>,
         syntax_kind: SyntaxKind,
         rendered: RuleToRender,
+        backtracks: Rc<dyn Fn() -> bool>,
         parse: ParseFn<D, Output>,
     }
 
@@ -2141,12 +2144,14 @@ mod base {
         fn nonterminal(
             syntax_kind: SyntaxKind,
             rendered: RuleToRender,
+            backtracks: impl Fn() -> bool + 'static,
             parse: ParseFn<D, Output>,
         ) -> Self {
             Rule {
                 doc: None,
                 syntax_kind,
                 rendered,
+                backtracks: Rc::new(backtracks),
                 parse,
             }
         }
@@ -2154,12 +2159,14 @@ mod base {
         fn terminal(
             syntax_kind: SyntaxKind,
             rendered: RuleToRender,
+            backtracks: impl Fn() -> bool + 'static,
             parse: ParseFn<D, Output>,
         ) -> Self {
             Rule {
                 doc: None,
                 syntax_kind,
                 rendered,
+                backtracks: Rc::new(backtracks),
                 parse,
             }
         }
@@ -2183,6 +2190,7 @@ mod base {
                 doc: None,
                 syntax_kind,
                 rendered: RuleToRender::Token("TODO"),
+                backtracks: Rc::new(|| true),
                 parse: ParseFn::new(|_, _, _| todo!(), |_, _, _| todo!()),
             }
         }
@@ -2198,6 +2206,7 @@ mod base {
                     let rendered = self.rendered.clone();
                     move || rendered.clone()
                 })]),
+                backtracks: self.backtracks.clone(),
                 parse: ParseFn::new(
                     {
                         let rule = self.clone();
@@ -2254,6 +2263,7 @@ mod base {
                 doc: self.doc,
                 syntax_kind: self.syntax_kind,
                 rendered: self.rendered.clone(),
+                backtracks: self.backtracks.clone(),
                 parse: ParseFn::new(
                     {
                         let rule = self.clone();
@@ -2297,6 +2307,7 @@ mod base {
                 doc: self.doc,
                 syntax_kind,
                 rendered: self.rendered.clone(),
+                backtracks: self.backtracks.clone(),
                 parse: ParseFn::new(
                     {
                         let rule = self.clone();
@@ -2336,6 +2347,7 @@ mod base {
                 doc: self.doc,
                 syntax_kind: self.syntax_kind,
                 rendered: self.rendered.clone(),
+                backtracks: self.backtracks.clone(),
                 parse: ParseFn::new(
                     {
                         let rule = self.clone();
@@ -2368,6 +2380,7 @@ mod base {
                 doc: self.doc,
                 syntax_kind: self.syntax_kind,
                 rendered: self.rendered.clone(),
+                backtracks: self.backtracks.clone(),
                 parse: ParseFn::new(
                     {
                         let rule = self.clone();
@@ -2383,6 +2396,11 @@ mod base {
 
         pub fn named(mut self, doc: &'static str) -> Self {
             self.doc = Some(doc);
+            self
+        }
+
+        pub fn no_backtrack(mut self) -> Self {
+            self.backtracks = Rc::new(|| false);
             self
         }
     }
@@ -2457,7 +2475,15 @@ mod base {
                 item: self.syntax_kind,
             });
 
-            self.parse.try_parse(parser, tree, &stack)
+            if self.backtracks() {
+                self.parse.try_parse(parser, tree, &stack)
+            } else {
+                self.parse.parse(parser, tree, &stack).map(Ok)
+            }
+        }
+
+        pub fn backtracks(&self) -> bool {
+            (self.backtracks)()
         }
     }
 
@@ -2476,6 +2502,7 @@ mod base {
             Rule::terminal(
                 syntax_kind,
                 rendered,
+                || true,
                 ParseFn::new(
                     {
                         let f = f.clone();
@@ -2512,6 +2539,7 @@ mod base {
                     Rc::new(move || RuleToRender::Keyword(expected.to_string())),
                     Rc::new(move || parse_right().render_nested()),
                 ]),
+                || true,
                 ParseFn::new(
                     {
                         let output = output.clone();
@@ -2584,6 +2612,7 @@ mod base {
                     Rc::new(move || RuleToRender::Keyword(expected.to_string())),
                     Rc::new(|| RuleToRender::Ellipsis),
                 ]),
+                || true,
                 ParseFn::new(
                     {
                         let output = output.clone();
@@ -2658,6 +2687,7 @@ mod base {
                     Rc::new(move || RuleToRender::Keyword(expected.to_string())),
                     Rc::new(move || parse_right().render_nested()),
                 ]),
+                || true,
                 ParseFn::new(
                     {
                         let output = output.clone();
@@ -2717,6 +2747,7 @@ mod base {
             Rule::nonterminal(
                 syntax_kind,
                 RuleToRender::List(Vec::new()),
+                || true,
                 ParseFn::new(
                     {
                         let output = output.clone();
@@ -2759,6 +2790,7 @@ mod base {
                     Rc::new(move || parse_element().render_nested()),
                     Rc::new(|| RuleToRender::Ellipsis),
                 ]),
+                || true,
                 ParseFn::new(
                     {
                         let output = output.clone();
@@ -2822,6 +2854,7 @@ mod base {
                     Rc::new(move || parse_element().render_nested()),
                     Rc::new(|| RuleToRender::Ellipsis),
                 ]),
+                || true,
                 ParseFn::new(
                     {
                         let output = output.clone();
@@ -2908,6 +2941,7 @@ mod base {
                     Rc::new(move || parse_statement().render_nested()),
                     Rc::new(|| RuleToRender::Ellipsis),
                 ]),
+                || true,
                 ParseFn::new(
                     {
                         let output = output.clone();
@@ -2972,35 +3006,56 @@ mod base {
                         })
                         .collect(),
                 ),
+                || true,
                 ParseFn::new(
                     move |parser, tree, stack| {
-                        alternatives.iter().find_map(|alternative| {
-                            alternative().try_parse(parser, tree.as_deref(), stack)
-                        })
-                    },
-                    move |parser, tree, stack| {
-                        if let Some(Ok(result)) = alternatives.iter().find_map(|alternative| {
-                            alternative().try_parse(parser, tree.as_deref(), stack)
-                        }) {
-                            return Some(result);
+                        for alternative in alternatives {
+                            let alternative = alternative();
+
+                            match alternative.try_parse(parser, tree.as_deref(), stack) {
+                                Some(Ok(result)) => return Some(Ok(result)),
+                                Some(Err(progress)) if !alternative.backtracks() => {
+                                    return Some(Err(progress))
+                                }
+                                _ => continue,
+                            }
                         }
 
-                        // Produce a diagnostic for the alternative that made
-                        // the most progress
+                        None
+                    },
+                    move |parser, tree, stack| {
+                        for alternative in alternatives {
+                            let alternative = alternative();
+
+                            match alternative.try_parse(parser, tree.as_deref(), stack) {
+                                Some(Ok(result)) => return Some(result),
+                                Some(Err(_)) if !alternative.backtracks() => {
+                                    // Calling `parse` here should produce a diagnostic
+                                    return Some(alternative.parse(parser, tree.as_deref(), stack));
+                                }
+                                _ => continue,
+                            }
+                        }
+
+                        // Produce a diagnostic inside the alternative that made the most progress
                         let alternative = alternatives
                             .iter()
                             .filter_map(|alternative| {
-                                match alternative().try_parse(parser, tree.as_deref(), stack) {
+                                let alternative = alternative();
+
+                                match alternative.try_parse(parser, tree.as_deref(), stack) {
                                     Some(Ok(_)) => panic!("rule was expected to fail"),
-                                    Some(Err(progress)) => Some((alternative, progress)),
+                                    Some(Err(progress)) => {
+                                        Some((alternative, Some(std::cmp::Reverse(progress))))
+                                    }
                                     None => None,
                                 }
                             })
-                            .max_by_key(|(_, progress)| *progress)
+                            .min_by_key(|(_, progress)| *progress)
                             .map(|(alternative, _)| alternative)?;
 
                         // Calling `parse` here should produce a diagnostic
-                        Some(alternative().parse(parser, tree.as_deref(), stack))
+                        Some(alternative.parse(parser, tree.as_deref(), stack))
                     },
                 ),
             )
@@ -3026,6 +3081,7 @@ mod base {
                             Rc::new(move || RuleToRender::Keyword(expected.to_string())),
                             $(Rc::new(move || $n().render_nested()),)*
                         ]),
+                        || true,
                         ParseFn::new(
                             {
                                 let output = output.clone();
@@ -3148,6 +3204,7 @@ mod base {
                     Rc::new(move || parse_element().render_nested()),
                     Rc::new(|| RuleToRender::Ellipsis),
                 ]),
+                || true,
                 ParseFn::new(
                     {
                         let output = output.clone();
