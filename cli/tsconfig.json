@@ -4,6 +4,7 @@
         "lib": ["esnext"],
         "moduleResolution": "nodenext",
         "module": "nodenext",
+        "skipLibCheck": true,
         "noEmit": true,
         "strict": true,
         "isolatedModules": true,

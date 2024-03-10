@@ -225,6 +225,8 @@ impl Driver {
                     .map(|error| error.map(Diagnostic::Parse)),
             );
 
+            wipple_util::log!("parse_result: {:#?}", parse_result.top_level);
+
             let syntax_result = syntax::parse(&syntax_driver, parse_result.top_level);
 
             diagnostics.extend(
@@ -291,6 +293,11 @@ impl Driver {
                 .diagnostics
                 .into_iter()
                 .map(|error| error.map(Diagnostic::Lower)),
+        );
+
+        wipple_util::log!(
+            "lower_result: {:#?}",
+            lower_result.interface.type_declarations
         );
 
         self.interface.top_level = lower_result.interface.top_level;
