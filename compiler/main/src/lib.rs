@@ -295,10 +295,7 @@ impl Driver {
                 .map(|error| error.map(Diagnostic::Lower)),
         );
 
-        wipple_util::log!(
-            "lower_result: {:#?}",
-            lower_result.interface.type_declarations
-        );
+        wipple_util::log!("lower_result: {:#?}", lower_result.interface);
 
         self.interface.top_level = lower_result.interface.top_level;
 

@@ -1086,9 +1086,9 @@ mod rules {
                     },
                 )
             },
-            || name().wrapped(),
-            |_, info, declaration, name, _| {
-                let (kind, item) = declaration.item;
+            || name().wrapped().in_list(),
+            |_, info, declaration, item, _| {
+                let (kind, name) = declaration.item;
 
                 WithInfo {
                     info,
