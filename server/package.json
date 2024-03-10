@@ -1,5 +1,5 @@
 {
-    "name": "wipple-interpreter",
+    "name": "wipple-server",
     "private": true,
     "type": "module",
     "main": "dist/index.js",
@@ -13,9 +13,6 @@
         "typescript": "^5.3.3"
     },
     "dependencies": {
-        "decimal.js": "^10.4.3",
-        "immer": "^10.0.3",
-        "siphash": "^1.1.0",
         "wipple-compiler": "file:../compiler"
     }
 }

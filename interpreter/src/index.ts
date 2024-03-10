@@ -1,55 +1,13 @@
 import { Decimal } from "decimal.js";
 import { intrinsics } from "./intrinsics.js";
 import { produce } from "immer";
+import type { codegen, linker } from "wipple-compiler";
 
-export interface Executable {
-    items: Record<string, Item>;
-    instances: Record<string, string[]>;
-    intrinsicVariants: Record<string, string>;
-    code: Item[];
-}
-
-export interface Item {
-    parameters: string[];
-    typeDescriptor: TypeDescriptor;
-    ir: Instruction[][];
-}
-
-export type TypeDescriptor =
-    | { type: "parameter"; value: string }
-    | { type: "named"; value: [string, TypeDescriptor[]] }
-    | { type: "function"; value: [TypeDescriptor, TypeDescriptor] }
-    | { type: "tuple"; value: TypeDescriptor[] }
-    | { type: "block"; value: TypeDescriptor };
-
-export type Instruction =
-    | { type: "copy"; value: undefined }
-    | { type: "drop"; value: undefined }
-    | { type: "initialize"; value: number }
-    | { type: "field"; value: string }
-    | { type: "element"; value: number }
-    | { type: "variable"; value: number }
-    | { type: "call"; value: undefined }
-    | { type: "tuple"; value: number }
-    | { type: "typed"; value: [TypeDescriptor, TypedInstruction] }
-    | { type: "jumpIfNot"; value: [string, number] }
-    | { type: "end"; value: undefined }
-    | { type: "return"; value: undefined }
-    | { type: "jump"; value: number }
-    | { type: "tailCall"; value: undefined }
-    | { type: "unreachable"; value: undefined };
-
-export type TypedInstruction =
-    | { type: "intrinsic"; value: [string, number] }
-    | { type: "text"; value: string }
-    | { type: "number"; value: string }
-    | { type: "format"; value: [string[], string] }
-    | { type: "structure"; value: string[] }
-    | { type: "variant"; value: [string, number] }
-    | { type: "function"; value: [number[], string, number] }
-    | { type: "block"; value: [number[], string, number] }
-    | { type: "constant"; value: [string, TypeDescriptor[]] }
-    | { type: "instance"; value: string };
+export type Executable = linker.Executable<unknown>;
+export type Item = linker.LinkedItem<unknown>;
+export type TypeDescriptor = codegen.TypeDescriptor<unknown>;
+export type Instruction = codegen.Instruction<unknown>;
+export type TypedInstruction = codegen.TypedInstruction<unknown>;
 
 export type TypedValue = Value & { typeDescriptor: TypeDescriptor };
 

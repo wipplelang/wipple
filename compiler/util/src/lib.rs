@@ -6,5 +6,14 @@ pub use web_sys;
 mod log;
 
 mod info;
-
 pub use info::*;
+
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
+
+/// Represented as `any` in TypeScript.
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, TS,
+)]
+#[ts(rename = "any")]
+pub struct TsAny;

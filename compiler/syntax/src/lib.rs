@@ -9,12 +9,13 @@ mod text;
 use derivative::Derivative;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, hash::Hash, ops::Range, rc::Rc};
+use ts_rs::TS;
 use wipple_util::WithInfo;
 
 /// Provides the parser with information about the program.
 pub trait Driver: Sized + 'static {
     /// Additional information attached to every item.
-    type Info: Debug + Clone + Serialize + DeserializeOwned + 'static;
+    type Info: Debug + Clone + Serialize + DeserializeOwned + TS + 'static;
 
     /// Retrieve the path of the file being parsed.
     fn file_path(&self) -> Rc<str>;
@@ -26,8 +27,25 @@ pub trait Driver: Sized + 'static {
     fn merge_info(left: Self::Info, right: Self::Info) -> Self::Info;
 }
 
+impl Driver for wipple_util::TsAny {
+    type Info = wipple_util::TsAny;
+
+    fn file_path(&self) -> Rc<str> {
+        unimplemented!()
+    }
+
+    fn visible_path(&self) -> Rc<str> {
+        unimplemented!()
+    }
+
+    fn merge_info(_left: Self::Info, _right: Self::Info) -> Self::Info {
+        unimplemented!()
+    }
+}
+
 /// Location information about a parsed item.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct Info {
     /// The path of the file this item belongs to.
     pub path: Rc<str>,
@@ -62,7 +80,8 @@ pub fn parse<D: Driver>(_driver: &D, syntax: WithInfo<D::Info, parse::TopLevel<D
 
 /// The result of [`parse`].
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct Result<D: Driver> {
     /// The top-level program.
     pub top_level: WithInfo<D::Info, TopLevel<D>>,
@@ -74,7 +93,8 @@ pub struct Result<D: Driver> {
 /// The context in which an [`Error`] occurred.
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub enum ErrorContext {
     Statement,
     Expression,
@@ -88,8 +108,10 @@ pub enum ErrorContext {
 }
 
 /// An error occuring during parsing.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+#[ts(export)]
 pub enum Diagnostic {
     /// The parser found a bound, but bounds aren't allowed here.
     UnexpectedBound,
@@ -147,7 +169,8 @@ pub enum BinaryOperator {
 /// The parsed top-level program.
 #[derive(Serialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct TopLevel<D: Driver> {
     /// The top-level statements in the program.
     pub statements: Vec<WithInfo<D::Info, Statement<D>>>,
@@ -156,7 +179,8 @@ pub struct TopLevel<D: Driver> {
 /// A parsed statement.
 #[derive(Serialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub enum Statement<D: Driver> {
     /// A type declaration.
     #[serde(rename_all = "camelCase")]
@@ -248,7 +272,8 @@ pub enum Statement<D: Driver> {
 
 /// The kind of value a [`LanguageDeclaration`] refers to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub enum LanguageDeclarationKind {
     /// A type.
     Type,
@@ -263,7 +288,8 @@ pub enum LanguageDeclarationKind {
 /// A parsed expression.
 #[derive(Serialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub enum Expression<D: Driver> {
     /// An expression that could not be parsed.
     Error,
@@ -394,7 +420,8 @@ pub enum Expression<D: Driver> {
 /// A parsed type parameter.
 #[derive(Serialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct TypeParameter<D: Driver> {
     /// The name of the type parameter.
     pub name: WithInfo<D::Info, Option<String>>,
@@ -409,7 +436,8 @@ pub struct TypeParameter<D: Driver> {
 /// A parsed type representation.
 #[derive(Serialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub enum TypeRepresentation<D: Driver> {
     /// A marker type.
     Marker,
@@ -427,7 +455,8 @@ pub enum TypeRepresentation<D: Driver> {
 /// A parsed structure field.
 #[derive(Serialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct Field<D: Driver> {
     /// The name of the field.
     pub name: WithInfo<D::Info, String>,
@@ -439,7 +468,8 @@ pub struct Field<D: Driver> {
 /// A parsed enumeration variant.
 #[derive(Serialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct Variant<D: Driver> {
     /// The name of the variant.
     pub name: WithInfo<D::Info, String>,
@@ -451,7 +481,8 @@ pub struct Variant<D: Driver> {
 /// A parsed type.
 #[derive(Serialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub enum Type<D: Driver> {
     /// A type that could not be parsed.
     Error,
@@ -492,7 +523,8 @@ pub enum Type<D: Driver> {
 /// A parsed instance.
 #[derive(Serialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct Instance<D: Driver> {
     /// The trait this instance refers to.
     pub r#trait: WithInfo<D::Info, Option<String>>,
@@ -515,7 +547,8 @@ pub struct FormatSegment<T> {
 /// A parsed pattern.
 #[derive(Serialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub enum Pattern<D: Driver> {
     /// A pattern that could not be parsed.
     Error,
@@ -565,7 +598,8 @@ pub enum Pattern<D: Driver> {
 /// A field in a destructuring pattern.
 #[derive(Serialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct FieldPattern<D: Driver> {
     /// The name of the field.
     pub name: WithInfo<D::Info, Option<String>>,
@@ -577,7 +611,8 @@ pub struct FieldPattern<D: Driver> {
 /// An arm in a `when` expression.
 #[derive(Serialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct Arm<D: Driver> {
     /// The pattern to match on the input.
     pub pattern: WithInfo<D::Info, Pattern<D>>,
@@ -589,7 +624,8 @@ pub struct Arm<D: Driver> {
 /// A field-value pair in a structure construction expression.
 #[derive(Serialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct FieldValue<D: Driver> {
     /// The name of the field.
     pub name: WithInfo<D::Info, Option<String>>,

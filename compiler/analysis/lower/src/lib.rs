@@ -5,6 +5,7 @@ mod resolve;
 use derivative::Derivative;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug};
+use ts_rs::TS;
 use wipple_util::WithInfo;
 
 /// Provides the lowerer with information about the program.
@@ -16,7 +17,8 @@ pub trait Driver: Sized {
 /// Contains the definitions of items in a file.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""), Default(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct Interface<D: Driver> {
     /// The type declarations in the module.
     pub type_declarations: HashMap<Path, WithInfo<D::Info, TypeDeclaration<D>>>,
@@ -43,7 +45,8 @@ pub struct Interface<D: Driver> {
 /// Contains the implementations of items in a file.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""), Default(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct Library<D: Driver> {
     /// The implementations of constants and instances.
     pub items: HashMap<Path, WithInfo<D::Info, crate::Expression<D>>>,
@@ -73,7 +76,8 @@ pub fn resolve<D: Driver>(
 /// The result of [`resolve`].
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct Result<D: Driver> {
     /// The resolved [`Interface`].
     pub interface: Interface<D>,
@@ -86,7 +90,7 @@ pub struct Result<D: Driver> {
 }
 
 /// An error occurring during lowering.
-#[derive(Serialize, Deserialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative, TS)]
 #[derivative(
     Debug(bound = ""),
     Clone(bound = ""),
@@ -94,7 +98,9 @@ pub struct Result<D: Driver> {
     Eq(bound = ""),
     Hash(bound = "")
 )]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+#[ts(export)]
 pub enum Diagnostic {
     /// The expression refers to a name that is not defined in the current
     /// scope.
@@ -135,7 +141,8 @@ pub enum Diagnostic {
 /// An unresolved file.
 #[derive(Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct UnresolvedFile<D: Driver> {
     /// The top-level statements in the program.
     pub statements: Vec<WithInfo<D::Info, UnresolvedStatement<D>>>,
@@ -144,7 +151,8 @@ pub struct UnresolvedFile<D: Driver> {
 /// An unresolved statement.
 #[derive(Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub enum UnresolvedStatement<D: Driver> {
     /// A type declaration.
     #[serde(rename_all = "camelCase")]
@@ -251,7 +259,8 @@ pub enum LanguageDeclarationKind {
 /// An unresolved expression.
 #[derive(Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub enum UnresolvedExpression<D: Driver> {
     /// An expression that could not be parsed.
     Error,
@@ -406,7 +415,8 @@ pub enum UnresolvedBinaryOperator {
 /// An unresolved type parameter.
 #[derive(Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct UnresolvedTypeParameter<D: Driver> {
     /// The name of the type parameter.
     pub name: WithInfo<D::Info, Option<String>>,
@@ -421,7 +431,8 @@ pub struct UnresolvedTypeParameter<D: Driver> {
 /// An unresolved type representation.
 #[derive(Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub enum UnresolvedTypeRepresentation<D: Driver> {
     /// A marker type.
     Marker,
@@ -439,7 +450,8 @@ pub enum UnresolvedTypeRepresentation<D: Driver> {
 /// An unresolved structure field.
 #[derive(Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct UnresolvedField<D: Driver> {
     /// The name of the field.
     pub name: WithInfo<D::Info, String>,
@@ -451,7 +463,8 @@ pub struct UnresolvedField<D: Driver> {
 /// An unresolved enumeration variant.
 #[derive(Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct UnresolvedVariant<D: Driver> {
     /// The name of the variant.
     pub name: WithInfo<D::Info, String>,
@@ -463,7 +476,8 @@ pub struct UnresolvedVariant<D: Driver> {
 /// An unresolved type.
 #[derive(Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub enum UnresolvedType<D: Driver> {
     /// A type that could not be parsed.
     Error,
@@ -504,7 +518,8 @@ pub enum UnresolvedType<D: Driver> {
 /// An unresolved instance.
 #[derive(Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct UnresolvedInstance<D: Driver> {
     /// The trait this instance refers to.
     pub r#trait: WithInfo<D::Info, Option<String>>,
@@ -516,7 +531,8 @@ pub struct UnresolvedInstance<D: Driver> {
 /// An unresolved pattern.
 #[derive(Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub enum UnresolvedPattern<D: Driver> {
     /// A pattern that could not be parsed.
     Error,
@@ -566,7 +582,8 @@ pub enum UnresolvedPattern<D: Driver> {
 /// A field in a destructuring pattern.
 #[derive(Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct UnresolvedFieldPattern<D: Driver> {
     /// The name of the field.
     pub name: WithInfo<D::Info, Option<String>>,
@@ -578,7 +595,8 @@ pub struct UnresolvedFieldPattern<D: Driver> {
 /// An arm in a `when` expression.
 #[derive(Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct UnresolvedArm<D: Driver> {
     /// The pattern to match on the input.
     pub pattern: WithInfo<D::Info, UnresolvedPattern<D>>,
@@ -590,7 +608,8 @@ pub struct UnresolvedArm<D: Driver> {
 /// A field-value pair in a structure construction expression.
 #[derive(Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct UnresolvedFieldValue<D: Driver> {
     /// The name of the field.
     pub name: WithInfo<D::Info, Option<String>>,
@@ -600,7 +619,8 @@ pub struct UnresolvedFieldValue<D: Driver> {
 }
 
 /// A path that uniquely identifies a declaration.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, TS)]
+#[ts(export)]
 pub struct Path(pub Vec<PathComponent>);
 
 impl Path {
@@ -664,8 +684,10 @@ impl<'de> Deserialize<'de> for Path {
 }
 
 /// A component of a [`Path`].
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+#[ts(export)]
 pub enum PathComponent {
     /// A type declaration.
     Type(String),
@@ -761,7 +783,8 @@ impl std::str::FromStr for PathComponent {
 /// A resolved type declaration.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct TypeDeclaration<D: Driver> {
     /// The type's parameters.
     pub parameters: Vec<crate::Path>,
@@ -773,7 +796,8 @@ pub struct TypeDeclaration<D: Driver> {
 /// A resolved trait declaration.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct TraitDeclaration<D: Driver> {
     /// The trait's parameters.
     pub parameters: Vec<crate::Path>,
@@ -785,7 +809,8 @@ pub struct TraitDeclaration<D: Driver> {
 /// A resolved constant declaration.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct ConstantDeclaration<D: Driver> {
     /// The constant's parameters.
     pub parameters: Vec<crate::Path>,
@@ -800,7 +825,8 @@ pub struct ConstantDeclaration<D: Driver> {
 /// A resolved instance declaration.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct InstanceDeclaration<D: Driver> {
     /// The instance's parameters.
     pub parameters: Vec<crate::Path>,
@@ -815,7 +841,8 @@ pub struct InstanceDeclaration<D: Driver> {
 /// A resolved type parameter.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct TypeParameterDeclaration<D: Driver> {
     /// Whether the type parameter was marked as `infer`.
     pub infer: Option<WithInfo<D::Info, ()>>,
@@ -827,7 +854,8 @@ pub struct TypeParameterDeclaration<D: Driver> {
 /// A resolved expression.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub enum Expression<D: Driver> {
     /// An expression that could not be parsed.
     Error,
@@ -952,7 +980,8 @@ pub enum Expression<D: Driver> {
 /// A resolved type representation.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub enum TypeRepresentation<D: Driver> {
     /// A marker type.
     Marker,
@@ -970,7 +999,8 @@ pub enum TypeRepresentation<D: Driver> {
 /// A resolved structure field.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct Field<D: Driver> {
     /// The name of the field.
     pub name: WithInfo<D::Info, String>,
@@ -982,7 +1012,8 @@ pub struct Field<D: Driver> {
 /// A resolved enumeration variant.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct Variant<D: Driver> {
     /// The name of the variant.
     pub name: WithInfo<D::Info, Path>,
@@ -994,7 +1025,8 @@ pub struct Variant<D: Driver> {
 /// A resolved type.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub enum Type<D: Driver> {
     /// A type that could not be parsed.
     Error,
@@ -1038,7 +1070,8 @@ pub enum Type<D: Driver> {
 /// A resolved instance.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct Instance<D: Driver> {
     /// The trait this instance refers to.
     pub r#trait: WithInfo<D::Info, Path>,
@@ -1061,7 +1094,8 @@ pub struct FormatSegment<T> {
 /// A resolved pattern.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub enum Pattern<D: Driver> {
     /// A pattern that could not be parsed.
     Error,
@@ -1107,7 +1141,8 @@ pub enum Pattern<D: Driver> {
 /// A field in a destructuring pattern.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct FieldPattern<D: Driver> {
     /// The name of the field.
     pub name: WithInfo<D::Info, Option<String>>,
@@ -1119,7 +1154,8 @@ pub struct FieldPattern<D: Driver> {
 /// An arm in a `when` expression.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct Arm<D: Driver> {
     /// The pattern to match on the input.
     pub pattern: WithInfo<D::Info, Pattern<D>>,
@@ -1131,7 +1167,8 @@ pub struct Arm<D: Driver> {
 /// A field-value pair in a structure construction expression.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct FieldValue<D: Driver> {
     /// The name of the field.
     pub name: WithInfo<D::Info, Option<String>>,

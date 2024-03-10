@@ -8,11 +8,12 @@ use itertools::Itertools;
 use logos::Logos;
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, hash::Hash, mem};
+use ts_rs::TS;
 use wipple_util::WithInfo;
 
 /// A token in the source code.
 #[allow(missing_docs)]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum Token<'src> {
     LeftParenthesis,
@@ -68,9 +69,11 @@ impl<'src> Token<'src> {
     strum::Display,
     Serialize,
     Deserialize,
+    TS,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "kebab-case")]
+#[ts(export)]
 pub enum Keyword {
     #[strum(serialize = "_")]
     Underscore,
@@ -109,9 +112,11 @@ pub enum Keyword {
     strum::EnumDiscriminants,
     Serialize,
     Deserialize,
+    TS,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "kebab-case")]
+#[ts(export)]
 pub enum Operator {
     #[strum(serialize = "as")]
     As,
@@ -190,9 +195,11 @@ pub enum Operator {
     strum::EnumDiscriminants,
     Serialize,
     Deserialize,
+    TS,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "kebab-case")]
+#[ts(export)]
 pub enum VariadicOperator {
     #[strum(serialize = ";")]
     Tuple,
@@ -217,9 +224,11 @@ pub enum VariadicOperator {
     strum::EnumDiscriminants,
     Serialize,
     Deserialize,
+    TS,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "kebab-case")]
+#[ts(export)]
 pub enum NonAssociativeOperator {
     #[strum(serialize = "where")]
     Where,
@@ -268,7 +277,7 @@ impl Operator {
 }
 
 /// An error occurring during [`tokenize`] or [`read`].
-#[derive(Derivative, Serialize, Deserialize)]
+#[derive(Derivative, Serialize, Deserialize, TS)]
 #[derivative(
     Debug(bound = ""),
     Clone(bound = ""),
@@ -277,6 +286,7 @@ impl Operator {
     Hash(bound = "D::Info: Hash")
 )]
 #[serde(rename_all = "camelCase")]
+#[ts(export, concrete(D = wipple_util::TsAny))]
 pub enum Diagnostic<D: Driver> {
     /// The tokenizer encountered an invalid token.
     InvalidToken,

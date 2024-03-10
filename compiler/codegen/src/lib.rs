@@ -5,6 +5,7 @@ mod tail_call;
 
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use wipple_util::WithInfo;
 
 /// Provides the code generation with information about the program.
@@ -26,6 +27,32 @@ pub trait Driver: wipple_typecheck::Driver {
 
     /// The name of the intrinsic that compares text.
     fn text_equality_intrinsic(&self) -> Option<String>;
+}
+
+impl Driver for wipple_util::TsAny {
+    fn number_type(&self) -> Option<Self::Path> {
+        unimplemented!()
+    }
+
+    fn text_type(&self) -> Option<Self::Path> {
+        unimplemented!()
+    }
+
+    fn boolean_type(&self) -> Option<Self::Path> {
+        unimplemented!()
+    }
+
+    fn true_variant(&self) -> Option<Self::Path> {
+        unimplemented!()
+    }
+
+    fn number_equality_intrinsic(&self) -> Option<String> {
+        unimplemented!()
+    }
+
+    fn text_equality_intrinsic(&self) -> Option<String> {
+        unimplemented!()
+    }
 }
 
 /// Generate IR from an expression. This function must only be called if
@@ -64,7 +91,7 @@ pub struct Result<D: Driver> {
 pub type Label = usize;
 
 /// An instruction.
-#[derive(Serialize, Deserialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative, TS)]
 #[derivative(
     Debug(bound = ""),
     Clone(bound = ""),
@@ -72,12 +99,11 @@ pub type Label = usize;
     Eq(bound = ""),
     Hash(bound = "")
 )]
-#[serde(
-    tag = "type",
-    content = "value",
-    rename_all = "camelCase",
-    bound(serialize = "", deserialize = "")
-)]
+#[serde(tag = "type")]
+#[serde(content = "value")]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+#[ts(export, concrete(D = wipple_util::TsAny))]
 pub enum Instruction<D: Driver> {
     /// (Stack management) Duplicate the top of the stack.
     Copy,
@@ -133,7 +159,7 @@ pub enum Instruction<D: Driver> {
 }
 
 /// An instruction that produces a value with a runtime type.
-#[derive(Serialize, Deserialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative, TS)]
 #[derivative(
     Debug(bound = ""),
     Clone(bound = ""),
@@ -141,12 +167,11 @@ pub enum Instruction<D: Driver> {
     Eq(bound = ""),
     Hash(bound = "")
 )]
-#[serde(
-    tag = "type",
-    content = "value",
-    rename_all = "camelCase",
-    bound(serialize = "", deserialize = "")
-)]
+#[serde(tag = "type")]
+#[serde(content = "value")]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+#[ts(export, concrete(D = wipple_util::TsAny))]
 pub enum TypedInstruction<D: Driver> {
     /// (Consuming) An intrinsic provided by the runtime with _n_ inputs.
     Intrinsic(String, u32),
@@ -186,7 +211,7 @@ pub enum TypedInstruction<D: Driver> {
 }
 
 /// Used when finding a suitable instance for a trait at runtime.
-#[derive(Serialize, Deserialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative, TS)]
 #[derivative(
     Debug(bound = ""),
     Clone(bound = ""),
@@ -194,12 +219,11 @@ pub enum TypedInstruction<D: Driver> {
     Eq(bound = ""),
     Hash(bound = "")
 )]
-#[serde(
-    tag = "type",
-    content = "value",
-    rename_all = "camelCase",
-    bound(serialize = "", deserialize = "")
-)]
+#[serde(tag = "type")]
+#[serde(content = "value")]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+#[ts(export, concrete(D = wipple_util::TsAny))]
 pub enum TypeDescriptor<D: Driver> {
     /// A type parameter. This will only occur in the type descriptor for a
     /// generic item, never in a value.

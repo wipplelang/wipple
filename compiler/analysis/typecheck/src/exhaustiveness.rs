@@ -6,6 +6,7 @@ use derivative::Derivative;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use ts_rs::TS;
 use wipple_util::WithInfo;
 
 /// Check if every pattern in the expression is exhaustive.
@@ -248,7 +249,7 @@ enum Type<D: Driver> {
 }
 
 /// A compiled pattern.
-#[derive(Derivative, Serialize, Deserialize)]
+#[derive(Derivative, Serialize, Deserialize, TS)]
 #[derivative(
     Debug(bound = ""),
     Clone(bound = ""),
@@ -256,7 +257,9 @@ enum Type<D: Driver> {
     Eq(bound = ""),
     Hash(bound = "")
 )]
-#[serde(rename_all = "camelCase", bound = "")]
+#[serde(rename_all = "camelCase")]
+#[serde(bound = "")]
+#[ts(export, concrete(D = wipple_util::TsAny))]
 pub enum Pattern<D: Driver> {
     /// A pattern representing a concrete type.
     Constructor(Constructor<D>, Vec<Pattern<D>>),
@@ -269,7 +272,7 @@ pub enum Pattern<D: Driver> {
 }
 
 /// Represents the concrete type a pattern matches.
-#[derive(Derivative, Serialize, Deserialize)]
+#[derive(Derivative, Serialize, Deserialize, TS)]
 #[derivative(
     Debug(bound = ""),
     Clone(bound = ""),
@@ -277,7 +280,9 @@ pub enum Pattern<D: Driver> {
     Eq(bound = ""),
     Hash(bound = "")
 )]
-#[serde(rename_all = "camelCase", bound = "")]
+#[serde(rename_all = "camelCase")]
+#[serde(bound = "")]
+#[ts(export, concrete(D = wipple_util::TsAny))]
 pub enum Constructor<D: Driver> {
     /// A variant of an enumeration.
     Variant(D::Path),

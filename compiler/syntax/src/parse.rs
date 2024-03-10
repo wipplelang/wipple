@@ -7,6 +7,7 @@ use crate::{
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Debug, hash::Hash, rc::Rc};
+use ts_rs::TS;
 use wipple_util::{DefaultFromInfo, WithInfo};
 
 #[allow(missing_docs)]
@@ -17,7 +18,8 @@ use wipple_util::{DefaultFromInfo, WithInfo};
     PartialEq(bound = "D::Info: PartialEq"),
     Eq(bound = "D::Info: Eq")
 )]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct TopLevel<D: Driver> {
     pub(crate) statements: Vec<WithInfo<D::Info, Statement<D>>>,
 }
@@ -40,7 +42,8 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TopLevel<D> {
     PartialEq(bound = "D::Info: PartialEq"),
     Eq(bound = "D::Info: Eq")
 )]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub(crate) enum Statement<D: Driver> {
     Error,
     #[serde(rename_all = "camelCase")]
@@ -91,7 +94,8 @@ impl<D: Driver> DefaultFromInfo<D::Info> for Statement<D> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumString, Deserialize)]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum LanguageDeclarationKind {
     Type,
@@ -106,7 +110,8 @@ pub(crate) enum LanguageDeclarationKind {
     PartialEq(bound = "D::Info: PartialEq"),
     Eq(bound = "D::Info: Eq")
 )]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub(crate) struct TypeFunction<D: Driver> {
     pub(crate) parameters: Vec<WithInfo<D::Info, TypeParameter<D>>>,
     pub(crate) bounds: Vec<WithInfo<D::Info, Instance<D>>>,
@@ -131,7 +136,8 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TypeFunction<D> {
     PartialEq(bound = "D::Info: PartialEq"),
     Eq(bound = "D::Info: Eq")
 )]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub(crate) struct TypeParameter<D: Driver> {
     pub(crate) name: WithInfo<D::Info, Option<String>>,
     pub(crate) infer: Option<WithInfo<D::Info, ()>>,
@@ -158,7 +164,8 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TypeParameter<D> {
     PartialEq(bound = "D::Info: PartialEq"),
     Eq(bound = "D::Info: Eq")
 )]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub(crate) struct Instance<D: Driver> {
     pub(crate) r#trait: WithInfo<D::Info, Option<String>>,
     pub(crate) parameters: Vec<WithInfo<D::Info, Type<D>>>,
@@ -183,7 +190,8 @@ impl<D: Driver> DefaultFromInfo<D::Info> for Instance<D> {
     PartialEq(bound = "D::Info: PartialEq"),
     Eq(bound = "D::Info: Eq")
 )]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub(crate) enum TypeRepresentation<D: Driver> {
     Marker,
     Compound(Vec<WithInfo<D::Info, TypeMember<D>>>),
@@ -206,7 +214,8 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TypeRepresentation<D> {
     PartialEq(bound = "D::Info: PartialEq"),
     Eq(bound = "D::Info: Eq")
 )]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub(crate) struct TypeMember<D: Driver> {
     pub(crate) name: WithInfo<D::Info, Option<String>>,
     pub(crate) kind: TypeMemberKind<D>,
@@ -231,7 +240,8 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TypeMember<D> {
     PartialEq(bound = "D::Info: PartialEq"),
     Eq(bound = "D::Info: Eq")
 )]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub(crate) enum TypeMemberKind<D: Driver> {
     Error,
     Field(WithInfo<D::Info, Type<D>>),
@@ -254,7 +264,8 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TypeMemberKind<D> {
     PartialEq(bound = "D::Info: PartialEq"),
     Eq(bound = "D::Info: Eq")
 )]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub(crate) enum Expression<D: Driver> {
     Error,
     #[serde(rename_all = "camelCase")]
@@ -327,7 +338,8 @@ impl<D: Driver> DefaultFromInfo<D::Info> for Expression<D> {
     PartialEq(bound = "D::Info: PartialEq"),
     Eq(bound = "D::Info: Eq")
 )]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub(crate) enum Type<D: Driver> {
     Error,
     Placeholder,
@@ -363,7 +375,8 @@ impl<D: Driver> DefaultFromInfo<D::Info> for Type<D> {
     PartialEq(bound = "D::Info: PartialEq"),
     Eq(bound = "D::Info: Eq")
 )]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub(crate) enum Pattern<D: Driver> {
     Error,
     Wildcard,
@@ -401,7 +414,8 @@ impl<D: Driver> DefaultFromInfo<D::Info> for Pattern<D> {
     PartialEq(bound = "D::Info: PartialEq"),
     Eq(bound = "D::Info: Eq")
 )]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub(crate) struct FieldPattern<D: Driver> {
     pub(crate) name: WithInfo<D::Info, Option<String>>,
     pub(crate) pattern: WithInfo<D::Info, Pattern<D>>,
@@ -426,7 +440,8 @@ impl<D: Driver> DefaultFromInfo<D::Info> for FieldPattern<D> {
     PartialEq(bound = "D::Info: PartialEq"),
     Eq(bound = "D::Info: Eq")
 )]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub(crate) struct Arm<D: Driver> {
     pub(crate) pattern: WithInfo<D::Info, Pattern<D>>,
     pub(crate) body: WithInfo<D::Info, Expression<D>>,
@@ -451,7 +466,8 @@ impl<D: Driver> DefaultFromInfo<D::Info> for Arm<D> {
     PartialEq(bound = "D::Info: PartialEq"),
     Eq(bound = "D::Info: Eq")
 )]
-#[serde(rename_all = "camelCase", bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub(crate) struct FieldValue<D: Driver> {
     pub(crate) name: WithInfo<D::Info, Option<String>>,
     pub(crate) value: WithInfo<D::Info, Expression<D>>,
@@ -470,7 +486,7 @@ impl<D: Driver> DefaultFromInfo<D::Info> for FieldValue<D> {
 }
 
 /// A diagnostic generated by the parser.
-#[derive(Derivative, Serialize, Deserialize)]
+#[derive(Derivative, Serialize, Deserialize, TS)]
 #[derivative(
     Debug(bound = ""),
     Clone(bound = ""),
@@ -478,6 +494,7 @@ impl<D: Driver> DefaultFromInfo<D::Info> for FieldValue<D> {
     Eq(bound = "D::Info: Eq"),
     Hash(bound = "D::Info: Hash")
 )]
+#[ts(export, concrete(D = wipple_util::TsAny))]
 pub struct Diagnostic<D: Driver> {
     /// The expected piece of syntax at this location.
     pub expected: SyntaxKind,
@@ -493,17 +510,19 @@ pub struct Diagnostic<D: Driver> {
 /// Whether a [`Diagnostic`] refers to the token before of after the expected
 /// syntax.
 #[allow(missing_docs)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum Direction {
     Before,
     After,
 }
 
 #[allow(missing_docs)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "kebab-case")]
+#[ts(export)]
 pub enum SyntaxKind {
     TopLevel,
     Name,
