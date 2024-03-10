@@ -356,7 +356,7 @@ pub(crate) enum Type<D: Driver> {
     },
     Tuple(Vec<WithInfo<D::Info, Type<D>>>),
     Block(WithInfo<D::Info, Box<Type<D>>>),
-    Intrinsic(WithInfo<D::Info, Option<String>>),
+    Intrinsic,
 }
 
 impl<D: Driver> DefaultFromInfo<D::Info> for Type<D> {
@@ -596,7 +596,7 @@ pub fn parse<D: Driver>(driver: &D, tree: WithInfo<D::Info, &TokenTree<'_, D>>) 
 where
     D::Info: From<Info>,
 {
-    let mut parser = base::Parser::new(driver).debug();
+    let mut parser = base::Parser::new(driver);
 
     let stack = base::ParseStack::<D>::new(WithInfo {
         info: tree.info.clone(),
@@ -1254,14 +1254,10 @@ mod rules {
     }
 
     pub fn intrinsic_type<D: Driver>() -> Rule<D, Type<D>> {
-        Rule::keyword1(
-            SyntaxKind::IntrinsicType,
-            Keyword::Intrinsic,
-            || text().wrapped(),
-            |_, info, name, _| WithInfo {
-                info,
-                item: Type::Intrinsic(name),
-            },
+        Rule::match_terminal(
+            SyntaxKind::IntrinsicExpression,
+            RuleToRender::Keyword(Keyword::Intrinsic.to_string()),
+            |_, tree, _| Some(tree.replace(Type::Intrinsic)),
         )
         .named("An intrinsic type provided by the runtime.")
     }

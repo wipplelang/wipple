@@ -659,7 +659,7 @@ const unify = (
         case "block":
             return left.type === "block" && unify(left.value, right.value, substitutions);
         case "intrinsic":
-            return left.type === "intrinsic" && left.value === right.value;
+            return left.type === "intrinsic";
         default:
             right satisfies never;
             throw new InterpreterError(`unknown type descriptor ${JSON.stringify(right)}`);
@@ -712,10 +712,7 @@ const substituteTypeDescriptor = (
                 value: substituteTypeDescriptor(typeDescriptor.value, substitutions),
             };
         case "intrinsic": {
-            return {
-                type: "intrinsic",
-                value: typeDescriptor.value,
-            };
+            return { type: "intrinsic" };
         }
         default:
             typeDescriptor satisfies never;

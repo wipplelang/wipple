@@ -512,7 +512,7 @@ pub enum UnresolvedType<D: Driver> {
     Block(WithInfo<D::Info, Box<UnresolvedType<D>>>),
 
     /// An intrinsic type provided by the runtime.
-    Intrinsic(WithInfo<D::Info, Option<String>>),
+    Intrinsic,
 }
 
 /// An unresolved instance.
@@ -1064,7 +1064,7 @@ pub enum Type<D: Driver> {
     Block(WithInfo<D::Info, Box<Type<D>>>),
 
     /// An intrinsic type provided by the runtime.
-    Intrinsic(WithInfo<D::Info, String>),
+    Intrinsic,
 }
 
 /// A resolved instance.

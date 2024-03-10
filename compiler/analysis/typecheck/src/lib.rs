@@ -366,7 +366,7 @@ pub enum Type<D: Driver> {
     Block(WithInfo<D::Info, Box<Type<D>>>),
 
     /// An intrinsic type provided by the runtime.
-    Intrinsic(WithInfo<D::Info, String>),
+    Intrinsic,
 }
 
 /// Used to disambiguate between unknown types by recording the internal type

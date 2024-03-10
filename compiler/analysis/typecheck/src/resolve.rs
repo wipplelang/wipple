@@ -542,7 +542,7 @@ impl<D: Driver> Type<D> {
             TypeKind::Opaque(_)
             | TypeKind::Parameter(_)
             | TypeKind::Unknown
-            | TypeKind::Intrinsic(_) => false,
+            | TypeKind::Intrinsic => false,
         }
     }
 
@@ -595,7 +595,7 @@ impl<D: Driver> Type<D> {
             TypeKind::Block(r#type) => {
                 r#type.apply_in_context_mut(context);
             }
-            TypeKind::Unknown | TypeKind::Intrinsic(_) => {}
+            TypeKind::Unknown | TypeKind::Intrinsic => {}
         }
     }
 }
@@ -616,7 +616,7 @@ enum TypeKind<D: Driver> {
     },
     Tuple(Vec<Type<D>>),
     Block(Box<Type<D>>),
-    Intrinsic(WithInfo<D::Info, Rc<str>>),
+    Intrinsic,
     Unknown,
 }
 
@@ -818,7 +818,7 @@ impl<D: Driver> Type<D> {
             TypeKind::Block(r#type) => {
                 r#type.instantiate_mut(driver, instantiation_context);
             }
-            TypeKind::Unknown | TypeKind::Intrinsic(_) => {}
+            TypeKind::Unknown | TypeKind::Intrinsic => {}
         }
     }
 
@@ -858,7 +858,7 @@ impl<D: Driver> Type<D> {
             TypeKind::Block(r#type) => {
                 r#type.instantiate_opaque_in_context_mut(context);
             }
-            TypeKind::Unknown | TypeKind::Intrinsic(_) => {}
+            TypeKind::Unknown | TypeKind::Intrinsic => {}
         }
     }
 }
@@ -1008,8 +1008,7 @@ fn unify_with_options<D: Driver>(
             }
             (_, TypeKind::Parameter(_)) | (TypeKind::Parameter(_), _) => false,
 
-            // Unify declared types, functions, tuples, blocks, and intrinsics
-            // structurally
+            // Unify declared types, functions, tuples, and blocks structurally
             (
                 TypeKind::Declared { path, parameters },
                 TypeKind::Declared {
@@ -1062,9 +1061,10 @@ fn unify_with_options<D: Driver>(
             (TypeKind::Block(r#type), TypeKind::Block(expected_type)) => {
                 unify_inner(driver, r#type, expected_type, context, options)
             }
-            (TypeKind::Intrinsic(name), TypeKind::Intrinsic(expected_name)) => {
-                name.item == expected_name.item
-            }
+
+            // Intrinsic types unify with other intrinsic types (they're
+            // supposed to be wrapped in another type)
+            (TypeKind::Intrinsic, TypeKind::Intrinsic) => true,
 
             // Unknown types unify with everything
             (TypeKind::Unknown, _) | (_, TypeKind::Unknown) => true,
@@ -1218,10 +1218,9 @@ fn substitute_defaults<D: Driver>(
             false
         }
         TypeKind::Block(r#type) => substitute_defaults(driver, r#type, context),
-        TypeKind::Opaque(_)
-        | TypeKind::Parameter(_)
-        | TypeKind::Unknown
-        | TypeKind::Intrinsic(_) => false,
+        TypeKind::Opaque(_) | TypeKind::Parameter(_) | TypeKind::Unknown | TypeKind::Intrinsic => {
+            false
+        }
     }
 }
 
@@ -1373,7 +1372,7 @@ fn infer_type<D: Driver>(
                 Some(type_context) => TypeKind::Variable(type_context.variable()),
                 None => TypeKind::Unknown,
             },
-            crate::Type::Intrinsic(name) => TypeKind::Intrinsic(name.as_deref().map(Rc::from)),
+            crate::Type::Intrinsic => TypeKind::Intrinsic,
         },
         r#type.info,
         Vec::from_iter(role.into()),
@@ -3420,9 +3419,7 @@ fn finalize_type<D: Driver>(
                     context.contains_unknown.set(true);
                     crate::Type::Unknown(UnknownTypeId::none())
                 }
-                TypeKind::Intrinsic(name) => {
-                    crate::Type::Intrinsic(name.as_deref().map(ToString::to_string))
-                }
+                TypeKind::Intrinsic => crate::Type::Intrinsic,
             },
         }
     }
@@ -3700,7 +3697,7 @@ fn debug_type<D: Driver>(r#type: &Type<D>, context: &TypeContext<D>) -> String {
         ),
         TypeKind::Block(r#type) => format!("{{{}}}", debug_type(&r#type, context)),
         TypeKind::Unknown => String::from("_"),
-        TypeKind::Intrinsic(name) => format!("(intrinsic {:?})", name),
+        TypeKind::Intrinsic => String::from("intrinsic"),
     }
 }
 

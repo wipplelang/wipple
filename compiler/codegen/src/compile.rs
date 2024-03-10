@@ -433,8 +433,6 @@ pub fn type_descriptor<D: crate::Driver>(
         wipple_typecheck::Type::Block(r#type) => Some(crate::TypeDescriptor::Block(Box::new(
             type_descriptor(&r#type.item)?,
         ))),
-        wipple_typecheck::Type::Intrinsic(name) => {
-            Some(crate::TypeDescriptor::Intrinsic(name.item.clone()))
-        }
+        wipple_typecheck::Type::Intrinsic => Some(crate::TypeDescriptor::Intrinsic),
     }
 }
