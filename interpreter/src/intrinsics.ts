@@ -97,7 +97,11 @@ export const intrinsics: Record<string, Intrinsic> = {
             throw context.error("expected function");
         }
 
-        const callbackTypeDescriptor = callback.typeDescriptor.value[0];
+        if (callback.typeDescriptor.value[0].length !== 1) {
+            throw context.error("expected function with one input");
+        }
+
+        const callbackTypeDescriptor = callback.typeDescriptor.value[0][0];
 
         if (callbackTypeDescriptor.type !== "function") {
             throw context.error("expected function");
@@ -123,7 +127,11 @@ export const intrinsics: Record<string, Intrinsic> = {
             throw context.error("expected function");
         }
 
-        const taskGroupTypeDescriptor = callback.typeDescriptor.value[0];
+        if (callback.typeDescriptor.value[0].length !== 1) {
+            throw context.error("expected function with one input");
+        }
+
+        const taskGroupTypeDescriptor = callback.typeDescriptor.value[0][0];
 
         const taskGroup: TaskGroup = [];
         await context.call(callback, jsToTaskGroup(taskGroupTypeDescriptor, taskGroup, context));

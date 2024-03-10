@@ -3,11 +3,11 @@ import { intrinsics } from "./intrinsics.js";
 import { produce } from "immer";
 import type { codegen, linker } from "wipple-compiler";
 
-export type Executable = linker.Executable<unknown>;
-export type Item = linker.LinkedItem<unknown>;
-export type TypeDescriptor = codegen.TypeDescriptor<unknown>;
-export type Instruction = codegen.Instruction<unknown>;
-export type TypedInstruction = codegen.TypedInstruction<unknown>;
+export type Executable = linker.Executable;
+export type Item = linker.LinkedItem;
+export type TypeDescriptor = codegen.TypeDescriptor;
+export type Instruction = codegen.Instruction;
+export type TypedInstruction = codegen.TypedInstruction;
 
 export type TypedValue = Value & { typeDescriptor: TypeDescriptor };
 
@@ -53,6 +53,13 @@ type Value =
     | {
           type: "list";
           values: TypedValue[];
+      }
+    | {
+          type: "marker";
+      }
+    | {
+          type: "wrapper";
+          value: TypedValue;
       }
     | {
           type: "structure";
@@ -411,6 +418,14 @@ const evaluateItem = async (
 
                             break;
                         }
+                        case "marker": {
+                            stack.push({
+                                typeDescriptor,
+                                type: "marker",
+                            });
+
+                            break;
+                        }
                         case "structure": {
                             const elements: TypedValue[] = [];
                             for (const _field of instruction.value[1].value) {
@@ -441,6 +456,16 @@ const evaluateItem = async (
                                 type: "variant",
                                 variant: instruction.value[1].value[0],
                                 values: elements.reverse(),
+                            });
+
+                            break;
+                        }
+                        case "wrapper": {
+                            const value = pop();
+                            stack.push({
+                                typeDescriptor,
+                                type: "wrapper",
+                                value,
                             });
 
                             break;
@@ -608,7 +633,10 @@ const unify = (
         case "function":
             return (
                 left.type === "function" &&
-                unify(left.value[0], right.value[0], substitutions) &&
+                left.value[0].length === right.value[0].length &&
+                left.value[0].every((typeDescriptor, index) =>
+                    unify(typeDescriptor, right.value[0][index], substitutions),
+                ) &&
                 unify(left.value[1], right.value[1], substitutions)
             );
         case "named":
@@ -630,6 +658,8 @@ const unify = (
             );
         case "block":
             return left.type === "block" && unify(left.value, right.value, substitutions);
+        case "intrinsic":
+            return left.type === "intrinsic" && left.value === right.value;
         default:
             right satisfies never;
             throw new InterpreterError(`unknown type descriptor ${JSON.stringify(right)}`);
@@ -645,7 +675,9 @@ const substituteTypeDescriptor = (
             return {
                 type: "function",
                 value: [
-                    substituteTypeDescriptor(typeDescriptor.value[0], substitutions),
+                    typeDescriptor.value[0].map((typeDescriptor) =>
+                        substituteTypeDescriptor(typeDescriptor, substitutions),
+                    ),
                     substituteTypeDescriptor(typeDescriptor.value[1], substitutions),
                 ],
             };
@@ -679,6 +711,12 @@ const substituteTypeDescriptor = (
                 type: "block",
                 value: substituteTypeDescriptor(typeDescriptor.value, substitutions),
             };
+        case "intrinsic": {
+            return {
+                type: "intrinsic",
+                value: typeDescriptor.value,
+            };
+        }
         default:
             typeDescriptor satisfies never;
             throw new InterpreterError(`unknown type descriptor ${JSON.stringify(typeDescriptor)}`);
