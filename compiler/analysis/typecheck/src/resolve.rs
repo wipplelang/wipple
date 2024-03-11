@@ -1775,35 +1775,34 @@ fn infer_expression<D: Driver>(
 
             let values = match type_declaration.item.representation.item {
                 crate::TypeRepresentation::Enumeration(declared_variants) => {
-                    let declared_variant = match declared_variants.get(&variant.item) {
-                        Some(variant) => variant,
-                        None => todo!("report error"),
-                    };
+                    if let Some(declared_variant) = declared_variants.get(&variant.item) {
+                        values
+                            .into_iter()
+                            .zip(&declared_variant.item.value_types)
+                            .map(|(value, declared_type)| {
+                                let declared_type = infer_type(
+                                    declared_type.as_ref(),
+                                    declared_variant.replace(Role::VariantElement),
+                                    Some(context.type_context),
+                                )
+                                .instantiate(context.driver, &instantiation_context);
 
-                    values
-                        .into_iter()
-                        .zip(&declared_variant.item.value_types)
-                        .map(|(value, declared_type)| {
-                            let declared_type = infer_type(
-                                declared_type.as_ref(),
-                                declared_variant.replace(Role::VariantElement),
-                                Some(context.type_context),
-                            )
-                            .instantiate(context.driver, &instantiation_context);
+                                let mut value = infer_expression(value, context);
 
-                            let mut value = infer_expression(value, context);
+                                try_unify_expression(
+                                    context.driver,
+                                    value.as_mut(),
+                                    &declared_type,
+                                    context.type_context,
+                                    context.error_queue,
+                                );
 
-                            try_unify_expression(
-                                context.driver,
-                                value.as_mut(),
-                                &declared_type,
-                                context.type_context,
-                                context.error_queue,
-                            );
-
-                            value
-                        })
-                        .collect()
+                                value
+                            })
+                            .collect()
+                    } else {
+                        Vec::new()
+                    }
                 }
                 _ => Vec::new(),
             };
@@ -2765,91 +2764,98 @@ fn resolve_expression<D: Driver>(
 
                     let type_declaration = context.driver.get_type_declaration(&path);
 
-                    let mut field_types = match type_declaration.item.representation.item {
-                        crate::TypeRepresentation::Structure(fields) => fields,
-                        _ => todo!("report error"),
-                    };
+                    if let crate::TypeRepresentation::Structure(mut field_types) =
+                        type_declaration.item.representation.item
+                    {
+                        let instantiation_context = InstantiationContext::from_parameters(
+                            context.driver,
+                            type_declaration.item.parameters.clone(),
+                            context.type_context,
+                            &expression.info,
+                            context.errors,
+                        );
 
-                    let instantiation_context = InstantiationContext::from_parameters(
-                        context.driver,
-                        type_declaration.item.parameters.clone(),
-                        context.type_context,
-                        &expression.info,
-                        context.errors,
-                    );
+                        let fields = fields
+                            .into_iter()
+                            .filter_map(|field_value| {
+                                let field_value_info = field_value.info.clone();
 
-                    let fields = fields
-                        .into_iter()
-                        .filter_map(|field_value| {
-                            let field_value_info = field_value.info.clone();
+                                field_value.filter_map(|field_value| {
+                                    let declared_type = match field_types.remove(&field_value.name)
+                                    {
+                                        Some(field) => infer_type(
+                                            field.item.r#type.as_ref(),
+                                            field.replace(Role::StructureField),
+                                            Some(context.type_context),
+                                        )
+                                        .instantiate(context.driver, &instantiation_context),
+                                        None => {
+                                            context.error_queue.borrow_mut().push(WithInfo {
+                                                info: field_value_info.clone(),
+                                                item: QueuedError::ExtraField,
+                                            });
 
-                            field_value.filter_map(|field_value| {
-                                let declared_type = match field_types.remove(&field_value.name) {
-                                    Some(field) => infer_type(
-                                        field.item.r#type.as_ref(),
-                                        field.replace(Role::StructureField),
-                                        Some(context.type_context),
-                                    )
-                                    .instantiate(context.driver, &instantiation_context),
-                                    None => {
-                                        context.error_queue.borrow_mut().push(WithInfo {
-                                            info: field_value_info.clone(),
-                                            item: QueuedError::ExtraField,
-                                        });
+                                            return None;
+                                        }
+                                    };
 
-                                        return None;
-                                    }
-                                };
+                                    let mut value = resolve_expression(field_value.value, context);
 
-                                let mut value = resolve_expression(field_value.value, context);
+                                    try_unify_expression(
+                                        context.driver,
+                                        value.as_mut(),
+                                        &declared_type,
+                                        context.type_context,
+                                        context.error_queue,
+                                    );
 
-                                try_unify_expression(
-                                    context.driver,
-                                    value.as_mut(),
-                                    &declared_type,
-                                    context.type_context,
-                                    context.error_queue,
-                                );
-
-                                Some(StructureFieldValue {
-                                    name: field_value.name,
-                                    value,
+                                    Some(StructureFieldValue {
+                                        name: field_value.name,
+                                        value,
+                                    })
                                 })
                             })
-                        })
-                        .collect();
+                            .collect();
 
-                    let missing_fields = field_types.into_keys().collect::<Vec<_>>();
-                    if !missing_fields.is_empty() {
+                        let missing_fields = field_types.into_keys().collect::<Vec<_>>();
+                        if !missing_fields.is_empty() {
+                            context.error_queue.borrow_mut().push(WithInfo {
+                                info: expression.info.clone(),
+                                item: QueuedError::MissingFields(missing_fields),
+                            });
+                        }
+
+                        let instantiated_declared_type = Type::new(
+                            TypeKind::Declared {
+                                path: path.clone(),
+                                parameters: instantiation_context.into_types_for_parameters(),
+                            },
+                            expression.info.clone(),
+                            Vec::new(),
+                        );
+
+                        try_unify(
+                            context.driver,
+                            WithInfo {
+                                info: expression.info.clone(),
+                                item: &instantiated_declared_type,
+                            },
+                            &expression.item.r#type,
+                            context.type_context,
+                            context.error_queue,
+                        );
+
+                        ExpressionKind::ResolvedStructure {
+                            structure: path,
+                            fields,
+                        }
+                    } else {
                         context.error_queue.borrow_mut().push(WithInfo {
                             info: expression.info.clone(),
-                            item: QueuedError::MissingFields(missing_fields),
+                            item: QueuedError::NotAStructure(expression.item.r#type.clone()),
                         });
-                    }
 
-                    let instantiated_declared_type = Type::new(
-                        TypeKind::Declared {
-                            path: path.clone(),
-                            parameters: instantiation_context.into_types_for_parameters(),
-                        },
-                        expression.info.clone(),
-                        Vec::new(),
-                    );
-
-                    try_unify(
-                        context.driver,
-                        WithInfo {
-                            info: expression.info.clone(),
-                            item: &instantiated_declared_type,
-                        },
-                        &expression.item.r#type,
-                        context.type_context,
-                        context.error_queue,
-                    );
-
-                    ExpressionKind::ResolvedStructure {
-                        structure: path,
-                        fields,
+                        ExpressionKind::Unknown(None)
                     }
                 }
                 _ => {
