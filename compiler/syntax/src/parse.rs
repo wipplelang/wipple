@@ -1184,9 +1184,17 @@ mod rules {
             SyntaxKind::FunctionType,
             Operator::Function,
             || {
-                Rule::list(SyntaxKind::FunctionInputs, r#type, |_, info, types, _| {
-                    WithInfo { info, item: types }
-                })
+                Rule::switch(
+                    SyntaxKind::FunctionInputs,
+                    [
+                        || {
+                            Rule::list(SyntaxKind::FunctionInputs, r#type, |_, info, types, _| {
+                                WithInfo { info, item: types }
+                            })
+                        },
+                        || r#type().map(SyntaxKind::FunctionInputs, |r#type| vec![r#type]),
+                    ],
+                )
             },
             r#type,
             |_, info, inputs, output, _| WithInfo {
@@ -1939,13 +1947,21 @@ mod rules {
             SyntaxKind::FunctionExpression,
             Operator::Function,
             || {
-                Rule::list(
+                Rule::switch(
                     SyntaxKind::FunctionInputs,
-                    pattern,
-                    |_, info, patterns, _| WithInfo {
-                        info,
-                        item: patterns,
-                    },
+                    [
+                        || {
+                            Rule::list(
+                                SyntaxKind::FunctionInputs,
+                                pattern,
+                                |_, info, patterns, _| WithInfo {
+                                    info,
+                                    item: patterns,
+                                },
+                            )
+                        },
+                        || pattern().map(SyntaxKind::FunctionInputs, |pattern| vec![pattern]),
+                    ],
                 )
             },
             expression,
