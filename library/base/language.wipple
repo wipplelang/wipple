@@ -1,72 +1,72 @@
-Number : type
-language type "number" : Number
+Number : type intrinsic
+intrinsic "type" "number" : Number
 
-Text : type
-language type "text" : Text
+Text : type intrinsic
+intrinsic "type" "text" : Text
 
-Maybe : Value => type (
+Maybe : Value => type {
     None
     Some Value
-)
+}
 
-language type "maybe" : Maybe
-language constant "none" : None
-language constant "some" : Some
+intrinsic "type" "maybe" : Maybe
+intrinsic "constant" "none" : None
+intrinsic "constant" "some" : Some
 
-Value where (Equal Value) => instance (Equal (Maybe Value)) : b a -> when (a ; b) (
+Value where (Equal Value) => instance (Equal (Maybe Value)) : b a -> when (a ; b) {
     Some a ; Some b -> a = b
     None ; None -> True
     _ -> False
-)
+}
 
-[Represents the success or failure of an operation.]
-[on-mismatch : Success "try handling the case where the `Result` is `Error`, eg. using `when`, `try`, or `expect`]
-[on-mismatch : Failure "try converting the error to the corect type, eg. using `as` or `try`]
-[convert-from : Success (OK _)]
-[convert-from : Failure (Error _)]
-Result : Success Failure => type (
+-- Represents the success or failure of an operation.
+-- on-mismatch : Success "try handling the case where the `Result` is `Error`, eg. using `when`, `try`, or `expect`
+-- on-mismatch : Failure "try converting the error to the corect type, eg. using `as` or `try`
+-- convert-from : Success (OK _)
+-- convert-from : Failure (Error _)
+Result : Success Failure => type {
     OK Success
     Error Failure
-)
+}
 
 Try : Value Success Failure => trait (Value -> Result Success Failure)
 
-[Represents the failure to find a value inside a `Maybe`.]
-None-Error : type (None-Error)
+-- Represents the failure to find a value inside a `Maybe`.
+None-Error : type
 
 Expect : Container Value => trait (Text -> Container -> Value)
 instance (Expect Boolean ()) : message boolean -> if boolean () (error message)
 
-Value => instance (Expect (Maybe Value) Value) : message maybe -> when maybe (
+Value => instance (Expect (Maybe Value) Value) : message maybe -> when maybe {
     Some value -> value
     None -> error message
-)
+}
 
 Unwrap-Message : Container => trait (Container -> Text)
 Value => instance (Unwrap-Message (Maybe Value)) : just "called `unwrap` on `None`"
-Success Failure where (Show Failure) => instance (Unwrap-Message (Result Success Failure)) : result -> when result (
+Success Failure where (Show Failure) => instance (Unwrap-Message (Result Success Failure)) : result -> when result {
     OK _ -> unreachable
     Error error -> "called `unwrap` on `Error`: _" error
-)
+}
 
-[Unwrap the value in the container, or exit the program with the provided message.]
+-- Unwrap the value in the container, or exit the program with the provided message.
 expect :: Container (infer Value) where (Expect Container Value) => Text -> Container -> Value
 expect : Expect
 
-[Unwrap the value in the container, or exit the program.]
+-- Unwrap the value in the container, or exit the program.
 unwrap :: Container (infer Value) where (Expect Container Value) (Unwrap-Message Container) => Container -> Value
 unwrap : value -> expect (Unwrap-Message value) value
 
-[on-unimplemented : "cannot convert _ into _" Input Output]
+-- on-unimplemented : "cannot convert _ into _" Input Output
 As : Input Output => trait (Input -> Output)
-language trait "as" : As
+intrinsic "trait" "as" : As
 
 Value => instance (As Value Value) : value -> value
 
-Success Failure => instance (As (Result Success Failure) (Maybe Success)) : result -> when result (
+Success Failure => instance (As (Result Success Failure) (Maybe Success)) : result -> when result {
     OK value -> Some value
     Error _ -> None
-)
+}
 
 produce :: Value => (defer Value) -> Value
 produce : defer -> intrinsic "produce" defer
@@ -80,8 +80,8 @@ error : message -> intrinsic "crash" message
 unreachable :: Value => Value
 unreachable : error "unreachable"
 
-[Represents the default or initial value of a type.]
-[on-unimplemented : "_ has no default value" Value]
+-- Represents the default or initial value of a type.
+-- on-unimplemented : "_ has no default value" Value
 Empty : Value => trait Value
 instance (Empty Number) : 0
 instance (Empty Text) : ""

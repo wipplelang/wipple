@@ -1,84 +1,93 @@
-[Represents either `True` or `False`.]
-Boolean : type (False True)
-language type "boolean" : Boolean
-language constant "false" : False
-language constant "true" : True
+-- Represents either `True` or `False`.
+Boolean : type {
+    False
+    True
+}
 
-[Make a choice based on whether the input is `True` or `False`.]
+intrinsic "type" "boolean" : Boolean
+intrinsic "constant" "false" : False
+intrinsic "constant" "true" : True
+
+-- Make a choice based on whether the input is `True` or `False`.
 if :: A => Boolean -> defer A -> defer A -> A
-if : condition then else -> when condition (
+if : condition then else -> when condition {
     True -> produce then
     False -> produce else
-)
+}
 
-[Represents the logical inverse of a value.]
+-- Represents the logical inverse of a value.
 Not : Value => trait (Value -> Value)
 instance (Not Boolean) : boolean -> if boolean False True
 A (B : Boolean) where (Not B) => instance (Not (A -> B)) : f -> f | not
 
-[Returns `False` if provided `True`, and vice versa. Can also be used on boolean functions and any other value that implements `Not`.]
+-- Returns `False` if provided `True`, and vice versa. Can also be used on boolean functions and any other value that implements `Not`.
 not :: (Value : Boolean) where (Not Value) => Value -> Value
 not : Not
 
-[Returns `True` if both sides are `True`.]
+-- Returns `True` if both sides are `True`.
 And : Left Right (infer Output) => trait (defer Right -> Left -> Output)
-language trait "and" : And
+intrinsic "trait" "and" : And
 instance (And Boolean Boolean Boolean) : b a -> if a b False
 
-[Returns `True` if either side is `True`.]
+-- Returns `True` if either side is `True`.
 Or : Left Right (infer Output) => trait (defer Right -> Left -> Output)
-language trait "or" : Or
+intrinsic "trait" "or" : Or
 instance (Or Boolean Boolean Boolean) : b a -> if a True b
 
-[The result of a comparison between two values.]
-Ordering : type (Is-Less-Than Is-Equal-To Is-Greater-Than)
-language type "ordering" : Ordering
-language constant "is-less-than" : Is-Less-Than
-language constant "is-equal-to" : Is-Equal-To
-language constant "is-greater-than" : Is-Greater-Than
+-- The result of a comparison between two values.
+Ordering : type {
+    Is-Less-Than
+    Is-Equal-To
+    Is-Greater-Than
+}
 
-[Implement this trait to enable comparisons between two values of your type.]
-[on-unimplemented : "cannot compare _ values" Value]
+intrinsic "type" "ordering" : Ordering
+intrinsic "constant" "is-less-than" : Is-Less-Than
+intrinsic "constant" "is-equal-to" : Is-Equal-To
+intrinsic "constant" "is-greater-than" : Is-Greater-Than
+
+-- Implement this trait to enable comparisons between two values of your type.
+-- on-unimplemented : "cannot compare _ values" Value
 Order : Value => trait (Value -> Value -> Ordering)
 instance (Order Number) : b a -> semantics "pure" (intrinsic "number-ordering" a b)
 
-[Returns `True` if the left side is less than the right side.]
+-- Returns `True` if the left side is less than the right side.
 Less-Than : Value => trait (Value -> Value -> Boolean)
-language trait "less-than" : Less-Than
+intrinsic "trait" "less-than" : Less-Than
 Value where (Order Value) => instance (Less-Than Value) : b a -> (Order b a) is Is-Less-Than
 
-[Returns `True` if the left side is less than or equal to the right side.]
+-- Returns `True` if the left side is less than or equal to the right side.
 Less-Than-Or-Equal : Value => trait (Value -> Value -> Boolean)
-language trait "less-than-or-equal" : Less-Than-Or-Equal
+intrinsic "trait" "less-than-or-equal" : Less-Than-Or-Equal
 Value where (Order Value) => instance (Less-Than-Or-Equal Value) : b a -> (Order b a) is (Is-Less-Than or Is-Equal-To)
 
-[Returns `True` if the left side is greater than the right side.]
+-- Returns `True` if the left side is greater than the right side.
 Greater-Than : Value => trait (Value -> Value -> Boolean)
-language trait "greater-than" : Greater-Than
+intrinsic "trait" "greater-than" : Greater-Than
 Value where (Order Value) => instance (Greater-Than Value) : b a -> (Order b a) is Is-Greater-Than
 
-[Returns `True` if the left side is greater than or equal to the right side.]
+-- Returns `True` if the left side is greater than or equal to the right side.
 Greater-Than-Or-Equal : Value => trait (Value -> Value -> Boolean)
-language trait "greater-than-or-equal" : Greater-Than-Or-Equal
+intrinsic "trait" "greater-than-or-equal" : Greater-Than-Or-Equal
 Value where (Order Value) => instance (Greater-Than-Or-Equal Value) : b a -> (Order b a) is (Is-Greater-Than or Is-Equal-To)
 
-[Returns `True` if two values are equal.]
+-- Returns `True` if two values are equal.
 Equal : Value => trait (Value -> Value -> Boolean)
-language trait "equal" : Equal
+intrinsic "trait" "equal" : Equal
 instance (Equal Text) : b a -> semantics "pure" (intrinsic "text-equality" a b)
 instance (Equal Number) : b a -> semantics "pure" (intrinsic "number-equality" a b)
 instance (Equal ()) : () () -> True
 instance (Equal Boolean) : b a -> if a b (not b)
 
-[Returns `True` if two values are not equal.]
+-- Returns `True` if two values are not equal.
 Not-Equal : Value => trait (Value -> Value -> Boolean)
-language trait "not-equal" : Not-Equal
+intrinsic "trait" "not-equal" : Not-Equal
 Value where (Equal Value) => instance (Not-Equal Value) : b a -> not (Equal b a)
 
-[Returns the larger of the two inputs.]
+-- Returns the larger of the two inputs.
 max :: A where (Order A) => A -> A -> A
 max : a b -> if (a >= b) a b
 
-[Returns the smaller of the two inputs.]
+-- Returns the smaller of the two inputs.
 min :: A where (Order A) => A -> A -> A
 min : a b -> if (a <= b) a b

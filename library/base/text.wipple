@@ -5,4 +5,4 @@ instance (As-Sequence Text Text) : text ->
 
 instance (From-Sequence Text Text) : reduce "" (+)
 
-[TODO: Specialization of `join` for `Text`]
+-- TODO: Specialization of `join` for `Text`

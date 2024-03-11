@@ -1,20 +1,20 @@
-Task-Group : type
-language type "task-group" : Task-Group
+Task-Group : type intrinsic
+intrinsic "type" "task-group" : Task-Group
 
-[Wait for a function to be called before returning.]
+-- Wait for a function to be called before returning.
 with-continuation :: A => ((A -> ()) -> ()) -> A
 with-continuation : callback -> intrinsic "with-continuation" callback
 
-[Create a group of tasks to be executed at the same time. This function returns once all of the tasks have finished.]
+-- Create a group of tasks to be executed at the same time. This function returns once all of the tasks have finished.
 with-task-group :: (Task-Group -> ()) -> ()
 with-task-group : body -> intrinsic "with-task-group" body
 
-[Run a task in a task group.]
+-- Run a task in a task group.
 task :: (defer ()) -> Task-Group -> ()
 task : body group -> intrinsic "task" group (() -> produce body)
 
-[Execute code in the background without waiting for it to finish.]
+-- Execute code in the background without waiting for it to finish.
 in-background :: (defer ()) -> ()
 in-background : body -> intrinsic "in-background" (() -> produce body)
 
-[TODO: Delay and duration units]
+-- TODO: Delay and duration units

@@ -1831,6 +1831,7 @@ mod rules {
                 Rule::block(SyntaxKind::WhenBody, when_arm, |_, info, arms, _| {
                     WithInfo { info, item: arms }
                 })
+                .no_backtrack()
             },
             |_, info, input, arms, _| WithInfo {
                 info,
@@ -1854,6 +1855,7 @@ mod rules {
                 item: Arm { pattern, body },
             },
         )
+        .no_backtrack()
         .named("An arm in a <code>when</code> expression.")
     }
 

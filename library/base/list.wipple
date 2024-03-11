@@ -1,60 +1,40 @@
-List : Element => type
-language type "list" : List
+List : Element => type intrinsic
+intrinsic "type" "list" : List
 
 Element => instance (Empty (List Element)) : semantics "pure" (intrinsic "make-empty-list")
 
-[Retrieve the first item inside a list, or `None` if the list is empty.]
+-- Retrieve the first item inside a list, or `None` if the list is empty.
 first :: Element => List Element -> Maybe Element
 first : list -> semantics "pure" (intrinsic "list-first" list)
 
-[Retrieve the last item inside a list, or `None` if the list is empty.]
+-- Retrieve the last item inside a list, or `None` if the list is empty.
 last :: Element => List Element -> Maybe Element
 last : list -> semantics "pure" (intrinsic "list-last" list)
 
-[Retrieve all but the last item inside a list, or `None` if the list is empty.]
+-- Retrieve all but the last item inside a list, or `None` if the list is empty.
 initial :: Element => List Element -> Maybe (List Element)
 initial : list -> semantics "pure" (intrinsic "list-initial" list)
 
-[Retrieve all but the first item inside a list, or `None` if the list is empty.]
+-- Retrieve all but the first item inside a list, or `None` if the list is empty.
 tail :: Element => List Element -> Maybe (List Element)
 tail : list -> semantics "pure" (intrinsic "list-tail" list)
 
-[Retrieve the value in a list at a particular location, if it exists.]
+-- Retrieve the value in a list at a particular location, if it exists.
 nth :: Element => Number -> List Element -> Maybe Element
 nth : index list -> semantics "pure" (intrinsic "list-nth" list index)
 
-[Add a new item to the end of a list, producing a new list.]
+-- Add a new item to the end of a list, producing a new list.
 append :: Element => Element -> List Element -> List Element
 append : element list -> semantics "pure" (intrinsic "list-append" list element)
 
-[Add a new item to the end of a mutable list.]
+-- Add a new item to the end of a mutable list.
 append! :: Element => Element -> Mutable (List Element) -> ()
 append! : element list -> list . set! (get list . append element)
 
-[Insert a new item at a particular location inside a list, shifting the elements from that location on one place to the right, producing a new list.]
+-- Insert a new item at a particular location inside a list, shifting the elements from that location on one place to the right, producing a new list.
 insert-at :: Element => Number -> Element -> List Element -> Maybe (List Element)
 insert-at : index element list -> semantics "pure" (intrinsic "list-insert-at" list index element)
 
-[Insert a new item at a particular location inside a mutable list, shifting the elements from that location on one place to the right.]
-insert-at! :: Element => Number -> Element -> Mutable (List Element) -> Boolean
-insert-at! : index element list -> when (get list . insert-at index element) (
-  Some new-list -> (
-    list . set! new-list
-    True
-  )
-  None -> False
-)
-
-[Remove the item at a particular location inside a list, producing a new list.]
+-- Remove the item at a particular location inside a list, producing a new list.
 remove-at :: Element => Number -> List Element -> Maybe (List Element)
 remove-at : index list -> semantics "pure" (intrinsic "list-remove-at" list index)
-
-[Remove the item at a particular location inside a mutable list.]
-remove-at! :: Element => Number -> Mutable (List Element) -> Boolean
-remove-at! : index list -> when (get list . remove-at index) (
-  Some new-list -> (
-    list . set! new-list
-    True
-  )
-  None -> False
-)
