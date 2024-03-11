@@ -1053,8 +1053,8 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                 AnyOperator::Operator(operator) => {
                     let index = {
                         let (index, operator) = match operator.associativity() {
-                            Associativity::Left => operators.first().unwrap(),
-                            Associativity::Right => operators.last().unwrap(),
+                            Associativity::Left => operators.last().unwrap(),
+                            Associativity::Right => operators.first().unwrap(),
                         };
 
                         WithInfo {
