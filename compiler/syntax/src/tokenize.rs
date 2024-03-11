@@ -427,7 +427,7 @@ enum RawToken<'src> {
     #[regex(r#"--.*"#, |lex| Cow::Borrowed(&lex.slice()[2..]))]
     Comment(Cow<'src, str>),
 
-    #[regex(r#"[A-Za-z0-9\-_]+[?]?"#, |lex| Cow::Borrowed(lex.slice()))]
+    #[regex(r#"\.\.\.|[A-Za-z0-9\-_]+[!?]?"#, |lex| Cow::Borrowed(lex.slice()))]
     Name(Cow<'src, str>),
 
     #[regex(r#""[^"\\]*(?s:\\.[^"\\]*)*"|'[^'\\]*(?s:\\.[^'\\]*)*'"#, |lex| Cow::Borrowed(&lex.slice()[1..(lex.slice().len() - 1)]))]

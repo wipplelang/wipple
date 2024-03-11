@@ -1845,7 +1845,7 @@ mod rules {
     }
 
     pub fn when_arm<D: Driver>() -> Rule<D, Arm<D>> {
-        Rule::operator(
+        Rule::require_operator(
             SyntaxKind::WhenArm,
             Operator::Function,
             pattern,
@@ -2587,6 +2587,100 @@ mod base {
                         };
 
                         if found.item != expected {
+                            return None;
+                        }
+
+                        let left = parse_left().parse(parser, left.as_deref(), stack);
+                        let right = parse_right().parse(parser, right.as_deref(), stack);
+
+                        Some(output(parser, tree.info, left, right, stack))
+                    },
+                ),
+            )
+        }
+
+        pub fn require_operator<L, R>(
+            syntax_kind: SyntaxKind,
+            expected: tokenize::Operator,
+            parse_left: fn() -> Rule<D, L>,
+            parse_right: fn() -> Rule<D, R>,
+            output: impl Fn(
+                    &mut Parser<'_, D>,
+                    D::Info,
+                    WithInfo<D::Info, L>,
+                    WithInfo<D::Info, R>,
+                    &Rc<ParseStack<D>>,
+                ) -> WithInfo<D::Info, Output>
+                + Clone
+                + 'static,
+        ) -> Self
+        where
+            L: DefaultFromInfo<D::Info> + 'static,
+            R: DefaultFromInfo<D::Info> + 'static,
+        {
+            Rule::nonterminal(
+                syntax_kind,
+                RuleToRender::List(vec![
+                    Rc::new(move || parse_left().render_nested()),
+                    Rc::new(move || RuleToRender::Keyword(expected.to_string())),
+                    Rc::new(move || parse_right().render_nested()),
+                ]),
+                || true,
+                ParseFn::new(
+                    {
+                        let output = output.clone();
+                        move |parser, tree, stack| {
+                            let (found, left, right) = match &tree.item {
+                                TokenTree::Operator(operator, left, right) => {
+                                    (operator, left, right)
+                                }
+                                _ => return Some(Err(stack.len())),
+                            };
+
+                            if found.item != expected {
+                                return Some(Err(stack.len()));
+                            }
+
+                            let left =
+                                match parse_left().try_parse(parser, left.as_deref(), stack)? {
+                                    Ok(left) => left,
+                                    Err(progress) => return Some(Err(progress)),
+                                };
+
+                            let right =
+                                match parse_right().try_parse(parser, right.as_deref(), stack)? {
+                                    Ok(right) => right,
+                                    Err(progress) => return Some(Err(progress)),
+                                };
+
+                            Some(Ok(output(parser, tree.info, left, right, stack)))
+                        }
+                    },
+                    move |parser, tree, stack| {
+                        let (found, left, right) = match &tree.item {
+                            TokenTree::Operator(operator, left, right) => (operator, left, right),
+                            _ => {
+                                parser.add_diagnostic(stack.error_expected(
+                                    WithInfo {
+                                        info: tree.info,
+                                        item: syntax_kind,
+                                    },
+                                    None,
+                                ));
+
+                                return None;
+                            }
+                        };
+
+                        if found.item != expected {
+                            parser.add_diagnostic(stack.error_expected(
+                                WithInfo {
+                                    info: tree.info,
+                                    item: syntax_kind,
+                                },
+                                None,
+                            ));
+
                             return None;
                         }
 

@@ -14,8 +14,8 @@ intrinsic "constant" "none" : None
 intrinsic "constant" "some" : Some
 
 Value where (Equal Value) => instance (Equal (Maybe Value)) : b a -> when (a ; b) {
-    Some a ; Some b -> a = b
-    None ; None -> True
+    (Some a ; Some b) -> a = b
+    (None ; None) -> True
     _ -> False
 }
 
