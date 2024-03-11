@@ -2154,7 +2154,7 @@ fn resolve_pattern<D: Driver>(
                                 .instantiate(context.driver, &instantiation_context)
                             })
                             .collect::<Vec<_>>(),
-                        _ => panic!("expected structure type"),
+                        _ => return,
                     }
                 }
                 _ => fields
@@ -2217,7 +2217,7 @@ fn resolve_pattern<D: Driver>(
                                 })
                                 .collect::<Vec<_>>()
                         }
-                        _ => panic!("expected enumeration type"),
+                        _ => return,
                     }
                 }
                 _ => {
@@ -2250,7 +2250,7 @@ fn resolve_pattern<D: Driver>(
                                 })
                                 .collect::<Vec<_>>()
                         }
-                        _ => panic!("expected enumeration type"),
+                        _ => return,
                     };
 
                     let enumeration_type = Type::new(
