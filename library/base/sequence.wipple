@@ -131,7 +131,7 @@ From-Sequence : Element Container => trait (Sequence Element -> Container)
 
 -- Collect a sequence into a single container, like a list.
 collect :: Input (infer Element) Output where (As-Sequence Input Element) (From-Sequence Element Output) => Input -> Output
-collect : As-Sequence | From-Sequence
+collect : collection -> From-Sequence (As-Sequence collection)
 
 Element => instance (From-Sequence Element (List Element)) : sequence -> {
     list : mutable (,)
@@ -207,7 +207,7 @@ split-by : separator collection -> {
 
 -- Split a sequence into groups of consecutive items equal to a value.
 split :: Collection (infer Element) where (As-Sequence Collection Element) (Equal Element) => Element -> Collection -> Sequence (List Element)
-split : separator -> split-by (= separator)
+split : separator -> split-by (item -> item = separator)
 
 -- Count the number of items in a sequence.
 count :: Collection (infer Element) where (As-Sequence Collection Element) => Collection -> Number
@@ -323,7 +323,7 @@ Element => instance (Extend (List Element) Element) : sequence list -> sequence 
 
 -- Append the contents of a sequence to a collection.
 extend :: From Container (infer Element) where (As-Sequence From Element) (Extend Container Element) => From -> Container -> Container
-extend : As-Sequence | Extend
+extend : collection -> Extend (As-Sequence collection)
 
 -- Append the contents of a sequence to a mutable collection.
 extend! :: From Container (infer Element) where (As-Sequence From Element) (Extend Container Element) => From -> Mutable Container -> ()

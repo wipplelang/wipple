@@ -802,6 +802,7 @@ mod rules {
                 || expression().map(SyntaxKind::Statement, Statement::Expression),
             ],
         )
+        .no_backtrack()
         .named("A statement.")
     }
 

@@ -27,7 +27,7 @@ intrinsic "trait" "by" : By
     min : min
     max : max
     step : step
-)
+}
 
 (N : Number) where (Empty N) (Order N) (Add N N N) => instance (As-Sequence (Stride N) N) : {
     min : min

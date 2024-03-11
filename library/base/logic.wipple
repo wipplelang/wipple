@@ -18,7 +18,7 @@ if : condition then else -> when condition {
 -- Represents the logical inverse of a value.
 Not : Value => trait (Value -> Value)
 instance (Not Boolean) : boolean -> if boolean False True
-A (B : Boolean) where (Not B) => instance (Not (A -> B)) : f -> f | not
+A (B : Boolean) where (Not B) => instance (Not (A -> B)) : f -> x -> not (f x)
 
 -- Returns `False` if provided `True`, and vice versa. Can also be used on boolean functions and any other value that implements `Not`.
 not :: (Value : Boolean) where (Not Value) => Value -> Value

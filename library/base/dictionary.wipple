@@ -89,7 +89,7 @@ remove-entry : key {
         hasher : hasher
         size : if (size = 0) 0 (size - 1)
         entries : entries
-    )
+    }
 
     dictionary . set-entry key None
 }
@@ -108,7 +108,7 @@ set-entry : key value {
     index : mutable initial-index
 
     -- Find a spot for the entry
-    repeat with-control-flow }
+    repeat with-control-flow {
         when (entries . nth (get index) . unwrap) {
             Some (existing ; _) -> {
                 if (key = existing) {
@@ -117,7 +117,7 @@ set-entry : key value {
                     index . set! ((get index + 1) % count entries)
                     if (get index = initial-index) (Stop ()) (Continue ())
                 }
-            )
+            }
             None -> Stop ()
         }
     }
