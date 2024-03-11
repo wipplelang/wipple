@@ -596,7 +596,7 @@ pub fn parse<D: Driver>(driver: &D, tree: WithInfo<D::Info, &TokenTree<'_, D>>) 
 where
     D::Info: From<Info>,
 {
-    let mut parser = base::Parser::new(driver);
+    let mut parser = base::Parser::new(driver).debug();
 
     let stack = base::ParseStack::<D>::new(WithInfo {
         info: tree.info.clone(),
@@ -901,7 +901,7 @@ mod rules {
                             Rule::keyword1(
                                 SyntaxKind::TraitDeclaration,
                                 Keyword::Trait,
-                                r#type,
+                                || r#type().no_backtrack(),
                                 |_, info: D::Info, r#type, _| WithInfo {
                                     info: info.clone(),
                                     item: (TypeFunction::default_from_info(info), r#type),
@@ -917,7 +917,7 @@ mod rules {
                                     Rule::keyword1(
                                         SyntaxKind::TraitDeclaration,
                                         Keyword::Trait,
-                                        r#type,
+                                        || r#type().no_backtrack(),
                                         |_, _, r#type, _| r#type,
                                     )
                                 },
@@ -1269,7 +1269,7 @@ mod rules {
                 || {
                     Rule::list(
                         SyntaxKind::TypeParameter,
-                        type_parameter,
+                        || type_parameter().no_backtrack(),
                         |_, info, parameters, _| WithInfo {
                             info,
                             item: TypeFunction {
@@ -1286,7 +1286,7 @@ mod rules {
                         || {
                             Rule::list(
                                 SyntaxKind::TypeParameter,
-                                type_parameter,
+                                || type_parameter().no_backtrack(),
                                 |_, info, parameters, _| WithInfo {
                                     info,
                                     item: parameters,
@@ -1294,9 +1294,11 @@ mod rules {
                             )
                         },
                         || {
-                            Rule::list(SyntaxKind::Instance, instance, |_, info, bounds, _| {
-                                WithInfo { info, item: bounds }
-                            })
+                            Rule::list(
+                                SyntaxKind::Instance,
+                                || instance().no_backtrack(),
+                                |_, info, bounds, _| WithInfo { info, item: bounds },
+                            )
                         },
                         |_, info, parameters, bounds, _| WithInfo {
                             info,
@@ -1349,15 +1351,18 @@ mod rules {
                                 SyntaxKind::TypeParameter,
                                 [
                                     || {
-                                        name().wrapped().map(SyntaxKind::TypeParameter, |name| {
-                                            (
-                                                name.clone(),
-                                                WithInfo {
-                                                    info: name.info,
-                                                    item: None,
-                                                },
-                                            )
-                                        })
+                                        name().wrapped().in_list().map(
+                                            SyntaxKind::TypeParameter,
+                                            |name| {
+                                                (
+                                                    name.clone(),
+                                                    WithInfo {
+                                                        info: name.info,
+                                                        item: None,
+                                                    },
+                                                )
+                                            },
+                                        )
                                     },
                                     || {
                                         Rule::keyword1(
@@ -1396,6 +1401,7 @@ mod rules {
                 },
             ],
         )
+        .no_backtrack()
         .named("A type parameter.")
     }
 
@@ -1455,6 +1461,7 @@ mod rules {
                 },
             ],
         )
+        .no_backtrack()
         .named("A set of fields or variants in a type.")
     }
 
@@ -1471,6 +1478,7 @@ mod rules {
                 },
             },
         )
+        .no_backtrack()
         .named("An instance.")
     }
 
