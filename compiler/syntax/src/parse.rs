@@ -1431,7 +1431,7 @@ mod rules {
                                         Rule::non_associative_operator(
                                             SyntaxKind::FieldDeclaration,
                                             NonAssociativeOperator::Annotate,
-                                            || name().wrapped().in_list(),
+                                            || name().wrapped().in_list().no_backtrack(),
                                             r#type,
                                             |_, info, name, r#type, _| WithInfo {
                                                 info,
@@ -1445,7 +1445,7 @@ mod rules {
                                     || {
                                         Rule::list_prefix(
                                             SyntaxKind::VariantDeclaration,
-                                            || name().wrapped(),
+                                            || name().wrapped().no_backtrack(),
                                             r#type,
                                             |_, info, name, types, _| WithInfo {
                                                 info,

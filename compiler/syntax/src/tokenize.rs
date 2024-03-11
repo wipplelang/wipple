@@ -500,12 +500,6 @@ where
                     RawToken::Name(name) => {
                         if let Ok(keyword) = name.parse::<Keyword>() {
                             Token::Keyword(keyword)
-                        } else if let Ok(operator) = name.parse::<Operator>() {
-                            Token::Operator(operator)
-                        } else if let Ok(operator) = name.parse::<VariadicOperator>() {
-                            Token::VariadicOperator(operator)
-                        } else if let Ok(operator) = name.parse::<NonAssociativeOperator>() {
-                            Token::NonAssociativeOperator(operator)
                         } else {
                             Token::Name(name)
                         }
@@ -1321,11 +1315,27 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                         }
                     };
 
-                    // Allow line break before closing brace
-                    if statements.last().is_some_and(|tree| {
-                        matches!(&tree.item, TokenTree::List(_, elements) if elements.is_empty())
-                    }) {
-                        statements.pop().unwrap();
+                    if let Some(tree) = statements.last_mut() {
+                        // Allow line break before closing brace
+                        if matches!(&tree.item, TokenTree::List(_, elements) if elements.is_empty())
+                        {
+                            statements.pop().unwrap();
+                        } else {
+                            let (delimiter, expressions) = match &mut tree.item {
+                                TokenTree::List(delimiter, expressions) => {
+                                    (*delimiter, mem::take(expressions))
+                                }
+                                _ => unreachable!(),
+                            };
+
+                            if let Some(first) = expressions.first() {
+                                let last = expressions.last().unwrap();
+                                tree.info = D::merge_info(first.info.clone(), last.info.clone());
+                            }
+
+                            tree.item =
+                                parse_operators::<D>(delimiter, expressions, &mut diagnostics);
+                        }
                     }
 
                     push!(WithInfo {

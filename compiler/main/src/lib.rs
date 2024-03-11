@@ -216,6 +216,8 @@ impl Driver {
                     .map(|diagnostic| diagnostic.map(Diagnostic::Tokenize)),
             );
 
+            wipple_util::log!("tree: {:#?}", tree);
+
             let parse_result = syntax::parse::parse(&syntax_driver, tree.as_ref());
 
             diagnostics.extend(
