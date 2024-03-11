@@ -763,7 +763,6 @@ mod rules {
             name_expression::<D>().render(),
             number_expression::<D>().render(),
             text_expression::<D>().render(),
-            call_expression::<D>().render(),
             apply_expression::<D>().render(),
             binary_operator_expression::<D>().render(),
             as_expression::<D>().render(),
@@ -776,6 +775,7 @@ mod rules {
             structure_expression::<D>().render(),
             block_expression::<D>().render(),
             function_expression::<D>().render(),
+            call_expression::<D>().render(),
         ]
     }
 
@@ -1118,11 +1118,11 @@ mod rules {
             SyntaxKind::Type,
             [
                 placeholder_type,
-                declared_type,
                 function_type,
                 tuple_type,
                 block_type,
                 intrinsic_type,
+                declared_type,
             ],
         )
         .unwrap_parentheses()
@@ -1489,10 +1489,10 @@ mod rules {
                 wildcard_pattern,
                 number_pattern,
                 text_pattern,
-                variant_pattern,
                 destructure_pattern,
                 tuple_pattern,
                 or_pattern,
+                variant_pattern,
             ],
         )
         .unwrap_parentheses()
@@ -1629,7 +1629,6 @@ mod rules {
                 name_expression,
                 number_expression,
                 text_expression,
-                call_expression,
                 apply_expression,
                 binary_operator_expression,
                 as_expression,
@@ -1640,6 +1639,8 @@ mod rules {
                 collection_expression,
                 structure_expression,
                 block_expression,
+                function_expression,
+                call_expression,
             ],
         )
         .unwrap_parentheses()
@@ -1857,7 +1858,7 @@ mod rules {
         Rule::keyword_prefixn(
             SyntaxKind::IntrinsicExpression,
             Keyword::Intrinsic,
-            || text().wrapped(),
+            || text().wrapped().no_backtrack(),
             expression,
             |_, info, name, inputs, _| WithInfo {
                 info,
