@@ -710,32 +710,40 @@ fn generate_variant_constructor<D: Driver>(
 ) -> (String, WithInfo<D::Info, crate::Path>) {
     let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
 
-    let constructor_declaration = crate::ConstantDeclaration {
-        parameters: parameters.clone(),
-        bounds: Vec::new(),
-        r#type: WithInfo {
+    let constructor_declaration = {
+        let output_type = WithInfo {
             info: name.info.clone(),
-            item: crate::Type::Function {
-                inputs: value_types.clone(),
-                output: WithInfo {
+            item: crate::Type::Declared {
+                path: WithInfo {
                     info: name.info.clone(),
-                    item: crate::Type::Declared {
-                        path: WithInfo {
-                            info: name.info.clone(),
-                            item: info.path.clone(),
-                        },
-                        parameters: parameters
-                            .into_iter()
-                            .map(|parameter| WithInfo {
-                                info: name.info.clone(),
-                                item: crate::Type::Parameter(parameter),
-                            })
-                            .collect(),
+                    item: info.path.clone(),
+                },
+                parameters: parameters
+                    .clone()
+                    .into_iter()
+                    .map(|parameter| WithInfo {
+                        info: name.info.clone(),
+                        item: crate::Type::Parameter(parameter),
+                    })
+                    .collect(),
+            },
+        };
+
+        crate::ConstantDeclaration {
+            parameters,
+            bounds: Vec::new(),
+            r#type: if value_types.is_empty() {
+                output_type
+            } else {
+                WithInfo {
+                    info: name.info.clone(),
+                    item: crate::Type::Function {
+                        inputs: value_types.clone(),
+                        output: output_type.boxed(),
                     },
                 }
-                .boxed(),
             },
-        },
+        }
     };
 
     let constructor_body = {
@@ -748,34 +756,39 @@ fn generate_variant_constructor<D: Driver>(
             })
             .collect::<Vec<_>>();
 
-        WithInfo {
+        let output = WithInfo {
             info: name.info.clone(),
-            item: crate::Expression::Function {
-                inputs: input_variables
+            item: crate::Expression::Variant {
+                variant: variant_path,
+                values: input_variables
                     .iter()
-                    .map(|variable| WithInfo {
+                    .map(|input_variable| WithInfo {
                         info: name.info.clone(),
-                        item: crate::Pattern::Variable(name.item.clone(), variable.clone()),
+                        item: crate::Expression::Variable(
+                            name.item.clone(),
+                            input_variable.clone(),
+                        ),
                     })
                     .collect(),
-                body: WithInfo {
-                    info: name.info.clone(),
-                    item: crate::Expression::Variant {
-                        variant: variant_path,
-                        values: input_variables
-                            .into_iter()
-                            .map(|input_variable| WithInfo {
-                                info: name.info.clone(),
-                                item: crate::Expression::Variable(
-                                    name.item.clone(),
-                                    input_variable,
-                                ),
-                            })
-                            .collect(),
-                    },
-                }
-                .boxed(),
             },
+        };
+
+        if value_types.is_empty() {
+            output
+        } else {
+            WithInfo {
+                info: name.info.clone(),
+                item: crate::Expression::Function {
+                    inputs: input_variables
+                        .into_iter()
+                        .map(|variable| WithInfo {
+                            info: name.info.clone(),
+                            item: crate::Pattern::Variable(name.item.clone(), variable),
+                        })
+                        .collect(),
+                    body: output.boxed(),
+                },
+            }
         }
     };
 
