@@ -424,7 +424,7 @@ enum RawToken<'src> {
     #[regex(r#"\n"#)]
     LineBreak,
 
-    #[regex(r#"-- .*"#, |lex| Cow::Borrowed(&lex.slice()[3..]))]
+    #[regex(r#"--.*"#, |lex| Cow::Borrowed(&lex.slice()[2..]))]
     Comment(Cow<'src, str>),
 
     #[regex(r#"[A-Za-z0-9\-_]+[?]?"#, |lex| Cow::Borrowed(lex.slice()))]
@@ -653,7 +653,7 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
                     s.push(' ');
                 }
 
-                s.push_str("-- ");
+                s.push_str("--");
                 s.push_str(comment);
             }
             Token::Keyword(keyword) => {
