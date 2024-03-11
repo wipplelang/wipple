@@ -61,9 +61,8 @@ pub fn compile<D: Driver>(
     driver: &D,
     path: D::Path,
     expression: WithInfo<D::Info, &wipple_typecheck::TypedExpression<D>>,
-    top_level: bool,
 ) -> Option<Result<D>> {
-    let mut labels = compile::compile(driver, path, expression, top_level)?;
+    let mut labels = compile::compile(driver, path, expression)?;
 
     for instructions in &mut labels {
         tail_call::apply(instructions);
@@ -138,9 +137,6 @@ pub enum Instruction<D: Driver> {
     /// (Control flow) Go to another label if the variant on the top of the
     /// stack does not match the variant in the condition.
     JumpIfNot(D::Path, Label),
-
-    /// (Control flow) End the program.
-    End,
 
     /// (Control flow) Return the top of the stack as the result of this
     /// function.
@@ -265,7 +261,6 @@ where
             Instruction::JumpIfNot(variant, label) => {
                 write!(f, "jump if not {variant:?} {label}")
             }
-            Instruction::End => write!(f, "end"),
             Instruction::Return => write!(f, "return"),
             Instruction::Jump(label) => write!(f, "jump {label}"),
             Instruction::TailCall => write!(f, "tail call"),

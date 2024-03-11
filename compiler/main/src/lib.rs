@@ -367,7 +367,7 @@ impl Driver {
             );
 
             let codegen_result =
-                codegen::compile(&self, path.clone(), typecheck_result.item.as_ref(), false);
+                codegen::compile(&self, path.clone(), typecheck_result.item.as_ref());
 
             self.library.items.insert(
                 path,
@@ -412,7 +412,7 @@ impl Driver {
             );
 
             let codegen_result =
-                codegen::compile(&self, path.clone(), typecheck_result.item.as_ref(), false);
+                codegen::compile(&self, path.clone(), typecheck_result.item.as_ref());
 
             self.library.items.insert(
                 path,
@@ -458,7 +458,6 @@ impl Driver {
                 &self,
                 lower::Path::top_level(),
                 typecheck_result.item.as_ref(),
-                true,
             );
 
             self.library.code.push(Item {

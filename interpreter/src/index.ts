@@ -230,7 +230,8 @@ export const evaluate = async (
     };
 
     for (const item of executable.code) {
-        await evaluateItem("top-level", item.ir, 0, [], {}, {}, context);
+        const block = (await evaluateItem("top-level", item.ir, 0, [], {}, {}, context))!;
+        await context.do(block);
     }
 };
 
@@ -557,9 +558,6 @@ const evaluateItem = async (
                     }
 
                     break;
-                }
-                case "end": {
-                    return undefined;
                 }
                 case "return": {
                     return pop();

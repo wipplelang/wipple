@@ -6,7 +6,6 @@ pub fn compile<D: crate::Driver>(
     driver: &D,
     path: D::Path,
     expression: WithInfo<D::Info, &wipple_typecheck::TypedExpression<D>>,
-    top_level: bool,
 ) -> Option<Vec<Vec<crate::Instruction<D>>>> {
     let mut info = Info {
         driver,
@@ -18,11 +17,7 @@ pub fn compile<D: crate::Driver>(
     };
 
     compile_expression(expression, &mut info)?;
-    info.push_instruction(if top_level {
-        crate::Instruction::End
-    } else {
-        crate::Instruction::Return
-    });
+    info.push_instruction(crate::Instruction::Return);
 
     Some(info.labels)
 }
