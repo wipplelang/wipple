@@ -760,7 +760,7 @@ pub fn to_logical_lines<'a, 'src: 'a, D: Driver>(
     while let Some(token) = tokens.next() {
         match &token.item {
             Token::Comment(_) => {}
-            Token::Operator(_) => {
+            Token::Operator(_) | Token::VariadicOperator(_) | Token::NonAssociativeOperator(_) => {
                 result.push(token);
 
                 while let Some(WithInfo {
@@ -780,9 +780,14 @@ pub fn to_logical_lines<'a, 'src: 'a, D: Driver>(
                     tokens.next();
                 }
 
-                if let Some(operator) =
-                    tokens.next_if(|token| matches!(token.item, Token::Operator(_)))
-                {
+                if let Some(operator) = tokens.next_if(|token| {
+                    matches!(
+                        token.item,
+                        Token::Operator(_)
+                            | Token::VariadicOperator(_)
+                            | Token::NonAssociativeOperator(_)
+                    )
+                }) {
                     result.push(operator);
                 } else {
                     result.push(token);

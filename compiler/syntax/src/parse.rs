@@ -1587,7 +1587,7 @@ mod rules {
                 Rule::non_associative_operator(
                     SyntaxKind::StructureField,
                     NonAssociativeOperator::Assign,
-                    || name().wrapped().in_list(),
+                    || name().wrapped().in_list().no_backtrack(),
                     pattern,
                     |_, info, name, pattern, _| WithInfo {
                         info,
