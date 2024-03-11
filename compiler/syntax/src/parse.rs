@@ -1255,9 +1255,12 @@ mod rules {
 
     pub fn intrinsic_type<D: Driver>() -> Rule<D, Type<D>> {
         Rule::match_terminal(
-            SyntaxKind::IntrinsicExpression,
+            SyntaxKind::IntrinsicType,
             RuleToRender::Keyword(Keyword::Intrinsic.to_string()),
-            |_, tree, _| Some(tree.replace(Type::Intrinsic)),
+            |_, tree, _| match tree.item {
+                TokenTree::Keyword(Keyword::Intrinsic) => Some(tree.replace(Type::Intrinsic)),
+                _ => None,
+            },
         )
         .named("An intrinsic type provided by the runtime.")
     }
