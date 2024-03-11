@@ -9,9 +9,9 @@ Repeat-Predicate : State Body Result => trait (State -> Control-Flow (Body -> St
 
 -- Repeat using the `Control-Flow` produced by the `repeat` body.
 with-control-flow :: Result => With-Control-Flow Result
-with-control-flow : (current : Continue ())
+with-control-flow : {current : Continue ()}
 
-With-Control-Flow : Result => type (current :: Control-Flow () Result)
+With-Control-Flow : Result => type {current :: Control-Flow () Result}
 
 Result => instance (Repeat-Predicate (With-Control-Flow Result) (Control-Flow () Result) Result) :
     {current : current} -> when current {
@@ -21,12 +21,12 @@ Result => instance (Repeat-Predicate (With-Control-Flow Result) (Control-Flow ()
 
 -- Repeat so long as the provided condition is `True`.
 while :: defer Boolean -> While
-while : condition -> (condition : () -> produce condition)
+while : condition -> {condition : () -> produce condition}
 
 While : type {condition :: () -> Boolean}
 
-instance (Repeat-Predicate While () ()) : (condition : condition) ->
-    if (condition ()) (Continue (() -> (condition : condition))) (Stop ())
+instance (Repeat-Predicate While () ()) : {condition : condition} ->
+    if (condition ()) (Continue (() -> {condition : condition})) (Stop ())
 
 -- Repeat forever.
 forever :: Forever

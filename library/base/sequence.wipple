@@ -5,11 +5,11 @@ Sequence : Element => type {
 
 -- Create a sequence that computes its value on demand.
 sequence :: Element => defer (Maybe Element) -> Sequence Element
-sequence : next -> (next : () -> produce next)
+sequence : next -> {next : () -> produce next}
 
 -- Retrieve the next item in a sequence.
 next :: Element => Sequence Element -> Maybe Element
-next : (next : next) -> next ()
+next : {next : next} -> next ()
 
 -- Convert a collection into a sequence.
 -- on-unimplemented : "cannot create a sequence from a _" Container
@@ -124,7 +124,7 @@ reduce : result f container -> {
 
 -- Find the sum of all the numbers in a sequence.
 sum :: Container (infer N) where (As-Sequence Container N) (Empty N) (Add N N N) => Container -> N
-sum : reduce Empty (+)
+sum : reduce Empty Add
 
 -- on-unimplemented : "cannot create a _ from a sequence of _" Container Element
 From-Sequence : Element Container => trait (Sequence Element -> Container)

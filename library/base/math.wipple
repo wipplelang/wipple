@@ -62,7 +62,7 @@ Angle : type {degrees :: Number}
 
 -- An angle in degrees.
 degrees :: Number -> Angle
-degrees : degrees -> (degrees : degrees)
+degrees : degrees -> {degrees : degrees}
 
 -- Calculate the sine of an angle.
 sin :: Angle -> Number
