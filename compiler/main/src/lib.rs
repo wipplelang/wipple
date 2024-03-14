@@ -168,7 +168,7 @@ pub struct Result {
 /// Diagnostics produced by the compiler.
 #[allow(missing_docs)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[ts(export)]
 pub enum Diagnostic {
     Tokenize(syntax::tokenize::Diagnostic<SyntaxDriver>),

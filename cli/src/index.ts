@@ -15,6 +15,7 @@ import {
 import { File } from "cmd-ts/batteries/fs";
 import { compile, link } from "wipple-compiler";
 import { evaluate, InterpreterError, IoRequest } from "wipple-interpreter";
+import { runLanguageServer } from "./lsp.js";
 
 Error.stackTraceLimit = Infinity;
 
@@ -193,6 +194,13 @@ const app = subcommands({
                         throw error;
                     }
                 }
+            },
+        }),
+        lsp: command({
+            name: "lsp",
+            args: {},
+            handler: async ({}) => {
+                runLanguageServer();
             },
         }),
     },

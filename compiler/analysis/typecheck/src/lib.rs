@@ -232,8 +232,8 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
     Eq(bound = ""),
     Hash(bound = "")
 )]
-#[serde(rename_all = "camelCase")]
-#[serde(bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
+#[serde(bound = "")]
 #[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Diagnostic<D: Driver> {
     /// The typechecker hit the recursion limit while attempting to resolve the
@@ -327,8 +327,8 @@ pub enum Diagnostic<D: Driver> {
     Eq(bound = ""),
     Hash(bound = "")
 )]
-#[serde(rename_all = "camelCase")]
-#[serde(bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
+#[serde(bound = "")]
 #[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Type<D: Driver> {
     /// A type to be inferred or that could not be resolved.
@@ -461,8 +461,8 @@ pub struct TypeParameterDeclaration<D: Driver> {
 /// The representation of a [`TypeDeclaration`].
 #[derive(Serialize, Deserialize, Derivative, TS)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase")]
-#[serde(bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
+#[serde(bound = "")]
 #[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum TypeRepresentation<D: Driver> {
     /// The type has a single value.
@@ -730,8 +730,8 @@ pub struct TypedExpression<D: Driver> {
 /// The kind of [`TypedExpression`].
 #[derive(Serialize, Deserialize, Derivative, TS)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase")]
-#[serde(bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
+#[serde(bound = "")]
 #[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum TypedExpressionKind<D: Driver> {
     /// An expression that could not be resolved.
@@ -914,8 +914,8 @@ pub struct TypedArm<D: Driver> {
     Eq(bound = ""),
     Hash(bound = "")
 )]
-#[serde(rename_all = "camelCase")]
-#[serde(bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
+#[serde(bound = "")]
 #[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Pattern<D: Driver> {
     /// A pattern that could not be resolved prior to or after typechecking.

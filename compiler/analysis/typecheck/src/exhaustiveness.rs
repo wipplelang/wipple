@@ -257,7 +257,7 @@ enum Type<D: Driver> {
     Eq(bound = ""),
     Hash(bound = "")
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound = "")]
 #[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Pattern<D: Driver> {
@@ -280,7 +280,7 @@ pub enum Pattern<D: Driver> {
     Eq(bound = ""),
     Hash(bound = "")
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound = "")]
 #[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Constructor<D: Driver> {

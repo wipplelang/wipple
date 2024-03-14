@@ -1,5 +1,5 @@
 {
-    "name": "wipple-server",
+    "name": "wipple-render",
     "private": true,
     "type": "module",
     "main": "dist/index.js",
@@ -13,6 +13,7 @@
         "typescript": "^5.3.3"
     },
     "dependencies": {
+        "lines-and-columns": "^2.0.4",
         "wipple-compiler": "file:../compiler"
     }
 }

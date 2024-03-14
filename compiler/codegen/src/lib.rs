@@ -98,10 +98,8 @@ pub type Label = usize;
     Eq(bound = ""),
     Hash(bound = "")
 )]
-#[serde(tag = "type")]
-#[serde(content = "value")]
-#[serde(rename_all = "camelCase")]
-#[serde(bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
+#[serde(bound = "")]
 #[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Instruction<D: Driver> {
     /// (Stack management) Duplicate the top of the stack.
@@ -166,10 +164,8 @@ pub enum Instruction<D: Driver> {
     Eq(bound = ""),
     Hash(bound = "")
 )]
-#[serde(tag = "type")]
-#[serde(content = "value")]
-#[serde(rename_all = "camelCase")]
-#[serde(bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
+#[serde(bound = "")]
 #[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum TypedInstruction<D: Driver> {
     /// (Consuming) An intrinsic provided by the runtime with _n_ inputs.
@@ -218,10 +214,8 @@ pub enum TypedInstruction<D: Driver> {
     Eq(bound = ""),
     Hash(bound = "")
 )]
-#[serde(tag = "type")]
-#[serde(content = "value")]
-#[serde(rename_all = "camelCase")]
-#[serde(bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
+#[serde(bound = "")]
 #[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum TypeDescriptor<D: Driver> {
     /// A type parameter. This will only occur in the type descriptor for a

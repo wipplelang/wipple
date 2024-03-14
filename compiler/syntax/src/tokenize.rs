@@ -294,7 +294,7 @@ impl Operator {
     Eq(bound = "D::Info: Eq"),
     Hash(bound = "D::Info: Hash")
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Diagnostic<D: Driver> {
     /// The tokenizer encountered an invalid token.
