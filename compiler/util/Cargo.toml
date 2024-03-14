@@ -8,5 +8,5 @@ workspace = true
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-ts-rs = { git = "https://github.com/WilsonGramer/ts-rs", branch = "concrete", features = ["no-serde-warnings"] }
+ts-rs = { git = "https://github.com/WilsonGramer/ts-rs", branch = "bound-attribute", features = ["no-serde-warnings"] }
 web-sys = { version = "0.3", features = ["console"] }

@@ -59,15 +59,12 @@ pub fn link(libraries: &str) -> String {
 
 /// The driver.
 #[non_exhaustive]
-#[derive(Debug, TS)] // FIXME: Remove `#[derive(TS)]`
+#[derive(Debug)]
 pub struct Driver {
     /// The recursion limit.
-    #[ts(skip)]
     pub recursion_limit: u32,
 
-    #[ts(skip)]
     interface: Interface,
-    #[ts(skip)]
     library: Library,
 }
 
@@ -216,8 +213,6 @@ impl Driver {
                     .map(|diagnostic| diagnostic.map(Diagnostic::Tokenize)),
             );
 
-            wipple_util::log!("tree: {:#?}", tree);
-
             let parse_result = syntax::parse::parse(&syntax_driver, tree.as_ref());
 
             diagnostics.extend(
@@ -226,8 +221,6 @@ impl Driver {
                     .into_iter()
                     .map(|error| error.map(Diagnostic::Parse)),
             );
-
-            wipple_util::log!("parse_result: {:#?}", parse_result.top_level);
 
             let syntax_result = syntax::parse(&syntax_driver, parse_result.top_level);
 
@@ -296,8 +289,6 @@ impl Driver {
                 .into_iter()
                 .map(|error| error.map(Diagnostic::Lower)),
         );
-
-        wipple_util::log!("lower_result: {:#?}", lower_result.interface);
 
         self.interface.top_level = lower_result.interface.top_level;
 
@@ -525,7 +516,6 @@ impl Driver {
 }
 
 #[doc(hidden)]
-#[derive(TS)] // FIXME: Remove `#[derive(TS)]`
 pub struct SyntaxDriver {
     file_path: Rc<str>,
     visible_path: Rc<str>,

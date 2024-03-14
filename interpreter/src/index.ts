@@ -296,6 +296,11 @@ const evaluateItem = async (
                     scope[instruction.value] = value;
                     break;
                 }
+                case "mutate": {
+                    const value = pop();
+                    scope[instruction.value] = value;
+                    break;
+                }
                 case "field": {
                     const value = peek();
                     if (value.type !== "structure") {

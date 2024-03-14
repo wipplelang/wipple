@@ -521,15 +521,60 @@ fn resolve_statements<D: Driver>(
             }
             crate::UnresolvedStatement::Assignment { pattern, value } => {
                 let value = resolve_expression(value, info);
-                let pattern = resolve_pattern(pattern, info);
 
-                Some(WithInfo {
-                    info: statement.info,
-                    item: crate::Expression::Assign {
-                        pattern,
-                        value: value.boxed(),
-                    },
-                })
+                match pattern.item {
+                    crate::UnresolvedPattern::Mutate(name) => {
+                        let name = match name.clone().try_unwrap() {
+                            Some(name) => name,
+                            None => {
+                                return Some(WithInfo {
+                                    info: statement.info,
+                                    item: crate::Expression::Assign {
+                                        pattern: name.replace(crate::Pattern::Error),
+                                        value: value.boxed(),
+                                    },
+                                });
+                            }
+                        };
+
+                        match resolve_name(name.clone(), info, |candidates| {
+                            candidates
+                                .iter()
+                                .filter_map(|path| match path.item.last().unwrap() {
+                                    crate::PathComponent::Variable(_) => Some(path.clone()),
+                                    _ => None,
+                                })
+                                .collect::<Vec<_>>()
+                        }) {
+                            Some(path) => Some(WithInfo {
+                                info: statement.info,
+                                item: crate::Expression::Mutate {
+                                    name,
+                                    path,
+                                    value: value.boxed(),
+                                },
+                            }),
+                            None => Some(WithInfo {
+                                info: statement.info,
+                                item: crate::Expression::Assign {
+                                    pattern: name.replace(crate::Pattern::Error),
+                                    value: value.boxed(),
+                                },
+                            }),
+                        }
+                    }
+                    _ => {
+                        let pattern = resolve_pattern(pattern, info);
+
+                        Some(WithInfo {
+                            info: statement.info,
+                            item: crate::Expression::Assign {
+                                pattern,
+                                value: value.boxed(),
+                            },
+                        })
+                    }
+                }
             }
             crate::UnresolvedStatement::Expression(expression) => {
                 Some(resolve_expression(expression, info))
@@ -1310,6 +1355,12 @@ fn resolve_pattern_inner<D: Driver>(
             left: resolve_pattern_inner(left.unboxed(), defines, info).boxed(),
             right: resolve_pattern_inner(right.unboxed(), defines, info).boxed(),
         },
+        crate::UnresolvedPattern::Mutate(name) => {
+            info.errors
+                .push(name.replace(crate::Diagnostic::InvalidMutatePattern));
+
+            crate::Pattern::Error
+        }
     })
 }
 

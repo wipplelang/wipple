@@ -396,6 +396,7 @@ pub(crate) enum Pattern<D: Driver> {
         left: WithInfo<D::Info, Box<Pattern<D>>>,
         right: WithInfo<D::Info, Box<Pattern<D>>>,
     },
+    Mutate(WithInfo<D::Info, Option<String>>),
 }
 
 impl<D: Driver> DefaultFromInfo<D::Info> for Pattern<D> {
@@ -494,7 +495,7 @@ impl<D: Driver> DefaultFromInfo<D::Info> for FieldValue<D> {
     Eq(bound = "D::Info: Eq"),
     Hash(bound = "D::Info: Hash")
 )]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct Diagnostic<D: Driver> {
     /// The expected piece of syntax at this location.
     pub expected: SyntaxKind,
@@ -541,6 +542,7 @@ pub enum SyntaxKind {
     DestructurePattern,
     TuplePattern,
     OrPattern,
+    MutatePattern,
     Expression,
     Type,
     PlaceholderType,
@@ -596,7 +598,7 @@ pub fn parse<D: Driver>(driver: &D, tree: WithInfo<D::Info, &TokenTree<'_, D>>) 
 where
     D::Info: From<Info>,
 {
-    let mut parser = base::Parser::new(driver).debug();
+    let mut parser = base::Parser::new(driver);
 
     let stack = base::ParseStack::<D>::new(WithInfo {
         info: tree.info.clone(),
@@ -1504,6 +1506,7 @@ mod rules {
                 destructure_pattern,
                 tuple_pattern,
                 or_pattern,
+                mutate_pattern,
                 variant_pattern,
             ],
         )
@@ -1631,6 +1634,18 @@ mod rules {
             },
         )
         .named("A pattern that matches either one of its subpatterns.")
+    }
+
+    pub fn mutate_pattern<D: Driver>() -> Rule<D, Pattern<D>> {
+        Rule::mutate(
+            SyntaxKind::MutatePattern,
+            || name().wrapped(),
+            |_, info, name, _| WithInfo {
+                info,
+                item: Pattern::Mutate(name),
+            },
+        )
+        .named("A pattern that changes the value of an existing variable.")
     }
 
     pub fn expression<D: Driver>() -> Rule<D, Expression<D>> {
@@ -2536,6 +2551,63 @@ mod base {
                         move |parser, tree, stack| f(parser, tree, stack).map(Ok)
                     },
                     move |parser, tree, stack| f(parser, tree, stack),
+                ),
+            )
+        }
+
+        pub fn mutate<E>(
+            syntax_kind: SyntaxKind,
+            parse_element: fn() -> Rule<D, E>,
+            output: impl Fn(
+                    &mut Parser<'_, D>,
+                    D::Info,
+                    WithInfo<D::Info, E>,
+                    &Rc<ParseStack<D>>,
+                ) -> WithInfo<D::Info, Output>
+                + Clone
+                + 'static,
+        ) -> Self
+        where
+            E: DefaultFromInfo<D::Info> + 'static,
+        {
+            Rule::terminal(
+                syntax_kind,
+                RuleToRender::List(vec![
+                    Rc::new(move || parse_element().render_nested()),
+                    Rc::new(|| RuleToRender::Keyword(Keyword::Mutate.to_string())),
+                ]),
+                || true,
+                ParseFn::new(
+                    {
+                        let output = output.clone();
+                        move |parser, tree, stack| {
+                            let element = match &tree.item {
+                                TokenTree::Mutate(element) => element,
+                                _ => return None,
+                            };
+
+                            let element = match parse_element().try_parse(
+                                parser,
+                                element.as_deref(),
+                                stack,
+                            )? {
+                                Ok(element) => element,
+                                Err(progress) => return Some(Err(progress)),
+                            };
+
+                            Some(Ok(output(parser, tree.info, element, stack)))
+                        }
+                    },
+                    move |parser, tree, stack| {
+                        let element = match &tree.item {
+                            TokenTree::Mutate(element) => element,
+                            _ => return None,
+                        };
+
+                        let element = parse_element().parse(parser, element.as_deref(), stack);
+
+                        Some(output(parser, tree.info, element, stack))
+                    },
                 ),
             )
         }

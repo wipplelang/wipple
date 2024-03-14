@@ -102,7 +102,7 @@ pub type Label = usize;
 #[serde(content = "value")]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Instruction<D: Driver> {
     /// (Stack management) Duplicate the top of the stack.
     Copy,
@@ -127,6 +127,9 @@ pub enum Instruction<D: Driver> {
 
     /// (Consuming) Call the function on the top of the stack with _n_ inputs.
     Call(u32),
+
+    /// (Consuming) Set a variable to the value on the top of the stack.
+    Mutate(u32),
 
     /// (Values) A tuple.
     Tuple(u32),
@@ -167,7 +170,7 @@ pub enum Instruction<D: Driver> {
 #[serde(content = "value")]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum TypedInstruction<D: Driver> {
     /// (Consuming) An intrinsic provided by the runtime with _n_ inputs.
     Intrinsic(String, u32),
@@ -219,7 +222,7 @@ pub enum TypedInstruction<D: Driver> {
 #[serde(content = "value")]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum TypeDescriptor<D: Driver> {
     /// A type parameter. This will only occur in the type descriptor for a
     /// generic item, never in a value.
@@ -254,6 +257,7 @@ where
             Instruction::Element(element) => write!(f, "element {element}"),
             Instruction::Variable(variable) => write!(f, "variable {variable}"),
             Instruction::Call(inputs) => write!(f, "call {inputs}"),
+            Instruction::Mutate(variable) => write!(f, "mutate {variable}"),
             Instruction::Tuple(elements) => write!(f, "tuple {elements}"),
             Instruction::Typed(descriptor, instruction) => {
                 write!(f, "{instruction} :: {descriptor}")

@@ -1268,6 +1268,11 @@ enum ExpressionKind<D: Driver> {
         pattern: WithInfo<D::Info, crate::Pattern<D>>,
         value: WithInfo<D::Info, Box<Expression<D>>>,
     },
+    Mutate {
+        name: String,
+        path: WithInfo<D::Info, D::Path>,
+        value: WithInfo<D::Info, Box<Expression<D>>>,
+    },
     Marker(D::Path),
     UnresolvedStructure(Vec<WithInfo<D::Info, StructureFieldValue<D>>>),
     ResolvedStructure {
@@ -1709,6 +1714,33 @@ fn infer_expression<D: Driver>(
                 r#type: Type::new(TypeKind::Tuple(Vec::new()), info.clone(), Vec::new()),
                 kind: ExpressionKind::Initialize {
                     pattern,
+                    value: value.boxed(),
+                },
+            }
+        }
+        crate::UntypedExpression::Mutate { name, path, value } => {
+            let mut value = infer_expression(value.unboxed(), context);
+
+            let r#type = context
+                .variables
+                .borrow()
+                .get(&path.item)
+                .cloned()
+                .unwrap_or_else(|| Type::new(TypeKind::Unknown, info.clone(), Vec::new()));
+
+            try_unify_expression(
+                context.driver,
+                value.as_mut(),
+                &r#type,
+                context.type_context,
+                context.error_queue,
+            );
+
+            Expression {
+                r#type: Type::new(TypeKind::Tuple(Vec::new()), info.clone(), Vec::new()),
+                kind: ExpressionKind::Mutate {
+                    name,
+                    path,
                     value: value.boxed(),
                 },
             }
@@ -2740,6 +2772,19 @@ fn resolve_expression<D: Driver>(
 
             ExpressionKind::Initialize { pattern, value }
         }
+        ExpressionKind::Mutate { name, path, value } => {
+            let value = resolve_expression(value.unboxed(), context).boxed();
+
+            resolve_pattern(
+                path.as_ref()
+                    .map(|path| crate::Pattern::Variable(name.clone(), path.clone()))
+                    .as_ref(),
+                value.as_ref().map(|value| &value.r#type),
+                InferContext::from_resolve_context(context),
+            );
+
+            ExpressionKind::Mutate { name, path, value }
+        }
         ExpressionKind::Marker(r#type) => ExpressionKind::Marker(r#type),
         ExpressionKind::UnresolvedStructure(fields) => {
             expression
@@ -3319,6 +3364,9 @@ fn substitute_defaults_in_expression<D: Driver>(
         ExpressionKind::Initialize { value, .. } => {
             substitute_defaults_in_expression(driver, value.as_deref_mut(), context)
         }
+        ExpressionKind::Mutate { value, .. } => {
+            substitute_defaults_in_expression(driver, value.as_deref_mut(), context)
+        }
         ExpressionKind::UnresolvedStructure(fields) => fields.iter_mut().any(|field| {
             substitute_defaults_in_expression(driver, field.item.value.as_mut(), context)
         }),
@@ -3566,6 +3614,11 @@ fn finalize_expression<D: Driver>(
         },
         ExpressionKind::Initialize { pattern, value } => crate::TypedExpressionKind::Initialize {
             pattern,
+            value: finalize_expression(value.unboxed(), context).boxed(),
+        },
+        ExpressionKind::Mutate { name, path, value } => crate::TypedExpressionKind::Mutate {
+            name,
+            path,
             value: finalize_expression(value.unboxed(), context).boxed(),
         },
         ExpressionKind::Marker(r#type) => crate::TypedExpressionKind::Marker(r#type),

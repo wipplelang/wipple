@@ -9,7 +9,7 @@ workspace = true
 [dependencies]
 derivative = "2"
 serde = { version = "1", features = ["derive"] }
-ts-rs = { git = "https://github.com/WilsonGramer/ts-rs", branch = "concrete", features = ["no-serde-warnings"] }
+ts-rs = { git = "https://github.com/WilsonGramer/ts-rs", branch = "bound-attribute", features = ["no-serde-warnings"] }
 wipple-codegen = { path = "../codegen" }
 wipple-typecheck = { path = "../analysis/typecheck" }
 wipple-util = { path = "../util" }

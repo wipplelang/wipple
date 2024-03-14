@@ -136,6 +136,8 @@ tasks:
 
   interpreter:build:
     run: once
+    deps:
+      - compiler:build
     dir: interpreter
     cmds:
       - npm run build

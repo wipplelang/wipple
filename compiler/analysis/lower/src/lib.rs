@@ -136,6 +136,9 @@ pub enum Diagnostic {
 
     /// Language declarations must be at the top level.
     NestedLanguageDeclaration,
+
+    /// Mutate patterns can only occur on the left-hand side of an assignment.
+    InvalidMutatePattern,
 }
 
 /// An unresolved file.
@@ -577,6 +580,9 @@ pub enum UnresolvedPattern<D: Driver> {
         /// The pattern to match if matching [`PatternKind::Or::left`] fails.
         right: WithInfo<D::Info, Box<UnresolvedPattern<D>>>,
     },
+
+    /// A pattern that changes the value of an existing variable.
+    Mutate(WithInfo<D::Info, Option<String>>),
 }
 
 /// A field in a destructuring pattern.
@@ -866,6 +872,18 @@ pub enum Expression<D: Driver> {
         pattern: WithInfo<D::Info, Pattern<D>>,
 
         /// The value to assign to the pattern.
+        value: WithInfo<D::Info, Box<Expression<D>>>,
+    },
+
+    /// Change the value of an existing variable.
+    Mutate {
+        /// The name of the variable.
+        name: WithInfo<D::Info, String>,
+
+        /// The path to the variable.
+        path: WithInfo<D::Info, Path>,
+
+        /// The value to assign to the variable.
         value: WithInfo<D::Info, Box<Expression<D>>>,
     },
 

@@ -519,6 +519,7 @@ pub mod lower {
                 left: convert_pattern(left.unboxed()).boxed(),
                 right: convert_pattern(right.unboxed()).boxed(),
             },
+            wipple_syntax::Pattern::Mutate(name) => wipple_lower::UnresolvedPattern::Mutate(name),
         })
     }
 
@@ -740,6 +741,13 @@ pub mod typecheck {
             wipple_lower::Expression::Assign { pattern, value } => {
                 wipple_typecheck::UntypedExpression::Initialize {
                     pattern: convert_pattern(pattern),
+                    value: convert_expression(value.unboxed()).boxed(),
+                }
+            }
+            wipple_lower::Expression::Mutate { name, path, value } => {
+                wipple_typecheck::UntypedExpression::Mutate {
+                    name: name.item,
+                    path,
                     value: convert_expression(value.unboxed()).boxed(),
                 }
             }

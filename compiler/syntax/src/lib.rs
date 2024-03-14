@@ -593,6 +593,9 @@ pub enum Pattern<D: Driver> {
         /// The pattern to match if matching [`PatternKind::Or::left`] fails.
         right: WithInfo<D::Info, Box<Pattern<D>>>,
     },
+
+    /// A pattern that changes the value of an existing variable.
+    Mutate(WithInfo<D::Info, Option<String>>),
 }
 
 /// A field in a destructuring pattern.

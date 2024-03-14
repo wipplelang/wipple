@@ -575,6 +575,7 @@ fn pattern<D: Driver>(
             left: pattern(left_syntax.unboxed(), info).boxed(),
             right: pattern(right_syntax.unboxed(), info).boxed(),
         },
+        parse::Pattern::Mutate(name) => crate::Pattern::Mutate(name),
     })
 }
 

@@ -11,9 +11,7 @@ use ts_rs::TS;
 use wipple_util::WithInfo;
 
 /// Provides the typechecker with information about the program.
-// FIXME: Remove `TS` once https://github.com/Aleph-Alpha/ts-rs/issues/261 is
-// resolved
-pub trait Driver: Sized + TS {
+pub trait Driver: Sized {
     /// Additional information attached to every item.
     type Info: Debug + Clone + Eq + Hash + Serialize + DeserializeOwned + TS;
 
@@ -236,7 +234,7 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
 )]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Diagnostic<D: Driver> {
     /// The typechecker hit the recursion limit while attempting to resolve the
     /// expression.
@@ -331,7 +329,7 @@ pub enum Diagnostic<D: Driver> {
 )]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Type<D: Driver> {
     /// A type to be inferred or that could not be resolved.
     Unknown(#[serde(skip)] UnknownTypeId),
@@ -409,7 +407,7 @@ impl Hash for UnknownTypeId {
 )]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct Instance<D: Driver> {
     /// The trait for which an instance must exist.
     pub r#trait: D::Path,
@@ -423,7 +421,7 @@ pub struct Instance<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct TypeDeclaration<D: Driver> {
     /// The type's parameters.
     pub parameters: Vec<D::Path>,
@@ -437,7 +435,7 @@ pub struct TypeDeclaration<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct TraitDeclaration<D: Driver> {
     /// The trait's parameters.
     pub parameters: Vec<D::Path>,
@@ -451,7 +449,7 @@ pub struct TraitDeclaration<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct TypeParameterDeclaration<D: Driver> {
     /// Whether the parameter is marked `infer`.
     pub infer: Option<WithInfo<D::Info, ()>>,
@@ -465,7 +463,7 @@ pub struct TypeParameterDeclaration<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum TypeRepresentation<D: Driver> {
     /// The type has a single value.
     Marker,
@@ -485,7 +483,7 @@ pub enum TypeRepresentation<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct StructureField<D: Driver> {
     /// The type of the field's value.
     pub r#type: WithInfo<D::Info, Type<D>>,
@@ -496,7 +494,7 @@ pub struct StructureField<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct EnumerationVariant<D: Driver> {
     /// The types of the variant's associated values.
     pub value_types: Vec<WithInfo<D::Info, Type<D>>>,
@@ -507,7 +505,7 @@ pub struct EnumerationVariant<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct ConstantDeclaration<D: Driver> {
     /// The constant's parameters.
     pub parameters: Vec<D::Path>,
@@ -524,7 +522,7 @@ pub struct ConstantDeclaration<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct InstanceDeclaration<D: Driver> {
     /// The instance's parameters.
     pub parameters: Vec<D::Path>,
@@ -622,6 +620,18 @@ pub enum UntypedExpression<D: Driver> {
         value: WithInfo<D::Info, Box<UntypedExpression<D>>>,
     },
 
+    /// Change the value of an existing variable.
+    Mutate {
+        /// The name of the variable.
+        name: String,
+
+        /// The path to the variable.
+        path: WithInfo<D::Info, D::Path>,
+
+        /// The value to assign to the variable.
+        value: WithInfo<D::Info, Box<UntypedExpression<D>>>,
+    },
+
     /// Create a marker value.
     Marker(D::Path),
 
@@ -708,7 +718,7 @@ pub struct UntypedArm<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct TypedExpression<D: Driver> {
     /// The type of the expression.
     pub r#type: Type<D>,
@@ -722,7 +732,7 @@ pub struct TypedExpression<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum TypedExpressionKind<D: Driver> {
     /// An expression that could not be resolved.
     Unknown(Option<D::Path>),
@@ -802,6 +812,18 @@ pub enum TypedExpressionKind<D: Driver> {
         value: WithInfo<D::Info, Box<TypedExpression<D>>>,
     },
 
+    /// Change the value of an existing variable.
+    Mutate {
+        /// The name of the variable.
+        name: String,
+
+        /// The path to the variable.
+        path: WithInfo<D::Info, D::Path>,
+
+        /// The value to assign to the variable.
+        value: WithInfo<D::Info, Box<TypedExpression<D>>>,
+    },
+
     /// Create a marker value.
     Marker(D::Path),
 
@@ -846,7 +868,7 @@ pub enum TypedExpressionKind<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct TypedFormatSegment<D: Driver> {
     /// The text before the interpolated value.
     pub text: String,
@@ -860,7 +882,7 @@ pub struct TypedFormatSegment<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct TypedStructureFieldValue<D: Driver> {
     /// The name of the field.
     pub name: String,
@@ -874,7 +896,7 @@ pub struct TypedStructureFieldValue<D: Driver> {
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct TypedArm<D: Driver> {
     /// The pattern to match on the input.
     pub pattern: WithInfo<D::Info, Pattern<D>>,
@@ -894,7 +916,7 @@ pub struct TypedArm<D: Driver> {
 )]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Pattern<D: Driver> {
     /// A pattern that could not be resolved prior to or after typechecking.
     Unknown,
@@ -948,7 +970,7 @@ pub enum Pattern<D: Driver> {
 )]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct FieldPattern<D: Driver> {
     /// The name of the field.
     pub name: String,
@@ -1025,6 +1047,9 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a TypedExpress
                 }
             }
             TypedExpressionKind::Initialize { value, .. } => {
+                value.as_deref().traverse(f);
+            }
+            TypedExpressionKind::Mutate { value, .. } => {
                 value.as_deref().traverse(f);
             }
             TypedExpressionKind::Structure { fields, .. } => {

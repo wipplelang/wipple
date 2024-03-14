@@ -78,6 +78,9 @@ pub enum Keyword {
     #[strum(serialize = "_")]
     Underscore,
 
+    #[strum(serialize = "!")]
+    Mutate,
+
     #[strum(serialize = "when")]
     When,
 
@@ -95,6 +98,12 @@ pub enum Keyword {
 
     #[strum(serialize = "infer")]
     Infer,
+}
+
+impl Keyword {
+    fn is_suffix(&self) -> bool {
+        matches!(self, Keyword::Mutate)
+    }
 }
 
 /// A binary operator.
@@ -286,7 +295,7 @@ impl Operator {
     Hash(bound = "D::Info: Hash")
 )]
 #[serde(rename_all = "camelCase")]
-#[ts(export, concrete(D = wipple_util::TsAny))]
+#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Diagnostic<D: Driver> {
     /// The tokenizer encountered an invalid token.
     InvalidToken,
@@ -327,6 +336,9 @@ enum RawToken<'src> {
 
     #[token("_", priority = 3)]
     Underscore,
+
+    #[token("!")]
+    Mutate,
 
     #[token("when")]
     When,
@@ -427,7 +439,7 @@ enum RawToken<'src> {
     #[regex(r#"--.*"#, |lex| Cow::Borrowed(&lex.slice()[2..]))]
     Comment(Cow<'src, str>),
 
-    #[regex(r#"\.\.\.|[A-Za-z0-9\-_]+[!?]?"#, |lex| Cow::Borrowed(lex.slice()))]
+    #[regex(r#"\.\.\.|[A-Za-z0-9\-_]+[?]?"#, |lex| Cow::Borrowed(lex.slice()))]
     Name(Cow<'src, str>),
 
     #[regex(r#""[^"\\]*(?s:\\.[^"\\]*)*"|'[^'\\]*(?s:\\.[^'\\]*)*'"#, |lex| Cow::Borrowed(&lex.slice()[1..(lex.slice().len() - 1)]))]
@@ -458,6 +470,7 @@ where
                     RawToken::LeftBrace => Token::LeftBrace,
                     RawToken::RightBrace => Token::RightBrace,
                     RawToken::Underscore => Token::Keyword(Keyword::Underscore),
+                    RawToken::Mutate => Token::Keyword(Keyword::Mutate),
                     RawToken::When => Token::Keyword(Keyword::When),
                     RawToken::Type => Token::Keyword(Keyword::Type),
                     RawToken::Trait => Token::Keyword(Keyword::Trait),
@@ -651,7 +664,7 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
                 s.push_str(comment);
             }
             Token::Keyword(keyword) => {
-                if pad {
+                if pad && !keyword.is_suffix() {
                     s.push(' ');
                 }
 
@@ -846,6 +859,7 @@ pub enum TokenTree<'src, D: Driver> {
     UnresolvedVariadicOperator(VariadicOperator),
     #[doc(hidden)]
     UnresolvedNonAssociativeOperator(NonAssociativeOperator),
+    Mutate(WithInfo<D::Info, Box<TokenTree<'src, D>>>),
     Keyword(Keyword),
     Name(Cow<'src, str>),
     Text(Cow<'src, str>),
@@ -1385,12 +1399,33 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                     }
                 },
                 Token::Comment(_) => continue,
-                Token::Keyword(keyword) => {
-                    push!(WithInfo {
+                Token::Keyword(keyword) => match keyword {
+                    Keyword::Mutate => match stack.pop() {
+                        Some((begin_info, tree)) => {
+                            stack.push((
+                                begin_info.clone(),
+                                TokenTree::Mutate(WithInfo {
+                                    info: D::merge_info(begin_info, info),
+                                    item: Box::new(tree),
+                                }),
+                            ));
+                        }
+                        _ => {
+                            diagnostics.push(WithInfo {
+                                info,
+                                item: Diagnostic::Mismatch {
+                                    expected: None,
+                                    found: Some(token.item.into_owned()),
+                                    matching: None,
+                                },
+                            });
+                        }
+                    },
+                    _ => push!(WithInfo {
                         info,
                         item: TokenTree::Keyword(keyword),
-                    });
-                }
+                    }),
+                },
                 Token::Operator(operator) => {
                     push!(WithInfo {
                         info,

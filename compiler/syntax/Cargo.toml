@@ -13,5 +13,5 @@ logos = "0.14"
 rustc_lexer = "0.1"
 serde = { version = "1", features = ["derive", "rc"] }
 strum = { version = "0.26", features = ["derive"] }
-ts-rs = { git = "https://github.com/WilsonGramer/ts-rs", branch = "concrete", features = ["no-serde-warnings"] }
+ts-rs = { git = "https://github.com/WilsonGramer/ts-rs", branch = "bound-attribute", features = ["no-serde-warnings"] }
 wipple-util = { path = "../util" }
