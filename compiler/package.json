@@ -1,7 +1,6 @@
 {
     "name": "wipple-compiler",
     "private": true,
-    "type": "module",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "scripts": {
@@ -9,8 +8,8 @@
     },
     "devDependencies": {
         "@types/node": "^20.11.0",
-        "esbuild": "^0.19.11",
-        "esbuild-plugin-wasm": "^1.1.0",
+        "@wasm-tool/rollup-plugin-rust": "^2.4.5",
+        "rollup": "^4.13.0",
         "typescript": "^5.3.3"
     }
 }

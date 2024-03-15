@@ -1,8 +1,5 @@
 set -e
 
-cargo build --target wasm32-unknown-unknown --release
-wasm-bindgen --keep-debug --out-dir pkg target/wasm32-unknown-unknown/release/wipple_compiler.wasm
-
 cargo test export_bindings_
 rm -rf generated
 for b in $(find . -name bindings); do
@@ -25,6 +22,6 @@ for f in $(find generated/types -name '*.ts'); do
 done
 rm -r generated/types
 
-node build.js
+rollup -c rollup.config.mjs
 cp -r generated dist
-tsc
+cp *.d.ts dist

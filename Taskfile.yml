@@ -47,10 +47,10 @@ tasks:
     vscode:install:
         run: once
         deps:
-            - cli:build
+            - compiler:build:node
         dir: vscode
         cmds:
-            - npx @vscode/vsce package --skip-license --allow-missing-repository
+            - npx @vscode/vsce package --no-dependencies --skip-license --allow-missing-repository
             - code --install-extension wipple-vscode-0.0.0.vsix
             - rm wipple-vscode-0.0.0.vsix
 
@@ -136,7 +136,13 @@ tasks:
         run: once
         dir: compiler
         cmds:
-            - npm run build
+            - WIPPLE_COMPILER_WASM_TARGET=web npm run build
+
+    compiler:build:node:
+        run: once
+        dir: compiler
+        cmds:
+            - WIPPLE_COMPILER_WASM_FLAGS="--target nodejs" WIPPLE_COMPILER_WASM_PLATFORM="node" npm run build
 
     interpreter:install-dependencies:
         run: once

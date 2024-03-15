@@ -15,11 +15,7 @@
     },
     "dependencies": {
         "cmd-ts": "^0.13.0",
-        "vscode-languageserver": "^9.0.1",
-        "vscode-languageserver-textdocument": "^1.0.11",
-        "vscode-uri": "^3.0.8",
         "wipple-compiler": "file:../compiler",
-        "wipple-interpreter": "file:../interpreter",
-        "wipple-render": "file:../render"
+        "wipple-interpreter": "file:../interpreter"
     }
 }

@@ -2,8 +2,8 @@
     "compilerOptions": {
         "target": "esnext",
         "lib": ["esnext"],
-        "moduleResolution": "nodenext",
-        "module": "nodenext",
+        "moduleResolution": "node",
+        "module": "es2022",
         "skipLibCheck": true,
         "strict": true,
         "isolatedModules": true,

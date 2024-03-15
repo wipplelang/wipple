@@ -3,10 +3,9 @@ import { LanguageClient, LanguageClientOptions, ServerOptions } from "vscode-lan
 
 let client: LanguageClient | undefined;
 
-export const activate = (_context: vscode.ExtensionContext) => {
+export const activate = (context: vscode.ExtensionContext) => {
     const serverOptions: ServerOptions = {
-        command: "wipple",
-        args: ["lsp"],
+        module: context.asAbsolutePath("dist/lsp.js"),
     };
 
     const clientOptions: LanguageClientOptions = {
@@ -16,7 +15,9 @@ export const activate = (_context: vscode.ExtensionContext) => {
         },
     };
 
-    client = new LanguageClient("wipple", 'Wipple Language Server"', serverOptions, clientOptions);
+    client = new LanguageClient("wipple", "Wipple Language Server", serverOptions, clientOptions);
+
+    client.start();
 };
 
 export const deactivate = async () => {
