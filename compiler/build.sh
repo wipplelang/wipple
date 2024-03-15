@@ -1,6 +1,9 @@
+#!/bin/bash
+
 set -e
 
-cargo test export_bindings_
+echo -n "Exporting TypeScript bindings..."
+cargo test export_bindings_ --quiet > /dev/null
 rm -rf generated
 for b in $(find . -name bindings); do
     mkdir -p generated/types/$(dirname $b)
@@ -21,6 +24,7 @@ for f in $(find generated/types -name '*.ts'); do
     fi
 done
 rm -r generated/types
+echo " done"
 
 rollup -c rollup.config.mjs
 cp -r generated dist

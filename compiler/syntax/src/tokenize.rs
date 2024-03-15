@@ -1097,32 +1097,33 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                 AnyOperator::VariadicOperator(operator) => {
                     let mut indices = operators.iter().map(|&(index, _)| index).peekable();
 
+                    let mut inputs = vec![Vec::new()];
+                    for (expression_index, expression) in expressions.into_iter().enumerate() {
+                        if let Some(operator_index) = indices.peek().copied() {
+                            use std::cmp::Ordering;
+
+                            match expression_index.cmp(&operator_index) {
+                                Ordering::Less => {}
+                                Ordering::Equal => continue,
+                                Ordering::Greater => {
+                                    inputs.push(Vec::new());
+                                    indices.next();
+                                }
+                            }
+                        }
+
+                        inputs.last_mut().unwrap().push(expression);
+                    }
+
                     TokenTree::VariadicOperator(
                         WithInfo {
                             info: info.clone(),
                             item: operator,
                         },
-                        expressions
+                        inputs
                             .into_iter()
-                            .enumerate()
-                            .filter(|&(index, _)| operators.iter().all(|&(i, _)| i != index))
-                            .group_by(|&(index, _)| match indices.peek().copied() {
-                                Some(next) => {
-                                    if next < index {
-                                        true
-                                    } else {
-                                        indices.next();
-                                        false
-                                    }
-                                }
-                                None => true,
-                            })
-                            .into_iter()
-                            .map(|(_, group)| {
-                                let expressions =
-                                    group.map(|(_, expression)| expression).collect::<Vec<_>>();
-
-                                if expressions.is_empty() {
+                            .map(|group| {
+                                if group.is_empty() {
                                     return WithInfo {
                                         info: info.clone(),
                                         item: TokenTree::Error,
@@ -1130,15 +1131,15 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                                 }
 
                                 let info = D::merge_info(
-                                    expressions.first().unwrap().info.clone(),
-                                    expressions.last().unwrap().info.clone(),
+                                    group.first().unwrap().info.clone(),
+                                    group.last().unwrap().info.clone(),
                                 );
 
                                 WithInfo {
                                     info,
                                     item: parse_operators::<D>(
                                         ListDelimiter::Parentheses,
-                                        expressions,
+                                        group,
                                         diagnostics,
                                     ),
                                 }

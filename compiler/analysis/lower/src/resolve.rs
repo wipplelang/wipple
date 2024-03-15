@@ -1569,12 +1569,21 @@ fn resolve_binary_operator<D: Driver>(
         },
     );
 
+    let left = resolve_expression(left, info);
+    let right = resolve_expression(right, info);
+
+    let right = if operator.item.short_circuits() {
+        WithInfo {
+            info: right.info.clone(),
+            item: crate::Expression::Block(vec![right]),
+        }
+    } else {
+        right
+    };
+
     crate::Expression::Call {
         function: operator_trait.boxed(),
-        inputs: vec![
-            resolve_expression(right, info),
-            resolve_expression(left, info),
-        ],
+        inputs: vec![left, right],
     }
 }
 

@@ -415,6 +415,15 @@ pub enum UnresolvedBinaryOperator {
     By,
 }
 
+impl UnresolvedBinaryOperator {
+    fn short_circuits(&self) -> bool {
+        matches!(
+            self,
+            UnresolvedBinaryOperator::And | UnresolvedBinaryOperator::Or
+        )
+    }
+}
+
 /// An unresolved type parameter.
 #[derive(Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
