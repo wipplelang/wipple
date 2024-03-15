@@ -1,4 +1,4 @@
-[should compile]
+-- [should compile]
 
 show (if (True and False) "a" "b")
 show (if (True or False) "a" "b")

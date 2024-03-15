@@ -1,4 +1,4 @@
-[should compile]
+-- [should compile]
 
 remove-duplicates :: Element where (Show Element) (Equal Element) (Hash Element) => List Element -> Sequence Element
 remove-duplicates : list -> (

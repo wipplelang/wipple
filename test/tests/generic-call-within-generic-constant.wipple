@@ -1,4 +1,4 @@
-[should compile]
+-- [should compile]
 
 f :: A => A -> A
 f : x -> x

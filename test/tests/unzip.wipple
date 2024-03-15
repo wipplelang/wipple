@@ -1,4 +1,4 @@
-[should compile]
+-- [should compile]
 
 left ; right : (((1 ; "a") , (2 ; "b") , (3 ; "c")) . unzip :: (List _ ; List _))
 

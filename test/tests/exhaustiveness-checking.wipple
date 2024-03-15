@@ -1,4 +1,4 @@
-[should error]
+-- [should error]
 
 Grade : type (A B C D F)
 

@@ -1,4 +1,4 @@
-[should error]
+-- [should error]
 
 f : {
   n : 42

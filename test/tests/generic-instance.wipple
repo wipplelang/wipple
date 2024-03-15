@@ -1,4 +1,4 @@
-[should compile]
+-- [should compile]
 
 Container : A => type (value :: A)
 

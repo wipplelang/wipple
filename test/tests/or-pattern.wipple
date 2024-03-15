@@ -1,4 +1,4 @@
-[should compile]
+-- [should compile]
 
 show (when 3 (
   1 -> "oh no"

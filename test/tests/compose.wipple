@@ -1,4 +1,4 @@
-[should compile]
+-- [should compile]
 
 list : -1 , 0 , 1
 (transform (+ 1) | filter (> 0) | each show) list

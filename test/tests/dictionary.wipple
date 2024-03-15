@@ -1,4 +1,4 @@
-[should compile]
+-- [should compile]
 
 sports : "Basketball" , "Soccer" , "Golf"
 lengths : sports . reduce (,) (sport -> insert-entry (sport ; count sport))

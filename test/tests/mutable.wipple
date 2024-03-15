@@ -1,4 +1,4 @@
-[should compile]
+-- [should compile]
 
 x : mutable 1
 increment! x

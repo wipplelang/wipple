@@ -1,4 +1,4 @@
-[should error]
+-- [should error]
 
 T : A => trait ()
 

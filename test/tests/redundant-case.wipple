@@ -1,4 +1,4 @@
-[should warn]
+-- [should warn]
 
 x : when (Some 42) (
   Some _ -> "a"

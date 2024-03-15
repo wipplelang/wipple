@@ -1,4 +1,4 @@
-[should compile]
+-- [should compile]
 
 Grade : type (A B C D F)
 

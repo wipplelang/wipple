@@ -1,4 +1,4 @@
-[should error]
+-- [should error]
 
 [show-code : True]
 [on-unimplemented : "_ is not compatible with _" Left Right]

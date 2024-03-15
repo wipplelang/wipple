@@ -1,4 +1,4 @@
-[should error]
+-- [should error]
 
 show (when True {
   True -> 42

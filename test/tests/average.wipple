@@ -1,4 +1,4 @@
-[should compile]
+-- [should compile]
 
 average : numbers -> sum numbers / count numbers as Number
 show (average (1 , 2 , 3 , 4 , 5))

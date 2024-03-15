@@ -47,7 +47,7 @@ for (let file of fs.readdirSync("tests").sort()) {
                 }
                 default: {
                     throw new Error(
-                        "expected test to begin with [should compile], [should warn], or [should error]",
+                        "expected test to begin with -- [should compile], [should warn], or [should error]",
                     );
                 }
             }

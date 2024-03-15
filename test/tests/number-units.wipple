@@ -1,4 +1,4 @@
-[should compile]
+-- [should compile]
 
 Elephants : type (count :: Number)
 

@@ -1,4 +1,4 @@
-[should compile]
+-- [should compile]
 
 show (random (0 to 0))
 show (random (1 to 2))

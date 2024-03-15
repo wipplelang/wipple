@@ -1,4 +1,4 @@
-[should compile]
+-- [should compile]
 
 show (1 + 2 = 3)
 show (1 = 2 or 1 = 1)

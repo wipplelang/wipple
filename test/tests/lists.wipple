@@ -1,4 +1,4 @@
-[should compile]
+-- [should compile]
 
 my-list : 1 , 2 , 3
 

@@ -1,4 +1,4 @@
-[should compile]
+-- [should compile]
 
 show (1 + 2)
 show (4 - 1)

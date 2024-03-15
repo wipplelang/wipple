@@ -1,4 +1,4 @@
-[should compile]
+-- [should compile]
 
 [Greet is a trait that can be defined with a function returning text]
 Greet : A => trait (A -> Text)

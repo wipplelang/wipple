@@ -1,4 +1,4 @@
-[should compile]
+-- [should compile]
 
 show (sin (0 degrees) = 0)
 show (cos (0 degrees) = 1)
