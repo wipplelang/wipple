@@ -1020,7 +1020,6 @@ fn unify_with_options<D: Driver>(
                     return false;
                 }
 
-                assert_eq!(parameters.len(), expected_parameters.len());
                 let mut unified = true;
                 for (r#type, expected_type) in parameters.iter().zip(expected_parameters) {
                     unified &= unify_inner(driver, r#type, expected_type, context, options);

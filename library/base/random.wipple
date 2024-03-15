@@ -7,8 +7,8 @@ random : Random
 instance (Random (Range Number) Number) : {
     min : min
     max : max
-} -> {
-    (max >= min) . expect "`max` must be greater than `min`"
+} -> do {
+    (max >= min) . assert "`max` must be greater than `min`"
     intrinsic "random-number" min max
 }
 

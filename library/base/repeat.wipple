@@ -20,13 +20,13 @@ Result => instance (Repeat-Predicate (With-Control-Flow Result) (Control-Flow ()
     }
 
 -- Repeat so long as the provided condition is `True`.
-while :: defer Boolean -> While
-while : condition -> {condition : () -> produce condition}
+while :: {Boolean} -> While
+while : condition -> {condition : condition}
 
-While : type {condition :: () -> Boolean}
+While : type {condition :: {Boolean}}
 
 instance (Repeat-Predicate While () ()) : {condition : condition} ->
-    if (condition ()) (Continue (() -> {condition : condition})) (Stop ())
+    if (do condition) {Continue (() -> while condition)} {Stop ()}
 
 -- Repeat forever.
 forever :: Forever
@@ -62,16 +62,8 @@ times : count -> {
 }
 
 -- Execute a block of code repeatedly.
-repeat :: State (infer Body) (infer Result) where (Repeat-Predicate State Body Result) => State -> defer Body -> Result
-repeat : state body -> {
-    -- The inputs are wrapped in a tuple to allow for tail-call optimization
-    helper :: State Body Result where (Repeat-Predicate State Body Result) => (State ; (() -> Body)) -> Result
-    helper : (state ; body) -> {
-        when (Repeat-Predicate state) {
-            Continue next -> helper (next (body ()) ; body)
-            Stop result -> result
-        }
-    }
-
-    helper (state ; (() -> produce body))
+repeat :: State (infer Body) (infer Result) where (Repeat-Predicate State Body Result) => State {Body} -> Result
+repeat : state body -> when (Repeat-Predicate state) {
+    Continue next -> repeat (next (do body)) body
+    Stop result -> result
 }

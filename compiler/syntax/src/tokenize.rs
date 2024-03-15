@@ -1115,6 +1115,11 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                         inputs.last_mut().unwrap().push(expression);
                     }
 
+                    // Allow trailing operators
+                    if inputs.last().unwrap().is_empty() {
+                        inputs.pop();
+                    }
+
                     TokenTree::VariadicOperator(
                         WithInfo {
                             info: info.clone(),

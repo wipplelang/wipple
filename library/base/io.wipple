@@ -1,44 +1,39 @@
--- Convert a value into `Text` so it can be displayed using `show`.
--- show-code : True
--- on-unimplemented : "cannot display _ on the screen" A
-Show : (A : Text) => trait (A -> Text)
+-- Produce a piece of `Text` describing the value.
+-- [on-unimplemented]: "cannot describe a _ value" Value
+Describe : (Value : Text) => trait (Value -> Text)
 
-intrinsic "constant" "show" : Show
+intrinsic "constant" "show" : Describe -- FIXME: Rename intrinsic to 'describe'
+
+-- Produce a piece of `Text` describing the value.
+describe :: (Value : Text) where (Describe Value) => Value -> Text
+describe : Describe
 
 -- Display a value on the screen.
--- playground : "https://wipple.dev/library/base/examples/show.txt"
--- accepts-text : True
--- alias : "print"
--- alias : "println"
--- alias : "display"
--- on-unresolved : "`show` expects a value to be displayed"
--- resolve : "insert a value to display" (show _)
-show :: (A : Text) where (Show A) => A -> ()
-show : value -> intrinsic "display" (Show value)
+-- [suggest-quotes]: True
+-- [alias]: "print"
+-- [alias]: "println"
+-- [alias]: "display"
+show :: (Value : Text) where (Describe Value) => Value -> ()
+show : value -> intrinsic "display" (describe value)
 
-instance (Show Text) : text -> text
-instance (Show Number) : n -> semantics "pure" (intrinsic "number-to-text" n)
-instance (Show Boolean) : b -> if b "True" "False"
-Value where (Show Value) => instance (Show (Maybe Value)) : m -> when m {
+instance (Describe Text) : text -> text
+instance (Describe Number) : n -> intrinsic "number-to-text" n
+instance (Describe Boolean) : b -> if b {"True"} {"False"}
+Value where (Describe Value) => instance (Describe (Maybe Value)) : m -> when m {
     Some value -> "Some _" value
     None -> "None"
 }
 
--- Convert to a value from `Text`.
--- on-unimplemented : "cannot produce a _ value from `Text`" A
-Read : A => trait (Text -> Maybe A)
-
+-- Convert from a piece of `Text` to a value.
+-- [on-unimplemented]: "cannot produce a _ value from `Text`" Value
+Read : Value => trait (Text -> Maybe Value)
 instance (Read Text) : Some
 instance (Read Number) : text -> intrinsic "text-to-number" text
 
--- Prompt the user to enter a value.
-prompt :: A where (Read A)=> Text -> A
+-- Ask the user to enter a value.
+prompt :: Value where (Read Value) => Text -> Value
 prompt : prompt -> intrinsic "prompt" prompt Read
 
--- Ask the user to pick from a list of choices.
-choice :: Element where (Show Element) => Text -> List Element -> Element
-choice : prompt items -> {
-    descriptions : (items . transform Show . collect :: List Text)
-    index : intrinsic "choice" prompt descriptions
-    items . nth index . unwrap
-}
+-- -- Ask the user to pick from a list of choices.
+-- choice :: Element where (Describe Element) => Text (List Element) -> Element
+-- choice : prompt items -> error "TODO"
