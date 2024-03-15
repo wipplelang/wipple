@@ -48,6 +48,7 @@ tasks:
         run: once
         deps:
             - compiler:build:node
+            - render:build:node
         dir: vscode
         cmds:
             - npx @vscode/vsce package --no-dependencies --skip-license --allow-missing-repository
@@ -66,6 +67,7 @@ tasks:
         run: once
         deps:
             - app:bundle-for-playground
+            - render:build
         dir: app
         cmds:
             - npm run build
@@ -155,5 +157,21 @@ tasks:
         deps:
             - compiler:build
         dir: interpreter
+        cmds:
+            - npm run build
+
+    render:build:
+        run: once
+        deps:
+            - compiler:build
+        dir: render
+        cmds:
+            - npm run build
+
+    render:build:node:
+        run: once
+        deps:
+            - compiler:build:node
+        dir: render
         cmds:
             - npm run build

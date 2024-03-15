@@ -46,7 +46,7 @@ impl Driver for wipple_util::TsAny {
 /// Location information about a parsed item.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub struct Info {
+pub struct Location {
     /// The path of the file this item belongs to.
     pub path: Rc<str>,
 
@@ -57,7 +57,7 @@ pub struct Info {
     pub span: Range<u32>,
 }
 
-impl Info {
+impl Location {
     /// Check if `self` is contained within `other`.
     pub fn span_is_within(&self, other: &Self) -> bool {
         self.span.start >= other.span.start && self.span.end <= other.span.end

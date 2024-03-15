@@ -263,7 +263,6 @@ const evaluateItem = async (
             const pop = () => {
                 const value = stack.pop();
                 if (value == null) {
-                    console.log("STACK LENGTH:", stack.length);
                     throw error("stack is empty");
                 }
 

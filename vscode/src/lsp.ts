@@ -11,7 +11,7 @@ import {
 import { URI } from "vscode-uri";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { WithInfo, compile, linker, main } from "wipple-compiler";
+import { WithInfo, compile, main } from "wipple-compiler";
 import { Render, RenderedDiagnostic } from "wipple-render";
 
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
@@ -25,8 +25,9 @@ connection.onInitialize((_params) => ({
     capabilities: {
         textDocumentSync: TextDocumentSyncKind.Full,
         diagnosticProvider: {
+            documentSelector: [{ language: "wipple" }],
             interFileDependencies: true,
-            workspaceDiagnostics: true,
+            workspaceDiagnostics: false,
         },
     },
 }));
@@ -41,61 +42,81 @@ documents.onDidChangeContent(async (change) => {
         return;
     }
 
-    diagnostics = (await compileAll(path.dirname(uri.fsPath))).flatMap((diagnostic) => {
-        const rendered = render.renderDiagnostic(diagnostic);
-        return rendered ? [rendered] : [];
-    });
+    diagnostics = (await compileAll(uri.fsPath, change.document.getText())).flatMap(
+        (diagnostic) => {
+            const rendered = render.renderDiagnostic(diagnostic);
+            return rendered ? [rendered] : [];
+        },
+    );
 
     connection.languages.diagnostics.refresh();
 });
 
-connection.languages.diagnostics.on(async (_params) => ({
-    kind: DocumentDiagnosticReportKind.Full,
-    items: diagnostics.map((diagnostic): Diagnostic => {
-        let severity: DiagnosticSeverity;
-        switch (diagnostic.severity) {
-            case "warning":
-                severity = DiagnosticSeverity.Warning;
-                break;
-            case "error":
-                severity = DiagnosticSeverity.Error;
-                break;
-        }
+connection.languages.diagnostics.on(async (_params) => {
+    return {
+        kind: DocumentDiagnosticReportKind.Full,
+        items: diagnostics.map((diagnostic): Diagnostic => {
+            let severity: DiagnosticSeverity;
+            switch (diagnostic.severity) {
+                case "warning":
+                    severity = DiagnosticSeverity.Warning;
+                    break;
+                case "error":
+                    severity = DiagnosticSeverity.Error;
+                    break;
+            }
 
-        return {
-            severity,
-            range: {
-                start: {
-                    line: diagnostic.location.start.line,
-                    character: diagnostic.location.start.column,
+            return {
+                severity,
+                range: {
+                    start: {
+                        line: diagnostic.location.start.line,
+                        character: diagnostic.location.start.column,
+                    },
+                    end: {
+                        line: diagnostic.location.end.line,
+                        character: diagnostic.location.end.column,
+                    },
                 },
-                end: {
-                    line: diagnostic.location.end.line,
-                    character: diagnostic.location.end.column,
-                },
-            },
-            message: diagnostic.message,
-            source: "wipple",
-        };
-    }),
-}));
+                message: diagnostic.message,
+                source: "wipple",
+            };
+        }),
+    };
+});
 
 documents.listen(connection);
 connection.listen();
 
-const compileAll = async (dir: string): Promise<WithInfo<main.Info, main.Diagnostic>[]> => {
-    const sourcePaths = (await fs.readdir(dir)).map((file) => path.join(dir, file));
+const compileAll = async (
+    activeFile: string,
+    activeCode: string,
+): Promise<WithInfo<main.Info, main.Diagnostic>[]> => {
+    const dir = path.dirname(activeFile);
+
+    const sourcePaths = (await fs.readdir(dir))
+        .map((file) => path.join(dir, file))
+        .filter((file) => path.extname(file) === ".wipple");
 
     const sources = await Promise.all(
-        sourcePaths.map(async (sourcePath) => ({
-            path: sourcePath,
-            visiblePath: `${path.basename(path.dirname(sourcePath))}/${path.basename(sourcePath)}`,
-            code: await fs.readFile(sourcePath, "utf8"),
-        })),
+        sourcePaths.map(
+            async (sourcePath): Promise<main.File> => ({
+                path: sourcePath,
+                visiblePath: `${path.basename(path.dirname(sourcePath))}/${path.basename(
+                    sourcePath,
+                )}`,
+                code:
+                    path.normalize(activeFile) === path.normalize(sourcePath)
+                        ? activeCode
+                        : await fs.readFile(sourcePath, "utf8"),
+            }),
+        ),
     );
 
+    render.updateFiles(sources);
+
     // TODO: Support dependencies
-    const dependencies: linker.UnlinkedLibrary[] = [];
+    const dependencies = null;
 
     const result = compile(sources, dependencies);
     return result.diagnostics;

@@ -2,7 +2,7 @@
 
 use crate::{
     tokenize::{self, Keyword, NonAssociativeOperator, Operator, TokenTree, VariadicOperator},
-    BinaryOperator, Driver, Info,
+    BinaryOperator, Driver, Location,
 };
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
@@ -596,7 +596,7 @@ pub struct Result<D: Driver> {
 /// Parse a token tree into a concrete syntax tree.
 pub fn parse<D: Driver>(driver: &D, tree: WithInfo<D::Info, &TokenTree<'_, D>>) -> Result<D>
 where
-    D::Info: From<Info>,
+    D::Info: From<Location>,
 {
     let mut parser = base::Parser::new(driver);
 

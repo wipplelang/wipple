@@ -2,7 +2,7 @@
 
 #![allow(missing_docs)]
 
-use crate::{Driver, Info};
+use crate::{Driver, Location};
 use derivative::Derivative;
 use itertools::Itertools;
 use logos::Logos;
@@ -455,7 +455,7 @@ pub fn tokenize<'a, 'src: 'a, D: Driver>(
     s: &'src str,
 ) -> impl Iterator<Item = Result<WithInfo<D::Info, Token<'src>>, WithInfo<D::Info, Diagnostic<D>>>> + 'a
 where
-    D::Info: From<Info>,
+    D::Info: From<Location>,
 {
     logos::Lexer::new(s).spanned().map(|(result, span)| {
         let span = (span.start as u32)..(span.end as u32);
@@ -522,7 +522,7 @@ where
                 };
 
                 Ok(WithInfo {
-                    info: Info {
+                    info: Location {
                         path: driver.file_path(),
                         visible_path: driver.visible_path(),
                         span,
@@ -532,7 +532,7 @@ where
                 })
             }
             Err(()) => Err(WithInfo {
-                info: Info {
+                info: Location {
                     path: driver.file_path(),
                     visible_path: driver.visible_path(),
                     span,
@@ -748,7 +748,7 @@ pub fn associated_comments<'src, D: Driver, I>(
     offset: u32,
 ) -> impl Iterator<Item = Cow<'src, str>>
 where
-    for<'a> &'a Info: From<&'a D::Info>,
+    for<'a> &'a Location: From<&'a D::Info>,
     I: IntoIterator<Item = WithInfo<D::Info, Token<'src>>>,
     I::IntoIter: DoubleEndedIterator,
 {
@@ -756,7 +756,7 @@ where
         .into_iter()
         .rev()
         .peekable()
-        .skip_while(move |token| <&Info>::from(&token.info).span.end > offset)
+        .skip_while(move |token| <&Location>::from(&token.info).span.end > offset)
         .map_while(|token| match token.item {
             Token::Comment(comment) => Some(comment),
             _ => None,
@@ -922,7 +922,7 @@ impl<'src, D: Driver> TokenTree<'src, D> {
         Vec<WithInfo<D::Info, Diagnostic<D>>>,
     )
     where
-        D::Info: From<Info>,
+        D::Info: From<Location>,
     {
         fn parse_operators<'src, D: Driver>(
             delimiter: ListDelimiter,
@@ -1182,7 +1182,7 @@ impl<'src, D: Driver> TokenTree<'src, D> {
             None => {
                 return (
                     WithInfo {
-                        info: Info {
+                        info: Location {
                             path: driver.file_path(),
                             visible_path: driver.visible_path(),
                             span: 0..0,

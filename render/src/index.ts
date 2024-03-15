@@ -1,4 +1,4 @@
-import { WithInfo, main } from "wipple-compiler";
+import type { WithInfo, main } from "wipple-compiler";
 import { LinesAndColumns, SourceLocation } from "lines-and-columns";
 
 export interface RenderedSourceLocation {
@@ -24,17 +24,17 @@ export class Render {
     }
 
     renderSourceLocation(value: WithInfo<main.Info, unknown>) {
-        const file = this.files[value.info.path];
+        const file = this.files[value.info.location.path];
         if (!file) {
             return null;
         }
 
-        const startLocation = file.linesAndColumns.locationForIndex(value.info.span.start);
+        const startLocation = file.linesAndColumns.locationForIndex(value.info.location.span.start);
         if (!startLocation) {
             return null;
         }
 
-        const endLocation = file.linesAndColumns.locationForIndex(value.info.span.end);
+        const endLocation = file.linesAndColumns.locationForIndex(value.info.location.span.end);
         if (!endLocation) {
             return null;
         }

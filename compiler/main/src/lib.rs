@@ -86,11 +86,11 @@ impl Driver {
 #[ts(export)]
 pub struct Info {
     /// Location information produced by the parser.
-    pub location: syntax::Info,
+    pub location: syntax::Location,
 }
 
-impl From<syntax::Info> for Info {
-    fn from(location: syntax::Info) -> Self {
+impl From<syntax::Location> for Info {
+    fn from(location: syntax::Location) -> Self {
         Info { location }
     }
 }
@@ -534,7 +534,7 @@ impl syntax::Driver for SyntaxDriver {
 
     fn merge_info(left: Self::Info, right: Self::Info) -> Self::Info {
         Info {
-            location: syntax::Info {
+            location: syntax::Location {
                 path: left.location.path,
                 visible_path: left.location.visible_path,
                 span: left.location.span.start..right.location.span.end,
@@ -556,7 +556,7 @@ impl wipple_typecheck::Driver for Driver {
     }
 
     fn top_level_info(&self) -> Self::Info {
-        syntax::Info {
+        syntax::Location {
             path: Rc::from("top-level"),
             visible_path: Rc::from("top-level"),
             span: 0..0,
