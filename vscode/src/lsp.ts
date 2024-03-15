@@ -52,36 +52,49 @@ documents.onDidChangeContent(async (change) => {
     connection.languages.diagnostics.refresh();
 });
 
-connection.languages.diagnostics.on(async (_params) => {
+connection.languages.diagnostics.on(async (params) => {
+    const uri = URI.parse(params.textDocument.uri);
+    if (uri.scheme !== "file") {
+        return {
+            kind: DocumentDiagnosticReportKind.Full,
+            items: [],
+        };
+    }
+
     return {
         kind: DocumentDiagnosticReportKind.Full,
-        items: diagnostics.map((diagnostic): Diagnostic => {
-            let severity: DiagnosticSeverity;
-            switch (diagnostic.severity) {
-                case "warning":
-                    severity = DiagnosticSeverity.Warning;
-                    break;
-                case "error":
-                    severity = DiagnosticSeverity.Error;
-                    break;
-            }
+        items: diagnostics
+            .filter(
+                (diagnostic) =>
+                    path.normalize(diagnostic.location.path) === path.normalize(uri.fsPath),
+            )
+            .map((diagnostic): Diagnostic => {
+                let severity: DiagnosticSeverity;
+                switch (diagnostic.severity) {
+                    case "warning":
+                        severity = DiagnosticSeverity.Warning;
+                        break;
+                    case "error":
+                        severity = DiagnosticSeverity.Error;
+                        break;
+                }
 
-            return {
-                severity,
-                range: {
-                    start: {
-                        line: diagnostic.location.start.line,
-                        character: diagnostic.location.start.column,
+                return {
+                    severity,
+                    range: {
+                        start: {
+                            line: diagnostic.location.start.line,
+                            character: diagnostic.location.start.column,
+                        },
+                        end: {
+                            line: diagnostic.location.end.line,
+                            character: diagnostic.location.end.column,
+                        },
                     },
-                    end: {
-                        line: diagnostic.location.end.line,
-                        character: diagnostic.location.end.column,
-                    },
-                },
-                message: diagnostic.message,
-                source: "wipple",
-            };
-        }),
+                    message: diagnostic.message,
+                    source: "wipple",
+                };
+            }),
     };
 });
 
