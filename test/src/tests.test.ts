@@ -1,8 +1,9 @@
 import fs from "fs";
 import fsp from "fs/promises";
 import path from "path";
+import { test } from "bun:test";
 import _ from "lodash";
-import { compile, link, renderDiagnostics } from "wipple-compiler";
+import { compile, link } from "wipple-compiler";
 import { evaluate, InterpreterError, IoRequest } from "wipple-interpreter";
 
 Error.stackTraceLimit = Infinity;
@@ -26,7 +27,7 @@ for (let file of fs.readdirSync("tests").sort()) {
             const code = await fsp.readFile(path.join("tests", file), "utf8");
             file = path.join("test/tests", file);
 
-            const header = code.match(/\[([\w\s]+)\]/)?.[1];
+            const header = code.match(/-- \[([\w\s]+)\]/)?.[1];
             let shouldCompile: boolean;
             let shouldWarn: boolean | undefined;
             switch (header) {
@@ -47,7 +48,7 @@ for (let file of fs.readdirSync("tests").sort()) {
                 }
                 default: {
                     throw new Error(
-                        "expected test to begin with -- [should compile], [should warn], or [should error]",
+                        "expected test to begin with [should compile], [should warn], or [should error]",
                     );
                 }
             }
