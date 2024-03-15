@@ -1400,15 +1400,19 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                 },
                 Token::Comment(_) => continue,
                 Token::Keyword(keyword) => match keyword {
-                    Keyword::Mutate => match stack.pop() {
-                        Some((begin_info, tree)) => {
-                            stack.push((
-                                begin_info.clone(),
-                                TokenTree::Mutate(WithInfo {
-                                    info: D::merge_info(begin_info, info),
-                                    item: Box::new(tree),
-                                }),
-                            ));
+                    Keyword::Mutate => match stack.last_mut() {
+                        Some((begin_info, TokenTree::Block(statements))) => {
+                            let elements = match &mut statements.last_mut().unwrap().item {
+                                TokenTree::List(_, elements) => elements,
+                                _ => unreachable!(),
+                            };
+
+                            let element = elements.pop().unwrap();
+
+                            elements.push(WithInfo {
+                                info: D::merge_info(begin_info.clone(), info),
+                                item: TokenTree::Mutate(element.boxed()),
+                            });
                         }
                         _ => {
                             diagnostics.push(WithInfo {
