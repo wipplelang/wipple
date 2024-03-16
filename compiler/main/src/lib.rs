@@ -48,13 +48,13 @@ pub fn compile(files: &str, dependencies: &str) -> String {
 
 /// JavaScript entrypoint to the linker.
 #[wasm_bindgen]
-pub fn link(libraries: &str) -> String {
+pub fn link(libraries: &str) -> Option<String> {
     initialize();
 
     let libraries: Vec<Library> = deserialize(libraries);
 
-    let executable = linker::link(libraries);
-    serialize(&executable)
+    let executable = linker::link(libraries).ok()?;
+    Some(serialize(&executable))
 }
 
 /// The driver.

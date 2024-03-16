@@ -126,6 +126,9 @@ pub enum Instruction<D: Driver> {
     /// (Consuming) Call the function on the top of the stack with _n_ inputs.
     Call(u32),
 
+    /// (Consuming) Evaluate the block on the top of the stack.
+    Do,
+
     /// (Consuming) Set a variable to the value on the top of the stack.
     Mutate(u32),
 
@@ -149,6 +152,10 @@ pub enum Instruction<D: Driver> {
     /// (Control flow) Call the function on the top of the stack, replacing the
     /// current stack.
     TailCall(u32),
+
+    /// (Control flow) Evaluate the block on the top of the stack, replacing the
+    /// current stack.
+    TailDo,
 
     /// (Control flow) The program should never reach this instruction; if it
     /// does, there is a compiler bug.
@@ -251,6 +258,7 @@ where
             Instruction::Element(element) => write!(f, "element {element}"),
             Instruction::Variable(variable) => write!(f, "variable {variable}"),
             Instruction::Call(inputs) => write!(f, "call {inputs}"),
+            Instruction::Do => write!(f, "do"),
             Instruction::Mutate(variable) => write!(f, "mutate {variable}"),
             Instruction::Tuple(elements) => write!(f, "tuple {elements}"),
             Instruction::Typed(descriptor, instruction) => {
@@ -262,6 +270,7 @@ where
             Instruction::Return => write!(f, "return"),
             Instruction::Jump(label) => write!(f, "jump {label}"),
             Instruction::TailCall(inputs) => write!(f, "tail call {inputs}"),
+            Instruction::TailDo => write!(f, "tail do"),
             Instruction::Unreachable => write!(f, "unreachable"),
         }
     }

@@ -278,6 +278,7 @@ pub(crate) enum Expression<D: Driver> {
     Text(String),
     Unit,
     Block(Vec<WithInfo<D::Info, Statement<D>>>),
+    Do(WithInfo<D::Info, Box<Expression<D>>>),
     #[serde(rename_all = "camelCase")]
     Function {
         inputs: Vec<WithInfo<D::Info, Pattern<D>>>,
@@ -567,6 +568,7 @@ pub enum SyntaxKind {
     NameExpression,
     NumberExpression,
     TextExpression,
+    DoExpression,
     CallExpression,
     ApplyExpression,
     BinaryOperatorExpression,
@@ -777,6 +779,7 @@ mod rules {
             structure_expression::<D>().render(),
             block_expression::<D>().render(),
             function_expression::<D>().render(),
+            do_expression::<D>().render(),
             call_expression::<D>().render(),
         ]
     }
@@ -1225,41 +1228,60 @@ mod rules {
     }
 
     pub fn block_type<D: Driver>() -> Rule<D, Type<D>> {
-        Rule::block(
+        Rule::switch(
             SyntaxKind::BlockType,
-            r#type,
-            |parser, info, types, stack| {
-                let mut types = types.into_iter();
-
-                let r#type = match types.next() {
-                    Some(r#type) => r#type,
-                    None => {
-                        parser.add_diagnostic(stack.error_expected(
+            [
+                || {
+                    Rule::empty_block(SyntaxKind::BlockType, |info| WithInfo {
+                        info: D::Info::clone(&info),
+                        item: Type::Block(
                             WithInfo {
-                                info: D::Info::clone(&info),
-                                item: SyntaxKind::Type,
-                            },
-                            None,
-                        ));
+                                info,
+                                item: Type::Unit,
+                            }
+                            .boxed(),
+                        ),
+                    })
+                },
+                || {
+                    Rule::block(
+                        SyntaxKind::BlockType,
+                        r#type,
+                        |parser, info, types, stack| {
+                            let mut types = types.into_iter();
 
-                        WithInfo {
-                            info: info.clone(),
-                            item: Type::Error,
-                        }
-                    }
-                };
+                            let r#type = match types.next() {
+                                Some(r#type) => r#type,
+                                None => {
+                                    parser.add_diagnostic(stack.error_expected(
+                                        WithInfo {
+                                            info: D::Info::clone(&info),
+                                            item: SyntaxKind::Type,
+                                        },
+                                        None,
+                                    ));
 
-                for r#type in types {
-                    parser.add_diagnostic(
-                        stack.error_expected(r#type.replace(SyntaxKind::Nothing), None),
-                    );
-                }
+                                    WithInfo {
+                                        info: info.clone(),
+                                        item: Type::Error,
+                                    }
+                                }
+                            };
 
-                WithInfo {
-                    info,
-                    item: Type::Block(r#type.boxed()),
-                }
-            },
+                            for r#type in types {
+                                parser.add_diagnostic(
+                                    stack.error_expected(r#type.replace(SyntaxKind::Nothing), None),
+                                );
+                            }
+
+                            WithInfo {
+                                info,
+                                item: Type::Block(r#type.boxed()),
+                            }
+                        },
+                    )
+                },
+            ],
         )
         .named("A type whose value is computed from a block expression.")
     }
@@ -1667,6 +1689,7 @@ mod rules {
                 structure_expression,
                 block_expression,
                 function_expression,
+                do_expression,
                 call_expression,
             ],
         )
@@ -1892,6 +1915,19 @@ mod rules {
             |_, info, name, inputs, _| WithInfo {
                 info,
                 item: Expression::Intrinsic { name, inputs },
+            },
+        )
+        .named("Call an intrinsic function provided by the runtime.")
+    }
+
+    pub fn do_expression<D: Driver>() -> Rule<D, Expression<D>> {
+        Rule::keyword1(
+            SyntaxKind::DoExpression,
+            Keyword::Do,
+            expression,
+            |_, info, block, _| WithInfo {
+                info,
+                item: Expression::Do(block.boxed()),
             },
         )
         .named("Call an intrinsic function provided by the runtime.")
@@ -3174,6 +3210,35 @@ mod base {
                             .collect();
 
                         Some(output(parser, tree.info, statements, stack))
+                    },
+                ),
+            )
+        }
+
+        pub fn empty_block(
+            syntax_kind: SyntaxKind,
+            output: impl Fn(D::Info) -> WithInfo<D::Info, Output> + Clone + 'static,
+        ) -> Self {
+            Rule::nonterminal(
+                syntax_kind,
+                RuleToRender::Block(Vec::new()),
+                || true,
+                ParseFn::new(
+                    {
+                        let output = output.clone();
+
+                        move |_, tree, _| match tree.item {
+                            TokenTree::Block(statements) if statements.is_empty() => {
+                                Some(Ok(output(tree.info)))
+                            }
+                            _ => None,
+                        }
+                    },
+                    move |_, tree, _| match tree.item {
+                        TokenTree::Block(statements) if statements.is_empty() => {
+                            Some(output(tree.info))
+                        }
+                        _ => None,
                     },
                 ),
             )

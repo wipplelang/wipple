@@ -300,6 +300,9 @@ pub enum UnresolvedExpression<D: Driver> {
     /// A block.
     Block(Vec<WithInfo<D::Info, UnresolvedStatement<D>>>),
 
+    /// Evaluate a block.
+    Do(WithInfo<D::Info, Box<UnresolvedExpression<D>>>),
+
     /// A function.
     #[serde(rename_all = "camelCase")]
     Function {
@@ -933,6 +936,9 @@ pub enum Expression<D: Driver> {
 
     /// A block.
     Block(Vec<WithInfo<D::Info, Expression<D>>>),
+
+    /// Evaluate a block.
+    Do(WithInfo<D::Info, Box<Expression<D>>>),
 
     /// A function.
     #[serde(rename_all = "camelCase")]

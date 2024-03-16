@@ -326,6 +326,9 @@ pub enum Expression<D: Driver> {
     /// A block.
     Block(Vec<WithInfo<D::Info, Statement<D>>>),
 
+    /// Evaluate a block.
+    Do(WithInfo<D::Info, Box<Expression<D>>>),
+
     /// A function.
     #[serde(rename_all = "camelCase")]
     Function {

@@ -1247,6 +1247,7 @@ enum ExpressionKind<D: Driver> {
     Number(String),
     Text(String),
     Block(Vec<WithInfo<D::Info, Expression<D>>>),
+    Do(WithInfo<D::Info, Box<Expression<D>>>),
     Function {
         inputs: Vec<WithInfo<D::Info, crate::Pattern<D>>>,
         body: WithInfo<D::Info, Box<Expression<D>>>,
@@ -1571,6 +1572,34 @@ fn infer_expression<D: Driver>(
             Expression {
                 r#type: Type::new(TypeKind::Block(Box::new(r#type)), info.clone(), Vec::new()),
                 kind: ExpressionKind::Block(statements),
+            }
+        }
+        crate::UntypedExpression::Do(block) => {
+            let output_type = Type::new(
+                TypeKind::Variable(context.type_context.variable()),
+                info.clone(),
+                Vec::new(),
+            );
+
+            let block_type = Type::new(
+                TypeKind::Block(Box::new(output_type.clone())),
+                info.clone(),
+                Vec::new(),
+            );
+
+            let mut block = infer_expression(block.unboxed(), context);
+
+            try_unify_expression(
+                context.driver,
+                block.as_mut(),
+                &block_type,
+                context.type_context,
+                context.error_queue,
+            );
+
+            Expression {
+                r#type: output_type,
+                kind: ExpressionKind::Do(block.boxed()),
             }
         }
         crate::UntypedExpression::Function { inputs, body } => {
@@ -2545,6 +2574,9 @@ fn resolve_expression<D: Driver>(
                 .map(|expression| resolve_expression(expression, context))
                 .collect(),
         ),
+        ExpressionKind::Do(block) => {
+            ExpressionKind::Do(resolve_expression(block.unboxed(), context).boxed())
+        }
         ExpressionKind::Function { inputs, body } => {
             if let TypeKind::Function {
                 inputs: input_types,
@@ -3342,6 +3374,9 @@ fn substitute_defaults_in_expression<D: Driver>(
         ExpressionKind::Block(statements) => statements.iter_mut().any(|statement| {
             substitute_defaults_in_expression(driver, statement.as_mut(), context)
         }),
+        ExpressionKind::Do(block) => {
+            substitute_defaults_in_expression(driver, block.as_deref_mut(), context)
+        }
         ExpressionKind::Function { body, .. } => {
             substitute_defaults_in_expression(driver, body.as_deref_mut(), context)
         }
@@ -3574,6 +3609,9 @@ fn finalize_expression<D: Driver>(
                 .into_iter()
                 .map(|expression| finalize_expression(expression, context))
                 .collect(),
+        ),
+        ExpressionKind::Do(block) => crate::TypedExpressionKind::Do(
+            finalize_expression(block.unboxed(), context).boxed(),
         ),
         ExpressionKind::Function { inputs, body } => crate::TypedExpressionKind::Function {
             inputs,

@@ -65,6 +65,9 @@ fn expression<D: Driver>(
         parse::Expression::Block(statement_syntaxes) => {
             crate::Expression::Block(statements(statement_syntaxes, info))
         }
+        parse::Expression::Do(block_syntax) => {
+            crate::Expression::Do(expression(block_syntax.unboxed(), info).boxed())
+        }
         parse::Expression::Function {
             inputs: input_syntaxes,
             body: body_syntax,

@@ -393,6 +393,9 @@ pub mod lower {
                     statements.into_iter().map(convert_statement).collect(),
                 )
             }
+            wipple_syntax::Expression::Do(block) => {
+                wipple_lower::UnresolvedExpression::Do(convert_expression(block.unboxed()).boxed())
+            }
             wipple_syntax::Expression::Function { inputs, body } => {
                 wipple_lower::UnresolvedExpression::Function {
                     inputs: inputs.into_iter().map(convert_pattern).collect(),
@@ -786,6 +789,9 @@ pub mod typecheck {
                 wipple_typecheck::UntypedExpression::Block(
                     statements.into_iter().map(convert_expression).collect(),
                 )
+            }
+            wipple_lower::Expression::Do(block) => {
+                wipple_typecheck::UntypedExpression::Do(convert_expression(block.unboxed()).boxed())
             }
             wipple_lower::Expression::Function { inputs, body } => {
                 wipple_typecheck::UntypedExpression::Function {

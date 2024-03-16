@@ -19,9 +19,6 @@ intrinsic "trait" "as" : As
 
 Value => instance (As Value Value) : value -> value
 
-do :: Value => {Value} -> Value
-do : block -> intrinsic "do" block
-
 error :: (Value : ()) => Text -> Value
 error : message -> intrinsic "crash" message
 
@@ -29,7 +26,7 @@ error : message -> intrinsic "crash" message
 ... : error "not implemented"
 
 assert :: Text -> Boolean -> ()
-assert : message -> condition -> if condition {()} {error message}
+assert : message -> condition -> if condition {} {error message}
 
 unreachable :: Value => Value
 unreachable : error "unreachable"

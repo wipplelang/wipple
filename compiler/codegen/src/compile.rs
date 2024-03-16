@@ -127,6 +127,10 @@ fn compile_expression<D: crate::Driver>(
                 crate::TypedInstruction::Block(captures, info.path.clone(), lazy_label),
             ));
         }
+        wipple_typecheck::TypedExpressionKind::Do(block) => {
+            compile_expression(block.as_deref(), info)?;
+            info.push_instruction(crate::Instruction::Do);
+        }
         wipple_typecheck::TypedExpressionKind::Function { inputs, body } => {
             let function_label = info.push_label();
             let previous_label = mem::replace(&mut info.current_label, function_label);

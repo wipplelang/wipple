@@ -21,9 +21,6 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         throw context.error(message.value);
     },
-    do: async ([block], _expectedTypeDescriptor, context) => {
-        return await context.do(block); // FIXME: ADD TAIL CALL OPTIMIZATION
-    },
     display: async ([message], _expectedTypeDescriptor, context) => {
         await new Promise<void>((resolve) => {
             context.io({

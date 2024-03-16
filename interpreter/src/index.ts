@@ -27,7 +27,6 @@ type Value =
           ir: Instruction[][];
           label: number;
           substitutions: Record<string, TypeDescriptor>;
-          tailCallable: boolean;
       }
     | {
           type: "nativeFunction";
@@ -82,6 +81,7 @@ export interface Context {
     executable: Executable;
     topLevel: Item[];
     debug: boolean;
+    gc: () => void;
     io: (request: IoRequest) => void;
     call: (func: TypedValue, inputs: TypedValue[]) => Promise<TypedValue>;
     do: (block: TypedValue) => Promise<TypedValue>;
@@ -140,18 +140,20 @@ export const evaluate = async (
     executable: Executable,
     options: {
         debug: boolean;
+        gc: () => void;
         io: (request: IoRequest) => Promise<void>;
     },
 ) => {
     const context: Context = {
         executable,
         topLevel: executable.code,
+        gc: options.gc,
         io: options.io,
         debug: options.debug,
         call: async (func, inputs) => {
             switch (func.type) {
                 case "function": {
-                    return (await evaluateItem(
+                    const result = (await evaluateItem(
                         func.path,
                         func.ir,
                         func.label,
@@ -160,6 +162,10 @@ export const evaluate = async (
                         func.substitutions,
                         context,
                     ))!;
+
+                    context.gc();
+
+                    return result;
                 }
                 case "nativeFunction": {
                     return await func.value(...inputs);
@@ -173,7 +179,7 @@ export const evaluate = async (
                 throw new InterpreterError("expected block value");
             }
 
-            return (await evaluateItem(
+            const result = (await evaluateItem(
                 block.path,
                 block.ir,
                 block.label,
@@ -182,6 +188,10 @@ export const evaluate = async (
                 block.substitutions,
                 context,
             ))!;
+
+            context.gc();
+
+            return result;
         },
         getItem: async (path, parametersOrSubstitutions, typeDescriptor) => {
             const item = context.executable.items[path];
@@ -199,7 +209,11 @@ export const evaluate = async (
                 console.error("## initializing constant:", { path, typeDescriptor, substitutions });
             }
 
-            return (await evaluateItem(path, item.ir, 0, [], {}, substitutions, context))!;
+            const result = (await evaluateItem(path, item.ir, 0, [], {}, substitutions, context))!;
+
+            context.gc();
+
+            return result;
         },
         error: (options) => {
             if (typeof options === "string") {
@@ -279,21 +293,11 @@ const evaluateItem = async (
                 }
                 case "initialize": {
                     const value = peek();
-
-                    if (scope[instruction.value] != null) {
-                        throw new Error("initializing already initialized variable");
-                    }
-
                     scope[instruction.value] = { current: value };
                     break;
                 }
                 case "mutate": {
                     const value = pop();
-
-                    if (scope[instruction.value].current === value) {
-                        error("circular reference");
-                    }
-
                     scope[instruction.value].current = value;
                     break;
                 }
@@ -335,6 +339,14 @@ const evaluateItem = async (
                     const func = pop();
 
                     const result = await context.call(func, inputs);
+                    stack.push(result);
+
+                    break;
+                }
+                case "do": {
+                    const block = pop();
+
+                    const result = await context.do(block);
                     stack.push(result);
 
                     break;
@@ -489,8 +501,6 @@ const evaluateItem = async (
                                 label: instruction.value[1].value[2],
                                 substitutions,
                                 scope,
-                                // A function is only tall callable if it has no captures
-                                tailCallable: instruction.value[1].value[0].length === 0,
                             });
 
                             break;
@@ -581,17 +591,32 @@ const evaluateItem = async (
 
                     const func = pop();
 
-                    if (func.type === "function" && func.tailCallable) {
+                    if (func.type === "function") {
                         item = func.ir;
                         label = func.label;
                         stack.push(...inputs);
-                        scope = {};
+                        scope = { ...func.scope };
                         substitutions = func.substitutions;
+                        context.gc();
                         continue outer;
                     } else {
                         inputs.reverse();
                         return await context.call(func, inputs);
                     }
+                }
+                case "tailDo": {
+                    const block = pop();
+
+                    if (block.type !== "block") {
+                        throw error("expected block", block);
+                    }
+
+                    item = block.ir;
+                    label = block.label;
+                    scope = { ...block.scope };
+                    substitutions = block.substitutions;
+                    context.gc();
+                    continue outer;
                 }
                 case "unreachable": {
                     throw error("evaluated unreachable instruction");

@@ -570,6 +570,9 @@ pub enum UntypedExpression<D: Driver> {
     /// A block.
     Block(Vec<WithInfo<D::Info, UntypedExpression<D>>>),
 
+    /// Evaluate a block.
+    Do(WithInfo<D::Info, Box<UntypedExpression<D>>>),
+
     /// A function.
     #[serde(rename_all = "camelCase")]
     Function {
@@ -761,6 +764,9 @@ pub enum TypedExpressionKind<D: Driver> {
 
     /// A block.
     Block(Vec<WithInfo<D::Info, TypedExpression<D>>>),
+
+    /// Evaluate a block.
+    Do(WithInfo<D::Info, Box<TypedExpression<D>>>),
 
     /// A function.
     #[serde(rename_all = "camelCase")]
@@ -1023,6 +1029,9 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a TypedExpress
                 for statement in statements {
                     statement.as_ref().traverse(f);
                 }
+            }
+            TypedExpressionKind::Do(block) => {
+                block.as_deref().traverse(f);
             }
             TypedExpressionKind::Function { body, .. } => {
                 body.as_deref().traverse(f);

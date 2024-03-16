@@ -11,11 +11,11 @@ with-task-group :: (Task-Group -> ()) -> ()
 with-task-group : body -> intrinsic "with-task-group" body
 
 -- Run a task in a task group.
-task :: {()} -> Task-Group -> ()
+task :: {} -> Task-Group -> ()
 task : body -> group -> intrinsic "task" group body
 
 -- Execute code in the background without waiting for it to finish.
-in-background :: {()} -> ()
+in-background :: {} -> ()
 in-background : body -> intrinsic "in-background" body
 
 -- TODO: Delay and duration units

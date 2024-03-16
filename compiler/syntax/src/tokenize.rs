@@ -78,6 +78,9 @@ pub enum Keyword {
     #[strum(serialize = "_")]
     Underscore,
 
+    #[strum(serialize = "do")]
+    Do,
+
     #[strum(serialize = "!")]
     Mutate,
 
@@ -337,6 +340,9 @@ enum RawToken<'src> {
     #[token("_", priority = 3)]
     Underscore,
 
+    #[token("do")]
+    Do,
+
     #[token("!")]
     Mutate,
 
@@ -471,6 +477,7 @@ where
                     RawToken::RightBrace => Token::RightBrace,
                     RawToken::Underscore => Token::Keyword(Keyword::Underscore),
                     RawToken::Mutate => Token::Keyword(Keyword::Mutate),
+                    RawToken::Do => Token::Keyword(Keyword::Do),
                     RawToken::When => Token::Keyword(Keyword::When),
                     RawToken::Type => Token::Keyword(Keyword::Type),
                     RawToken::Trait => Token::Keyword(Keyword::Trait),

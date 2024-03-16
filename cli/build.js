@@ -5,6 +5,7 @@ await esbuild.build({
     bundle: true,
     platform: "node",
     target: ["node20"],
+    external: ["bun"],
     format: "esm",
     banner: {
         // https://github.com/evanw/esbuild/issues/1921#issuecomment-1152991694

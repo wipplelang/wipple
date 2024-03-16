@@ -130,14 +130,12 @@ const app = subcommands({
                     JSON.parse(fs.readFileSync(path, "utf8")),
                 );
 
-                const result = link(libraries);
+                const executable = link(libraries);
 
-                if (result.Err) {
-                    console.error("failed to link libraries:", result.Err);
+                if (!executable) {
+                    console.error("linking failed");
                     process.exit(1);
                 }
-
-                const executable = result.Ok;
 
                 const output = shebang + stringify(executable);
 
@@ -184,6 +182,7 @@ const app = subcommands({
                 try {
                     await evaluate(executable, {
                         debug: process.env.WIPPLE_DEBUG_INTERPRETER != null,
+                        gc: () => Bun.gc(true),
                         io: handleIo,
                     });
                 } catch (error) {

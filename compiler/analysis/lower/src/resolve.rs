@@ -1068,6 +1068,9 @@ fn resolve_expression<D: Driver>(
                 body: body.boxed(),
             }
         }
+        crate::UnresolvedExpression::Do(block) => {
+            crate::Expression::Do(resolve_expression(block.unboxed(), info).boxed())
+        }
         crate::UnresolvedExpression::Call { function, inputs } => crate::Expression::Call {
             function: resolve_expression(function.unboxed(), info).boxed(),
             inputs: inputs
