@@ -22,7 +22,7 @@ export const intrinsics: Record<string, Intrinsic> = {
         throw context.error(message.value);
     },
     do: async ([block], _expectedTypeDescriptor, context) => {
-        return await context.do(block);
+        return await context.do(block); // FIXME: ADD TAIL CALL OPTIMIZATION
     },
     display: async ([message], _expectedTypeDescriptor, context) => {
         await new Promise<void>((resolve) => {
@@ -44,10 +44,9 @@ export const intrinsics: Record<string, Intrinsic> = {
                     message: textToJs(message, context),
                     validate: async (input) => {
                         value = maybeToJs(
-                            await context.call(
-                                validate,
+                            await context.call(validate, [
                                 jsToText(expectedTypeDescriptor, input, context),
-                            ),
+                            ]),
                             context,
                         );
 
@@ -113,13 +112,12 @@ export const intrinsics: Record<string, Intrinsic> = {
         };
 
         return await new Promise<TypedValue>(async (resolve) => {
-            await context.call(
-                callback,
+            await context.call(callback, [
                 jsToFunction(typeDescriptor, async (result) => {
                     resolve(result);
                     return unit;
                 }),
-            );
+            ]);
         });
     },
     "with-task-group": async ([callback], _expectedTypeDescriptor, context) => {
@@ -134,7 +132,7 @@ export const intrinsics: Record<string, Intrinsic> = {
         const taskGroupTypeDescriptor = callback.typeDescriptor.value[0][0];
 
         const taskGroup: TaskGroup = [];
-        await context.call(callback, jsToTaskGroup(taskGroupTypeDescriptor, taskGroup, context));
+        await context.call(callback, [jsToTaskGroup(taskGroupTypeDescriptor, taskGroup, context)]);
 
         await Promise.all(taskGroup.map((task) => task()));
 
@@ -146,14 +144,14 @@ export const intrinsics: Record<string, Intrinsic> = {
         }
 
         taskGroup.value.push(async () => {
-            await context.call(callback, unit);
+            await context.do(callback);
         });
 
         return unit;
     },
     "in-background": async ([callback], _expectedTypeDescriptor, context) => {
         (async () => {
-            await context.call(callback, unit);
+            await context.do(callback);
         })();
 
         return unit;
@@ -256,13 +254,13 @@ export const intrinsics: Record<string, Intrinsic> = {
     "sqrt-number": async ([number], expectedTypeDescriptor, context) => {
         return jsToNumber(expectedTypeDescriptor, numberToJs(number, context).sqrt(), context);
     },
-    "sin-number": async ([number], expectedTypeDescriptor, context) => {
+    sin: async ([number], expectedTypeDescriptor, context) => {
         return jsToNumber(expectedTypeDescriptor, numberToJs(number, context).sin(), context);
     },
-    "cos-number": async ([number], expectedTypeDescriptor, context) => {
+    cos: async ([number], expectedTypeDescriptor, context) => {
         return jsToNumber(expectedTypeDescriptor, numberToJs(number, context).cos(), context);
     },
-    "tan-number": async ([number], expectedTypeDescriptor, context) => {
+    tan: async ([number], expectedTypeDescriptor, context) => {
         return jsToNumber(expectedTypeDescriptor, numberToJs(number, context).tan(), context);
     },
     "negate-number": async ([number], expectedTypeDescriptor, context) => {
@@ -680,7 +678,7 @@ const tupleToJs = (value: TypedValue, context: Context): TypedValue[] => {
 
 const jsToFunction = (
     typeDescriptor: TypeDescriptor,
-    func: (input: TypedValue) => Promise<TypedValue>,
+    func: (...inputs: TypedValue[]) => Promise<TypedValue>,
 ): TypedValue => ({
     type: "nativeFunction",
     typeDescriptor,
@@ -735,7 +733,7 @@ const hasherToJs = (value: TypedValue, context: Context): { key: number[] } => {
 
 const randomInteger = () => Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
 
-const functions: ((input: TypedValue) => Promise<TypedValue>)[] = [];
+const functions: ((inputs: TypedValue[]) => Promise<TypedValue>)[] = [];
 
 const serialize = (value: TypedValue, context: Context): any => {
     switch (value.type) {
@@ -745,7 +743,7 @@ const serialize = (value: TypedValue, context: Context): any => {
             return textToJs(value, context);
         case "function": {
             const index = functions.length;
-            functions.push((input) => context.call(value, input));
+            functions.push((inputs) => context.call(value, inputs));
             return { $wippleFunction: index };
         }
         case "list":
@@ -765,8 +763,8 @@ const deserialize = (value: any, typeDescriptor: TypeDescriptor, context: Contex
     } else if (typeof value === "string") {
         return jsToText(typeDescriptor, value, context);
     } else if (typeof value === "function") {
-        return jsToFunction(typeDescriptor, async (input) => {
-            return deserialize(await value(serialize(input, context)), typeDescriptor, context);
+        return jsToFunction(typeDescriptor, async (...inputs) => {
+            return deserialize(await value(...inputs), typeDescriptor, context);
         });
     } else if (typeof value === "boolean") {
         return jsToBoolean(typeDescriptor, value, context);
@@ -778,8 +776,8 @@ const deserialize = (value: any, typeDescriptor: TypeDescriptor, context: Contex
         );
     } else if (typeof value === "object" && "$wippleFunction" in value) {
         const func = functions[value.$wippleFunction];
-        return jsToFunction(typeDescriptor, async (input) => {
-            return deserialize(await func(input), typeDescriptor, context);
+        return jsToFunction(typeDescriptor, async (...inputs) => {
+            return deserialize(await func(inputs), typeDescriptor, context);
         });
     } else {
         throw new Error("cannot deserialize value");

@@ -95,6 +95,7 @@ fn compile_expression<D: crate::Driver>(
             let lazy_label = info.push_label();
             let previous_label = mem::replace(&mut info.current_label, lazy_label);
 
+            let prev_num_vars = info.variables.len() as u32;
             let prev_captures = mem::take(&mut info.captures);
 
             if statements.is_empty() {
@@ -117,7 +118,8 @@ fn compile_expression<D: crate::Driver>(
             }
 
             info.push_instruction(crate::Instruction::Return);
-            let captures = mem::replace(&mut info.captures, prev_captures);
+            let mut captures = mem::replace(&mut info.captures, prev_captures);
+            captures.retain(|&var| var < prev_num_vars);
             info.current_label = previous_label;
 
             info.push_instruction(crate::Instruction::Typed(
@@ -129,6 +131,7 @@ fn compile_expression<D: crate::Driver>(
             let function_label = info.push_label();
             let previous_label = mem::replace(&mut info.current_label, function_label);
 
+            let prev_num_vars = info.variables.len() as u32;
             for pattern in inputs {
                 compile_exhaustive_pattern(pattern.as_ref(), info)?;
             }
@@ -136,7 +139,8 @@ fn compile_expression<D: crate::Driver>(
             let prev_captures = mem::take(&mut info.captures);
             compile_expression(body.as_deref(), info)?;
             info.push_instruction(crate::Instruction::Return);
-            let captures = mem::replace(&mut info.captures, prev_captures);
+            let mut captures = mem::replace(&mut info.captures, prev_captures);
+            captures.retain(|&var| var < prev_num_vars);
             info.current_label = previous_label;
 
             info.push_instruction(crate::Instruction::Typed(

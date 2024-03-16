@@ -148,7 +148,7 @@ pub enum Instruction<D: Driver> {
 
     /// (Control flow) Call the function on the top of the stack, replacing the
     /// current stack.
-    TailCall,
+    TailCall(u32),
 
     /// (Control flow) The program should never reach this instruction; if it
     /// does, there is a compiler bug.
@@ -261,7 +261,7 @@ where
             }
             Instruction::Return => write!(f, "return"),
             Instruction::Jump(label) => write!(f, "jump {label}"),
-            Instruction::TailCall => write!(f, "tail call"),
+            Instruction::TailCall(inputs) => write!(f, "tail call {inputs}"),
             Instruction::Unreachable => write!(f, "unreachable"),
         }
     }

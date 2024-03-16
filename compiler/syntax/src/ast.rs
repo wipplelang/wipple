@@ -172,17 +172,24 @@ fn expression<D: Driver>(
                 .map(|element_syntax| expression(element_syntax, info))
                 .collect(),
         ),
-        parse::Expression::Structure(fields) => crate::Expression::Structure(
-            fields
-                .into_iter()
-                .map(|field| {
-                    field.map(|field| crate::FieldValue {
-                        name: field.name,
-                        value: expression(field.value, info),
-                    })
-                })
-                .collect(),
-        ),
+        parse::Expression::Structure(fields) => {
+            // HACK: Actually parse an empty block as an expression
+            if fields.is_empty() {
+                crate::Expression::Block(Vec::new())
+            } else {
+                crate::Expression::Structure(
+                    fields
+                        .into_iter()
+                        .map(|field| {
+                            field.map(|field| crate::FieldValue {
+                                name: field.name,
+                                value: expression(field.value, info),
+                            })
+                        })
+                        .collect(),
+                )
+            }
+        }
     })
 }
 

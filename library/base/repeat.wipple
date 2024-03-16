@@ -34,7 +34,7 @@ forever : Forever
 
 Forever : type
 
-Body Result => instance (Repeat-Predicate Forever Body Result) :
+Body (Result : ()) => instance (Repeat-Predicate Forever Body Result) :
     _ -> Continue (_ -> Forever)
 
 Times : type {

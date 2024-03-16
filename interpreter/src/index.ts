@@ -22,7 +22,7 @@ type Value =
       }
     | {
           type: "function";
-          scope: Record<number, TypedValue>;
+          scope: Record<number, { current: TypedValue }>;
           path: string;
           ir: Instruction[][];
           label: number;
@@ -31,11 +31,11 @@ type Value =
       }
     | {
           type: "nativeFunction";
-          value: (value: TypedValue) => Promise<TypedValue>;
+          value: (...inputs: TypedValue[]) => Promise<TypedValue>;
       }
     | {
           type: "block";
-          scope: Record<number, TypedValue>;
+          scope: Record<number, { current: TypedValue }>;
           path: string;
           ir: Instruction[][];
           label: number;
@@ -81,10 +81,9 @@ type Value =
 export interface Context {
     executable: Executable;
     topLevel: Item[];
-    initializedItems: Record<string, [Record<string, TypeDescriptor>, TypedValue][]>;
     debug: boolean;
     io: (request: IoRequest) => void;
-    call: (func: TypedValue, input: TypedValue) => Promise<TypedValue>;
+    call: (func: TypedValue, inputs: TypedValue[]) => Promise<TypedValue>;
     do: (block: TypedValue) => Promise<TypedValue>;
     getItem: (
         path: string,
@@ -147,24 +146,23 @@ export const evaluate = async (
     const context: Context = {
         executable,
         topLevel: executable.code,
-        initializedItems: {},
         io: options.io,
         debug: options.debug,
-        call: async (func, input) => {
+        call: async (func, inputs) => {
             switch (func.type) {
                 case "function": {
                     return (await evaluateItem(
                         func.path,
                         func.ir,
                         func.label,
-                        [input],
+                        inputs.toReversed(),
                         { ...func.scope },
                         func.substitutions,
                         context,
                     ))!;
                 }
                 case "nativeFunction": {
-                    return await func.value(input);
+                    return await func.value(...inputs);
                 }
                 default:
                     throw new InterpreterError("expected function");
@@ -197,22 +195,11 @@ export const evaluate = async (
                   )
                 : parametersOrSubstitutions;
 
-            for (const [substitutions, value] of context.initializedItems[path] ?? []) {
-                if (!unify(typeDescriptor, value.typeDescriptor, { ...substitutions })) {
-                    continue;
-                }
-
-                return value;
-            }
-
             if (context.debug) {
                 console.error("## initializing constant:", { path, typeDescriptor, substitutions });
             }
 
-            const value = (await evaluateItem(path, item.ir, 0, [], {}, substitutions, context))!;
-            (context.initializedItems[path] ??= []).push([substitutions, value]);
-
-            return value;
+            return (await evaluateItem(path, item.ir, 0, [], {}, substitutions, context))!;
         },
         error: (options) => {
             if (typeof options === "string") {
@@ -240,7 +227,7 @@ const evaluateItem = async (
     item: Instruction[][],
     label: number,
     stack: TypedValue[],
-    scope: Record<number, TypedValue>,
+    scope: Record<number, { current: TypedValue }>,
     substitutions: Record<string, TypeDescriptor>,
     context: Context,
 ) => {
@@ -292,12 +279,22 @@ const evaluateItem = async (
                 }
                 case "initialize": {
                     const value = peek();
-                    scope[instruction.value] = value;
+
+                    if (scope[instruction.value] != null) {
+                        throw new Error("initializing already initialized variable");
+                    }
+
+                    scope[instruction.value] = { current: value };
                     break;
                 }
                 case "mutate": {
                     const value = pop();
-                    scope[instruction.value] = value;
+
+                    if (scope[instruction.value].current === value) {
+                        error("circular reference");
+                    }
+
+                    scope[instruction.value].current = value;
                     break;
                 }
                 case "field": {
@@ -323,15 +320,21 @@ const evaluateItem = async (
                     break;
                 }
                 case "variable": {
-                    const value = scope[instruction.value];
+                    const value = scope[instruction.value].current;
                     stack.push(value);
                     break;
                 }
                 case "call": {
-                    const input = pop();
+                    const inputs: TypedValue[] = [];
+                    for (let i = 0; i < instruction.value; i++) {
+                        inputs.push(pop());
+                    }
+
+                    inputs.reverse();
+
                     const func = pop();
 
-                    const result = await context.call(func, input);
+                    const result = await context.call(func, inputs);
                     stack.push(result);
 
                     break;
@@ -571,18 +574,23 @@ const evaluateItem = async (
                     continue outer;
                 }
                 case "tailCall": {
-                    const input = pop();
+                    const inputs: TypedValue[] = [];
+                    for (let i = 0; i < instruction.value; i++) {
+                        inputs.push(pop());
+                    }
+
                     const func = pop();
 
                     if (func.type === "function" && func.tailCallable) {
                         item = func.ir;
                         label = func.label;
+                        stack.push(...inputs);
                         scope = {};
                         substitutions = func.substitutions;
-                        stack.push(input);
                         continue outer;
                     } else {
-                        return await context.call(func, input);
+                        inputs.reverse();
+                        return await context.call(func, inputs);
                     }
                 }
                 case "unreachable": {

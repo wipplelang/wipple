@@ -313,7 +313,7 @@ any? : condition? -> collection -> do {
     helper :: Element => (Element -> Boolean) -> (Sequence Element) -> Boolean
     helper : condition? -> sequence -> when (next sequence) {
         Some element -> condition? element or (helper condition?) sequence
-        None -> True
+        None -> False
     }
 
     As-Sequence collection . helper condition?
