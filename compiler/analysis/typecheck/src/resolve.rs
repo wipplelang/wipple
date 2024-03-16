@@ -416,7 +416,7 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
         subexpression_types: None,
     };
 
-    finalize_type(r#type, &finalize_context)
+    finalize_type(r#type, false, &finalize_context)
 }
 
 // Instead of reporting unification errors immediately, queue them and then
@@ -469,9 +469,9 @@ fn report_queued_errors<D: Driver>(
             QueuedError::RecursionLimit => crate::Diagnostic::RecursionLimit,
             QueuedError::Mismatch { actual, expected } => crate::Diagnostic::Mismatch {
                 actual_roles: actual.roles.clone(),
-                actual: finalize_type(actual, &finalize_context),
+                actual: finalize_type(actual, false, &finalize_context),
                 expected_roles: expected.roles.clone(),
-                expected: finalize_type(expected, &finalize_context),
+                expected: finalize_type(expected, false, &finalize_context),
             },
             QueuedError::WrongNumberOfInputs { actual, expected } => {
                 crate::Diagnostic::WrongNumberOfInputs { actual, expected }
@@ -491,7 +491,7 @@ fn report_queued_errors<D: Driver>(
                     .collect(),
             },
             QueuedError::NotAStructure(r#type) => {
-                crate::Diagnostic::NotAStructure(finalize_type(r#type, &finalize_context))
+                crate::Diagnostic::NotAStructure(finalize_type(r#type, false, &finalize_context))
             }
             QueuedError::MissingFields(fields) => crate::Diagnostic::MissingFields(fields),
             QueuedError::ExtraField => crate::Diagnostic::ExtraField,
@@ -3451,6 +3451,7 @@ struct FinalizeContext<'a, D: Driver> {
 
 fn finalize_type<D: Driver>(
     r#type: Type<D>,
+    report_error: bool,
     context: &FinalizeContext<'_, D>,
 ) -> WithInfo<D::Info, crate::Type<D>> {
     fn finalize_type_inner<D: Driver>(
@@ -3515,7 +3516,7 @@ fn finalize_type<D: Driver>(
     let mut fully_resolved = true;
     let finalized_type = finalize_type_inner(r#type, context, &mut fully_resolved);
 
-    if !fully_resolved {
+    if report_error && !fully_resolved {
         if let Some(errors) = &context.errors {
             errors.borrow_mut().push(WithInfo {
                 info: finalized_type.info.clone(),
@@ -3535,8 +3536,12 @@ fn finalize_expression<D: Driver>(
     mut expression: WithInfo<D::Info, Expression<D>>,
     context: &FinalizeContext<'_, D>,
 ) -> WithInfo<D::Info, crate::TypedExpression<D>> {
+    let mut report_errors = true;
     let kind = match expression.item.kind {
-        ExpressionKind::Unknown(path) => crate::TypedExpressionKind::Unknown(path),
+        ExpressionKind::Unknown(path) => {
+            report_errors = false;
+            crate::TypedExpressionKind::Unknown(path)
+        }
         ExpressionKind::Variable(name, variable) => {
             crate::TypedExpressionKind::Variable(name, variable)
         }
@@ -3558,13 +3563,13 @@ fn finalize_expression<D: Driver>(
 
                 match resolve_item(&path, expression.as_mut(), false, &resolve_context) {
                     Ok(Some(parameters)) => {
-                        finalize_type(expression.item.r#type.clone(), context);
+                        finalize_type(expression.item.r#type.clone(), true, context);
 
                         crate::TypedExpressionKind::Constant {
                             path: path.clone(),
                             parameters: parameters
                                 .into_iter()
-                                .map(|r#type| finalize_type(r#type, context).item)
+                                .map(|r#type| finalize_type(r#type, true, context).item)
                                 .collect(),
                         }
                     }
@@ -3582,7 +3587,7 @@ fn finalize_expression<D: Driver>(
             let error = WithInfo {
                 info: expression.info.clone(),
                 item: crate::Diagnostic::UnknownType(
-                    finalize_type(expression.item.r#type.clone(), context).item,
+                    finalize_type(expression.item.r#type.clone(), true, context).item,
                 ),
             };
 
@@ -3597,7 +3602,7 @@ fn finalize_expression<D: Driver>(
                 path,
                 parameters: parameters
                     .iter()
-                    .map(|r#type| finalize_type(r#type.clone(), context).item)
+                    .map(|r#type| finalize_type(r#type.clone(), true, context).item)
                     .collect(),
             }
         }
@@ -3610,9 +3615,9 @@ fn finalize_expression<D: Driver>(
                 .map(|expression| finalize_expression(expression, context))
                 .collect(),
         ),
-        ExpressionKind::Do(block) => crate::TypedExpressionKind::Do(
-            finalize_expression(block.unboxed(), context).boxed(),
-        ),
+        ExpressionKind::Do(block) => {
+            crate::TypedExpressionKind::Do(finalize_expression(block.unboxed(), context).boxed())
+        }
         ExpressionKind::Function { inputs, body } => crate::TypedExpressionKind::Function {
             inputs,
             body: finalize_expression(body.unboxed(), context).boxed(),
@@ -3663,7 +3668,7 @@ fn finalize_expression<D: Driver>(
             let error = WithInfo {
                 info: expression.info.clone(),
                 item: crate::Diagnostic::UnknownType(
-                    finalize_type(expression.item.r#type.clone(), context).item,
+                    finalize_type(expression.item.r#type.clone(), true, context).item,
                 ),
             };
 
@@ -3715,7 +3720,7 @@ fn finalize_expression<D: Driver>(
         },
     };
 
-    let r#type = finalize_type(expression.item.r#type.clone(), context).item;
+    let r#type = finalize_type(expression.item.r#type.clone(), report_errors, context).item;
 
     WithInfo {
         info: expression.info,
@@ -3732,7 +3737,7 @@ fn finalize_instance<D: Driver>(
         parameters: instance
             .parameters
             .into_iter()
-            .map(|r#type| finalize_type(r#type, context))
+            .map(|r#type| finalize_type(r#type, true, context))
             .collect(),
     }
 }
