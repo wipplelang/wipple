@@ -13,7 +13,7 @@
         },
         {
             "name": "keyword",
-            "match": "\\b(_|!|when|type|trait|instance|intrinsic|infer|do)\\b"
+            "match": "\\b(_|!|when|where|type|trait|instance|intrinsic|infer|do)\\b"
         },
         {
             "name": "keyword.operator",

@@ -1,12 +1,13 @@
 import type { WithInfo, main } from "wipple-compiler";
 import { LinesAndColumns, SourceLocation } from "lines-and-columns";
 
-export type AnyDeclaration =
-    | { type: "type"; path: main.Path; declaration: main.TypeDeclaration }
-    | { type: "trait"; path: main.Path; declaration: main.TraitDeclaration }
-    | { type: "typeParameter"; path: main.Path; declaration: main.TypeParameterDeclaration }
-    | { type: "constant"; path: main.Path; declaration: main.ConstantDeclaration }
-    | { type: "instance"; path: main.Path; declaration: main.InstanceDeclaration };
+export type AnyDeclaration = { name: string | null; path: main.Path } & (
+    | { type: "type"; declaration: main.TypeDeclaration }
+    | { type: "trait"; declaration: main.TraitDeclaration }
+    | { type: "typeParameter"; declaration: main.TypeParameterDeclaration }
+    | { type: "constant"; declaration: main.ConstantDeclaration }
+    | { type: "instance"; declaration: main.InstanceDeclaration }
+);
 
 export interface RenderedSourceLocation {
     path: string;
@@ -61,6 +62,7 @@ export class Render {
                 declarations.push({
                     info: declaration.info,
                     item: {
+                        name: this.nameForPath(path),
                         path,
                         type,
                         declaration: declaration.item,
@@ -79,6 +81,16 @@ export class Render {
     getDeclarationFromPath(path: main.Path): WithInfo<main.Info, AnyDeclaration> | null {
         for (const declaration of this.declarations) {
             if (declaration.item.path === path) {
+                return declaration;
+            }
+        }
+
+        return null;
+    }
+
+    getDeclarationFromInfo(info: main.Info): WithInfo<main.Info, AnyDeclaration> | null {
+        for (const declaration of this.declarations) {
+            if (this.compareInfo(declaration.info, info)) {
                 return declaration;
             }
         }
@@ -163,6 +175,184 @@ export class Render {
             start: { ...startLocation, index: value.info.location.span.start },
             end: { ...endLocation, index: value.info.location.span.end },
         };
+    }
+
+    renderDeclaration(declaration: WithInfo<main.Info, AnyDeclaration>): string | null {
+        switch (declaration.item.type) {
+            case "type": {
+                const typeFunction = this.renderTypeFunction(
+                    declaration.item.declaration.parameters,
+                    [],
+                    { kind: "arrow" },
+                );
+
+                return `${declaration.item.name} : ${typeFunction}type`;
+            }
+            case "trait": {
+                const typeFunction = this.renderTypeFunction(
+                    declaration.item.declaration.parameters,
+                    [],
+                    { kind: "arrow" },
+                );
+
+                return `${declaration.item.name} : ${typeFunction}trait`;
+            }
+            case "typeParameter": {
+                return declaration.item.name;
+            }
+            case "constant": {
+                const typeFunction = this.renderTypeFunction(
+                    declaration.item.declaration.parameters,
+                    declaration.item.declaration.bounds,
+                    { kind: "arrow" },
+                );
+
+                const type = this.renderType(declaration.item.declaration.type, true);
+
+                return `${declaration.item.name} :: ${typeFunction}${type}`;
+            }
+            case "instance": {
+                const typeFunction = this.renderTypeFunction(
+                    declaration.item.declaration.parameters,
+                    declaration.item.declaration.bounds,
+                    { kind: "arrow" },
+                );
+
+                const instance = this.renderInstance(declaration.item.declaration.instance);
+
+                return `${typeFunction}instance ${instance}`;
+            }
+            default:
+                declaration.item satisfies never;
+                return null;
+        }
+    }
+
+    renderType(type: WithInfo<main.Info, main.Type>, isTopLevel: boolean): string {
+        const render = (
+            type: WithInfo<main.Info, main.Type>,
+            isTopLevel: boolean,
+            isReturn: boolean,
+        ): string => {
+            switch (type.item.type) {
+                case "unknown": {
+                    return "_";
+                }
+                case "parameter": {
+                    return this.nameForPath(type.item.value);
+                }
+                case "declared": {
+                    const name = this.nameForPath(type.item.value.path);
+                    if (!name) {
+                        return "_";
+                    }
+
+                    const rendered =
+                        type.item.value.parameters.length === 0
+                            ? name
+                            : `${name} ${type.item.value.parameters
+                                  .map((parameter) => render(parameter, false, false))
+                                  .join(" ")}`;
+
+                    return isTopLevel || type.item.value.parameters.length === 0
+                        ? rendered
+                        : `(${rendered})`;
+                }
+                case "function": {
+                    const inputs = type.item.value.inputs
+                        .map((input) => render(input, false, false))
+                        .join(" ");
+
+                    const output = render(type.item.value.output, false, true);
+
+                    const rendered = `${inputs} -> ${output}`;
+
+                    return isTopLevel && isReturn ? rendered : `(${rendered})`;
+                }
+                case "tuple": {
+                    const rendered =
+                        type.item.value.length === 0
+                            ? "()"
+                            : type.item.value.length === 1
+                            ? `${render(type.item.value[0], isTopLevel, isReturn)} ;`
+                            : `(${type.item.value
+                                  .map((value) => render(value, false, false))
+                                  .join(" ; ")})`;
+
+                    return isTopLevel || type.item.value.length === 0 ? rendered : `(${rendered})`;
+                }
+                case "block": {
+                    return `{${render(type.item.value, true, false)}}`;
+                }
+                case "intrinsic": {
+                    return "intrinsic";
+                }
+            }
+        };
+
+        return render(type, isTopLevel, true);
+    }
+
+    renderTypeFunction(
+        parameters: main.Path[],
+        bounds: WithInfo<main.Info, main.Instance>[],
+        format: { kind: "arrow" } | { kind: "description"; type: WithInfo<main.Info, main.Type> },
+    ): string {
+        switch (format.kind) {
+            case "arrow": {
+                if (parameters.length === 0) {
+                    return "";
+                }
+
+                const renderedParameters = parameters
+                    .map((parameter) => this.nameForPath(parameter))
+                    .join(" ");
+
+                let renderedBounds = bounds
+                    .map((bound) => `${this.renderInstance(bound)}`)
+                    .join(" ");
+
+                if (renderedBounds) {
+                    renderedBounds = ` where ${renderedBounds}`;
+                }
+
+                return `${renderedParameters}${renderedBounds} => `;
+            }
+            case "description": {
+                const renderedType = this.renderType(format.type, true);
+
+                switch (parameters.length) {
+                    case 0: {
+                        return `\`${renderedType}\``;
+                    }
+                    case 1: {
+                        return `\`${renderedType}\` for any type \`${this.nameForPath(
+                            parameters[0],
+                        )}\``;
+                    }
+                    default: {
+                        const last = parameters.pop()!;
+
+                        return `\`${this.renderType(format.type, true)}\` for any types ${parameters
+                            .map((parameter) => `\`${this.nameForPath(parameter)}\``)
+                            .join(", ")} and \`${this.nameForPath(last)}\``;
+                    }
+                }
+            }
+            default:
+                format satisfies never;
+                throw new Error("unknown format");
+        }
+    }
+
+    renderInstance(instance: WithInfo<main.Info, main.Instance>): string {
+        const trait = this.nameForPath(instance.item.trait);
+
+        const parameters = instance.item.parameters
+            .map((type) => this.renderType(type, false))
+            .join(" ");
+
+        return parameters.length === 0 ? trait : `(${trait} ${parameters})`;
     }
 
     renderDiagnostic(diagnostic: WithInfo<main.Info, main.Diagnostic>): RenderedDiagnostic | null {
@@ -380,5 +570,17 @@ export class Render {
         }
 
         return null;
+    }
+
+    private compareInfo(left: main.Info, right: main.Info): boolean {
+        return (
+            left.location.path === right.location.path &&
+            left.location.span.start === right.location.span.start &&
+            left.location.span.end === right.location.span.end
+        );
+    }
+
+    private nameForPath(path: main.Path): string {
+        return path.split(" / ").pop()?.split(" ").pop() ?? "<unknown>";
     }
 }

@@ -133,21 +133,25 @@ connection.onHover(async (params) => {
         return null;
     }
 
+    const content: string[] = [];
+
+    const declaration = render.getDeclarationFromInfo(info);
+    const code = declaration ? render.renderDeclaration(declaration) : null;
+
+    if (code) {
+        content.push("```wipple\n" + code + "\n```");
+    }
+
     const docs = render.renderDocumentation({ info, item: null });
 
-    if (!docs) {
-        return null;
+    if (docs) {
+        content.push("```json\n" + JSON.stringify(docs.attributes, null, 4) + "\n```", docs.docs);
     }
 
     return {
         contents: {
             kind: "markdown",
-            value:
-                "```json\n" +
-                JSON.stringify(docs.attributes, null, 4) +
-                "\n```" +
-                "\n\n" +
-                docs.docs,
+            value: content.join("\n\n"),
         },
     };
 });
