@@ -3,7 +3,7 @@ import { Help } from "../../models";
 
 export const HelpAlert = (props: { help: Help; dismiss: () => void }) => (
     <div className="w-[512px] help">
-        <div className="flex flex-col gap-4 w-full">
+        <div className="flex flex-col w-full">
             <div className="flex flex-col gap-2">
                 <h1 className="text-2xl">
                     <code>{props.help.name}</code>
@@ -14,7 +14,9 @@ export const HelpAlert = (props: { help: Help; dismiss: () => void }) => (
                 </h2>
             </div>
 
-            <Markdown>{props.help.doc || "No additional documentation."}</Markdown>
+            <div className="prose dark:prose-invert prose-blue prose-sm prose-code:text-sm prose-code:text-gray-900 dark:prose-code:text-gray-100">
+                <Markdown>{props.help.doc || "No additional documentation."}</Markdown>
+            </div>
 
             <Button role="primary" fill onClick={props.dismiss}>
                 Done

@@ -51,11 +51,11 @@ export const colors = {
     rose: rose,
 };
 
-export const ColorAsset = (props: { color: string; onClick: () => void }) => {
+export const ColorAsset = (props: { color: string; disabled?: boolean; onClick: () => void }) => {
     const description = useMemo(() => colorName(props.color), [props.color]);
 
     return (
-        <Tooltip description={description} onClick={() => props.onClick}>
+        <Tooltip disabled={props.disabled} description={description} onClick={() => props.onClick}>
             <div className="w-4 h-4" style={{ backgroundColor: props.color }} />
         </Tooltip>
     );

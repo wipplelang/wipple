@@ -163,7 +163,10 @@ const compileAll = async (
     activeFile: string,
     activeCode: string,
 ): Promise<WithInfo<main.Info, main.Diagnostic>[]> => {
-    const dirs = [path.dirname(activeFile), ...linkDirs];
+    const dirs = [
+        path.dirname(activeFile),
+        ...linkDirs, // TODO: Link against library, not source files
+    ];
 
     const sourcePaths = (
         await Promise.all(
@@ -188,15 +191,11 @@ const compileAll = async (
         ),
     );
 
-    render.updateFiles(sources);
-
     // TODO: Support dependencies
     const dependencies = null;
 
     const result = compile(sources, dependencies);
-
-    render.updateInterface(result.interface);
-    render.updateLibraries([result.library]); // FIXME: Incorporate dependencies
+    render.update(result.interface, [result.library]); // TODO: Dependencies
 
     return result.diagnostics;
 };

@@ -13,7 +13,7 @@ import {
     array,
 } from "cmd-ts";
 import { File } from "cmd-ts/batteries/fs";
-import { compile, link } from "wipple-compiler";
+import { compile, link, main } from "wipple-compiler";
 import { evaluate, InterpreterError, IoRequest } from "wipple-interpreter";
 
 Error.stackTraceLimit = Infinity;
@@ -40,15 +40,17 @@ const app = subcommands({
                 outputLibraryPath,
                 sourcePaths,
             }) => {
-                const sources = sourcePaths.map((sourcePath) => ({
-                    path: sourcePath,
-                    visiblePath: `${path.basename(path.dirname(sourcePath))}/${path.basename(
-                        sourcePath,
-                    )}`,
-                    code: fs.readFileSync(sourcePath, "utf8"),
-                }));
+                const sources = sourcePaths.map(
+                    (sourcePath): main.File => ({
+                        path: sourcePath,
+                        visiblePath: `${path.basename(path.dirname(sourcePath))}/${path.basename(
+                            sourcePath,
+                        )}`,
+                        code: fs.readFileSync(sourcePath, "utf8"),
+                    }),
+                );
 
-                const dependencies = dependencyPath
+                const dependencies: main.Interface | null = dependencyPath
                     ? JSON.parse(fs.readFileSync(dependencyPath, "utf8"))
                     : null;
 
@@ -91,11 +93,11 @@ const app = subcommands({
                     code: fs.readFileSync(sourcePath, "utf8"),
                 }));
 
-                const dependencies = dependencyInterfacePath
+                const dependencies: main.Interface | null = dependencyInterfacePath
                     ? JSON.parse(fs.readFileSync(dependencyInterfacePath, "utf8"))
                     : null;
 
-                const libraries = dependencyLibrariesPaths.map((path) =>
+                const libraries: main.UnlinkedLibrary[] = dependencyLibrariesPaths.map((path) =>
                     JSON.parse(fs.readFileSync(path, "utf8")),
                 );
 
@@ -109,10 +111,6 @@ const app = subcommands({
                 const output = {
                     interface: result.interface,
                     libraries: [...libraries, result.library],
-                    sourceFiles: sources.map((source) => ({
-                        path: source.path,
-                        code: source.code,
-                    })),
                 };
 
                 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
@@ -126,8 +124,8 @@ const app = subcommands({
                 libraryPaths: restPositionals({ type: File }),
             },
             handler: async ({ libraryPaths, outputExecutablePath }) => {
-                const libraries = libraryPaths.map((path) =>
-                    JSON.parse(fs.readFileSync(path, "utf8")),
+                const libraries = libraryPaths.map(
+                    (path): main.UnlinkedLibrary => JSON.parse(fs.readFileSync(path, "utf8")),
                 );
 
                 const executable = link(libraries);

@@ -47,19 +47,18 @@ export class Render {
     private declarations: WithInfo<main.Info, AnyDeclaration>[] = [];
     private libraries: main.UnlinkedLibrary[] = [];
 
-    updateFiles(files: main.File[]) {
-        for (const file of files) {
+    update(interface_: main.Interface, libraries: main.UnlinkedLibrary[]) {
+        this.files = {};
+        for (const file of interface_.files) {
             this.files[file.path] = { ...file, linesAndColumns: new LinesAndColumns(file.code) };
         }
-    }
 
-    updateInterface(interface_: main.Interface) {
-        const declarations: WithInfo<main.Info, AnyDeclaration>[] = [];
+        this.declarations = [];
         for (const type of ["type", "trait", "typeParameter", "constant", "instance"] as const) {
             for (const [path, declaration] of Object.entries<WithInfo<main.Info, any>>(
                 interface_[`${type}Declarations`],
             )) {
-                declarations.push({
+                this.declarations.push({
                     info: declaration.info,
                     item: {
                         name: this.nameForPath(path),
@@ -71,10 +70,6 @@ export class Render {
             }
         }
 
-        this.declarations = declarations;
-    }
-
-    updateLibraries(libraries: main.UnlinkedLibrary[]) {
         this.libraries = libraries;
     }
 
@@ -107,7 +102,7 @@ export class Render {
                 item.expression.info.location.path !== "top-level" &&
                 (path !== item.expression.info.location.path ||
                     index < item.expression.info.location.span.start ||
-                    index > item.expression.info.location.span.end)
+                    index >= item.expression.info.location.span.end)
             ) {
                 continue;
             }
@@ -117,7 +112,7 @@ export class Render {
             this.traverseExpression(item.expression, (expression) => {
                 if (
                     index >= expression.info.location.span.start &&
-                    index <= expression.info.location.span.end
+                    index < expression.info.location.span.end
                 ) {
                     candidates.push(expression);
                 }
@@ -410,9 +405,7 @@ export class Render {
         const attributes: RenderedDocumentationAttribute[] = [];
 
         for (let docLine of docLines) {
-            docLine = docLine.trim();
-
-            const attributeMatch = /^\[(.*)\]:(.*)/.exec(docLine);
+            const attributeMatch = /^\s*\[(.*)\]:(.*)/.exec(docLine);
             if (attributeMatch) {
                 let [_, name, value] = attributeMatch;
                 name = name.trim();
@@ -574,7 +567,7 @@ export class Render {
 
     private compareInfo(left: main.Info, right: main.Info): boolean {
         return (
-            left.location.path === right.location.path &&
+            left.location.visiblePath === right.location.visiblePath &&
             left.location.span.start === right.location.span.start &&
             left.location.span.end === right.location.span.end
         );

@@ -144,7 +144,10 @@ export const CodeEditor = (props: {
         // });
     };
 
-    const getHelpForCode = useCallback((code: string) => runnerRef.current!.help(code), []);
+    const getHelpForCode = useCallback(
+        (position: number, code: string) => runnerRef.current!.help(position, code),
+        [],
+    );
 
     const [animationsSettled, setAnimationsSettled] = useState(false);
 

@@ -46,6 +46,7 @@ impl Driver for wipple_util::TsAny {
 /// Location information about a parsed item.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[ts(export)]
+#[serde(rename_all = "camelCase")]
 pub struct Location {
     /// The path of the file this item belongs to.
     pub path: Rc<str>,

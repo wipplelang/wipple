@@ -20,13 +20,13 @@ export type AssetClickHandler = (config: {
     value: string;
 }) => void;
 
-export const assetsFromConfig = (config: { onClick: AssetClickHandler }) =>
+export const assetsFromConfig = (config: { disabled: boolean; onClick: AssetClickHandler }) =>
     ViewPlugin.fromClass(
         class {
             decorations: DecorationSet;
 
             constructor(view: EditorView) {
-                this.decorations = getDecorations(view, config.onClick);
+                this.decorations = getDecorations(view, config);
             }
 
             update(update: ViewUpdate) {
@@ -34,7 +34,7 @@ export const assetsFromConfig = (config: { onClick: AssetClickHandler }) =>
                     update.docChanged ||
                     syntaxTree(update.startState) !== syntaxTree(update.state)
                 ) {
-                    this.decorations = getDecorations(update.view, config.onClick);
+                    this.decorations = getDecorations(update.view, config);
                 }
             }
         },
@@ -47,7 +47,10 @@ export const assetsFromConfig = (config: { onClick: AssetClickHandler }) =>
         },
     );
 
-const getDecorations = (view: EditorView, onClick: AssetClickHandler) => {
+const getDecorations = (
+    view: EditorView,
+    config: { disabled: boolean; onClick: AssetClickHandler },
+) => {
     const decorations: Range<Decoration>[] = [];
 
     syntaxTree(view.state).iterate({
@@ -66,7 +69,7 @@ const getDecorations = (view: EditorView, onClick: AssetClickHandler) => {
 
             decorations.push(
                 Decoration.replace({
-                    widget: new AssetWidget(from, to, code, onClick),
+                    widget: new AssetWidget(from, to, code, config),
                 }).range(from, to),
             );
         },
@@ -82,7 +85,7 @@ class AssetWidget extends WidgetType {
         public from: number,
         public to: number,
         public code: string,
-        public onClick: AssetClickHandler,
+        public config: { disabled: boolean; onClick: AssetClickHandler },
     ) {
         super();
     }
@@ -92,7 +95,7 @@ class AssetWidget extends WidgetType {
             this.from === other.from &&
             this.to === other.to &&
             this.code === other.code &&
-            this.onClick === other.onClick
+            this.config === other.config
         );
     }
 
@@ -103,8 +106,9 @@ class AssetWidget extends WidgetType {
         this.root.render(
             <AssetWidgetComponent
                 code={this.code}
+                disabled={this.config.disabled}
                 onClick={(type, value) =>
-                    this.onClick({
+                    this.config.onClick({
                         start: this.from,
                         end: this.to,
                         type,
@@ -126,5 +130,10 @@ class AssetWidget extends WidgetType {
 
 const AssetWidgetComponent = (props: {
     code: string;
+    disabled: boolean;
     onClick: (type: string, value: string) => void;
-}) => <Asset onClick={props.onClick}>{props.code.slice(1, props.code.length - 1)}</Asset>;
+}) => (
+    <Asset disabled={props.disabled} onClick={props.onClick}>
+        {props.code.slice(1, props.code.length - 1)}
+    </Asset>
+);

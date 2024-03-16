@@ -29,7 +29,8 @@ body {
     @apply bg-white dark:bg-gray-950 text-black dark:text-white font-medium;
 }
 
-code {
+code,
+.markdown code {
     font-family: "JetBrains Mono", monospace;
     font-feature-settings: normal;
     font-variation-settings: normal;

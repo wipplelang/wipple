@@ -104,14 +104,7 @@ fn compile_expression<D: crate::Driver>(
                 for (index, statement) in statements.iter().enumerate() {
                     compile_expression(statement.as_ref(), info)?;
 
-                    if index + 1 != statements.len()
-                        && !matches!(
-                            statement.item.kind,
-                            // HACK: Variable assignment only appears at the statement level
-                            wipple_typecheck::TypedExpressionKind::Initialize { .. }
-                                | wipple_typecheck::TypedExpressionKind::Mutate { .. }
-                        )
-                    {
+                    if index + 1 != statements.len() {
                         info.push_instruction(crate::Instruction::Drop);
                     }
                 }
@@ -178,6 +171,7 @@ fn compile_expression<D: crate::Driver>(
         wipple_typecheck::TypedExpressionKind::Initialize { pattern, value } => {
             compile_expression(value.as_deref(), info)?;
             compile_exhaustive_pattern(pattern.as_ref(), info)?;
+            info.push_instruction(crate::Instruction::Tuple(0));
         }
         wipple_typecheck::TypedExpressionKind::Mutate { path, value, .. } => {
             let variable = info.variables.iter().position(|p| *p == path.item)? as u32;
@@ -186,6 +180,7 @@ fn compile_expression<D: crate::Driver>(
             compile_expression(value.as_deref(), info)?;
 
             info.push_instruction(crate::Instruction::Mutate(variable));
+            info.push_instruction(crate::Instruction::Tuple(0));
         }
         wipple_typecheck::TypedExpressionKind::Marker(_) => {
             info.push_instruction(crate::Instruction::Typed(

@@ -19,7 +19,7 @@ export interface CodeMirrorProps {
     autoFocus: boolean;
     quickHelpEnabled: boolean;
     onClickQuickHelp: (help: Help) => void;
-    help: (code: string) => Help | undefined;
+    help: (position: number, code: string) => Help | undefined;
     onClickAsset: AssetClickHandler;
     readOnly: boolean;
     diagnostics: RenderedDiagnostic[];
@@ -123,7 +123,12 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
                     diagnostics.of(diagnosticsFromConfig({ diagnostics: props.diagnostics })),
 
-                    assets.of(assetsFromConfig({ onClick: props.onClickAsset })),
+                    assets.of(
+                        assetsFromConfig({
+                            disabled: props.quickHelpEnabled,
+                            onClick: props.onClickAsset,
+                        }),
+                    ),
 
                     EditorView.lineWrapping,
                     EditorState.allowMultipleSelections.of(false),
@@ -211,9 +216,11 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
     useEffect(() => {
         editorView.dispatch({
-            effects: assets.reconfigure(assetsFromConfig({ onClick: props.onClickAsset })),
+            effects: assets.reconfigure(
+                assetsFromConfig({ disabled: props.quickHelpEnabled, onClick: props.onClickAsset }),
+            ),
         });
-    }, [editorView, props.onClickAsset]);
+    }, [editorView, props.quickHelpEnabled, props.onClickAsset]);
 
     useEffect(() => {
         if (props.autoFocus) {

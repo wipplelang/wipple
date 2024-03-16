@@ -43,7 +43,10 @@ export const PlaygroundPage = () => {
         };
     }, [playground?.name]);
 
-    const [tempCode, setTempCode] = useState(`fill [color "red"] {
+    const [tempCode, setTempCode] = useState(`greeting : "Hello, world!"
+show greeting
+
+fill [color "red"] {
   repeat (4 times) {
     forward (50 pixels)
     left (90 degrees)

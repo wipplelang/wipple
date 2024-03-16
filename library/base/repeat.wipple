@@ -62,6 +62,15 @@ times : count -> {
 }
 
 -- Execute a block of code repeatedly.
+--
+-- ## Example
+--
+-- ```wipple
+-- -- Displays "Hello, world" four times
+-- repeat (4 times) {
+--   show "Hello, world!"
+-- }
+-- ```
 repeat :: State (infer Body) (infer Result) where (Repeat-Predicate State Body Result) => State {Body} -> Result
 repeat : state body -> when (Repeat-Predicate state) {
     Continue next -> repeat (next (do body)) body

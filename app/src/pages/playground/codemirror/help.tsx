@@ -17,13 +17,14 @@ import { wippleTags } from "./language";
 import { ThemeConfig, defaultThemeConfig } from "./theme";
 import { Help } from "../../../models";
 import { useEffect, useState } from "react";
+import { isAsset } from "../assets";
 
 export const displayHelp = new Compartment();
 
 export const displayHelpFromEnabled = (
     enabled: boolean,
     theme: ThemeConfig,
-    help: (code: string) => Help | undefined,
+    help: (position: number, code: string) => Help | undefined,
     onClick: (help: Help) => void,
 ): Extension =>
     enabled
@@ -39,7 +40,7 @@ export const displayHelpFromEnabled = (
 
 interface Config {
     theme: ThemeConfig;
-    help: (code: string) => Help | undefined;
+    help: (position: number, code: string) => Help | undefined;
     onClick: (help: Help) => void;
 }
 
@@ -109,13 +110,16 @@ const computeHelpDecorations = (syntaxTree: Tree, state: EditorState) => {
                 "Name",
             ];
 
-            const brackets = ["[", "]", "{", "}", "(", ")"];
+            const brackets = ["{", "}", "(", ")"];
 
-            if (!terminals.includes(node.type.name) && !brackets.includes(code)) {
+            if (
+                isAsset(code) || // assets are handled separately
+                (!terminals.includes(node.type.name) && !brackets.includes(code))
+            ) {
                 return;
             }
 
-            const widget = new HelpWidget(from, to, code, node.node, theme, help(code), onClick);
+            const widget = new HelpWidget(from, to, code, node.node, theme, help(from, code), onClick);
             decorations.push(Decoration.replace({ widget }).range(from, to));
         },
     });

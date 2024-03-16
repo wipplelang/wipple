@@ -9,7 +9,7 @@ import {
     useState,
 } from "react";
 import { useDebounceValue } from "usehooks-ts";
-import { compile, link } from "wipple-compiler";
+import { compile, link, main } from "wipple-compiler";
 import { RunnerWorker } from "../../helpers";
 import { InterpreterError } from "wipple-interpreter";
 import { Render, RenderedDiagnostic } from "wipple-render";
@@ -23,7 +23,7 @@ export interface RunOptions {
 }
 
 export interface RunnerRef {
-    help: (code: string) => Help | undefined;
+    help: (position: number, code: string) => Help | undefined;
 }
 
 export interface RunnerProps {
@@ -76,7 +76,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     const [showOutput, setShowOutput] = useState(false);
     const [showRunAgain, setShowRunAgain] = useState(false);
 
-    const [cachedInterface, setCachedInterface] = useState<any>();
     const [cachedBuiltinsHelp, setCachedBuiltinsHelp] = useState<Record<string, any>>();
 
     const run = useCallback(async () => {
@@ -87,16 +86,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         try {
             let showRunAgain = false;
 
-            const sources = [
-                {
-                    path: "playground",
-                    visiblePath: "playground",
-                    code,
-                },
-            ];
-
-            render.updateFiles(sources);
-
             if (!cachedBuiltinsHelp) {
                 setCachedBuiltinsHelp(await fetchBuiltinsHelp());
             }
@@ -105,14 +94,20 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 ? await fetchDependencies(props.options.dependenciesPath)
                 : null;
 
-            const sourceFiles = [{ path: "playground", code }];
+            const sources = [
+                {
+                    path: "playground",
+                    visiblePath: "playground",
+                    code,
+                },
+            ];
 
-            if (dependencies != null) {
-                sourceFiles.push(...dependencies.sourceFiles);
-            }
+            const compileResult = compile(sources, dependencies?.interface ?? null);
 
-            const compileResult = compile(sources, dependencies?.interface);
-            setCachedInterface(compileResult.interface);
+            render.update(compileResult.interface, [
+                compileResult.library,
+                ...(dependencies?.libraries ?? []),
+            ]);
 
             if (compileResult.diagnostics.length > 0) {
                 const renderedDiagnostics = compileResult.diagnostics.flatMap((diagnostic) => {
@@ -280,34 +275,37 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     }, [run]);
 
     useImperativeHandle(ref, () => ({
-        help: (code: string): Help | undefined => {
-            return undefined; // TODO
-            // if (cachedBuiltinsHelp != null && cachedBuiltinsHelp[code] != null) {
-            //     return {
-            //         name: code,
-            //         summary: cachedBuiltinsHelp[code].summary,
-            //         doc: cachedBuiltinsHelp[code].doc,
-            //     };
-            // }
+        help: (position: number, code: string): Help | undefined => {
+            if (cachedBuiltinsHelp != null && cachedBuiltinsHelp[code] != null) {
+                return {
+                    name: code,
+                    summary: cachedBuiltinsHelp[code].summary,
+                    doc: cachedBuiltinsHelp[code].doc,
+                };
+            }
 
-            // if (!cachedInterface) {
-            //     return undefined;
-            // }
+            const info = render.getInfoAtCursor("playground", position);
+            if (!info) {
+                return undefined;
+            }
 
-            // const comments =
-            //     cachedInterface.topLevel[code]?.[0]?.info.parserInfo.documentation.flatMap(
-            //         (documentation: any) => (documentation.comment ? [documentation.comment] : []),
-            //     ) ?? [];
+            const declaration = render.getDeclarationFromInfo(info);
+            if (!declaration) {
+                return undefined;
+            }
 
-            // if (comments.length === 0) {
-            //     return undefined;
-            // }
+            const documentation = render.renderDocumentation(declaration);
+            if (!documentation) {
+                return undefined;
+            }
 
-            // return {
-            //     name: code,
-            //     summary: comments[0],
-            //     doc: comments.slice(1).join("\n"),
-            // };
+            const docString = documentation.docs.split("\n\n");
+
+            return {
+                name: declaration.item.name ?? code,
+                summary: docString[0],
+                doc: docString.slice(1).join("\n\n"),
+            };
         },
     }));
 
@@ -447,9 +445,8 @@ const Prompt = (props: {
 };
 
 interface FetchDependenciesResult {
-    interface: any;
-    libraries: any;
-    sourceFiles: { path: string; code: string }[];
+    interface: main.Interface;
+    libraries: main.UnlinkedLibrary[];
 }
 
 const fetchDependencies = async (name: string): Promise<FetchDependenciesResult> => {
