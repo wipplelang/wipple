@@ -8,9 +8,9 @@
         "build": "node build.js && tsc"
     },
     "devDependencies": {
-        "@types/node": "^20.11.0",
+        "@types/node": "^20.11.28",
         "esbuild": "^0.19.11",
-        "typescript": "^5.3.3"
+        "typescript": "^5.4.2"
     },
     "dependencies": {
         "lines-and-columns": "^2.0.4",

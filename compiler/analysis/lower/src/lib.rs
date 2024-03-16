@@ -639,7 +639,7 @@ pub struct UnresolvedFieldValue<D: Driver> {
 /// A path that uniquely identifies a declaration.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, TS)]
 #[ts(export)]
-pub struct Path(pub Vec<PathComponent>);
+pub struct Path(#[ts(as = "String")] pub Vec<PathComponent>);
 
 impl Path {
     /// The path of the top level (ie. the empty path).

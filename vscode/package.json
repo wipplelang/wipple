@@ -35,7 +35,17 @@
                 "scopeName": "source.wipple",
                 "path": "./syntaxes/wipple.tmLanguage.json"
             }
-        ]
+        ],
+        "configuration": {
+            "title": "Wipple",
+            "properties": {
+                "wipple.link": {
+                    "type": "array",
+                    "default": [],
+                    "description": "List of directories to link to the active folder."
+                }
+            }
+        }
     },
     "scripts": {
         "vscode:prepublish": "npm run build",

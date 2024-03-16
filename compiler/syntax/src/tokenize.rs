@@ -827,6 +827,11 @@ pub fn to_logical_lines<'a, 'src: 'a, D: Driver>(
         }
     }
 
+    // HACK: Allow `TokenTree::from_top_level` to parse the last line
+    if let Some(last) = result.last().cloned() {
+        result.push(last.replace(Token::LineBreak));
+    }
+
     result
 }
 

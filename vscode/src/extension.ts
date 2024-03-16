@@ -4,6 +4,8 @@ import { LanguageClient, LanguageClientOptions, ServerOptions } from "vscode-lan
 let client: LanguageClient | undefined;
 
 export const activate = (context: vscode.ExtensionContext) => {
+    const config = vscode.workspace.getConfiguration("wipple");
+
     const serverOptions: ServerOptions = {
         module: context.asAbsolutePath("dist/lsp.js"),
     };
@@ -12,6 +14,9 @@ export const activate = (context: vscode.ExtensionContext) => {
         documentSelector: [{ scheme: "file", language: "wipple" }],
         synchronize: {
             fileEvents: vscode.workspace.createFileSystemWatcher("**/*.wipple"),
+        },
+        initializationOptions: {
+            linkDirs: config.get<string[]>("link") ?? [],
         },
     };
 
