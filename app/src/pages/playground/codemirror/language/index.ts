@@ -18,13 +18,8 @@ export const wippleLanguage = new LanguageSupport(
             props: [styleTags(wippleTags)],
         }),
         languageData: {
-            commentTokens: {
-                block: {
-                    open: "[",
-                    close: "]",
-                },
-            },
-            wordChars: "-!?",
+            commentTokens: { line: "--" },
+            wordChars: "-?",
             closeBrackets: {
                 brackets: ["(", "[", "{", '"'],
             },

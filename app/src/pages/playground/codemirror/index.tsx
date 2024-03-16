@@ -8,9 +8,10 @@ import { indentOnInput } from "@codemirror/language";
 import { wippleLanguage } from "./language";
 import { ThemeConfig, theme, themeFromConfig } from "./theme";
 import { displayHelp, displayHelpFromEnabled } from "./help";
-import { Diagnostic, Help } from "../../../models";
+import { Help } from "../../../models";
 import { diagnostics, diagnosticsFromConfig } from "./diagnostics";
 import { AssetClickHandler, assets, assetsFromConfig } from "./assets";
+import { RenderedDiagnostic } from "wipple-render";
 
 export interface CodeMirrorProps {
     children: string;
@@ -21,7 +22,7 @@ export interface CodeMirrorProps {
     help: (code: string) => Help | undefined;
     onClickAsset: AssetClickHandler;
     readOnly: boolean;
-    diagnostics: Diagnostic[];
+    diagnostics: RenderedDiagnostic[];
     theme: ThemeConfig;
 }
 

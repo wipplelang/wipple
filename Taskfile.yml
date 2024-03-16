@@ -99,6 +99,7 @@ tasks:
         deps:
             - compiler:build
             - interpreter:build
+            - render:build
         dir: cli
         cmds:
             - npm run build

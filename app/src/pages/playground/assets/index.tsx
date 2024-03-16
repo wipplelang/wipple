@@ -1,8 +1,8 @@
 import { ColorAsset } from "./color";
 
-export const isAsset = (value: string) => value.startsWith("{") && value.endsWith("}");
+export const isAsset = (value: string) => value.startsWith("[") && value.endsWith("]");
 
-export const colorAsset = (color: string) => `{color "${color}"}`;
+export const colorAsset = (color: string) => `[color "${color}"]`;
 
 export const Asset = (props: {
     children: string;

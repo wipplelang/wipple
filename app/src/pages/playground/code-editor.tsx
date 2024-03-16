@@ -13,7 +13,7 @@ import { CodeMirror, CodeMirrorRef } from "./codemirror";
 import { RunOptions, Runner, RunnerRef } from "./runner";
 import { MaterialSymbol } from "react-material-symbols";
 import { ThemeConfig } from "./codemirror/theme";
-import { Diagnostic, Fix, Help } from "../../models";
+import { Help } from "../../models";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useWindowSize } from "usehooks-ts";
 import { HelpAlert } from "./help-alert";
@@ -23,6 +23,7 @@ import { Turtle } from "../../runtimes";
 import { ColorPicker } from "./color-picker";
 import { AssetClickHandler } from "./codemirror/assets";
 import { colorAsset } from "./assets";
+import { RenderedDiagnostic, RenderedFix } from "wipple-render";
 
 export const CodeEditor = (props: {
     children: string;
@@ -50,7 +51,7 @@ export const CodeEditor = (props: {
 
     const [runnerHasFocus, setRunnerHasFocus] = useState(false);
 
-    const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
+    const [diagnostics, setDiagnostics] = useState<RenderedDiagnostic[]>([]);
 
     const [isListeningForQuickHelp, setListeningForQuickHelp] = useState(true);
     const [quickHelpEnabled, setQuickHelpEnabled] = useState(false);
@@ -92,11 +93,11 @@ export const CodeEditor = (props: {
         const coveredLines: number[] = [];
 
         return diagnostics.flatMap((diagnostic) => {
-            if (diagnostic.primaryLabel.span.start > editorView.state.doc.length) {
+            if (diagnostic.location.start.index > editorView.state.doc.length) {
                 return [];
             }
 
-            const line = editorView.state.doc.lineAt(diagnostic.primaryLabel.span.start);
+            const line = editorView.state.doc.lineAt(diagnostic.location.start.index);
 
             if (coveredLines.includes(line.number)) {
                 return [];
@@ -104,7 +105,7 @@ export const CodeEditor = (props: {
 
             coveredLines.push(line.number);
 
-            const top = editorView.coordsAtPos(diagnostic.primaryLabel.span.start)?.top;
+            const top = editorView.coordsAtPos(diagnostic.location.start.index)?.top;
             if (!top) {
                 return [];
             }
@@ -126,20 +127,21 @@ export const CodeEditor = (props: {
         });
     }, [diagnostics, windowSize]);
 
-    const applyFix = (fix: Fix, start: number, end: number) => {
+    const applyFix = (fix: RenderedFix, start: number, end: number) => {
         const editorView = codeMirrorRef.current?.editorView;
         if (!editorView) {
             return;
         }
 
-        const replacement =
-            (fix.before ?? "") +
-            (fix.replacement ?? editorView.state.sliceDoc(start, end)) +
-            (fix.after ?? "");
+        // TODO
+        // const replacement =
+        //     (fix.before ?? "") +
+        //     (fix.replacement ?? editorView.state.sliceDoc(start, end)) +
+        //     (fix.after ?? "");
 
-        editorView.dispatch({
-            changes: { from: start, to: end, insert: replacement },
-        });
+        // editorView.dispatch({
+        //     changes: { from: start, to: end, insert: replacement },
+        // });
     };
 
     const getHelpForCode = useCallback((code: string) => runnerRef.current!.help(code), []);
@@ -501,8 +503,8 @@ const DiagnosticBubble = (props: {
     width: number;
     height: number;
     theme: ThemeConfig;
-    diagnostic: Diagnostic;
-    onApplyFix: (fix: Fix, start: number, end: number) => void;
+    diagnostic: RenderedDiagnostic;
+    onApplyFix: (fix: RenderedFix, start: number, end: number) => void;
 }) => {
     const [isExpanded, setExpanded] = useState(false);
 
@@ -524,14 +526,14 @@ const DiagnosticBubble = (props: {
             >
                 <button
                     className={`flex flex-row items-center gap-1.5 px-2 rounded-lg overflow-x-scroll whitespace-nowrap transition-colors ${
-                        props.diagnostic.error
+                        props.diagnostic.severity === "error"
                             ? " text-red-600 dark:text-red-500"
                             : " text-yellow-600 dark:text-yellow-400"
                     } ${
                         isExpanded
                             ? "z-50 max-w-none w-max bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-800 shadow-lg"
                             : `h-full hover:text-white ${
-                                  props.diagnostic.error
+                                  props.diagnostic.severity === "error"
                                       ? "bg-red-50 dark:bg-red-950 hover:bg-red-500"
                                       : "bg-yellow-50 dark:bg-yellow-950 hover:bg-yellow-500"
                               }`
@@ -544,12 +546,16 @@ const DiagnosticBubble = (props: {
                                 <div className="flex flex-row items-center gap-1.5 flex-1">
                                     {isExpanded ? null : (
                                         <MaterialSymbol
-                                            icon={props.diagnostic.error ? "error" : "info"}
+                                            icon={
+                                                props.diagnostic.severity === "error"
+                                                    ? "error"
+                                                    : "info"
+                                            }
                                             className="text-lg"
                                         />
                                     )}
 
-                                    <Markdown>{props.diagnostic.primaryLabel.message}</Markdown>
+                                    <Markdown>{props.diagnostic.message}</Markdown>
                                 </div>
 
                                 {isExpanded ? (
@@ -562,7 +568,7 @@ const DiagnosticBubble = (props: {
                                 ) : null}
                             </div>
 
-                            {isExpanded ? (
+                            {/* {isExpanded ? (
                                 <div className="flex flex-row w-full">
                                     {props.diagnostic.fix ? (
                                         <div className="flex flex-row items-center justify-stretch gap-2 pb-1 text-black dark:text-gray-50">
@@ -590,7 +596,7 @@ const DiagnosticBubble = (props: {
                                         </p>
                                     )}
                                 </div>
-                            ) : null}
+                            ) : null} */}
                         </div>
                     </Animated>
                 </button>

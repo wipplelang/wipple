@@ -162,7 +162,7 @@ export const Turtle: RuntimeComponent = forwardRef((_props, ref) => {
                                 className="flex items-center justify-center aspect-square p-1 bg-white hover:bg-gray-100 transition-colors border-2 border-gray-100 rounded-lg"
                                 onClick={savePhoto}
                             >
-                                <MaterialSymbol icon="photo_camera" size={18} />
+                                <MaterialSymbol icon="photo_camera" size={18} color="black" />
                             </button>
                         </Tooltip>
                     </div>

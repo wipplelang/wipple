@@ -9,8 +9,6 @@ export default defineConfig({
     },
     plugins: [
         rust({
-            debug: process.env.CI == null,
-            wasmOptArgs: process.env.CI != null ? ["-O"] : [],
             verbose: true,
             inlineWasm: true,
             experimental: {

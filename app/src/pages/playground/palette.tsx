@@ -2,8 +2,8 @@ import { MaterialSymbol } from "react-material-symbols";
 import { Asset, isAsset } from "./assets";
 import React from "react";
 
-const assets = [`{color "#ef4444"}`, `{color "#22c55e"}`, `{color "#3b82f6"}`];
-const snippets = [`show _`, `repeat (1 times) (\n  _\n)`];
+const assets = [`[color "#ef4444"]`, `[color "#22c55e"]`, `[color "#3b82f6"]`];
+const snippets = [`show _`, `repeat (1 times) {\n  _\n}`];
 
 export const AssetPalette = (props: { onClose: () => void }) => (
     <Palette items={assets} onClose={props.onClose} />

@@ -1,24 +1,26 @@
 import { EditorView, Decoration } from "@codemirror/view";
 import { Compartment, Extension } from "@codemirror/state";
-import { Diagnostic } from "../../../models";
+import { RenderedDiagnostic } from "wipple-render";
 
 export const diagnostics = new Compartment();
 
-export const diagnosticsFromConfig = (config: { diagnostics: Diagnostic[] }): Extension =>
+export const diagnosticsFromConfig = (config: { diagnostics: RenderedDiagnostic[] }): Extension =>
     EditorView.decorations.of((view) => {
         const decorations = config.diagnostics.flatMap((diagnostic) => {
-            const { start, end } = diagnostic.primaryLabel.span;
+            const { start, end } = diagnostic.location;
 
-            if (start === end || end > view.state.doc.length) {
+            if (start.index === end.index || end.index > view.state.doc.length) {
                 return [];
             }
 
             return [
                 Decoration.mark({
                     class: `underline underline-offset-4 decoration-line decoration-2 ${
-                        diagnostic.error ? "decoration-red-500" : "decoration-yellow-500"
+                        diagnostic.severity === "error"
+                            ? "decoration-red-500"
+                            : "decoration-yellow-500"
                     }`,
-                }).range(start, end),
+                }).range(start.index, end.index),
             ];
         });
 

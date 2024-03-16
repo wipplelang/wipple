@@ -34,7 +34,8 @@
         "usehooks-ts": "^2.14.0",
         "vite-plugin-svgr": "^4.2.0",
         "wipple-compiler": "file:../compiler",
-        "wipple-interpreter": "file:../interpreter"
+        "wipple-interpreter": "file:../interpreter",
+        "wipple-render": "file:../render"
     },
     "devDependencies": {
         "@types/color-namer": "^1.3.3",

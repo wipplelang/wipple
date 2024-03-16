@@ -4,14 +4,19 @@ import { LinesAndColumns, SourceLocation } from "lines-and-columns";
 export interface RenderedSourceLocation {
     path: string;
     visiblePath: string;
-    start: SourceLocation;
-    end: SourceLocation;
+    start: SourceLocation & { index: number };
+    end: SourceLocation & { index: number };
 }
 
 export interface RenderedDiagnostic {
     location: RenderedSourceLocation;
     severity: "warning" | "error";
     message: string;
+    fix: RenderedFix | null;
+}
+
+export interface RenderedFix {
+    // TODO
 }
 
 export class Render {
@@ -23,7 +28,7 @@ export class Render {
         }
     }
 
-    renderSourceLocation(value: WithInfo<main.Info, unknown>) {
+    renderSourceLocation(value: WithInfo<main.Info, unknown>): RenderedSourceLocation | null {
         const file = this.files[value.info.location.path];
         if (!file) {
             return null;
@@ -42,8 +47,8 @@ export class Render {
         return {
             path: file.path,
             visiblePath: file.visiblePath,
-            start: startLocation,
-            end: endLocation,
+            start: { ...startLocation, index: value.info.location.span.start },
+            end: { ...endLocation, index: value.info.location.span.end },
         };
     }
 
@@ -60,6 +65,7 @@ export class Render {
             message: `${diagnostic.item.type}: ${
                 "value" in diagnostic.item ? JSON.stringify(diagnostic.item.value) : ""
             }`,
+            fix: null,
         };
     }
 }

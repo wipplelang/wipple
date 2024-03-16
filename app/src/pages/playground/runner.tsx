@@ -4,16 +4,18 @@ import {
     useEffect,
     useId,
     useImperativeHandle,
+    useMemo,
     useRef,
     useState,
 } from "react";
 import { useDebounceValue } from "usehooks-ts";
-import { compile, link, renderDiagnostics } from "wipple-compiler";
+import { compile, link } from "wipple-compiler";
 import { RunnerWorker } from "../../helpers";
 import { InterpreterError } from "wipple-interpreter";
+import { Render, RenderedDiagnostic } from "wipple-render";
 import { Runtime, RuntimeComponent } from "../../runtimes";
 import { MaterialSymbol } from "react-material-symbols";
-import { Diagnostic, Help, Output } from "../../models";
+import { Help, Output } from "../../models";
 import { Mutex } from "async-mutex";
 
 export interface RunOptions {
@@ -31,12 +33,14 @@ export interface RunnerProps {
     onFocus: () => void;
     onBlur: () => void;
     options: RunOptions;
-    onChangeDiagnostics: (diagnostics: Diagnostic[]) => void;
+    onChangeDiagnostics: (diagnostics: RenderedDiagnostic[]) => void;
 }
 
 export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     const id = useId();
     const [code, setCode] = useDebounceValue(props.children, 300);
+
+    const render = useMemo(() => new Render(), []);
 
     const runtimeMutexRef = useRef(new Mutex());
     const runtimeRef = useRef<Runtime | null>(null);
@@ -91,6 +95,8 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 },
             ];
 
+            render.updateFiles(sources);
+
             if (!cachedBuiltinsHelp) {
                 setCachedBuiltinsHelp(await fetchBuiltinsHelp());
             }
@@ -109,22 +115,15 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
             setCachedInterface(compileResult.interface);
 
             if (compileResult.diagnostics.length > 0) {
-                const sourceCodeForFile = (file: string) => {
-                    const sourceFile = sourceFiles.find(({ path }) => path === file);
-                    return sourceFile?.code ?? "";
-                };
-
-                const renderedDiagnostics = renderDiagnostics(
-                    compileResult.diagnostics,
-                    compileResult.interface,
-                    compileResult.library,
-                    sourceCodeForFile,
-                );
+                const renderedDiagnostics = compileResult.diagnostics.flatMap((diagnostic) => {
+                    const rendered = render.renderDiagnostic(diagnostic);
+                    return rendered ? [rendered] : [];
+                });
 
                 props.onChangeDiagnostics(renderedDiagnostics);
                 setRunning(false);
 
-                if (renderedDiagnostics.some((diagnostic: any) => diagnostic.error)) {
+                if (renderedDiagnostics.some((diagnostic) => diagnostic.severity === "error")) {
                     return;
                 }
             } else {
@@ -132,13 +131,10 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 setRunning(false);
             }
 
-            const linkResult = link([compileResult.library, ...(dependencies?.libraries ?? [])]);
-
-            if (linkResult.Err) {
-                throw new Error(`failed to link libraries: ${linkResult.Err}`);
+            const executable = link([compileResult.library, ...(dependencies?.libraries ?? [])]);
+            if (!executable) {
+                throw new Error("linker error");
             }
-
-            const executable = linkResult.Ok;
 
             const runnerWorker = resetRunnerWorker();
             clearOutput();
@@ -285,32 +281,33 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
     useImperativeHandle(ref, () => ({
         help: (code: string): Help | undefined => {
-            if (cachedBuiltinsHelp != null && cachedBuiltinsHelp[code] != null) {
-                return {
-                    name: code,
-                    summary: cachedBuiltinsHelp[code].summary,
-                    doc: cachedBuiltinsHelp[code].doc,
-                };
-            }
+            return undefined; // TODO
+            // if (cachedBuiltinsHelp != null && cachedBuiltinsHelp[code] != null) {
+            //     return {
+            //         name: code,
+            //         summary: cachedBuiltinsHelp[code].summary,
+            //         doc: cachedBuiltinsHelp[code].doc,
+            //     };
+            // }
 
-            if (!cachedInterface) {
-                return undefined;
-            }
+            // if (!cachedInterface) {
+            //     return undefined;
+            // }
 
-            const comments =
-                cachedInterface.topLevel[code]?.[0]?.info.parserInfo.documentation.flatMap(
-                    (documentation: any) => (documentation.comment ? [documentation.comment] : []),
-                ) ?? [];
+            // const comments =
+            //     cachedInterface.topLevel[code]?.[0]?.info.parserInfo.documentation.flatMap(
+            //         (documentation: any) => (documentation.comment ? [documentation.comment] : []),
+            //     ) ?? [];
 
-            if (comments.length === 0) {
-                return undefined;
-            }
+            // if (comments.length === 0) {
+            //     return undefined;
+            // }
 
-            return {
-                name: code,
-                summary: comments[0],
-                doc: comments.slice(1).join("\n"),
-            };
+            // return {
+            //     name: code,
+            //     summary: comments[0],
+            //     doc: comments.slice(1).join("\n"),
+            // };
         },
     }));
 

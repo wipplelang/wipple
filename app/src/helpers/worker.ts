@@ -9,6 +9,9 @@ onmessage = async (event) => {
     try {
         await evaluate(executable, {
             debug: false,
+            gc: () => {
+                // The browser GCs automatically
+            },
             io: async (request: IoRequest) => {
                 switch (request.type) {
                     case "display": {
