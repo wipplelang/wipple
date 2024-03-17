@@ -24,7 +24,10 @@ export interface RenderedDiagnostic {
 }
 
 export interface RenderedFix {
-    // TODO
+    message: string;
+    before?: string;
+    replacement?: string;
+    after?: string;
 }
 
 export interface RenderedDocumentation {
@@ -383,33 +386,135 @@ export class Render {
             return null;
         }
 
+        let severity: "warning" | "error";
+        let message: string;
+        let fix: RenderedFix | null = null;
         switch (diagnostic.item.type) {
             case "tokenize": {
+                switch (diagnostic.item.value.type) {
+                    case "invalidToken": {
+                        severity = "error";
+                        message = "unrecognized symbol";
+                        fix = {
+                            message: "remove this symbol",
+                            replacement: "",
+                        };
+                        break;
+                    }
+                    case "mismatch": {
+                        severity = "error";
+
+                        const { expected, found } = diagnostic.item.value.value;
+                        if (expected && found) {
+                            message = `expected ${this.renderToken(
+                                expected,
+                                "a",
+                            )} here, but found ${this.renderToken(found, "a")}`;
+                        } else if (expected && !found) {
+                            message = `expected ${this.renderToken(expected, "a")} here`;
+                        } else if (!expected && found) {
+                            message = `unexpected ${this.renderToken(found, "a")} here`;
+                            fix = {
+                                message: `remove ${this.renderToken(found, "this")}`,
+                                replacement: "",
+                            };
+                        } else {
+                            return null;
+                        }
+
+                        break;
+                    }
+                    default:
+                        diagnostic.item.value satisfies never;
+                        return null;
+                }
+
                 break;
             }
             case "parse": {
+                // TODO
+                severity = "error";
+                message = `${diagnostic.item.type}: ${
+                    "value" in diagnostic.item ? JSON.stringify(diagnostic.item.value) : ""
+                }`;
+
                 break;
             }
             case "syntax": {
+                // TODO
+                severity = "error";
+                message = `${diagnostic.item.type}: ${
+                    "value" in diagnostic.item ? JSON.stringify(diagnostic.item.value) : ""
+                }`;
+
                 break;
             }
             case "lower": {
+                // TODO
+                severity = "error";
+                message = `${diagnostic.item.type}: ${
+                    "value" in diagnostic.item ? JSON.stringify(diagnostic.item.value) : ""
+                }`;
+
                 break;
             }
             case "typecheck": {
+                // TODO
+                severity = "error";
+                message = `${diagnostic.item.type}: ${
+                    "value" in diagnostic.item ? JSON.stringify(diagnostic.item.value) : ""
+                }`;
+
                 break;
             }
+            default:
+                diagnostic.item satisfies never;
+                return null;
         }
 
-        // TODO
         return {
             location: renderedSourceLocation,
-            severity: "error",
-            message: `${diagnostic.item.type}: ${
-                "value" in diagnostic.item ? JSON.stringify(diagnostic.item.value) : ""
-            }`,
-            fix: null,
+            severity,
+            message,
+            fix,
         };
+    }
+
+    renderToken(token: compiler.Token, prefix: "a" | "this"): string {
+        const altPrefix = prefix === "a" ? "the" : "this";
+
+        switch (token.type) {
+            case "number":
+                return `${prefix} number`;
+            case "leftParenthesis":
+                return `${prefix} opening parenthesis (\`(\`)`;
+            case "rightParenthesis":
+                return `${prefix} closing parenthesis (\`)\`)`;
+            case "leftBracket":
+                return `${prefix} opening bracket (\`[\`)`;
+            case "rightBracket":
+                return `${prefix} closing bracket (\`]\`)`;
+            case "leftBrace":
+                return `${prefix} opening brace (\`{\`)`;
+            case "rightBrace":
+                return `${prefix} closing brace (\`}\`)`;
+            case "lineBreak":
+                return `${altPrefix} end of the line`;
+            case "comment":
+                return `${prefix} comment`;
+            case "keyword":
+                return `${altPrefix} word \`${token.value}\``;
+            case "operator":
+                return `${altPrefix} symbol \`${token.value}\``;
+            case "variadicOperator":
+                return `${altPrefix} symbol \`${token.value}\``;
+            case "nonAssociativeOperator":
+                return `${altPrefix} symbol \`${token.value}\``;
+            case "name":
+                return `${prefix} name`;
+            case "text":
+                return `${prefix} piece of text`;
+        }
     }
 
     renderDocumentation(

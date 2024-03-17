@@ -14,7 +14,7 @@ use wipple_util::WithInfo;
 /// A token in the source code.
 #[allow(missing_docs)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
 pub enum Token<'src> {
     LeftParenthesis,
     RightParenthesis,

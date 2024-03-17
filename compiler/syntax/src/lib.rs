@@ -110,7 +110,7 @@ pub enum ErrorContext {
 
 /// An error occuring during parsing.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound(serialize = "", deserialize = ""))]
 #[ts(export, rename = "syntax_Diagnostic")]
 pub enum Diagnostic {

@@ -133,15 +133,14 @@ export const CodeEditor = (props: {
             return;
         }
 
-        // TODO
-        // const replacement =
-        //     (fix.before ?? "") +
-        //     (fix.replacement ?? editorView.state.sliceDoc(start, end)) +
-        //     (fix.after ?? "");
+        const replacement =
+            (fix.before ?? "") +
+            (fix.replacement ?? editorView.state.sliceDoc(start, end)) +
+            (fix.after ?? "");
 
-        // editorView.dispatch({
-        //     changes: { from: start, to: end, insert: replacement },
-        // });
+        editorView.dispatch({
+            changes: { from: start, to: end, insert: replacement },
+        });
     };
 
     const getHelpForCode = useCallback(
@@ -571,7 +570,7 @@ const DiagnosticBubble = (props: {
                                 ) : null}
                             </div>
 
-                            {/* {isExpanded ? (
+                            {isExpanded ? (
                                 <div className="flex flex-row w-full">
                                     {props.diagnostic.fix ? (
                                         <div className="flex flex-row items-center justify-stretch gap-2 pb-1 text-black dark:text-gray-50">
@@ -585,8 +584,8 @@ const DiagnosticBubble = (props: {
                                                     setExpanded(false);
                                                     props.onApplyFix(
                                                         props.diagnostic.fix!,
-                                                        props.diagnostic.primaryLabel.span.start,
-                                                        props.diagnostic.primaryLabel.span.end,
+                                                        props.diagnostic.location.start.index,
+                                                        props.diagnostic.location.end.index,
                                                     );
                                                 }}
                                             >
@@ -599,7 +598,7 @@ const DiagnosticBubble = (props: {
                                         </p>
                                     )}
                                 </div>
-                            ) : null} */}
+                            ) : null}
                         </div>
                     </Animated>
                 </button>
