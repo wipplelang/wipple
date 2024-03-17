@@ -38,7 +38,7 @@ export interface RunnerProps {
 
 export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     const id = useId();
-    const [code, setCode] = useDebounceValue(props.children, 300);
+    const [code, setCode] = useDebounceValue(props.children, 500);
 
     const render = useMemo(() => new Render(), []);
 
