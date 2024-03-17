@@ -432,11 +432,38 @@ export class Render {
                 break;
             }
             case "parse": {
-                // TODO
-                severity = "error";
-                message = `${diagnostic.item.type}: ${
-                    "value" in diagnostic.item ? JSON.stringify(diagnostic.item.value) : ""
-                }`;
+                const { expected, stack, direction } = diagnostic.item.value;
+                const context =
+                    stack.length > 1
+                        ? ` while reading this ${this.renderSyntaxKind(
+                              stack[stack.length - 2].item,
+                          )}`
+                        : "";
+
+                switch (direction) {
+                    case "before": {
+                        severity = "error";
+                        message = `expected ${this.renderSyntaxKind(
+                            expected,
+                        )} before this${context}`;
+                        break;
+                    }
+                    case "after": {
+                        severity = "error";
+                        message = `expected ${this.renderSyntaxKind(
+                            expected,
+                        )} after this${context}`;
+                        break;
+                    }
+                    case null: {
+                        severity = "error";
+                        message = `expected ${this.renderSyntaxKind(expected)} here${context}`;
+                        break;
+                    }
+                    default:
+                        direction satisfies never;
+                        return null;
+                }
 
                 break;
             }
@@ -514,6 +541,131 @@ export class Render {
                 return `${prefix} name`;
             case "text":
                 return `${prefix} piece of text`;
+        }
+    }
+
+    renderSyntaxKind(kind: compiler.syntax_SyntaxKind): string {
+        switch (kind) {
+            case "number":
+                return "number";
+            case "topLevel":
+                return "top level";
+            case "name":
+                return "name";
+            case "text":
+                return "text";
+            case "statement":
+                return "statement";
+            case "keyword":
+                return "keyword";
+            case "operator":
+                return "operator";
+            case "instance":
+                return "instance";
+            case "typeParameter":
+                return "type parameter";
+            case "pattern":
+                return "pattern";
+            case "wildcardPattern":
+                return "wildcard pattern";
+            case "numberPattern":
+                return "number pattern";
+            case "textPattern":
+                return "text pattern";
+            case "variantPattern":
+                return "variant pattern";
+            case "destructurePattern":
+                return "destructure pattern";
+            case "tuplePattern":
+                return "tuple pattern";
+            case "orPattern":
+                return "or pattern";
+            case "mutatePattern":
+                return "mutate pattern";
+            case "expression":
+                return "expression";
+            case "type":
+                return "type";
+            case "placeholderType":
+                return "placeholder type";
+            case "declaredType":
+                return "declared type";
+            case "functionType":
+                return "function type";
+            case "tupleType":
+                return "tuple type";
+            case "blockType":
+                return "block type";
+            case "intrinsicType":
+                return "intrinsic type";
+            case "typeMember":
+                return "type member";
+            case "fieldDeclaration":
+                return "field declaration";
+            case "variantDeclaration":
+                return "variant declaration";
+            case "arm":
+                return "arm";
+            case "typeFunction":
+                return "type function";
+            case "typeRepresentation":
+                return "type representation";
+            case "typeDeclaration":
+                return "type declaration";
+            case "traitDeclaration":
+                return "trait declaration";
+            case "instanceDeclaration":
+                return "instance declaration";
+            case "constantDeclaration":
+                return "constant declaration";
+            case "languageDeclaration":
+                return "language declaration";
+            case "assignment":
+                return "assignment";
+            case "annotateExpression":
+                return "annotate expression";
+            case "nameExpression":
+                return "name expression";
+            case "numberExpression":
+                return "number expression";
+            case "textExpression":
+                return "text expression";
+            case "doExpression":
+                return "do expression";
+            case "callExpression":
+                return "call expression";
+            case "applyExpression":
+                return "apply expression";
+            case "binaryOperatorExpression":
+                return "binary operator expression";
+            case "asExpression":
+                return "as expression";
+            case "isExpression":
+                return "is expression";
+            case "whenExpression":
+                return "when expression";
+            case "intrinsicExpression":
+                return "intrinsic expression";
+            case "tupleExpression":
+                return "tuple expression";
+            case "collectionExpression":
+                return "collection expression";
+            case "structureExpression":
+                return "structure expression";
+            case "structureField":
+                return "structure field";
+            case "whenBody":
+                return "when body";
+            case "whenArm":
+                return "when arm";
+            case "blockExpression":
+                return "block expression";
+            case "functionExpression":
+                return "function expression";
+            case "functionInputs":
+                return "function inputs";
+            case "nothing":
+                return "nothing";
         }
     }
 

@@ -2075,6 +2075,11 @@ mod base {
         }
 
         pub fn push(self: &Rc<Self>, child: WithInfo<D::Info, SyntaxKind>) -> Rc<Self> {
+            // Prevent duplicate stack entries
+            if self.current.item == child.item {
+                return self.clone();
+            }
+
             Rc::new(ParseStack {
                 parent: Some(self.clone()),
                 current: child,
