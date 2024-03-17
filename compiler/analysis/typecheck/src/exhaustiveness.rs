@@ -162,6 +162,7 @@ fn convert_type<D: Driver>(
                         .collect(),
                 }),
                 crate::TypeRepresentation::Wrapper(value) => Some(Type::Wrapper {
+                    path: path.clone(),
                     substitutions,
                     value: value.item,
                 }),
@@ -204,9 +205,15 @@ fn convert_pattern<D: Driver>(pattern: &crate::Pattern<D>) -> Option<Pattern<D>>
                 patterns,
             ))
         }
-        crate::Pattern::Wrapper { value_pattern, .. } => {
+        crate::Pattern::Wrapper {
+            path,
+            value_pattern,
+        } => {
             let pattern = convert_pattern(&value_pattern.item)?;
-            Some(Pattern::Constructor(Constructor::Wrapper, vec![pattern]))
+            Some(Pattern::Constructor(
+                Constructor::Wrapper(path.item.clone()),
+                vec![pattern],
+            ))
         }
         crate::Pattern::Tuple(elements) => {
             let patterns = elements
@@ -245,6 +252,7 @@ enum Type<D: Driver> {
         fields: HashMap<String, crate::Type<D>>,
     },
     Wrapper {
+        path: D::Path,
         substitutions: HashMap<D::Path, crate::Type<D>>,
         value: crate::Type<D>,
     },
@@ -298,7 +306,7 @@ pub enum Constructor<D: Driver> {
     Structure,
 
     /// A wrapper type.
-    Wrapper,
+    Wrapper(D::Path),
 
     /// A type that cannot be matched except with a variable binding or
     /// wildcard (eg. `Number`).
@@ -639,13 +647,14 @@ impl<'a, D: Driver> MatchCompiler<'a, D> {
                 ))
             }
             Type::Wrapper {
+                path,
                 substitutions,
                 value,
             } => {
                 let cases = HashMap::from([(
                     None,
                     (
-                        Constructor::Wrapper,
+                        Constructor::Wrapper(path.clone()),
                         vec![self.new_variable(convert_type(self.driver, value, substitutions)?)],
                         Vec::new(),
                     ),

@@ -98,7 +98,7 @@ pub struct Result<D: Driver> {
     Eq(bound = ""),
     Hash(bound = "")
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound(serialize = "", deserialize = ""))]
 #[ts(export, rename = "lower_Diagnostic")]
 pub enum Diagnostic {

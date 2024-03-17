@@ -241,6 +241,76 @@ export class Render {
         }
     }
 
+    renderPattern(pattern: compiler.exhaustiveness_Pattern, isTopLevel: boolean): string {
+        switch (pattern.type) {
+            case "constructor": {
+                const [constructor, values] = pattern.value;
+                switch (constructor.type) {
+                    case "variant": {
+                        const declaration = this.getDeclarationFromPath(constructor.value);
+                        if (!declaration) {
+                            return "<unknown>";
+                        }
+
+                        const name = declaration.item.name ?? "<unknown>";
+
+                        const rendered =
+                            values.length === 0
+                                ? name
+                                : `${name} ${values
+                                      .map((pattern) => this.renderPattern(pattern, false))
+                                      .join(" ")}`;
+
+                        return isTopLevel || values.length === 0 ? rendered : `(${rendered})`;
+                    }
+                    case "tuple": {
+                        const rendered =
+                            values.length === 0
+                                ? "()"
+                                : values.length === 1
+                                ? `${this.renderPattern(values[0], isTopLevel)} ;`
+                                : `${values
+                                      .map((value) => this.renderPattern(value, false))
+                                      .join(" ; ")}`;
+
+                        return isTopLevel || values.length === 0 ? rendered : `(${rendered})`;
+                    }
+                    case "structure": {
+                        return "{ ... }";
+                    }
+                    case "wrapper": {
+                        const declaration = this.getDeclarationFromPath(constructor.value);
+                        if (!declaration) {
+                            return "<unknown>";
+                        }
+
+                        const rendered = `${declaration.item.name} ${this.renderPattern(
+                            values[0],
+                            false,
+                        )}`;
+
+                        return isTopLevel ? rendered : `(${rendered})`;
+                    }
+                    case "unbounded": {
+                        return "_";
+                    }
+                    default:
+                        constructor satisfies never;
+                        return "<unknown>";
+                }
+            }
+            case "binding": {
+                return "_";
+            }
+            case "or": {
+                return "<unknown>";
+            }
+            default:
+                pattern satisfies never;
+                return "<unknown>";
+        }
+    }
+
     renderType(
         type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
         isTopLevel: boolean,
@@ -513,20 +583,178 @@ export class Render {
                 break;
             }
             case "lower": {
-                // TODO
-                severity = "error";
-                message = `${diagnostic.item.type}: ${
-                    "value" in diagnostic.item ? JSON.stringify(diagnostic.item.value) : ""
-                }`;
+                switch (diagnostic.item.value.type) {
+                    case "unresolvedName": {
+                        severity = "error";
+                        message = `can't find \`${diagnostic.item.value.value}\``;
+                        break;
+                    }
+                    case "unresolvedType": {
+                        severity = "error";
+                        message = `can't find type \`${diagnostic.item.value.value}\``;
+                        break;
+                    }
+                    case "unresolvedTrait": {
+                        severity = "error";
+                        message = `can't find trait \`${diagnostic.item.value.value}\``;
+                        break;
+                    }
+                    case "unresolvedVariant": {
+                        severity = "error";
+                        message = `can't find variant \`${diagnostic.item.value.value}\``;
+                        break;
+                    }
+                    case "unresolvedLanguageItem": {
+                        severity = "error";
+                        message = `can't find language item \`${diagnostic.item.value.value}\``;
+                        break;
+                    }
+                    case "ambiguousName": {
+                        severity = "error";
+                        message = `\`${diagnostic.item.value.value}\` has multiple definitions`;
+                        break;
+                    }
+                    case "alreadyDefined": {
+                        severity = "error";
+                        message = `\`${diagnostic.item.value.value}\` is already defined`;
+                        break;
+                    }
+                    case "nestedLanguageDeclaration": {
+                        severity = "error";
+                        message = "language items must be declared at the top level";
+                        break;
+                    }
+                    case "notAWrapper": {
+                        severity = "error";
+                        message =
+                            "this pattern matches a structure or enumeration, not a wrapper type";
+                        break;
+                    }
+                    case "wrapperExpectsASinglePattern": {
+                        severity = "error";
+                        message = "expected a single pattern after the name of the type";
+                        break;
+                    }
+                    case "invalidMutatePattern": {
+                        severity = "error";
+                        message = "`!` only works when assigning to a variable using `:`";
+                        break;
+                    }
+                    default:
+                        diagnostic.item.value satisfies never;
+                        return null;
+                }
 
                 break;
             }
             case "typecheck": {
-                // TODO
-                severity = "error";
-                message = `${diagnostic.item.type}: ${
-                    "value" in diagnostic.item ? JSON.stringify(diagnostic.item.value) : ""
-                }`;
+                switch (diagnostic.item.value.type) {
+                    case "recursionLimit": {
+                        severity = "error";
+                        message = "this code is too complex to check; try simplifying it";
+                        break;
+                    }
+                    case "missingLanguageItem": {
+                        severity = "error";
+                        message = `checking this code requires the \`${diagnostic.item.value.value}\` language item`;
+                        break;
+                    }
+                    case "unknownType": {
+                        severity = "error";
+
+                        const renderedType = this.renderType(
+                            { info: diagnostic.info, item: diagnostic.item.value.value },
+                            true,
+                        );
+
+                        if (renderedType === "_") {
+                            message = "could not determine what kind of value this code produces";
+                        } else {
+                            message = `this code produces a \`${renderedType}\`, but the \`_\`s are unknown`;
+                        }
+
+                        break;
+                    }
+                    case "undeclaredTypeParameter": {
+                        severity = "error";
+                        message = `this code references the type parameter \`${diagnostic.item.value.value}\`, which isn't available here`;
+                        break;
+                    }
+                    case "mismatch": {
+                        const { expected, actual } = diagnostic.item.value.value; // TODO: Roles
+                        severity = "error";
+                        message = `expected a \`${this.renderType(
+                            expected,
+                            true,
+                        )}\` here, but found a \`${this.renderType(actual, true)}\``;
+                        break;
+                    }
+                    case "wrongNumberOfInputs": {
+                        const { expected, actual } = diagnostic.item.value.value;
+                        severity = "error";
+                        message = `this function takes ${expected} inputs, but ${actual} were provided`;
+                        break;
+                    }
+                    case "unresolvedInstance": {
+                        const renderedInstance = this.renderInstance({
+                            info: diagnostic.info,
+                            item: diagnostic.item.value.value.instance,
+                        });
+                        severity = "error";
+                        message = `this code requires \`${renderedInstance}\``;
+                        break;
+                    }
+                    case "notAStructure": {
+                        const renderedType = this.renderType(diagnostic.item.value.value, true);
+                        severity = "error";
+                        message = `\`${renderedType}\` is not a structure`;
+                        break;
+                    }
+                    case "missingFields": {
+                        const renderedFields = diagnostic.item.value.value
+                            .map((field) => `\`${field}\``)
+                            .join(", ");
+                        severity = "error";
+                        message = `missing fields ${renderedFields}`;
+                        break;
+                    }
+                    case "extraField": {
+                        severity = "error";
+                        message = "extra field";
+                        break;
+                    }
+                    case "overlappingInstances": {
+                        severity = "error";
+                        message =
+                            "this instance already exists elsewhere; try making it more specific";
+                        break;
+                    }
+                    case "missingPatterns": {
+                        const patterns = diagnostic.item.value.value;
+                        const last = patterns.pop()!;
+
+                        severity = "error";
+                        message =
+                            patterns.length === 0
+                                ? `this code doesn't handle ${this.renderPattern(last, true)}`
+                                : `this code doesn't handle ${patterns
+                                      .map((pattern) => this.renderPattern(pattern, true))
+                                      .join(", ")} or ${this.renderPattern(last, true)}`;
+                        break;
+                    }
+                    case "extraPattern": {
+                        severity = "warning";
+                        message = "this pattern is unnecessary because it is already handled above";
+                        fix = {
+                            message: "remove this pattern",
+                            replacement: "",
+                        };
+                        break;
+                    }
+                    default:
+                        diagnostic.item.value satisfies never;
+                        return null;
+                }
 
                 break;
             }
