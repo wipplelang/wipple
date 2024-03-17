@@ -45,7 +45,7 @@ impl Driver for wipple_util::TsAny {
 
 /// Location information about a parsed item.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
-#[ts(export)]
+#[ts(export, rename = "syntax_Location")]
 #[serde(rename_all = "camelCase")]
 pub struct Location {
     /// The path of the file this item belongs to.
@@ -112,7 +112,7 @@ pub enum ErrorContext {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export)]
+#[ts(export, rename = "syntax_Diagnostic")]
 pub enum Diagnostic {
     /// The parser found a bound, but bounds aren't allowed here.
     UnexpectedBound,

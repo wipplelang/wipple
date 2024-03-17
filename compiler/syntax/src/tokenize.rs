@@ -73,7 +73,7 @@ impl<'src> Token<'src> {
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "kebab-case")]
-#[ts(export)]
+#[ts(export, rename = "syntax_Keyword")]
 pub enum Keyword {
     #[strum(serialize = "_")]
     Underscore,
@@ -128,7 +128,7 @@ impl Keyword {
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "kebab-case")]
-#[ts(export)]
+#[ts(export, rename = "syntax_Operator")]
 pub enum Operator {
     #[strum(serialize = "as")]
     As,
@@ -211,7 +211,7 @@ pub enum Operator {
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "kebab-case")]
-#[ts(export)]
+#[ts(export, rename = "syntax_VariadicOperator")]
 pub enum VariadicOperator {
     #[strum(serialize = ";")]
     Tuple,
@@ -240,7 +240,7 @@ pub enum VariadicOperator {
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "kebab-case")]
-#[ts(export)]
+#[ts(export, rename = "syntax_NonAssociativeOperator")]
 pub enum NonAssociativeOperator {
     #[strum(serialize = "where")]
     Where,
@@ -298,7 +298,7 @@ impl Operator {
     Hash(bound = "D::Info: Hash")
 )]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
-#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
+#[ts(export, rename = "syntax_Diagnostic", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Diagnostic<D: Driver> {
     /// The tokenizer encountered an invalid token.
     InvalidToken,

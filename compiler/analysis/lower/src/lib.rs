@@ -100,7 +100,7 @@ pub struct Result<D: Driver> {
 )]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export)]
+#[ts(export, rename = "lower_Diagnostic")]
 pub enum Diagnostic {
     /// The expression refers to a name that is not defined in the current
     /// scope.
@@ -644,7 +644,7 @@ pub struct UnresolvedFieldValue<D: Driver> {
 
 /// A path that uniquely identifies a declaration.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, TS)]
-#[ts(export)]
+#[ts(export, rename = "lower_Path")]
 pub struct Path(#[ts(as = "String")] pub Vec<PathComponent>);
 
 impl Path {
@@ -711,7 +711,7 @@ impl<'de> Deserialize<'de> for Path {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export)]
+#[ts(export, rename = "lower_PathComponent")]
 pub enum PathComponent {
     /// A type declaration.
     Type(String),

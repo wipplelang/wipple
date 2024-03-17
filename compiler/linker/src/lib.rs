@@ -16,7 +16,7 @@ impl Driver for wipple_util::TsAny {}
 #[derivative(Debug(bound = ""), Default(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
+#[ts(export, rename = "linker_UnlinkedLibrary", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct UnlinkedLibrary<D: Driver> {
     /// The implementations of constants and instances.
     pub items: HashMap<D::Path, UnlinkedItem<D>>,
@@ -36,7 +36,7 @@ pub struct UnlinkedLibrary<D: Driver> {
 #[derivative(Debug(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
+#[ts(export, rename = "linker_UnlinkedItem", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct UnlinkedItem<D: Driver> {
     /// The list of type parameters declared by the item.
     pub parameters: Vec<D::Path>,
@@ -54,7 +54,7 @@ pub struct UnlinkedItem<D: Driver> {
 #[derivative(Debug(bound = ""), Default(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
+#[ts(export, rename = "linker_Executable", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct Executable<D: Driver> {
     /// The implementations of constants and instances.
     pub items: HashMap<D::Path, LinkedItem<D>>,
@@ -75,7 +75,7 @@ pub struct Executable<D: Driver> {
 #[derivative(Debug(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
+#[ts(export, rename = "linker_LinkedItem", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct LinkedItem<D: Driver> {
     /// The list of type parameters declared by the item.
     pub parameters: Vec<D::Path>,

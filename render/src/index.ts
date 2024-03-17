@@ -1,12 +1,12 @@
-import type { WithInfo, main } from "wipple-compiler";
+import type * as compiler from "wipple-compiler";
 import { LinesAndColumns, SourceLocation } from "lines-and-columns";
 
-export type AnyDeclaration = { name: string | null; path: main.Path } & (
-    | { type: "type"; declaration: main.TypeDeclaration }
-    | { type: "trait"; declaration: main.TraitDeclaration }
-    | { type: "typeParameter"; declaration: main.TypeParameterDeclaration }
-    | { type: "constant"; declaration: main.ConstantDeclaration }
-    | { type: "instance"; declaration: main.InstanceDeclaration }
+export type AnyDeclaration = { name: string | null; path: compiler.lower_Path } & (
+    | { type: "type"; declaration: compiler.typecheck_TypeDeclaration }
+    | { type: "trait"; declaration: compiler.typecheck_TraitDeclaration }
+    | { type: "typeParameter"; declaration: compiler.typecheck_TypeParameterDeclaration }
+    | { type: "constant"; declaration: compiler.typecheck_ConstantDeclaration }
+    | { type: "instance"; declaration: compiler.typecheck_InstanceDeclaration }
 );
 
 export interface RenderedSourceLocation {
@@ -43,11 +43,11 @@ export type RenderedDocumentationAttributeValue =
     | { type: "boolean"; value: boolean };
 
 export class Render {
-    private files: Record<string, main.File & { linesAndColumns: LinesAndColumns }> = {};
-    private declarations: WithInfo<main.Info, AnyDeclaration>[] = [];
-    private libraries: main.UnlinkedLibrary[] = [];
+    private files: Record<string, compiler.File & { linesAndColumns: LinesAndColumns }> = {};
+    private declarations: compiler.WithInfo<compiler.Info, AnyDeclaration>[] = [];
+    private libraries: compiler.linker_UnlinkedLibrary[] = [];
 
-    update(interface_: main.Interface, libraries: main.UnlinkedLibrary[]) {
+    update(interface_: compiler.Interface, libraries: compiler.linker_UnlinkedLibrary[]) {
         this.files = {};
         for (const file of interface_.files) {
             this.files[file.path] = { ...file, linesAndColumns: new LinesAndColumns(file.code) };
@@ -55,7 +55,7 @@ export class Render {
 
         this.declarations = [];
         for (const type of ["type", "trait", "typeParameter", "constant", "instance"] as const) {
-            for (const [path, declaration] of Object.entries<WithInfo<main.Info, any>>(
+            for (const [path, declaration] of Object.entries<compiler.WithInfo<compiler.Info, any>>(
                 interface_[`${type}Declarations`],
             )) {
                 this.declarations.push({
@@ -73,7 +73,9 @@ export class Render {
         this.libraries = libraries;
     }
 
-    getDeclarationFromPath(path: main.Path): WithInfo<main.Info, AnyDeclaration> | null {
+    getDeclarationFromPath(
+        path: compiler.lower_Path,
+    ): compiler.WithInfo<compiler.Info, AnyDeclaration> | null {
         for (const declaration of this.declarations) {
             if (declaration.item.path === path) {
                 return declaration;
@@ -83,7 +85,9 @@ export class Render {
         return null;
     }
 
-    getDeclarationFromInfo(info: main.Info): WithInfo<main.Info, AnyDeclaration> | null {
+    getDeclarationFromInfo(
+        info: compiler.Info,
+    ): compiler.WithInfo<compiler.Info, AnyDeclaration> | null {
         for (const declaration of this.declarations) {
             if (this.compareInfo(declaration.info, info)) {
                 return declaration;
@@ -93,7 +97,7 @@ export class Render {
         return null;
     }
 
-    getInfoAtCursor(path: string, index: number): main.Info | null {
+    getInfoAtCursor(path: string, index: number): compiler.Info | null {
         for (const item of this.libraries.flatMap((library) => [
             ...Object.values(library.items),
             ...library.code,
@@ -107,7 +111,10 @@ export class Render {
                 continue;
             }
 
-            const candidates: WithInfo<main.Info, main.TypedExpression>[] = [];
+            const candidates: compiler.WithInfo<
+                compiler.Info,
+                compiler.typecheck_TypedExpression
+            >[] = [];
 
             this.traverseExpression(item.expression, (expression) => {
                 if (
@@ -125,8 +132,12 @@ export class Render {
             }
 
             candidates.sort((left, right) => {
-                const length = (expression: WithInfo<main.Info, main.TypedExpression>) =>
-                    expression.info.location.span.end - expression.info.location.span.start;
+                const length = (
+                    expression: compiler.WithInfo<
+                        compiler.Info,
+                        compiler.typecheck_TypedExpression
+                    >,
+                ) => expression.info.location.span.end - expression.info.location.span.start;
 
                 return length(left) - length(right);
             });
@@ -148,7 +159,9 @@ export class Render {
         return null;
     }
 
-    renderSourceLocation(value: WithInfo<main.Info, unknown>): RenderedSourceLocation | null {
+    renderSourceLocation(
+        value: compiler.WithInfo<compiler.Info, unknown>,
+    ): RenderedSourceLocation | null {
         const file = this.files[value.info.location.path];
         if (!file) {
             return null;
@@ -172,7 +185,9 @@ export class Render {
         };
     }
 
-    renderDeclaration(declaration: WithInfo<main.Info, AnyDeclaration>): string | null {
+    renderDeclaration(
+        declaration: compiler.WithInfo<compiler.Info, AnyDeclaration>,
+    ): string | null {
         switch (declaration.item.type) {
             case "type": {
                 const typeFunction = this.renderTypeFunction(
@@ -223,9 +238,12 @@ export class Render {
         }
     }
 
-    renderType(type: WithInfo<main.Info, main.Type>, isTopLevel: boolean): string {
+    renderType(
+        type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
+        isTopLevel: boolean,
+    ): string {
         const render = (
-            type: WithInfo<main.Info, main.Type>,
+            type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
             isTopLevel: boolean,
             isReturn: boolean,
         ): string => {
@@ -289,9 +307,14 @@ export class Render {
     }
 
     renderTypeFunction(
-        parameters: main.Path[],
-        bounds: WithInfo<main.Info, main.Instance>[],
-        format: { kind: "arrow" } | { kind: "description"; type: WithInfo<main.Info, main.Type> },
+        parameters: compiler.lower_Path[],
+        bounds: compiler.WithInfo<compiler.Info, compiler.typecheck_Instance>[],
+        format:
+            | { kind: "arrow" }
+            | {
+                  kind: "description";
+                  type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>;
+              },
     ): string {
         switch (format.kind) {
             case "arrow": {
@@ -340,7 +363,9 @@ export class Render {
         }
     }
 
-    renderInstance(instance: WithInfo<main.Info, main.Instance>): string {
+    renderInstance(
+        instance: compiler.WithInfo<compiler.Info, compiler.typecheck_Instance>,
+    ): string {
         const trait = this.nameForPath(instance.item.trait);
 
         const parameters = instance.item.parameters
@@ -350,10 +375,30 @@ export class Render {
         return parameters.length === 0 ? trait : `(${trait} ${parameters})`;
     }
 
-    renderDiagnostic(diagnostic: WithInfo<main.Info, main.Diagnostic>): RenderedDiagnostic | null {
+    renderDiagnostic(
+        diagnostic: compiler.WithInfo<compiler.Info, compiler.Diagnostic>,
+    ): RenderedDiagnostic | null {
         const renderedSourceLocation = this.renderSourceLocation(diagnostic);
         if (!renderedSourceLocation) {
             return null;
+        }
+
+        switch (diagnostic.item.type) {
+            case "tokenize": {
+                break;
+            }
+            case "parse": {
+                break;
+            }
+            case "syntax": {
+                break;
+            }
+            case "lower": {
+                break;
+            }
+            case "typecheck": {
+                break;
+            }
         }
 
         // TODO
@@ -367,7 +412,9 @@ export class Render {
         };
     }
 
-    renderDocumentation(value: WithInfo<main.Info, unknown>): RenderedDocumentation | null {
+    renderDocumentation(
+        value: compiler.WithInfo<compiler.Info, unknown>,
+    ): RenderedDocumentation | null {
         const renderedSourceLocation = this.renderSourceLocation(value);
         if (!renderedSourceLocation) {
             return null;
@@ -460,10 +507,14 @@ export class Render {
     }
 
     private traverseExpression(
-        expression: WithInfo<main.Info, main.TypedExpression>,
-        f: (expression: WithInfo<main.Info, main.TypedExpression>) => boolean,
-    ): WithInfo<main.Info, main.TypedExpression> | null {
-        const traverse = (expression: WithInfo<main.Info, main.TypedExpression>) => {
+        expression: compiler.WithInfo<compiler.Info, compiler.typecheck_TypedExpression>,
+        f: (
+            expression: compiler.WithInfo<compiler.Info, compiler.typecheck_TypedExpression>,
+        ) => boolean,
+    ): compiler.WithInfo<compiler.Info, compiler.typecheck_TypedExpression> | null {
+        const traverse = (
+            expression: compiler.WithInfo<compiler.Info, compiler.typecheck_TypedExpression>,
+        ) => {
             if (f(expression)) {
                 throw expression;
             }
@@ -565,7 +616,7 @@ export class Render {
         return null;
     }
 
-    private compareInfo(left: main.Info, right: main.Info): boolean {
+    private compareInfo(left: compiler.Info, right: compiler.Info): boolean {
         return (
             left.location.visiblePath === right.location.visiblePath &&
             left.location.span.start === right.location.span.start &&
@@ -573,7 +624,7 @@ export class Render {
         );
     }
 
-    private nameForPath(path: main.Path): string {
+    private nameForPath(path: compiler.lower_Path): string {
         return path.split(" / ").pop()?.split(" ").pop() ?? "<unknown>";
     }
 }

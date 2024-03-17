@@ -1,7 +1,7 @@
-import type { linker, main } from "./generated/wipple-compiler.d.ts";
+import type { File, Interface, Result, linker_Executable } from "./generated/wipple-compiler.d.ts";
 
-export const compile: (sources: main.File[], dependencies: main.Interface | null) => main.Result;
+export const compile: (sources: File[], dependencies: Interface | null) => Result;
 
-export const link: (libraries: main.UnlinkedLibrary[]) => linker.Executable;
+export const link: (libraries: UnlinkedLibrary[]) => linker_Executable;
 
 export type * from "./generated/wipple-compiler.d.ts";

@@ -263,7 +263,7 @@ enum Type<D: Driver> {
 )]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound = "")]
-#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
+#[ts(export, rename = "exhaustiveness_Pattern", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Pattern<D: Driver> {
     /// A pattern representing a concrete type.
     Constructor(Constructor<D>, Vec<Pattern<D>>),
@@ -286,7 +286,7 @@ pub enum Pattern<D: Driver> {
 )]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound = "")]
-#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
+#[ts(export, rename = "exhaustiveness_Constructor", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Constructor<D: Driver> {
     /// A variant of an enumeration.
     Variant(D::Path),

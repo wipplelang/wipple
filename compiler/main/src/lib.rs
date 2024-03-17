@@ -87,7 +87,7 @@ impl Driver {
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[ts(export, rename = "Info")]
 pub struct Info {
     /// Location information produced by the parser.
     pub location: syntax::Location,
@@ -102,7 +102,7 @@ impl From<syntax::Location> for Info {
 /// A file provided to [`Driver::compile`].
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[ts(export, rename = "File")]
 pub struct File {
     /// The file's path.
     pub path: String,
@@ -118,7 +118,7 @@ pub struct File {
 #[non_exhaustive]
 #[derive(Debug, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[ts(export, rename = "Interface")]
 pub struct Interface {
     /// The files used during compilation. Not all files may be available.
     pub files: Vec<File>,
@@ -163,7 +163,7 @@ pub type Item = wipple_linker::UnlinkedItem<Driver>;
 #[non_exhaustive]
 #[derive(Debug, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[ts(export, rename = "Result")]
 pub struct Result {
     /// The generated interface.
     pub interface: Interface,
@@ -179,7 +179,7 @@ pub struct Result {
 #[allow(missing_docs)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
-#[ts(export)]
+#[ts(export, rename = "Diagnostic")]
 pub enum Diagnostic {
     Tokenize(syntax::tokenize::Diagnostic<SyntaxDriver>),
     Parse(syntax::parse::Diagnostic<SyntaxDriver>),

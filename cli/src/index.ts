@@ -13,7 +13,7 @@ import {
     array,
 } from "cmd-ts";
 import { File } from "cmd-ts/batteries/fs";
-import { compile, link, main } from "wipple-compiler";
+import * as compiler from "wipple-compiler";
 import { evaluate, InterpreterError, IoRequest } from "wipple-interpreter";
 
 Error.stackTraceLimit = Infinity;
@@ -41,7 +41,7 @@ const app = subcommands({
                 sourcePaths,
             }) => {
                 const sources = sourcePaths.map(
-                    (sourcePath): main.File => ({
+                    (sourcePath): compiler.File => ({
                         path: sourcePath,
                         visiblePath: `${path.basename(path.dirname(sourcePath))}/${path.basename(
                             sourcePath,
@@ -50,11 +50,11 @@ const app = subcommands({
                     }),
                 );
 
-                const dependencies: main.Interface | null = dependencyPath
+                const dependencies: compiler.Interface | null = dependencyPath
                     ? JSON.parse(fs.readFileSync(dependencyPath, "utf8"))
                     : null;
 
-                const result = compile(sources, dependencies);
+                const result = compiler.compile(sources, dependencies);
 
                 if (result.diagnostics.length > 0) {
                     console.log(JSON.stringify(result.diagnostics, null, 4));
@@ -93,15 +93,15 @@ const app = subcommands({
                     code: fs.readFileSync(sourcePath, "utf8"),
                 }));
 
-                const dependencies: main.Interface | null = dependencyInterfacePath
+                const dependencies: compiler.Interface | null = dependencyInterfacePath
                     ? JSON.parse(fs.readFileSync(dependencyInterfacePath, "utf8"))
                     : null;
 
-                const libraries: main.UnlinkedLibrary[] = dependencyLibrariesPaths.map((path) =>
-                    JSON.parse(fs.readFileSync(path, "utf8")),
+                const libraries: compiler.linker_UnlinkedLibrary[] = dependencyLibrariesPaths.map(
+                    (path) => JSON.parse(fs.readFileSync(path, "utf8")),
                 );
 
-                const result = compile(sources, dependencies);
+                const result = compiler.compile(sources, dependencies);
 
                 if (result.diagnostics.length > 0) {
                     console.log(JSON.stringify(result.diagnostics, null, 4));
@@ -125,10 +125,11 @@ const app = subcommands({
             },
             handler: async ({ libraryPaths, outputExecutablePath }) => {
                 const libraries = libraryPaths.map(
-                    (path): main.UnlinkedLibrary => JSON.parse(fs.readFileSync(path, "utf8")),
+                    (path): compiler.linker_UnlinkedLibrary =>
+                        JSON.parse(fs.readFileSync(path, "utf8")),
                 );
 
-                const executable = link(libraries);
+                const executable = compiler.link(libraries);
 
                 if (!executable) {
                     console.error("linking failed");

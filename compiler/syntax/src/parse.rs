@@ -496,7 +496,7 @@ impl<D: Driver> DefaultFromInfo<D::Info> for FieldValue<D> {
     Eq(bound = "D::Info: Eq"),
     Hash(bound = "D::Info: Hash")
 )]
-#[ts(export, concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
+#[ts(export, rename = "parse_Diagnostic", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct Diagnostic<D: Driver> {
     /// The expected piece of syntax at this location.
     pub expected: SyntaxKind,
@@ -514,7 +514,7 @@ pub struct Diagnostic<D: Driver> {
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[ts(export, rename = "syntax_Direction")]
 pub enum Direction {
     Before,
     After,
@@ -524,7 +524,7 @@ pub enum Direction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "kebab-case")]
-#[ts(export)]
+#[ts(export, rename = "syntax_SyntaxKind")]
 pub enum SyntaxKind {
     TopLevel,
     Name,

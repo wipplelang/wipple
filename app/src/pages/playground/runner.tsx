@@ -9,7 +9,7 @@ import {
     useState,
 } from "react";
 import { useDebounceValue } from "usehooks-ts";
-import { compile, link, main } from "wipple-compiler";
+import * as compiler from "wipple-compiler";
 import { RunnerWorker } from "../../helpers";
 import { InterpreterError } from "wipple-interpreter";
 import { Render, RenderedDiagnostic } from "wipple-render";
@@ -102,7 +102,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 },
             ];
 
-            const compileResult = compile(sources, dependencies?.interface ?? null);
+            const compileResult = compiler.compile(sources, dependencies?.interface ?? null);
 
             render.update(compileResult.interface, [
                 compileResult.library,
@@ -126,7 +126,10 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 setRunning(false);
             }
 
-            const executable = link([compileResult.library, ...(dependencies?.libraries ?? [])]);
+            const executable = compiler.link([
+                compileResult.library,
+                ...(dependencies?.libraries ?? []),
+            ]);
             if (!executable) {
                 throw new Error("linker error");
             }
@@ -445,8 +448,8 @@ const Prompt = (props: {
 };
 
 interface FetchDependenciesResult {
-    interface: main.Interface;
-    libraries: main.UnlinkedLibrary[];
+    interface: compiler.Interface;
+    libraries: compiler.linker_UnlinkedLibrary[];
 }
 
 const fetchDependencies = async (name: string): Promise<FetchDependenciesResult> => {

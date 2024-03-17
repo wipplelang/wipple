@@ -15,5 +15,5 @@ use ts_rs::TS;
 #[derive(
     Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, TS,
 )]
-#[ts(rename = "any")]
-pub struct TsAny;
+#[ts(rename = "util_TsAny", export)]
+pub struct TsAny(#[ts(type = "any")] ());

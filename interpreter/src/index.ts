@@ -1,13 +1,13 @@
 import { Decimal } from "decimal.js";
 import { intrinsics } from "./intrinsics.js";
 import { produce } from "immer";
-import type { codegen, linker } from "wipple-compiler";
+import type * as compiler from "wipple-compiler";
 
-export type Executable = linker.Executable;
-export type Item = linker.LinkedItem;
-export type TypeDescriptor = codegen.TypeDescriptor;
-export type Instruction = codegen.Instruction;
-export type TypedInstruction = codegen.TypedInstruction;
+export type Executable = compiler.linker_Executable;
+export type Item = compiler.linker_LinkedItem;
+export type TypeDescriptor = compiler.codegen_TypeDescriptor;
+export type Instruction = compiler.codegen_Instruction;
+export type TypedInstruction = compiler.codegen_TypedInstruction;
 
 export type TypedValue = Value & { typeDescriptor: TypeDescriptor };
 

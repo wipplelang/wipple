@@ -79,7 +79,7 @@ pub(crate) fn parse_format_expression<D: Driver>(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
-#[ts(export)]
+#[ts(export, rename = "syntax_TextLiteralError")]
 pub struct TextLiteralError {
     pub start: u32,
     pub end: u32,
