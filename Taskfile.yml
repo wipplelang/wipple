@@ -58,10 +58,9 @@ tasks:
     app:bundle-for-playground:
         run: once
         dir: app
-        deps:
-            - cli:build
-            - base:compile
         cmds:
+            - WIPPLE_COMPILER_WASM_OPTIMIZE=1 task cli:build
+            - task base:compile
             - rm -rf .wipple
             - wipple compile ../library/base/*.wipple --interface .wipple/base.wippleinterface --library .wipple/base.wipplelibrary
             - wipple bundle-for-playground ../library/base/*.wipple --output ./public/library/base.wipplebundle
@@ -116,7 +115,7 @@ tasks:
         run: once
         dir: compiler
         cmds:
-            - COMPILER_WASM_TARGET=web npm run build
+            - npm run build
 
     compiler:build:node:
         run: once

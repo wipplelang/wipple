@@ -120,6 +120,10 @@ pub enum Instruction<D: Driver> {
     /// value on the top of the stack, keeping the value on the top of the stack.
     Element(u32),
 
+    /// (Pattern matching) Unwrap the wrapper type on the top of the stack,
+    /// keeping the value on the top of the stack.
+    Unwrap,
+
     /// A variable.
     Variable(u32),
 
@@ -256,6 +260,7 @@ where
             Instruction::Initialize(variable) => write!(f, "initialize {variable}"),
             Instruction::Field(field) => write!(f, "field {field}"),
             Instruction::Element(element) => write!(f, "element {element}"),
+            Instruction::Unwrap => write!(f, "unwrap"),
             Instruction::Variable(variable) => write!(f, "variable {variable}"),
             Instruction::Call(inputs) => write!(f, "call {inputs}"),
             Instruction::Do => write!(f, "do"),

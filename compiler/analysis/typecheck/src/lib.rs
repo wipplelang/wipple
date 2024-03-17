@@ -952,6 +952,15 @@ pub enum Pattern<D: Driver> {
         value_patterns: Vec<WithInfo<D::Info, Pattern<D>>>,
     },
 
+    /// A wrapper pattern.
+    Wrapper {
+        /// The wrapper type this pattern matches.
+        path: WithInfo<D::Info, D::Path>,
+
+        /// The pattern matching the wrapped value.
+        value_pattern: WithInfo<D::Info, Box<Pattern<D>>>,
+    },
+
     /// A tuple pattern.
     Tuple(Vec<WithInfo<D::Info, Pattern<D>>>),
 
@@ -1111,6 +1120,9 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a Pattern<D>> 
                 for value_pattern in value_patterns {
                     value_pattern.as_ref().traverse(f);
                 }
+            }
+            Pattern::Wrapper { value_pattern, .. } => {
+                value_pattern.as_deref().traverse(f);
             }
             Pattern::Tuple(elements) => {
                 for element in elements {

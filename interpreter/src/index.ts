@@ -312,6 +312,17 @@ const evaluateItem = async (
 
                     break;
                 }
+                case "unwrap": {
+                    const value = peek();
+                    if (value.type !== "wrapper") {
+                        throw error("expected wrapper", value);
+                    }
+
+                    const wrapped = value.value;
+                    stack.push(wrapped);
+
+                    break;
+                }
                 case "element": {
                     const value = peek();
                     if (value.type !== "variant" && value.type !== "tuple") {

@@ -137,6 +137,12 @@ pub enum Diagnostic {
     /// Language declarations must be at the top level.
     NestedLanguageDeclaration,
 
+    /// The type involved in the pattern is not a wrapper type.
+    NotAWrapper,
+
+    /// The pattern unwraps a type with more than one pattern.
+    WrapperExpectsASinglePattern,
+
     /// Mutate patterns can only occur on the left-hand side of an assignment.
     InvalidMutatePattern,
 }
@@ -1156,6 +1162,15 @@ pub enum Pattern<D: Driver> {
 
         /// The patterns matching each of the variant's associated values.
         value_patterns: Vec<WithInfo<D::Info, Pattern<D>>>,
+    },
+
+    /// A wrapper pattern.
+    Wrapper {
+        /// The wrapper type this pattern matches.
+        path: WithInfo<D::Info, Path>,
+
+        /// The pattern matching the wrapped value.
+        value_pattern: WithInfo<D::Info, Box<Pattern<D>>>,
     },
 
     /// A tuple pattern.

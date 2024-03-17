@@ -2,7 +2,7 @@ import { ColorAsset } from "./color";
 
 export const isAsset = (value: string) => value.startsWith("[") && value.endsWith("]");
 
-export const colorAsset = (color: string) => `[color "${color}"]`;
+export const colorAsset = (color: string) => `[Color "${color}"]`;
 
 export const Asset = (props: {
     children: string;
@@ -19,12 +19,12 @@ export const Asset = (props: {
 
     let content: JSX.Element;
     switch (type) {
-        case "color":
+        case "Color":
             content = (
                 <ColorAsset
                     disabled={props.disabled}
                     color={value}
-                    onClick={() => props.onClick?.("color", value)}
+                    onClick={() => props.onClick?.("Color", value)}
                 />
             );
             break;

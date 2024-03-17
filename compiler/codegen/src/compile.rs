@@ -381,6 +381,11 @@ fn compile_pattern<D: crate::Driver>(
                 info.push_instruction(crate::Instruction::Drop);
             }
         }
+        wipple_typecheck::Pattern::Wrapper { value_pattern, .. } => {
+            info.push_instruction(crate::Instruction::Unwrap);
+            compile_pattern(value_pattern.as_deref(), break_label, info)?;
+            info.push_instruction(crate::Instruction::Drop);
+        }
         wipple_typecheck::Pattern::Tuple(elements) => {
             for (index, pattern) in elements.iter().enumerate() {
                 info.push_instruction(crate::Instruction::Element(index as u32));

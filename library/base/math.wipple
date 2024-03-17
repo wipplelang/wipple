@@ -52,23 +52,23 @@ sqrt :: Number -> Number
 sqrt : n -> intrinsic "sqrt-number" n
 
 -- An angle represented in degrees.
-Angle : type {degrees :: Number}
+Angle : type Number
 
 -- An angle in degrees.
 degrees :: Number -> Angle
-degrees : n -> {degrees : n}
+degrees : Angle
 
 -- Calculate the sine of an angle.
 sin :: Angle -> Number
-sin : {degrees : degrees} -> intrinsic "sin" degrees
+sin : (Angle degrees) -> intrinsic "sin" degrees
 
 -- Calculate the cosine of an angle.
 cos :: Angle -> Number
-cos : {degrees : degrees} -> intrinsic "cos" degrees
+cos : (Angle degrees) -> intrinsic "cos" degrees
 
 -- Calculate the tangent of an angle.
 tan :: Angle -> Number
-tan : {degrees : degrees} -> intrinsic "tan" degrees
+tan : (Angle degrees) -> intrinsic "tan" degrees
 
 -- Negate the sign of a number.
 negate :: Number -> Number

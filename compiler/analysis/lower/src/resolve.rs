@@ -336,12 +336,12 @@ fn resolve_statements<D: Driver>(
                     crate::UnresolvedTypeRepresentation::Wrapper(r#type) => {
                         let value_type = resolve_type(r#type, info);
 
-                        generate_wrapper_constructor(
+                        constructors.push(generate_wrapper_constructor(
                             name.clone(),
                             value_type.clone(),
                             parameters.clone(),
                             info,
-                        );
+                        ));
 
                         crate::TypeRepresentation::Wrapper(value_type)
                     }
@@ -1320,12 +1320,12 @@ fn resolve_pattern_inner<D: Driver>(
             variant,
             value_patterns,
         } => {
-            let variant = match variant.try_unwrap() {
-                Some(variant) => variant,
+            let name = match variant.try_unwrap() {
+                Some(name) => name,
                 None => return crate::Pattern::Error,
             };
 
-            let variant = match resolve_name(variant, info, |candidates| {
+            if let Some(variant) = try_resolve_name(name.clone(), info, |candidates| {
                 candidates
                     .iter()
                     .filter_map(|path| match path.item.last().unwrap() {
@@ -1334,18 +1334,59 @@ fn resolve_pattern_inner<D: Driver>(
                     })
                     .collect::<Vec<_>>()
             }) {
-                Some(variant) => variant,
-                None => return crate::Pattern::Error,
-            };
+                let value_patterns = value_patterns
+                    .into_iter()
+                    .map(|pattern| resolve_pattern_inner(pattern, defines, info))
+                    .collect::<Vec<_>>();
 
-            let value_patterns = value_patterns
-                .into_iter()
-                .map(|pattern| resolve_pattern_inner(pattern, defines, info))
-                .collect::<Vec<_>>();
+                crate::Pattern::Variant {
+                    variant,
+                    value_patterns,
+                }
+            } else if let Some(r#type) = resolve_name(name.clone(), info, |candidates| {
+                candidates
+                    .iter()
+                    .filter_map(|path| match path.item.last().unwrap() {
+                        crate::PathComponent::Type(_) => Some(path.clone()),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+            }) {
+                let type_declaration = info
+                    .type_declarations
+                    .get(&r#type.item)
+                    .unwrap()
+                    .as_ref()
+                    .map(|declaration| declaration.as_ref().unwrap());
 
-            crate::Pattern::Variant {
-                variant,
-                value_patterns,
+                if !matches!(
+                    type_declaration.item.representation.item,
+                    crate::TypeRepresentation::Wrapper(_)
+                ) {
+                    info.errors
+                        .push(name.replace(crate::Diagnostic::NotAWrapper));
+
+                    return crate::Pattern::Error;
+                }
+
+                if value_patterns.len() != 1 {
+                    info.errors
+                        .push(name.replace(crate::Diagnostic::WrapperExpectsASinglePattern));
+
+                    return crate::Pattern::Error;
+                }
+
+                crate::Pattern::Wrapper {
+                    path: r#type,
+                    value_pattern: resolve_pattern_inner(
+                        value_patterns.into_iter().next().unwrap(),
+                        defines,
+                        info,
+                    )
+                    .boxed(),
+                }
+            } else {
+                crate::Pattern::Error
             }
         }
         crate::UnresolvedPattern::Tuple(patterns) => crate::Pattern::Tuple(

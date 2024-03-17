@@ -899,6 +899,13 @@ pub mod typecheck {
                 variant,
                 value_patterns: value_patterns.into_iter().map(convert_pattern).collect(),
             },
+            wipple_lower::Pattern::Wrapper {
+                path,
+                value_pattern,
+            } => wipple_typecheck::Pattern::Wrapper {
+                path,
+                value_pattern: convert_pattern(value_pattern.unboxed()).boxed(),
+            },
             wipple_lower::Pattern::Tuple(elements) => wipple_typecheck::Pattern::Tuple(
                 elements.into_iter().map(convert_pattern).collect(),
             ),

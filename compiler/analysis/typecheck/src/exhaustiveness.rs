@@ -204,6 +204,10 @@ fn convert_pattern<D: Driver>(pattern: &crate::Pattern<D>) -> Option<Pattern<D>>
                 patterns,
             ))
         }
+        crate::Pattern::Wrapper { value_pattern, .. } => {
+            let pattern = convert_pattern(&value_pattern.item)?;
+            Some(Pattern::Constructor(Constructor::Wrapper, vec![pattern]))
+        }
         crate::Pattern::Tuple(elements) => {
             let patterns = elements
                 .iter()

@@ -177,7 +177,7 @@ export const CodeEditor = (props: {
 
     const onClickAsset: AssetClickHandler = useCallback(({ start, end, type, value }) => {
         switch (type) {
-            case "color":
+            case "Color":
                 displayAlert(({ dismiss }) => (
                     <ColorPicker
                         selection={value}
@@ -343,7 +343,7 @@ export const CodeEditor = (props: {
                 <Animated direction="vertical">
                     {quickHelpLocked ?? false ? (
                         <p className="pt-5 px-4 text-sm text-gray-500 dark:text-gray-400">
-                            Hover over a piece of code for help.
+                            Select a piece of code for help.
                         </p>
                     ) : null}
                 </Animated>

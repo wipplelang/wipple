@@ -2338,6 +2338,89 @@ fn resolve_pattern<D: Driver>(
                 resolve_pattern(pattern.as_ref(), pattern.replace(&r#type), context);
             }
         }
+        crate::Pattern::Wrapper {
+            path,
+            value_pattern,
+        } => {
+            let value_type = match &r#type.item.kind {
+                TypeKind::Declared { path, parameters } => {
+                    let type_declaration = context.driver.get_type_declaration(path);
+
+                    let instantiation_context = InstantiationContext::from_parameters(
+                        context.driver,
+                        type_declaration.item.parameters.clone(),
+                        context.type_context,
+                        &pattern.info,
+                        context.errors,
+                    );
+
+                    for (path, r#type) in type_declaration.item.parameters.iter().zip(parameters) {
+                        assert!(unify(
+                            context.driver,
+                            &instantiation_context.type_for_parameter(context.driver, path),
+                            r#type,
+                            context.type_context,
+                        ));
+                    }
+
+                    match &type_declaration.item.representation.item {
+                        crate::TypeRepresentation::Wrapper(wrapped) => infer_type(
+                            wrapped.as_ref(),
+                            wrapped.replace(Role::WrappedType),
+                            Some(context.type_context),
+                        )
+                        .instantiate(context.driver, &instantiation_context),
+                        _ => return,
+                    }
+                }
+                _ => {
+                    let type_declaration = context.driver.get_type_declaration(&path.item);
+
+                    let instantiation_context = InstantiationContext::from_parameters(
+                        context.driver,
+                        type_declaration.item.parameters.clone(),
+                        context.type_context,
+                        &pattern.info,
+                        context.errors,
+                    );
+
+                    let value_type = match type_declaration.item.representation.item {
+                        crate::TypeRepresentation::Wrapper(wrapped) => infer_type(
+                            wrapped.as_ref(),
+                            wrapped.replace(Role::VariantElement),
+                            Some(context.type_context),
+                        )
+                        .instantiate(context.driver, &instantiation_context),
+                        _ => return,
+                    };
+
+                    let wrapper_type = Type::new(
+                        TypeKind::Declared {
+                            path: path.item.clone(),
+                            parameters: instantiation_context.into_types_for_parameters(),
+                        },
+                        pattern.info.clone(),
+                        Vec::new(),
+                    );
+
+                    try_unify(
+                        context.driver,
+                        r#type.as_ref(),
+                        &wrapper_type,
+                        context.type_context,
+                        context.error_queue,
+                    );
+
+                    value_type
+                }
+            };
+
+            resolve_pattern(
+                value_pattern.as_deref(),
+                value_pattern.replace(&value_type),
+                context,
+            );
+        }
         crate::Pattern::Tuple(elements) => {
             let element_types = match &r#type.item.kind {
                 TypeKind::Tuple(element_types) => {
@@ -3612,7 +3695,31 @@ fn finalize_expression<D: Driver>(
         ExpressionKind::Block(statements) => crate::TypedExpressionKind::Block(
             statements
                 .into_iter()
-                .map(|expression| finalize_expression(expression, context))
+                .map(|statement| {
+                    let statement = finalize_expression(statement, context);
+
+                    // Disallow statements containing only uncalled functions
+                    if let crate::Type::Function { inputs, .. } = &statement.item.r#type {
+                        if let crate::TypedExpressionKind::Constant { .. }
+                        | crate::TypedExpressionKind::Trait { .. }
+                        | crate::TypedExpressionKind::Variable { .. } = &statement.item.kind
+                        {
+                            if let Some(errors) = &context.errors {
+                                let error = WithInfo {
+                                    info: statement.info.clone(),
+                                    item: crate::Diagnostic::WrongNumberOfInputs {
+                                        actual: 0,
+                                        expected: inputs.len() as u32,
+                                    },
+                                };
+
+                                errors.borrow_mut().push(error);
+                            }
+                        }
+                    }
+
+                    statement
+                })
                 .collect(),
         ),
         ExpressionKind::Do(block) => {
