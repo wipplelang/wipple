@@ -468,11 +468,47 @@ export class Render {
                 break;
             }
             case "syntax": {
-                // TODO
-                severity = "error";
-                message = `${diagnostic.item.type}: ${
-                    "value" in diagnostic.item ? JSON.stringify(diagnostic.item.value) : ""
-                }`;
+                switch (diagnostic.item.value.type) {
+                    case "unexpectedBound": {
+                        severity = "error";
+                        message = "bounds aren't allowed on type and trait definitions";
+                        break;
+                    }
+                    case "expectedConstantValue": {
+                        severity = "error";
+                        message = `missing a value for \`${diagnostic.item.value.value}\` on the next line`;
+                        break;
+                    }
+                    case "emptyTypeRepresentation": {
+                        severity = "error";
+                        message = "missing a field or variant between the braces in this type";
+                        break;
+                    }
+                    case "expectedField": {
+                        severity = "error";
+                        message = "expected a field of the form `name :: Type` here";
+                        break;
+                    }
+                    case "expectedVariant": {
+                        severity = "error";
+                        message = "expected a variant of the form `Name` here";
+                        break;
+                    }
+                    case "invalidTextLiteral": {
+                        severity = "error";
+                        message = diagnostic.item.value.value.error;
+                        break;
+                    }
+                    case "invalidPlaceholderText": {
+                        const { expected, found } = diagnostic.item.value.value;
+                        severity = "error";
+                        message = `text has ${expected} placeholders, but ${found} inputs were provided here`;
+                        break;
+                    }
+                    default:
+                        diagnostic.item.value satisfies never;
+                        return null;
+                }
 
                 break;
             }
