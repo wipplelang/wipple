@@ -11,7 +11,7 @@ import {
 import { URI } from "vscode-uri";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { WithInfo, compile, main } from "wipple-compiler";
+import * as compiler from "wipple-compiler";
 import { Render, RenderedDiagnostic } from "wipple-render";
 
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
@@ -162,7 +162,7 @@ connection.listen();
 const compileAll = async (
     activeFile: string,
     activeCode: string,
-): Promise<WithInfo<main.Info, main.Diagnostic>[]> => {
+): Promise<compiler.WithInfo<compiler.Info, compiler.Diagnostic>[]> => {
     const dirs = [
         path.dirname(activeFile),
         ...linkDirs, // TODO: Link against library, not source files
@@ -178,7 +178,7 @@ const compileAll = async (
 
     const sources = await Promise.all(
         sourcePaths.map(
-            async (sourcePath): Promise<main.File> => ({
+            async (sourcePath): Promise<compiler.File> => ({
                 path: sourcePath,
                 visiblePath: `${path.basename(path.dirname(sourcePath))}/${path.basename(
                     sourcePath,
@@ -194,7 +194,7 @@ const compileAll = async (
     // TODO: Support dependencies
     const dependencies = null;
 
-    const result = compile(sources, dependencies);
+    const result = compiler.compile(sources, dependencies);
     render.update(result.interface, [result.library]); // TODO: Dependencies
 
     return result.diagnostics;

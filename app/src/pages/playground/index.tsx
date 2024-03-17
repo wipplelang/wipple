@@ -43,16 +43,7 @@ export const PlaygroundPage = () => {
         };
     }, [playground?.name]);
 
-    const [tempCode, setTempCode] = useState(`greeting : "Hello, world!"
-show greeting
-
-color [Color "blue"]
-fill [Color "red"] {
-  repeat (4 times) {
-    forward (50 pixels)
-    left (90 degrees)
-  }
-}`);
+    const [tempCode, setTempCode] = useState("");
 
     const theme = useMemo(() => defaultThemeConfig(), []);
 

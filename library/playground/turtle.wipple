@@ -1,5 +1,7 @@
 -- The distance (in pixels) the turtle should move.
 -- [description]: "a distance in `pixels`"
+-- [on-mismatch `Number`]: "missing unit for distance"
+-- [fix-mismatch `Number`]: "add `pixels`" `(_ pixels)`
 Distance : type Number
 
 -- Specify a distance in pixels.

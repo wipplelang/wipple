@@ -37,6 +37,7 @@ export interface RenderedDocumentation {
 
 export interface RenderedDocumentationAttribute {
     name: string;
+    input: string | null;
     value: RenderedDocumentationAttributeValue;
 }
 
@@ -667,6 +668,7 @@ export class Render {
                             true,
                         );
 
+                        // TODO: Roles (eg. convert a `Text -> _` on the function into a `_` on the function call)
                         if (renderedType === "_") {
                             message = "could not determine what kind of value this code produces";
                         } else {
@@ -681,12 +683,39 @@ export class Render {
                         break;
                     }
                     case "mismatch": {
-                        const { expected, actual } = diagnostic.item.value.value; // TODO: Roles
+                        const { expected, actual, expectedRoles } = diagnostic.item.value.value;
+
                         severity = "error";
-                        message = `expected a \`${this.renderType(
-                            expected,
-                            true,
-                        )}\` here, but found a \`${this.renderType(actual, true)}\``;
+
+                        const { message: customMessage, fix: customFix } =
+                            this.renderOnMismatchDiagnostic(actual, expected);
+
+                        if (customMessage && customFix) {
+                            message = customMessage;
+                            fix = customFix;
+                            break;
+                        } else if (customMessage) {
+                            message = customMessage;
+                            break;
+                        } else if (customFix) {
+                            fix = customFix;
+                        }
+
+                        const renderedRole =
+                            expectedRoles.length > 0
+                                ? this.renderTypeRole(expectedRoles[0].item)
+                                : "";
+
+                        message = renderedRole
+                            ? `expected this ${renderedRole} to be a \`${this.renderType(
+                                  expected,
+                                  true,
+                              )}\` here, but found a \`${this.renderType(actual, true)}\``
+                            : `expected a \`${this.renderType(
+                                  expected,
+                                  true,
+                              )}\` here, but found a \`${this.renderType(actual, true)}\``;
+
                         break;
                     }
                     case "wrongNumberOfInputs": {
@@ -769,6 +798,147 @@ export class Render {
             message,
             fix,
         };
+    }
+
+    renderOnMismatchDiagnostic(
+        actualType: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
+        expectedType: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
+    ): { message?: string; fix?: RenderedFix } {
+        if (expectedType.item.type !== "declared") {
+            return {};
+        }
+
+        const expectedTypeDeclaration = this.getDeclarationFromPath(expectedType.item.value.path);
+        if (!expectedTypeDeclaration || expectedTypeDeclaration.item.type !== "type") {
+            return {};
+        }
+
+        const expectedTypeParameters = expectedTypeDeclaration.item.declaration.parameters;
+
+        const expectedDocumentation = this.renderDocumentation(expectedTypeDeclaration);
+        if (!expectedDocumentation) {
+            return {};
+        }
+
+        let message: string | undefined;
+        let fix: RenderedFix | undefined;
+        for (const attribute of expectedDocumentation.attributes) {
+            if (message && fix) {
+                break;
+            }
+
+            if (attribute.name !== "on-mismatch" && attribute.name !== "fix-mismatch") {
+                continue;
+            }
+
+            if (attribute.input) {
+                const inputMatch = /`(.*)`/.exec(attribute.input);
+
+                if (inputMatch) {
+                    const [_, mismatchedType] = inputMatch;
+
+                    const renderedActualType = this.renderType(actualType, true);
+
+                    if (renderedActualType !== mismatchedType) {
+                        continue;
+                    }
+                }
+            }
+
+            switch (attribute.value.type) {
+                case "string": {
+                    message = attribute.value.value;
+                    break;
+                }
+                case "formattedString": {
+                    switch (attribute.name) {
+                        case "on-mismatch": {
+                            const segments = attribute.value.segments.map(
+                                ([string, typeParameterName]) => {
+                                    let value = "`_`";
+                                    if (
+                                        actualType.item.type === "declared" &&
+                                        actualType.item.value.path ===
+                                            expectedTypeDeclaration.item.path
+                                    ) {
+                                        const typeParameterIndex = expectedTypeParameters.findIndex(
+                                            (path) => typeParameterName === this.nameForPath(path),
+                                        );
+
+                                        if (typeParameterIndex !== -1) {
+                                            value = `\`${actualType.item.value.parameters[typeParameterIndex]}\``;
+                                        }
+                                    }
+
+                                    return string + value;
+                                },
+                            );
+
+                            message = segments.join("") + attribute.value.trailing;
+
+                            break;
+                        }
+                        case "fix-mismatch": {
+                            if (attribute.value.segments.length !== 1) {
+                                continue;
+                            }
+
+                            const [message, replacement] = attribute.value.segments[0];
+                            fix = { message, replacement };
+
+                            break;
+                        }
+                        default: {
+                            continue;
+                        }
+                    }
+
+                    break;
+                }
+                case "boolean": {
+                    continue;
+                }
+            }
+        }
+
+        return { message, fix };
+    }
+
+    renderTypeRole(role: compiler.typecheck_Role): string {
+        switch (role) {
+            case "pattern":
+                return "pattern";
+            case "annotation":
+                return "annotation";
+            case "trait":
+                return "trait";
+            case "instance":
+                return "instance";
+            case "structureField":
+                return "structure field";
+            case "variantElement":
+                return "variant element";
+            case "wrappedType":
+                return "wrapped type";
+            case "functionInput":
+                return "function input";
+            case "functionOutput":
+                return "function output";
+            case "bound":
+                return "bound";
+            case "defaultType":
+                return "default type";
+            case "variable":
+                return "variable";
+            case "typeParameter":
+                return "type parameter";
+            case "emptyBlock":
+                return "empty block";
+            case "whenArm":
+                return "when arm";
+            case "collectionElement":
+                return "collection element";
+        }
     }
 
     renderToken(token: compiler.Token, prefix: "a" | "this"): string {
@@ -977,20 +1147,35 @@ export class Render {
             if (attributeMatch) {
                 let [_, name, value] = attributeMatch;
                 name = name.trim();
+
+                let input: string | null = null;
+                if (name.includes(" ")) {
+                    [name, input] = name.split(" ", 2);
+                    name = name.trim();
+                    input = input.trim();
+                }
+
                 value = value.trim();
 
                 const stringMatch = /^"((?:[^"\\]|\\.)*)"(.*)$/.exec(value);
                 if (stringMatch) {
                     let [_, string, rest] = stringMatch;
 
-                    const values = rest.split(" ").flatMap((s) => {
-                        s = s.trim();
-                        return s === "" ? [] : [s];
-                    });
+                    const values = rest
+                        .split(/(`[^`]*`)|("[^"]*")/)
+                        .filter(Boolean)
+                        .flatMap((s) => {
+                            s = s.trim();
+                            if (s.startsWith('"') || s.startsWith("`")) {
+                                s = s.slice(1, s.length - 1);
+                            }
+                            return s === "" ? [] : [s];
+                        });
 
                     if (values.length === 0) {
                         attributes.push({
-                            name: name.trim(),
+                            name,
+                            input,
                             value: { type: "string", value: string },
                         });
                     } else {
@@ -998,12 +1183,19 @@ export class Render {
 
                         const trailing = stringSegments.pop() ?? "";
 
-                        const segments = stringSegments.map(
-                            (s, i) => [s, values[i] ?? ""] as [string, string],
-                        );
+                        let segments: [string, string][];
+                        // Special case: "message" followed by `fix`
+                        if (stringSegments.length === 0 && values.length === 1) {
+                            segments = [[trailing, values[0]]];
+                        } else {
+                            segments = stringSegments.map(
+                                (s, i) => [s, values[i] ?? ""] as [string, string],
+                            );
+                        }
 
                         attributes.push({
-                            name: name.trim(),
+                            name,
+                            input,
                             value: { type: "formattedString", segments, trailing },
                         });
                     }
@@ -1013,7 +1205,8 @@ export class Render {
 
                 if (value === "True" || value === "False") {
                     attributes.push({
-                        name: name.trim(),
+                        name,
+                        input,
                         value: { type: "boolean", value: value === "True" },
                     });
 

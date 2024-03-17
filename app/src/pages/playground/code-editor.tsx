@@ -133,10 +133,12 @@ export const CodeEditor = (props: {
             return;
         }
 
-        const replacement =
-            (fix.before ?? "") +
-            (fix.replacement ?? editorView.state.sliceDoc(start, end)) +
-            (fix.after ?? "");
+        let replacement = editorView.state.sliceDoc(start, end);
+        if (fix.replacement) {
+            replacement = fix.replacement.replace("_", replacement);
+        }
+
+        replacement = (fix.before ?? "") + replacement + (fix.after ?? "");
 
         editorView.dispatch({
             changes: { from: start, to: end, insert: replacement },
