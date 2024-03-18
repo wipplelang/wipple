@@ -20,6 +20,7 @@ export interface Playground {
 }
 
 export interface PlaygroundPage {
+    id: string;
     name: string;
     items: PlaygroundPageItem[];
 }
@@ -97,7 +98,7 @@ export const getPlayground = async (id: string) => {
     const firestore = getFirestore();
 
     const playground = await getDoc(
-        doc(firestore, "playgrounds", id).withConverter(playgroundConverter)
+        doc(firestore, "playgrounds", id).withConverter(playgroundConverter),
     );
 
     return playground.data();

@@ -28,9 +28,9 @@ const router = createBrowserRouter(
     createRoutesFromElements(
         <Route path="/" element={<RootPage />}>
             <Route index element={<HomePage />} />
-            <Route path="playground/:id" element={<PlaygroundPage />} />
-        </Route>
-    )
+            <Route path="playground/:id/:page?" element={<PlaygroundPage />} />
+        </Route>,
+    ),
 );
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -42,5 +42,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                 </NavbarProvider>
             </AlertProvider>
         </StoreProvider>
-    </React.StrictMode>
+    </React.StrictMode>,
 );
