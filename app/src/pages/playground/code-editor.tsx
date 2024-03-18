@@ -211,6 +211,7 @@ export const CodeEditor = (props: {
         >
             <div className="mx-[14px] h-[14px] z-10">
                 <Transition
+                    waitForLayout
                     in={quickHelpEnabled || isFocused || isHovering}
                     exitAnimationDuration={defaultAnimationDuration}
                     inClassName="animate-in fade-in slide-in-from-bottom-[1px] ease-linear"

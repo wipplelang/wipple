@@ -141,7 +141,7 @@ export const Turtle: RuntimeComponent = forwardRef((_props, ref) => {
     return (
         <div
             ref={containerRef}
-            className={`relative min-w-[200px] min-h-[200px] max-w-full max-h-full rounded-md overflow-hidden border-2 border-gray-100 dark:border-gray-800 ${
+            className={`relative min-w-[200px] min-h-[200px] max-w-[716px] max-h-[716px] rounded-md overflow-hidden border-2 border-gray-100 dark:border-gray-800 ${
                 resizable ? "resize" : ""
             }`}
         >

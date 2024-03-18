@@ -1,15 +1,19 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { animated, useSpring } from "@react-spring/web";
 import { useResizeObserver } from "usehooks-ts";
+import { defaultAnimationDuration } from ".";
 
 export const Animated = (
     props: React.PropsWithChildren<{
+        waitForLayout?: boolean;
         direction: "horizontal" | "vertical" | ("horizontal" | "vertical")[];
         clip?: boolean;
         unsized?: boolean;
         open?: boolean;
     }>,
 ) => {
+    const [hasWaitedForLayout, setHasWaitedForLayout] = useState(!props.waitForLayout);
+
     const isOpen = props.open ?? true;
     const [initialIsOpen, setInitialIsOpen] = useState(() => isOpen);
 
@@ -33,7 +37,15 @@ export const Animated = (
         config: { tension: 300, friction: 30, bounce: 0 },
     });
 
-    return (
+    useEffect(() => {
+        if (props.waitForLayout) {
+            setTimeout(() => {
+                setHasWaitedForLayout(true);
+            }, defaultAnimationDuration);
+        }
+    }, [props.waitForLayout]);
+
+    return hasWaitedForLayout ? (
         <animated.div style={style} className={props.clip ? "overflow-clip" : ""}>
             <div
                 ref={ref}
@@ -46,5 +58,5 @@ export const Animated = (
                 {props.children}
             </div>
         </animated.div>
-    );
+    ) : null;
 };

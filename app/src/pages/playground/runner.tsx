@@ -17,6 +17,7 @@ import { Runtime, RuntimeComponent } from "../../runtimes";
 import { MaterialSymbol } from "react-material-symbols";
 import { Help, Output } from "../../models";
 import { Mutex } from "async-mutex";
+import { defaultAnimationDuration } from "../../components";
 
 export interface RunOptions {
     dependenciesPath: string;
@@ -37,6 +38,14 @@ export interface RunnerProps {
 }
 
 export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
+    const [hasWaitedForLayout, setHasWaitedForLayout] = useState(false);
+
+    useEffect(() => {
+        setTimeout(() => {
+            setHasWaitedForLayout(true);
+        }, defaultAnimationDuration);
+    }, []);
+
     const id = useId();
     const [code, setCode] = useDebounceValue(props.children, 500);
 
@@ -79,6 +88,10 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     const [cachedBuiltinsHelp, setCachedBuiltinsHelp] = useState<Record<string, any>>();
 
     const run = useCallback(async () => {
+        if (!hasWaitedForLayout) {
+            return;
+        }
+
         props.onBlur();
         setRunning(true);
         setShowRunAgain(false);
@@ -271,7 +284,14 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 });
             }
         }
-    }, [code, props.runtime, props.options, resetRunnerWorker, cachedBuiltinsHelp]);
+    }, [
+        hasWaitedForLayout,
+        code,
+        props.runtime,
+        props.options,
+        resetRunnerWorker,
+        cachedBuiltinsHelp,
+    ]);
 
     useEffect(() => {
         run();
