@@ -212,3 +212,5 @@ function rescaleCanvas(canvas: any) {
         ctx.scale(ratio, ratio);
     }
 }
+
+export { turtleImage };

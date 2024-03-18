@@ -1,4 +1,12 @@
-import { addDoc, collection, deleteDoc, doc, getDoc, getFirestore } from "firebase/firestore";
+import {
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getFirestore,
+    setDoc,
+} from "firebase/firestore";
 import { getUser } from "../helpers";
 import { pureConverter } from "../helpers/database";
 import { getFunctions, httpsCallable } from "firebase/functions";
@@ -102,6 +110,11 @@ export const getPlayground = async (id: string) => {
     );
 
     return playground.data();
+};
+
+export const updatePlayground = async (playground: Playground) => {
+    const firestore = getFirestore();
+    await setDoc(doc(collection(firestore, "playgrounds"), playground.id), playground);
 };
 
 export const createPlayground = async () => {
