@@ -19,16 +19,17 @@ import { useWindowSize } from "usehooks-ts";
 import { HelpAlert } from "./help-alert";
 import { AssetPalette, SnippetPalette } from "./palette";
 import { flushSync } from "react-dom";
-import { Turtle } from "../../runtimes";
 import { ColorPicker } from "./color-picker";
 import { AssetClickHandler } from "./codemirror/assets";
 import { colorAsset } from "./assets";
 import { RenderedDiagnostic, RenderedFix } from "wipple-render";
+import { runtimes } from "../../runtimes";
 
 export const CodeEditor = (props: {
     children: string;
     onChange: (value: string) => void;
     theme: ThemeConfig;
+    runtime?: string;
     autofocus?: boolean;
     onFocus?: () => void;
     onBlur?: () => void;
@@ -46,7 +47,7 @@ export const CodeEditor = (props: {
     const [isHovering, setHovering] = useState(props.autofocus ?? false);
 
     const [runOptions, setRunOptions] = useState<RunOptions>({
-        dependenciesPath: "turtle",
+        dependenciesPath: props.runtime ?? "base",
     });
 
     const [runnerHasFocus, setRunnerHasFocus] = useState(false);
@@ -398,7 +399,11 @@ export const CodeEditor = (props: {
                     <Runner
                         ref={runnerRef}
                         options={runOptions}
-                        runtime={Turtle}
+                        runtime={
+                            props.runtime != null && props.runtime in runtimes
+                                ? runtimes[props.runtime as keyof typeof runtimes]
+                                : undefined
+                        }
                         hasFocus={runnerHasFocus}
                         onFocus={() => setRunnerHasFocus(true)}
                         onBlur={() => setRunnerHasFocus(false)}
@@ -458,43 +463,39 @@ const QuickHelpToggle = (props: {
     enabled: boolean;
     locked: boolean;
     onChange?: (quickHelpEnabled: boolean) => void;
-}) => {
-    return (
-        <Tooltip
-            description={
-                props.locked
-                    ? undefined
-                    : `Quick Help ${
-                          /mac/.test(navigator.userAgent.toLowerCase()) ? "(⌥)" : "(Alt)"
-                      }`
-            }
-        >
-            <Animated direction="horizontal">
-                <MenuContainer>
-                    <button
-                        className={`group flex flex-row items-center justify-center gap-1 h-[28px] transition-colors ${
-                            props.locked
-                                ? "px-2 bg-blue-500 text-white"
-                                : `w-[24px] ${
-                                      props.enabled
-                                          ? "bg-gray-100 dark:bg-gray-800"
-                                          : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                                  }`
-                        }`}
-                        disabled={props.enabled && !props.locked}
-                        onClick={() => props.onChange?.(!props.locked)}
-                    >
-                        {props.locked ? (
-                            <p className="whitespace-nowrap">Done</p>
-                        ) : (
-                            <MaterialSymbol icon="frame_inspect" className="text-lg" />
-                        )}
-                    </button>
-                </MenuContainer>
-            </Animated>
-        </Tooltip>
-    );
-};
+}) => (
+    <Tooltip
+        description={
+            props.locked
+                ? undefined
+                : `Quick Help ${/mac/.test(navigator.userAgent.toLowerCase()) ? "(⌥)" : "(Alt)"}`
+        }
+    >
+        <Animated direction="horizontal">
+            <MenuContainer>
+                <button
+                    className={`group flex flex-row items-center justify-center gap-1 h-[28px] transition-colors ${
+                        props.locked
+                            ? "px-2 bg-blue-500 text-white"
+                            : `w-[24px] ${
+                                  props.enabled
+                                      ? "bg-gray-100 dark:bg-gray-800"
+                                      : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                              }`
+                    }`}
+                    disabled={props.enabled && !props.locked}
+                    onClick={() => props.onChange?.(!props.locked)}
+                >
+                    {props.locked ? (
+                        <p className="whitespace-nowrap">Done</p>
+                    ) : (
+                        <MaterialSymbol icon="frame_inspect" className="text-lg" />
+                    )}
+                </button>
+            </MenuContainer>
+        </Animated>
+    </Tooltip>
+);
 
 const ColorBlock = (props: { className: string }) => (
     <div

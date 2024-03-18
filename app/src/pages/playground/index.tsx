@@ -1,14 +1,15 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { CodeEditor } from "./code-editor";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { Animated, Button, Skeleton, useAlert, useNavbar } from "../../components";
 import { Playground, PlaygroundPageItem, getPlayground, updatePlayground } from "../../models";
 import { MaterialSymbol } from "react-material-symbols";
 import { defaultThemeConfig } from "./codemirror/theme";
 import { produce } from "immer";
-import { turtleImage } from "../../runtimes";
+import { turtleImage } from "../../runtimes/turtle";
 import { nanoid } from "nanoid";
 import { useDebounceCallback } from "usehooks-ts";
+import { flushSync } from "react-dom";
 
 export const PlaygroundPage = () => {
     const params = useParams();
@@ -101,7 +102,7 @@ export const PlaygroundPage = () => {
                             }),
                         );
 
-                        navigate(`./${id}`, { relative: "path" });
+                        navigate(`../${id}`, { relative: "path" });
                     }}
                     onDeletePage={(pageIndex) => {
                         setPlayground(
@@ -149,9 +150,18 @@ const PlaygroundPageEditor = (props: {
     onAddItem: (item: PlaygroundPageItem) => void;
     onChangeItem: (index: number, item: PlaygroundPageItem) => void;
 }) => {
-    const [tempCode, setTempCode] = useState("");
+    // HACK: Prevent layout bugs by rendering one item at a time
+    const [maxRenderIndex, setMaxRenderIndex] = useState(0);
 
-    const theme = useMemo(() => defaultThemeConfig(), []);
+    useLayoutEffect(() => {
+        if (props.items && maxRenderIndex < props.items.length - 1) {
+            requestAnimationFrame(() => {
+                flushSync(() => {
+                    setMaxRenderIndex(maxRenderIndex + 1);
+                });
+            });
+        }
+    }, [props.items, maxRenderIndex]);
 
     return (
         <div
@@ -161,13 +171,15 @@ const PlaygroundPageEditor = (props: {
         >
             {props.items ? (
                 <>
-                    {props.items.map((item, index) => (
-                        <PlaygroundPageItemEditor
-                            key={index}
-                            item={item}
-                            onChange={(item) => props.onChangeItem(index, item)}
-                        />
-                    ))}
+                    {props.items.map((item, index) =>
+                        index <= maxRenderIndex ? (
+                            <PlaygroundPageItemEditor
+                                key={index}
+                                item={item}
+                                onChange={(item) => props.onChangeItem(index, item)}
+                            />
+                        ) : null,
+                    )}
 
                     <AddPlaygroundPageItemButton onAddItem={props.onAddItem} />
                 </>
@@ -190,7 +202,7 @@ const AddPlaygroundPageItemButton = (props: { onAddItem: (item: PlaygroundPageIt
 
     return (
         <button
-            className="group flex items-center justify-center p-1 w-full rounded-md border-2 border-gray-100 dark:border-gray-800 hover:border-blue-500 transition-colors"
+            className="group flex items-center justify-center mt-3 p-1 w-full rounded-md border-2 border-gray-100 dark:border-gray-800 hover:border-blue-500 transition-colors"
             onMouseEnter={() => setHovering(true)}
             onMouseLeave={() => setHovering(false)}
             onClick={() =>
@@ -215,7 +227,34 @@ const PlaygroundPageItemEditor = (props: {
     item: PlaygroundPageItem;
     onChange: (item: PlaygroundPageItem) => void;
 }) => {
-    return <p>{JSON.stringify(props.item)}</p>;
+    const theme = useMemo(() => defaultThemeConfig(), []);
+
+    switch (props.item.type) {
+        case "code":
+            return (
+                <CodeEditor
+                    onChange={(code) =>
+                        props.onChange(
+                            produce(props.item, (item) => {
+                                if (item.type !== "code") {
+                                    return;
+                                }
+
+                                item.code = code;
+                            }),
+                        )
+                    }
+                    theme={theme}
+                    runtime={"setup" in props.item ? props.item.setup : undefined}
+                >
+                    {props.item.code}
+                </CodeEditor>
+            );
+        case "text":
+            break;
+        default:
+            return null;
+    }
 };
 
 const PlaygroundPageList = (props: {
