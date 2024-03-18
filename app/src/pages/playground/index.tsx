@@ -13,7 +13,7 @@ import { useDebounceCallback } from "usehooks-ts";
 export const PlaygroundPage = () => {
     const params = useParams();
     const id = params.id!;
-    const selectedPage = params.page;
+    const selectedPageId = params.page;
 
     const navigate = useNavigate();
 
@@ -49,10 +49,10 @@ export const PlaygroundPage = () => {
     }, [playground]);
 
     useEffect(() => {
-        if (playground && !selectedPage) {
+        if (playground && !selectedPageId) {
             navigate(`./${playground.pages[0].id}`, { replace: true });
         }
-    }, [playground, selectedPage]);
+    }, [playground, selectedPageId]);
 
     const { setPrimaryActions } = useNavbar();
 
@@ -73,26 +73,35 @@ export const PlaygroundPage = () => {
         };
     }, [playground?.name]);
 
-    const [tempCode, setTempCode] = useState("");
+    const playgroundPageIndex = (() => {
+        if (!playground) {
+            return undefined;
+        }
 
-    const theme = useMemo(() => defaultThemeConfig(), []);
+        const index = playground.pages.findIndex((page) => page.id === selectedPageId);
+        return index === -1 ? 0 : index;
+    })();
 
     return (
         <div className="flex flex-row justify-center">
             <div className="flex flex-col items-center lg:items-start lg:flex-row w-full max-w-screen-lg">
                 <PlaygroundPageList
                     playground={playground}
-                    selectedPage={selectedPage}
-                    onAddPage={(initialItem) => {
+                    selectedPage={selectedPageId}
+                    onAddPage={(name) => {
+                        const id = nanoid(20);
+
                         setPlayground(
                             produce((playground) => {
                                 playground!.pages.push({
-                                    id: nanoid(20),
-                                    name: "Untitled",
-                                    items: [initialItem],
+                                    id,
+                                    name,
+                                    items: [],
                                 });
                             }),
                         );
+
+                        navigate(`./${id}`, { relative: "path" });
                     }}
                     onDeletePage={(pageIndex) => {
                         setPlayground(
@@ -109,42 +118,86 @@ export const PlaygroundPage = () => {
                     }}
                 />
 
-                <div
-                    className={`flex-1 flex flex-col items-stretch gap-4 container max-w-4xl px-4 pb-4 ${
-                        playground ? "" : "pt-3"
-                    }`}
-                >
-                    {playground ? (
-                        <>
-                            <CodeEditor onChange={setTempCode} theme={theme}>
-                                {tempCode}
-                            </CodeEditor>
-
-                            <AddButton />
-                        </>
-                    ) : (
-                        <>
-                            <Skeleton height={160} />
-                            <Skeleton height={80} />
-                            <Skeleton height={120} />
-                            <Skeleton height={80} />
-                        </>
-                    )}
-                </div>
+                <PlaygroundPageEditor
+                    items={
+                        playgroundPageIndex != null
+                            ? playground!.pages[playgroundPageIndex].items
+                            : undefined
+                    }
+                    onAddItem={(item) => {
+                        setPlayground(
+                            produce((playground) => {
+                                playground!.pages[playgroundPageIndex!].items.push(item);
+                            }),
+                        );
+                    }}
+                    onChangeItem={(index, item) => {
+                        setPlayground(
+                            produce((playground) => {
+                                playground!.pages[playgroundPageIndex!].items[index] = item;
+                            }),
+                        );
+                    }}
+                />
             </div>
         </div>
     );
 };
 
-const AddButton = () => {
+const PlaygroundPageEditor = (props: {
+    items?: PlaygroundPageItem[];
+    onAddItem: (item: PlaygroundPageItem) => void;
+    onChangeItem: (index: number, item: PlaygroundPageItem) => void;
+}) => {
+    const [tempCode, setTempCode] = useState("");
+
+    const theme = useMemo(() => defaultThemeConfig(), []);
+
+    return (
+        <div
+            className={`flex-1 flex flex-col items-stretch gap-4 container max-w-4xl px-4 pb-4 ${
+                props.items ? "" : "pt-3"
+            }`}
+        >
+            {props.items ? (
+                <>
+                    {props.items.map((item, index) => (
+                        <PlaygroundPageItemEditor
+                            key={index}
+                            item={item}
+                            onChange={(item) => props.onChangeItem(index, item)}
+                        />
+                    ))}
+
+                    <AddPlaygroundPageItemButton onAddItem={props.onAddItem} />
+                </>
+            ) : (
+                <>
+                    <Skeleton height={160} />
+                    <Skeleton height={80} />
+                    <Skeleton height={120} />
+                    <Skeleton height={80} />
+                </>
+            )}
+        </div>
+    );
+};
+
+const AddPlaygroundPageItemButton = (props: { onAddItem: (item: PlaygroundPageItem) => void }) => {
     const [isHovering, setHovering] = useState(false);
+
+    const { displayAlert } = useAlert();
 
     return (
         <button
             className="group flex items-center justify-center p-1 w-full rounded-md border-2 border-gray-100 dark:border-gray-800 hover:border-blue-500 transition-colors"
             onMouseEnter={() => setHovering(true)}
             onMouseLeave={() => setHovering(false)}
-            onClick={() => {}}
+            onClick={() =>
+                displayAlert(({ dismiss }) => (
+                    <AddPlaygroundPageItemAlert onAddItem={props.onAddItem} dismiss={dismiss} />
+                ))
+            }
         >
             <MaterialSymbol
                 icon="add"
@@ -158,10 +211,17 @@ const AddButton = () => {
     );
 };
 
+const PlaygroundPageItemEditor = (props: {
+    item: PlaygroundPageItem;
+    onChange: (item: PlaygroundPageItem) => void;
+}) => {
+    return <p>{JSON.stringify(props.item)}</p>;
+};
+
 const PlaygroundPageList = (props: {
     playground?: Playground;
     selectedPage?: string;
-    onAddPage: (initialItem: PlaygroundPageItem) => void;
+    onAddPage: (name: string) => void;
     onDeletePage: (pageIndex: number) => void;
 }) => {
     const { displayAlert } = useAlert();
@@ -189,7 +249,7 @@ const PlaygroundPageList = (props: {
                                             className="flex items-center justify-center"
                                             onClick={() =>
                                                 displayAlert(({ dismiss }) => (
-                                                    <ManagePageAlert
+                                                    <ManagePlaygroundPageAlert
                                                         onDeletePage={() =>
                                                             props.onDeletePage(pageIndex)
                                                         }
@@ -208,11 +268,12 @@ const PlaygroundPageList = (props: {
 
                     <button
                         className="flex flex-row items-center gap-1 lg:w-full px-1.5 py-1.5 rounded-lg hover:bg-gray-100 active:bg-gray-200 dark:hover:bg-gray-900 dark:active:bg-gray-800 transition-colors text-blue-500 text-nowrap lg:text-wrap"
-                        onClick={() =>
-                            displayAlert(({ dismiss }) => (
-                                <AddPageAlert onAddPage={props.onAddPage} dismiss={dismiss} />
-                            ))
-                        }
+                        onClick={() => {
+                            const name = prompt("Enter page name:");
+                            if (name) {
+                                props.onAddPage(name);
+                            }
+                        }}
                     >
                         <MaterialSymbol icon="add" size={22} /> Add Page
                     </button>
@@ -228,8 +289,8 @@ const PlaygroundPageList = (props: {
     );
 };
 
-const AddPageAlert = (props: {
-    onAddPage: (item: PlaygroundPageItem) => void;
+const AddPlaygroundPageItemAlert = (props: {
+    onAddItem: (item: PlaygroundPageItem) => void;
     dismiss: () => void;
 }) => (
     <div className="flex flex-col gap-4 w-[512px]">
@@ -237,12 +298,12 @@ const AddPageAlert = (props: {
             <h1 className="text-2xl font-semibold">What would you like to create?</h1>
 
             <div className="grid grid-cols-3 auto-rows-max gap-4">
-                <PickerItem
+                <AddPlaygroundPageItemAlertButton
                     setup={undefined}
                     name="Blank"
                     description="Create a program from scratch."
                     onSelect={() => {
-                        props.onAddPage({
+                        props.onAddItem({
                             type: "code",
                             code: "",
                         });
@@ -251,12 +312,12 @@ const AddPageAlert = (props: {
                     }}
                 />
 
-                <PickerItem
+                <AddPlaygroundPageItemAlertButton
                     setup="turtle"
                     name="Turtle"
                     description="Draw graphics on the screen."
                     onSelect={() => {
-                        props.onAddPage({
+                        props.onAddItem({
                             type: "code",
                             code: "",
                             setup: "turtle",
@@ -266,12 +327,12 @@ const AddPageAlert = (props: {
                     }}
                 />
 
-                <PickerItem
+                <AddPlaygroundPageItemAlertButton
                     setup="music"
                     name="Music"
                     description="Make a musical composition."
                     onSelect={() => {
-                        props.onAddPage({
+                        props.onAddItem({
                             type: "code",
                             code: "",
                             setup: "music",
@@ -281,12 +342,12 @@ const AddPageAlert = (props: {
                     }}
                 />
 
-                <PickerItem
+                <AddPlaygroundPageItemAlertButton
                     setup="graphing"
                     name="Math"
                     description="Plot mathematical functions."
                     onSelect={() => {
-                        props.onAddPage({
+                        props.onAddItem({
                             type: "code",
                             code: "",
                             setup: "math",
@@ -296,12 +357,12 @@ const AddPageAlert = (props: {
                     }}
                 />
 
-                <PickerItem
+                <AddPlaygroundPageItemAlertButton
                     setup="game"
                     name="Game"
                     description="Create a video game."
                     onSelect={() => {
-                        props.onAddPage({
+                        props.onAddItem({
                             type: "code",
                             code: "",
                             setup: "game",
@@ -311,12 +372,12 @@ const AddPageAlert = (props: {
                     }}
                 />
 
-                <PickerItem
+                <AddPlaygroundPageItemAlertButton
                     setup="physics"
                     name="Physics"
                     description="Experiment with physics."
                     onSelect={() => {
-                        props.onAddPage({
+                        props.onAddItem({
                             type: "code",
                             code: "",
                             setup: "physics",
@@ -326,12 +387,12 @@ const AddPageAlert = (props: {
                     }}
                 />
 
-                <PickerItem
+                <AddPlaygroundPageItemAlertButton
                     setup="text"
                     name="Text"
                     description="Write text alongside your code."
                     onSelect={() => {
-                        props.onAddPage({
+                        props.onAddItem({
                             type: "text",
                             text: "",
                         });
@@ -348,7 +409,7 @@ const AddPageAlert = (props: {
     </div>
 );
 
-const PickerItem = (props: {
+const AddPlaygroundPageItemAlertButton = (props: {
     setup: string | undefined;
     name: string;
     description: string;
@@ -360,7 +421,7 @@ const PickerItem = (props: {
     >
         <div className="flex flex-col items-start gap-1 w-full h-full">
             <div className="group-hover:scale-110 transition-transform">
-                <SetupIcon setup={props.setup} size="large" />
+                <AddPlaygroundPageItemAlertButtonIcon setup={props.setup} size="large" />
             </div>
 
             <div className="flex flex-col normal-case text-left ui-font tracking-normal">
@@ -371,7 +432,10 @@ const PickerItem = (props: {
     </button>
 );
 
-export const SetupIcon = (props: { setup: string | undefined; size: "medium" | "large" }) => {
+const AddPlaygroundPageItemAlertButtonIcon = (props: {
+    setup: string | undefined;
+    size: "medium" | "large";
+}) => {
     const size = props.size === "large" ? 31 : 24;
     const sizeClass = props.size === "large" ? "w-[31px]" : "w-[24px]";
 
@@ -425,7 +489,7 @@ export const SetupIcon = (props: { setup: string | undefined; size: "medium" | "
     }
 };
 
-const ManagePageAlert = (props: { onDeletePage: () => void; dismiss: () => void }) => (
+const ManagePlaygroundPageAlert = (props: { onDeletePage: () => void; dismiss: () => void }) => (
     <div className="flex flex-col gap-2">
         <Button
             role="destructive"
