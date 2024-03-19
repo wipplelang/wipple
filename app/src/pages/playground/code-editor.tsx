@@ -349,7 +349,11 @@ export const CodeEditor = (props: {
                     </div>
                 </div>
 
-                <AddLineButton direction="start" onClick={() => onAddLine("start")} />
+                <AddLineButton
+                    direction="start"
+                    disabled={quickHelpEnabled || quickHelpLocked}
+                    onClick={() => onAddLine("start")}
+                />
 
                 <div className="relative pb-[3px]">
                     <CodeMirror
@@ -396,7 +400,11 @@ export const CodeEditor = (props: {
                           ))}
                 </div>
 
-                <AddLineButton direction="end" onClick={() => onAddLine("end")} />
+                <AddLineButton
+                    direction="end"
+                    disabled={quickHelpEnabled || quickHelpLocked}
+                    onClick={() => onAddLine("end")}
+                />
 
                 <Animated direction="vertical" clip>
                     <Runner
@@ -458,8 +466,17 @@ const PaletteMenu = () => {
     );
 };
 
-const AddLineButton = (props: { direction: "start" | "end"; onClick: () => void }) => (
-    <Tooltip description="Add Line" onClick={props.onClick}>
+const AddLineButton = (props: {
+    direction: "start" | "end";
+    disabled: boolean;
+    onClick: () => void;
+}) => (
+    <Tooltip
+        description="Add Line"
+        onClick={props.onClick}
+        disabled={props.disabled}
+        className={props.disabled ? "pointer-events-none" : ""}
+    >
         <div
             className={`group flex w-full cursor-vertical-text ${
                 props.direction === "start" ? "pt-1.5 pb-1" : "pt-1 pb-2.5"
