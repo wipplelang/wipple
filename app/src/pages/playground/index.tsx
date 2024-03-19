@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useBeforeUnload, useNavigate, useParams } from "react-router-dom";
 import { CodeEditor } from "./code-editor";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Animated, Button, Skeleton, useAlert, useNavbar } from "../../components";
@@ -8,7 +8,7 @@ import { defaultThemeConfig } from "./codemirror/theme";
 import { produce } from "immer";
 import { turtleImage } from "../../runtimes/turtle";
 import { nanoid } from "nanoid";
-import { useDebounceCallback, useHover } from "usehooks-ts";
+import { useDebounceCallback } from "usehooks-ts";
 import { flushSync } from "react-dom";
 
 export const PlaygroundPage = () => {
@@ -33,21 +33,21 @@ export const PlaygroundPage = () => {
         })();
     }, [id]);
 
-    const savePlayground = useDebounceCallback(updatePlayground, 1000);
+    const savePlayground = useDebounceCallback(async (playground: Playground) => {
+        await updatePlayground(playground);
+    }, 1000);
 
     useEffect(() => {
         if (playground) {
-            (async () => {
-                const handleOnBeforeUnload = (event: BeforeUnloadEvent) => {
-                    event.returnValue = true;
-                };
-
-                window.addEventListener("beforeunload", handleOnBeforeUnload);
-                await savePlayground(playground);
-                window.removeEventListener("beforeunload", handleOnBeforeUnload);
-            })();
+            savePlayground(playground);
         }
     }, [playground]);
+
+    useBeforeUnload(() => {
+        if (playground) {
+            updatePlayground(playground);
+        }
+    });
 
     useEffect(() => {
         if (playground && !selectedPageId) {

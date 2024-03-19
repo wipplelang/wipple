@@ -79,7 +79,9 @@ export const Tooltip = (
                         className="z-20"
                     >
                         <div style={{ marginTop: 4 }}>
-                            <TooltipContent open={isHovering && debouncedHovering}>
+                            <TooltipContent
+                                open={isHovering && debouncedHovering && props.description != null}
+                            >
                                 {props.description}
                             </TooltipContent>
                         </div>

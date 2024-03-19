@@ -28,7 +28,7 @@ export const themeFromConfig = (config: ThemeConfig): Extension => [
             fontVariantLigatures: "none",
         },
         ".cm-content": {
-            padding: "1rem 1rem 0 1rem",
+            padding: "1rem 1rem 1px 1rem",
         },
         ".cm-line": {
             padding: 0,

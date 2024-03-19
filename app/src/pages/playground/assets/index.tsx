@@ -1,6 +1,6 @@
 import { ColorAsset } from "./color";
 
-export const isAsset = (value: string) => value.startsWith("[") && value.endsWith("]");
+export const isAsset = (value: string) => value.match(/^\[(?:Color \".*\")\]$/) !== null;
 
 export const colorAsset = (color: string) => `[Color "${color}"]`;
 

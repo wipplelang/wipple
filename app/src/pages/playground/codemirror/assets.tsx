@@ -9,7 +9,7 @@ import {
 } from "@codemirror/view";
 import { Compartment, Range } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
-import { Asset } from "../assets";
+import { Asset, isAsset } from "../assets";
 
 export const assets = new Compartment();
 
@@ -63,7 +63,7 @@ const getDecorations = (
 
             const code = view.state.sliceDoc(from, to);
 
-            if (code.includes("\n")) {
+            if (!isAsset(code) || code.includes("\n")) {
                 return;
             }
 
