@@ -199,6 +199,21 @@ export const CodeEditor = (props: {
         }
     }, []);
 
+    const onAddLine = () => {
+        if (!codeMirrorRef.current) {
+            return;
+        }
+
+        const editorView = codeMirrorRef.current.editorView;
+
+        props.onChange(props.children + "\n");
+
+        editorView.focus();
+        editorView.dispatch({
+            selection: { anchor: editorView.state.doc.length },
+        });
+    };
+
     return (
         <div
             autoFocus={props.autofocus}
@@ -376,6 +391,12 @@ export const CodeEditor = (props: {
                               </Transition>
                           ))}
                 </div>
+
+                <Tooltip description="Add Line" onClick={onAddLine}>
+                    <div className="group flex w-full pt-2 pb-2.5 cursor-vertical-text">
+                        <div className="mx-4 w-full h-1 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                </Tooltip>
 
                 <Animated direction="vertical" clip>
                     <Runner

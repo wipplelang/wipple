@@ -28,7 +28,7 @@ export const themeFromConfig = (config: ThemeConfig): Extension => [
             fontVariantLigatures: "none",
         },
         ".cm-content": {
-            padding: "1rem 1rem 1rem 0",
+            padding: "1rem 1rem 0 1rem",
         },
         ".cm-line": {
             padding: 0,
@@ -39,13 +39,6 @@ export const themeFromConfig = (config: ThemeConfig): Extension => [
         ".cm-tooltip-hover": {
             border: "none",
             backgroundColor: "unset",
-        },
-        ".cm-gutters": {
-            border: "none",
-            backgroundColor: "unset",
-        },
-        ".cm-gutter": {
-            width: "1rem",
         },
     }),
     config.highlight ? syntaxHighlighting(classHighlighter) : [],
