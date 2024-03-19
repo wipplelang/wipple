@@ -199,18 +199,20 @@ export const CodeEditor = (props: {
         }
     }, []);
 
-    const onAddLine = () => {
+    const onAddLine = (position: "start" | "end") => {
         if (!codeMirrorRef.current) {
             return;
         }
 
         const editorView = codeMirrorRef.current.editorView;
 
-        props.onChange(props.children + "\n");
+        props.onChange(position === "start" ? "\n" + props.children : props.children + "\n");
 
         editorView.focus();
         editorView.dispatch({
-            selection: { anchor: editorView.state.doc.length },
+            selection: {
+                anchor: position === "start" ? 0 : editorView.state.doc.length,
+            },
         });
     };
 
@@ -347,7 +349,9 @@ export const CodeEditor = (props: {
                     </div>
                 </div>
 
-                <div className="relative py-[3px]">
+                <AddLineButton direction="start" onClick={() => onAddLine("start")} />
+
+                <div className="relative pb-[3px]">
                     <CodeMirror
                         ref={codeMirrorRef}
                         autoFocus
@@ -392,11 +396,7 @@ export const CodeEditor = (props: {
                           ))}
                 </div>
 
-                <Tooltip description="Add Line" onClick={onAddLine}>
-                    <div className="group flex w-full pt-2 pb-2.5 cursor-vertical-text">
-                        <div className="mx-4 w-full h-1 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                </Tooltip>
+                <AddLineButton direction="end" onClick={() => onAddLine("end")} />
 
                 <Animated direction="vertical" clip>
                     <Runner
@@ -457,6 +457,18 @@ const PaletteMenu = () => {
         </Tooltip>
     );
 };
+
+const AddLineButton = (props: { direction: "start" | "end"; onClick: () => void }) => (
+    <Tooltip description="Add Line" onClick={props.onClick}>
+        <div
+            className={`group flex w-full cursor-vertical-text ${
+                props.direction === "start" ? "pt-1.5 pb-1" : "pt-1 pb-2.5"
+            }`}
+        >
+            <div className="mx-4 w-full h-1 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+    </Tooltip>
+);
 
 const QuickHelpToggle = (props: {
     enabled: boolean;
