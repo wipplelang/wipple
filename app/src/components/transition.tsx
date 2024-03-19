@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { CSSTransition } from "react-transition-group";
 
 export const defaultAnimationDuration = 150; // FIXME: Obtain from tailwindcss-animate
@@ -18,7 +18,17 @@ export const Transition = (props: TransitionProps) => {
     const [display, setDisplay] = useState(props.animateOnMount ? false : props.in);
     const [cachedChildren, setCachedChildren] = useState<JSX.Element | null>(null);
 
-    useLayoutEffect(() => {
+    useEffect(() => {
+        if (props.waitForLayout) {
+            setTimeout(() => {
+                setHasWaitedForLayout(true);
+            }, props.exitAnimationDuration);
+        }
+    }, [props.waitForLayout]);
+
+    useEffect(() => {
+        if (!hasWaitedForLayout) return;
+
         if (props.in) {
             setCachedChildren(props.children);
             setDisplay(true);
@@ -29,17 +39,9 @@ export const Transition = (props: TransitionProps) => {
                 setCachedChildren(null);
             }, props.exitAnimationDuration);
         }
-    }, [props.in, props.children, props.exitAnimationDuration]);
+    }, [hasWaitedForLayout, props.in, props.children, props.exitAnimationDuration]);
 
-    useEffect(() => {
-        if (props.waitForLayout) {
-            setTimeout(() => {
-                setHasWaitedForLayout(true);
-            }, props.exitAnimationDuration);
-        }
-    }, [props.waitForLayout]);
-
-    return hasWaitedForLayout ? (
+    return (
         <CSSTransition
             in={display}
             classNames={{
@@ -53,5 +55,5 @@ export const Transition = (props: TransitionProps) => {
         >
             <>{cachedChildren ?? null}</>
         </CSSTransition>
-    ) : null;
+    );
 };

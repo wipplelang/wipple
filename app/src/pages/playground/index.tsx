@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { CodeEditor } from "./code-editor";
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Animated, Button, Skeleton, useAlert, useNavbar } from "../../components";
 import { Playground, PlaygroundPageItem, getPlayground, updatePlayground } from "../../models";
 import { MaterialSymbol } from "react-material-symbols";
@@ -8,7 +8,7 @@ import { defaultThemeConfig } from "./codemirror/theme";
 import { produce } from "immer";
 import { turtleImage } from "../../runtimes/turtle";
 import { nanoid } from "nanoid";
-import { useDebounceCallback } from "usehooks-ts";
+import { useDebounceCallback, useHover } from "usehooks-ts";
 import { flushSync } from "react-dom";
 
 export const PlaygroundPage = () => {
@@ -139,6 +139,31 @@ export const PlaygroundPage = () => {
                             }),
                         );
                     }}
+                    onMoveItemUp={(index) => {
+                        setPlayground(
+                            produce((playground) => {
+                                const page = playground!.pages[playgroundPageIndex!];
+                                const [item] = page.items.splice(index, 1);
+                                page.items.splice(index - 1, 0, item);
+                            }),
+                        );
+                    }}
+                    onMoveItemDown={(index) => {
+                        setPlayground(
+                            produce((playground) => {
+                                const page = playground!.pages[playgroundPageIndex!];
+                                const [item] = page.items.splice(index, 1);
+                                page.items.splice(index + 1, 0, item);
+                            }),
+                        );
+                    }}
+                    onDeleteItem={(index) => {
+                        setPlayground(
+                            produce((playground) => {
+                                playground!.pages[playgroundPageIndex!].items.splice(index, 1);
+                            }),
+                        );
+                    }}
                 />
             </div>
         </div>
@@ -149,6 +174,9 @@ const PlaygroundPageEditor = (props: {
     items?: PlaygroundPageItem[];
     onAddItem: (item: PlaygroundPageItem) => void;
     onChangeItem: (index: number, item: PlaygroundPageItem) => void;
+    onMoveItemDown: (index: number) => void;
+    onMoveItemUp: (index: number) => void;
+    onDeleteItem: (index: number) => void;
 }) => {
     // HACK: Prevent layout bugs by rendering one item at a time
     const [maxRenderIndex, setMaxRenderIndex] = useState(0);
@@ -177,6 +205,9 @@ const PlaygroundPageEditor = (props: {
                                 key={index}
                                 item={item}
                                 onChange={(item) => props.onChangeItem(index, item)}
+                                onMoveDown={() => props.onMoveItemDown(index)}
+                                onMoveUp={() => props.onMoveItemUp(index)}
+                                onDelete={() => props.onDeleteItem(index)}
                             />
                         ) : null,
                     )}
@@ -226,6 +257,9 @@ const AddPlaygroundPageItemButton = (props: { onAddItem: (item: PlaygroundPageIt
 const PlaygroundPageItemEditor = (props: {
     item: PlaygroundPageItem;
     onChange: (item: PlaygroundPageItem) => void;
+    onMoveDown: () => void;
+    onMoveUp: () => void;
+    onDelete: () => void;
 }) => {
     const theme = useMemo(() => defaultThemeConfig(), []);
 
@@ -266,7 +300,7 @@ const PlaygroundPageList = (props: {
     const { displayAlert } = useAlert();
 
     return (
-        <ul className="flex flex-row gap-1 lg:flex-col w-full max-w-4xl lg:max-w-none lg:w-[240px] lg:max-h-[calc(100vh-140px)] overflow-scroll pt-3 px-4 pb-8 lg:pb-4">
+        <ul className="flex flex-shrink-0 flex-row gap-1 lg:flex-col max-w-4xl lg:max-w-none w-full lg:w-[240px] lg:max-h-[calc(100vh-140px)] overflow-scroll px-4 pb-8 lg:pb-4">
             {props.playground ? (
                 <>
                     {props.playground.pages.map((page, pageIndex) => {

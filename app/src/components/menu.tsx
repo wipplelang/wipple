@@ -9,7 +9,7 @@ export interface MenuItem {
 }
 
 export const MenuContainer = (props: React.PropsWithChildren<{}>) => (
-    <div className="flex flex-row items-center bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 transition-all rounded-md shadow-md shadow-gray-100 dark:shadow-gray-950 h-7 text-gray-600 dark:text-gray-400 text-opacity-50 overflow-clip">
+    <div className="flex flex-row items-center text-gray-600 dark:text-gray-400 text-opacity-50 h-7">
         {props.children}
     </div>
 );
@@ -91,7 +91,7 @@ export const Menu = (props: { items: MenuItem[] }) => {
 const MenuButton = (props: React.PropsWithChildren<{ onClick: () => void }>) => (
     <button
         onClick={props.onClick}
-        className="px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 dark:bg-gray-900 disabled:opacity-50"
+        className="flex items-center justify-center h-7 px-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 dark:bg-gray-900 disabled:opacity-50"
     >
         {props.children}
     </button>

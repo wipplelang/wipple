@@ -12,6 +12,7 @@ import { Help } from "../../../models";
 import { diagnostics, diagnosticsFromConfig } from "./diagnostics";
 import { AssetClickHandler, assets, assetsFromConfig } from "./assets";
 import { RenderedDiagnostic } from "wipple-render";
+import { gutterMenu, gutterMenuFromConfig } from "./gutter";
 
 export interface CodeMirrorProps {
     children: string;
@@ -21,6 +22,7 @@ export interface CodeMirrorProps {
     onClickQuickHelp: (help: Help) => void;
     help: (position: number, code: string) => Help | undefined;
     onClickAsset: AssetClickHandler;
+    onClickLine: (line: number) => void;
     readOnly: boolean;
     diagnostics: RenderedDiagnostic[];
     theme: ThemeConfig;
@@ -130,6 +132,8 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                         }),
                     ),
 
+                    gutterMenu.of(gutterMenuFromConfig(props.onClickLine)),
+
                     EditorView.lineWrapping,
                     EditorState.allowMultipleSelections.of(false),
 
@@ -221,6 +225,12 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
             ),
         });
     }, [editorView, props.quickHelpEnabled, props.onClickAsset]);
+
+    useEffect(() => {
+        editorView.dispatch({
+            effects: gutterMenu.reconfigure(gutterMenuFromConfig(props.onClickLine)),
+        });
+    }, [editorView, props.onClickLine]);
 
     useEffect(() => {
         if (props.autoFocus) {
