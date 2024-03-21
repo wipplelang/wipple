@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { Mutex } from "async-mutex";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CSSTransition } from "react-transition-group";
 
 export const defaultAnimationDuration = 150; // FIXME: Obtain from tailwindcss-animate
@@ -16,6 +17,7 @@ export interface TransitionProps {
 export const Transition = (props: TransitionProps) => {
     const [hasWaitedForLayout, setHasWaitedForLayout] = useState(!props.waitForLayout);
     const [display, setDisplay] = useState(props.animateOnMount ? false : props.in);
+    const mutex = useMemo(() => new Mutex(), []);
     const [cachedChildren, setCachedChildren] = useState<JSX.Element | null>(null);
 
     useEffect(() => {
@@ -29,17 +31,28 @@ export const Transition = (props: TransitionProps) => {
     useEffect(() => {
         if (!hasWaitedForLayout) return;
 
-        if (props.in) {
-            setCachedChildren(props.children);
-            setDisplay(true);
-        } else {
-            setDisplay(false);
+        (async () => {
+            await mutex.runExclusive(
+                () =>
+                    new Promise<void>((resolve) => {
+                        console.log("props.in:", props.in);
 
-            setTimeout(() => {
-                setCachedChildren(null);
-            }, props.exitAnimationDuration);
-        }
-    }, [hasWaitedForLayout, props.in, props.children, props.exitAnimationDuration]);
+                        if (props.in) {
+                            setCachedChildren(() => props.children);
+                            setDisplay(true);
+                            resolve();
+                        } else {
+                            setDisplay(false);
+
+                            setTimeout(() => {
+                                setCachedChildren(() => props.children);
+                                resolve();
+                            }, props.exitAnimationDuration);
+                        }
+                    }),
+            );
+        })();
+    }, [mutex, hasWaitedForLayout, props.in, props.children, props.exitAnimationDuration]);
 
     return (
         <CSSTransition
@@ -53,7 +66,7 @@ export const Transition = (props: TransitionProps) => {
             addEndListener={(node, done) => node.addEventListener("transitionend", done, false)}
             timeout={{ exit: props.exitAnimationDuration }}
         >
-            <>{cachedChildren ?? null}</>
+            <>{cachedChildren}</>
         </CSSTransition>
     );
 };

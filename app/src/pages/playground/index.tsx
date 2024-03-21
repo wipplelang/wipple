@@ -1,6 +1,6 @@
 import { Link, useBeforeUnload, useNavigate, useParams } from "react-router-dom";
 import { CodeEditor } from "./code-editor";
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { Animated, Button, Skeleton, useAlert, useNavbar } from "../../components";
 import { Playground, PlaygroundPageItem, getPlayground, updatePlayground } from "../../models";
 import { MaterialSymbol } from "react-material-symbols";
@@ -57,12 +57,24 @@ export const PlaygroundPage = () => {
 
     const { setPrimaryActions } = useNavbar();
 
+    const rename = useCallback(() => {
+        const name = prompt("Enter playground name:", playground?.name);
+        if (name) {
+            setPlayground(
+                produce((playground) => {
+                    if (!playground) return;
+                    playground.name = name;
+                }),
+            );
+        }
+    }, []);
+
     useEffect(() => {
         setPrimaryActions(
             playground?.name ? (
                 <button
                     className="flex flex-row items-center gap-4 -mx-2 -my-1 px-2 p-1 rounded-lg transition hover:bg-gray-200 dark:hover:bg-gray-800"
-                    onClick={() => alert("TODO: Rename")}
+                    onClick={rename}
                 >
                     <p className="text-lg font-semibold">{playground.name}</p>
                 </button>

@@ -243,7 +243,10 @@ const ManagePlaygroundAlert = (props: {
             icon="file_copy"
             onClick={() => {
                 props.dismiss();
-                props.onDuplicate();
+
+                requestAnimationFrame(() => {
+                    props.onDuplicate();
+                });
             }}
         >
             Duplicate
@@ -255,7 +258,10 @@ const ManagePlaygroundAlert = (props: {
                 icon="delete"
                 onClick={() => {
                     props.dismiss();
-                    props.onDelete!();
+
+                    requestAnimationFrame(() => {
+                        props.onDelete!();
+                    });
                 }}
             >
                 Delete

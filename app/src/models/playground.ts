@@ -10,6 +10,7 @@ import {
 import { getUser } from "../helpers";
 import { pureConverter } from "../helpers/database";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { nanoid } from "nanoid";
 
 export interface PlaygroundListItem {
     id: string;
@@ -130,7 +131,13 @@ export const createPlayground = async () => {
         collaborators: [],
         name: "Untitled",
         lastModified: new Date().toISOString(),
-        pages: [],
+        pages: [
+            {
+                id: nanoid(20),
+                name: "Untitled",
+                items: [],
+            },
+        ],
     };
 
     const result = await addDoc(collection(firestore, "playgrounds"), playground);

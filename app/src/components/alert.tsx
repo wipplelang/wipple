@@ -25,9 +25,7 @@ export const AlertProvider = (props: React.PropsWithChildren<{}>) => {
             value={{
                 isDisplayingAlert: Contents != null,
                 displayAlert: (contents) => {
-                    requestAnimationFrame(() => {
-                        setContents(() => contents);
-                    });
+                    setContents(() => contents);
                 },
             }}
         >
