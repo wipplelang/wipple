@@ -1,15 +1,15 @@
 import { Link, useBeforeUnload, useNavigate, useParams } from "react-router-dom";
 import { CodeEditor } from "./code-editor";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { Animated, Button, Skeleton, useAlert, useNavbar } from "../../components";
 import { Playground, PlaygroundPageItem, getPlayground, updatePlayground } from "../../models";
 import { MaterialSymbol } from "react-material-symbols";
 import { defaultThemeConfig } from "./codemirror/theme";
 import { produce } from "immer";
-import { turtleImage } from "../../runtimes/turtle";
 import { nanoid } from "nanoid";
 import { useDebounceCallback } from "usehooks-ts";
 import { flushSync } from "react-dom";
+import { SetupIcon } from "./setup-icon";
 
 export const PlaygroundPage = () => {
     const params = useParams();
@@ -490,7 +490,7 @@ const AddPlaygroundPageItemAlertButton = (props: {
     >
         <div className="flex flex-col items-start gap-1 w-full h-full">
             <div className="group-hover:scale-110 transition-transform">
-                <AddPlaygroundPageItemAlertButtonIcon setup={props.setup} size="large" />
+                <SetupIcon setup={props.setup} size="lg" />
             </div>
 
             <div className="flex flex-col normal-case text-left ui-font tracking-normal">
@@ -500,63 +500,6 @@ const AddPlaygroundPageItemAlertButton = (props: {
         </div>
     </button>
 );
-
-const AddPlaygroundPageItemAlertButtonIcon = (props: {
-    setup: string | undefined;
-    size: "medium" | "large";
-}) => {
-    const size = props.size === "large" ? 31 : 24;
-    const sizeClass = props.size === "large" ? "w-[31px]" : "w-[24px]";
-
-    switch (props.setup) {
-        case undefined:
-            return (
-                <MaterialSymbol icon="article" size={size} fill className="text-blue-500 pb-0.5" />
-            );
-        case "turtle":
-            return (
-                <img src={turtleImage} className={`${sizeClass} p-[2px] aspect-square mb-1.5`} />
-            );
-        case "music":
-            return (
-                <MaterialSymbol
-                    icon="music_note"
-                    size={size}
-                    fill
-                    className="text-orange-500 pb-0.5"
-                />
-            );
-        case "graphing":
-            return (
-                <MaterialSymbol
-                    icon="calculate"
-                    size={size}
-                    fill
-                    className="text-green-500 pb-0.5"
-                />
-            );
-        case "game":
-            return (
-                <MaterialSymbol
-                    icon="sports_esports"
-                    size={size}
-                    fill
-                    className="text-purple-500 pb-0.5"
-                />
-            );
-        case "physics":
-            return (
-                <img
-                    // src={atomIcon} // TODO: Physics runtime
-                    className={`${sizeClass} p-[2px] aspect-square mb-1.5`}
-                />
-            );
-        case "text":
-            return <MaterialSymbol icon="edit_note" size={size} className="text-gray-500 pb-0.5" />;
-        default:
-            return null;
-    }
-};
 
 const ManagePlaygroundPageAlert = (props: { onDeletePage: () => void; dismiss: () => void }) => (
     <div className="flex flex-col gap-2">

@@ -25,6 +25,7 @@ export interface RunOptions {
 
 export interface RunnerRef {
     help: (position: number, code: string) => Help | undefined;
+    format: (code: string) => Promise<string>;
 }
 
 export interface RunnerProps {
@@ -329,6 +330,25 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 summary: docString[0],
                 doc: docString.slice(1).join("\n\n"),
             };
+        },
+        format: async (code) => {
+            const formatterWorker = new RunnerWorker({ name: `runner-${id}-format` });
+
+            return new Promise<string>((resolve) => {
+                formatterWorker.onmessage = async (event) => {
+                    const { type } = event.data;
+                    switch (type) {
+                        case "completion": {
+                            resolve(event.data.code);
+                            break;
+                        }
+                        default:
+                            throw new Error("unsupported message from runner");
+                    }
+                };
+
+                formatterWorker.postMessage({ type: "format", code });
+            });
         },
     }));
 

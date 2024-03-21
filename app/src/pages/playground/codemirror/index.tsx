@@ -17,11 +17,13 @@ export interface CodeMirrorProps {
     children: string;
     onChange: (value: string) => void;
     autoFocus: boolean;
+    onFocus?: () => void;
+    onBlur?: () => void;
+    onDrop?: () => void;
     quickHelpEnabled: boolean;
     onClickQuickHelp: (help: Help) => void;
     help: (position: number, code: string) => Help | undefined;
     onClickAsset: AssetClickHandler;
-    onClickLine: (line: number) => void;
     readOnly: boolean;
     diagnostics: RenderedDiagnostic[];
     theme: ThemeConfig;
@@ -33,7 +35,7 @@ export interface CodeMirrorRef {
 
 const editable = new Compartment();
 
-const editableFromConfig = (config: { readOnly: boolean }): Extension => [
+const editableFromConfig = (config: { readOnly: boolean; onDrop?: () => void }): Extension => [
     EditorView.editable.of(!config.readOnly),
     config.readOnly
         ? []
@@ -59,6 +61,8 @@ const editableFromConfig = (config: { readOnly: boolean }): Extension => [
                           false,
                       );
 
+                      const hasPlaceholder = snippet.includes("_");
+
                       if (
                           !view.state.selection.main.empty &&
                           position >= view.state.selection.main.from &&
@@ -78,11 +82,13 @@ const editableFromConfig = (config: { readOnly: boolean }): Extension => [
                                   to: view.state.selection.main.to,
                                   insert: snippet,
                               },
+                              userEvent: "wipple.drop",
                           });
                       } else {
                           snippet = snippet.replace("_", "...");
 
-                          const padding = (s: string) => (s === "" || /\s/.test(s) ? "" : " ");
+                          const padding = (s: string) =>
+                              s === "" || /\s/.test(s) ? "" : hasPlaceholder ? "\n" : " ";
                           const leftPadding = padding(view.state.sliceDoc(position - 1, position));
                           const rightPadding = padding(view.state.sliceDoc(position, position + 1));
 
@@ -92,6 +98,7 @@ const editableFromConfig = (config: { readOnly: boolean }): Extension => [
                                   to: position,
                                   insert: leftPadding + snippet + rightPadding,
                               },
+                              userEvent: "wipple.drop",
                           });
                       }
                   },
@@ -140,11 +147,32 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
                     placeholder("Write your code here!"),
 
-                    editable.of(editableFromConfig({ readOnly: props.readOnly })),
+                    editable.of(
+                        editableFromConfig({
+                            readOnly: props.readOnly,
+                            onDrop: props.onDrop,
+                        }),
+                    ),
 
                     EditorView.updateListener.of((update) => {
                         if (update.docChanged) {
                             props.onChange(update.state.doc.toString());
+                        }
+
+                        if (
+                            update.transactions.some((transaction) =>
+                                transaction.isUserEvent("wipple.drop"),
+                            )
+                        ) {
+                            props.onDrop?.();
+                        }
+
+                        if (update.focusChanged) {
+                            if (update.view.hasFocus) {
+                                props.onFocus?.();
+                            } else {
+                                props.onBlur?.();
+                            }
                         }
                     }),
                 ],
@@ -184,9 +212,14 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
     useEffect(() => {
         editorView.dispatch({
-            effects: editable.reconfigure(editableFromConfig({ readOnly: props.readOnly })),
+            effects: editable.reconfigure(
+                editableFromConfig({
+                    readOnly: props.readOnly,
+                    onDrop: props.onDrop,
+                }),
+            ),
         });
-    }, [editorView, props.readOnly]);
+    }, [editorView, props.readOnly, props.onDrop]);
 
     useEffect(() => {
         editorView.dispatch({

@@ -13,3 +13,5 @@ export const link = (libraries) => {
 
     return JSON.parse(result);
 };
+
+export const format = (code) => wasm.format(code);

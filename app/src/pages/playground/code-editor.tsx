@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
     Animated,
     Markdown,
-    Menu,
     MenuContainer,
     Tooltip,
     Transition,
@@ -10,6 +9,7 @@ import {
     useAlert,
 } from "../../components";
 import { CodeMirror, CodeMirrorRef } from "./codemirror";
+import * as commands from "@codemirror/commands";
 import { RunOptions, Runner, RunnerRef } from "./runner";
 import { MaterialSymbol } from "react-material-symbols";
 import { ThemeConfig } from "./codemirror/theme";
@@ -18,12 +18,12 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { useWindowSize } from "usehooks-ts";
 import { HelpAlert } from "./help-alert";
 import { AssetPalette, SnippetPalette } from "./palette";
-import { flushSync } from "react-dom";
 import { ColorPicker } from "./color-picker";
 import { AssetClickHandler } from "./codemirror/assets";
 import { colorAsset } from "./assets";
 import { RenderedDiagnostic, RenderedFix } from "wipple-render";
 import { runtimes } from "../../runtimes";
+import { SetupIcon } from "./setup-icon";
 
 export const CodeEditor = (props: {
     children: string;
@@ -44,8 +44,6 @@ export const CodeEditor = (props: {
         }
     }, [isFocused]);
 
-    const [isHovering, setHovering] = useState(props.autofocus ?? false);
-
     const [runOptions, setRunOptions] = useState<RunOptions>({
         dependenciesPath: props.runtime ?? "base",
     });
@@ -54,20 +52,13 @@ export const CodeEditor = (props: {
 
     const [diagnostics, setDiagnostics] = useState<RenderedDiagnostic[]>([]);
 
-    const [isListeningForQuickHelp, setListeningForQuickHelp] = useState(true);
     const [quickHelpEnabled, setQuickHelpEnabled] = useState(false);
     const [quickHelpLocked, setQuickHelpLocked] = useState(false);
 
     useHotkeys(
         "alt",
         (e) => {
-            if (!quickHelpLocked) {
-                if (isListeningForQuickHelp) {
-                    setQuickHelpEnabled(e.type === "keydown");
-                } else {
-                    setListeningForQuickHelp(true);
-                }
-            }
+            setQuickHelpEnabled(e.type === "keydown");
         },
         {
             enabled: isFocused || quickHelpEnabled,
@@ -75,7 +66,7 @@ export const CodeEditor = (props: {
             keydown: true,
             keyup: true,
         },
-        [isFocused, quickHelpEnabled, quickHelpLocked, isListeningForQuickHelp],
+        [isFocused, quickHelpEnabled],
     );
 
     const codeMirrorRef = useRef<CodeMirrorRef>(null);
@@ -151,6 +142,18 @@ export const CodeEditor = (props: {
         [],
     );
 
+    const format = useCallback(async () => {
+        if (!runnerRef.current) {
+            return;
+        }
+
+        const formatted = await runnerRef.current.format(
+            codeMirrorRef.current!.editorView.state.sliceDoc(),
+        );
+
+        props.onChange(formatted);
+    }, [props.onChange]);
+
     const [animationsSettled, setAnimationsSettled] = useState(false);
 
     useEffect(() => {
@@ -163,7 +166,6 @@ export const CodeEditor = (props: {
 
     const onClickQuickHelp = useCallback((help: Help) => {
         setQuickHelpEnabled(true);
-        setListeningForQuickHelp(false);
 
         displayAlert(({ dismiss }) => (
             <HelpAlert
@@ -223,12 +225,16 @@ export const CodeEditor = (props: {
             tabIndex={0}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
-            onMouseEnter={() => setHovering(true)}
-            onMouseLeave={() => setHovering(false)}
         >
             <div className="flex flex-col border-2 border-gray-100 dark:border-gray-800 rounded-md overflow-clip">
                 <div className="flex flex-row items-center justify-between w-full px-2 py-1 bg-gray-50 dark:bg-gray-900">
-                    <div className="flex flex-1 flex-row items-center gap-1">
+                    <div className="flex flex-1 flex-row items-center gap-2">
+                        {props.runtime != null && !quickHelpLocked ? (
+                            <>
+                                <SetupButton setup={props.runtime} onClick={() => alert("TODO")} />
+                            </>
+                        ) : null}
+
                         <QuickHelpToggle
                             enabled={quickHelpEnabled}
                             locked={quickHelpLocked}
@@ -240,100 +246,18 @@ export const CodeEditor = (props: {
                                 Select a piece of code for help.
                             </p>
                         ) : (
-                            <Menu
-                                items={[
-                                    {
-                                        name: "Code",
-                                        onClick: () => setFocused(true),
-                                        children: [
-                                            {
-                                                name: "TODO 1",
-                                                onClick: () => {
-                                                    setFocused(true);
-                                                },
-                                            },
-                                            {
-                                                name: "TODO 2",
-                                                onClick: () => {
-                                                    setFocused(true);
-                                                },
-                                            },
-                                        ],
-                                    },
-                                    {
-                                        name: "Edit",
-                                        onClick: () => setFocused(true),
-                                        children: [
-                                            {
-                                                name: "TODO 1",
-                                                onClick: () => {
-                                                    setFocused(true);
-                                                },
-                                            },
-                                            {
-                                                name: "TODO 2",
-                                                onClick: () => {
-                                                    setFocused(true);
-                                                },
-                                            },
-                                        ],
-                                    },
-                                    {
-                                        name: "Select",
-                                        onClick: () => setFocused(true),
-                                        children: [
-                                            {
-                                                name: "TODO 1",
-                                                onClick: () => {
-                                                    setFocused(true);
-                                                },
-                                            },
-                                            {
-                                                name: "TODO 2",
-                                                onClick: () => {
-                                                    setFocused(true);
-                                                },
-                                            },
-                                        ],
-                                    },
-                                    {
-                                        name: "View",
-                                        onClick: () => setFocused(true),
-                                        children: [
-                                            {
-                                                name: "TODO 1",
-                                                onClick: () => {
-                                                    setFocused(true);
-                                                },
-                                            },
-                                            {
-                                                name: "TODO 2",
-                                                onClick: () => {
-                                                    setFocused(true);
-                                                },
-                                            },
-                                        ],
-                                    },
-                                    {
-                                        name: "Help",
-                                        onClick: () => setFocused(true),
-                                        children: [
-                                            {
-                                                name: "TODO 1",
-                                                onClick: () => {
-                                                    setFocused(true);
-                                                },
-                                            },
-                                            {
-                                                name: "TODO 2",
-                                                onClick: () => {
-                                                    setFocused(true);
-                                                },
-                                            },
-                                        ],
-                                    },
-                                ]}
-                            />
+                            <>
+                                <FormatButton onClick={format} />
+
+                                <SelectAllButton
+                                    onClick={() => {
+                                        if (codeMirrorRef.current) {
+                                            commands.selectAll(codeMirrorRef.current.editorView);
+                                            codeMirrorRef.current.editorView.focus();
+                                        }
+                                    }}
+                                />
+                            </>
                         )}
                     </div>
 
@@ -363,8 +287,8 @@ export const CodeEditor = (props: {
                             setDiagnostics([]);
                             props.onChange(value);
                         }}
-                        onClickLine={(line) => {
-                            alert(`Clicked line: ${line}`);
+                        onDrop={() => {
+                            format();
                         }}
                         readOnly={quickHelpLocked}
                         quickHelpEnabled={quickHelpEnabled || quickHelpLocked}
@@ -487,6 +411,14 @@ const AddLineButton = (props: {
     </Tooltip>
 );
 
+const SetupButton = (props: { setup: string; onClick: () => void }) => (
+    <Tooltip description={<span className="capitalize">{props.setup} Docs</span>}>
+        <div className="group flex flex-row items-center justify-center gap-1 transition-colors rounded-md w-[24px] h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
+            <SetupIcon setup={props.setup} size="sm" />
+        </div>
+    </Tooltip>
+);
+
 const QuickHelpToggle = (props: {
     enabled: boolean;
     locked: boolean;
@@ -519,6 +451,29 @@ const QuickHelpToggle = (props: {
                     <MaterialSymbol icon="frame_inspect" className="text-lg" />
                 )}
             </button>
+        </MenuContainer>
+    </Tooltip>
+);
+
+const FormatButton = (props: { onClick: () => void }) => (
+    <Tooltip description="Format">
+        <MenuContainer>
+            <button
+                className="group flex flex-row items-center justify-center gap-1 transition-colors rounded-md w-[24px] h-7 hover:bg-gray-100 dark:hover:bg-gray-800"
+                onClick={props.onClick}
+            >
+                <MaterialSymbol icon="article" className="text-lg" />
+            </button>
+        </MenuContainer>
+    </Tooltip>
+);
+
+const SelectAllButton = (props: { onClick: () => void }) => (
+    <Tooltip description="Select All" onClick={props.onClick}>
+        <MenuContainer>
+            <div className="group flex flex-row items-center justify-center gap-1 transition-colors rounded-md w-[24px] h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
+                <MaterialSymbol icon="text_select_end" className="text-lg" />
+            </div>
         </MenuContainer>
     </Tooltip>
 );

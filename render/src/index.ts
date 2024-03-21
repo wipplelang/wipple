@@ -221,7 +221,7 @@ export class Render {
                     { kind: "arrow" },
                 );
 
-                const type = this.renderType(declaration.item.declaration.type, true);
+                const type = this.renderType(declaration.item.declaration.type, true, false);
 
                 return `${declaration.item.name} :: ${typeFunction}${type}`;
             }
@@ -315,7 +315,9 @@ export class Render {
     renderType(
         type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
         isTopLevel: boolean,
+        renderAsCode: boolean,
     ): string {
+        let isDescription = false;
         const render = (
             type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
             isTopLevel: boolean,
@@ -329,6 +331,24 @@ export class Render {
                     return this.nameForPath(type.item.value);
                 }
                 case "declared": {
+                    if (isTopLevel) {
+                        const typeDeclaration = this.getDeclarationFromPath(type.item.value.path);
+                        if (typeDeclaration) {
+                            const documentation = this.renderDocumentation(typeDeclaration);
+                            if (documentation) {
+                                for (const attribute of documentation.attributes) {
+                                    if (
+                                        attribute.name === "description" &&
+                                        attribute.value.type === "string"
+                                    ) {
+                                        isDescription = true;
+                                        return attribute.value.value;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     const name = this.nameForPath(type.item.value.path);
                     if (!name) {
                         return "_";
@@ -377,7 +397,8 @@ export class Render {
             }
         };
 
-        return render(type, isTopLevel, true);
+        const rendered = render(type, isTopLevel, true);
+        return renderAsCode && !isDescription ? `\`${rendered}\`` : rendered;
     }
 
     renderTypeFunction(
@@ -411,21 +432,25 @@ export class Render {
                 return `${renderedParameters}${renderedBounds} => `;
             }
             case "description": {
-                const renderedType = this.renderType(format.type, true);
+                const renderedType = this.renderType(format.type, true, true);
 
                 switch (parameters.length) {
                     case 0: {
-                        return `\`${renderedType}\``;
+                        return renderedType;
                     }
                     case 1: {
-                        return `\`${renderedType}\` for any type \`${this.nameForPath(
+                        return `${renderedType} for any type \`${this.nameForPath(
                             parameters[0],
                         )}\``;
                     }
                     default: {
                         const last = parameters.pop()!;
 
-                        return `\`${this.renderType(format.type, true)}\` for any types ${parameters
+                        return `${this.renderType(
+                            format.type,
+                            true,
+                            true,
+                        )} for any types ${parameters
                             .map((parameter) => `\`${this.nameForPath(parameter)}\``)
                             .join(", ")} and \`${this.nameForPath(last)}\``;
                     }
@@ -443,7 +468,7 @@ export class Render {
         const trait = this.nameForPath(instance.item.trait);
 
         const parameters = instance.item.parameters
-            .map((type) => this.renderType(type, false))
+            .map((type) => this.renderType(type, false, false))
             .join(" ");
 
         return parameters.length === 0 ? trait : `(${trait} ${parameters})`;
@@ -666,13 +691,14 @@ export class Render {
                         const renderedType = this.renderType(
                             { info: diagnostic.info, item: diagnostic.item.value.value },
                             true,
+                            true,
                         );
 
                         // TODO: Roles (eg. convert a `Text -> _` on the function into a `_` on the function call)
                         if (renderedType === "_") {
                             message = "could not determine what kind of value this code produces";
                         } else {
-                            message = `this code produces a \`${renderedType}\`, but the \`_\`s are unknown`;
+                            message = `this code produces a ${renderedType}, but the \`_\`s are unknown`;
                         }
 
                         break;
@@ -707,14 +733,16 @@ export class Render {
                                 : "";
 
                         message = renderedRole
-                            ? `expected this ${renderedRole} to be a \`${this.renderType(
+                            ? `expected this ${renderedRole} to be a ${this.renderType(
                                   expected,
                                   true,
-                              )}\` here, but found a \`${this.renderType(actual, true)}\``
-                            : `expected a \`${this.renderType(
+                                  true,
+                              )} here, but found a ${this.renderType(actual, true, true)}`
+                            : `expected a ${this.renderType(
                                   expected,
                                   true,
-                              )}\` here, but found a \`${this.renderType(actual, true)}\``;
+                                  true,
+                              )} here, but found a ${this.renderType(actual, true, true)}`;
 
                         break;
                     }
@@ -734,9 +762,13 @@ export class Render {
                         break;
                     }
                     case "notAStructure": {
-                        const renderedType = this.renderType(diagnostic.item.value.value, true);
+                        const renderedType = this.renderType(
+                            diagnostic.item.value.value,
+                            true,
+                            true,
+                        );
                         severity = "error";
-                        message = `\`${renderedType}\` is not a structure`;
+                        message = `${renderedType} is not a structure`;
                         break;
                     }
                     case "missingFields": {
@@ -837,7 +869,7 @@ export class Render {
                 if (inputMatch) {
                     const [_, mismatchedType] = inputMatch;
 
-                    const renderedActualType = this.renderType(actualType, true);
+                    const renderedActualType = this.renderType(actualType, true, false);
 
                     if (renderedActualType !== mismatchedType) {
                         continue;

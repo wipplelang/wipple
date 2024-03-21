@@ -1,6 +1,7 @@
 export * from "./alert";
 export * from "./animated";
 export * from "./button";
+export * from "./context-menu";
 export * from "./markdown";
 export * from "./menu";
 export * from "./navbar";

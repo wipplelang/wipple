@@ -57,6 +57,24 @@ pub fn link(libraries: &str) -> Option<String> {
     Some(serialize(&executable))
 }
 
+/// JavaScript entrypoint to the formatter.
+#[wasm_bindgen]
+pub fn format(code: &str) -> String {
+    initialize();
+
+    let syntax_driver = SyntaxDriver {
+        file_path: Rc::from("format"),
+        visible_path: Rc::from("format"),
+    };
+
+    match syntax::tokenize::tokenize(&syntax_driver, code)
+        .collect::<std::result::Result<Vec<_>, _>>()
+    {
+        Ok(tokens) => syntax::tokenize::format(tokens.iter().map(|token| &token.item)),
+        Err(_) => code.to_string(),
+    }
+}
+
 /// The driver.
 #[non_exhaustive]
 #[derive(Debug)]
