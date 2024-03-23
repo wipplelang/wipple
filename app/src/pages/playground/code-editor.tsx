@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Animated,
+    ContextMenuButton,
     Markdown,
     Tooltip,
     Transition,
@@ -10,7 +11,7 @@ import {
 import { CodeMirror, CodeMirrorRef } from "./codemirror";
 import * as commands from "@codemirror/commands";
 import { RunOptions, Runner, RunnerRef } from "./runner";
-import { MaterialSymbol, MaterialSymbolProps } from "react-material-symbols";
+import { MaterialSymbol } from "react-material-symbols";
 import { ThemeConfig } from "./codemirror/theme";
 import { Help } from "../../models";
 import { useHotkeys } from "react-hotkeys-hook";
@@ -23,6 +24,7 @@ import { colorAsset } from "./assets";
 import { RenderedDiagnostic, RenderedFix } from "wipple-render";
 import { runtimes } from "../../runtimes";
 import { SetupIcon } from "./setup-icon";
+import { StateCommand } from "@codemirror/state";
 
 export const CodeEditor = (props: {
     children: string;
@@ -217,6 +219,13 @@ export const CodeEditor = (props: {
         });
     };
 
+    const runCommand = (command: StateCommand) => {
+        if (codeMirrorRef.current) {
+            command(codeMirrorRef.current.editorView);
+            codeMirrorRef.current.editorView.focus();
+        }
+    };
+
     return (
         <div
             autoFocus={props.autofocus}
@@ -249,14 +258,9 @@ export const CodeEditor = (props: {
                                 <FormatButton onClick={format} />
 
                                 <EditButton
-                                    description="Select All"
-                                    icon="text_select_end"
-                                    onClick={() => {
-                                        if (codeMirrorRef.current) {
-                                            commands.selectAll(codeMirrorRef.current.editorView);
-                                            codeMirrorRef.current.editorView.focus();
-                                        }
-                                    }}
+                                    onSelectAll={() => runCommand(commands.selectAll)}
+                                    onUndo={() => runCommand(commands.undo)}
+                                    onRedo={() => runCommand(commands.redo)}
                                 />
                             </>
                         )}
@@ -469,7 +473,7 @@ const FormatButton = (props: { onClick: () => void }) => (
     <Tooltip description="Format">
         <MenuContainer>
             <button
-                className="group flex flex-row items-center justify-center gap-1 transition-colors rounded-md w-[24px] h-7 hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="group flex flex-row items-center justify-center transition-colors rounded-md w-[24px] h-7 hover:bg-gray-100 dark:hover:bg-gray-800"
                 onClick={props.onClick}
             >
                 <MaterialSymbol icon="article" className="text-lg" />
@@ -478,18 +482,45 @@ const FormatButton = (props: { onClick: () => void }) => (
     </Tooltip>
 );
 
-const EditButton = (props: {
-    description: string;
-    icon: MaterialSymbolProps["icon"];
-    onClick: () => void;
-}) => (
-    <Tooltip description={props.description} onClick={props.onClick}>
+const EditButton = (props: { onSelectAll: () => void; onUndo: () => void; onRedo: () => void }) => (
+    <ContextMenuButton
+        description="Edit"
+        items={[
+            {
+                title: "Select All",
+                shortcut: {
+                    mac: "⌘ A",
+                    win: "Ctrl A",
+                },
+                icon: "select_all",
+                onClick: props.onSelectAll,
+            },
+            {
+                title: "Undo",
+                shortcut: {
+                    mac: "⌘ Z",
+                    win: "Ctrl Z",
+                },
+                icon: "undo",
+                onClick: props.onUndo,
+            },
+            {
+                title: "Redo",
+                shortcut: {
+                    mac: "⌘ ⇧ Z",
+                    win: "Ctrl Y",
+                },
+                icon: "redo",
+                onClick: props.onRedo,
+            },
+        ]}
+    >
         <MenuContainer>
-            <div className="group flex flex-row items-center justify-center gap-1 transition-colors rounded-md w-[24px] h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
-                <MaterialSymbol icon={props.icon} className="text-lg" />
+            <div className="group flex flex-row items-center justify-center transition-colors rounded-md w-[24px] h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
+                <MaterialSymbol icon="text_select_end" className="text-lg" />
             </div>
         </MenuContainer>
-    </Tooltip>
+    </ContextMenuButton>
 );
 
 const ColorBlock = (props: { className: string }) => (

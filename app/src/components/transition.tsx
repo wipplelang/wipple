@@ -13,6 +13,7 @@ export interface TransitionProps {
     animateOnMount?: boolean;
     inStyle?: HTMLMotionProps<"span">["animate"];
     outStyle?: HTMLMotionProps<"span">["initial"] & HTMLMotionProps<"span">["exit"];
+    dynamicChildren?: boolean;
     children: JSX.Element | null;
 }
 
@@ -30,14 +31,17 @@ export const Transition = (props: TransitionProps) => {
     const [key, setKey] = useState(0);
 
     useEffect(() => {
-        setKey(key + 1);
-    }, [props.children]);
+        if (props.dynamicChildren) {
+            setKey(key + 1);
+        }
+    }, [props.dynamicChildren, props.children]);
 
     return (
         <AnimatePresence mode="wait">
             {props.in && mounted ? (
                 <motion.div
-                    key={key}
+                    key={props.dynamicChildren ? key : null}
+                    className="w-fit h-fit"
                     transition={transition}
                     initial={props.outStyle}
                     animate={props.inStyle}

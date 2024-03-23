@@ -12,6 +12,7 @@ import { Tooltip, Transition, defaultAnimationDuration } from ".";
 
 export interface ContextMenuItem {
     title: string;
+    shortcut?: { win: string; mac: string };
     icon: MaterialSymbolProps["icon"];
     role?: "destructive";
     disabled?: boolean;
@@ -76,7 +77,7 @@ export const ContextMenuButton = (props: {
                             in={isActive}
                             animateOnMount
                             inStyle={{ opacity: 1, y: 0 }}
-                            outStyle={{ opacity: 0.5, y: "-0.25rem" }}
+                            outStyle={{ opacity: 0, y: "-0.25rem" }}
                         >
                             <ContextMenu items={props.items} onDismiss={() => setActive(false)} />
                         </Transition>
@@ -88,7 +89,7 @@ export const ContextMenuButton = (props: {
 };
 
 const ContextMenu = (props: { items: ContextMenuItem[]; onDismiss: () => void }) => (
-    <ul className="flex flex-col items-stretch gap-0.5 bg-white dark:bg-gray-800 p-1 rounded-md shadow-lg">
+    <ul className="flex flex-col items-stretch gap-0.5 bg-white dark:bg-gray-800 p-1 rounded-lg shadow-lg">
         {props.items.map((item, index) => (
             <button
                 disabled={item.disabled}
@@ -97,14 +98,24 @@ const ContextMenu = (props: { items: ContextMenuItem[]; onDismiss: () => void })
                     item.onClick();
                     props.onDismiss();
                 }}
-                className={`flex flex-row items-center gap-1.5 disabled:opacity-50 rounded-sm px-1 py-0.5 transition-colors ${
+                className={`flex flex-row items-center gap-1.5 disabled:opacity-50 rounded-md px-2 py-0.5 transition-colors ${
                     item.role === "destructive"
                         ? "text-red-500 enabled:hover:bg-red-50 enabled:dark:hover:bg-red-950 enabled:dark:hover:bg-opacity-50"
                         : "text-gray-900 dark:text-gray-50 enabled:hover:bg-gray-100 enabled:dark:hover:bg-gray-700"
                 }`}
             >
-                <MaterialSymbol icon={item.icon} />
-                <p className="text-sm">{item.title}</p>
+                <MaterialSymbol icon={item.icon} className="text-lg" />
+                <p>{item.title}</p>
+
+                <div className="flex-1" />
+
+                {item.shortcut ? (
+                    <p className="text-sm opacity-50">
+                        {/mac/.test(navigator.userAgent.toLowerCase())
+                            ? item.shortcut.mac
+                            : item.shortcut.win}
+                    </p>
+                ) : null}
             </button>
         ))}
     </ul>

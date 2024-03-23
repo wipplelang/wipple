@@ -41,6 +41,7 @@ export const AlertProvider = (props: React.PropsWithChildren<{}>) => {
                         in={Contents != null}
                         inStyle={{ opacity: 1, y: 0 }}
                         outStyle={{ opacity: 0, y: "100%" }}
+                        dynamicChildren
                     >
                         {Contents ? (
                             <div className="max-w-xl p-4">
