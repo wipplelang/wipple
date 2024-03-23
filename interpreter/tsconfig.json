@@ -8,6 +8,8 @@
         "strict": true,
         "isolatedModules": true,
         "esModuleInterop": true,
-        "noEmit": true
+        "declaration": true,
+        "emitDeclarationOnly": true,
+        "declarationDir": "dist"
     }
 }
