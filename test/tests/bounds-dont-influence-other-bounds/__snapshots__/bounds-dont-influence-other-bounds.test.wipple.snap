@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/bounds-dont-influence-other-bounds/bounds-dont-influence-other-bounds.test.wipple 1`] = `
+exports[`bounds-dont-influence-other-bounds.test.wipple 1`] = `
 [
   "bounds-dont-influence-other-bounds/bounds-dont-influence-other-bounds.test.wipple:10:1: error: unrecognized symbol",
   "bounds-dont-influence-other-bounds/bounds-dont-influence-other-bounds.test.wipple:10:3: error: unrecognized symbol",

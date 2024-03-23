@@ -1,8 +1,8 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/destructuring/destructuring.test.wipple 1`] = `[]`;
+exports[`destructuring.test.wipple 1`] = `[]`;
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/destructuring/destructuring.test.wipple 2`] = `
+exports[`destructuring.test.wipple 2`] = `
 {
   "output": "Alice
 Bob

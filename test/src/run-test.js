@@ -10,7 +10,7 @@ Error.stackTraceLimit = Infinity;
 const file = expect.getState().testPath;
 const code = fs.readFileSync(file, "utf8");
 
-test(file, async () => {
+test(path.basename(file), async () => {
     const prefix = path.resolve(process.cwd(), "../.wipple");
 
     const baseInterface = JSON.parse(

@@ -1,13 +1,13 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/redundant-case/redundant-case.test.wipple 1`] = `
+exports[`redundant-case.test.wipple 1`] = `
 [
   "redundant-case/redundant-case.test.wipple:4:2: warning: this pattern is unnecessary because it is already handled above",
   "redundant-case/redundant-case.test.wipple:6:2: warning: this pattern is unnecessary because it is already handled above",
 ]
 `;
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/redundant-case/redundant-case.test.wipple 2`] = `
+exports[`redundant-case.test.wipple 2`] = `
 {
   "output": "a
 ",

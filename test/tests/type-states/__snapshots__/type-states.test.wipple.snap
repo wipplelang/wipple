@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/type-states/type-states.test.wipple 1`] = `
+exports[`type-states.test.wipple 1`] = `
 [
   "type-states/type-states.test.wipple:16:37: error: unexpected the word \`mutate\` here",
   "type-states/type-states.test.wipple:16:32: error: can't find \`works\`",

@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/did-you-mean/did-you-mean.test.wipple 1`] = `
+exports[`did-you-mean.test.wipple 1`] = `
 [
   "did-you-mean/did-you-mean.test.wipple:4:12: error: expected expression here while reading this binary operator expression",
   "did-you-mean/did-you-mean.test.wipple:2:0: error: can't find \`print\`",

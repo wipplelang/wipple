@@ -1,8 +1,8 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/remove-duplicates/remove-duplicates.test.wipple 1`] = `[]`;
+exports[`remove-duplicates.test.wipple 1`] = `[]`;
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/remove-duplicates/remove-duplicates.test.wipple 2`] = `
+exports[`remove-duplicates.test.wipple 2`] = `
 {
   "output": "5
 4

@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/undefined-name/undefined-name.test.wipple 1`] = `
+exports[`undefined-name.test.wipple 1`] = `
 [
   "undefined-name/undefined-name.test.wipple:2:0: error: can't find \`foo\`",
 ]

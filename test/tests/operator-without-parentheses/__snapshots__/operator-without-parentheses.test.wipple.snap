@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/operator-without-parentheses/operator-without-parentheses.test.wipple 1`] = `
+exports[`operator-without-parentheses.test.wipple 1`] = `
 [
   "operator-without-parentheses/operator-without-parentheses.test.wipple:2:0: error: this code requires \`(Add () Number _)\`",
   "operator-without-parentheses/operator-without-parentheses.test.wipple:3:0: error: this code requires \`(Or () Boolean _)\`",

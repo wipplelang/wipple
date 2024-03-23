@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/missing-instance/missing-instance.test.wipple 1`] = `
+exports[`missing-instance.test.wipple 1`] = `
 [
   "missing-instance/missing-instance.test.wipple:3:0: error: this code requires \`(Describe (Foo -> Foo))\`",
 ]

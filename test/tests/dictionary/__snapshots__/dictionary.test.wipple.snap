@@ -1,8 +1,8 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/dictionary/dictionary.test.wipple 1`] = `[]`;
+exports[`dictionary.test.wipple 1`] = `[]`;
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/dictionary/dictionary.test.wipple 2`] = `
+exports[`dictionary.test.wipple 2`] = `
 {
   "output": "Basketball has 10 letters
 Soccer has 6 letters

@@ -1,8 +1,8 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/greet/greet.test.wipple 1`] = `[]`;
+exports[`greet.test.wipple 1`] = `[]`;
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/greet/greet.test.wipple 2`] = `
+exports[`greet.test.wipple 2`] = `
 {
   "output": "Hello, Bob!
 Hello, world!

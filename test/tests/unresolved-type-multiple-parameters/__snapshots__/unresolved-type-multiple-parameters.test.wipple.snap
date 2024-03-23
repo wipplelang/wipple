@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/unresolved-type-multiple-parameters/unresolved-type-multiple-parameters.test.wipple 1`] = `
+exports[`unresolved-type-multiple-parameters.test.wipple 1`] = `
 [
   "unresolved-type-multiple-parameters/unresolved-type-multiple-parameters.test.wipple:14:18: error: this code produces a \`_ -> ()\`, but the \`_\`s are unknown",
   "unresolved-type-multiple-parameters/unresolved-type-multiple-parameters.test.wipple:14:18: error: expected this annotation to be a \`U A B -> ()\` here, but found a \`_ -> ()\`",

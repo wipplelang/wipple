@@ -1,8 +1,8 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/lists/lists.test.wipple 1`] = `[]`;
+exports[`lists.test.wipple 1`] = `[]`;
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/lists/lists.test.wipple 2`] = `
+exports[`lists.test.wipple 2`] = `
 {
   "output": "Some 1
 Some 3

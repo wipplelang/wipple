@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/type-logic/type-logic.test.wipple 1`] = `
+exports[`type-logic.test.wipple 1`] = `
 [
   "type-logic/type-logic.test.wipple:10:12: error: expected expression here while reading this assignment",
   "type-logic/type-logic.test.wipple:11:0: error: expected expression here while reading this statement",

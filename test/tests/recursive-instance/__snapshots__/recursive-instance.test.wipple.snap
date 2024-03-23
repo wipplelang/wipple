@@ -1,8 +1,8 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/recursive-instance/recursive-instance.test.wipple 1`] = `[]`;
+exports[`recursive-instance.test.wipple 1`] = `[]`;
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/recursive-instance/recursive-instance.test.wipple 2`] = `
+exports[`recursive-instance.test.wipple 2`] = `
 {
   "output": "Some Some 42
 ",

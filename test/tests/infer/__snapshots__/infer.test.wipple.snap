@@ -1,8 +1,8 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/infer/infer.test.wipple 1`] = `[]`;
+exports[`infer.test.wipple 1`] = `[]`;
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/infer/infer.test.wipple 2`] = `
+exports[`infer.test.wipple 2`] = `
 {
   "output": "C
 Java

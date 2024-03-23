@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/show-variable/show-variable.test.wipple 1`] = `
+exports[`show-variable.test.wipple 1`] = `
 [
   "show-variable/show-variable.test.wipple:5:0: error: this code requires \`(Describe (Cannot-Be-Shown -> Cannot-Be-Shown))\`",
 ]

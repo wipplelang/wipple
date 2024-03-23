@@ -1,8 +1,8 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/collections/collections.test.wipple 1`] = `[]`;
+exports[`collections.test.wipple 1`] = `[]`;
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/collections/collections.test.wipple 2`] = `
+exports[`collections.test.wipple 2`] = `
 {
   "output": "",
 }

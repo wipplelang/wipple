@@ -1,8 +1,8 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/random/random.test.wipple 1`] = `[]`;
+exports[`random.test.wipple 1`] = `[]`;
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/random/random.test.wipple 2`] = `
+exports[`random.test.wipple 2`] = `
 {
   "output": "0
 \`max\` must be greater than \`min\`

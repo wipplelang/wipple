@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/type-span/type-span.test.wipple 1`] = `
+exports[`type-span.test.wipple 1`] = `
 [
   "type-span/type-span.test.wipple:3:0: error: can't find \`Show\`",
   "type-span/type-span.test.wipple:3:0: error: expected this annotation to be a \`_ Number -> Number\` here, but found a \`_ Number -> ()\`",

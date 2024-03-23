@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/mismatched-call/mismatched-call.test.wipple 1`] = `
+exports[`mismatched-call.test.wipple 1`] = `
 [
   "mismatched-call/mismatched-call.test.wipple:7:13: error: expected this annotation to be a \`Number Number -> Number\` here, but found a \`Number Number -> Text\`",
 ]
