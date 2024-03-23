@@ -11,10 +11,6 @@ jobs:
 
             - uses: arduino/setup-task@v1
 
-            - uses: oven-sh/setup-bun@v1
-              with:
-                  bun-version: latest
-
             - uses: Swatinem/rust-cache@v2.2.0
               with:
                   workspaces: |
