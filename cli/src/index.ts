@@ -181,7 +181,9 @@ const app = subcommands({
                 try {
                     await evaluate(executable, {
                         debug: process.env.WIPPLE_DEBUG_INTERPRETER != null,
-                        gc: () => Bun.gc(true),
+                        gc: () => {
+                            // Bun.gc(true);
+                        },
                         io: handleIo,
                     });
                 } catch (error) {

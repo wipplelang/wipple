@@ -3,6 +3,8 @@ import { intrinsics } from "./intrinsics.js";
 import { produce } from "immer";
 import type * as compiler from "wipple-compiler";
 
+Decimal.set({ modulo: Decimal.EUCLID });
+
 export type Executable = compiler.linker_Executable;
 export type Item = compiler.linker_LinkedItem;
 export type TypeDescriptor = compiler.codegen_TypeDescriptor;
@@ -74,7 +76,6 @@ type Value =
       }
     | {
           type: "hasher";
-          key: number[];
       };
 
 export interface Context {

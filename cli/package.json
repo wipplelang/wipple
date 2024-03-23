@@ -5,12 +5,16 @@
     "main": "dist/index.js",
     "scripts": {
         "start": "bun run .",
-        "build": "bun run build.js",
+        "build": "tsc && rollup -c",
         "package": "bun build . --compile --outfile dist/wipple"
     },
     "devDependencies": {
+        "@rollup/plugin-commonjs": "^25.0.7",
+        "@rollup/plugin-node-resolve": "^15.2.3",
+        "@rollup/plugin-typescript": "^11.1.6",
         "@types/bun": "^1.0.4",
-        "esbuild": "^0.19.11",
+        "rollup": "^4.13.0",
+        "tslib": "^2.6.2",
         "typescript": "^5.3.3"
     },
     "dependencies": {

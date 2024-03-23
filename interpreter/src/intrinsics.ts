@@ -1,6 +1,4 @@
 import { Decimal } from "decimal.js";
-// @ts-ignore
-import { hash_uint } from "siphash";
 import type { Context, TaskGroup, TypeDescriptor, TypedValue } from "./index.js";
 
 export type Intrinsic = (
@@ -483,28 +481,21 @@ export const intrinsics: Record<string, Intrinsic> = {
         return jsToNumber(expectedTypeDescriptor, new Decimal(NaN), context);
     },
     "make-hasher": async ([], expectedTypeDescriptor, context) => {
-        return jsToHasher(
-            expectedTypeDescriptor,
-            [randomInteger(), randomInteger(), randomInteger(), randomInteger()],
-            context,
-        );
+        return jsToHasher(expectedTypeDescriptor, context);
     },
     "hash-number": async ([hasher, number], expectedTypeDescriptor, context) => {
-        const hasherValue = hasherToJs(hasher, context);
+        const _hasherValue = hasherToJs(hasher, context);
         const numberValue = numberToJs(number, context);
 
-        const hashValue = hash_uint(
-            hasherValue.key,
-            new Uint8Array(Float64Array.of(numberValue.toNumber()).buffer),
-        );
+        const hashValue = hash(numberValue.toNumber().toString());
 
         return jsToNumber(expectedTypeDescriptor, new Decimal(hashValue), context);
     },
     "hash-text": async ([hasher, text], expectedTypeDescriptor, context) => {
-        const hasherValue = hasherToJs(hasher, context);
+        const _hasherValue = hasherToJs(hasher, context);
         const textValue = textToJs(text, context);
 
-        const hashValue = hash_uint(hasherValue.key, textValue);
+        const hashValue = hash(textValue);
 
         return jsToNumber(expectedTypeDescriptor, new Decimal(hashValue), context);
     },
@@ -710,17 +701,12 @@ const referenceToJs = (value: TypedValue, context: Context): { current: TypedVal
     return value.value;
 };
 
-const jsToHasher = (
-    typeDescriptor: TypeDescriptor,
-    key: number[],
-    _context: Context,
-): TypedValue => ({
+const jsToHasher = (typeDescriptor: TypeDescriptor, _context: Context): TypedValue => ({
     type: "hasher",
     typeDescriptor,
-    key,
 });
 
-const hasherToJs = (value: TypedValue, context: Context): { key: number[] } => {
+const hasherToJs = (value: TypedValue, context: Context): {} => {
     if (value.type !== "hasher") {
         throw context.error("expected hasher");
     }
@@ -779,4 +765,15 @@ const deserialize = (value: any, typeDescriptor: TypeDescriptor, context: Contex
     } else {
         throw new Error("cannot deserialize value");
     }
+};
+
+// https://stackoverflow.com/a/8831937/5569234
+const hash = (str: string) => {
+    let hash = 0;
+    for (let i = 0, len = str.length; i < len; i++) {
+        let chr = str.charCodeAt(i);
+        hash = (hash << 5) - hash + chr;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
 };
