@@ -128,7 +128,7 @@ connection.onHover(async (params) => {
 
     const position = document.offsetAt(params.position);
 
-    const info = render.getInfoAtCursor(uri.fsPath, position);
+    const info = render.getInfoAtCursor("top-level", position);
     if (!info) {
         return null;
     }

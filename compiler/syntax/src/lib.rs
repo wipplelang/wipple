@@ -23,6 +23,9 @@ pub trait Driver: Sized + 'static {
     /// Retrieve the path to be rendered in diagnostics.
     fn visible_path(&self) -> Rc<str>;
 
+    /// Retrieve the size of the file being parsed in bytes.
+    fn file_size(&self) -> u32;
+
     /// Merge two [`Info`](Driver::Info) values together.
     fn merge_info(left: Self::Info, right: Self::Info) -> Self::Info;
 }
@@ -35,6 +38,10 @@ impl Driver for wipple_util::TsAny {
     }
 
     fn visible_path(&self) -> Rc<str> {
+        unimplemented!()
+    }
+
+    fn file_size(&self) -> u32 {
         unimplemented!()
     }
 

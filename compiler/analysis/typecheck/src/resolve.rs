@@ -60,7 +60,7 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
 impl<D: Driver> crate::IntoItemDeclaration<D>
     for WithInfo<D::Info, Vec<WithInfo<D::Info, crate::UntypedExpression<D>>>>
 {
-    fn into_item_declaration(self, driver: &D) -> WithInfo<D::Info, crate::ItemDeclaration<D>> {
+    fn into_item_declaration(self, _driver: &D) -> WithInfo<D::Info, crate::ItemDeclaration<D>> {
         let info = self.info.clone();
 
         self.map(|code| {
@@ -71,7 +71,7 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
                     item: crate::Type::Unknown(UnknownTypeId::none()), // the top level can be any type
                 },
                 body: WithInfo {
-                    info: driver.top_level_info(),
+                    info,
                     item: crate::UntypedExpression::Block(code),
                 },
                 top_level: true,

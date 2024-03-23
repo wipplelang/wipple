@@ -311,6 +311,7 @@ impl Driver {
             let syntax_driver = SyntaxDriver {
                 file_path: Rc::from(file.path.as_str()),
                 visible_path: Rc::from(file.visible_path.as_str()),
+                file_size: file.code.len() as u32,
             };
 
             let (tokens, tokenize_diagnostics): (Vec<_>, Vec<_>) =
@@ -639,6 +640,7 @@ impl Driver {
 pub struct SyntaxDriver {
     file_path: Rc<str>,
     visible_path: Rc<str>,
+    file_size: u32,
 }
 
 impl SyntaxDriver {
@@ -646,6 +648,7 @@ impl SyntaxDriver {
         Self {
             file_path: Rc::from("format"),
             visible_path: Rc::from("format"),
+            file_size: 0,
         }
     }
 }
@@ -659,6 +662,10 @@ impl syntax::Driver for SyntaxDriver {
 
     fn visible_path(&self) -> Rc<str> {
         self.visible_path.clone()
+    }
+
+    fn file_size(&self) -> u32 {
+        self.file_size
     }
 
     fn merge_info(left: Self::Info, right: Self::Info) -> Self::Info {

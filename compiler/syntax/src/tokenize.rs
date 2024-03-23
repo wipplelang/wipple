@@ -1203,7 +1203,7 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                         info: Location {
                             path: driver.file_path(),
                             visible_path: driver.visible_path(),
-                            span: 0..0,
+                            span: 0..driver.file_size(),
                         }
                         .into(),
                         item: TokenTree::Block(Vec::new()),

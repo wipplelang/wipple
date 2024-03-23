@@ -107,10 +107,10 @@ export class Render {
             ...library.code,
         ])) {
             if (
-                item.expression.info.location.path !== "top-level" &&
-                (path !== item.expression.info.location.path ||
-                    index < item.expression.info.location.span.start ||
-                    index >= item.expression.info.location.span.end)
+                path !== item.expression.info.location.path ||
+                (path !== "top-level" &&
+                    (index < item.expression.info.location.span.start ||
+                        index >= item.expression.info.location.span.end))
             ) {
                 continue;
             }
@@ -1138,6 +1138,10 @@ export class Render {
             case "nothing":
                 return "nothing";
         }
+    }
+
+    renderDiagnosticToDebugString(diagnostic: RenderedDiagnostic): string {
+        return `${diagnostic.location.visiblePath}:${diagnostic.location.start.line}:${diagnostic.location.start.column}: ${diagnostic.severity}: ${diagnostic.message}`;
     }
 
     renderDocumentation(
