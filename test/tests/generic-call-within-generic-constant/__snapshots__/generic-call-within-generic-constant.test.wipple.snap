@@ -1,8 +1,8 @@
-// Bun Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`generic-call-within-generic-constant.test.wipple 1`] = `[]`;
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/generic-call-within-generic-constant/generic-call-within-generic-constant.test.wipple 1`] = `[]`;
 
-exports[`generic-call-within-generic-constant.test.wipple 2`] = `
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/generic-call-within-generic-constant/generic-call-within-generic-constant.test.wipple 2`] = `
 {
   "output": "",
 }

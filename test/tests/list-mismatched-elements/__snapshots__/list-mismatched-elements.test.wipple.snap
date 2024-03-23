@@ -1,6 +1,6 @@
-// Bun Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`list-mismatched-elements.test.wipple 1`] = `
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/list-mismatched-elements/list-mismatched-elements.test.wipple 1`] = `
 [
   "list-mismatched-elements/list-mismatched-elements.test.wipple:2:14: error: expected this collection element to be a \`Number\` here, but found a \`Text\`",
   "list-mismatched-elements/list-mismatched-elements.test.wipple:2:21: error: expected this collection element to be a \`Number\` here, but found a \`()\`",

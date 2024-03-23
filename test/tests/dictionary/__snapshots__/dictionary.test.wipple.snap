@@ -1,14 +1,12 @@
-// Bun Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`dictionary.test.wipple 1`] = `[]`;
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/dictionary/dictionary.test.wipple 1`] = `[]`;
 
-exports[`dictionary.test.wipple 2`] = `
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/dictionary/dictionary.test.wipple 2`] = `
 {
-  "output": 
-"Basketball has 10 letters
+  "output": "Basketball has 10 letters
 Soccer has 6 letters
 Golf has 4 letters
-"
-,
+",
 }
 `;

@@ -1,6 +1,6 @@
-// Bun Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`mismatched-types.test.wipple 1`] = `
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/mismatched-types/mismatched-types.test.wipple 1`] = `
 [
   "mismatched-types/mismatched-types.test.wipple:2:0: error: expected name here while reading this constant declaration",
 ]

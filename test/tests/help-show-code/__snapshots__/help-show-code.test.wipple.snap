@@ -1,6 +1,6 @@
-// Bun Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`help-show-code.test.wipple 1`] = `
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/help-show-code/help-show-code.test.wipple 1`] = `
 [
   "help-show-code/help-show-code.test.wipple:2:0: error: expected expression here while reading this statement",
   "help-show-code/help-show-code.test.wipple:3:0: error: expected expression here while reading this statement",

@@ -1,12 +1,10 @@
-// Bun Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`when.test.wipple 1`] = `[]`;
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/when/when.test.wipple 1`] = `[]`;
 
-exports[`when.test.wipple 2`] = `
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/when/when.test.wipple 2`] = `
 {
-  "output": 
-"Yay!
-"
-,
+  "output": "Yay!
+",
 }
 `;

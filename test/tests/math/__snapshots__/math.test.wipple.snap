@@ -1,15 +1,13 @@
-// Bun Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`math.test.wipple 1`] = `[]`;
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/math/math.test.wipple 1`] = `[]`;
 
-exports[`math.test.wipple 2`] = `
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/math/math.test.wipple 2`] = `
 {
-  "output": 
-"3
+  "output": "3
 3
 15
 2.5
-"
-,
+",
 }
 `;

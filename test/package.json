@@ -2,13 +2,14 @@
     "name": "wipple-tests",
     "private": true,
     "type": "module",
-    "main": "dist/index.js",
     "scripts": {
-        "test": "bun test ./tests/*/*.test.wipple"
+        "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" jest"
     },
     "devDependencies": {
-        "@types/bun": "^1.0.4",
         "@types/lodash": "^4.17.0",
+        "@types/node": "^20.11.30",
+        "babel-jest": "^29.7.0",
+        "jest": "^29.7.0",
         "typescript": "^5.3.3"
     },
     "dependencies": {

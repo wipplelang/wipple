@@ -1,12 +1,10 @@
-// Bun Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`number-units.test.wipple 1`] = `[]`;
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/number-units/number-units.test.wipple 1`] = `[]`;
 
-exports[`number-units.test.wipple 2`] = `
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/number-units/number-units.test.wipple 2`] = `
 {
-  "output": 
-"no instance found for trait trait Equal with type descriptor {"type":"function","value":[[{"type":"named","value":["type Elephants",[]]},{"type":"named","value":["type Elephants",[]]}],{"type":"named","value":["type Boolean",[]]}]}
-"
-,
+  "output": "no instance found for trait trait Equal with type descriptor {"type":"function","value":[[{"type":"named","value":["type Elephants",[]]},{"type":"named","value":["type Elephants",[]]}],{"type":"named","value":["type Boolean",[]]}]}
+",
 }
 `;

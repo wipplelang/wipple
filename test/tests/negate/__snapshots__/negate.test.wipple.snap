@@ -1,12 +1,10 @@
-// Bun Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`negate.test.wipple 1`] = `[]`;
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/negate/negate.test.wipple 1`] = `[]`;
 
-exports[`negate.test.wipple 2`] = `
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/negate/negate.test.wipple 2`] = `
 {
-  "output": 
-"True
-"
-,
+  "output": "True
+",
 }
 `;

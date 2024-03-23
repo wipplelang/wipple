@@ -1,11 +1,10 @@
-// Bun Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`lists.test.wipple 1`] = `[]`;
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/lists/lists.test.wipple 1`] = `[]`;
 
-exports[`lists.test.wipple 2`] = `
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/lists/lists.test.wipple 2`] = `
 {
-  "output": 
-"Some 1
+  "output": "Some 1
 Some 3
 1: {"type":"jumpIfNot","value":["type Maybe / variant Some",5]}: expected variant
 while evaluating {
@@ -110,7 +109,6 @@ stack: [
         ]
     }
 ]
-"
-,
+",
 }
 `;

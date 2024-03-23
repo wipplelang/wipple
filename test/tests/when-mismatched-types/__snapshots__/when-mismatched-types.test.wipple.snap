@@ -1,6 +1,6 @@
-// Bun Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`when-mismatched-types.test.wipple 1`] = `
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/when-mismatched-types/when-mismatched-types.test.wipple 1`] = `
 [
   "when-mismatched-types/when-mismatched-types.test.wipple:4:11: error: expected a \`Number\` here, but found a \`Text\`",
 ]

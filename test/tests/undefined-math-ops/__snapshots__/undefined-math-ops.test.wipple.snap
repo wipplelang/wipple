@@ -1,16 +1,14 @@
-// Bun Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`undefined-math-ops.test.wipple 1`] = `[]`;
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/undefined-math-ops/undefined-math-ops.test.wipple 1`] = `[]`;
 
-exports[`undefined-math-ops.test.wipple 2`] = `
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/undefined-math-ops/undefined-math-ops.test.wipple 2`] = `
 {
-  "output": 
-"NaN
+  "output": "NaN
 Infinity
 NaN
 NaN
 1.7976931348623159077e+308
-"
-,
+",
 }
 `;

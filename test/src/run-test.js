@@ -2,28 +2,28 @@ import fs from "fs";
 import path from "path";
 import _ from "lodash";
 import { compile, link } from "wipple-compiler";
-import { evaluate, InterpreterError, IoRequest } from "wipple-interpreter";
+import { evaluate, InterpreterError } from "wipple-interpreter";
 import { Render } from "wipple-render";
 
 Error.stackTraceLimit = Infinity;
 
-const prefix = path.resolve(import.meta.dir, "../../.wipple");
+const file = expect.getState().testPath;
+const code = fs.readFileSync(file, "utf8");
 
-const baseInterface = JSON.parse(
-    fs.readFileSync(path.join(prefix, "base.wippleinterface"), "utf8"),
-);
+test(file, async () => {
+    const prefix = path.resolve(process.cwd(), "../.wipple");
 
-const baseLibrary = JSON.parse(fs.readFileSync(path.join(prefix, "base.wipplelibrary"), "utf8"));
+    const baseInterface = JSON.parse(
+        fs.readFileSync(path.join(prefix, "base.wippleinterface"), "utf8"),
+    );
 
-export const runTest = async (
-    file: string,
-    code: string,
-    compare: (left: any, right: any) => void,
-    compareSnapshot: (value: any) => void,
-) => {
+    const baseLibrary = JSON.parse(
+        fs.readFileSync(path.join(prefix, "base.wipplelibrary"), "utf8"),
+    );
+
     const header = code.match(/-- \[([\w\s]+)\]/)?.[1];
-    let shouldCompile: boolean;
-    let shouldWarn: boolean | undefined;
+    let shouldCompile;
+    let shouldWarn;
     switch (header) {
         case "should compile": {
             shouldCompile = true;
@@ -85,13 +85,13 @@ export const runTest = async (
         }),
     );
 
-    compare(shouldCompile, compiled);
+    expect(shouldCompile).toBe(compiled);
 
     if (shouldWarn != null) {
-        compare(shouldWarn, compiledWithWarnings);
+        expect(shouldWarn).toBe(compiledWithWarnings);
     }
 
-    compareSnapshot(renderedDiagnostics);
+    expect(renderedDiagnostics).toMatchSnapshot();
 
     if (!compiled) {
         return;
@@ -100,7 +100,7 @@ export const runTest = async (
     const executable = link([compileResult.library, baseLibrary]);
 
     let output = "";
-    const handleIo = async (request: IoRequest) => {
+    const handleIo = async (request) => {
         switch (request.type) {
             case "display": {
                 output += request.message + "\n";
@@ -127,5 +127,5 @@ export const runTest = async (
         }
     }
 
-    compareSnapshot({ output });
-};
+    expect({ output }).toMatchSnapshot();
+});

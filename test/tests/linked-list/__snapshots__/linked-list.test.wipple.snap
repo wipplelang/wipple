@@ -1,12 +1,10 @@
-// Bun Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`linked-list.test.wipple 1`] = `[]`;
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/linked-list/linked-list.test.wipple 1`] = `[]`;
 
-exports[`linked-list.test.wipple 2`] = `
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/linked-list/linked-list.test.wipple 2`] = `
 {
-  "output": 
-"6
-"
-,
+  "output": "6
+",
 }
 `;

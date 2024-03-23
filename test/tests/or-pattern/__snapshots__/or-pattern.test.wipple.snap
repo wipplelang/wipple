@@ -1,17 +1,15 @@
-// Bun Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`or-pattern.test.wipple 1`] = `
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/or-pattern/or-pattern.test.wipple 1`] = `
 [
   "or-pattern/or-pattern.test.wipple:4:2: warning: this pattern is unnecessary because it is already handled above",
   "or-pattern/or-pattern.test.wipple:5:2: warning: this pattern is unnecessary because it is already handled above",
 ]
 `;
 
-exports[`or-pattern.test.wipple 2`] = `
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/or-pattern/or-pattern.test.wipple 2`] = `
 {
-  "output": 
-"yay
-"
-,
+  "output": "yay
+",
 }
 `;

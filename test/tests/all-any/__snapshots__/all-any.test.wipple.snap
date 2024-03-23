@@ -1,15 +1,13 @@
-// Bun Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`all-any.test.wipple 1`] = `[]`;
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/all-any/all-any.test.wipple 1`] = `[]`;
 
-exports[`all-any.test.wipple 2`] = `
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/all-any/all-any.test.wipple 2`] = `
 {
-  "output": 
-"True
+  "output": "True
 False
 True
 False
-"
-,
+",
 }
 `;

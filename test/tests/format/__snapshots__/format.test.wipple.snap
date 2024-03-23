@@ -1,12 +1,10 @@
-// Bun Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`format.test.wipple 1`] = `[]`;
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/format/format.test.wipple 1`] = `[]`;
 
-exports[`format.test.wipple 2`] = `
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/format/format.test.wipple 2`] = `
 {
-  "output": 
-"no instance found for trait trait Describe with type descriptor {"type":"function","value":[[{"type":"named","value":["type Person",[]]}],{"type":"named","value":["type Text",[]]}]}
-"
-,
+  "output": "no instance found for trait trait Describe with type descriptor {"type":"function","value":[[{"type":"named","value":["type Person",[]]}],{"type":"named","value":["type Text",[]]}]}
+",
 }
 `;

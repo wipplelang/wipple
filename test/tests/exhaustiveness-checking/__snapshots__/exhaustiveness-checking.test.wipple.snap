@@ -1,6 +1,6 @@
-// Bun Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`exhaustiveness-checking.test.wipple 1`] = `
+exports[`/Users/wilson/Desktop/wipple-wasm/test/tests/exhaustiveness-checking/exhaustiveness-checking.test.wipple 1`] = `
 [
   "exhaustiveness-checking/exhaustiveness-checking.test.wipple:5:23: error: expected expression here while reading this call expression",
   "exhaustiveness-checking/exhaustiveness-checking.test.wipple:2:14: error: can't find \`A\`",
