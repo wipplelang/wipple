@@ -54,25 +54,27 @@ export const runTest = async (
 
     let compiled = true;
     let compiledWithWarnings = false;
-    const renderedDiagnostics = compileResult.diagnostics.map((diagnostic) => {
-        const renderedDiagnostic = render.renderDiagnostic(diagnostic);
-        if (!renderedDiagnostic) {
-            throw new Error(`could not render diagnostic: ${diagnostic}`);
-        }
+    const renderedDiagnostics = _.uniq(
+        compileResult.diagnostics.map((diagnostic) => {
+            const renderedDiagnostic = render.renderDiagnostic(diagnostic);
+            if (!renderedDiagnostic) {
+                throw new Error(`could not render diagnostic: ${diagnostic}`);
+            }
 
-        switch (renderedDiagnostic.severity) {
-            case "error":
-                compiled = false;
-                break;
-            case "warning":
-                compiledWithWarnings = true;
-                break;
-            default:
-                break;
-        }
+            switch (renderedDiagnostic.severity) {
+                case "error":
+                    compiled = false;
+                    break;
+                case "warning":
+                    compiledWithWarnings = true;
+                    break;
+                default:
+                    break;
+            }
 
-        return render.renderDiagnosticToDebugString(renderedDiagnostic);
-    });
+            return render.renderDiagnosticToDebugString(renderedDiagnostic);
+        }),
+    );
 
     compare(shouldCompile, compiled);
 
