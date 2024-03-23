@@ -80,6 +80,7 @@ tasks:
             - cli:install-dependencies
             - compiler:install-dependencies
             - interpreter:install-dependencies
+            - render:install-dependencies
 
     test:install-dependencies:
         run: once
@@ -130,6 +131,12 @@ tasks:
         dir: interpreter
         cmds:
             - npm run build
+
+    render:install-dependencies:
+        run: once
+        dir: render
+        cmds:
+            - npm install
 
     render:build:
         run: once
