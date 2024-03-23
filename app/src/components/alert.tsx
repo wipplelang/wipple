@@ -1,5 +1,5 @@
 import { createContext, useContext, useState } from "react";
-import { Transition, defaultAnimationDuration } from ".";
+import { Transition } from ".";
 
 interface AlertContentsProps {
     dismiss: () => void;
@@ -39,9 +39,8 @@ export const AlertProvider = (props: React.PropsWithChildren<{}>) => {
                 <div className="flex items-center justify-center w-screen h-screen p-4">
                     <Transition
                         in={Contents != null}
-                        exitAnimationDuration={defaultAnimationDuration}
-                        inClassName="animate-in slide-in-from-bottom fade-in-10"
-                        outClassName="animate-out slide-out-to-bottom fade-out-10"
+                        inStyle={{ opacity: 1, y: 0 }}
+                        outStyle={{ opacity: 0, y: "100%" }}
                     >
                         {Contents ? (
                             <div className="max-w-xl p-4">

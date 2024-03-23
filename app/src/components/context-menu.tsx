@@ -75,9 +75,8 @@ export const ContextMenuButton = (props: {
                         <Transition
                             in={isActive}
                             animateOnMount
-                            exitAnimationDuration={defaultAnimationDuration}
-                            inClassName="animate-in fade-in-50 slide-in-from-top-1"
-                            outClassName="animate-out fade-out-50 slide-out-to-top-1"
+                            inStyle={{ opacity: 1, y: 0 }}
+                            outStyle={{ opacity: 0.5, y: "-0.25rem" }}
                         >
                             <ContextMenu items={props.items} onDismiss={() => setActive(false)} />
                         </Transition>

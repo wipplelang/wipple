@@ -1,7 +1,7 @@
 import type { RuntimeComponent } from "..";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import turtleImage from "./turtle.png";
-import { useResizeObserver } from "usehooks-ts";
+import { useDebounceCallback, useResizeObserver } from "usehooks-ts";
 import { MaterialSymbol } from "react-material-symbols";
 import { Tooltip } from "../../components";
 import { format } from "date-fns";
@@ -42,9 +42,8 @@ export const Turtle: RuntimeComponent = forwardRef((_props, ref) => {
     const [resizable, setResizable] = useState(false);
     const [showResizedPrompt, setShowResizedPrompt] = useState(false);
 
-    useResizeObserver({
-        ref: containerRef,
-        onResize: ({ width, height }) => {
+    const onResize = useDebounceCallback(
+        ({ width, height }: { width?: number; height?: number }) => {
             if (resizable && canvasRef.current && width && height) {
                 canvasRef.current.width = width;
                 canvasRef.current.height = height;
@@ -53,7 +52,10 @@ export const Turtle: RuntimeComponent = forwardRef((_props, ref) => {
                 setShowResizedPrompt(true);
             }
         },
-    });
+        10,
+    );
+
+    useResizeObserver({ ref: containerRef, onResize });
 
     const turtleRef = useRef<RealTurtle>();
 

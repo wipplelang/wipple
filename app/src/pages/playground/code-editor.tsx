@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
     Animated,
     Markdown,
-    MenuContainer,
     Tooltip,
     Transition,
     defaultAnimationDuration,
@@ -11,7 +10,7 @@ import {
 import { CodeMirror, CodeMirrorRef } from "./codemirror";
 import * as commands from "@codemirror/commands";
 import { RunOptions, Runner, RunnerRef } from "./runner";
-import { MaterialSymbol } from "react-material-symbols";
+import { MaterialSymbol, MaterialSymbolProps } from "react-material-symbols";
 import { ThemeConfig } from "./codemirror/theme";
 import { Help } from "../../models";
 import { useHotkeys } from "react-hotkeys-hook";
@@ -249,7 +248,9 @@ export const CodeEditor = (props: {
                             <>
                                 <FormatButton onClick={format} />
 
-                                <SelectAllButton
+                                <EditButton
+                                    description="Select All"
+                                    icon="text_select_end"
                                     onClick={() => {
                                         if (codeMirrorRef.current) {
                                             commands.selectAll(codeMirrorRef.current.editorView);
@@ -264,9 +265,8 @@ export const CodeEditor = (props: {
                     <div className="flex flex-shrink flex-row gap-2">
                         <Transition
                             in={!(quickHelpLocked ?? false)}
-                            exitAnimationDuration={defaultAnimationDuration}
-                            inClassName="animate-in fade-in"
-                            outClassName="animate-out fade-out"
+                            inStyle={{ opacity: 1 }}
+                            outStyle={{ opacity: 0 }}
                         >
                             <PaletteMenu />
                         </Transition>
@@ -304,23 +304,31 @@ export const CodeEditor = (props: {
                     {!animationsSettled
                         ? null
                         : lineDiagnostics.map(({ top, width, height, diagnostic }, index) => (
-                              <Transition
+                              <div
                                   key={index}
-                                  in={!quickHelpEnabled && !quickHelpLocked}
-                                  animateOnMount
-                                  exitAnimationDuration={defaultAnimationDuration}
-                                  inClassName="animate-in slide-in-from-right-4 fade-in-50"
-                                  outClassName="animate-out slide-out-to-right-4 fade-out-50"
+                                  className="absolute right-4 w-fit"
+                                  style={{
+                                      top: top + props.theme.fontSize / 4 - 1,
+                                      height,
+                                      paddingLeft: "3rem",
+                                  }}
                               >
-                                  <DiagnosticBubble
-                                      top={top}
-                                      width={width}
-                                      height={height}
-                                      theme={props.theme}
-                                      diagnostic={diagnostic}
-                                      onApplyFix={applyFix}
-                                  />
-                              </Transition>
+                                  <Transition
+                                      in={!quickHelpEnabled && !quickHelpLocked}
+                                      animateOnMount
+                                      inStyle={{ opacity: 1, x: 0 }}
+                                      outStyle={{ opacity: 0.5, x: "1rem" }}
+                                  >
+                                      <DiagnosticBubble
+                                          top={top}
+                                          width={width}
+                                          height={height}
+                                          theme={props.theme}
+                                          diagnostic={diagnostic}
+                                          onApplyFix={applyFix}
+                                      />
+                                  </Transition>
+                              </div>
                           ))}
                 </div>
 
@@ -330,23 +338,25 @@ export const CodeEditor = (props: {
                     onClick={() => onAddLine("end")}
                 />
 
-                <Animated direction="vertical" clip>
-                    <Runner
-                        ref={runnerRef}
-                        options={runOptions}
-                        runtime={
-                            props.runtime != null && props.runtime in runtimes
-                                ? runtimes[props.runtime as keyof typeof runtimes]
-                                : undefined
-                        }
-                        hasFocus={runnerHasFocus}
-                        onFocus={() => setRunnerHasFocus(true)}
-                        onBlur={() => setRunnerHasFocus(false)}
-                        onChangeDiagnostics={setDiagnostics}
-                    >
-                        {props.children}
-                    </Runner>
-                </Animated>
+                {animationsSettled ? (
+                    <Animated direction="vertical" clip>
+                        <Runner
+                            ref={runnerRef}
+                            options={runOptions}
+                            runtime={
+                                props.runtime != null && props.runtime in runtimes
+                                    ? runtimes[props.runtime as keyof typeof runtimes]
+                                    : undefined
+                            }
+                            hasFocus={runnerHasFocus}
+                            onFocus={() => setRunnerHasFocus(true)}
+                            onBlur={() => setRunnerHasFocus(false)}
+                            onChangeDiagnostics={setDiagnostics}
+                        >
+                            {props.children}
+                        </Runner>
+                    </Animated>
+                ) : null}
             </div>
         </div>
     );
@@ -468,11 +478,15 @@ const FormatButton = (props: { onClick: () => void }) => (
     </Tooltip>
 );
 
-const SelectAllButton = (props: { onClick: () => void }) => (
-    <Tooltip description="Select All" onClick={props.onClick}>
+const EditButton = (props: {
+    description: string;
+    icon: MaterialSymbolProps["icon"];
+    onClick: () => void;
+}) => (
+    <Tooltip description={props.description} onClick={props.onClick}>
         <MenuContainer>
             <div className="group flex flex-row items-center justify-center gap-1 transition-colors rounded-md w-[24px] h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
-                <MaterialSymbol icon="text_select_end" className="text-lg" />
+                <MaterialSymbol icon={props.icon} className="text-lg" />
             </div>
         </MenuContainer>
     </Tooltip>
@@ -495,15 +509,7 @@ const DiagnosticBubble = (props: {
     const [isExpanded, setExpanded] = useState(false);
 
     return (
-        <div
-            className="absolute right-4"
-            style={{
-                top: props.top + props.theme.fontSize / 4 - 1,
-                maxWidth: isExpanded ? undefined : props.width,
-                height: props.height,
-                paddingLeft: "3rem",
-            }}
-        >
+        <div style={{ maxWidth: isExpanded ? undefined : props.width }}>
             <div className="w-10 pointer-events-none" />
 
             <div
@@ -590,3 +596,9 @@ const DiagnosticBubble = (props: {
         </div>
     );
 };
+
+const MenuContainer = (props: React.PropsWithChildren<{}>) => (
+    <div className="flex flex-row items-center text-gray-600 dark:text-gray-400 text-opacity-50 h-7">
+        {props.children}
+    </div>
+);

@@ -409,6 +409,7 @@ const AddPlaygroundPageItemAlert = (props: {
                 />
 
                 <AddPlaygroundPageItemAlertButton
+                    disabled // TODO
                     setup="music"
                     name="Music"
                     description="Make a musical composition."
@@ -424,6 +425,7 @@ const AddPlaygroundPageItemAlert = (props: {
                 />
 
                 <AddPlaygroundPageItemAlertButton
+                    disabled // TODO
                     setup="graphing"
                     name="Math"
                     description="Plot mathematical functions."
@@ -439,6 +441,7 @@ const AddPlaygroundPageItemAlert = (props: {
                 />
 
                 <AddPlaygroundPageItemAlertButton
+                    disabled // TODO
                     setup="game"
                     name="Game"
                     description="Create a video game."
@@ -454,6 +457,7 @@ const AddPlaygroundPageItemAlert = (props: {
                 />
 
                 <AddPlaygroundPageItemAlertButton
+                    disabled // TODO
                     setup="physics"
                     name="Physics"
                     description="Experiment with physics."
@@ -469,6 +473,7 @@ const AddPlaygroundPageItemAlert = (props: {
                 />
 
                 <AddPlaygroundPageItemAlertButton
+                    disabled // TODO
                     setup="text"
                     name="Text"
                     description="Write text alongside your code."
@@ -491,17 +496,19 @@ const AddPlaygroundPageItemAlert = (props: {
 );
 
 const AddPlaygroundPageItemAlertButton = (props: {
+    disabled?: boolean;
     setup: string | undefined;
     name: string;
     description: string;
     onSelect: () => void;
 }) => (
     <button
-        className="group bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg p-3 transition-colors"
+        disabled={props.disabled}
+        className="group bg-gray-50 dark:bg-gray-800 disabled:opacity-50 enabled:hover:bg-gray-100 enabled:dark:hover:bg-gray-700 rounded-lg p-3 transition-colors"
         onClick={props.onSelect}
     >
         <div className="flex flex-col items-start gap-1 w-full h-full">
-            <div className="group-hover:scale-110 transition-transform">
+            <div className="enabled:group-hover:scale-110 transition-transform">
                 <SetupIcon setup={props.setup} size="lg" />
             </div>
 

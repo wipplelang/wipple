@@ -1,5 +1,5 @@
 import { MaterialSymbol } from "react-material-symbols";
-import { Button, Transition, defaultAnimationDuration } from "../../components";
+import { Button, Transition } from "../../components";
 import { colorName, colors } from "./assets/color";
 import { useState } from "react";
 
@@ -26,9 +26,8 @@ export const ColorPicker = (props: { selection: string; onDismiss: (color: strin
                                         >
                                             <Transition
                                                 in={color === selection}
-                                                exitAnimationDuration={defaultAnimationDuration}
-                                                inClassName="animate-in fade-in-50 zoom-in-0"
-                                                outClassName="animate-out fade-out-50 zoom-out-0"
+                                                inStyle={{ opacity: 1, scale: 1 }}
+                                                outStyle={{ opacity: 0.5, scale: 0 }}
                                             >
                                                 <MaterialSymbol
                                                     icon="check"

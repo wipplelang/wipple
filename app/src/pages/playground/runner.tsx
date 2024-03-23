@@ -18,6 +18,7 @@ import { MaterialSymbol } from "react-material-symbols";
 import { Help, Output } from "../../models";
 import { Mutex } from "async-mutex";
 import { defaultAnimationDuration } from "../../components";
+import { flushSync } from "react-dom";
 
 export interface RunOptions {
     dependenciesPath: string;
@@ -82,7 +83,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         return newWorker;
     }, [id]);
 
-    const [isRunning, setRunning] = useState(false);
     const [showOutput, setShowOutput] = useState(false);
     const [showRunAgain, setShowRunAgain] = useState(false);
 
@@ -94,7 +94,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         }
 
         props.onBlur();
-        setRunning(true);
         setShowRunAgain(false);
 
         try {
@@ -130,14 +129,12 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 });
 
                 props.onChangeDiagnostics(renderedDiagnostics);
-                setRunning(false);
 
                 if (renderedDiagnostics.some((diagnostic) => diagnostic.severity === "error")) {
                     return;
                 }
             } else {
                 props.onChangeDiagnostics([]);
-                setRunning(false);
             }
 
             const executable = compiler.link([
@@ -151,7 +148,10 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
             const runnerWorker = resetRunnerWorker();
             clearOutput();
 
-            setShowOutput(props.runtime != null);
+            // flushSync is required to initialize runtimeRef
+            flushSync(() => {
+                setShowOutput(props.runtime != null);
+            });
 
             if (runtimeRef.current) {
                 const mutex = runtimeMutexRef.current;
@@ -271,7 +271,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 runnerWorker.postMessage({ type: "run", executable });
             });
 
-            setRunning(false);
             setShowRunAgain(showRunAgain);
         } catch (error) {
             console.error(error);
@@ -352,7 +351,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         },
     }));
 
-    return isRunning || showOutput ? (
+    return showOutput ? (
         <div className="flex flex-col px-4 pb-4 gap-3">
             {props.runtime ? <props.runtime id={id} ref={runtimeRef} /> : null}
 
@@ -394,14 +393,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
                 return <div key={index}>{content}</div>;
             })}
-
-            {isRunning ? (
-                <div className="bouncing-loader">
-                    <div />
-                    <div />
-                    <div />
-                </div>
-            ) : null}
 
             {showRunAgain ? (
                 <div className="flex flex-col items-start">

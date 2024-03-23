@@ -1,70 +1,51 @@
-import { Mutex } from "async-mutex";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { CSSTransition } from "react-transition-group";
+import { useState, useEffect } from "react";
+import { AnimatePresence, HTMLMotionProps, motion } from "framer-motion";
 
-export const defaultAnimationDuration = 150; // FIXME: Obtain from tailwindcss-animate
+export const defaultAnimationDuration = 150;
+
+const transition = {
+    type: "linear",
+    duration: defaultAnimationDuration / 1000,
+};
 
 export interface TransitionProps {
     in: boolean;
-    waitForLayout?: boolean;
     animateOnMount?: boolean;
-    exitAnimationDuration: number;
-    inClassName?: string;
-    outClassName?: string;
+    inStyle?: HTMLMotionProps<"span">["animate"];
+    outStyle?: HTMLMotionProps<"span">["initial"] & HTMLMotionProps<"span">["exit"];
     children: JSX.Element | null;
 }
 
 export const Transition = (props: TransitionProps) => {
-    const [hasWaitedForLayout, setHasWaitedForLayout] = useState(!props.waitForLayout);
-    const [display, setDisplay] = useState(props.animateOnMount ? false : props.in);
-    const mutex = useMemo(() => new Mutex(), []);
-    const [cachedChildren, setCachedChildren] = useState<JSX.Element | null>(null);
+    const [mounted, setMounted] = useState(!props.animateOnMount);
 
     useEffect(() => {
-        if (props.waitForLayout) {
-            setTimeout(() => {
-                setHasWaitedForLayout(true);
-            }, props.exitAnimationDuration);
+        if (props.animateOnMount) {
+            requestAnimationFrame(() => {
+                setMounted(true);
+            });
         }
-    }, [props.waitForLayout]);
+    }, [props.animateOnMount]);
+
+    const [key, setKey] = useState(0);
 
     useEffect(() => {
-        if (!hasWaitedForLayout) return;
-
-        (async () => {
-            await mutex.runExclusive(
-                () =>
-                    new Promise<void>((resolve) => {
-                        if (props.in) {
-                            setCachedChildren(() => props.children);
-                            setDisplay(true);
-                            resolve();
-                        } else {
-                            setDisplay(false);
-
-                            setTimeout(() => {
-                                setCachedChildren(() => props.children);
-                                resolve();
-                            }, props.exitAnimationDuration);
-                        }
-                    }),
-            );
-        })();
-    }, [mutex, hasWaitedForLayout, props.in, props.children, props.exitAnimationDuration]);
+        setKey(key + 1);
+    }, [props.children]);
 
     return (
-        <CSSTransition
-            in={display}
-            classNames={{
-                enter: props.inClassName,
-                enterActive: props.inClassName,
-                exit: props.outClassName,
-                exitActive: props.outClassName,
-            }}
-            addEndListener={(node, done) => node.addEventListener("transitionend", done, false)}
-            timeout={{ exit: props.exitAnimationDuration }}
-        >
-            <>{cachedChildren}</>
-        </CSSTransition>
+        <AnimatePresence mode="wait">
+            {props.in && mounted ? (
+                <motion.div
+                    key={key}
+                    transition={transition}
+                    initial={props.outStyle}
+                    animate={props.inStyle}
+                    exit={props.outStyle}
+                >
+                    {props.children}
+                </motion.div>
+            ) : null}
+        </AnimatePresence>
     );
 };

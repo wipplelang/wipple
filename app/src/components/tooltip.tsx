@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Transition, defaultAnimationDuration } from ".";
+import { Transition } from ".";
 import { useDebounceValue } from "usehooks-ts";
 import {
     safePolygon,
@@ -96,9 +96,8 @@ const TooltipContent = (props: { open: boolean; children: React.ReactNode }) => 
     <div className="flex items-center justify-center w-fit">
         <Transition
             in={props.open}
-            exitAnimationDuration={defaultAnimationDuration}
-            inClassName="animate-in zoom-in-95 fade-in-25"
-            outClassName="animate-out zoom-out-95 fade-out-25"
+            inStyle={{ opacity: 1, scale: 1 }}
+            outStyle={{ opacity: 0.25, scale: 0.95 }}
         >
             <div className="border border-gray-50 dark:border-gray-900 bg-white dark:bg-gray-800 px-2.5 py-1 rounded-xl shadow-lg shadow-gray-100 dark:shadow-gray-950 text-gray-600 dark:text-gray-400 text-sm">
                 {typeof props.children === "string" ? (
