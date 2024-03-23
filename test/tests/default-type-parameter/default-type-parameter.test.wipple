@@ -1,14 +1,14 @@
 -- [should compile]
 
-X : type (X)
-Y : type (Y)
+X : type { X }
+Y : type { Y }
 
 T : A => trait A
 instance (T X) : X
 instance (T Y) : Y
 
-instance (Show X) : just "X"
-instance (Show Y) : just "Y"
+instance (Describe X) : _ -> "X"
+instance (Describe Y) : _ -> "Y"
 
 foo :: (A : X) where (T A) => A
 foo : T

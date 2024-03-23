@@ -1,5 +1,11 @@
 -- [should compile]
 
-Grade : type (A B C D F)
+Grade : type {
+    A
+    B
+    C
+    D
+    F
+}
 
 _ : A

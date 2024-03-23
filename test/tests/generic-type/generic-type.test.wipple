@@ -1,8 +1,8 @@
 -- [should compile]
 
-Foo : A => type (inner :: A)
+Foo : A => type {inner :: A}
 
-foo : Foo (inner : "Hello, world!")
+foo : Foo {inner : "Hello, world!"}
 
-(inner : inner) : foo
+{inner : inner} : foo
 show inner

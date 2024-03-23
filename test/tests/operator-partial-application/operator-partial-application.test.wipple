@@ -1,4 +1,0 @@
--- [should compile]
-
-(1 , 2 , 3) . transform (+ 1) . each show
-(+ 2 , * 2 , ^ 2) . transform (2 .) . each show

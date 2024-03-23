@@ -1,0 +1,7 @@
+// Bun Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`bounds-are-one-way.test.wipple 1`] = `
+[
+  "/Users/wilson/Desktop/wipple-wasm/test/tests/bounds-are-one-way/bounds-are-one-way.test.wipple:5:4: error: this code requires \`(T Number)\`",
+]
+`;

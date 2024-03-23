@@ -1,0 +1,12 @@
+// Bun Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`generic-type.test.wipple 1`] = `[]`;
+
+exports[`generic-type.test.wipple 2`] = `
+{
+  "output": 
+"Hello, world!
+"
+,
+}
+`;

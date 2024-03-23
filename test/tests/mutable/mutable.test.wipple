@@ -1,6 +1,5 @@
 -- [should compile]
 
-x : mutable 1
-increment! x
-x : get x
+x : 1
+x! : x + 1
 show x

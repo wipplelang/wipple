@@ -1,0 +1,16 @@
+// Bun Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`remove-duplicates.test.wipple 1`] = `[]`;
+
+exports[`remove-duplicates.test.wipple 2`] = `
+{
+  "output": 
+"5
+4
+3
+2
+1
+"
+,
+}
+`;

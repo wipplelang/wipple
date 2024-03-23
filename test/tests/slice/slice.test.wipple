@@ -1,4 +1,0 @@
--- [should compile]
-
-my-list : ("abcdefghijklmnopqrstuvwxyz" . collect :: List _)
-my-list . slice (2 to 8) . each show

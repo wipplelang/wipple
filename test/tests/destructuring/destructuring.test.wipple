@@ -1,20 +1,20 @@
 -- [should compile]
 
-Person : type (
+Person : type {
   name :: Text
-)
+}
 
-alice : Person (name : "Alice")
-(name : name) : alice
+alice : Person {name : "Alice"}
+{name : name} : alice
 show name
 
 get-name :: Person -> Text
-get-name : (name : name) -> name
+get-name : {name : name} -> name
 
-bob : Person (name : "Bob")
+bob : Person { name : "Bob"}
 show (get-name bob)
 
-instance (Show Person) : (name : name) -> name
+instance (Describe Person) : {name : name} -> name
 
-charlie : Person (name : "Charlie")
+charlie : Person {name : "Charlie"}
 show charlie

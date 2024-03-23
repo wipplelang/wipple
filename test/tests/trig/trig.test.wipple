@@ -2,4 +2,4 @@
 
 show (sin (0 degrees) = 0)
 show (cos (0 degrees) = 1)
-show (sin (3.14 radians) / cos (3.14 radians) = tan (3.14 radians))
+show (sin (45 degrees) / cos (45 degrees) = tan (45 degrees))

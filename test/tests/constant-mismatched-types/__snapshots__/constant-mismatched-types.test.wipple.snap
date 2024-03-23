@@ -1,0 +1,7 @@
+// Bun Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`constant-mismatched-types.test.wipple 1`] = `
+[
+  "/Users/wilson/Desktop/wipple-wasm/test/tests/constant-mismatched-types/constant-mismatched-types.test.wipple:3:4: error: expected this annotation to be a \`Number\` here, but found a \`Text\`",
+]
+`;

@@ -1,0 +1,7 @@
+// Bun Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`type-arithmetic.test.wipple 1`] = `
+[
+  "/Users/wilson/Desktop/wipple-wasm/test/tests/type-arithmetic/type-arithmetic.test.wipple:12:4: error: this code produces a \`_ -> (S (S (S (S (S Z)))))\`, but the \`_\`s are unknown",
+]
+`;

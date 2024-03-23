@@ -3,6 +3,6 @@
 accepts-text :: Text -> ()
 accepts-text : ...
 
--- [should display 'expected `Text`, found `Number`' rather than
- 'cannot find instance `Add Number Number Text`']
+-- should display 'expected `Text`, found `Number`' rather than
+-- 'cannot find instance `Add Number Number Text`'
 accepts-text (1 + 2)

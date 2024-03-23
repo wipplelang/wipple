@@ -1,21 +1,21 @@
 -- [should compile]
 
-[Greet is a trait that can be defined with a function returning text]
+-- Greet is a trait that can be defined with a function returning text
 Greet : A => trait (A -> Text)
 
-[For any value where Greet is defined, return a greeting]
+-- For any value where Greet is defined, return a greeting
 greet :: A where (Greet A) => A -> Text
 greet : x -> "Hello, _!" (Greet x)
 
-Person : type (name :: Text)
+Person : type {name :: Text}
 
-[Greet for Person values is defined as the person's name]
-instance (Greet Person) : (name : name) -> name
+-- Greet for Person values is defined as the person's name
+instance (Greet Person) : {name : name} -> name
 
-Earth : type (Earth)
+Earth : type
 
-[Greet for Earth values is defined as "world"]
-instance (Greet Earth) : just "world"
+-- Greet for Earth values is defined as "world"
+instance (Greet Earth) : _ -> "world"
 
-show (greet (Person (name : "Bob"))) [Hello, Bob!]
-show (greet Earth) [Hello, world!]
+show (greet (Person {name : "Bob"})) -- Hello, Bob!
+show (greet Earth) -- Hello, world!
