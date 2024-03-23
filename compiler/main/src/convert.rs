@@ -348,6 +348,49 @@ pub mod lower {
         })
     }
 
+    pub fn unconvert_type<
+        D: wipple_syntax::Driver<Info = <crate::Driver as wipple_lower::Driver>::Info>,
+    >(
+        r#type: wipple_util::WithInfo<Info, wipple_lower::Type<crate::Driver>>,
+    ) -> wipple_util::WithInfo<crate::Info, wipple_syntax::Type<D>> {
+        let info = r#type.info.clone();
+
+        r#type.map(|r#type| match r#type {
+            wipple_lower::Type::Error => wipple_syntax::Type::Error,
+            wipple_lower::Type::Placeholder => wipple_syntax::Type::Placeholder,
+            wipple_lower::Type::Declared { path, parameters } => {
+                let name = path.map(|mut path| path.pop().unwrap().name().map(ToString::to_string));
+
+                wipple_syntax::Type::Declared {
+                    name,
+                    parameters: parameters.into_iter().map(unconvert_type).collect(),
+                }
+            }
+            wipple_lower::Type::Parameter(mut parameter) => {
+                let name = wipple_util::WithInfo {
+                    info,
+                    item: parameter.pop().unwrap().name().map(ToString::to_string),
+                };
+
+                wipple_syntax::Type::Declared {
+                    name,
+                    parameters: vec![],
+                }
+            }
+            wipple_lower::Type::Function { inputs, output } => wipple_syntax::Type::Function {
+                inputs: inputs.into_iter().map(unconvert_type).collect(),
+                output: unconvert_type(output.unboxed()).boxed(),
+            },
+            wipple_lower::Type::Tuple(elements) => {
+                wipple_syntax::Type::Tuple(elements.into_iter().map(unconvert_type).collect())
+            }
+            wipple_lower::Type::Block(r#type) => {
+                wipple_syntax::Type::Block(unconvert_type(r#type.unboxed()).boxed())
+            }
+            wipple_lower::Type::Intrinsic => wipple_syntax::Type::Intrinsic,
+        })
+    }
+
     fn convert_instance(
         instance: wipple_util::WithInfo<crate::Info, wipple_syntax::Instance<crate::SyntaxDriver>>,
     ) -> wipple_util::WithInfo<Info, wipple_lower::UnresolvedInstance<crate::Driver>> {
@@ -724,6 +767,34 @@ pub mod typecheck {
                 wipple_typecheck::Type::Block(convert_type(r#type.unboxed()).boxed())
             }
             wipple_lower::Type::Intrinsic => wipple_typecheck::Type::Intrinsic,
+        })
+    }
+
+    pub fn unconvert_type(
+        r#type: wipple_util::WithInfo<Info, wipple_typecheck::Type<crate::Driver>>,
+    ) -> wipple_util::WithInfo<crate::Info, wipple_lower::Type<crate::Driver>> {
+        let info = r#type.info.clone();
+
+        r#type.map(|r#type| match r#type {
+            wipple_typecheck::Type::Unknown(_) => wipple_lower::Type::Error,
+            wipple_typecheck::Type::Parameter(parameter) => {
+                wipple_lower::Type::Parameter(parameter)
+            }
+            wipple_typecheck::Type::Declared { path, parameters } => wipple_lower::Type::Declared {
+                path: wipple_util::WithInfo { info, item: path },
+                parameters: parameters.into_iter().map(unconvert_type).collect(),
+            },
+            wipple_typecheck::Type::Function { inputs, output } => wipple_lower::Type::Function {
+                inputs: inputs.into_iter().map(unconvert_type).collect(),
+                output: unconvert_type(output.unboxed()).boxed(),
+            },
+            wipple_typecheck::Type::Tuple(elements) => {
+                wipple_lower::Type::Tuple(elements.into_iter().map(unconvert_type).collect())
+            }
+            wipple_typecheck::Type::Block(r#type) => {
+                wipple_lower::Type::Block(unconvert_type(r#type.unboxed()).boxed())
+            }
+            wipple_typecheck::Type::Intrinsic => wipple_lower::Type::Intrinsic,
         })
     }
 

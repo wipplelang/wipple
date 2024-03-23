@@ -30,8 +30,8 @@ tasks:
     vscode:install:
         run: once
         deps:
-            - compiler:build:node
-            - render:build:node
+            - compiler:build
+            - render:build
         dir: vscode
         cmds:
             - npx @vscode/vsce package --no-dependencies --skip-license --allow-missing-repository
@@ -117,12 +117,6 @@ tasks:
         cmds:
             - npm run build
 
-    compiler:build:node:
-        run: once
-        dir: compiler
-        cmds:
-            - WIPPLE_COMPILER_WASM_FLAGS="--target nodejs" WIPPLE_COMPILER_WASM_PLATFORM="node" npm run build
-
     interpreter:install-dependencies:
         run: once
         dir: interpreter
@@ -141,14 +135,6 @@ tasks:
         run: once
         deps:
             - compiler:build
-        dir: render
-        cmds:
-            - npm run build
-
-    render:build:node:
-        run: once
-        deps:
-            - compiler:build:node
         dir: render
         cmds:
             - npm run build

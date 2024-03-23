@@ -332,7 +332,8 @@ impl<D: Driver> DefaultFromInfo<D::Info> for Expression<D> {
     }
 }
 
-#[derive(Deserialize, Derivative)]
+#[allow(missing_docs)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(
     Debug(bound = "D::Info: Debug"),
     Clone(bound = ""),
@@ -341,7 +342,7 @@ impl<D: Driver> DefaultFromInfo<D::Info> for Expression<D> {
 )]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-pub(crate) enum Type<D: Driver> {
+pub enum Type<D: Driver> {
     Error,
     Placeholder,
     Unit,
@@ -590,15 +591,41 @@ pub enum SyntaxKind {
 
 #[allow(missing_docs)]
 #[derive(Debug)]
-pub struct Result<D: Driver> {
-    pub top_level: WithInfo<D::Info, TopLevel<D>>,
+pub struct Result<D: Driver, T> {
+    pub parsed: WithInfo<D::Info, T>,
     pub diagnostics: Vec<WithInfo<D::Info, Diagnostic<D>>>,
 }
 
-/// Parse a token tree into a concrete syntax tree.
-pub fn parse<D: Driver>(driver: &D, tree: WithInfo<D::Info, &TokenTree<'_, D>>) -> Result<D>
+/// Parse a token tree into a concrete top-level syntax tree.
+pub fn parse_top_level<D: Driver>(
+    driver: &D,
+    tree: WithInfo<D::Info, &TokenTree<'_, D>>,
+) -> Result<D, TopLevel<D>>
 where
     D::Info: From<Location>,
+{
+    parse_rule(driver, tree, rules::top_level())
+}
+
+/// Parse a token tree into a type.
+pub fn parse_type<D: Driver>(
+    driver: &D,
+    tree: WithInfo<D::Info, &TokenTree<'_, D>>,
+) -> Result<D, Type<D>>
+where
+    D::Info: From<Location>,
+{
+    parse_rule(driver, tree, rules::r#type())
+}
+
+fn parse_rule<D: Driver, T>(
+    driver: &D,
+    tree: WithInfo<D::Info, &TokenTree<'_, D>>,
+    rule: base::Rule<D, T>,
+) -> Result<D, T>
+where
+    D::Info: From<Location>,
+    T: DefaultFromInfo<D::Info> + 'static,
 {
     let mut parser = base::Parser::new(driver);
 
@@ -607,10 +634,10 @@ where
         item: SyntaxKind::TopLevel,
     });
 
-    let top_level = rules::top_level().parse(&mut parser, tree, &stack);
+    let parsed = rule.parse(&mut parser, tree, &stack);
 
     Result {
-        top_level,
+        parsed,
         diagnostics: parser.into_diagnostics(),
     }
 }

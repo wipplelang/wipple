@@ -62,10 +62,7 @@ pub fn link(libraries: &str) -> Option<String> {
 pub fn format(code: &str) -> String {
     initialize();
 
-    let syntax_driver = SyntaxDriver {
-        file_path: Rc::from("format"),
-        visible_path: Rc::from("format"),
-    };
+    let syntax_driver = SyntaxDriver::for_formatting();
 
     match syntax::tokenize::tokenize(&syntax_driver, code)
         .collect::<std::result::Result<Vec<_>, _>>()
@@ -73,6 +70,97 @@ pub fn format(code: &str) -> String {
         Ok(tokens) => syntax::tokenize::format(tokens.iter().map(|token| &token.item)),
         Err(_) => code.to_string(),
     }
+}
+
+/// Parse a type.
+#[wasm_bindgen]
+pub fn parse_type(code: &str) -> Option<String> {
+    initialize();
+
+    let syntax_driver = SyntaxDriver::for_formatting();
+
+    let tokens = syntax::tokenize::tokenize(&syntax_driver, code)
+        .collect::<std::result::Result<Vec<_>, _>>()
+        .ok()?;
+
+    let logical_tokens = syntax::tokenize::to_logical_lines(&syntax_driver, tokens);
+    let tree = syntax::tokenize::TokenTree::from_inline(&syntax_driver, logical_tokens)?;
+
+    let parse_result = syntax::parse::parse_type(&syntax_driver, tree.as_ref());
+    if !parse_result.diagnostics.is_empty() {
+        return None;
+    }
+
+    Some(serialize(&parse_result.parsed))
+}
+
+/// Convert a compiled type into a parsed type.
+#[wasm_bindgen]
+pub fn parsed_type_from_compiled(type_: &str) -> String {
+    initialize();
+
+    let typecheck_type: util::WithInfo<Info, typecheck::Type<Driver>> = deserialize(type_);
+    let lower_type = convert::typecheck::unconvert_type(typecheck_type);
+    let syntax_type = convert::lower::unconvert_type::<SyntaxDriver>(lower_type);
+
+    serialize(&syntax_type)
+}
+
+/// Check if two parsed types are equal, assuming names are unique.
+#[wasm_bindgen]
+pub fn parsed_types_are_equal(left: &str, right: &str) -> bool {
+    initialize();
+
+    let left: util::WithInfo<Info, syntax::Type<SyntaxDriver>> = deserialize(left);
+    let right: util::WithInfo<Info, syntax::Type<SyntaxDriver>> = deserialize(right);
+
+    fn check(left: syntax::Type<SyntaxDriver>, right: syntax::Type<SyntaxDriver>) -> bool {
+        match (left, right) {
+            (_, syntax::Type::Error | syntax::Type::Placeholder) => true,
+            (
+                syntax::Type::Declared { name, parameters },
+                syntax::Type::Declared {
+                    name: expected_name,
+                    parameters: expected_parameters,
+                },
+            ) => {
+                name.item == expected_name.item
+                    && parameters.len() == expected_parameters.len()
+                    && parameters
+                        .into_iter()
+                        .zip(expected_parameters)
+                        .all(|(left, right)| check(left.item, right.item))
+            }
+            (
+                syntax::Type::Function { inputs, output },
+                syntax::Type::Function {
+                    inputs: expected_inputs,
+                    output: expected_output,
+                },
+            ) => {
+                inputs.len() == expected_inputs.len()
+                    && inputs
+                        .into_iter()
+                        .zip(expected_inputs)
+                        .all(|(left, right)| check(left.item, right.item))
+                    && check(*output.item, *expected_output.item)
+            }
+            (syntax::Type::Tuple(elements), syntax::Type::Tuple(expected_elements)) => {
+                elements.len() == expected_elements.len()
+                    && elements
+                        .into_iter()
+                        .zip(expected_elements)
+                        .all(|(left, right)| check(left.item, right.item))
+            }
+            (syntax::Type::Block(r#type), syntax::Type::Block(expected_type)) => {
+                check(*r#type.item, *expected_type.item)
+            }
+            (syntax::Type::Intrinsic, syntax::Type::Intrinsic) => true,
+            _ => false,
+        }
+    }
+
+    check(left.item, right.item)
 }
 
 /// The driver.
@@ -245,7 +333,7 @@ impl Driver {
                     .map(|diagnostic| diagnostic.map(Diagnostic::Tokenize)),
             );
 
-            let parse_result = syntax::parse::parse(&syntax_driver, tree.as_ref());
+            let parse_result = syntax::parse::parse_top_level(&syntax_driver, tree.as_ref());
 
             diagnostics.extend(
                 parse_result
@@ -254,7 +342,7 @@ impl Driver {
                     .map(|error| error.map(Diagnostic::Parse)),
             );
 
-            let syntax_result = syntax::parse(&syntax_driver, parse_result.top_level);
+            let syntax_result = syntax::parse(&syntax_driver, parse_result.parsed);
 
             diagnostics.extend(
                 syntax_result
@@ -551,6 +639,15 @@ impl Driver {
 pub struct SyntaxDriver {
     file_path: Rc<str>,
     visible_path: Rc<str>,
+}
+
+impl SyntaxDriver {
+    fn for_formatting() -> Self {
+        Self {
+            file_path: Rc::from("format"),
+            visible_path: Rc::from("format"),
+        }
+    }
 }
 
 impl syntax::Driver for SyntaxDriver {

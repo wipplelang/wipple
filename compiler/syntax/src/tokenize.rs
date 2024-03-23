@@ -1552,4 +1552,22 @@ impl<'src, D: Driver> TokenTree<'src, D> {
 
         (tree, diagnostics)
     }
+
+    pub fn from_inline(
+        driver: &D,
+        tokens: impl IntoIterator<Item = WithInfo<D::Info, Token<'src>>>,
+    ) -> Option<WithInfo<D::Info, Self>>
+    where
+        D::Info: From<Location>,
+    {
+        let (tree, diagnostics) = TokenTree::from_top_level(driver, tokens);
+        if !diagnostics.is_empty() {
+            return None;
+        }
+
+        match tree.item {
+            TokenTree::Block(statements) => Some(statements.into_iter().next().unwrap()),
+            _ => unreachable!("`from_top_level` always returns a block"),
+        }
+    }
 }

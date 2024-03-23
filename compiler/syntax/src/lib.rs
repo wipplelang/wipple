@@ -483,10 +483,11 @@ pub struct Variant<D: Driver> {
 }
 
 /// A parsed type.
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative, TS)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
+#[ts(export, rename = "syntax_Type", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Type<D: Driver> {
     /// A type that could not be parsed.
     Error,

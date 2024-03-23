@@ -1,4 +1,4 @@
-import type * as compiler from "wipple-compiler";
+import * as compiler from "wipple-compiler";
 import { LinesAndColumns, SourceLocation } from "lines-and-columns";
 
 export type AnyDeclaration = { name: string | null; path: compiler.lower_Path } & (
@@ -867,11 +867,16 @@ export class Render {
                 const inputMatch = /`(.*)`/.exec(attribute.input);
 
                 if (inputMatch) {
-                    const [_, mismatchedType] = inputMatch;
+                    const [_, renderedMismatchedType] = inputMatch;
 
-                    const renderedActualType = this.renderType(actualType, true, false);
+                    const mismatchedParsedType = compiler.parseType(renderedMismatchedType);
+                    if (!mismatchedParsedType) {
+                        continue;
+                    }
 
-                    if (renderedActualType !== mismatchedType) {
+                    const actualParsedType = compiler.parsedTypeFromCompiled(actualType);
+
+                    if (!compiler.parsedTypesAreEqual(mismatchedParsedType, actualParsedType)) {
                         continue;
                     }
                 }

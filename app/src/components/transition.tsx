@@ -35,8 +35,6 @@ export const Transition = (props: TransitionProps) => {
             await mutex.runExclusive(
                 () =>
                     new Promise<void>((resolve) => {
-                        console.log("props.in:", props.in);
-
                         if (props.in) {
                             setCachedChildren(() => props.children);
                             setDisplay(true);
