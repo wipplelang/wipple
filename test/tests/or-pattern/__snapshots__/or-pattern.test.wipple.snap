@@ -2,8 +2,8 @@
 
 exports[`or-pattern.test.wipple 1`] = `
 [
-  "/Users/wilson/Desktop/wipple-wasm/test/tests/or-pattern/or-pattern.test.wipple:4:2: warning: this pattern is unnecessary because it is already handled above",
-  "/Users/wilson/Desktop/wipple-wasm/test/tests/or-pattern/or-pattern.test.wipple:5:2: warning: this pattern is unnecessary because it is already handled above",
+  "or-pattern/or-pattern.test.wipple:4:2: warning: this pattern is unnecessary because it is already handled above",
+  "or-pattern/or-pattern.test.wipple:5:2: warning: this pattern is unnecessary because it is already handled above",
 ]
 `;
 

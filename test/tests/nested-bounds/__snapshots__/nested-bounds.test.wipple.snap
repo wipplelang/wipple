@@ -2,6 +2,6 @@
 
 exports[`nested-bounds.test.wipple 1`] = `
 [
-  "/Users/wilson/Desktop/wipple-wasm/test/tests/nested-bounds/nested-bounds.test.wipple:11:0: error: this code requires \`(W _)\`",
+  "nested-bounds/nested-bounds.test.wipple:11:0: error: this code requires \`(W _)\`",
 ]
 `;

@@ -2,7 +2,7 @@
 
 exports[`call-function-diagnostic.test.wipple 1`] = `
 [
-  "/Users/wilson/Desktop/wipple-wasm/test/tests/call-function-diagnostic/call-function-diagnostic.test.wipple:3:16: error: expected pattern here while reading this function inputs",
-  "/Users/wilson/Desktop/wipple-wasm/test/tests/call-function-diagnostic/call-function-diagnostic.test.wipple:3:39: error: can't find \`text\`",
+  "call-function-diagnostic/call-function-diagnostic.test.wipple:3:16: error: expected pattern here while reading this function inputs",
+  "call-function-diagnostic/call-function-diagnostic.test.wipple:3:39: error: can't find \`text\`",
 ]
 `;

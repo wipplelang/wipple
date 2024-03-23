@@ -47,7 +47,16 @@ export const runTest = async (
         }
     }
 
-    const compileResult = compile([{ path: file, visiblePath: file, code }], baseInterface);
+    const compileResult = compile(
+        [
+            {
+                path: file,
+                visiblePath: `${path.basename(path.dirname(file))}/${path.basename(file)}`,
+                code,
+            },
+        ],
+        baseInterface,
+    );
 
     const render = new Render();
     render.update(compileResult.interface, [baseLibrary, compileResult.library]);
