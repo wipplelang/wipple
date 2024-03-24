@@ -3,7 +3,7 @@ generated/
 dist/
 target/
 **/*.rs.bk
-Cargo.lock
+# Cargo.lock
 bin/
 pkg/
 wasm-pack.log

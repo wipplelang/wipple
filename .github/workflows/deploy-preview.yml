@@ -1,0 +1,28 @@
+on:
+    - workflow_dispatch
+    - push
+
+jobs:
+    build:
+        uses: ./.github/workflows/build.yml
+        secrets: inherit
+
+    deploy:
+        name: Deploy (Preview)
+        needs: build
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+
+            - uses: actions/download-artifact@master
+              with:
+                  name: app-${{ github.sha }}
+                  path: .firebase/public
+
+            - uses: FirebaseExtended/action-hosting-deploy@v0
+              with:
+                  entryPoint: .firebase
+                  repoToken: ${{ secrets.GITHUB_TOKEN }}
+                  firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_WIPPLE_1B277 }}
+                  projectId: wipple-1b277
+                  channelId: live

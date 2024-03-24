@@ -483,24 +483,12 @@ interface FetchDependenciesResult {
     libraries: compiler.linker_UnlinkedLibrary[];
 }
 
-const fetchDependencies = async (name: string): Promise<FetchDependenciesResult> => {
-    const baseUrlString = import.meta.env.VITE_DEPENDENCIES_BASE_URL as string;
-
-    if (!baseUrlString) {
-        throw new Error("missing VITE_DEPENDENCIES_BASE_URL");
-    }
-
-    return fetch(new URL(`${name}.wipplebundle`, baseUrlString)).then((response) =>
+const fetchDependencies = async (name: string): Promise<FetchDependenciesResult> =>
+    fetch(new URL(`library/${name}.wipplebundle`, window.location.origin)).then((response) =>
         response.json(),
     );
-};
 
-const fetchBuiltinsHelp = async (): Promise<Record<string, string>> => {
-    const baseUrlString = import.meta.env.VITE_DEPENDENCIES_BASE_URL as string;
-
-    if (!baseUrlString) {
-        throw new Error("missing VITE_DEPENDENCIES_BASE_URL");
-    }
-
-    return fetch(new URL("help/builtins.json", baseUrlString)).then((response) => response.json());
-};
+const fetchBuiltinsHelp = async (): Promise<Record<string, string>> =>
+    fetch(new URL("library/help/builtins.json", window.location.origin)).then((response) =>
+        response.json(),
+    );

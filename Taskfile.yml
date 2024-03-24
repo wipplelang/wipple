@@ -46,11 +46,16 @@ tasks:
         cmds:
             - npm run dev
 
+    app:install-dependencies:
+        run: once
+        dir: app
+        cmds:
+            - npm install
+
     app:build:
         run: once
         deps:
             - app:bundle-for-playground
-            - render:build
         dir: app
         cmds:
             - npm run build
@@ -81,6 +86,7 @@ tasks:
             - compiler:install-dependencies
             - interpreter:install-dependencies
             - render:install-dependencies
+            - app:install-dependencies
 
     test:install-dependencies:
         run: once
