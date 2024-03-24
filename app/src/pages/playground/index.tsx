@@ -132,6 +132,7 @@ export const PlaygroundPage = () => {
                 />
 
                 <PlaygroundPageEditor
+                    id={selectedPageId}
                     items={
                         playgroundPageIndex != null
                             ? playground!.pages[playgroundPageIndex].items
@@ -183,6 +184,7 @@ export const PlaygroundPage = () => {
 };
 
 const PlaygroundPageEditor = (props: {
+    id?: string;
     items?: PlaygroundPageItem[];
     onAddItem: (item: PlaygroundPageItem) => void;
     onChangeItem: (index: number, item: PlaygroundPageItem) => void;
@@ -205,12 +207,12 @@ const PlaygroundPageEditor = (props: {
 
     return (
         <div className="flex-1 flex flex-col items-stretch gap-4 container max-w-4xl px-4 pb-4">
-            {props.items ? (
+            {props.id && props.items ? (
                 <>
                     {props.items.map((item, index) =>
                         index <= maxRenderIndex ? (
                             <PlaygroundPageItemEditor
-                                key={index}
+                                key={`${props.id!}-${index}`}
                                 item={item}
                                 onChange={(item) => props.onChangeItem(index, item)}
                                 onMoveDown={() => props.onMoveItemDown(index)}
