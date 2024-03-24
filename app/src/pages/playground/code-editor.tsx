@@ -507,7 +507,7 @@ const EditButton = (props: { onSelectAll: () => void; onUndo: () => void; onRedo
             {
                 title: "Redo",
                 shortcut: {
-                    mac: "⌘ ⇧ Z",
+                    mac: "⇧ ⌘ Z",
                     win: "Ctrl Y",
                 },
                 icon: "redo",
