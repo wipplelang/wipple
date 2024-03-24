@@ -1,0 +1,13 @@
+-- [should compile]
+
+remove-duplicates :: Element where (Describe Element) (Equal Element) (Hash Element) => (List Element) -> Sequence Element
+remove-duplicates : do {
+  seen : (,)
+  filter (item -> (seen . (not contains?) item) and (do {
+    seen! : seen . insert item
+    True
+  }))
+}
+
+numbers : 5 , 5 , 4 , 3 , 3 , 3 , 2 , 1 , 2 , 3 , 4 , 5
+numbers . remove-duplicates . each show

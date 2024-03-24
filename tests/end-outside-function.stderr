@@ -1,8 +1,0 @@
-error: 
-  ┌─ test:1:1
-  │
-1 │ end 5
-  │ ^^^^^ cannot use `end` outside a function
-  │
-  = for more information, see https://wipple.dev/playground/?lesson=errors/end-outside-function
-

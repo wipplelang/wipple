@@ -1,0 +1,9 @@
+-- [should compile]
+
+f :: A => A -> A
+f : x -> x
+
+g :: B => B -> B
+g : x -> f x
+
+_ : g 42

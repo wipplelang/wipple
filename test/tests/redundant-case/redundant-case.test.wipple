@@ -1,0 +1,10 @@
+-- [should warn]
+
+x : when (Some 42) {
+  Some _ -> "a"
+  Some _ -> "b"
+  None -> "c"
+  _ -> "d"
+}
+
+show x

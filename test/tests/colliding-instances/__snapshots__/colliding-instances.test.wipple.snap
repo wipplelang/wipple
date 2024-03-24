@@ -1,0 +1,9 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`colliding-instances.test.wipple 1`] = `
+[
+  "colliding-instances/colliding-instances.test.wipple:8:0: error: this instance already exists elsewhere; try making it more specific",
+  "colliding-instances/colliding-instances.test.wipple:6:0: error: this instance already exists elsewhere; try making it more specific",
+  "colliding-instances/colliding-instances.test.wipple:11:0: error: this instance already exists elsewhere; try making it more specific",
+]
+`;

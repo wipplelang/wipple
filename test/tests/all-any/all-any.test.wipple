@@ -1,0 +1,6 @@
+-- [should compile]
+
+show ((1 , 2 , 3) . all? (n -> n > 0))
+show ((1 , -2 , 3) . all? (n -> n > 0))
+show ((1 , -2 , 3) . any? (n -> n > 0))
+show ((-1 , -2 , -3) . any? (n -> n > 0))

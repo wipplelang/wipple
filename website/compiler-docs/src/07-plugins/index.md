@@ -1,3 +1,0 @@
-# Plugins
-
-Work in progress!

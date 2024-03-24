@@ -1,0 +1,162 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Inter */
+
+.ui-font {
+    font-family: Inter, system-ui, sans-serif;
+    font-feature-settings: "liga" 1, "calt" 1; /* fix for Chrome */
+}
+
+@supports (font-variation-settings: normal) {
+    .ui-font {
+        font-family: InterVariable, sans-serif;
+    }
+}
+
+:root {
+    @apply ui-font;
+}
+
+/* Styles */
+
+:root {
+    @apply antialiased scroll-smooth;
+}
+
+body {
+    @apply bg-white dark:bg-gray-950 text-black dark:text-white font-medium;
+}
+
+code,
+.markdown code {
+    font-family: "JetBrains Mono", monospace;
+    font-feature-settings: normal;
+    font-variation-settings: normal;
+    font-variant-ligatures: none;
+}
+
+.help .markdown {
+    @apply leading-relaxed;
+}
+
+:not(.help) .markdown :not(pre) code {
+    @apply inline-block align-middle mb-0.5 text-gray-700 dark:text-gray-300 text-xs bg-gray-50 dark:bg-gray-800 px-1.5 rounded-md;
+}
+
+.help .markdown code {
+    @apply my-1 px-2 inline-block bg-gray-50 dark:bg-gray-900 rounded-lg p-1;
+}
+
+.help .markdown pre:has(code) {
+    @apply my-4 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg;
+}
+
+/* Animations */
+
+@keyframes bouncing-loader {
+    to {
+        opacity: 0.1;
+    }
+}
+
+.bouncing-loader {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.bouncing-loader > div {
+    width: 6px;
+    height: 6px;
+    margin: 3px 3px;
+    border-radius: 50%;
+    background-color: #a3a1a1;
+    opacity: 1;
+    animation: bouncing-loader 0.6s infinite alternate;
+}
+
+.bouncing-loader > div:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.bouncing-loader > div:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes shake {
+    0% {
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-4px);
+    }
+    75% {
+        transform: translateX(4px);
+    }
+    100% {
+        transform: translateX(0);
+    }
+}
+
+.shake {
+    animation: shake 0.5s both;
+    animation-iteration-count: 2;
+    animation-duration: 175ms;
+}
+
+/* Syntax highlighting */
+
+.cm-editor .cm-cursor {
+    @apply border-l-blue-500 border-l-2 rounded-full;
+}
+
+.tok-comment {
+    color: #6a737d;
+}
+
+.tok-string {
+    color: #032f62;
+}
+
+.tok-number {
+    color: #032f62;
+}
+
+.tok-keyword {
+    color: #e36209;
+}
+
+.tok-operator {
+    color: #005cc5;
+}
+
+.tok-typeName {
+    color: #6f42c1;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tok-comment {
+        color: #6a737d;
+    }
+
+    .tok-string {
+        color: #9ecbff;
+    }
+
+    .tok-number {
+        color: #9ecbff;
+    }
+
+    .tok-keyword {
+        color: #ffab70;
+    }
+
+    .tok-operator {
+        color: #79b8ff;
+    }
+
+    .tok-typeName {
+        color: #b392f0;
+    }
+}

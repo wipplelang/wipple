@@ -1,0 +1,11 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`is.test.wipple 1`] = `[]`;
+
+exports[`is.test.wipple 2`] = `
+{
+  "output": "True
+False
+",
+}
+`;

@@ -1,1 +1,0 @@
-show ((negate 3) = -3)

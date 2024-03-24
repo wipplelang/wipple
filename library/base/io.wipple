@@ -1,0 +1,39 @@
+-- Produce a piece of `Text` describing the value.
+-- [on-unimplemented]: "cannot describe a _ value" Value
+Describe : (Value : Text) => trait (Value -> Text)
+
+intrinsic "constant" "show" : Describe -- FIXME: Rename intrinsic to 'describe'
+
+-- Produce a piece of `Text` describing the value.
+describe :: (Value : Text) where (Describe Value) => Value -> Text
+describe : Describe
+
+-- Display a value on the screen.
+-- [suggest-quotes]: True
+-- [alias]: "print"
+-- [alias]: "println"
+-- [alias]: "display"
+show :: (Value : Text) where (Describe Value) => Value -> ()
+show : value -> intrinsic "display" (describe value)
+
+instance (Describe Text) : text -> text
+instance (Describe Number) : n -> intrinsic "number-to-text" n
+instance (Describe Boolean) : b -> if b {"True"} {"False"}
+Value where (Describe Value) => instance (Describe (Maybe Value)) : m -> when m {
+    Some value -> "Some _" value
+    None -> "None"
+}
+
+-- Convert from a piece of `Text` to a value.
+-- [on-unimplemented]: "cannot produce a _ value from `Text`" Value
+Read : Value => trait (Text -> Maybe Value)
+instance (Read Text) : Some
+instance (Read Number) : text -> intrinsic "text-to-number" text
+
+-- Ask the user to enter a value.
+prompt :: Value where (Read Value) => Text -> Value
+prompt : prompt -> intrinsic "prompt" prompt Read
+
+-- -- Ask the user to pick from a list of choices.
+-- choice :: Element where (Describe Element) => Text (List Element) -> Element
+-- choice : prompt items -> error "TODO"

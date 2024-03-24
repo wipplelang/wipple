@@ -1,0 +1,44 @@
+Number : type intrinsic
+intrinsic "type" "number" : Number
+
+Text : type intrinsic
+intrinsic "type" "text" : Text
+
+Maybe : Value => type {
+    None
+    Some Value
+}
+
+intrinsic "type" "maybe" : Maybe
+intrinsic "constant" "none" : None
+intrinsic "constant" "some" : Some
+
+-- [on-unimplemented]: "cannot convert _ into _" Input Output
+As : Input Output => trait (Input -> Output)
+intrinsic "trait" "as" : As
+
+Value => instance (As Value Value) : value -> value
+
+error :: (Value : ()) => Text -> Value
+error : message -> intrinsic "crash" message
+
+... :: Value => Value
+... : error "not implemented"
+
+assert :: Text -> Boolean -> ()
+assert : message -> condition -> if condition {} {error message}
+
+unreachable :: Value => Value
+unreachable : error "unreachable"
+
+-- Represents the default or initial value of a type.
+-- [on-unimplemented]: "_ has no default value" Value
+Empty : Value => trait Value
+instance (Empty Number) : 0
+instance (Empty Text) : ""
+instance (Empty Boolean) : False
+Value => instance (Empty (Maybe Value)) : None
+
+-- Send a message to the runtime.
+runtime-message :: Input (Output : ()) => Text Input -> Output
+runtime-message : message data -> intrinsic "runtime-message" message data

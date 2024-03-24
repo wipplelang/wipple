@@ -1,0 +1,32 @@
+-- A continuous range between two numbers.
+Range : (N : Number) => type {
+    min :: N
+    max :: N
+}
+
+To : N => trait (N N -> Range N)
+intrinsic "trait" "to" : To
+(N : Number) => instance (To N) : max min -> {
+    min : min
+    max : max
+}
+
+-- A range between two numbers that counts up in discrete steps.
+Stride : (N : Number) => type {
+    min :: N
+    max :: N
+    step :: N
+}
+
+By : (N : Number) => trait ((Range N) N -> Stride N)
+intrinsic "trait" "by" : By
+(N : Number) => instance (By N) : {
+    min : min
+    max : max
+} step -> {
+    min : min
+    max : max
+    step : step
+}
+
+-- TODO: 'As-Sequence' and 'slice'

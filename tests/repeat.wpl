@@ -1,3 +1,0 @@
-repeat (4 times) {
-  show "Hello, world!"
-}

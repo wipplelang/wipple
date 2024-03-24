@@ -1,0 +1,11 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`infer.test.wipple 1`] = `[]`;
+
+exports[`infer.test.wipple 2`] = `
+{
+  "output": "C
+Java
+",
+}
+`;

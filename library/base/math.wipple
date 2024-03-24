@@ -1,0 +1,79 @@
+-- The number returned from calculations whose result is undefined (eg. dividing
+-- by zero).
+undefined :: Number
+undefined : intrinsic "undefined-number"
+
+-- Add two values together, returning the sum.
+-- [on-unimplemented]: "cannot add _ to _" Right Left
+Add : (Left : Number) (Right : Number) (infer Sum) => trait (Left Right -> Sum)
+intrinsic "trait" "add" : Add
+instance (Add Number Number Number) : left right -> intrinsic "add-number" left right
+
+-- Subtract the one value from another, returning the difference.
+-- [on-unimplemented]: "cannot subtract _ from _" Right Left
+Subtract : (Left : Number) (Right : Number) (infer Difference) => trait (Left Right -> Difference)
+intrinsic "trait" "subtract" : Subtract
+instance (Subtract Number Number Number) : left right -> intrinsic "subtract-number" left right
+
+-- Multiply two values together, returning the product.
+-- [on-unimplemented]: "cannot multiply _ by _" Left Right
+Multiply : (Left : Number) (Right : Number) (infer Product) => trait (Left Right -> Product)
+intrinsic "trait" "multiply" : Multiply
+instance (Multiply Number Number Number) : left right -> intrinsic "multiply-number" left right
+
+-- Divide two numbers, returning the quotient.
+-- [on-unimplemented]: "cannot divide _ by _" Left Right
+Divide : (Left : Number) (Right : Number) (infer Quotient) => trait (Left Right -> Quotient)
+intrinsic "trait" "divide" : Divide
+instance (Divide Number Number Number) : left right -> intrinsic "divide-number" left right
+
+-- Divide two numbers, returning the remainder.
+-- [on-unimplemented]: "cannot divide _ by _" Left Right
+Remainder : (Left : Number) (Right : Number) (infer Remainder) => trait (Left Right -> Remainder)
+intrinsic "trait" "remainder" : Remainder
+instance (Remainder Number Number Number) : left right -> intrinsic "remainder-number" left right
+
+-- Raise one number to the power of the other number.
+-- [on-unimplemented]: "cannot raise _ to the power of _" Left Right
+Power : (Left : Number) (Right : Number) (infer Power) => trait (Left Right -> Power)
+intrinsic "trait" "power" : Power
+instance (Power Number Number Number) : left right -> intrinsic "power-number" left right
+
+-- Round down a number to the nearest integer.
+floor :: Number -> Number
+floor : n -> intrinsic "floor-number" n
+
+-- Round up a number to the nearest integer.
+ceil :: Number -> Number
+ceil : n -> intrinsic "ceil-number" n
+
+-- Calculate the square root of a number.
+sqrt :: Number -> Number
+sqrt : n -> intrinsic "sqrt-number" n
+
+-- An angle represented in degrees.
+Angle : type Number
+
+-- An angle in degrees.
+degrees :: Number -> Angle
+degrees : Angle
+
+-- Calculate the sine of an angle.
+sin :: Angle -> Number
+sin : (Angle degrees) -> intrinsic "sin" degrees
+
+-- Calculate the cosine of an angle.
+cos :: Angle -> Number
+cos : (Angle degrees) -> intrinsic "cos" degrees
+
+-- Calculate the tangent of an angle.
+tan :: Angle -> Number
+tan : (Angle degrees) -> intrinsic "tan" degrees
+
+-- Negate the sign of a number.
+negate :: Number -> Number
+negate : n -> intrinsic "negate-number" n
+
+-- Check if the first number is divisible by the second.
+divisible-by? :: Number -> Number -> Boolean
+divisible-by? : right -> left -> left % right = 0

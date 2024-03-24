@@ -1,6 +1,0 @@
-T : A => trait A
-instance (T _) : ...
-
-S : A => type
-foo :: S _ -> Number
-foo : ...

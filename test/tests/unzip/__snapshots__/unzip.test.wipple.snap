@@ -1,0 +1,17 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`unzip.test.wipple 1`] = `[]`;
+
+exports[`unzip.test.wipple 2`] = `
+{
+  "output": "Left:
+1
+2
+3
+Right:
+a
+b
+c
+",
+}
+`;

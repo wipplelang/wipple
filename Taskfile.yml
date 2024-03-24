@@ -1,206 +1,153 @@
 version: "3"
 
 tasks:
-    run:
+    dev:
         run: once
+        deps:
+            - cli:build
         cmds:
-            - cargo run --bin wipple -- run {{.CLI_ARGS}}
-
-    compile:
-        run: once
-        cmds:
-            - cargo run --bin wipple -- compile {{.CLI_ARGS}}
+            - task: compile
+            - .wipple/out
 
     test:
         run: once
+        deps:
+            - compiler:build
+            - interpreter:build
+            - base:compile
+        dir: test
         cmds:
-            - cargo run --bin wipple-test --release -- tests/*.wpl {{.CLI_ARGS}}
+            - npm test -- {{.CLI_ARGS}}
 
-    test-file:
-        run: once
-        cmds:
-            - cargo run --bin wipple-test -- {{.CLI_ARGS}}
-
-    flamegraph:
-        run: once
-        cmds:
-            - cargo flamegraph --root --dev --flamechart --bin wipple -- run {{.CLI_ARGS}}
-
-    cli:
-        run: once
-        cmds:
-            - cargo install --force --path tools/cli
-        env:
-            CARGO_TARGET_DIR: target
-
-    vscode:
-        run: once
-        dir: tools/vscode
-        cmds:
-            - npm i
-            - npx @vscode/vsce package --skip-license
-            - code --install-extension *.vsix
-            - rm *.vsix
-
-    serve:
-        run: once
-        cmds:
-            - task: website
-            - npx http-server -c-1 website/_site --cors
-
-    website:
+    compile:
         run: once
         deps:
-            - cli
-            - website-shared
-            - website-home
-            - website-compiler-docs
-            - website-embed
-            - website-playground-electron
-            - website-playground
-            - website-std
-            - website-doc
+            - base:compile
+        cmds:
+            - wipple compile test.wipple --dependency .wipple/base.wippleinterface --interface .wipple/test.wippleinterface --library .wipple/test.wipplelibrary
+            - wipple link .wipple/*.wipplelibrary --output .wipple/out
 
-    website-shared:
+    vscode:install:
         run: once
         deps:
-            - cli
-        dir: website/shared
+            - compiler:build
+            - render:build
+        dir: vscode
         cmds:
-            - (cd .. && npm i)
+            - npx @vscode/vsce package --no-dependencies --skip-license --allow-missing-repository
+            - code --install-extension wipple-vscode-0.0.0.vsix
+            - rm wipple-vscode-0.0.0.vsix
+
+    app:serve:
+        run: once
+        deps:
+            - app:bundle-for-playground
+        dir: app
+        cmds:
+            - npm run dev
+
+    app:install-dependencies:
+        run: once
+        dir: app
+        cmds:
+            - npm install
+
+    app:build:
+        run: once
+        deps:
+            - app:bundle-for-playground
+        dir: app
+        cmds:
             - npm run build
 
-    website-home:
+    app:bundle-for-playground:
+        run: once
+        dir: app
+        cmds:
+            - WIPPLE_COMPILER_WASM_OPTIMIZE=1 task cli:build
+            - task base:compile
+            - rm -rf .wipple
+            - wipple compile ../library/base/*.wipple --interface .wipple/base.wippleinterface --library .wipple/base.wipplelibrary
+            - wipple bundle-for-playground ../library/base/*.wipple --output ./public/library/base.wipplebundle
+            - wipple bundle-for-playground ../library/playground/turtle.wipple --dependency .wipple/base.wippleinterface --link .wipple/base.wipplelibrary --output ./public/library/turtle.wipplebundle
+            - cp -r ../library/help ./public/library
+
+    base:compile:
+        run: once
+        cmds:
+            - rm -rf .wipple
+            - wipple compile library/base/*.wipple --interface .wipple/base.wippleinterface --library .wipple/base.wipplelibrary
+
+    install-dependencies:
         run: once
         deps:
-            - website-shared
-        dir: website/home
-        cmds:
-            - npm i
-            - npm run build
-            - mkdir -p ../_site
-            - cp -r ./_site/* ../_site
+            - test:install-dependencies
+            - cli:install-dependencies
+            - compiler:install-dependencies
+            - interpreter:install-dependencies
+            - render:install-dependencies
+            - app:install-dependencies
 
-    website-compiler-docs:
+    test:install-dependencies:
+        run: once
+        dir: test
+        cmds:
+            - npm install
+
+    cli:install-dependencies:
+        run: once
+        dir: cli
+        cmds:
+            - npm install
+
+    cli:build:
         run: once
         deps:
-            - website-home
-        dir: website/compiler-docs
-        cmds:
-            - mdbook build
-            - mkdir -p ../_site/compiler-docs
-            - cp -r book/* ../_site/compiler-docs
-
-    website-playground-electron:
-        run: once
-        deps:
-            - website-std
-            - website-playground
-        dir: website/playground-electron
-        cmds:
-            - rm -rf ../_site/playground/downloads
-            - rm -rf out resources && mkdir -p resources
-            - cp -r ../_site/std ../_site/playground resources
-            - npm i
-            - ./scripts/build.sh
-
-    website-playground:
-        run: once
-        deps:
-            - website-playground-all
-        dir: website/playground
-        cmds:
-            - mkdir -p ../_site/playground
-            - cp -r dist/* ../_site/playground
-
-    website-playground-public-dev:
-        dir: website/playground
-        cmds:
-            - task: website-playground-public
-            - mkdir -p ../_site/playground
-            - cp -r dist/* ../_site/playground
-        sources:
-            - public/**/*
-
-    website-playground-all:
-        deps:
-            - website-playground-app
-            - website-playground-public
-            - task: website-playground-ui
-              vars: { NAME: energy }
-            - task: website-playground-ui
-              vars: { NAME: game }
-            - task: website-playground-ui
-              vars: { NAME: graphing }
-            - task: website-playground-ui
-              vars: { NAME: music }
-            - task: website-playground-ui
-              vars: { NAME: physics }
-            - task: website-playground-ui
-              vars: { NAME: turtle }
-
-    website-playground-app:
-        run: once
-        deps:
-            - website-home
-            - website-shared
-        dir: website/playground
-        cmds:
-            - npm i
-            - npm run build
-
-    website-playground-public:
-        dir: website/playground
-        cmds:
-            - mkdir -p dist
-            - cp -r public/* dist
-
-    website-playground-ui:
-        label: 'website-playground-ui-{{.NAME}}'
-        deps:
-            - website-playground-app
-        dir: website/playground/ui/{{.NAME}}
-        cmds:
-            - mkdir -p ../../dist/doc
-            - mkdir -p ../../dist/ui/{{.NAME}}
-            - npm i
-            - npm run build
-            - cp dist/* ../../dist/ui/{{.NAME}}
-
-    website-embed:
-        run: once
-        deps:
-            - website-home
-            - website-shared
-            - website-playground
-        dir: website/embed
+            - compiler:build
+            - interpreter:build
+            - render:build
+        dir: cli
         cmds:
             - npm run build
-            - mkdir -p ../_site/embed
-            - cp -r dist/* ../_site/embed
+            - npm run package
+            - cp dist/wipple /usr/local/bin/wipple
 
-    website-std:
+    compiler:install-dependencies:
+        run: once
+        dir: compiler
+        cmds:
+            - npm install
+
+    compiler:build:
+        run: once
+        dir: compiler
+        cmds:
+            - npm run build
+
+    interpreter:install-dependencies:
+        run: once
+        dir: interpreter
+        cmds:
+            - npm install
+
+    interpreter:build:
         run: once
         deps:
-            - website-home
-        dir: website
+            - compiler:build
+        dir: interpreter
         cmds:
-            - mkdir -p _site/std
-            - cp -r ../std/* _site/std
+            - npm run build
 
-    website-doc:
+    render:install-dependencies:
+        run: once
+        dir: render
+        cmds:
+            - npm install
+
+    render:build:
         run: once
         deps:
-            - website-playground
-        dir: website
+            - compiler:build
+        dir: render
         cmds:
-            - mkdir -p _site/doc
-            - >
-                wipple doc ../std/std.wpl
-                --title 'Wipple Standard Library'
-                --image 'https://wipple.dev/images/logo.svg'
-                --link 'https://wipple.dev'
-                --include-builtins
-                --std ../std/std.wpl
-                > _site/doc/std.html
-            - mv _site/playground/doc/*.html _site/doc
+            - npm run build

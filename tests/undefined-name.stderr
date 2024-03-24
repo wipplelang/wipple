@@ -1,8 +1,0 @@
-error: 
-  ┌─ test:1:1
-  │
-1 │ foo
-  │ ^^^ cannot find `foo`
-  │
-  = for more information, see https://wipple.dev/playground/?lesson=errors/undefined-name
-

@@ -1,0 +1,4 @@
+-- [should error]
+
+show + 1
+Show + 1

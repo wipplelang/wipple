@@ -1,0 +1,14 @@
+[package]
+name = "wipple-codegen"
+version = "0.0.0"
+edition = "2021"
+
+[lints]
+workspace = true
+
+[dependencies]
+derivative = "2"
+serde = { version = "1", features = ["derive"] }
+ts-rs = { git = "https://github.com/WilsonGramer/ts-rs", branch = "bound-attribute", features = ["no-serde-warnings"] }
+wipple-util = { path = "../util" }
+wipple-typecheck = { path = "../analysis/typecheck" }

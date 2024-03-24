@@ -1,0 +1,14 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`undefined-math-ops.test.wipple 1`] = `[]`;
+
+exports[`undefined-math-ops.test.wipple 2`] = `
+{
+  "output": "NaN
+Infinity
+NaN
+NaN
+1.7976931348623159077e+308
+",
+}
+`;

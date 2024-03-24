@@ -1,0 +1,12 @@
+-- [should error]
+
+f : {
+  n : 42
+
+  f :: () -> Number
+  f : () -> n
+
+  f
+}
+
+show (f ())

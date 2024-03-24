@@ -1,9 +1,0 @@
----
-id: Kfxy7aPY
-type: text
-locked: true
----
-
-# How to use `external`
-
-`external` allows you to call a function from another programming language. This functionality is not currently supported in the playground.

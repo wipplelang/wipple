@@ -1,0 +1,8 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`call-function-diagnostic.test.wipple 1`] = `
+[
+  "call-function-diagnostic/call-function-diagnostic.test.wipple:3:16: error: expected pattern here while reading this function inputs",
+  "call-function-diagnostic/call-function-diagnostic.test.wipple:3:39: error: can't find \`text\`",
+]
+`;

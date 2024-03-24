@@ -1,0 +1,7 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`too-many-inputs.test.wipple 1`] = `
+[
+  "too-many-inputs/too-many-inputs.test.wipple:2:0: error: this function takes 1 inputs, but 3 were provided",
+]
+`;

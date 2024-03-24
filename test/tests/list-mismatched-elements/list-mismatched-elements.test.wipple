@@ -1,0 +1,4 @@
+-- [should error]
+
+my-list : 1 , "hi" , ()
+my-list . each show

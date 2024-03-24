@@ -1,0 +1,20 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`bounds-dont-influence-other-bounds.test.wipple 1`] = `
+[
+  "bounds-dont-influence-other-bounds/bounds-dont-influence-other-bounds.test.wipple:10:1: error: unrecognized symbol",
+  "bounds-dont-influence-other-bounds/bounds-dont-influence-other-bounds.test.wipple:10:3: error: unrecognized symbol",
+  "bounds-dont-influence-other-bounds/bounds-dont-influence-other-bounds.test.wipple:10:34: error: unrecognized symbol",
+  "bounds-dont-influence-other-bounds/bounds-dont-influence-other-bounds.test.wipple:10:41: error: unrecognized symbol",
+  "bounds-dont-influence-other-bounds/bounds-dont-influence-other-bounds.test.wipple:11:5: error: expected nothing here while reading this constant declaration",
+  "bounds-dont-influence-other-bounds/bounds-dont-influence-other-bounds.test.wipple:11:7: error: expected nothing here while reading this constant declaration",
+  "bounds-dont-influence-other-bounds/bounds-dont-influence-other-bounds.test.wipple:0:17: error: missing a value for \`just\` on the next line",
+  "bounds-dont-influence-other-bounds/bounds-dont-influence-other-bounds.test.wipple:4:22: error: can't find \`just\`",
+  "bounds-dont-influence-other-bounds/bounds-dont-influence-other-bounds.test.wipple:5:20: error: can't find \`just\`",
+  "bounds-dont-influence-other-bounds/bounds-dont-influence-other-bounds.test.wipple:10:2: error: can't find \`B\`",
+  "bounds-dont-influence-other-bounds/bounds-dont-influence-other-bounds.test.wipple:10:5: error: can't find \`should\`",
+  "bounds-dont-influence-other-bounds/bounds-dont-influence-other-bounds.test.wipple:10:16: error: can't find \`be\`",
+  "bounds-dont-influence-other-bounds/bounds-dont-influence-other-bounds.test.wipple:10:19: error: can't find \`inferred\`",
+  "bounds-dont-influence-other-bounds/bounds-dont-influence-other-bounds.test.wipple:10:31: error: can't find \`be\`",
+]
+`;

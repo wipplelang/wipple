@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+        "target": "esnext",
+        "lib": ["esnext"],
+        "moduleResolution": "node",
+        "module": "es2022",
+        "skipLibCheck": true,
+        "strict": true,
+        "isolatedModules": true,
+        "esModuleInterop": true,
+        "declaration": true,
+        "emitDeclarationOnly": true,
+        "declarationDir": "dist"
+    }
+}

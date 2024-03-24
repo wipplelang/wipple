@@ -1,4 +1,0 @@
-produces-text : () -> "Hello, world!"
-displays-text : (text :: Text) -> show text
-
-displays-text produces-text

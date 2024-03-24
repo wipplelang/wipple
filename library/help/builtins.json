@@ -1,0 +1,6 @@
+{
+    "::": {
+        "summary": "Specify the type of a piece of code.",
+        "doc": "The `::` operator allows you to annotate the type of a piece of code when Wipple can’t figure it out automatically. For example, using `collect` often requires `::` to specify what to collect into (eg. a `List`, `Dictionary` or `Set`):\n\n```\n1 to 10 by 1 . collect :: List _\n```\n\n(TODO)"
+    }
+}

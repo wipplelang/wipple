@@ -1,8 +1,0 @@
-error: 
-  ┌─ test:3:12
-  │
-3 │   False -> "hi"
-  │            ^^^^ expected `Number`, but found `Text`
-  │
-  = for more information, see https://wipple.dev/playground/?lesson=errors/mismatched-types
-

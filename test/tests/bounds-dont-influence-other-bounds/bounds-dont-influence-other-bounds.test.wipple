@@ -1,0 +1,12 @@
+-- [should error]
+
+T : A => trait (A -> ())
+
+instance (T Number) : just ()
+instance (T Text) : just ()
+
+f :: A B where (T A) (T B) => (A ; B)
+f : ...
+
+[`B` should not be inferred to be `Number`]
+just f () :: (Number ; _)

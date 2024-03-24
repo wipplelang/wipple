@@ -1,0 +1,26 @@
+[workspace]
+resolver = "2"
+members = [
+    "analysis/lower",
+    "analysis/typecheck",
+    "codegen",
+    "linker",
+    "main",
+    "syntax",
+    "util",
+]
+
+[workspace.lints.rust]
+elided_lifetimes_in_paths = "deny"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+new_without_default = "allow"
+print_stderr = "warn"
+redundant_clone = "warn"
+type_complexity = "allow"
+
+[profile.release]
+opt-level = "s"
+lto = true

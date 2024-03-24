@@ -1,0 +1,8 @@
+-- Create a color from a piece of text. In the Wipple Playground, you can drag a
+-- color from the palette into the editor instead of calling this function
+-- directly.
+Color : type Text
+
+-- Create an image from a URL. In the Wipple Playground, you can drag an image
+-- from the palette into the editor instead of calling this function directly.
+Image : type Text

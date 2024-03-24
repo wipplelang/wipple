@@ -1,0 +1,26 @@
+{
+    "name": "wipple-cli",
+    "private": true,
+    "type": "module",
+    "main": "dist/index.js",
+    "scripts": {
+        "start": "node .",
+        "build": "tsc && rollup -c",
+        "package": "echo '#!/usr/bin/env node' > dist/wipple && cat dist/index.js >> dist/wipple && chmod +x dist/wipple"
+    },
+    "devDependencies": {
+        "@rollup/plugin-commonjs": "^25.0.7",
+        "@rollup/plugin-node-resolve": "^15.2.3",
+        "@rollup/plugin-typescript": "^11.1.6",
+        "@types/node": "^20.11.30",
+        "nexe": "^4.0.0-rc.4",
+        "rollup": "^4.13.0",
+        "tslib": "^2.6.2",
+        "typescript": "^5.3.3"
+    },
+    "dependencies": {
+        "cmd-ts": "^0.13.0",
+        "wipple-compiler": "file:../compiler",
+        "wipple-interpreter": "file:../interpreter"
+    }
+}

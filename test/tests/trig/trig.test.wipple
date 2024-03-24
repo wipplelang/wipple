@@ -1,0 +1,5 @@
+-- [should compile]
+
+show (sin (0 degrees) = 0)
+show (cos (0 degrees) = 1)
+show (sin (45 degrees) / cos (45 degrees) = tan (45 degrees))
