@@ -307,7 +307,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 };
             }
 
-            const info = render.getInfoAtCursor("playground", position);
+            const info = render.getInfoAtCursor("top-level", position);
             if (!info) {
                 return undefined;
             }
