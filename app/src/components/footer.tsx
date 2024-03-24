@@ -10,7 +10,7 @@ export const Footer = () => (
             </a>
             &nbsp;&nbsp;•&nbsp;&nbsp;
             <a
-                href="#" // TODO
+                href="https://forms.gle/ijfLtvJ5FT6heJsD7"
                 className="font-semibold text-gray-500 hover:text-gray-600 dark:text-gray-400"
             >
                 Give Feedback
