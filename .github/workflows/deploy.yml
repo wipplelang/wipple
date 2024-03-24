@@ -1,6 +1,8 @@
 on:
-    - workflow_dispatch
-    - push
+    workflow_dispatch:
+    push:
+        branches:
+            - main
 
 jobs:
     build:
@@ -8,7 +10,7 @@ jobs:
         secrets: inherit
 
     deploy:
-        name: Deploy (Preview)
+        name: Deploy
         needs: build
         runs-on: ubuntu-latest
         steps:
