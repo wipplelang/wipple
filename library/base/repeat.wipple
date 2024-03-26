@@ -25,8 +25,8 @@ while : condition -> {condition : condition}
 
 While : type {condition :: {Boolean}}
 
-instance (Repeat-Predicate While () ()) : {condition : condition} ->
-    if (do condition) {Continue (() -> while condition)} {Stop ()}
+(Body : ()) => instance (Repeat-Predicate While Body ()) : {condition : condition} ->
+    if (do condition) {Continue (_ -> while condition)} {Stop ()}
 
 -- Repeat forever.
 forever :: Forever
@@ -42,11 +42,11 @@ Times : type {
     current :: Number
 }
 
-instance (Repeat-Predicate Times () ()) : {
+(Body : ()) => instance (Repeat-Predicate Times Body ()) : {
     count : count
     current : current
 } -> if (current < count) {
-    Continue (() -> {
+    Continue (_ -> {
         count : count
         current : current + 1
     })
