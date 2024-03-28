@@ -651,6 +651,21 @@ const findInstance = (trait: string, typeDescriptor: TypeDescriptor, executable:
         }
     }
 
+    const defaultPath = executable.defaultInstances[trait];
+    if (defaultPath) {
+        const instance = executable.items[defaultPath];
+        const substitutions: Record<string, TypeDescriptor> = {};
+        if (unify(typeDescriptor, instance.typeDescriptor, substitutions)) {
+            return [defaultPath, substitutions] as const;
+        } else {
+            throw new Error(
+                `default instance for trait ${trait} did not satisfy type descriptor ${JSON.stringify(
+                    typeDescriptor,
+                )}`,
+            );
+        }
+    }
+
     throw new InterpreterError(
         `no instance found for trait ${trait} with type descriptor ${JSON.stringify(
             typeDescriptor,

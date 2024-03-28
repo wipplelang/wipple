@@ -311,6 +311,13 @@ pub enum Diagnostic<D: Driver> {
         other: D::Path,
     },
 
+    /// There are multiple default instances for a single trait.
+    #[serde(rename_all = "camelCase")]
+    MultipleDefaultInstances {
+        /// The disallowed instance.
+        instance: D::Path,
+    },
+
     /// The binding or `when` expression does not exhaustively match its input.
     MissingPatterns(Vec<exhaustiveness::Pattern<D>>),
 
@@ -532,6 +539,9 @@ pub struct InstanceDeclaration<D: Driver> {
 
     /// The parameters corresponding to the instance's trait.
     pub instance: WithInfo<D::Info, Instance<D>>,
+
+    /// Whether the instance is the default instance.
+    pub default: bool,
 }
 
 /// An untyped expression.

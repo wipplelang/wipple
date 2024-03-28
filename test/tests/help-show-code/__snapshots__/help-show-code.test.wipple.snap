@@ -2,8 +2,8 @@
 
 exports[`help-show-code.test.wipple 1`] = `
 [
+  "help-show-code/help-show-code.test.wipple:12:0: error: this function takes 1 inputs, but 2 were provided",
   "help-show-code/help-show-code.test.wipple:2:0: error: expected expression here while reading this statement",
   "help-show-code/help-show-code.test.wipple:3:0: error: expected expression here while reading this statement",
-  "help-show-code/help-show-code.test.wipple:12:0: error: this function takes 1 inputs, but 2 were provided",
 ]
 `;

@@ -85,6 +85,8 @@ test(path.basename(file), async () => {
         }),
     );
 
+    renderedDiagnostics.sort();
+
     expect(shouldCompile).toBe(compiled);
 
     if (shouldWarn != null) {

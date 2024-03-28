@@ -2,7 +2,7 @@
 
 exports[`constant-captured-variables.test.wipple 1`] = `
 [
-  "constant-captured-variables/constant-captured-variables.test.wipple:8:2: error: this function takes 1 inputs, but 0 were provided",
   "constant-captured-variables/constant-captured-variables.test.wipple:11:6: error: expected a \`() -> Text\` here, but found a \`{(() -> Number)}\`",
+  "constant-captured-variables/constant-captured-variables.test.wipple:8:2: error: this function takes 1 inputs, but 0 were provided",
 ]
 `;

@@ -69,6 +69,7 @@ pub mod interface {
                 .map(convert_instance)
                 .collect(),
             instance: convert_instance(instance_declaration.instance),
+            default: instance_declaration.default,
         })
     }
 
@@ -231,11 +232,13 @@ pub mod lower {
                 bounds,
                 instance,
                 body,
+                default,
             } => wipple_lower::UnresolvedStatement::Instance {
                 parameters: parameters.into_iter().map(convert_type_parameter).collect(),
                 bounds: bounds.into_iter().map(convert_instance).collect(),
                 instance: convert_instance(instance),
                 body: convert_expression(body),
+                default,
             },
             wipple_syntax::Statement::Language { name, kind, item } => {
                 let kind = kind.map(|kind| match kind {
@@ -735,6 +738,7 @@ pub mod typecheck {
                     .map(convert_instance)
                     .collect(),
                 instance: convert_instance(instance_declaration.instance),
+                default: instance_declaration.default,
             },
         )
     }

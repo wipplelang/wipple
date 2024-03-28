@@ -443,6 +443,7 @@ fn resolve_statements<D: Driver>(
                 bounds,
                 instance,
                 body,
+                default,
             } => {
                 info.path.push(crate::PathComponent::Instance(
                     info.instance_declarations.len() as u32,
@@ -483,6 +484,7 @@ fn resolve_statements<D: Driver>(
                             parameters,
                             bounds,
                             instance,
+                            default,
                         }),
                     },
                 );

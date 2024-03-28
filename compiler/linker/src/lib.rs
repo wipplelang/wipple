@@ -27,6 +27,9 @@ pub struct UnlinkedLibrary<D: Driver> {
     /// The list of instances for each trait.
     pub instances: HashMap<D::Path, Vec<D::Path>>,
 
+    /// The default instance for each trait.
+    pub default_instances: HashMap<D::Path, D::Path>,
+
     /// Any code to be run when the program starts.
     pub code: Vec<UnlinkedItem<D>>,
 }
@@ -64,6 +67,9 @@ pub struct Executable<D: Driver> {
 
     /// The list of instances for each trait.
     pub instances: HashMap<D::Path, Vec<D::Path>>,
+
+    /// The default instance for each trait.
+    pub default_instances: HashMap<D::Path, D::Path>,
 
     /// Any code to be run when the program starts.
     pub code: Vec<LinkedItem<D>>,
@@ -118,6 +124,10 @@ pub fn link<D: Driver>(
                 .extend(library.intrinsic_variants);
 
             executable.instances.extend(library.instances);
+
+            executable
+                .default_instances
+                .extend(library.default_instances);
 
             for item in library.code {
                 executable.code.push(convert_item(item)?);

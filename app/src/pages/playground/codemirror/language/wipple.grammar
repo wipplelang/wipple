@@ -6,7 +6,7 @@ List { "(" expression* ")" }
 Block { "{" expression* "}" }
 Asset { "[" expression* "]" }
 
-Keyword { @specialize<Name, "_" | "!" | "when" | "type" | "trait" | "instance" | "intrinsic" | "infer" | "do"> }
+Keyword { @specialize<Name, "_" | "!" | "when" | "type" | "trait" | "instance" | "intrinsic" | "infer" | "do" | "default"> }
 
 @tokens {
   "[" "]"

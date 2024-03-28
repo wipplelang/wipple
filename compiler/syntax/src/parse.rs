@@ -59,6 +59,12 @@ pub(crate) enum Statement<D: Driver> {
         r#type: WithInfo<D::Info, Type<D>>,
     },
     #[serde(rename_all = "camelCase")]
+    DefaultInstanceDeclaration {
+        parameters: WithInfo<D::Info, TypeFunction<D>>,
+        instance: WithInfo<D::Info, Option<Instance<D>>>,
+        body: WithInfo<D::Info, Expression<D>>,
+    },
+    #[serde(rename_all = "camelCase")]
     InstanceDeclaration {
         parameters: WithInfo<D::Info, TypeFunction<D>>,
         instance: WithInfo<D::Info, Option<Instance<D>>>,
@@ -766,6 +772,7 @@ mod rules {
             statement::<D>().render(),
             type_declaration::<D>().render(),
             trait_declaration::<D>().render(),
+            default_instance_declaration::<D>().render(),
             instance_declaration::<D>().render(),
             constant_declaration::<D>().render(),
             language_declaration::<D>().render(),
@@ -827,6 +834,7 @@ mod rules {
             [
                 type_declaration,
                 trait_declaration,
+                default_instance_declaration,
                 instance_declaration,
                 constant_declaration,
                 language_declaration,
@@ -977,6 +985,80 @@ mod rules {
             },
         )
         .named("A trait declaration.")
+    }
+
+    pub fn default_instance_declaration<D: Driver>() -> Rule<D, Statement<D>> {
+        Rule::non_associative_operator(
+            SyntaxKind::InstanceDeclaration,
+            NonAssociativeOperator::Assign,
+            || {
+                Rule::switch(
+                    SyntaxKind::InstanceDeclaration,
+                    [
+                        || {
+                            Rule::non_associative_operator(
+                                SyntaxKind::InstanceDeclaration,
+                                NonAssociativeOperator::TypeFunction,
+                                type_function,
+                                || {
+                                    Rule::keyword2(
+                                        SyntaxKind::InstanceDeclaration,
+                                        Keyword::Default,
+                                        || {
+                                            Rule::match_terminal(
+                                                SyntaxKind::InstanceDeclaration,
+                                                RuleToRender::Keyword(
+                                                    Keyword::Instance.to_string(),
+                                                ),
+                                                |_, info, _| Some(info.replace(())),
+                                            )
+                                        },
+                                        || instance().wrapped(),
+                                        |_, _, _, instance, _| instance,
+                                    )
+                                },
+                                |_, info, type_function, instance, _| WithInfo {
+                                    info,
+                                    item: (type_function, instance),
+                                },
+                            )
+                        },
+                        || {
+                            Rule::keyword2(
+                                SyntaxKind::InstanceDeclaration,
+                                Keyword::Default,
+                                || {
+                                    Rule::match_terminal(
+                                        SyntaxKind::InstanceDeclaration,
+                                        RuleToRender::Keyword(Keyword::Instance.to_string()),
+                                        |_, info, _| Some(info.replace(())),
+                                    )
+                                },
+                                || instance().wrapped(),
+                                |_, info: D::Info, _, instance, _| WithInfo {
+                                    info: info.clone(),
+                                    item: (TypeFunction::default_from_info(info), instance),
+                                },
+                            )
+                        },
+                    ],
+                )
+            },
+            expression,
+            |_, info, declaration, body, _| {
+                let (parameters, instance) = declaration.item;
+
+                WithInfo {
+                    info,
+                    item: Statement::DefaultInstanceDeclaration {
+                        parameters,
+                        instance,
+                        body,
+                    },
+                }
+            },
+        )
+        .named("A default instance declaration.")
     }
 
     pub fn instance_declaration<D: Driver>() -> Rule<D, Statement<D>> {

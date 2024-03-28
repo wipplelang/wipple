@@ -271,21 +271,36 @@ pub fn instances_overlap<D: Driver>(
         })
         .collect::<HashSet<_>>();
 
+    let mut errors = Vec::new();
+    let mut has_default = false;
+
     let instances = instances
         .into_iter()
-        .map(|path| {
+        .filter_map(|path| {
             let declaration = driver.get_instance_declaration(&path);
 
-            (
+            // Non-default instances have priority over default instances
+            if declaration.item.default {
+                if has_default {
+                    errors.push(WithInfo {
+                        info: declaration.info,
+                        item: crate::Diagnostic::MultipleDefaultInstances { instance: path },
+                    });
+                }
+
+                has_default = true;
+                return None;
+            }
+
+            Some((
                 path,
                 declaration.info,
                 declaration.item.parameters,
                 infer_instance(declaration.item.instance),
-            )
+            ))
         })
         .collect::<Vec<_>>();
 
-    let mut errors = Vec::new();
     let mut overlapping = HashSet::new();
 
     for (index, (path, info, parameters, instance)) in instances.iter().enumerate() {
@@ -3316,6 +3331,7 @@ fn resolve_trait<D: Driver>(
         }
 
         // First, check if there are any bound instances that match
+
         for bound_instances in context.bound_instances.borrow().iter() {
             let mut candidates = Vec::new();
             for bound_instance in bound_instances {
@@ -3348,88 +3364,99 @@ fn resolve_trait<D: Driver>(
         }
 
         // Then, check if there are any declared instances that match
-        let mut candidates = Vec::new();
-        for path in context.driver.get_instances_for_trait(&r#trait) {
-            let instance_declaration = context.driver.get_instance_declaration(&path);
 
-            let new_type_context = context.type_context.clone();
+        // Non-default instances have priority over default instances
+        let (default_instances, instances): (Vec<_>, Vec<_>) = context
+            .driver
+            .get_instances_for_trait(&r#trait)
+            .into_iter()
+            .map(|path| context.driver.get_instance_declaration(&path))
+            .partition(|instance| instance.item.default);
 
-            let query = query.as_deref().map(Clone::clone);
+        for instance_declarations in [instances, default_instances] {
+            let mut candidates = Vec::new();
+            for instance_declaration in instance_declarations {
+                let new_type_context = context.type_context.clone();
 
-            let instantiation_context = InstantiationContext::from_parameters(
-                context.driver,
-                instance_declaration.item.parameters,
-                &new_type_context,
-                &instance_declaration.info,
-                context.errors,
-            );
+                let query = query.as_deref().map(Clone::clone);
 
-            let parameters = instance_declaration
-                .item
-                .instance
-                .item
-                .parameters
-                .iter()
-                .map(|parameter| {
-                    infer_type(parameter.as_ref(), None, None)
-                        .instantiate(context.driver, &instantiation_context)
-                })
-                .collect::<Vec<_>>();
+                let instantiation_context = InstantiationContext::from_parameters(
+                    context.driver,
+                    instance_declaration.item.parameters,
+                    &new_type_context,
+                    &instance_declaration.info,
+                    context.errors,
+                );
 
-            let bounds = instance_declaration
-                .item
-                .bounds
-                .into_iter()
-                .map(|bound| {
-                    infer_instance(bound)
-                        .map(|bound| bound.instantiate(context.driver, &instantiation_context))
-                })
-                .collect::<Vec<_>>();
+                let parameters = instance_declaration
+                    .item
+                    .instance
+                    .item
+                    .parameters
+                    .iter()
+                    .map(|parameter| {
+                        infer_type(parameter.as_ref(), None, None)
+                            .instantiate(context.driver, &instantiation_context)
+                    })
+                    .collect::<Vec<_>>();
 
-            let instance = WithInfo {
-                info: instance_declaration.info.clone(),
-                item: Instance {
-                    r#trait: query.item.r#trait.clone(),
-                    parameters,
-                },
-            };
+                let bounds = instance_declaration
+                    .item
+                    .bounds
+                    .into_iter()
+                    .map(|bound| {
+                        infer_instance(bound)
+                            .map(|bound| bound.instantiate(context.driver, &instantiation_context))
+                    })
+                    .collect::<Vec<_>>();
 
-            if unify_instance(
-                context.driver,
-                query.as_ref(),
-                instance.as_ref(),
-                &new_type_context,
-            ) {
-                candidates.push((new_type_context, instance, bounds));
-            }
-        }
+                let instance = WithInfo {
+                    info: instance_declaration.info.clone(),
+                    item: Instance {
+                        r#trait: query.item.r#trait.clone(),
+                        parameters,
+                    },
+                };
 
-        // If an instance matches, check its bounds
-        if let Some((new_type_context, candidate, bounds)) =
-            pick_from_candidates(candidates, query.clone(), stack)?
-        {
-            context.type_context.replace_with(new_type_context);
-
-            for bound in bounds {
-                let mut stack = stack.to_vec();
-                stack.push(bound.as_ref());
-
-                context
-                    .recursion_stack
-                    .borrow_mut()
-                    .push(bound.info.clone());
-
-                let result = resolve_trait_inner(query.replace(&bound.item), context, &stack);
-
-                context.recursion_stack.borrow_mut().pop();
-
-                result?;
+                if unify_instance(
+                    context.driver,
+                    query.as_ref(),
+                    instance.as_ref(),
+                    &new_type_context,
+                ) {
+                    candidates.push((new_type_context, instance, bounds));
+                }
             }
 
-            return Ok(candidate);
+            // If an instance matches, check its bounds
+
+            if let Some((new_type_context, candidate, bounds)) =
+                pick_from_candidates(candidates, query.clone(), stack)?
+            {
+                context.type_context.replace_with(new_type_context);
+
+                for bound in bounds {
+                    let mut stack = stack.to_vec();
+                    stack.push(bound.as_ref());
+
+                    context
+                        .recursion_stack
+                        .borrow_mut()
+                        .push(bound.info.clone());
+
+                    let result = resolve_trait_inner(query.replace(&bound.item), context, &stack);
+
+                    context.recursion_stack.borrow_mut().pop();
+
+                    result?;
+                }
+
+                return Ok(candidate);
+            }
         }
 
         // If nothing matches, raise an error
+
         Err(WithInfo {
             info: stack.first().unwrap().info.clone(),
             item: QueuedError::UnresolvedInstance {

@@ -4,7 +4,11 @@ mod convert;
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, hash::Hash, rc::Rc};
+use std::{
+    collections::{HashMap, HashSet},
+    hash::Hash,
+    rc::Rc,
+};
 use ts_rs::TS;
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -588,9 +592,16 @@ impl Driver {
             .into_group_map_by(|(_, instance)| instance.item.instance.item.r#trait.clone());
 
         for (r#trait, instances) in instances_by_trait {
+            let mut default_instances = HashSet::new();
             let instances = instances
                 .into_iter()
-                .map(|(path, _)| path.clone())
+                .map(|(path, declaration)| {
+                    if declaration.item.default {
+                        default_instances.insert(path.clone());
+                    }
+
+                    path.clone()
+                })
                 .collect::<Vec<_>>();
 
             let overlap_diagnostics =
@@ -602,7 +613,19 @@ impl Driver {
                     .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            self.library.instances.insert(r#trait.clone(), instances);
+            for instance in instances {
+                if default_instances.contains(&instance) {
+                    self.library
+                        .default_instances
+                        .insert(r#trait.clone(), instance);
+                } else {
+                    self.library
+                        .instances
+                        .entry(r#trait.clone())
+                        .or_default()
+                        .push(instance);
+                }
+            }
         }
 
         macro_rules! insert_intrinsic_variant {

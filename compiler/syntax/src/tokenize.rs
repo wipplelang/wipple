@@ -101,6 +101,9 @@ pub enum Keyword {
 
     #[strum(serialize = "infer")]
     Infer,
+
+    #[strum(serialize = "default")]
+    Default,
 }
 
 impl Keyword {
@@ -343,6 +346,9 @@ enum RawToken<'src> {
     #[token("do")]
     Do,
 
+    #[token("default")]
+    Default,
+
     #[token("!")]
     Mutate,
 
@@ -478,6 +484,7 @@ where
                     RawToken::Underscore => Token::Keyword(Keyword::Underscore),
                     RawToken::Mutate => Token::Keyword(Keyword::Mutate),
                     RawToken::Do => Token::Keyword(Keyword::Do),
+                    RawToken::Default => Token::Keyword(Keyword::Default),
                     RawToken::When => Token::Keyword(Keyword::When),
                     RawToken::Type => Token::Keyword(Keyword::Type),
                     RawToken::Trait => Token::Keyword(Keyword::Trait),

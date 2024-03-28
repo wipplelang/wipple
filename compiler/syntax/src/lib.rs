@@ -249,6 +249,9 @@ pub enum Statement<D: Driver> {
 
         /// The instance's body.
         body: WithInfo<D::Info, Expression<D>>,
+
+        /// Whether the instance is the default instance.
+        default: bool,
     },
 
     /// A language declaration.

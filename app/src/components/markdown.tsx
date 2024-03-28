@@ -19,7 +19,7 @@ const languages: Record<string, import("lowlight").LanguageFn> = {
             },
             {
                 className: "keyword",
-                match: /\b(_|!|when|where|type|trait|instance|intrinsic|infer|do)\b/,
+                match: /\b(_|!|when|where|type|trait|instance|intrinsic|infer|do|default)\b/,
             },
             {
                 className: "typeName",

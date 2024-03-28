@@ -418,6 +418,30 @@ fn statements<D: Driver>(
                                         r#type,
                                     })
                                 }
+                                parse::Statement::DefaultInstanceDeclaration {
+                                    parameters: type_function_syntax,
+                                    instance: instance_syntax,
+                                    body: body_syntax,
+                                } => {
+                                    let instance_syntax = instance_syntax.try_unwrap()?;
+
+                                    expected_constant_value!(Some(statement_info.clone()));
+
+                                    let (parameters, bounds) =
+                                        type_function(type_function_syntax, info);
+
+                                    let instance = instance(instance_syntax, info);
+
+                                    let body = expression(body_syntax, info);
+
+                                    Some(crate::Statement::Instance {
+                                        parameters,
+                                        bounds,
+                                        instance,
+                                        body,
+                                        default: true,
+                                    })
+                                }
                                 parse::Statement::InstanceDeclaration {
                                     parameters: type_function_syntax,
                                     instance: instance_syntax,
@@ -439,6 +463,7 @@ fn statements<D: Driver>(
                                         bounds,
                                         instance,
                                         body,
+                                        default: false,
                                     })
                                 }
                                 parse::Statement::ConstantDeclaration {
