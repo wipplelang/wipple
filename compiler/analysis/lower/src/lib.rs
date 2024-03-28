@@ -731,9 +731,6 @@ pub enum PathComponent {
     /// A variant in an enumeration.
     Variant(String),
 
-    /// A default instance declaration.
-    DefaultInstance(u32),
-
     /// An instance declaration.
     Instance(u32),
 
@@ -768,9 +765,7 @@ impl PathComponent {
             | PathComponent::Variant(name)
             | PathComponent::Language(name)
             | PathComponent::TypeParameter(name) => Some(name),
-            PathComponent::DefaultInstance(_)
-            | PathComponent::Instance(_)
-            | PathComponent::Variable(_) => None,
+            PathComponent::Instance(_) | PathComponent::Variable(_) => None,
         }
     }
 }
@@ -783,7 +778,6 @@ impl std::fmt::Display for PathComponent {
             PathComponent::Constant(name) => write!(f, "constant {}", name),
             PathComponent::Constructor(name) => write!(f, "constructor {}", name),
             PathComponent::Variant(name) => write!(f, "variant {}", name),
-            PathComponent::DefaultInstance(index) => write!(f, "default-instance {}", index),
             PathComponent::Instance(index) => write!(f, "instance {}", index),
             PathComponent::Language(name) => write!(f, "language {}", name),
             PathComponent::TypeParameter(name) => write!(f, "type-parameter {}", name),
@@ -804,9 +798,6 @@ impl std::str::FromStr for PathComponent {
             "constant" => Ok(PathComponent::Constant(name.to_string())),
             "constructor" => Ok(PathComponent::Constructor(name.to_string())),
             "variant" => Ok(PathComponent::Variant(name.to_string())),
-            "default-instance" => Ok(PathComponent::DefaultInstance(
-                name.parse().map_err(|_| ())?,
-            )),
             "instance" => Ok(PathComponent::Instance(name.parse().map_err(|_| ())?)),
             "language" => Ok(PathComponent::Language(name.to_string())),
             "type-parameter" => Ok(PathComponent::TypeParameter(name.to_string())),
