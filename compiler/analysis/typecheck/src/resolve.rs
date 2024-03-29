@@ -436,6 +436,47 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
     finalize_type(r#type, false, &finalize_context)
 }
 
+pub fn substitute_defaults_in_parameters<D: Driver>(
+    driver: &D,
+    r#type: WithInfo<D::Info, &mut crate::Type<D>>,
+) {
+    match r#type.item {
+        crate::Type::Parameter(path) => {
+            if let Some(default) = driver.get_type_parameter_declaration(path).item.default {
+                *r#type.item = default.item;
+            }
+        }
+        crate::Type::Declared { parameters, .. } => {
+            for parameter in parameters {
+                substitute_defaults_in_parameters(driver, parameter.as_mut());
+            }
+        }
+        crate::Type::Function { inputs, output } => {
+            for input in inputs {
+                substitute_defaults_in_parameters(driver, input.as_mut());
+            }
+
+            substitute_defaults_in_parameters(driver, output.as_deref_mut());
+        }
+        crate::Type::Tuple(elements) => {
+            for element in elements {
+                substitute_defaults_in_parameters(driver, element.as_mut());
+            }
+        }
+        crate::Type::Block(body) => {
+            substitute_defaults_in_parameters(driver, body.as_deref_mut());
+        }
+        crate::Type::Unknown(_) | crate::Type::Intrinsic | crate::Type::Message(_) => {}
+    }
+}
+
+pub fn parameters_in<D: Driver>(r#type: WithInfo<D::Info, &crate::Type<D>>) -> Vec<D::Path> {
+    let r#type = infer_type(r#type, None, None);
+    let mut parameters = Vec::new();
+    r#type.list_type_parameters(&mut parameters);
+    parameters
+}
+
 // Instead of reporting unification errors immediately, queue them and then
 // report them all once all type information has been collected.
 enum QueuedError<D: Driver> {
@@ -614,6 +655,42 @@ impl<D: Driver> Type<D> {
                 r#type.apply_in_context_mut(context);
             }
             TypeKind::Unknown | TypeKind::Intrinsic | TypeKind::Message(_) => {}
+        }
+    }
+
+    fn list_type_parameters(&self, parameters: &mut Vec<D::Path>) {
+        match &self.kind {
+            TypeKind::Parameter(parameter) => {
+                parameters.push(parameter.clone());
+            }
+            TypeKind::Declared {
+                parameters: type_parameters,
+                ..
+            } => {
+                for r#type in type_parameters {
+                    r#type.list_type_parameters(parameters);
+                }
+            }
+            TypeKind::Function { inputs, output } => {
+                for r#type in inputs {
+                    r#type.list_type_parameters(parameters);
+                }
+
+                output.list_type_parameters(parameters);
+            }
+            TypeKind::Tuple(elements) => {
+                for r#type in elements {
+                    r#type.list_type_parameters(parameters);
+                }
+            }
+            TypeKind::Block(r#type) => {
+                r#type.list_type_parameters(parameters);
+            }
+            TypeKind::Variable(_)
+            | TypeKind::Opaque(_)
+            | TypeKind::Unknown
+            | TypeKind::Intrinsic
+            | TypeKind::Message(_) => {}
         }
     }
 }

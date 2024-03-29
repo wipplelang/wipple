@@ -223,6 +223,16 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
     resolve::resolve_trait_type_from_instance(driver, instance)
 }
 
+/// Substitute the default types for type parameters mentioned in `r#type`.
+pub fn substitute_defaults<D: Driver>(driver: &D, r#type: WithInfo<D::Info, &mut crate::Type<D>>) {
+    resolve::substitute_defaults_in_parameters(driver, r#type)
+}
+
+/// List the type parameters mentioned in `r#type`.
+pub fn parameters_in<D: Driver>(r#type: WithInfo<D::Info, &crate::Type<D>>) -> Vec<D::Path> {
+    resolve::parameters_in(r#type)
+}
+
 /// An error occurring during typechecking.
 #[derive(Serialize, Deserialize, Derivative, TS)]
 #[derivative(
@@ -528,6 +538,9 @@ pub struct ConstantDeclaration<D: Driver> {
 
     /// The constant's declared type.
     pub r#type: WithInfo<D::Info, Type<D>>,
+
+    /// The constant's simplified type.
+    pub simplified_type: WithInfo<D::Info, Type<D>>,
 }
 
 /// An instance declaration.

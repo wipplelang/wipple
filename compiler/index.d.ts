@@ -9,17 +9,8 @@ export const link: (libraries: compiler.UnlinkedLibrary[]) => compiler.linker_Ex
 
 export const format: (code: string) => string;
 
-export const parseType: (
-    code: string,
-) => compiler.WithInfo<compiler.Info, compiler.syntax_Type> | null;
-
-export const parsedTypeFromCompiled: (
+export const listTypeParameters: (
     type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
-) => compiler.WithInfo<compiler.Info, compiler.syntax_Type>;
-
-export const parsedTypesAreEqual: (
-    left: compiler.WithInfo<compiler.Info, compiler.syntax_Type>,
-    right: compiler.WithInfo<compiler.Info, compiler.syntax_Type>,
-) => boolean;
+) => compiler.lower_Path[];
 
 export type * from "./generated/wipple-compiler.d.ts";

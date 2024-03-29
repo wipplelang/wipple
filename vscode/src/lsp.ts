@@ -142,10 +142,9 @@ connection.onHover(async (params) => {
         content.push("```wipple\n" + code + "\n```");
     }
 
-    const docs = render.renderDocumentation({ info, item: null });
-
-    if (docs) {
-        content.push("```json\n" + JSON.stringify(docs.attributes, null, 4) + "\n```", docs.docs);
+    const renderedDocumentation = render.renderDocumentation({ info, item: null });
+    if (renderedDocumentation) {
+        content.push(renderedDocumentation.docs);
     }
 
     return {

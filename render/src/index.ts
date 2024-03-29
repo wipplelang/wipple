@@ -32,7 +32,6 @@ export interface RenderedFix {
 
 export interface RenderedDocumentation {
     docs: string;
-    attributes: RenderedDocumentationAttribute[];
 }
 
 export interface RenderedDocumentationAttribute {
@@ -215,15 +214,37 @@ export class Render {
                 return declaration.item.name;
             }
             case "constant": {
-                const typeFunction = this.renderTypeFunction(
-                    declaration.item.declaration.parameters,
-                    declaration.item.declaration.bounds,
-                    { kind: "arrow" },
+                const usedParameters = compiler.listTypeParameters(
+                    declaration.item.declaration.simplifiedType,
                 );
 
-                const type = this.renderType(declaration.item.declaration.type, true, false);
+                const usedBounds = declaration.item.declaration.bounds.filter((bound) =>
+                    bound.item.parameters.some((type) =>
+                        compiler
+                            .listTypeParameters(type)
+                            .some((parameter) => usedParameters.includes(parameter)),
+                    ),
+                );
 
-                return `${declaration.item.name} :: ${typeFunction}${type}`;
+                if (usedParameters.length > 0 || usedBounds.length > 0) {
+                    const typeFunction = this.renderTypeFunction(
+                        declaration.item.declaration.parameters,
+                        declaration.item.declaration.bounds,
+                        { kind: "arrow" },
+                    );
+
+                    const type = this.renderType(declaration.item.declaration.type, true, false);
+
+                    return `${declaration.item.name} :: ${typeFunction}${type}`;
+                } else {
+                    const type = this.renderType(
+                        declaration.item.declaration.simplifiedType,
+                        true,
+                        false,
+                    );
+
+                    return `${declaration.item.name} :: ${type}`;
+                }
             }
             case "instance": {
                 const typeFunction = this.renderTypeFunction(
@@ -317,7 +338,6 @@ export class Render {
         isTopLevel: boolean,
         renderAsCode: boolean,
     ): string {
-        let isDescription = false;
         const render = (
             type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
             isTopLevel: boolean,
@@ -331,24 +351,6 @@ export class Render {
                     return this.nameForPath(type.item.value);
                 }
                 case "declared": {
-                    if (isTopLevel) {
-                        const typeDeclaration = this.getDeclarationFromPath(type.item.value.path);
-                        if (typeDeclaration) {
-                            const documentation = this.renderDocumentation(typeDeclaration);
-                            if (documentation) {
-                                for (const attribute of documentation.attributes) {
-                                    if (
-                                        attribute.name === "description" &&
-                                        attribute.value.type === "string"
-                                    ) {
-                                        isDescription = true;
-                                        return attribute.value.value;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
                     const name = this.nameForPath(type.item.value.path);
                     if (!name) {
                         return "_";
@@ -401,7 +403,7 @@ export class Render {
         };
 
         const rendered = render(type, isTopLevel, true);
-        return renderAsCode && !isDescription ? `\`${rendered}\`` : rendered;
+        return renderAsCode ? `\`${rendered}\`` : rendered;
     }
 
     renderTypeFunction(
@@ -716,20 +718,6 @@ export class Render {
 
                         severity = "error";
 
-                        const { message: customMessage, fix: customFix } =
-                            this.renderOnMismatchDiagnostic(actual, expected);
-
-                        if (customMessage && customFix) {
-                            message = customMessage;
-                            fix = customFix;
-                            break;
-                        } else if (customMessage) {
-                            message = customMessage;
-                            break;
-                        } else if (customFix) {
-                            fix = customFix;
-                        }
-
                         const renderedRole =
                             expectedRoles.length > 0
                                 ? this.renderTypeRole(expectedRoles[0].item)
@@ -843,115 +831,6 @@ export class Render {
             message,
             fix,
         };
-    }
-
-    renderOnMismatchDiagnostic(
-        actualType: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
-        expectedType: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
-    ): { message?: string; fix?: RenderedFix } {
-        if (expectedType.item.type !== "declared") {
-            return {};
-        }
-
-        const expectedTypeDeclaration = this.getDeclarationFromPath(expectedType.item.value.path);
-        if (!expectedTypeDeclaration || expectedTypeDeclaration.item.type !== "type") {
-            return {};
-        }
-
-        const expectedTypeParameters = expectedTypeDeclaration.item.declaration.parameters;
-
-        const expectedDocumentation = this.renderDocumentation(expectedTypeDeclaration);
-        if (!expectedDocumentation) {
-            return {};
-        }
-
-        let message: string | undefined;
-        let fix: RenderedFix | undefined;
-        for (const attribute of expectedDocumentation.attributes) {
-            if (message && fix) {
-                break;
-            }
-
-            if (attribute.name !== "on-mismatch" && attribute.name !== "fix-mismatch") {
-                continue;
-            }
-
-            if (attribute.input) {
-                const inputMatch = /`(.*)`/.exec(attribute.input);
-
-                if (inputMatch) {
-                    const [_, renderedMismatchedType] = inputMatch;
-
-                    const mismatchedParsedType = compiler.parseType(renderedMismatchedType);
-                    if (!mismatchedParsedType) {
-                        continue;
-                    }
-
-                    const actualParsedType = compiler.parsedTypeFromCompiled(actualType);
-
-                    if (!compiler.parsedTypesAreEqual(mismatchedParsedType, actualParsedType)) {
-                        continue;
-                    }
-                }
-            }
-
-            switch (attribute.value.type) {
-                case "string": {
-                    message = attribute.value.value;
-                    break;
-                }
-                case "formattedString": {
-                    switch (attribute.name) {
-                        case "on-mismatch": {
-                            const segments = attribute.value.segments.map(
-                                ([string, typeParameterName]) => {
-                                    let value = "`_`";
-                                    if (
-                                        actualType.item.type === "declared" &&
-                                        actualType.item.value.path ===
-                                            expectedTypeDeclaration.item.path
-                                    ) {
-                                        const typeParameterIndex = expectedTypeParameters.findIndex(
-                                            (path) => typeParameterName === this.nameForPath(path),
-                                        );
-
-                                        if (typeParameterIndex !== -1) {
-                                            value = `\`${actualType.item.value.parameters[typeParameterIndex]}\``;
-                                        }
-                                    }
-
-                                    return string + value;
-                                },
-                            );
-
-                            message = segments.join("") + attribute.value.trailing;
-
-                            break;
-                        }
-                        case "fix-mismatch": {
-                            if (attribute.value.segments.length !== 1) {
-                                continue;
-                            }
-
-                            const [message, replacement] = attribute.value.segments[0];
-                            fix = { message, replacement };
-
-                            break;
-                        }
-                        default: {
-                            continue;
-                        }
-                    }
-
-                    break;
-                }
-                case "boolean": {
-                    continue;
-                }
-            }
-        }
-
-        return { message, fix };
     }
 
     renderTypeRole(role: compiler.typecheck_Role): string {
@@ -1195,85 +1074,7 @@ export class Render {
 
         docLines.reverse();
 
-        const docs: string[] = [];
-        const attributes: RenderedDocumentationAttribute[] = [];
-
-        for (let docLine of docLines) {
-            const attributeMatch = /^\s*\[(.*)\]:(.*)/.exec(docLine);
-            if (attributeMatch) {
-                let [_, name, value] = attributeMatch;
-                name = name.trim();
-
-                let input: string | null = null;
-                if (name.includes(" ")) {
-                    [name, input] = name.split(" ", 2);
-                    name = name.trim();
-                    input = input.trim();
-                }
-
-                value = value.trim();
-
-                const stringMatch = /^"((?:[^"\\]|\\.)*)"(.*)$/.exec(value);
-                if (stringMatch) {
-                    let [_, string, rest] = stringMatch;
-
-                    const values = rest
-                        .split(/(`[^`]*`)|("[^"]*")/)
-                        .filter(Boolean)
-                        .flatMap((s) => {
-                            s = s.trim();
-                            if (s.startsWith('"') || s.startsWith("`")) {
-                                s = s.slice(1, s.length - 1);
-                            }
-                            return s === "" ? [] : [s];
-                        });
-
-                    if (values.length === 0) {
-                        attributes.push({
-                            name,
-                            input,
-                            value: { type: "string", value: string },
-                        });
-                    } else {
-                        const stringSegments = string.split("_");
-
-                        const trailing = stringSegments.pop() ?? "";
-
-                        let segments: [string, string][];
-                        // Special case: "message" followed by `fix`
-                        if (stringSegments.length === 0 && values.length === 1) {
-                            segments = [[trailing, values[0]]];
-                        } else {
-                            segments = stringSegments.map(
-                                (s, i) => [s, values[i] ?? ""] as [string, string],
-                            );
-                        }
-
-                        attributes.push({
-                            name,
-                            input,
-                            value: { type: "formattedString", segments, trailing },
-                        });
-                    }
-
-                    continue;
-                }
-
-                if (value === "True" || value === "False") {
-                    attributes.push({
-                        name,
-                        input,
-                        value: { type: "boolean", value: value === "True" },
-                    });
-
-                    continue;
-                }
-            }
-
-            docs.push(docLine);
-        }
-
-        return { docs: docs.join("\n"), attributes };
+        return { docs: docLines.join("\n") };
     }
 
     private traverseExpression(

@@ -16,17 +16,5 @@ export const link = (libraries) => {
 
 export const format = (code) => wasm.format(code);
 
-export const parseType = (code) => {
-    const result = wasm.parse_type(code);
-    if (result == null) {
-        return null;
-    }
-
-    return JSON.parse(result);
-};
-
-export const parsedTypeFromCompiled = (type) =>
-    JSON.parse(wasm.parsed_type_from_compiled(JSON.stringify(type)));
-
-export const parsedTypesAreEqual = (left, right) =>
-    wasm.parsed_types_are_equal(JSON.stringify(left), JSON.stringify(right));
+export const listTypeParameters = (type) =>
+    JSON.parse(wasm.list_type_parameters(JSON.stringify(type)));
