@@ -397,7 +397,14 @@ export class Render {
                     return "intrinsic";
                 }
                 case "message": {
-                    return type.item.value;
+                    let message = "";
+                    for (const segment of type.item.value.segments) {
+                        message += segment.text + render(segment.type, true, true);
+                    }
+
+                    message += type.item.value.trailing;
+
+                    return message;
                 }
             }
         };
@@ -810,7 +817,14 @@ export class Render {
                     }
                     case "custom": {
                         severity = "error";
-                        message = diagnostic.item.value.value;
+
+                        message = "";
+                        for (const segment of diagnostic.item.value.value.segments) {
+                            message += segment.text + this.renderType(segment.type, true, true);
+                        }
+
+                        message += diagnostic.item.value.value.trailing;
+
                         break;
                     }
                     default:

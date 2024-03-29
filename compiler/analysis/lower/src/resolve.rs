@@ -1466,7 +1466,16 @@ fn resolve_type<D: Driver>(
             crate::Type::Block(r#type.boxed())
         }
         crate::UnresolvedType::Intrinsic => crate::Type::Intrinsic,
-        crate::UnresolvedType::Message(message) => crate::Type::Message(message),
+        crate::UnresolvedType::Message { segments, trailing } => crate::Type::Message {
+            segments: segments
+                .into_iter()
+                .map(|segment| crate::FormatSegment {
+                    text: segment.text,
+                    value: resolve_type(segment.value, info),
+                })
+                .collect(),
+            trailing,
+        },
     })
 }
 

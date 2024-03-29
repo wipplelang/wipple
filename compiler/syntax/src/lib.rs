@@ -535,7 +535,14 @@ pub enum Type<D: Driver> {
     Intrinsic,
 
     /// A type-level piece of text used to generate compiler errors.
-    Message(String),
+    #[serde(rename_all = "camelCase")]
+    Message {
+        /// The segments of text that end in interpolated types.
+        segments: Vec<FormatSegment<WithInfo<D::Info, Type<D>>>>,
+
+        /// Any trailing text after the segments.
+        trailing: String,
+    },
 }
 
 /// A parsed instance.
@@ -552,8 +559,9 @@ pub struct Instance<D: Driver> {
 }
 
 /// A parsed format segment.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, rename = "syntax_FormatSegment")]
 pub struct FormatSegment<T> {
     /// The text preceding the interpolated value.
     pub text: String,

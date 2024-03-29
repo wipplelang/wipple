@@ -466,7 +466,12 @@ pub fn substitute_defaults_in_parameters<D: Driver>(
         crate::Type::Block(body) => {
             substitute_defaults_in_parameters(driver, body.as_deref_mut());
         }
-        crate::Type::Unknown(_) | crate::Type::Intrinsic | crate::Type::Message(_) => {}
+        crate::Type::Message { segments, .. } => {
+            for segment in segments {
+                substitute_defaults_in_parameters(driver, segment.r#type.as_mut());
+            }
+        }
+        crate::Type::Unknown(_) | crate::Type::Intrinsic => {}
     }
 }
 
@@ -503,6 +508,11 @@ enum QueuedError<D: Driver> {
     MissingFields(Vec<String>),
 
     ExtraField,
+
+    Custom {
+        segments: Vec<FormatSegment<Type<D>>>,
+        trailing: String,
+    },
 }
 
 fn report_queued_errors<D: Driver>(
@@ -553,6 +563,16 @@ fn report_queued_errors<D: Driver>(
             }
             QueuedError::MissingFields(fields) => crate::Diagnostic::MissingFields(fields),
             QueuedError::ExtraField => crate::Diagnostic::ExtraField,
+            QueuedError::Custom { segments, trailing } => crate::Diagnostic::Custom {
+                segments: segments
+                    .into_iter()
+                    .map(|segment| crate::MessageTypeFormatSegment {
+                        text: segment.text,
+                        r#type: finalize_type(segment.value, false, &finalize_context),
+                    })
+                    .collect(),
+                trailing,
+            },
         })
     }));
 }
@@ -597,11 +617,13 @@ impl<D: Driver> Type<D> {
                 .iter()
                 .any(|r#type| r#type.contains_variable(variable)),
             TypeKind::Block(r#type) => r#type.contains_variable(variable),
+            TypeKind::Message { segments, .. } => segments
+                .iter()
+                .any(|segment| segment.value.contains_variable(variable)),
             TypeKind::Opaque(_)
             | TypeKind::Parameter(_)
             | TypeKind::Unknown
-            | TypeKind::Intrinsic
-            | TypeKind::Message(_) => false,
+            | TypeKind::Intrinsic => false,
         }
     }
 
@@ -654,7 +676,12 @@ impl<D: Driver> Type<D> {
             TypeKind::Block(r#type) => {
                 r#type.apply_in_context_mut(context);
             }
-            TypeKind::Unknown | TypeKind::Intrinsic | TypeKind::Message(_) => {}
+            TypeKind::Message { segments, .. } => {
+                for segment in segments {
+                    segment.value.apply_in_context_mut(context);
+                }
+            }
+            TypeKind::Unknown | TypeKind::Intrinsic => {}
         }
     }
 
@@ -686,11 +713,15 @@ impl<D: Driver> Type<D> {
             TypeKind::Block(r#type) => {
                 r#type.list_type_parameters(parameters);
             }
+            TypeKind::Message { segments, .. } => {
+                for segment in segments {
+                    segment.value.list_type_parameters(parameters);
+                }
+            }
             TypeKind::Variable(_)
             | TypeKind::Opaque(_)
             | TypeKind::Unknown
-            | TypeKind::Intrinsic
-            | TypeKind::Message(_) => {}
+            | TypeKind::Intrinsic => {}
         }
     }
 }
@@ -712,7 +743,10 @@ enum TypeKind<D: Driver> {
     Tuple(Vec<Type<D>>),
     Block(Box<Type<D>>),
     Intrinsic,
-    Message(String),
+    Message {
+        segments: Vec<FormatSegment<Type<D>>>,
+        trailing: String,
+    },
     Unknown,
 }
 
@@ -914,7 +948,12 @@ impl<D: Driver> Type<D> {
             TypeKind::Block(r#type) => {
                 r#type.instantiate_mut(driver, instantiation_context);
             }
-            TypeKind::Unknown | TypeKind::Intrinsic | TypeKind::Message(_) => {}
+            TypeKind::Message { segments, .. } => {
+                for segment in segments {
+                    segment.value.instantiate_mut(driver, instantiation_context);
+                }
+            }
+            TypeKind::Unknown | TypeKind::Intrinsic => {}
         }
     }
 
@@ -954,7 +993,12 @@ impl<D: Driver> Type<D> {
             TypeKind::Block(r#type) => {
                 r#type.instantiate_opaque_in_context_mut(context);
             }
-            TypeKind::Unknown | TypeKind::Intrinsic | TypeKind::Message(_) => {}
+            TypeKind::Message { segments, .. } => {
+                for segment in segments {
+                    segment.value.instantiate_opaque_in_context_mut(context);
+                }
+            }
+            TypeKind::Unknown | TypeKind::Intrinsic => {}
         }
     }
 }
@@ -1313,11 +1357,18 @@ fn substitute_defaults<D: Driver>(
             false
         }
         TypeKind::Block(r#type) => substitute_defaults(driver, r#type, context),
-        TypeKind::Opaque(_)
-        | TypeKind::Parameter(_)
-        | TypeKind::Unknown
-        | TypeKind::Intrinsic
-        | TypeKind::Message(_) => false,
+        TypeKind::Message { segments, .. } => {
+            for segment in segments {
+                if substitute_defaults(driver, &mut segment.value, context) {
+                    return true;
+                }
+            }
+
+            false
+        }
+        TypeKind::Opaque(_) | TypeKind::Parameter(_) | TypeKind::Unknown | TypeKind::Intrinsic => {
+            false
+        }
     }
 }
 
@@ -1384,16 +1435,15 @@ enum ExpressionKind<D: Driver> {
     Wrapper(WithInfo<D::Info, Box<Expression<D>>>),
     Tuple(Vec<WithInfo<D::Info, Expression<D>>>),
     Format {
-        segments: Vec<FormatSegment<D>>,
+        segments: Vec<FormatSegment<WithInfo<D::Info, Expression<D>>>>,
         trailing: String,
     },
 }
 
-#[derive(Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""))]
-struct FormatSegment<D: Driver> {
+#[derive(Debug, Clone)]
+struct FormatSegment<T> {
     text: String,
-    value: WithInfo<D::Info, Expression<D>>,
+    value: T,
 }
 
 #[derive(Derivative)]
@@ -1476,7 +1526,16 @@ fn infer_type<D: Driver>(
                 None => TypeKind::Unknown,
             },
             crate::Type::Intrinsic => TypeKind::Intrinsic,
-            crate::Type::Message(message) => TypeKind::Message(message.clone()),
+            crate::Type::Message { segments, trailing } => TypeKind::Message {
+                segments: segments
+                    .iter()
+                    .map(|segment| FormatSegment {
+                        text: segment.text.clone(),
+                        value: infer_type(segment.r#type.as_ref(), None, type_context),
+                    })
+                    .collect(),
+                trailing: trailing.clone(),
+            },
         },
         r#type.info,
         Vec::from_iter(role.into()),
@@ -3542,10 +3601,13 @@ fn resolve_trait<D: Driver>(
                         if let Some(message_type) = candidate.item.parameters.first() {
                             let message_type = message_type.apply_in_context(context.type_context);
 
-                            if let TypeKind::Message(message) = &message_type.kind {
-                                context.errors.borrow_mut().push(WithInfo {
+                            if let TypeKind::Message { segments, trailing } = &message_type.kind {
+                                context.error_queue.borrow_mut().push(WithInfo {
                                     info: query.info,
-                                    item: crate::Diagnostic::Custom(message.clone()),
+                                    item: QueuedError::Custom {
+                                        segments: segments.clone(),
+                                        trailing: trailing.clone(),
+                                    },
                                 });
                             }
                         }
@@ -3720,7 +3782,16 @@ fn finalize_type<D: Driver>(
                     crate::Type::Unknown(UnknownTypeId::none())
                 }
                 TypeKind::Intrinsic => crate::Type::Intrinsic,
-                TypeKind::Message(message) => crate::Type::Message(message),
+                TypeKind::Message { segments, trailing } => crate::Type::Message {
+                    segments: segments
+                        .into_iter()
+                        .map(|segment| crate::MessageTypeFormatSegment {
+                            text: segment.text,
+                            r#type: finalize_type_inner(segment.value, context, fully_resolved),
+                        })
+                        .collect(),
+                    trailing,
+                },
             },
         }
     }
@@ -4035,7 +4106,18 @@ fn debug_type<D: Driver>(r#type: &Type<D>, context: &TypeContext<D>) -> String {
         TypeKind::Block(r#type) => format!("{{{}}}", debug_type(&r#type, context)),
         TypeKind::Unknown => String::from("_"),
         TypeKind::Intrinsic => String::from("intrinsic"),
-        TypeKind::Message(message) => message,
+        TypeKind::Message { segments, trailing } => {
+            let mut message = String::new();
+            for segment in segments {
+                use std::fmt::Write;
+                message.push_str(&segment.text);
+                write!(&mut message, "{}", debug_type(&segment.value, context)).unwrap();
+            }
+
+            message.push_str(&trailing);
+
+            message
+        }
     }
 }
 

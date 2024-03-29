@@ -83,7 +83,7 @@ fn expression<D: Driver>(
             inputs: input_syntaxes,
         } => {
             if let parse::Expression::Text(text) = function_syntax.as_deref().item {
-                let result = crate::text::parse_format_expression(
+                let result = crate::text::parse_format_expression::<D, _>(
                     WithInfo {
                         info: function_syntax.info.clone(),
                         item: text,
@@ -650,7 +650,28 @@ fn r#type<D: Driver>(
             crate::Type::Block(r#type(type_syntax.unboxed(), info).boxed())
         }
         parse::Type::Intrinsic => crate::Type::Intrinsic,
-        parse::Type::Message(message) => crate::Type::Message(message),
+        parse::Type::Message {
+            message,
+            inputs: input_syntaxes,
+        } => {
+            let result = crate::text::parse_format_expression::<D, _>(
+                message.as_deref(),
+                input_syntaxes,
+                &mut info.errors,
+            );
+
+            crate::Type::Message {
+                segments: result
+                    .segments
+                    .into_iter()
+                    .map(|segment| crate::FormatSegment {
+                        text: segment.text,
+                        value: r#type(segment.value, info),
+                    })
+                    .collect(),
+                trailing: result.trailing,
+            }
+        }
     })
 }
 

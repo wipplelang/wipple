@@ -365,7 +365,10 @@ pub enum Type<D: Driver> {
     Tuple(Vec<WithInfo<D::Info, Type<D>>>),
     Block(WithInfo<D::Info, Box<Type<D>>>),
     Intrinsic,
-    Message(String),
+    Message {
+        message: WithInfo<D::Info, String>,
+        inputs: Vec<WithInfo<D::Info, Type<D>>>,
+    },
 }
 
 impl<D: Driver> DefaultFromInfo<D::Info> for Type<D> {
@@ -1412,13 +1415,32 @@ mod rules {
     }
 
     pub fn message_type<D: Driver>() -> Rule<D, Type<D>> {
-        Rule::match_terminal(
+        Rule::switch(
             SyntaxKind::MessageType,
-            RuleToRender::TEXT,
-            |_, tree, _| match tree.item {
-                TokenTree::Text(message) => Some(tree.replace(Type::Message(message.to_string()))),
-                _ => None,
-            },
+            [
+                || {
+                    text()
+                        .wrapped()
+                        .map(SyntaxKind::MessageType, |text| Type::Message {
+                            message: text.try_unwrap().unwrap(),
+                            inputs: Vec::new(),
+                        })
+                },
+                || {
+                    Rule::list_prefix(
+                        SyntaxKind::MessageType,
+                        || text().wrapped(),
+                        r#type,
+                        |_, info, message, inputs, _| WithInfo {
+                            info,
+                            item: Type::Message {
+                                message: message.try_unwrap().unwrap(),
+                                inputs,
+                            },
+                        },
+                    )
+                },
+            ],
         )
         .named("A type-level piece of text used to generate compiler errors.")
     }

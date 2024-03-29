@@ -335,7 +335,13 @@ pub enum Diagnostic<D: Driver> {
     ExtraPattern,
 
     /// A custom error message.
-    Custom(String),
+    Custom {
+        /// The segments of text that end in interpolated types.
+        segments: Vec<MessageTypeFormatSegment<D>>,
+
+        /// Any trailing text after the segments.
+        trailing: String,
+    },
 }
 
 /// The type of an expression.
@@ -387,7 +393,39 @@ pub enum Type<D: Driver> {
     Intrinsic,
 
     /// A type-level piece of text used to generate compiler errors.
-    Message(String),
+    #[serde(rename_all = "camelCase")]
+    Message {
+        /// The segments of text that end in interpolated types.
+        segments: Vec<MessageTypeFormatSegment<D>>,
+
+        /// Any trailing text after the segments.
+        trailing: String,
+    },
+}
+
+/// A segment in a message type.
+#[derive(Serialize, Deserialize, Derivative, TS)]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+#[ts(
+    export,
+    rename = "typecheck_MessageTypeFormatSegment",
+    concrete(D = wipple_util::TsAny),
+    bound = "D::Info: TS"
+)]
+pub struct MessageTypeFormatSegment<D: Driver> {
+    /// The text before the interpolated type.
+    pub text: String,
+
+    /// The type to insert after the text.
+    pub r#type: WithInfo<D::Info, Type<D>>,
 }
 
 /// Used to disambiguate between unknown types by recording the internal type

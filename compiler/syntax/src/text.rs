@@ -1,18 +1,19 @@
-use crate::{parse, Driver, WithInfo};
+use crate::{Driver, WithInfo};
 use rustc_lexer::unescape::EscapeError;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
+use wipple_util::DefaultFromInfo;
 
-pub struct ParseFormatExpressionResult<D: Driver> {
-    pub segments: Vec<crate::FormatSegment<WithInfo<D::Info, parse::Expression<D>>>>,
+pub struct ParseFormatExpressionResult<D: Driver, T> {
+    pub segments: Vec<crate::FormatSegment<WithInfo<D::Info, T>>>,
     pub trailing: String,
 }
 
-pub(crate) fn parse_format_expression<D: Driver>(
+pub(crate) fn parse_format_expression<D: Driver, T: DefaultFromInfo<D::Info>>(
     raw: WithInfo<D::Info, &str>,
-    mut inputs: Vec<WithInfo<D::Info, parse::Expression<D>>>,
+    mut inputs: Vec<WithInfo<D::Info, T>>,
     errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic>>,
-) -> ParseFormatExpressionResult<D> {
+) -> ParseFormatExpressionResult<D, T> {
     let mut string = String::with_capacity(raw.item.len());
     let mut escaped_underscores = Vec::new();
 
@@ -63,10 +64,7 @@ pub(crate) fn parse_format_expression<D: Driver>(
     }
 
     for _ in 0..segments.len().saturating_sub(inputs.len()) {
-        inputs.push(WithInfo {
-            info: raw.info.clone(),
-            item: parse::Expression::Error,
-        });
+        inputs.push(T::default_from_info(raw.info.clone()));
     }
 
     let segments = segments

@@ -101,7 +101,16 @@ pub mod interface {
                 wipple_lower::Type::Block(convert_type(r#type.unboxed()).boxed())
             }
             wipple_typecheck::Type::Intrinsic => wipple_lower::Type::Intrinsic,
-            wipple_typecheck::Type::Message(message) => wipple_lower::Type::Message(message),
+            wipple_typecheck::Type::Message { segments, trailing } => wipple_lower::Type::Message {
+                segments: segments
+                    .into_iter()
+                    .map(|segment| wipple_lower::FormatSegment {
+                        text: segment.text,
+                        value: convert_type(segment.r#type),
+                    })
+                    .collect(),
+                trailing,
+            },
         })
     }
 
@@ -349,7 +358,18 @@ pub mod lower {
                 wipple_lower::UnresolvedType::Block(convert_type(r#type.unboxed()).boxed())
             }
             wipple_syntax::Type::Intrinsic => wipple_lower::UnresolvedType::Intrinsic,
-            wipple_syntax::Type::Message(message) => wipple_lower::UnresolvedType::Message(message),
+            wipple_syntax::Type::Message { segments, trailing } => {
+                wipple_lower::UnresolvedType::Message {
+                    segments: segments
+                        .into_iter()
+                        .map(|segment| wipple_lower::FormatSegment {
+                            text: segment.text,
+                            value: convert_type(segment.value),
+                        })
+                        .collect(),
+                    trailing,
+                }
+            }
         })
     }
 
@@ -737,7 +757,16 @@ pub mod typecheck {
                 wipple_typecheck::Type::Block(convert_type(r#type.unboxed()).boxed())
             }
             wipple_lower::Type::Intrinsic => wipple_typecheck::Type::Intrinsic,
-            wipple_lower::Type::Message(message) => wipple_typecheck::Type::Message(message),
+            wipple_lower::Type::Message { segments, trailing } => wipple_typecheck::Type::Message {
+                segments: segments
+                    .into_iter()
+                    .map(|segment| wipple_typecheck::MessageTypeFormatSegment {
+                        text: segment.text,
+                        r#type: convert_type(segment.value),
+                    })
+                    .collect(),
+                trailing,
+            },
         })
     }
 

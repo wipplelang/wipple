@@ -539,7 +539,13 @@ pub enum UnresolvedType<D: Driver> {
     Intrinsic,
 
     /// A type-level piece of text used to generate compiler errors.
-    Message(String),
+    Message {
+        /// The segments of text that end in interpolated types.
+        segments: Vec<FormatSegment<WithInfo<D::Info, UnresolvedType<D>>>>,
+
+        /// Any trailing text after the segments.
+        trailing: String,
+    },
 }
 
 /// An unresolved instance.
@@ -1115,7 +1121,14 @@ pub enum Type<D: Driver> {
     Intrinsic,
 
     /// A type-level piece of text used to generate compiler errors.
-    Message(String),
+    #[serde(rename_all = "camelCase")]
+    Message {
+        /// The segments of text that end in interpolated types.
+        segments: Vec<FormatSegment<WithInfo<D::Info, Type<D>>>>,
+
+        /// Any trailing text after the segments.
+        trailing: String,
+    },
 }
 
 /// A resolved instance.
