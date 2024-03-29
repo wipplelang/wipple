@@ -3532,23 +3532,21 @@ fn resolve_trait<D: Driver>(
 
                     context.recursion_stack.borrow_mut().pop();
 
-                    let resolved_instance = result?;
+                    result?;
+                }
 
-                    // Special case: If the instance resolves to `Error`, display the
-                    // user-provided message
-                    if let Some(error_trait_path) = context.driver.path_for_language_trait("error")
-                    {
-                        if resolved_instance.item.r#trait == error_trait_path {
-                            if let Some(message_type) = resolved_instance.item.parameters.first() {
-                                let message_type =
-                                    message_type.apply_in_context(context.type_context);
+                // Special case: If the instance resolves to `Error`, display the
+                // user-provided message
+                if let Some(error_trait_path) = context.driver.path_for_language_trait("error") {
+                    if candidate.item.r#trait == error_trait_path {
+                        if let Some(message_type) = candidate.item.parameters.first() {
+                            let message_type = message_type.apply_in_context(context.type_context);
 
-                                if let TypeKind::Message(message) = &message_type.kind {
-                                    context.errors.borrow_mut().push(WithInfo {
-                                        info: query.info.clone(),
-                                        item: crate::Diagnostic::Custom(message.clone()),
-                                    });
-                                }
+                            if let TypeKind::Message(message) = &message_type.kind {
+                                context.errors.borrow_mut().push(WithInfo {
+                                    info: query.info,
+                                    item: crate::Diagnostic::Custom(message.clone()),
+                                });
                             }
                         }
                     }
@@ -3783,7 +3781,7 @@ fn finalize_expression<D: Driver>(
                             path: path.clone(),
                             parameters: parameters
                                 .into_iter()
-                                .map(|r#type| finalize_type(r#type, true, context).item)
+                                .map(|r#type| finalize_type(r#type, false, context).item)
                                 .collect(),
                         }
                     }
@@ -3801,7 +3799,7 @@ fn finalize_expression<D: Driver>(
             let error = WithInfo {
                 info: expression.info.clone(),
                 item: crate::Diagnostic::UnknownType(
-                    finalize_type(expression.item.r#type.clone(), true, context).item,
+                    finalize_type(expression.item.r#type.clone(), false, context).item,
                 ),
             };
 
@@ -3816,7 +3814,7 @@ fn finalize_expression<D: Driver>(
                 path,
                 parameters: parameters
                     .iter()
-                    .map(|r#type| finalize_type(r#type.clone(), true, context).item)
+                    .map(|r#type| finalize_type(r#type.clone(), false, context).item)
                     .collect(),
             }
         }
@@ -3906,7 +3904,7 @@ fn finalize_expression<D: Driver>(
             let error = WithInfo {
                 info: expression.info.clone(),
                 item: crate::Diagnostic::UnknownType(
-                    finalize_type(expression.item.r#type.clone(), true, context).item,
+                    finalize_type(expression.item.r#type.clone(), false, context).item,
                 ),
             };
 
