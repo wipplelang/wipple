@@ -394,6 +394,9 @@ export class Render {
                 case "intrinsic": {
                     return "intrinsic";
                 }
+                case "message": {
+                    return type.item.value;
+                }
             }
         };
 
@@ -817,6 +820,11 @@ export class Render {
                         };
                         break;
                     }
+                    case "custom": {
+                        severity = "error";
+                        message = diagnostic.item.value.value;
+                        break;
+                    }
                     default:
                         diagnostic.item.value satisfies never;
                         return null;
@@ -1074,6 +1082,8 @@ export class Render {
                 return "block type";
             case "intrinsicType":
                 return "intrinsic type";
+            case "messageType":
+                return "message type";
             case "typeMember":
                 return "type member";
             case "fieldDeclaration":

@@ -101,6 +101,7 @@ pub mod interface {
                 wipple_lower::Type::Block(convert_type(r#type.unboxed()).boxed())
             }
             wipple_typecheck::Type::Intrinsic => wipple_lower::Type::Intrinsic,
+            wipple_typecheck::Type::Message(message) => wipple_lower::Type::Message(message),
         })
     }
 
@@ -348,6 +349,7 @@ pub mod lower {
                 wipple_lower::UnresolvedType::Block(convert_type(r#type.unboxed()).boxed())
             }
             wipple_syntax::Type::Intrinsic => wipple_lower::UnresolvedType::Intrinsic,
+            wipple_syntax::Type::Message(message) => wipple_lower::UnresolvedType::Message(message),
         })
     }
 
@@ -391,6 +393,7 @@ pub mod lower {
                 wipple_syntax::Type::Block(unconvert_type(r#type.unboxed()).boxed())
             }
             wipple_lower::Type::Intrinsic => wipple_syntax::Type::Intrinsic,
+            wipple_lower::Type::Message(message) => wipple_syntax::Type::Message(message),
         })
     }
 
@@ -771,6 +774,7 @@ pub mod typecheck {
                 wipple_typecheck::Type::Block(convert_type(r#type.unboxed()).boxed())
             }
             wipple_lower::Type::Intrinsic => wipple_typecheck::Type::Intrinsic,
+            wipple_lower::Type::Message(message) => wipple_typecheck::Type::Message(message),
         })
     }
 
@@ -799,6 +803,7 @@ pub mod typecheck {
                 wipple_lower::Type::Block(unconvert_type(r#type.unboxed()).boxed())
             }
             wipple_typecheck::Type::Intrinsic => wipple_lower::Type::Intrinsic,
+            wipple_typecheck::Type::Message(message) => wipple_lower::Type::Message(message),
         })
     }
 

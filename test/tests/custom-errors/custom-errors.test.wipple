@@ -1,0 +1,15 @@
+-- [should error]
+
+Distance : type {pixels :: Number}
+
+Distance? : (infer D) => trait ()
+D where (Error "expected a distance in `pixels`") => default instance (Distance? D) : ()
+instance (Distance? Distance) : ()
+
+pixels :: Number -> Distance
+pixels : pixels -> {pixels : pixels}
+
+forward :: D where (Distance? D) => D -> ()
+forward : ...
+
+forward 42

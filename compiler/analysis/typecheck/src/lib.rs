@@ -16,7 +16,7 @@ pub trait Driver: Sized {
     type Info: Debug + Clone + Eq + Hash + Serialize + DeserializeOwned + TS;
 
     /// Represents a path used to resolve declarations.
-    type Path: Debug + Clone + Eq + Hash + Serialize + DeserializeOwned + TS;
+    type Path: Debug + Clone + Eq + Ord + Hash + Serialize + DeserializeOwned + TS;
 
     /// The recursion limit.
     fn recursion_limit(&self) -> u32;
@@ -189,7 +189,7 @@ pub struct Result<D: Driver> {
 pub fn instances_overlap<D: Driver>(
     driver: &D,
     r#trait: &D::Path,
-    instances: impl IntoIterator<Item = D::Path>,
+    instances: Vec<D::Path>,
 ) -> Vec<WithInfo<D::Info, Diagnostic<D>>> {
     resolve::instances_overlap(driver, r#trait, instances)
 }
@@ -323,6 +323,9 @@ pub enum Diagnostic<D: Driver> {
 
     /// This pattern is already handled by a previous pattern.
     ExtraPattern,
+
+    /// A custom error message.
+    Custom(String),
 }
 
 /// The type of an expression.
@@ -372,6 +375,9 @@ pub enum Type<D: Driver> {
 
     /// An intrinsic type provided by the runtime.
     Intrinsic,
+
+    /// A type-level piece of text used to generate compiler errors.
+    Message(String),
 }
 
 /// Used to disambiguate between unknown types by recording the internal type

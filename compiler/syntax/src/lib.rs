@@ -533,6 +533,9 @@ pub enum Type<D: Driver> {
 
     /// An intrinsic type provided by the runtime.
     Intrinsic,
+
+    /// A type-level piece of text used to generate compiler errors.
+    Message(String),
 }
 
 /// A parsed instance.

@@ -42,3 +42,17 @@ Value => instance (Empty (Maybe Value)) : None
 -- Send a message to the runtime.
 runtime-message :: Input (Output : ()) => Text Input -> Output
 runtime-message : message data -> intrinsic "runtime-message" message data
+
+-- Generate a compile-time error.
+--
+-- ## Example
+--
+-- ```wipple
+-- -- Display "cannot multiply two pieces of text" rather than
+-- -- "this code requires `(Multiply Text Text)`"
+-- (infer Output) where (Error "cannot multiply two pieces of text") =>
+--   instance (Multiply Text Text Output) : unreachable
+-- ```
+Error : Message => trait Message
+Message => instance (Error Message) : unreachable
+intrinsic "trait" "error" : Error

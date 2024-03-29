@@ -365,6 +365,7 @@ pub enum Type<D: Driver> {
     Tuple(Vec<WithInfo<D::Info, Type<D>>>),
     Block(WithInfo<D::Info, Box<Type<D>>>),
     Intrinsic,
+    Message(String),
 }
 
 impl<D: Driver> DefaultFromInfo<D::Info> for Type<D> {
@@ -559,6 +560,7 @@ pub enum SyntaxKind {
     TupleType,
     BlockType,
     IntrinsicType,
+    MessageType,
     TypeMember,
     FieldDeclaration,
     VariantDeclaration,
@@ -784,6 +786,7 @@ mod rules {
             tuple_type::<D>().render(),
             block_type::<D>().render(),
             intrinsic_type::<D>().render(),
+            message_type::<D>().render(),
             type_function::<D>().render(),
             type_parameter::<D>().render(),
             type_representation::<D>().render(),
@@ -1237,6 +1240,7 @@ mod rules {
                 tuple_type,
                 block_type,
                 intrinsic_type,
+                message_type,
                 declared_type,
             ],
         )
@@ -1405,6 +1409,18 @@ mod rules {
             },
         )
         .named("An intrinsic type provided by the runtime.")
+    }
+
+    pub fn message_type<D: Driver>() -> Rule<D, Type<D>> {
+        Rule::match_terminal(
+            SyntaxKind::MessageType,
+            RuleToRender::TEXT,
+            |_, tree, _| match tree.item {
+                TokenTree::Text(message) => Some(tree.replace(Type::Message(message.to_string()))),
+                _ => None,
+            },
+        )
+        .named("A type-level piece of text used to generate compiler errors.")
     }
 
     pub fn type_function<D: Driver>() -> Rule<D, TypeFunction<D>> {

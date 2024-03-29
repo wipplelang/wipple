@@ -258,8 +258,10 @@ pub fn resolve<D: Driver>(
 pub fn instances_overlap<D: Driver>(
     driver: &D,
     r#trait: &D::Path,
-    instances: impl IntoIterator<Item = D::Path>,
+    mut instances: Vec<D::Path>,
 ) -> Vec<WithInfo<D::Info, crate::Diagnostic<D>>> {
+    instances.sort();
+
     let trait_declaration = driver.get_trait_declaration(r#trait);
     let opaque_parameters = trait_declaration
         .item
@@ -557,7 +559,8 @@ impl<D: Driver> Type<D> {
             TypeKind::Opaque(_)
             | TypeKind::Parameter(_)
             | TypeKind::Unknown
-            | TypeKind::Intrinsic => false,
+            | TypeKind::Intrinsic
+            | TypeKind::Message(_) => false,
         }
     }
 
@@ -610,7 +613,7 @@ impl<D: Driver> Type<D> {
             TypeKind::Block(r#type) => {
                 r#type.apply_in_context_mut(context);
             }
-            TypeKind::Unknown | TypeKind::Intrinsic => {}
+            TypeKind::Unknown | TypeKind::Intrinsic | TypeKind::Message(_) => {}
         }
     }
 }
@@ -632,6 +635,7 @@ enum TypeKind<D: Driver> {
     Tuple(Vec<Type<D>>),
     Block(Box<Type<D>>),
     Intrinsic,
+    Message(String),
     Unknown,
 }
 
@@ -833,7 +837,7 @@ impl<D: Driver> Type<D> {
             TypeKind::Block(r#type) => {
                 r#type.instantiate_mut(driver, instantiation_context);
             }
-            TypeKind::Unknown | TypeKind::Intrinsic => {}
+            TypeKind::Unknown | TypeKind::Intrinsic | TypeKind::Message(_) => {}
         }
     }
 
@@ -873,7 +877,7 @@ impl<D: Driver> Type<D> {
             TypeKind::Block(r#type) => {
                 r#type.instantiate_opaque_in_context_mut(context);
             }
-            TypeKind::Unknown | TypeKind::Intrinsic => {}
+            TypeKind::Unknown | TypeKind::Intrinsic | TypeKind::Message(_) => {}
         }
     }
 }
@@ -1232,9 +1236,11 @@ fn substitute_defaults<D: Driver>(
             false
         }
         TypeKind::Block(r#type) => substitute_defaults(driver, r#type, context),
-        TypeKind::Opaque(_) | TypeKind::Parameter(_) | TypeKind::Unknown | TypeKind::Intrinsic => {
-            false
-        }
+        TypeKind::Opaque(_)
+        | TypeKind::Parameter(_)
+        | TypeKind::Unknown
+        | TypeKind::Intrinsic
+        | TypeKind::Message(_) => false,
     }
 }
 
@@ -1393,6 +1399,7 @@ fn infer_type<D: Driver>(
                 None => TypeKind::Unknown,
             },
             crate::Type::Intrinsic => TypeKind::Intrinsic,
+            crate::Type::Message(message) => TypeKind::Message(message.clone()),
         },
         r#type.info,
         Vec::from_iter(role.into()),
@@ -3448,7 +3455,26 @@ fn resolve_trait<D: Driver>(
 
                     context.recursion_stack.borrow_mut().pop();
 
-                    result?;
+                    let resolved_instance = result?;
+
+                    // Special case: If the instance resolves to `Error`, display the
+                    // user-provided message
+                    if let Some(error_trait_path) = context.driver.path_for_language_trait("error")
+                    {
+                        if resolved_instance.item.r#trait == error_trait_path {
+                            if let Some(message_type) = resolved_instance.item.parameters.first() {
+                                let message_type =
+                                    message_type.apply_in_context(context.type_context);
+
+                                if let TypeKind::Message(message) = &message_type.kind {
+                                    context.errors.borrow_mut().push(WithInfo {
+                                        info: query.info.clone(),
+                                        item: crate::Diagnostic::Custom(message.clone()),
+                                    });
+                                }
+                            }
+                        }
+                    }
                 }
 
                 return Ok(candidate);
@@ -3619,6 +3645,7 @@ fn finalize_type<D: Driver>(
                     crate::Type::Unknown(UnknownTypeId::none())
                 }
                 TypeKind::Intrinsic => crate::Type::Intrinsic,
+                TypeKind::Message(message) => crate::Type::Message(message),
             },
         }
     }
@@ -3933,6 +3960,7 @@ fn debug_type<D: Driver>(r#type: &Type<D>, context: &TypeContext<D>) -> String {
         TypeKind::Block(r#type) => format!("{{{}}}", debug_type(&r#type, context)),
         TypeKind::Unknown => String::from("_"),
         TypeKind::Intrinsic => String::from("intrinsic"),
+        TypeKind::Message(message) => message,
     }
 }
 

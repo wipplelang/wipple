@@ -1466,6 +1466,7 @@ fn resolve_type<D: Driver>(
             crate::Type::Block(r#type.boxed())
         }
         crate::UnresolvedType::Intrinsic => crate::Type::Intrinsic,
+        crate::UnresolvedType::Message(message) => crate::Type::Message(message),
     })
 }
 

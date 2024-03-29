@@ -537,6 +537,9 @@ pub enum UnresolvedType<D: Driver> {
 
     /// An intrinsic type provided by the runtime.
     Intrinsic,
+
+    /// A type-level piece of text used to generate compiler errors.
+    Message(String),
 }
 
 /// An unresolved instance.
@@ -646,7 +649,7 @@ pub struct UnresolvedFieldValue<D: Driver> {
 }
 
 /// A path that uniquely identifies a declaration.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, TS)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, TS)]
 #[ts(export, rename = "lower_Path")]
 pub struct Path(#[ts(as = "String")] pub Vec<PathComponent>);
 
@@ -711,7 +714,7 @@ impl<'de> Deserialize<'de> for Path {
 }
 
 /// A component of a [`Path`].
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 #[ts(export, rename = "lower_PathComponent")]
@@ -1110,6 +1113,9 @@ pub enum Type<D: Driver> {
 
     /// An intrinsic type provided by the runtime.
     Intrinsic,
+
+    /// A type-level piece of text used to generate compiler errors.
+    Message(String),
 }
 
 /// A resolved instance.

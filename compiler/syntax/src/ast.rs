@@ -650,6 +650,7 @@ fn r#type<D: Driver>(
             crate::Type::Block(r#type(type_syntax.unboxed(), info).boxed())
         }
         parse::Type::Intrinsic => crate::Type::Intrinsic,
+        parse::Type::Message(message) => crate::Type::Message(message),
     })
 }
 
