@@ -17,7 +17,6 @@ exports[`type-states.test.wipple 1`] = `
   "type-states/type-states.test.wipple:18:41: error: can't find \`drone\`",
   "type-states/type-states.test.wipple:18:4: error: this code produces a \`_\`, but the \`_\`s are unknown",
   "type-states/type-states.test.wipple:18:50: error: can't find \`already\`",
-  "type-states/type-states.test.wipple:5:8: error: this code produces a \`_\`, but the \`_\`s are unknown",
   "type-states/type-states.test.wipple:8:11: error: expected this annotation to be a \`Drone Idle\` here, but found a \`Drone -> (Drone _)\`",
 ]
 `;

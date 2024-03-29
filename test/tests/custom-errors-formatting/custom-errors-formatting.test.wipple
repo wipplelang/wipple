@@ -1,0 +1,20 @@
+-- [should error]
+
+Carnivore : type
+Herbivore : type
+
+Meat : type
+Plants : type
+
+Eats? : Animal Food => trait ()
+Animal Food where (Error ("_s do not eat _" Animal Food)) => default instance (Eats? Animal Food) : ()
+instance (Eats? Carnivore Meat) : ()
+instance (Eats? Herbivore Plants) : ()
+
+test :: Animal Food where (Eats? Animal Food) => Animal Food -> ()
+test : ...
+
+test Carnivore Meat
+test Herbivore Plants
+test Carnivore Plants
+test Herbivore Meat
