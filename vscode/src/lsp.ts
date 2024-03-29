@@ -162,9 +162,12 @@ const compileAll = async (
     activeFile: string,
     activeCode: string,
 ): Promise<compiler.WithInfo<compiler.Info, compiler.Diagnostic>[]> => {
+    const activeDir = path.normalize(path.dirname(activeFile));
+
     const dirs = [
-        path.dirname(activeFile),
-        ...linkDirs, // TODO: Link against library, not source files
+        activeDir,
+        // TODO: Link against library, not source files
+        ...linkDirs.filter((dir) => path.normalize(dir) !== activeDir),
     ];
 
     const sourcePaths = (
