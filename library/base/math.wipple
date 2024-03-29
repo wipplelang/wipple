@@ -4,40 +4,52 @@ undefined :: Number
 undefined : intrinsic "undefined-number"
 
 -- Add two values together, returning the sum.
--- [on-unimplemented]: "cannot add _ to _" Right Left
 Add : (Left : Number) (Right : Number) (infer Sum) => trait (Left Right -> Sum)
 intrinsic "trait" "add" : Add
 instance (Add Number Number Number) : left right -> intrinsic "add-number" left right
 
+Left Right Sum where (Error ("cannot add _ to _" Right Left)) =>
+    default instance (Add Left Right Sum) : ...
+
 -- Subtract the one value from another, returning the difference.
--- [on-unimplemented]: "cannot subtract _ from _" Right Left
 Subtract : (Left : Number) (Right : Number) (infer Difference) => trait (Left Right -> Difference)
 intrinsic "trait" "subtract" : Subtract
 instance (Subtract Number Number Number) : left right -> intrinsic "subtract-number" left right
 
+Left Right Difference where (Error ("cannot subtract _ from _" Right Left)) =>
+    default instance (Subtract Left Right Difference) : ...
+
 -- Multiply two values together, returning the product.
--- [on-unimplemented]: "cannot multiply _ by _" Left Right
 Multiply : (Left : Number) (Right : Number) (infer Product) => trait (Left Right -> Product)
 intrinsic "trait" "multiply" : Multiply
 instance (Multiply Number Number Number) : left right -> intrinsic "multiply-number" left right
 
+Left Right Product where (Error ("cannot multiply _ by _" Left Right)) =>
+    default instance (Multiply Left Right Product) : ...
+
 -- Divide two numbers, returning the quotient.
--- [on-unimplemented]: "cannot divide _ by _" Left Right
 Divide : (Left : Number) (Right : Number) (infer Quotient) => trait (Left Right -> Quotient)
 intrinsic "trait" "divide" : Divide
 instance (Divide Number Number Number) : left right -> intrinsic "divide-number" left right
 
+Left Right Quotient where (Error ("cannot divide _ by _" Left Right)) =>
+    default instance (Divide Left Right Quotient) : ...
+
 -- Divide two numbers, returning the remainder.
--- [on-unimplemented]: "cannot divide _ by _" Left Right
 Remainder : (Left : Number) (Right : Number) (infer Remainder) => trait (Left Right -> Remainder)
 intrinsic "trait" "remainder" : Remainder
 instance (Remainder Number Number Number) : left right -> intrinsic "remainder-number" left right
 
+Left Right Remainder where (Error ("cannot divide _ by _" Left Right)) =>
+    default instance (Remainder Left Right Remainder) : ...
+
 -- Raise one number to the power of the other number.
--- [on-unimplemented]: "cannot raise _ to the power of _" Left Right
 Power : (Left : Number) (Right : Number) (infer Power) => trait (Left Right -> Power)
 intrinsic "trait" "power" : Power
 instance (Power Number Number Number) : left right -> intrinsic "power-number" left right
+
+Left Right Power where (Error ("cannot raise _ to the power of _" Left Right)) =>
+    default instance (Power Left Right Power) : ...
 
 -- Round down a number to the nearest integer.
 floor :: Number -> Number
@@ -53,6 +65,10 @@ sqrt : n -> intrinsic "sqrt-number" n
 
 -- An angle represented in degrees.
 Angle : type Number
+
+Angle? : (infer A) => trait (A -> Angle)
+A where (Error "missing unit for angle; try adding `degrees`") => default instance (Angle? A) : ...
+instance (Angle? Angle) : angle -> angle
 
 -- An angle in degrees.
 degrees :: Number -> Angle

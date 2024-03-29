@@ -4,7 +4,7 @@ exports[`default-type-parameter.test.wipple 1`] = `[]`;
 
 exports[`default-type-parameter.test.wipple 2`] = `
 {
-  "output": "no instance found for trait trait Describe with type descriptor {"type":"function","value":[[{"type":"named","value":["type X",[]]}],{"type":"named","value":["type Text",[]]}]}
+  "output": "not implemented
 ",
 }
 `;

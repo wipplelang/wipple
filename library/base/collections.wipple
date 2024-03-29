@@ -1,5 +1,7 @@
--- [on-unimplemented]: "cannot create a _ from _ values" Collection Element
 Build-Collection : (infer Element) (Collection : List Element) => trait (Element -> Collection -> Collection)
+
+Element Collection where (Error ("cannot create a _ collection out of _ items" Collection Element)) =>
+    default instance (Build-Collection Element Collection) : ...
 
 intrinsic "constant" "build-collection" : Build-Collection
 

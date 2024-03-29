@@ -2,7 +2,7 @@
 
 exports[`did-you-mean.test.wipple 1`] = `
 [
-  "did-you-mean/did-you-mean.test.wipple:2:0: error: can't find \`print\`",
+  "did-you-mean/did-you-mean.test.wipple:2:0: error: use \`show\` to display on the screen",
   "did-you-mean/did-you-mean.test.wipple:3:5: error: can't find \`hello\`",
   "did-you-mean/did-you-mean.test.wipple:4:12: error: expected expression here while reading this binary operator expression",
   "did-you-mean/did-you-mean.test.wipple:4:15: error: can't find \`comment\`",

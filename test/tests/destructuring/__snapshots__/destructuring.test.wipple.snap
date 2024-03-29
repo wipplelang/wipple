@@ -6,7 +6,7 @@ exports[`destructuring.test.wipple 2`] = `
 {
   "output": "Alice
 Bob
-no instance found for trait trait Describe with type descriptor {"type":"function","value":[[{"type":"named","value":["type Person",[]]}],{"type":"named","value":["type Text",[]]}]}
+not implemented
 ",
 }
 `;

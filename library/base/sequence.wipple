@@ -135,8 +135,10 @@ reduce : result f -> container -> do {
 sum :: Container (infer N) where (As-Sequence Container N) (Empty N) (Add N N N) => Container -> N
 sum : reduce Empty (next -> result -> result + next)
 
--- [on-unimplemented]: "cannot create a _ from a sequence of _" Container Element
 From-Sequence : Element Container => trait ((Sequence Element) -> Container)
+
+Element Container where (Error ("cannot create a _ from a sequence of _" Container Element)) =>
+    default instance (From-Sequence Element Container) : ...
 
 -- Collect a sequence into a single container, like a list.
 collect :: Input (infer Element) Output where (As-Sequence Input Element) (From-Sequence Element Output) => Input -> Output

@@ -13,9 +13,11 @@ intrinsic "type" "maybe" : Maybe
 intrinsic "constant" "none" : None
 intrinsic "constant" "some" : Some
 
--- [on-unimplemented]: "cannot convert _ into _" Input Output
 As : Input Output => trait (Input -> Output)
 intrinsic "trait" "as" : As
+
+Input Output where (Error ("cannot convert a _ into _" Input Output)) =>
+    default instance (As Input Output) : ...
 
 Value => instance (As Value Value) : value -> value
 
@@ -32,8 +34,11 @@ unreachable :: Value => Value
 unreachable : error "unreachable"
 
 -- Represents the default or initial value of a type.
--- [on-unimplemented]: "_ has no default value" Value
 Empty : Value => trait Value
+
+Value where (Error ("_ has no empty value" Value)) =>
+    default instance (Empty Value) : ...
+
 instance (Empty Number) : 0
 instance (Empty Text) : ""
 instance (Empty Boolean) : False

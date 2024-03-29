@@ -2,6 +2,6 @@
 
 exports[`missing-instance.test.wipple 1`] = `
 [
-  "missing-instance/missing-instance.test.wipple:3:0: error: this code requires \`(Describe (Foo -> Foo))\`",
+  "missing-instance/missing-instance.test.wipple:3:0: error: cannot describe a \`Foo -> Foo\` value",
 ]
 `;

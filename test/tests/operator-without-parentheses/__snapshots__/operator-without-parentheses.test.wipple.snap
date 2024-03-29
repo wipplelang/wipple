@@ -2,8 +2,8 @@
 
 exports[`operator-without-parentheses.test.wipple 1`] = `
 [
-  "operator-without-parentheses/operator-without-parentheses.test.wipple:2:0: error: this code requires \`(Add () Number _)\`",
+  "operator-without-parentheses/operator-without-parentheses.test.wipple:2:0: error: cannot add \`Number\` to \`()\`",
   "operator-without-parentheses/operator-without-parentheses.test.wipple:3:0: error: this code requires \`(Or () Boolean _)\`",
-  "operator-without-parentheses/operator-without-parentheses.test.wipple:4:5: error: this code requires \`(Add Number Text _)\`",
+  "operator-without-parentheses/operator-without-parentheses.test.wipple:4:5: error: cannot add \`Text\` to \`Number\`",
 ]
 `;
