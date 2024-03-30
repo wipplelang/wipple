@@ -151,3 +151,24 @@ tasks:
         dir: render
         cmds:
             - npm run build
+
+    docs:prepare:
+        run: once
+        cmds:
+            - (cd compiler && cargo test render_grammar_to_html)
+
+    docs:build:
+        run: once
+        deps:
+            - docs:prepare
+        dir: docs
+        cmds:
+            - mdbook build
+
+    docs:serve:
+        run: once
+        deps:
+            - docs:prepare
+        dir: docs
+        cmds:
+            - mdbook serve

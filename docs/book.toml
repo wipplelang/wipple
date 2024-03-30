@@ -1,0 +1,11 @@
+[book]
+language = "en"
+multilingual = false
+src = "src"
+title = "Wipple Documentation"
+
+[preprocessor.template]
+
+[output.html]
+site-url = "/docs/"
+additional-js = ["js/custom.js"]

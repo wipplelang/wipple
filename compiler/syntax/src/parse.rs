@@ -703,6 +703,46 @@ impl Grammar {
     }
 }
 
+#[cfg(test)]
+mod render_grammar_to_html {
+    use super::*;
+    use std::{fs, path::PathBuf};
+
+    #[test]
+    fn render_grammar_to_html() {
+        struct TestDriver;
+
+        impl Driver for TestDriver {
+            type Info = ();
+
+            fn file_path(&self) -> Rc<str> {
+                unimplemented!()
+            }
+
+            fn visible_path(&self) -> Rc<str> {
+                unimplemented!()
+            }
+
+            fn file_size(&self) -> u32 {
+                unimplemented!()
+            }
+
+            fn merge_info(_left: Self::Info, _right: Self::Info) -> Self::Info {
+                unimplemented!()
+            }
+        }
+
+        let html = grammar(&TestDriver).render_to_html_string();
+
+        let output_path = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap())
+            .parent()
+            .unwrap()
+            .join("target/debug/grammar.html");
+
+        fs::write(output_path, html).unwrap();
+    }
+}
+
 impl RuleToRender {
     fn render_to_html(&self, f: &mut dyn std::fmt::Write) -> std::fmt::Result {
         match self {
