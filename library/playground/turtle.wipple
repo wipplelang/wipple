@@ -5,9 +5,10 @@ Distance : type Number
 pixels :: Number -> Distance
 pixels : Distance
 
-Distance? : (infer D) => trait (D -> Distance)
-D where (Error "missing unit for distance; try adding `pixels`") => default instance (Distance? D) : ...
+Distance? : D => trait (D -> Distance)
+D where (Error "expected a distance in `pixels`") => default instance (Distance? D) : ...
 instance (Distance? Distance) : distance -> distance
+A where (Error "missing unit for distance; try adding `pixels`") => instance (Distance? Number) : ...
 
 -- Move the turtle forward by the specified distance.
 forward :: (D : Distance) where (Distance? D) => D -> ()

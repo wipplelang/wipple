@@ -8,7 +8,7 @@ Add : (Left : Number) (Right : Number) (infer Sum) => trait (Left Right -> Sum)
 intrinsic "trait" "add" : Add
 instance (Add Number Number Number) : left right -> intrinsic "add-number" left right
 
-Left Right Sum where (Error ("cannot add _ to _" Right Left)) =>
+Left Right Sum where (Error ("cannot add _ and _" Left Right)) =>
     default instance (Add Left Right Sum) : ...
 
 -- Subtract the one value from another, returning the difference.
@@ -66,9 +66,10 @@ sqrt : n -> intrinsic "sqrt-number" n
 -- An angle represented in degrees.
 Angle : type Number
 
-Angle? : (infer A) => trait (A -> Angle)
-A where (Error "missing unit for angle; try adding `degrees`") => default instance (Angle? A) : ...
+Angle? : A => trait (A -> Angle)
+A where (Error "expected an angle in `degrees`") => default instance (Angle? A) : ...
 instance (Angle? Angle) : angle -> angle
+A where (Error "missing unit for angle; try adding `degrees`") => instance (Angle? Number) : ...
 
 -- An angle in degrees.
 degrees :: Number -> Angle
