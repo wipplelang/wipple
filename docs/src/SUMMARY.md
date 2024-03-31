@@ -6,7 +6,7 @@
 
 -   [Syntax](./language-reference/syntax.md)
 -   [Type system](./language-reference/type-system.md)
--   [Builtins](./language-reference/builtins.md)
+-   [Intrinsics](./language-reference/intrinsics.md)
 
 # Guides
 

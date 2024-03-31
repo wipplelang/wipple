@@ -29,9 +29,9 @@ If you actually want a type annotation rather than a constant definition, wrap t
 
 ### Literals
 
-Number literals have the type defined by the `number` language item. In the standard library, this is `Number`.
+Number literals have the type defined by the `number` intrinsic. In the standard library, this is `Number`.
 
-Text literals have the type defined by the `text` language item. In the standard library, this is `Text`.
+Text literals have the type defined by the `text` intrinsic. In the standard library, this is `Text`.
 
 ### Functions
 
@@ -211,8 +211,6 @@ You can only define one instance for some set of types at a time:
 instance (Describe Person) : ...
 instance (Describe Person) : ... -- error
 ```
-
-Instances
 
 ### Using a trait
 
