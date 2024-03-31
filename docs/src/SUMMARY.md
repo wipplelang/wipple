@@ -2,9 +2,10 @@
 
 -   [Overview](./overview.md)
 
-# Language Reference
+# Language reference
 
 -   [Syntax](./language-reference/syntax.md)
+-   [Type system](./language-reference/type-system.md)
 -   [Builtins](./language-reference/builtins.md)
 
 # Guides
