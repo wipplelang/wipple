@@ -336,12 +336,37 @@ pub enum Diagnostic<D: Driver> {
 
     /// A custom error message.
     Custom {
-        /// The segments of text that end in interpolated types.
-        segments: Vec<MessageTypeFormatSegment<D>>,
+        /// The error message.
+        message: CustomMessage<D>,
 
-        /// Any trailing text after the segments.
-        trailing: String,
+        /// A fix for the error.
+        fix: Option<(CustomMessage<D>, CustomMessage<D>)>,
     },
+}
+
+/// The type-level text for an error message or fix.
+#[derive(Serialize, Deserialize, Derivative, TS)]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+#[ts(
+    export,
+    rename = "typecheck_MessageType",
+    concrete(D = wipple_util::TsAny),
+    bound = "D::Info: TS"
+)]
+pub struct CustomMessage<D: Driver> {
+    /// The segments of text that end in interpolated types.
+    pub segments: Vec<MessageTypeFormatSegment<D>>,
+
+    /// Any trailing text after the segments.
+    pub trailing: String,
 }
 
 /// The type of an expression.

@@ -188,6 +188,18 @@ export class Render {
         };
     }
 
+    renderCode(value: compiler.WithInfo<compiler.Info, unknown>): string | null {
+        const renderedSourceLocation = this.renderSourceLocation(value);
+        if (!renderedSourceLocation) {
+            return null;
+        }
+
+        return this.files[renderedSourceLocation.path].code.slice(
+            renderedSourceLocation.start.index,
+            renderedSourceLocation.end.index,
+        );
+    }
+
     renderDeclaration(
         declaration: compiler.WithInfo<compiler.Info, AnyDeclaration>,
     ): string | null {
@@ -818,12 +830,23 @@ export class Render {
                     case "custom": {
                         severity = "error";
 
-                        message = "";
-                        for (const segment of diagnostic.item.value.value.segments) {
-                            message += segment.text + this.renderType(segment.type, true, true);
-                        }
+                        message = this.renderTypeLevelText(
+                            diagnostic.item.value.value.message,
+                            true,
+                        );
 
-                        message += diagnostic.item.value.value.trailing;
+                        if (diagnostic.item.value.value.fix) {
+                            fix = {
+                                message: this.renderTypeLevelText(
+                                    diagnostic.item.value.value.fix[0],
+                                    true,
+                                ),
+                                replacement: this.renderTypeLevelText(
+                                    diagnostic.item.value.value.fix[1],
+                                    false,
+                                ),
+                            };
+                        }
 
                         break;
                     }
@@ -845,6 +868,29 @@ export class Render {
             message,
             fix,
         };
+    }
+
+    renderTypeLevelText(text: compiler.typecheck_MessageType, renderAsCode: boolean): string {
+        const renderSegmentsAsCode =
+            (text.segments.length === 0
+                ? text.trailing.startsWith("`")
+                : text.segments[0].text.startsWith("`")) && text.trailing.endsWith("`");
+
+        let message = "";
+        for (const segment of text.segments) {
+            const code =
+                renderSegmentsAsCode || segment.text.slice(segment.text.length - 1) === "`"
+                    ? this.renderCode(segment.type)
+                    : null;
+            message += segment.text + (code ?? this.renderType(segment.type, true, true));
+        }
+        message += text.trailing;
+
+        if (renderSegmentsAsCode && !renderAsCode) {
+            message = message.slice(1, -1);
+        }
+
+        return message;
     }
 
     renderTypeRole(role: compiler.typecheck_Role): string {

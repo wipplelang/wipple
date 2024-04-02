@@ -1,5 +1,6 @@
 use crate::{Driver, Role, UnknownTypeId};
 use derivative::Derivative;
+use itertools::Itertools;
 use std::{
     cell::{Cell, RefCell},
     collections::{btree_map, BTreeMap, HashMap, HashSet},
@@ -510,8 +511,8 @@ enum QueuedError<D: Driver> {
     ExtraField,
 
     Custom {
-        segments: Vec<FormatSegment<Type<D>>>,
-        trailing: String,
+        message: FormattedText<Type<D>>,
+        fix: Option<(FormattedText<Type<D>>, FormattedText<Type<D>>)>,
     },
 }
 
@@ -563,16 +564,34 @@ fn report_queued_errors<D: Driver>(
             }
             QueuedError::MissingFields(fields) => crate::Diagnostic::MissingFields(fields),
             QueuedError::ExtraField => crate::Diagnostic::ExtraField,
-            QueuedError::Custom { segments, trailing } => crate::Diagnostic::Custom {
-                segments: segments
-                    .into_iter()
-                    .map(|segment| crate::MessageTypeFormatSegment {
-                        text: segment.text,
-                        r#type: finalize_type(segment.value, false, &finalize_context),
-                    })
-                    .collect(),
-                trailing,
-            },
+            QueuedError::Custom { message, fix } => {
+                fn report_message<D: Driver>(
+                    text: FormattedText<Type<D>>,
+                    finalize_context: &FinalizeContext<'_, D>,
+                ) -> crate::CustomMessage<D> {
+                    crate::CustomMessage {
+                        segments: text
+                            .segments
+                            .into_iter()
+                            .map(|segment| crate::MessageTypeFormatSegment {
+                                text: segment.text,
+                                r#type: finalize_type(segment.value, false, finalize_context),
+                            })
+                            .collect(),
+                        trailing: text.trailing,
+                    }
+                }
+
+                crate::Diagnostic::Custom {
+                    message: report_message(message, &finalize_context),
+                    fix: fix.map(|(message, code)| {
+                        (
+                            report_message(message, &finalize_context),
+                            report_message(code, &finalize_context),
+                        )
+                    }),
+                }
+            }
         })
     }));
 }
@@ -1438,6 +1457,12 @@ enum ExpressionKind<D: Driver> {
         segments: Vec<FormatSegment<WithInfo<D::Info, Expression<D>>>>,
         trailing: String,
     },
+}
+
+#[derive(Debug, Clone)]
+struct FormattedText<T> {
+    segments: Vec<FormatSegment<T>>,
+    trailing: String,
 }
 
 #[derive(Debug, Clone)]
@@ -3594,21 +3619,17 @@ fn resolve_trait<D: Driver>(
                     result?;
                 }
 
-                // Special case: If the instance resolves to `Error`, display the
-                // user-provided message
+                // Special case: If the instance resolves to `Error`, display
+                // the user-provided message
                 if let Some(error_trait_path) = context.driver.path_for_language_trait("error") {
                     if candidate.item.r#trait == error_trait_path {
                         if let Some(message_type) = candidate.item.parameters.first() {
                             let message_type = message_type.apply_in_context(context.type_context);
 
-                            if let TypeKind::Message { segments, trailing } = &message_type.kind {
-                                context.error_queue.borrow_mut().push(WithInfo {
-                                    info: query.info,
-                                    item: QueuedError::Custom {
-                                        segments: segments.clone(),
-                                        trailing: trailing.clone(),
-                                    },
-                                });
+                            if let Some(error) =
+                                resolve_custom_error(query.info, message_type, context)
+                            {
+                                context.error_queue.borrow_mut().push(error);
                             }
                         }
                     }
@@ -3636,6 +3657,83 @@ fn resolve_trait<D: Driver>(
     resolve_trait_inner(query.clone(), context, &[query])?;
 
     Ok(())
+}
+
+fn resolve_custom_error<D: Driver>(
+    mut error_info: D::Info,
+    message_type: Type<D>,
+    context: &ResolveContext<'_, D>,
+) -> Option<WithInfo<D::Info, QueuedError<D>>> {
+    let mut error_message = None;
+    let mut error_fix_message = None;
+    let mut error_fix_code = None;
+    match &message_type.kind {
+        TypeKind::Message { segments, trailing } => {
+            error_message = Some(FormattedText {
+                segments: segments.clone(),
+                trailing: trailing.clone(),
+            });
+        }
+        TypeKind::Tuple(elements) => {
+            for element in elements {
+                match &element.kind {
+                    // Error message
+                    TypeKind::Message { segments, trailing } => {
+                        error_message = Some(FormattedText {
+                            segments: segments.clone(),
+                            trailing: trailing.clone(),
+                        });
+                    }
+
+                    // Error location
+                    TypeKind::Declared { path, parameters }
+                        if context
+                            .driver
+                            .path_for_language_type("error-location")
+                            .is_some_and(|error_location_path| *path == error_location_path) =>
+                    {
+                        if let Some(location_type) = parameters.first() {
+                            error_info = location_type.info.clone();
+                        }
+                    }
+
+                    // Error fix
+                    TypeKind::Declared { path, parameters }
+                        if context
+                            .driver
+                            .path_for_language_type("error-fix")
+                            .is_some_and(|error_fix_path| *path == error_fix_path) =>
+                    {
+                        if let Some((message_type, code_type)) = parameters.iter().collect_tuple() {
+                            if let TypeKind::Message { segments, trailing } = &message_type.kind {
+                                error_fix_message = Some(FormattedText {
+                                    segments: segments.clone(),
+                                    trailing: trailing.clone(),
+                                });
+                            }
+
+                            if let TypeKind::Message { segments, trailing } = &code_type.kind {
+                                error_fix_code = Some(FormattedText {
+                                    segments: segments.clone(),
+                                    trailing: trailing.clone(),
+                                });
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        _ => {}
+    }
+
+    error_message.map(|error_message| WithInfo {
+        info: error_info,
+        item: QueuedError::Custom {
+            message: error_message,
+            fix: error_fix_message.zip(error_fix_code),
+        },
+    })
 }
 
 fn substitute_defaults_in_expression<D: Driver>(
