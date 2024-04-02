@@ -5,7 +5,7 @@ Distance : type Number
 pixels :: Number -> Distance
 pixels : Distance
 
-A where (Error ("missing unit for distance" ; Error-Fix "add `pixels`" ("`(_ pixels)`" Source))) =>
+() where (Error ("missing unit for distance" ; Error-Fix "add `pixels`" ("`(_ pixels)`" Source))) =>
     instance (Mismatch Number Distance) : ...
 
 -- Move the turtle forward by the specified distance.
