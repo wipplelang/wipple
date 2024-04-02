@@ -1507,13 +1507,27 @@ mod rules {
                         SyntaxKind::TypeFunction,
                         NonAssociativeOperator::Where,
                         || {
-                            Rule::list(
+                            Rule::switch(
                                 SyntaxKind::TypeParameter,
-                                || type_parameter().no_backtrack(),
-                                |_, info, parameters, _| WithInfo {
-                                    info,
-                                    item: parameters,
-                                },
+                                [
+                                    || {
+                                        Rule::empty_list(
+                                            SyntaxKind::TypeParameter,
+                                            Vec::default_from_info,
+                                        )
+                                        .in_list()
+                                    },
+                                    || {
+                                        Rule::list(
+                                            SyntaxKind::TypeParameter,
+                                            || type_parameter().no_backtrack(),
+                                            |_, info, parameters, _| WithInfo {
+                                                info,
+                                                item: parameters,
+                                            },
+                                        )
+                                    },
+                                ],
                             )
                         },
                         || {

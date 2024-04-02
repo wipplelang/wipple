@@ -5,24 +5,16 @@ Distance : type Number
 pixels :: Number -> Distance
 pixels : Distance
 
-Distance? : D => trait (D -> Distance)
-D where (Error "expected a distance in `pixels`") => default instance (Distance? D) : ...
-instance (Distance? Distance) : distance -> distance
-A where (Error "missing unit for distance; try adding `pixels`") => instance (Distance? Number) : ...
+A where (Error ("missing unit for distance" ; Error-Fix "add `pixels`" ("`(_ pixels)`" Source))) =>
+    instance (Mismatch Number Distance) : ...
 
 -- Move the turtle forward by the specified distance.
-forward :: (D : Distance) where (Distance? D) => D -> ()
-forward : distance -> do {
-    (Distance pixels) : Distance? distance
-    runtime-message "forward" pixels
-}
+forward :: Distance -> ()
+forward : (Distance pixels) -> runtime-message "forward" pixels
 
 -- Move the turtle backward by the specified distance.
-backward :: (D : Distance) where (Distance? D) => D -> ()
-backward : distance -> do {
-    (Distance pixels) : Distance? distance
-    runtime-message "backward" pixels
-}
+backward :: Distance -> ()
+backward : (Distance pixels) -> runtime-message "backward" pixels
 
 -- An arc.
 Arc : type {
@@ -38,18 +30,12 @@ arc : {
 } -> runtime-message "arc" (radius ; angle)
 
 -- Rotate the turtle counterclockwise by the specified angle.
-left :: (A : Angle) where (Angle? A) => A -> ()
-left : angle -> do {
-    (Angle degrees) : Angle? angle
-    runtime-message "left" degrees
-}
+left :: Angle -> ()
+left : (Angle degrees) -> runtime-message "left" degrees
 
 -- Rotate the turtle clockwise by the specified angle.
-right :: (A : Angle) where (Angle? A) => A -> ()
-right : angle -> do {
-    (Angle degrees) : Angle? angle
-    runtime-message "right" degrees
-}
+right :: Angle -> ()
+right : (Angle degrees) -> runtime-message "right" degrees
 
 -- Set the pen color.
 color :: Color -> ()

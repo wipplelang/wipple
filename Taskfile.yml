@@ -148,6 +148,7 @@ tasks:
         run: once
         deps:
             - compiler:build
+            - interpreter:build
         dir: render
         cmds:
             - npm run build

@@ -513,6 +513,7 @@ enum QueuedError<D: Driver> {
     Custom {
         message: FormattedText<Type<D>>,
         fix: Option<(FormattedText<Type<D>>, FormattedText<Type<D>>)>,
+        location: Option<Type<D>>,
     },
 }
 
@@ -533,23 +534,39 @@ fn report_queued_errors<D: Driver>(
         subexpression_types: None,
     };
 
-    errors.extend(error_queue.into_iter().map(|error| {
-        error.map(|error| match error {
-            QueuedError::RecursionLimit => crate::Diagnostic::RecursionLimit,
-            QueuedError::Mismatch { actual, expected } => crate::Diagnostic::Mismatch {
-                actual_roles: actual.roles.clone(),
-                actual: finalize_type(actual, false, &finalize_context),
-                expected_roles: expected.roles.clone(),
-                expected: finalize_type(expected, false, &finalize_context),
-            },
+    for error in error_queue {
+        let mut info = error.info;
+        let error = match error.item {
+            QueuedError::RecursionLimit => Some(crate::Diagnostic::RecursionLimit),
+            QueuedError::Mismatch { actual, expected } => (|| {
+                // Special case: Display a user-provided message if there is a
+                // corresponding instance for `Mismatch`
+                if try_report_custom_mismatch_error(
+                    driver,
+                    &info,
+                    &actual,
+                    &expected,
+                    type_context,
+                    errors,
+                ) {
+                    return None;
+                }
+
+                Some(crate::Diagnostic::Mismatch {
+                    actual_roles: actual.roles.clone(),
+                    actual: finalize_type(actual, false, &finalize_context),
+                    expected_roles: expected.roles.clone(),
+                    expected: finalize_type(expected, false, &finalize_context),
+                })
+            })(),
             QueuedError::WrongNumberOfInputs { actual, expected } => {
-                crate::Diagnostic::WrongNumberOfInputs { actual, expected }
+                Some(crate::Diagnostic::WrongNumberOfInputs { actual, expected })
             }
             QueuedError::UnresolvedInstance {
                 instance,
                 candidates,
                 stack,
-            } => crate::Diagnostic::UnresolvedInstance {
+            } => Some(crate::Diagnostic::UnresolvedInstance {
                 instance: finalize_instance(instance, &finalize_context),
                 candidates,
                 stack: stack
@@ -558,13 +575,17 @@ fn report_queued_errors<D: Driver>(
                         instance.map(|instance| finalize_instance(instance, &finalize_context))
                     })
                     .collect(),
-            },
-            QueuedError::NotAStructure(r#type) => {
-                crate::Diagnostic::NotAStructure(finalize_type(r#type, false, &finalize_context))
-            }
-            QueuedError::MissingFields(fields) => crate::Diagnostic::MissingFields(fields),
-            QueuedError::ExtraField => crate::Diagnostic::ExtraField,
-            QueuedError::Custom { message, fix } => {
+            }),
+            QueuedError::NotAStructure(r#type) => Some(crate::Diagnostic::NotAStructure(
+                finalize_type(r#type, false, &finalize_context),
+            )),
+            QueuedError::MissingFields(fields) => Some(crate::Diagnostic::MissingFields(fields)),
+            QueuedError::ExtraField => Some(crate::Diagnostic::ExtraField),
+            QueuedError::Custom {
+                message,
+                fix,
+                location,
+            } => {
                 fn report_message<D: Driver>(
                     text: FormattedText<Type<D>>,
                     finalize_context: &FinalizeContext<'_, D>,
@@ -582,7 +603,13 @@ fn report_queued_errors<D: Driver>(
                     }
                 }
 
-                crate::Diagnostic::Custom {
+                if let Some(location) = location {
+                    info = location
+                        .apply_in_context(finalize_context.type_context)
+                        .info;
+                }
+
+                Some(crate::Diagnostic::Custom {
                     message: report_message(message, &finalize_context),
                     fix: fix.map(|(message, code)| {
                         (
@@ -590,10 +617,61 @@ fn report_queued_errors<D: Driver>(
                             report_message(code, &finalize_context),
                         )
                     }),
-                }
+                })
             }
-        })
-    }));
+        };
+
+        if let Some(error) = error {
+            errors.push(WithInfo { info, item: error });
+        }
+    }
+}
+
+fn try_report_custom_mismatch_error<D: Driver>(
+    driver: &D,
+    info: &D::Info,
+    actual: &Type<D>,
+    expected: &Type<D>,
+    type_context: &TypeContext<D>,
+    errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
+) -> bool {
+    // Special case: Display a user-provided message if there is a
+    // corresponding instance for `Mismatch`
+    if let Some(mismatch_trait_path) = driver.path_for_language_trait("mismatch") {
+        let query = WithInfo {
+            info: info.clone(),
+            item: Instance {
+                r#trait: mismatch_trait_path,
+                parameters: vec![actual.clone(), expected.clone()],
+            },
+        };
+
+        let temp_error_queue: RefCell<Vec<_>> = Default::default();
+        let temp_errors: RefCell<Vec<_>> = Default::default();
+        let resolve_context = ResolveContext {
+            driver,
+            type_context,
+            error_queue: &temp_error_queue,
+            errors: &temp_errors,
+            variables: &Default::default(),
+            recursion_stack: &Default::default(),
+            bound_instances: Default::default(),
+        };
+
+        if resolve_trait(query.as_ref(), &resolve_context).is_ok() {
+            let temp_error_queue = temp_error_queue.into_inner();
+            let mut temp_errors = temp_errors.into_inner();
+
+            let has_error = !temp_error_queue.is_empty();
+
+            report_queued_errors(driver, type_context, temp_error_queue, &mut temp_errors);
+            errors.extend(temp_errors);
+
+            return has_error;
+        }
+    }
+
+    false
 }
 
 // region: Types and type variables
@@ -701,6 +779,51 @@ impl<D: Driver> Type<D> {
                 }
             }
             TypeKind::Unknown | TypeKind::Intrinsic => {}
+        }
+    }
+
+    fn set_source_info(&mut self, context: &ResolveContext<'_, D>, info: &D::Info) {
+        self.apply_in_context_mut(context.type_context);
+
+        match &mut self.kind {
+            TypeKind::Declared { path, parameters } => {
+                if context
+                    .driver
+                    .path_for_language_type("source")
+                    .is_some_and(|source_path| *path == source_path)
+                {
+                    self.info = info.clone();
+                }
+
+                for r#type in parameters {
+                    r#type.set_source_info(context, info);
+                }
+            }
+            TypeKind::Function { inputs, output } => {
+                for r#type in inputs {
+                    r#type.set_source_info(context, info);
+                }
+
+                output.set_source_info(context, info);
+            }
+            TypeKind::Tuple(elements) => {
+                for r#type in elements {
+                    r#type.set_source_info(context, info);
+                }
+            }
+            TypeKind::Block(r#type) => {
+                r#type.set_source_info(context, info);
+            }
+            TypeKind::Message { segments, .. } => {
+                for segment in segments {
+                    segment.value.set_source_info(context, info);
+                }
+            }
+            TypeKind::Variable(_)
+            | TypeKind::Opaque(_)
+            | TypeKind::Parameter(_)
+            | TypeKind::Unknown
+            | TypeKind::Intrinsic => {}
         }
     }
 
@@ -1025,9 +1148,9 @@ impl<D: Driver> Type<D> {
 impl<D: Driver> Instance<D> {
     #[must_use]
     fn instantiate(&self, driver: &D, instantiation_context: &InstantiationContext<'_, D>) -> Self {
-        let mut bound = self.clone();
-        bound.instantiate_mut(driver, instantiation_context);
-        bound
+        let mut instance = self.clone();
+        instance.instantiate_mut(driver, instantiation_context);
+        instance
     }
 
     fn instantiate_mut(&mut self, driver: &D, instantiation_context: &InstantiationContext<'_, D>) {
@@ -1038,14 +1161,20 @@ impl<D: Driver> Instance<D> {
 
     #[must_use]
     fn instantiate_opaque(&self, context: &TypeContext<D>) -> Self {
-        let mut bound = self.clone();
-        bound.instantiate_opaque_mut(context);
-        bound
+        let mut instance = self.clone();
+        instance.instantiate_opaque_mut(context);
+        instance
     }
 
     fn instantiate_opaque_mut(&mut self, context: &TypeContext<D>) {
         for parameter in &mut self.parameters {
             parameter.instantiate_opaque_in_context_mut(context);
+        }
+    }
+
+    fn set_source_info(&mut self, context: &ResolveContext<'_, D>, info: &D::Info) {
+        for parameter in &mut self.parameters {
+            parameter.set_source_info(context, info);
         }
     }
 }
@@ -3598,10 +3727,11 @@ fn resolve_trait<D: Driver>(
 
             // If an instance matches, check its bounds
 
-            if let Some((new_type_context, candidate, bounds)) =
+            if let Some((new_type_context, mut candidate, bounds)) =
                 pick_from_candidates(candidates, query.clone(), stack)?
             {
                 context.type_context.replace_with(new_type_context);
+                candidate.item.set_source_info(context, &query.info);
 
                 for bound in bounds {
                     let mut stack = stack.to_vec();
@@ -3624,10 +3754,8 @@ fn resolve_trait<D: Driver>(
                 if let Some(error_trait_path) = context.driver.path_for_language_trait("error") {
                     if candidate.item.r#trait == error_trait_path {
                         if let Some(message_type) = candidate.item.parameters.first() {
-                            let message_type = message_type.apply_in_context(context.type_context);
-
                             if let Some(error) =
-                                resolve_custom_error(query.info, message_type, context)
+                                resolve_custom_error(&query.info, message_type, context)
                             {
                                 context.error_queue.borrow_mut().push(error);
                             }
@@ -3660,13 +3788,16 @@ fn resolve_trait<D: Driver>(
 }
 
 fn resolve_custom_error<D: Driver>(
-    mut error_info: D::Info,
-    message_type: Type<D>,
+    error_info: &D::Info,
+    message_type: &Type<D>,
     context: &ResolveContext<'_, D>,
 ) -> Option<WithInfo<D::Info, QueuedError<D>>> {
+    let message_type = message_type.apply_in_context(context.type_context);
+
     let mut error_message = None;
     let mut error_fix_message = None;
     let mut error_fix_code = None;
+    let mut error_location = None;
     match &message_type.kind {
         TypeKind::Message { segments, trailing } => {
             error_message = Some(FormattedText {
@@ -3693,7 +3824,7 @@ fn resolve_custom_error<D: Driver>(
                             .is_some_and(|error_location_path| *path == error_location_path) =>
                     {
                         if let Some(location_type) = parameters.first() {
-                            error_info = location_type.info.clone();
+                            error_location = Some(location_type.clone());
                         }
                     }
 
@@ -3728,10 +3859,11 @@ fn resolve_custom_error<D: Driver>(
     }
 
     error_message.map(|error_message| WithInfo {
-        info: error_info,
+        info: error_info.clone(),
         item: QueuedError::Custom {
             message: error_message,
             fix: error_fix_message.zip(error_fix_code),
+            location: error_location,
         },
     })
 }
