@@ -66,14 +66,12 @@ sqrt : n -> intrinsic "sqrt-number" n
 -- An angle represented in degrees.
 Angle : type Number
 
-Angle? : A => trait (A -> Angle)
-A where (Error "expected an angle in `degrees`") => default instance (Angle? A) : ...
-instance (Angle? Angle) : angle -> angle
-A where (Error "missing unit for angle; try adding `degrees`") => instance (Angle? Number) : ...
-
 -- An angle in degrees.
 degrees :: Number -> Angle
 degrees : Angle
+
+A where (Error ("missing unit for angle" ; Error-Fix "add `degrees`" ("`(_ degrees)`" Source))) =>
+    instance (Mismatch Number Angle) : ...
 
 -- Calculate the sine of an angle.
 sin :: Angle -> Number
