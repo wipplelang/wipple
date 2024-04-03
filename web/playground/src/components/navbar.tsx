@@ -40,7 +40,7 @@ export const useNavbar = () => useContext(NavbarContext);
 
 export const Navbar = () => {
     const location = useLocation();
-    const isHome = location.pathname === "/playground";
+    const isHome = location.pathname === "/playground/";
 
     const { primaryActions, secondaryActions } = useNavbar();
     const { displayAlert } = useAlert();
