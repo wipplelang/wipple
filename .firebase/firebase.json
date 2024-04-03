@@ -12,8 +12,8 @@
         "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
         "rewrites": [
             {
-                "source": "/library/:file*",
-                "destination": "/library/:file"
+                "source": "/playground/library/:file*",
+                "destination": "/playground/library/:file"
             },
             {
                 "source": "/playground/**",

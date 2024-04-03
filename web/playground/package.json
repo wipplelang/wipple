@@ -1,5 +1,5 @@
 {
-    "name": "wipple-app",
+    "name": "wipple-playground",
     "private": true,
     "version": "0.0.0",
     "type": "module",
@@ -33,9 +33,9 @@
         "rehype-highlight": "^7.0.0",
         "usehooks-ts": "^2.14.0",
         "vite-plugin-svgr": "^4.2.0",
-        "wipple-compiler": "file:../compiler",
-        "wipple-interpreter": "file:../interpreter",
-        "wipple-render": "file:../render"
+        "wipple-compiler": "file:../../compiler",
+        "wipple-interpreter": "file:../../interpreter",
+        "wipple-render": "file:../../render"
     },
     "devDependencies": {
         "@tailwindcss/typography": "^0.5.10",

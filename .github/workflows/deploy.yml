@@ -18,7 +18,7 @@ jobs:
 
             - uses: actions/download-artifact@master
               with:
-                  name: app-${{ github.sha }}
+                  name: web-${{ github.sha }}
                   path: .firebase/public
 
             - uses: FirebaseExtended/action-hosting-deploy@v0

@@ -27,7 +27,7 @@ jobs:
                   cargo install wasm-bindgen-cli
 
             - run: |
-                  cat <<EOF > app/.env
+                  cat <<EOF > web/playground/.env
                   VITE_FIREBASE_API_KEY="${{ secrets.FIREBASE_API_KEY }}"
                   VITE_FIREBASE_AUTH_DOMAIN="${{ secrets.FIREBASE_AUTH_DOMAIN }}"
                   VITE_FIREBASE_PROJECT_ID="${{ secrets.FIREBASE_PROJECT_ID }}"
@@ -40,9 +40,9 @@ jobs:
             - run: task install-dependencies
             - run: task cli:build
             - run: task test
-            - run: task app:build
+            - run: task web:build
 
             - uses: actions/upload-artifact@master
               with:
-                  name: app-${{ github.sha }}
-                  path: app/dist/
+                  name: web-${{ github.sha }}
+                  path: web/dist/

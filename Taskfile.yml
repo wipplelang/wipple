@@ -38,39 +38,44 @@ tasks:
             - code --install-extension wipple-vscode-0.0.0.vsix
             - rm wipple-vscode-0.0.0.vsix
 
-    app:serve:
+    web:playground:serve:
         run: once
         deps:
-            - app:bundle-for-playground
-        dir: app
+            - web:playground:bundle
+        dir: web/playground
         cmds:
             - npm run dev
 
-    app:install-dependencies:
+    web:install-dependencies:
         run: once
-        dir: app
+        deps:
+            - web:playground:install-dependencies
+
+    web:playground:install-dependencies:
+        run: once
+        dir: web/playground
         cmds:
             - npm install
 
-    app:build:
+    web:playground:build:
         run: once
         deps:
-            - app:bundle-for-playground
-        dir: app
+            - web:playground:bundle
+        dir: web/playground
         cmds:
             - npm run build
 
-    app:bundle-for-playground:
+    web:playground:bundle:
         run: once
-        dir: app
+        dir: web/playground
         cmds:
             - WIPPLE_COMPILER_WASM_OPTIMIZE=1 task cli:build
             - task base:compile
             - rm -rf .wipple
-            - wipple compile ../library/base/*.wipple --interface .wipple/base.wippleinterface --library .wipple/base.wipplelibrary
-            - wipple bundle-for-playground ../library/base/*.wipple --output ./public/library/base.wipplebundle
-            - wipple bundle-for-playground ../library/playground/turtle.wipple --dependency .wipple/base.wippleinterface --link .wipple/base.wipplelibrary --output ./public/library/turtle.wipplebundle
-            - cp -r ../library/help ./public/library
+            - wipple compile ../../library/base/*.wipple --interface .wipple/base.wippleinterface --library .wipple/base.wipplelibrary
+            - wipple bundle-for-playground ../../library/base/*.wipple --output ./public/library/base.wipplebundle
+            - wipple bundle-for-playground ../../library/playground/turtle.wipple --dependency .wipple/base.wippleinterface --link .wipple/base.wipplelibrary --output ./public/library/turtle.wipplebundle
+            - cp -r ../../library/help ./public/library
 
     base:compile:
         run: once
@@ -86,7 +91,7 @@ tasks:
             - compiler:install-dependencies
             - interpreter:install-dependencies
             - render:install-dependencies
-            - app:install-dependencies
+            - web:install-dependencies
 
     test:install-dependencies:
         run: once

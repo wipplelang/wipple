@@ -484,11 +484,11 @@ interface FetchDependenciesResult {
 }
 
 const fetchDependencies = async (name: string): Promise<FetchDependenciesResult> =>
-    fetch(new URL(`library/${name}.wipplebundle`, window.location.origin)).then((response) =>
-        response.json(),
+    fetch(new URL(`/playground/library/${name}.wipplebundle`, window.location.origin)).then(
+        (response) => response.json(),
     );
 
 const fetchBuiltinsHelp = async (): Promise<Record<string, string>> =>
-    fetch(new URL("library/help/builtins.json", window.location.origin)).then((response) =>
-        response.json(),
+    fetch(new URL("/playground/library/help/builtins.json", window.location.origin)).then(
+        (response) => response.json(),
     );
