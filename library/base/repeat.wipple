@@ -19,7 +19,7 @@ Result => instance (Repeat-Predicate (With-Control-Flow Result) (Control-Flow ()
         Stop result -> Stop result
     }
 
-Body Result where (Error "missing `repeat` here") =>
+Body Result where (Error ("missing `repeat` here" ; Error-Fix "add `repeat`" ("`repeat _`" Source))) =>
   instance (Mismatch (With-Control-Flow Result) ({Body} -> Result)) : ...
 
 -- Repeat so long as the provided condition is `True`.
@@ -31,7 +31,7 @@ While : type {condition :: {Boolean}}
 (Body : ()) => instance (Repeat-Predicate While Body ()) : {condition : condition} ->
     if (do condition) {Continue (_ -> while condition)} {Stop ()}
 
-(Body : ()) where (Error "missing `repeat` here") =>
+(Body : ()) where (Error ("missing `repeat` here" ; Error-Fix "add `repeat`" ("`repeat _`" Source))) =>
   instance (Mismatch While ({Body} -> ())) : ...
 
 -- Repeat forever.
@@ -43,7 +43,7 @@ Forever : type
 Body (Result : ()) => instance (Repeat-Predicate Forever Body Result) :
     _ -> Continue (_ -> Forever)
 
-Body (Result : ()) where (Error "missing `repeat` here") =>
+Body (Result : ()) where (Error ("missing `repeat` here" ; Error-Fix "add `repeat`" ("`repeat _`" Source))) =>
   instance (Mismatch Forever ({Body} -> Result)) : ...
 
 Times : type {
@@ -70,7 +70,7 @@ times : count -> {
     current : 0
 }
 
-Body where (Error "missing `repeat` here") =>
+Body where (Error ("missing `repeat` here" ; Error-Fix "add `repeat`" ("`repeat _`" Source))) =>
   instance (Mismatch Times ({Body} -> ())) : ...
 
 -- Execute a block of code repeatedly.
