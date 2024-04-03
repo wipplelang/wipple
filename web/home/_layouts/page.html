@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+        {% if title %}
+        <title>{{ title | striptags }} — Wipple</title>
+        {% else %}
+        <title>Wipple</title>
+
+        <meta name="description" content="Learn to code with Wipple." />
+        {% endif %}
+
+        <!-- Facebook Meta Tags -->
+        <meta property="og:url" content="https://wipple.dev" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="Wipple" />
+        <meta property="og:description" content="Learn to code with Wipple." />
+        <meta property="og:image" content="https://wipple.dev/images/banner.jpg" />
+
+        <!-- Twitter Meta Tags -->
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta property="twitter:domain" content="wipple.dev" />
+        <meta property="twitter:url" content="https://wipple.dev" />
+        <meta name="twitter:title" content="Wipple" />
+        <meta name="twitter:description" content="Learn to code with Wipple." />
+        <meta name="twitter:image" content="https://wipple.dev/images/banner.jpg" />
+
+        <link rel="icon" href="/images/favicon.ico" />
+
+        <link rel="stylesheet" href="/styles/global.css" />
+        <link rel="stylesheet" href="/styles/prism.css" />
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=JetBrains+Mono:ital@0;1&display=swap"
+        />
+    </head>
+
+    <body class="print:m-4">
+        <div class="fixed top-0 left-0 right-0 z-50 print:hidden">
+            <div
+                class="flex items-center gap-4 p-4 flex-shrink-0 overflow-x-scroll text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75 backdrop-blur-lg disable-scrollbars"
+            >
+                <a href="/" class="no-underline flex-shrink-0">
+                    <img src="/images/logo.svg" alt="Wipple" class="w-6 h-6" />
+                </a>
+
+                <a href="/" class="no-underline">Home</a>
+
+                <a href="/blog" class="no-underline">Blog</a>
+            </div>
+        </div>
+
+        <div class="mt-14">{{ content | safe }}</div>
+
+        <section class="my-8 text-secondary text-center">
+            Made by
+            <a href="https://gramer.dev" class="font-semibold no-underline">Wilson Gramer</a>
+        </section>
+    </body>
+</html>

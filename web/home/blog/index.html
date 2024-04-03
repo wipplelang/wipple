@@ -1,0 +1,16 @@
+---
+layout: page
+title: Blog
+---
+
+{% import "blog.html" as blog %}
+
+<main>
+    <h1 class="mt-24 text-4xl md:text-5xl leading-tight md:leading-tight font-semibold">Blog</h1>
+
+    {% for post in collections.posts | reverse %}
+        <div class="border-b-2 border-b-gray-200 dark:border-b-gray-700 pb-8 last:pb-0 last:border-b-0">
+            {{ blog.post(post.url, post.data.title, post.data.date, post.templateContent) }}
+        </div>
+    {% endfor %}
+</main>
