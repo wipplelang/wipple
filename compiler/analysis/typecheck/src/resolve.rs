@@ -250,6 +250,14 @@ pub fn resolve<D: Driver>(
         &mut errors,
     );
 
+    // Remove `UnknownType` errors in favor of other errors
+    let not_unknown_type_error =
+        |error: &WithInfo<_, _>| !matches!(error.item, crate::Diagnostic::UnknownType(_));
+
+    if errors.iter().any(not_unknown_type_error) {
+        errors.retain(not_unknown_type_error);
+    }
+
     crate::Result {
         item,
         diagnostics: errors,

@@ -3,13 +3,10 @@
 exports[`unresolved-type-multiple-parameters.test.wipple 1`] = `
 [
   "unresolved-type-multiple-parameters/unresolved-type-multiple-parameters.test.wipple:11:13: error: expected this annotation to be a \`U A A -> ()\` here, but found a \`_ -> ()\`",
-  "unresolved-type-multiple-parameters/unresolved-type-multiple-parameters.test.wipple:11:13: error: this code produces a \`_ -> ()\`, but the \`_\`s are unknown",
   "unresolved-type-multiple-parameters/unresolved-type-multiple-parameters.test.wipple:14:18: error: expected this annotation to be a \`U A B -> ()\` here, but found a \`_ -> ()\`",
-  "unresolved-type-multiple-parameters/unresolved-type-multiple-parameters.test.wipple:14:18: error: this code produces a \`_ -> ()\`, but the \`_\`s are unknown",
   "unresolved-type-multiple-parameters/unresolved-type-multiple-parameters.test.wipple:16:4: error: this function takes 3 inputs, but 1 were provided",
   "unresolved-type-multiple-parameters/unresolved-type-multiple-parameters.test.wipple:17:4: error: this function takes 3 inputs, but 1 were provided",
   "unresolved-type-multiple-parameters/unresolved-type-multiple-parameters.test.wipple:6:4: error: expected this annotation to be a \`T A -> ()\` here, but found a \`_ -> ()\`",
-  "unresolved-type-multiple-parameters/unresolved-type-multiple-parameters.test.wipple:6:4: error: this code produces a \`_ -> ()\`, but the \`_\`s are unknown",
   "unresolved-type-multiple-parameters/unresolved-type-multiple-parameters.test.wipple:8:4: error: this function takes 2 inputs, but 1 were provided",
 ]
 `;
