@@ -1444,8 +1444,9 @@ fn try_unify_expression<D: Driver>(
     expected_type: &Type<D>,
     context: &TypeContext<D>,
     error_queue: &RefCell<Vec<WithInfo<D::Info, QueuedError<D>>>>,
-) {
-    if !unify(driver, &expression.item.r#type, expected_type, context) {
+) -> bool {
+    let unified = unify(driver, &expression.item.r#type, expected_type, context);
+    if !unified {
         error_queue.borrow_mut().push(WithInfo {
             info: expression.info.clone(),
             item: QueuedError::Mismatch {
@@ -1454,6 +1455,8 @@ fn try_unify_expression<D: Driver>(
             },
         });
     }
+
+    unified
 }
 
 fn try_unify<D: Driver>(
@@ -3061,17 +3064,21 @@ fn resolve_expression<D: Driver>(
                     Vec::new(),
                 );
 
-                try_unify_expression(
+                if try_unify_expression(
                     context.driver,
                     unit.as_mut(),
                     &unit_type,
                     context.type_context,
                     context.error_queue,
-                );
-
-                ExpressionKind::Call {
-                    function: unit.boxed(),
-                    inputs: vec![number],
+                ) {
+                    ExpressionKind::Call {
+                        function: unit.boxed(),
+                        inputs: vec![number],
+                    }
+                } else {
+                    // Prevent duplicate errors caused by recreating the call
+                    // expression
+                    ExpressionKind::Unknown(None)
                 }
             } else if let TypeKind::Function {
                 inputs: input_types,
@@ -3123,6 +3130,13 @@ fn resolve_expression<D: Driver>(
                     ExpressionKind::Unknown(None)
                 }
             } else {
+                let inputs = inputs
+                    .into_iter()
+                    .map(|input| resolve_expression(input, context))
+                    .collect::<Vec<_>>();
+
+                let mut function = resolve_expression(function.unboxed(), context);
+
                 let function_type = Type::new(
                     TypeKind::Function {
                         inputs: inputs
@@ -3146,18 +3160,11 @@ fn resolve_expression<D: Driver>(
 
                 try_unify_expression(
                     context.driver,
-                    function.as_deref_mut(),
+                    function.as_mut(),
                     &function_type,
                     context.type_context,
                     context.error_queue,
                 );
-
-                let inputs = inputs
-                    .into_iter()
-                    .map(|input| resolve_expression(input, context))
-                    .collect::<Vec<_>>();
-
-                let function = resolve_expression(function.unboxed(), context);
 
                 ExpressionKind::Call {
                     function: function.boxed(),

@@ -1,0 +1,10 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`repeat-errors.test.wipple 1`] = `
+[
+  "repeat-errors/repeat-errors.test.wipple:2:0: error: missing \`repeat\` here",
+  "repeat-errors/repeat-errors.test.wipple:3:0: error: missing \`repeat\` here",
+  "repeat-errors/repeat-errors.test.wipple:4:0: error: missing \`repeat\` here",
+  "repeat-errors/repeat-errors.test.wipple:5:0: error: missing \`repeat\` here",
+]
+`;
