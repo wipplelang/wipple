@@ -16,8 +16,8 @@
                 "destination": "/library/:file"
             },
             {
-                "source": "**",
-                "destination": "/index.html"
+                "source": "/playground/**",
+                "destination": "/playground/index.html"
             }
         ]
     }

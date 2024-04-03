@@ -93,10 +93,10 @@ const WelcomeAlert = (props: { dismiss: () => void }) => {
 
 const WelcomeAnimation = () => {
     const content = [
-        { image: "/images/laptop-screen-wipple.png", text: "Learn to code" },
-        { image: "/images/laptop-screen-art.png", text: "Make art" },
-        { image: "/images/laptop-screen-music.png", text: "Make music" },
-        { image: "/images/laptop-screen-math.png", text: "Explore math" },
+        { image: "/playground/images/laptop-screen-wipple.png", text: "Learn to code" },
+        { image: "/playground/images/laptop-screen-art.png", text: "Make art" },
+        { image: "/playground/images/laptop-screen-music.png", text: "Make music" },
+        { image: "/playground/images/laptop-screen-math.png", text: "Explore math" },
     ];
 
     const [activeIndex, setActiveIndex] = useState(0);

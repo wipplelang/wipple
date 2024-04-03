@@ -26,9 +26,9 @@ initializeApp({
 
 const router = createBrowserRouter(
     createRoutesFromElements(
-        <Route path="/" element={<RootPage />}>
+        <Route path={import.meta.env.BASE_URL} element={<RootPage />}>
             <Route index element={<HomePage />} />
-            <Route path="playground/:id/:page?" element={<PlaygroundPage />} />
+            <Route path="edit/:id/:page?" element={<PlaygroundPage />} />
         </Route>,
     ),
 );

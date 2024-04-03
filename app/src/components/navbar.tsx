@@ -40,7 +40,7 @@ export const useNavbar = () => useContext(NavbarContext);
 
 export const Navbar = () => {
     const location = useLocation();
-    const isHome = location.pathname === "/";
+    const isHome = location.pathname === "/playground";
 
     const { primaryActions, secondaryActions } = useNavbar();
     const { displayAlert } = useAlert();
@@ -74,8 +74,8 @@ export const Navbar = () => {
             }`}
         >
             <div className="flex flex-row items-center gap-4">
-                <Link to="/">
-                    <img src="/images/logo.svg" alt="Wipple" className="w-10 h-10" />
+                <Link to={import.meta.env.BASE_URL}>
+                    <img src="/playground/images/logo.svg" alt="Wipple" className="w-10 h-10" />
                 </Link>
 
                 {primaryActions}

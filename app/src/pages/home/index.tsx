@@ -44,7 +44,7 @@ export const HomePage = () => {
 
     const handleNewPlayground = async () => {
         const id = await createPlayground();
-        navigate(`playground/${id}`);
+        navigate(`edit/${id}`);
     };
 
     const handleDuplicate = async (playground: PlaygroundListItem) => {
@@ -80,7 +80,7 @@ export const HomePage = () => {
                         </PrimaryCard>
 
                         <PrimaryCard title="Browse Lessons" onClick={() => alert("TODO")}>
-                            <img src="/images/lesson-bg.png" />
+                            <img src="/playground/images/lesson-bg.png" />
                         </PrimaryCard>
 
                         <PrimaryCard title="Latest News" onClick={() => alert("TODO")}>
@@ -194,7 +194,7 @@ const PlaygroundCard = (props: {
 
     return (
         <Link
-            to={`/playground/${props.playground.id}`}
+            to={`/playground/edit/${props.playground.id}`}
             className="flex flex-row items-center justify-between p-4 hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors hover:rounded-md border-b hover:border-b-transparent"
         >
             <p>{props.playground.name}</p>
