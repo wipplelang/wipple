@@ -7,7 +7,7 @@ import {
     createRoutesFromElements,
 } from "react-router-dom";
 import { initializeApp } from "firebase/app";
-import { HomePage, PlaygroundPage, RootPage } from "./pages";
+import { HomePage, EditPage, RootPage } from "./pages";
 import { NavbarProvider, AlertProvider } from "./components";
 import "react-material-symbols/outlined";
 import "react-loading-skeleton/dist/skeleton.css";
@@ -28,7 +28,7 @@ const router = createBrowserRouter(
     createRoutesFromElements(
         <Route path={import.meta.env.BASE_URL} element={<RootPage />}>
             <Route index element={<HomePage />} />
-            <Route path="edit/:id/:page?" element={<PlaygroundPage />} />
+            <Route path="edit/:id/:page?" element={<EditPage />} />
         </Route>,
     ),
 );

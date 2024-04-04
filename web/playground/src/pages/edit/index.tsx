@@ -11,7 +11,7 @@ import { useDebounceCallback } from "usehooks-ts";
 import { flushSync } from "react-dom";
 import { SetupIcon } from "./setup-icon";
 
-export const PlaygroundPage = () => {
+export const EditPage = () => {
     const params = useParams();
     const id = params.id!;
     const selectedPageId = params.page;

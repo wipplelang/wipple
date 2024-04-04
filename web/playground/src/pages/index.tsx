@@ -1,5 +1,5 @@
 export * from "./home";
-export * from "./playground";
+export * from "./edit";
 
 import { useEffect, useState } from "react";
 import { Outlet, ScrollRestoration } from "react-router-dom";
