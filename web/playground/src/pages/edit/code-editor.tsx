@@ -13,10 +13,9 @@ import * as commands from "@codemirror/commands";
 import { RunOptions, Runner, RunnerRef } from "./runner";
 import { MaterialSymbol } from "react-material-symbols";
 import { ThemeConfig } from "./codemirror/theme";
-import { Help } from "../../models";
+import { Help, PaletteItem } from "../../models";
 import { useWindowSize } from "usehooks-ts";
 import { HelpAlert } from "./help-alert";
-import { Palette } from "./palette";
 import { ColorPicker } from "./color-picker";
 import { AssetClickHandler } from "./codemirror/assets";
 import { colorAsset } from "./assets";
@@ -249,7 +248,7 @@ export const CodeEditor = (props: {
                             inStyle={{ opacity: 1 }}
                             outStyle={{ opacity: 0 }}
                         >
-                            <Palette
+                            <PaletteButton
                                 items={
                                     props.runtime
                                         ? runtimes[props.runtime as keyof typeof runtimes]
@@ -385,7 +384,7 @@ const LookUpToggle = (props: { enabled: boolean; onChange?: (enabled: boolean) =
         <button
             className={`group flex flex-row items-center justify-center gap-1 transition-colors rounded-md ${
                 props.enabled
-                    ? "px-2 py-1 bg-blue-500 text-white text-sm"
+                    ? "mx-1 px-2 py-1 bg-blue-500 text-white text-sm"
                     : "px-2 h-7 hover:bg-gray-100 dark:hover:bg-gray-800"
             }`}
             onClick={() => props.onChange?.(!props.enabled)}
@@ -456,10 +455,31 @@ const EditButton = (props: { onSelectAll: () => void; onUndo: () => void; onRedo
     </ContextMenuButton>
 );
 
-const ColorBlock = (props: { className: string }) => (
-    <div
-        className={`-ml-3 w-5 h-5 rounded-md border-2 border-gray-100 dark:border-gray-800 transition-transform ${props.className}`}
-    />
+const PaletteButton = (props: { items: PaletteItem[] }) => (
+    <ContextMenuButton
+        items={props.items.map((item) => ({
+            title: ({ onDismiss }) => (
+                <div
+                    key={item.title}
+                    draggable
+                    className="flex flex-col items-start w-full"
+                    onDragStart={(event) => {
+                        event.dataTransfer.setData("wipple/snippet", item.code);
+                        onDismiss();
+                    }}
+                >
+                    <code className="whitespace-nowrap">{item.title}</code>
+                </div>
+            ),
+        }))}
+    >
+        <MenuContainer>
+            <button className="group flex flex-row items-center justify-center transition-colors rounded-md pl-2 pr-1 gap-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
+                <p className="text-xs">Commands</p>
+                <MaterialSymbol icon="expand_more" className="text-lg" />
+            </button>
+        </MenuContainer>
+    </ContextMenuButton>
 );
 
 const DiagnosticBubble = (props: {

@@ -223,6 +223,6 @@ export const paletteItems: PaletteItem[] = [
     { title: "backward", code: `backward (50 pixels)` },
     { title: "left", code: `left (90 degrees)` },
     { title: "right", code: `right (90 degrees)` },
-    { title: "color", code: `color [Color "#ef4444"]` },
+    { title: "color", code: `color [Color "#3b82f6"]` },
     { title: "repeat", code: `repeat (1 times) {\n  _\n}` },
 ];

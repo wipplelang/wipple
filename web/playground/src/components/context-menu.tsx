@@ -11,12 +11,12 @@ import { MaterialSymbol, MaterialSymbolProps } from "react-material-symbols";
 import { Tooltip, Transition, defaultAnimationDuration } from ".";
 
 export interface ContextMenuItem {
-    title: string;
+    title: string | ((props: { onDismiss: () => void }) => React.ReactNode);
     shortcut?: { win: string; mac: string };
-    icon: MaterialSymbolProps["icon"];
+    icon?: MaterialSymbolProps["icon"];
     role?: "destructive";
     disabled?: boolean;
-    onClick: () => void;
+    onClick?: () => void;
 }
 
 export const ContextMenuButton = (props: {
@@ -95,17 +95,26 @@ const ContextMenu = (props: { items: ContextMenuItem[]; onDismiss: () => void })
                 disabled={item.disabled}
                 key={index}
                 onClick={() => {
-                    item.onClick();
-                    props.onDismiss();
+                    if (item.onClick) {
+                        item.onClick();
+                        props.onDismiss();
+                    } else {
+                        alert("Click and hold to drag out of the menu.");
+                    }
                 }}
-                className={`flex flex-row items-center gap-1.5 disabled:opacity-50 rounded-md px-2 py-0.5 transition-colors ${
+                className={`flex flex-row items-center gap-1.5 text-sm disabled:opacity-50 rounded-md px-2 py-0.5 transition-colors ${
                     item.role === "destructive"
                         ? "text-red-500 enabled:hover:bg-red-50 enabled:dark:hover:bg-red-950 enabled:dark:hover:bg-opacity-50"
                         : "text-gray-900 dark:text-gray-50 enabled:hover:bg-gray-100 enabled:dark:hover:bg-gray-700"
                 }`}
             >
-                <MaterialSymbol icon={item.icon} className="text-lg" />
-                <p>{item.title}</p>
+                {item.icon ? <MaterialSymbol icon={item.icon} className="text-lg" /> : null}
+
+                {typeof item.title === "string" ? (
+                    <p>{item.title}</p>
+                ) : (
+                    <item.title onDismiss={props.onDismiss} />
+                )}
 
                 <div className="flex-1" />
 
