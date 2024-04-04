@@ -1,4 +1,4 @@
-import { Turtle } from "./turtle";
+import { Turtle, paletteItems as turtlePaletteItems } from "./turtle";
 
 export interface Runtime {
     initialize: () => Promise<void>;
@@ -11,5 +11,8 @@ export type RuntimeComponent = React.ForwardRefExoticComponent<
 >;
 
 export const runtimes = {
-    turtle: Turtle,
+    turtle: {
+        Component: Turtle,
+        paletteItems: turtlePaletteItems,
+    },
 };

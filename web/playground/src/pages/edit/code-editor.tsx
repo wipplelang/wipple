@@ -14,10 +14,9 @@ import { RunOptions, Runner, RunnerRef } from "./runner";
 import { MaterialSymbol } from "react-material-symbols";
 import { ThemeConfig } from "./codemirror/theme";
 import { Help } from "../../models";
-import { useHotkeys } from "react-hotkeys-hook";
 import { useWindowSize } from "usehooks-ts";
 import { HelpAlert } from "./help-alert";
-import { AssetPalette, SnippetPalette } from "./palette";
+import { Palette } from "./palette";
 import { ColorPicker } from "./color-picker";
 import { AssetClickHandler } from "./codemirror/assets";
 import { colorAsset } from "./assets";
@@ -53,22 +52,7 @@ export const CodeEditor = (props: {
 
     const [diagnostics, setDiagnostics] = useState<RenderedDiagnostic[]>([]);
 
-    const [quickHelpEnabled, setQuickHelpEnabled] = useState(false);
-    const [quickHelpLocked, setQuickHelpLocked] = useState(false);
-
-    useHotkeys(
-        "alt",
-        (e) => {
-            setQuickHelpEnabled(e.type === "keydown");
-        },
-        {
-            enabled: isFocused || quickHelpEnabled,
-            enableOnContentEditable: true,
-            keydown: true,
-            keyup: true,
-        },
-        [isFocused, quickHelpEnabled],
-    );
+    const [lookUpEnabled, setLookUpEnabled] = useState(false);
 
     const codeMirrorRef = useRef<CodeMirrorRef>(null);
     const runnerRef = useRef<RunnerRef>(null);
@@ -165,15 +149,12 @@ export const CodeEditor = (props: {
 
     const { displayAlert } = useAlert();
 
-    const onClickQuickHelp = useCallback((help: Help) => {
-        setQuickHelpEnabled(true);
-
+    const onClickLookUp = useCallback((help: Help) => {
         displayAlert(({ dismiss }) => (
             <HelpAlert
                 help={help}
                 dismiss={() => {
-                    setQuickHelpEnabled(false);
-                    setQuickHelpLocked(false);
+                    setLookUpEnabled(false);
                     dismiss();
                 }}
             />
@@ -235,21 +216,17 @@ export const CodeEditor = (props: {
             onBlur={() => setFocused(false)}
         >
             <div className="flex flex-col border-2 border-gray-100 dark:border-gray-800 rounded-md overflow-clip">
-                <div className="flex flex-row items-center justify-between w-full px-2 py-1 bg-gray-50 dark:bg-gray-900">
-                    <div className="flex flex-1 flex-row items-center gap-2">
-                        {props.runtime != null && !quickHelpLocked ? (
+                <div className="flex flex-row items-center justify-between w-full p-1 bg-gray-50 dark:bg-gray-900">
+                    <div className="flex flex-1 flex-row items-center">
+                        {props.runtime != null && !lookUpEnabled ? (
                             <>
                                 <SetupButton setup={props.runtime} onClick={() => alert("TODO")} />
                             </>
                         ) : null}
 
-                        <QuickHelpToggle
-                            enabled={quickHelpEnabled}
-                            locked={quickHelpLocked}
-                            onChange={setQuickHelpLocked}
-                        />
+                        <LookUpToggle enabled={lookUpEnabled} onChange={setLookUpEnabled} />
 
-                        {quickHelpLocked ? (
+                        {lookUpEnabled ? (
                             <p className="px-1.5 text-sm text-gray-500 dark:text-gray-400">
                                 Select a piece of code for help.
                             </p>
@@ -268,18 +245,25 @@ export const CodeEditor = (props: {
 
                     <div className="flex flex-shrink flex-row gap-2">
                         <Transition
-                            in={!(quickHelpLocked ?? false)}
+                            in={!(lookUpEnabled ?? false)}
                             inStyle={{ opacity: 1 }}
                             outStyle={{ opacity: 0 }}
                         >
-                            <PaletteMenu />
+                            <Palette
+                                items={
+                                    props.runtime
+                                        ? runtimes[props.runtime as keyof typeof runtimes]
+                                              .paletteItems
+                                        : []
+                                }
+                            />
                         </Transition>
                     </div>
                 </div>
 
                 <AddLineButton
                     direction="start"
-                    disabled={quickHelpEnabled || quickHelpLocked}
+                    disabled={lookUpEnabled}
                     onClick={() => onAddLine("start")}
                 />
 
@@ -294,9 +278,9 @@ export const CodeEditor = (props: {
                         onDrop={() => {
                             format();
                         }}
-                        readOnly={quickHelpLocked}
-                        quickHelpEnabled={quickHelpEnabled || quickHelpLocked}
-                        onClickQuickHelp={onClickQuickHelp}
+                        readOnly={lookUpEnabled}
+                        lookUpEnabled={lookUpEnabled}
+                        onClickLookUp={onClickLookUp}
                         help={getHelpForCode}
                         onClickAsset={onClickAsset}
                         theme={props.theme}
@@ -318,7 +302,7 @@ export const CodeEditor = (props: {
                                   }}
                               >
                                   <Transition
-                                      in={!quickHelpEnabled && !quickHelpLocked}
+                                      in={!lookUpEnabled}
                                       animateOnMount
                                       inStyle={{ opacity: 1, x: 0 }}
                                       outStyle={{ opacity: 0.5, x: "1rem" }}
@@ -338,7 +322,7 @@ export const CodeEditor = (props: {
 
                 <AddLineButton
                     direction="end"
-                    disabled={quickHelpEnabled || quickHelpLocked}
+                    disabled={lookUpEnabled}
                     onClick={() => onAddLine("end")}
                 />
 
@@ -349,7 +333,7 @@ export const CodeEditor = (props: {
                             options={runOptions}
                             runtime={
                                 props.runtime != null && props.runtime in runtimes
-                                    ? runtimes[props.runtime as keyof typeof runtimes]
+                                    ? runtimes[props.runtime as keyof typeof runtimes].Component
                                     : undefined
                             }
                             hasFocus={runnerHasFocus}
@@ -363,44 +347,6 @@ export const CodeEditor = (props: {
                 ) : null}
             </div>
         </div>
-    );
-};
-
-const PaletteMenu = () => {
-    const [Selection, setSelection] = useState<React.FC<{ onClose: () => void }>>();
-
-    return (
-        <Tooltip description="Palette" disabled={Selection != null}>
-            <MenuContainer>
-                {Selection ? (
-                    <div className="px-1">
-                        <Selection onClose={() => setSelection(undefined)} />
-                    </div>
-                ) : (
-                    <div className="flex flex-row items-center gap-1">
-                        <button
-                            className="group h-[28px] mt-[2px] transition-colors"
-                            onClick={() => setSelection(() => AssetPalette)}
-                        >
-                            <div className="flex flex-row px-1 ml-3 mb-0.5">
-                                <ColorBlock className="bg-red-500 z-[3] group-hover:-rotate-[5deg] group-hover:-translate-x-0.5" />
-                                <ColorBlock className="bg-green-500 z-[2] group-hover:rotate-[5deg]" />
-                                <ColorBlock className="bg-blue-500 z-[1] group-hover:-rotate-[10deg] group-hover:translate-x-0.5" />
-                            </div>
-                        </button>
-
-                        <button
-                            className="group hover:scale-110 h-[28px] mt-[2px] transition-all"
-                            onClick={() => setSelection(() => SnippetPalette)}
-                        >
-                            <div className="flex items-center px-1 mb-0.5">
-                                <code className="text-xs">abc</code>
-                            </div>
-                        </button>
-                    </div>
-                )}
-            </MenuContainer>
-        </Tooltip>
     );
 };
 
@@ -426,65 +372,51 @@ const AddLineButton = (props: {
 );
 
 const SetupButton = (props: { setup: string; onClick: () => void }) => (
-    <Tooltip description={<span className="capitalize">{props.setup} Docs</span>}>
-        <div className="group flex flex-row items-center justify-center gap-1 transition-colors rounded-md w-[24px] h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
+    <MenuContainer>
+        <button className="group flex flex-row items-center justify-center gap-1 transition-colors rounded-md px-2 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
             <SetupIcon setup={props.setup} size="sm" />
-        </div>
-    </Tooltip>
+            <p className="text-xs capitalize">{props.setup}</p>
+        </button>
+    </MenuContainer>
 );
 
-const QuickHelpToggle = (props: {
-    enabled: boolean;
-    locked: boolean;
-    onChange?: (quickHelpEnabled: boolean) => void;
-}) => (
-    <Tooltip
-        description={
-            props.locked
-                ? undefined
-                : `Quick Help ${/mac/.test(navigator.userAgent.toLowerCase()) ? "(⌥)" : "(Alt)"}`
-        }
-    >
-        <MenuContainer>
-            <button
-                className={`group flex flex-row items-center justify-center gap-1 transition-colors rounded-md ${
-                    props.locked
-                        ? "px-2 py-1 bg-blue-500 text-white text-sm"
-                        : `w-[24px] h-7 ${
-                              props.enabled
-                                  ? "bg-gray-100 dark:bg-gray-800"
-                                  : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                          }`
-                }`}
-                disabled={props.enabled && !props.locked}
-                onClick={() => props.onChange?.(!props.locked)}
-            >
-                {props.locked ? (
-                    <p className="whitespace-nowrap">Done</p>
-                ) : (
-                    <MaterialSymbol icon="frame_inspect" className="text-lg" />
-                )}
-            </button>
-        </MenuContainer>
-    </Tooltip>
+const LookUpToggle = (props: { enabled: boolean; onChange?: (enabled: boolean) => void }) => (
+    <MenuContainer>
+        <button
+            className={`group flex flex-row items-center justify-center gap-1 transition-colors rounded-md ${
+                props.enabled
+                    ? "px-2 py-1 bg-blue-500 text-white text-sm"
+                    : "px-2 h-7 hover:bg-gray-100 dark:hover:bg-gray-800"
+            }`}
+            onClick={() => props.onChange?.(!props.enabled)}
+        >
+            {props.enabled ? (
+                <p className="whitespace-nowrap">Done</p>
+            ) : (
+                <>
+                    <MaterialSymbol icon="search" className="text-lg" />
+                    <p className="text-xs text-nowrap">Look Up</p>
+                </>
+            )}
+        </button>
+    </MenuContainer>
 );
 
 const FormatButton = (props: { onClick: () => void }) => (
-    <Tooltip description="Format">
-        <MenuContainer>
-            <button
-                className="group flex flex-row items-center justify-center transition-colors rounded-md w-[24px] h-7 hover:bg-gray-100 dark:hover:bg-gray-800"
-                onClick={props.onClick}
-            >
-                <MaterialSymbol icon="article" className="text-lg" />
-            </button>
-        </MenuContainer>
-    </Tooltip>
+    <MenuContainer>
+        <button
+            className="group flex flex-row items-center justify-center transition-colors rounded-md gap-1 px-2 h-7 hover:bg-gray-100 dark:hover:bg-gray-800"
+            onClick={props.onClick}
+        >
+            <MaterialSymbol icon="notes" className="text-lg" />
+
+            <p className="text-xs">Format</p>
+        </button>
+    </MenuContainer>
 );
 
 const EditButton = (props: { onSelectAll: () => void; onUndo: () => void; onRedo: () => void }) => (
     <ContextMenuButton
-        description="Edit"
         items={[
             {
                 title: "Select All",
@@ -516,9 +448,10 @@ const EditButton = (props: { onSelectAll: () => void; onUndo: () => void; onRedo
         ]}
     >
         <MenuContainer>
-            <div className="group flex flex-row items-center justify-center transition-colors rounded-md w-[24px] h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
-                <MaterialSymbol icon="text_select_end" className="text-lg" />
-            </div>
+            <button className="group flex flex-row items-center justify-center transition-colors rounded-md px-2 gap-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
+                <MaterialSymbol icon="text_fields_alt" className="text-lg" />
+                <p className="text-xs">Edit</p>
+            </button>
         </MenuContainer>
     </ContextMenuButton>
 );
@@ -629,7 +562,7 @@ const DiagnosticBubble = (props: {
 };
 
 const MenuContainer = (props: React.PropsWithChildren<{}>) => (
-    <div className="flex flex-row items-center text-gray-600 dark:text-gray-400 text-opacity-50 h-7">
+    <div className="flex flex-row items-center text-gray-800 dark:text-gray-400 text-opacity-50 h-7">
         {props.children}
     </div>
 );

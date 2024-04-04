@@ -8,6 +8,7 @@ import { format } from "date-fns";
 
 // @ts-ignore
 import RealTurtle from "real-turtle";
+import { PaletteItem } from "../../models";
 
 const initializeTurtle = async (canvas: HTMLCanvasElement) => {
     const turtle = new RealTurtle(canvas, {
@@ -216,3 +217,12 @@ function rescaleCanvas(canvas: any) {
 }
 
 export { turtleImage };
+
+export const paletteItems: PaletteItem[] = [
+    { title: "forward", code: `forward (50 pixels)` },
+    { title: "backward", code: `backward (50 pixels)` },
+    { title: "left", code: `left (90 degrees)` },
+    { title: "right", code: `right (90 degrees)` },
+    { title: "color", code: `color [Color "#ef4444"]` },
+    { title: "repeat", code: `repeat (1 times) {\n  _\n}` },
+];

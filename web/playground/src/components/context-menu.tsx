@@ -22,7 +22,7 @@ export interface ContextMenuItem {
 export const ContextMenuButton = (props: {
     className?: string;
     disabled?: boolean;
-    description: string;
+    description?: string;
     items: ContextMenuItem[];
     children: React.ReactNode;
 }) => {

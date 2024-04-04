@@ -20,8 +20,8 @@ export interface CodeMirrorProps {
     onFocus?: () => void;
     onBlur?: () => void;
     onDrop?: () => void;
-    quickHelpEnabled: boolean;
-    onClickQuickHelp: (help: Help) => void;
+    lookUpEnabled: boolean;
+    onClickLookUp: (help: Help) => void;
     help: (position: number, code: string) => Help | undefined;
     onClickAsset: AssetClickHandler;
     readOnly: boolean;
@@ -61,8 +61,6 @@ const editableFromConfig = (config: { readOnly: boolean; onDrop?: () => void }):
                           false,
                       );
 
-                      const hasPlaceholder = snippet.includes("_");
-
                       if (
                           !view.state.selection.main.empty &&
                           position >= view.state.selection.main.from &&
@@ -87,15 +85,19 @@ const editableFromConfig = (config: { readOnly: boolean; onDrop?: () => void }):
                       } else {
                           snippet = snippet.replace("_", "...");
 
-                          const padding = (s: string) =>
-                              s === "" || /\s/.test(s) ? "" : hasPlaceholder ? "\n" : " ";
-                          const leftPadding = padding(view.state.sliceDoc(position - 1, position));
-                          const rightPadding = padding(view.state.sliceDoc(position, position + 1));
+                          let leftPadding = "";
+                          const rightPadding = "\n";
+                          let endOfLine = view.state.doc.lineAt(position).to;
+                          if (endOfLine === view.state.doc.length) {
+                              leftPadding = "\n";
+                          } else {
+                              endOfLine += 1;
+                          }
 
                           view.dispatch({
                               changes: {
-                                  from: position,
-                                  to: position,
+                                  from: endOfLine,
+                                  to: endOfLine,
                                   insert: leftPadding + snippet + rightPadding,
                               },
                               userEvent: "wipple.drop",
@@ -122,10 +124,10 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
                     displayHelp.of(
                         displayHelpFromEnabled(
-                            props.quickHelpEnabled,
+                            props.lookUpEnabled,
                             props.theme,
                             props.help,
-                            props.onClickQuickHelp,
+                            props.onClickLookUp,
                         ),
                     ),
 
@@ -133,7 +135,7 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
                     assets.of(
                         assetsFromConfig({
-                            disabled: props.quickHelpEnabled,
+                            disabled: props.lookUpEnabled,
                             onClick: props.onClickAsset,
                         }),
                     ),
@@ -231,14 +233,14 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
         editorView.dispatch({
             effects: displayHelp.reconfigure(
                 displayHelpFromEnabled(
-                    props.quickHelpEnabled,
+                    props.lookUpEnabled,
                     props.theme,
                     props.help,
-                    props.onClickQuickHelp,
+                    props.onClickLookUp,
                 ),
             ),
         });
-    }, [editorView, props.quickHelpEnabled, props.theme]);
+    }, [editorView, props.lookUpEnabled, props.theme]);
 
     useEffect(() => {
         editorView.dispatch({
@@ -251,10 +253,10 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
     useEffect(() => {
         editorView.dispatch({
             effects: assets.reconfigure(
-                assetsFromConfig({ disabled: props.quickHelpEnabled, onClick: props.onClickAsset }),
+                assetsFromConfig({ disabled: props.lookUpEnabled, onClick: props.onClickAsset }),
             ),
         });
-    }, [editorView, props.quickHelpEnabled, props.onClickAsset]);
+    }, [editorView, props.lookUpEnabled, props.onClickAsset]);
 
     useEffect(() => {
         if (props.autoFocus) {
