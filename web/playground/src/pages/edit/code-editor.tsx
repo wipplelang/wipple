@@ -455,32 +455,33 @@ const EditButton = (props: { onSelectAll: () => void; onUndo: () => void; onRedo
     </ContextMenuButton>
 );
 
-const PaletteButton = (props: { items: PaletteItem[] }) => (
-    <ContextMenuButton
-        items={props.items.map((item) => ({
-            title: ({ onDismiss }) => (
-                <div
-                    key={item.title}
-                    draggable
-                    className="flex flex-col items-start w-full"
-                    onDragStart={(event) => {
-                        event.dataTransfer.setData("wipple/snippet", item.code);
-                        onDismiss();
-                    }}
-                >
-                    <code className="whitespace-nowrap">{item.title}</code>
-                </div>
-            ),
-        }))}
-    >
-        <MenuContainer>
-            <button className="group flex flex-row items-center justify-center transition-colors rounded-md pl-2 pr-1 gap-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
-                <p className="text-xs">Commands</p>
-                <MaterialSymbol icon="expand_more" className="text-lg" />
-            </button>
-        </MenuContainer>
-    </ContextMenuButton>
-);
+const PaletteButton = (props: { items: PaletteItem[] }) =>
+    props.items.length > 0 ? (
+        <ContextMenuButton
+            items={props.items.map((item) => ({
+                title: ({ onDismiss }) => (
+                    <div
+                        key={item.title}
+                        draggable
+                        className="flex flex-col items-start w-full"
+                        onDragStart={(event) => {
+                            event.dataTransfer.setData("wipple/snippet", item.code);
+                            onDismiss();
+                        }}
+                    >
+                        <code className="whitespace-nowrap">{item.title}</code>
+                    </div>
+                ),
+            }))}
+        >
+            <MenuContainer>
+                <button className="group flex flex-row items-center justify-center transition-colors rounded-md pl-2 pr-1 gap-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
+                    <p className="text-xs">Commands</p>
+                    <MaterialSymbol icon="expand_more" className="text-lg" />
+                </button>
+            </MenuContainer>
+        </ContextMenuButton>
+    ) : null;
 
 const DiagnosticBubble = (props: {
     top: number;
