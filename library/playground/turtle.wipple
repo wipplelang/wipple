@@ -1,6 +1,8 @@
 -- The distance (in pixels) the turtle should move.
 Distance : type Number
 
+instance (Describe-Type Distance "a distance") : ...
+
 -- Specify a distance in pixels.
 pixels :: Number -> Distance
 pixels : Distance
