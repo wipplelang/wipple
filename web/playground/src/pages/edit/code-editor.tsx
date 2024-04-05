@@ -297,7 +297,6 @@ export const CodeEditor = (props: {
                                   style={{
                                       top: top + props.theme.fontSize / 4 - 1,
                                       height,
-                                      paddingLeft: "3rem",
                                   }}
                               >
                                   <Transition
@@ -495,8 +494,6 @@ const DiagnosticBubble = (props: {
 
     return (
         <div style={{ maxWidth: isExpanded ? undefined : props.width }}>
-            <div className="w-10 pointer-events-none" />
-
             <div
                 className="flex flex-row items-center justify-end"
                 style={{ height: props.height }}
