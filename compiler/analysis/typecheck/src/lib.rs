@@ -233,6 +233,14 @@ pub fn parameters_in<D: Driver>(r#type: WithInfo<D::Info, &crate::Type<D>>) -> V
     resolve::parameters_in(r#type)
 }
 
+/// Retrieve the description of a type as defined by the `Describe-Type` trait.
+pub fn type_description<D: Driver>(
+    driver: &D,
+    r#type: WithInfo<D::Info, &crate::Type<D>>,
+) -> Option<crate::CustomMessage<D>> {
+    resolve::type_description(driver, r#type)
+}
+
 /// An error occurring during typechecking.
 #[derive(Serialize, Deserialize, Derivative, TS)]
 #[derivative(
@@ -376,7 +384,7 @@ pub struct CustomMessage<D: Driver> {
 #[ts(export, rename = "typecheck_Type", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Type<D: Driver> {
     /// A type to be inferred or that could not be resolved.
-    Unknown(#[serde(skip)] UnknownTypeId),
+    Unknown,
 
     /// A type parameter.
     Parameter(D::Path),
@@ -444,35 +452,6 @@ pub struct MessageTypeFormatSegment<D: Driver> {
 
     /// The type to insert after the text.
     pub r#type: WithInfo<D::Info, Type<D>>,
-}
-
-/// Used to disambiguate between unknown types by recording the internal type
-/// variable the [`Unknown`](Type::Unknown) type replaced.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct UnknownTypeId(Option<u32>);
-
-impl UnknownTypeId {
-    /// No additional information is available about the type.
-    pub fn none() -> Self {
-        UnknownTypeId(None)
-    }
-
-    /// Returns `true` if `self` originated from the same type as `other`.
-    pub fn is_from_same_type_as(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl PartialEq for UnknownTypeId {
-    fn eq(&self, _other: &Self) -> bool {
-        true
-    }
-}
-
-impl Eq for UnknownTypeId {}
-
-impl Hash for UnknownTypeId {
-    fn hash<H: std::hash::Hasher>(&self, _state: &mut H) {}
 }
 
 /// An instance or bound.

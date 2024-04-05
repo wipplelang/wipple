@@ -87,6 +87,21 @@ pub fn list_type_parameters(type_: &str) -> String {
     serialize(&parameters)
 }
 
+/// Retrieve the description of a type as defined by the `Describe-Type` trait.
+#[wasm_bindgen]
+pub fn type_description(type_: &str, interface_: &str) -> String {
+    initialize();
+
+    let r#type: util::WithInfo<Info, typecheck::Type<Driver>> = deserialize(type_);
+    let interface: Interface = deserialize(interface_);
+
+    let mut driver = Driver::new();
+    driver.interface = interface;
+
+    let description = typecheck::type_description(&driver, r#type.as_ref());
+    serialize(&description)
+}
+
 /// The driver.
 #[non_exhaustive]
 #[derive(Debug)]

@@ -13,4 +13,9 @@ export const listTypeParameters: (
     type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
 ) => compiler.lower_Path[];
 
+export const typeDescription: (
+    type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
+    interface: compiler.Interface,
+) => compiler.typecheck_MessageType;
+
 export type * from "./generated/wipple-compiler.d.ts";

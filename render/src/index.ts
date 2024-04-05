@@ -48,6 +48,7 @@ export type RenderedDocumentationAttributeValue =
 export class Render {
     private files: Record<string, compiler.File & { linesAndColumns: LinesAndColumns }> = {};
     private declarations: compiler.WithInfo<compiler.Info, AnyDeclaration>[] = [];
+    private interface: compiler.Interface | null = null;
     private libraries: compiler.linker_UnlinkedLibrary[] = [];
 
     update(interface_: compiler.Interface, libraries: compiler.linker_UnlinkedLibrary[]) {
@@ -73,6 +74,7 @@ export class Render {
             }
         }
 
+        this.interface = interface_;
         this.libraries = libraries;
     }
 
@@ -350,6 +352,13 @@ export class Render {
         isTopLevel: boolean,
         renderAsCode: boolean,
     ): string {
+        if (isTopLevel && this.interface) {
+            const description = compiler.typeDescription(type, this.interface);
+            if (description) {
+                return this.renderTypeLevelText(description, false);
+            }
+        }
+
         const render = (
             type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
             isTopLevel: boolean,
@@ -718,11 +727,10 @@ export class Render {
                             true,
                         );
 
-                        // TODO: Roles (eg. convert a `Text -> _` on the function into a `_` on the function call)
-                        if (renderedType === "_") {
+                        if (renderedType === "`_`") {
                             message = "could not determine what kind of value this code produces";
                         } else {
-                            message = `this code produces a ${renderedType}, but the \`_\`s are unknown`;
+                            message = `this code produces ${renderedType}, but the \`_\`s are unknown`;
                         }
 
                         break;
@@ -743,16 +751,16 @@ export class Render {
                                 : "";
 
                         message = renderedRole
-                            ? `expected this ${renderedRole} to be a ${this.renderType(
+                            ? `expected this ${renderedRole} to be ${this.renderType(
                                   expected,
                                   true,
                                   true,
-                              )} here, but found a ${this.renderType(actual, true, true)}`
-                            : `expected a ${this.renderType(
+                              )} here, but found ${this.renderType(actual, true, true)}`
+                            : `expected ${this.renderType(
                                   expected,
                                   true,
                                   true,
-                              )} here, but found a ${this.renderType(actual, true, true)}`;
+                              )} here, but found ${this.renderType(actual, true, true)}`;
 
                         break;
                     }

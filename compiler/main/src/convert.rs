@@ -79,7 +79,7 @@ pub mod interface {
         let type_info = r#type.info.clone();
 
         r#type.map(|r#type| match r#type {
-            wipple_typecheck::Type::Unknown(_) => wipple_lower::Type::Error,
+            wipple_typecheck::Type::Unknown => wipple_lower::Type::Error,
             wipple_typecheck::Type::Parameter(parameter) => {
                 wipple_lower::Type::Parameter(parameter)
             }
@@ -733,12 +733,8 @@ pub mod typecheck {
         r#type: wipple_util::WithInfo<crate::Info, wipple_lower::Type<crate::Driver>>,
     ) -> wipple_util::WithInfo<Info, wipple_typecheck::Type<crate::Driver>> {
         r#type.map(|r#type| match r#type {
-            wipple_lower::Type::Error => {
-                wipple_typecheck::Type::Unknown(wipple_typecheck::UnknownTypeId::none())
-            }
-            wipple_lower::Type::Placeholder => {
-                wipple_typecheck::Type::Unknown(wipple_typecheck::UnknownTypeId::none())
-            }
+            wipple_lower::Type::Error => wipple_typecheck::Type::Unknown,
+            wipple_lower::Type::Placeholder => wipple_typecheck::Type::Unknown,
             wipple_lower::Type::Declared { path, parameters } => wipple_typecheck::Type::Declared {
                 path: path.item,
                 parameters: parameters.into_iter().map(convert_type).collect(),

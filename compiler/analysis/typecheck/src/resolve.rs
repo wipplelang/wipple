@@ -1,4 +1,4 @@
-use crate::{Driver, Role, UnknownTypeId};
+use crate::{Driver, Role};
 use derivative::Derivative;
 use itertools::Itertools;
 use std::{
@@ -69,7 +69,7 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
                 bounds: Vec::new(),
                 r#type: WithInfo {
                     info: info.clone(),
-                    item: crate::Type::Unknown(UnknownTypeId::none()), // the top level can be any type
+                    item: crate::Type::Unknown, // the top level can be any type
                 },
                 body: WithInfo {
                     info,
@@ -472,7 +472,7 @@ pub fn substitute_defaults_in_parameters<D: Driver>(
                 substitute_defaults_in_parameters(driver, segment.r#type.as_mut());
             }
         }
-        crate::Type::Unknown(_) | crate::Type::Intrinsic => {}
+        crate::Type::Unknown | crate::Type::Intrinsic => {}
     }
 }
 
@@ -481,6 +481,64 @@ pub fn parameters_in<D: Driver>(r#type: WithInfo<D::Info, &crate::Type<D>>) -> V
     let mut parameters = Vec::new();
     r#type.list_type_parameters(&mut parameters);
     parameters
+}
+
+pub fn type_description<D: Driver>(
+    driver: &D,
+    r#type: WithInfo<D::Info, &crate::Type<D>>,
+) -> Option<crate::CustomMessage<D>> {
+    let r#type = infer_type(r#type, None, None);
+
+    if let Some(describe_type_trait_path) = driver.path_for_language_trait("describe-type") {
+        let type_context = TypeContext::default();
+
+        let temp_error_queue: RefCell<Vec<_>> = Default::default();
+        let temp_errors: RefCell<Vec<_>> = Default::default();
+        let resolve_context = ResolveContext {
+            driver,
+            type_context: &type_context,
+            error_queue: &temp_error_queue,
+            errors: &temp_errors,
+            variables: &Default::default(),
+            recursion_stack: &Default::default(),
+            bound_instances: Default::default(),
+        };
+
+        let description_type = Type::new(
+            TypeKind::Variable(type_context.variable()),
+            r#type.info.clone(),
+            Vec::new(),
+        );
+
+        let query = WithInfo {
+            info: r#type.info.clone(),
+            item: Instance {
+                r#trait: describe_type_trait_path,
+                parameters: vec![r#type, description_type.clone()],
+            },
+        };
+
+        if resolve_trait(query.as_ref(), &resolve_context).is_ok() {
+            let finalize_context = FinalizeContext {
+                driver,
+                type_context: &type_context,
+                bound_instances: Default::default(),
+                error_queue: None,
+                errors: None,
+                unresolved_variables: None,
+                contains_unknown: &Cell::new(false),
+                subexpression_types: None,
+            };
+
+            let description_type = finalize_type(description_type, false, &finalize_context);
+
+            if let crate::Type::Message { segments, trailing } = description_type.item {
+                return Some(crate::CustomMessage { segments, trailing });
+            }
+        }
+    }
+
+    None
 }
 
 // Instead of reporting unification errors immediately, queue them and then
@@ -635,8 +693,6 @@ fn try_report_custom_mismatch_error<D: Driver>(
     type_context: &TypeContext<D>,
     errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
 ) -> bool {
-    // Special case: Display a user-provided message if there is a
-    // corresponding instance for `Mismatch`
     if let Some(mismatch_trait_path) = driver.path_for_language_trait("mismatch") {
         let query = WithInfo {
             info: info.clone(),
@@ -1678,7 +1734,7 @@ fn infer_type<D: Driver>(
             crate::Type::Block(r#type) => {
                 TypeKind::Block(Box::new(infer_type(r#type.as_deref(), None, type_context)))
             }
-            crate::Type::Unknown(_) => match type_context {
+            crate::Type::Unknown => match type_context {
                 Some(type_context) => TypeKind::Variable(type_context.variable()),
                 None => TypeKind::Unknown,
             },
@@ -3988,7 +4044,7 @@ fn finalize_type<D: Driver>(
                         *fully_resolved = false;
                     }
 
-                    crate::Type::Unknown(UnknownTypeId(Some(var.counter)))
+                    crate::Type::Unknown
                 }
                 TypeKind::Parameter(path) => crate::Type::Parameter(path),
                 TypeKind::Declared { path, parameters } => crate::Type::Declared {
@@ -4016,7 +4072,7 @@ fn finalize_type<D: Driver>(
                 ),
                 TypeKind::Unknown => {
                     context.contains_unknown.set(true);
-                    crate::Type::Unknown(UnknownTypeId::none())
+                    crate::Type::Unknown
                 }
                 TypeKind::Intrinsic => crate::Type::Intrinsic,
                 TypeKind::Message { segments, trailing } => crate::Type::Message {

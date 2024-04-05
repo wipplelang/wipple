@@ -18,3 +18,12 @@ export const format = (code) => wasm.format(code);
 
 export const listTypeParameters = (type) =>
     JSON.parse(wasm.list_type_parameters(JSON.stringify(type)));
+
+export const typeDescription = (type, interface_) => {
+    const result = wasm.type_description(JSON.stringify(type), JSON.stringify(interface_));
+    if (result == null) {
+        return null;
+    }
+
+    return JSON.parse(result);
+};

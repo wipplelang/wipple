@@ -172,7 +172,7 @@ fn convert_type<D: Driver>(
             elements.iter().map(|r#type| r#type.item.clone()).collect(),
         )),
         crate::Type::Intrinsic => Some(Type::Unmatchable),
-        crate::Type::Unknown(_)
+        crate::Type::Unknown
         | crate::Type::Block(_)
         | crate::Type::Function { .. }
         | crate::Type::Message { .. } => None,
