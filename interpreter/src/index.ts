@@ -643,26 +643,16 @@ const evaluateItem = async (
 };
 
 const findInstance = (trait: string, typeDescriptor: TypeDescriptor, executable: Executable) => {
-    for (const path of executable.instances[trait] ?? []) {
-        const instance = executable.items[path];
-        const substitutions: Record<string, TypeDescriptor> = {};
-        if (unify(typeDescriptor, instance.typeDescriptor, substitutions)) {
-            return [path, substitutions] as const;
-        }
-    }
-
-    const defaultPath = executable.defaultInstances[trait];
-    if (defaultPath) {
-        const instance = executable.items[defaultPath];
-        const substitutions: Record<string, TypeDescriptor> = {};
-        if (unify(typeDescriptor, instance.typeDescriptor, substitutions)) {
-            return [defaultPath, substitutions] as const;
-        } else {
-            throw new Error(
-                `default instance for trait ${trait} did not satisfy type descriptor ${JSON.stringify(
-                    typeDescriptor,
-                )}`,
-            );
+    for (const instances of [
+        executable.instances[trait] ?? [],
+        executable.defaultInstances[trait] ?? [],
+    ]) {
+        for (const path of instances) {
+            const instance = executable.items[path];
+            const substitutions: Record<string, TypeDescriptor> = {};
+            if (unify(typeDescriptor, instance.typeDescriptor, substitutions)) {
+                return [path, substitutions] as const;
+            }
         }
     }
 

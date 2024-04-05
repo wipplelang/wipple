@@ -534,17 +534,13 @@ impl Driver {
             );
 
             for instance in instances {
-                if default_instances.contains(&instance) {
-                    self.library
-                        .default_instances
-                        .insert(r#trait.clone(), instance);
+                let instances = if default_instances.contains(&instance) {
+                    &mut self.library.default_instances
                 } else {
-                    self.library
-                        .instances
-                        .entry(r#trait.clone())
-                        .or_default()
-                        .push(instance);
-                }
+                    &mut self.library.instances
+                };
+
+                instances.entry(r#trait.clone()).or_default().push(instance);
             }
         }
 

@@ -800,11 +800,6 @@ export class Render {
                             "this instance already exists elsewhere; try making it more specific";
                         break;
                     }
-                    case "multipleDefaultInstances": {
-                        severity = "error";
-                        message = "can't have multiple `default` instances for the same trait";
-                        break;
-                    }
                     case "missingPatterns": {
                         const patterns = diagnostic.item.value.value;
                         const last = patterns.pop()!;

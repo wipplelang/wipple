@@ -283,103 +283,95 @@ pub fn instances_overlap<D: Driver>(
         .collect::<HashSet<_>>();
 
     let mut errors = Vec::new();
-    let mut has_default = false;
 
-    let instances = instances
-        .into_iter()
-        .filter_map(|path| {
+    let (instances, default_instances): (Vec<_>, Vec<_>) =
+        instances.into_iter().partition_map(|path| {
             let declaration = driver.get_instance_declaration(&path);
 
-            // Non-default instances have priority over default instances
-            if declaration.item.default {
-                if has_default {
-                    errors.push(WithInfo {
-                        info: declaration.info,
-                        item: crate::Diagnostic::MultipleDefaultInstances { instance: path },
-                    });
-                }
-
-                has_default = true;
-                return None;
-            }
-
-            Some((
+            let info = (
                 path,
                 declaration.info,
                 declaration.item.parameters,
                 infer_instance(declaration.item.instance),
-            ))
-        })
-        .collect::<Vec<_>>();
+            );
 
-    let mut overlapping = HashSet::new();
-
-    for (index, (path, info, parameters, instance)) in instances.iter().enumerate() {
-        for (other_index, (other_path, _, other_parameters, other_instance)) in
-            instances.iter().enumerate()
-        {
-            if index == other_index
-                || overlapping.contains(&(index, other_index))
-                || overlapping.contains(&(other_index, index))
-            {
-                continue;
+            if declaration.item.default {
+                itertools::Either::Right(info)
+            } else {
+                itertools::Either::Left(info)
             }
+        });
 
-            let type_context = TypeContext::default();
+    for instances in [instances, default_instances] {
+        let mut overlapping = HashSet::new();
 
-            let instantiate_instance =
-                |parameters: Vec<<D as Driver>::Path>,
-                 instance: WithInfo<D::Info, &mut Instance<D>>| {
-                    let unused_errors = RefCell::default();
+        for (index, (path, info, parameters, instance)) in instances.iter().enumerate() {
+            for (other_index, (other_path, _, other_parameters, other_instance)) in
+                instances.iter().enumerate()
+            {
+                if index == other_index
+                    || overlapping.contains(&(index, other_index))
+                    || overlapping.contains(&(other_index, index))
+                {
+                    continue;
+                }
 
-                    let instantiation_context = InstantiationContext::from_parameters(
-                        driver,
-                        parameters,
-                        &type_context,
-                        &instance.info,
-                        &unused_errors,
-                    );
+                let type_context = TypeContext::default();
 
-                    instance
-                        .item
-                        .instantiate_mut(driver, &instantiation_context);
+                let instantiate_instance =
+                    |parameters: Vec<<D as Driver>::Path>,
+                     instance: WithInfo<D::Info, &mut Instance<D>>| {
+                        let unused_errors = RefCell::default();
 
-                    // Only count non-inferred parameters in the overlap check
-                    for (trait_parameter, instance_parameter) in trait_declaration
-                        .item
-                        .parameters
-                        .iter()
-                        .zip(&mut instance.item.parameters)
-                    {
-                        if opaque_parameters.contains(trait_parameter) {
-                            instance_parameter.kind = TypeKind::Opaque(type_context.variable());
+                        let instantiation_context = InstantiationContext::from_parameters(
+                            driver,
+                            parameters,
+                            &type_context,
+                            &instance.info,
+                            &unused_errors,
+                        );
+
+                        instance
+                            .item
+                            .instantiate_mut(driver, &instantiation_context);
+
+                        // Only count non-inferred parameters in the overlap check
+                        for (trait_parameter, instance_parameter) in trait_declaration
+                            .item
+                            .parameters
+                            .iter()
+                            .zip(&mut instance.item.parameters)
+                        {
+                            if opaque_parameters.contains(trait_parameter) {
+                                instance_parameter.kind = TypeKind::Opaque(type_context.variable());
+                            }
                         }
-                    }
-                };
+                    };
 
-            let mut instance = instance.clone();
+                let mut instance = instance.clone();
 
-            instantiate_instance(parameters.clone(), instance.as_mut());
+                instantiate_instance(parameters.clone(), instance.as_mut());
 
-            let mut other_instance = other_instance.clone();
+                let mut other_instance = other_instance.clone();
 
-            instantiate_instance(other_parameters.clone(), other_instance.as_mut());
+                instantiate_instance(other_parameters.clone(), other_instance.as_mut());
 
-            if unify_instance(
-                driver,
-                instance.as_ref(),
-                other_instance.as_ref(),
-                &type_context,
-            ) {
-                overlapping.insert((index, other_index));
+                if unify_instance(
+                    driver,
+                    instance.as_ref(),
+                    other_instance.as_ref(),
+                    &type_context,
+                ) {
+                    overlapping.insert((index, other_index));
 
-                errors.push(WithInfo {
-                    info: info.clone(),
-                    item: crate::Diagnostic::OverlappingInstances {
-                        instance: path.clone(),
-                        other: other_path.clone(),
-                    },
-                });
+                    errors.push(WithInfo {
+                        info: info.clone(),
+                        item: crate::Diagnostic::OverlappingInstances {
+                            instance: path.clone(),
+                            other: other_path.clone(),
+                        },
+                    });
+                }
             }
         }
     }
