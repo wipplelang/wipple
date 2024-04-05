@@ -2,6 +2,6 @@
 
 exports[`show-variable.test.wipple 1`] = `
 [
-  "show-variable/show-variable.test.wipple:5:0: error: cannot describe a \`Cannot-Be-Shown -> Cannot-Be-Shown\` value",
+  "show-variable/show-variable.test.wipple:5:0: error: cannot describe a a function value",
 ]
 `;
