@@ -1076,7 +1076,7 @@ impl<'a, D: Driver> InstantiationContext<'a, D> {
                 path,
                 Type::new(
                     kind,
-                    parameter_declaration.info.clone(),
+                    info.clone(),
                     vec![parameter_declaration.replace(Role::TypeParameter)],
                 ),
             ));
@@ -4145,7 +4145,7 @@ fn finalize_expression<D: Driver>(
                             path: path.clone(),
                             parameters: parameters
                                 .into_iter()
-                                .map(|r#type| finalize_type(r#type, false, context).item)
+                                .map(|r#type| finalize_type(r#type, true, context).item)
                                 .collect(),
                         }
                     }
@@ -4163,7 +4163,7 @@ fn finalize_expression<D: Driver>(
             let error = WithInfo {
                 info: expression.info.clone(),
                 item: crate::Diagnostic::UnknownType(
-                    finalize_type(expression.item.r#type.clone(), false, context).item,
+                    finalize_type(expression.item.r#type.clone(), true, context).item,
                 ),
             };
 
@@ -4178,7 +4178,7 @@ fn finalize_expression<D: Driver>(
                 path,
                 parameters: parameters
                     .iter()
-                    .map(|r#type| finalize_type(r#type.clone(), false, context).item)
+                    .map(|r#type| finalize_type(r#type.clone(), true, context).item)
                     .collect(),
             }
         }
@@ -4268,7 +4268,7 @@ fn finalize_expression<D: Driver>(
             let error = WithInfo {
                 info: expression.info.clone(),
                 item: crate::Diagnostic::UnknownType(
-                    finalize_type(expression.item.r#type.clone(), false, context).item,
+                    finalize_type(expression.item.r#type.clone(), true, context).item,
                 ),
             };
 
