@@ -23,6 +23,9 @@ import { RenderedDiagnostic, RenderedFix } from "wipple-render";
 import { runtimes } from "../../runtimes";
 import { SetupIcon } from "./setup-icon";
 import { StateCommand } from "@codemirror/state";
+import editIcon from "./assets/edit.png";
+import formatIcon from "./assets/format.png";
+import lookupIcon from "./assets/lookup.svg";
 
 export const CodeEditor = (props: {
     children: string;
@@ -392,7 +395,7 @@ const LookUpToggle = (props: { enabled: boolean; onChange?: (enabled: boolean) =
                 <p className="whitespace-nowrap">Done</p>
             ) : (
                 <>
-                    <MaterialSymbol icon="search" className="text-lg" />
+                    <img src={lookupIcon} className="w-4 h-4" />
                     <p className="text-xs text-nowrap">Look Up</p>
                 </>
             )}
@@ -406,8 +409,7 @@ const FormatButton = (props: { onClick: () => void }) => (
             className="group flex flex-row items-center justify-center transition-colors rounded-md gap-1 px-2 h-7 hover:bg-gray-100 dark:hover:bg-gray-800"
             onClick={props.onClick}
         >
-            <MaterialSymbol icon="notes" className="text-lg" />
-
+            <img src={formatIcon} className="w-[18px] h-[18px]" />
             <p className="text-xs">Format</p>
         </button>
     </MenuContainer>
@@ -447,7 +449,7 @@ const EditButton = (props: { onSelectAll: () => void; onUndo: () => void; onRedo
     >
         <MenuContainer>
             <button className="group flex flex-row items-center justify-center transition-colors rounded-md px-2 gap-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
-                <MaterialSymbol icon="text_fields_alt" className="text-lg" />
+                <img src={editIcon} className="w-[14px] h-[14px]" />
                 <p className="text-xs">Edit</p>
             </button>
         </MenuContainer>
