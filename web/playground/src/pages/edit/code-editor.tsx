@@ -20,7 +20,7 @@ import { ColorPicker } from "./color-picker";
 import { AssetClickHandler } from "./codemirror/assets";
 import { colorAsset } from "./assets";
 import { RenderedDiagnostic, RenderedFix } from "wipple-render";
-import { runtimes } from "../../runtimes";
+import { defaultPaletteItems, runtimes } from "../../runtimes";
 import { SetupIcon } from "./setup-icon";
 import { StateCommand } from "@codemirror/state";
 import editIcon from "./assets/edit.png";
@@ -219,47 +219,34 @@ export const CodeEditor = (props: {
         >
             <div className="flex flex-col border-2 border-gray-100 dark:border-gray-800 rounded-md overflow-clip">
                 <div className="flex flex-row items-center justify-between w-full p-1 bg-gray-50 dark:bg-gray-900">
-                    <div className="flex flex-1 flex-row items-center">
-                        {props.runtime != null && !lookUpEnabled ? (
-                            <>
-                                <SetupButton setup={props.runtime} onClick={() => alert("TODO")} />
-                            </>
+                    <div className="flex flex-row items-center">
+                        {!lookUpEnabled ? (
+                            <PaletteButton
+                                setup={props.runtime}
+                                items={
+                                    props.runtime
+                                        ? runtimes[props.runtime as keyof typeof runtimes]
+                                              .paletteItems
+                                        : defaultPaletteItems
+                                }
+                            />
                         ) : null}
+                    </div>
 
-                        <LookUpToggle enabled={lookUpEnabled} onChange={setLookUpEnabled} />
-
-                        {lookUpEnabled ? (
-                            <p className="px-1.5 text-sm text-gray-500 dark:text-gray-400">
-                                Select a piece of code for help.
-                            </p>
-                        ) : (
+                    <div className="flex-1 flex flex-row items-center justify-end gap-1">
+                        {!lookUpEnabled ? (
                             <>
-                                <FormatButton onClick={format} />
-
                                 <EditButton
                                     onSelectAll={() => runCommand(commands.selectAll)}
                                     onUndo={() => runCommand(commands.undo)}
                                     onRedo={() => runCommand(commands.redo)}
                                 />
-                            </>
-                        )}
-                    </div>
 
-                    <div className="flex flex-shrink flex-row gap-2">
-                        <Transition
-                            in={!(lookUpEnabled ?? false)}
-                            inStyle={{ opacity: 1 }}
-                            outStyle={{ opacity: 0 }}
-                        >
-                            <PaletteButton
-                                items={
-                                    props.runtime
-                                        ? runtimes[props.runtime as keyof typeof runtimes]
-                                              .paletteItems
-                                        : []
-                                }
-                            />
-                        </Transition>
+                                <FormatButton onClick={format} />
+                            </>
+                        ) : null}
+
+                        <LookUpToggle enabled={lookUpEnabled} onChange={setLookUpEnabled} />
                     </div>
                 </div>
 
@@ -372,35 +359,34 @@ const AddLineButton = (props: {
     </Tooltip>
 );
 
-const SetupButton = (props: { setup: string; onClick: () => void }) => (
-    <MenuContainer>
-        <button className="group flex flex-row items-center justify-center gap-1 transition-colors rounded-md px-2 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
-            <SetupIcon setup={props.setup} size="sm" />
-            <p className="text-xs capitalize">{props.setup}</p>
-        </button>
-    </MenuContainer>
-);
-
 const LookUpToggle = (props: { enabled: boolean; onChange?: (enabled: boolean) => void }) => (
-    <MenuContainer>
-        <button
-            className={`group flex flex-row items-center justify-center gap-1 transition-colors rounded-md ${
-                props.enabled
-                    ? "mx-1 px-2 py-1 bg-blue-500 text-white text-sm"
-                    : "px-2 h-7 hover:bg-gray-100 dark:hover:bg-gray-800"
-            }`}
-            onClick={() => props.onChange?.(!props.enabled)}
-        >
-            {props.enabled ? (
-                <p className="whitespace-nowrap">Done</p>
-            ) : (
-                <>
-                    <img src={lookupIcon} className="w-4 h-4" />
-                    <p className="text-xs text-nowrap">Look Up</p>
-                </>
-            )}
-        </button>
-    </MenuContainer>
+    <>
+        {props.enabled ? (
+            <p className="flex-1 px-1.5 text-sm text-gray-500 dark:text-gray-400">
+                Select a piece of code for help.
+            </p>
+        ) : null}
+
+        <MenuContainer>
+            <button
+                className={`group flex flex-row items-center justify-center gap-1 transition-colors rounded-md ${
+                    props.enabled
+                        ? "mx-1 px-2 py-1 bg-blue-500 text-white text-sm"
+                        : "px-2 h-7 hover:bg-gray-100 dark:hover:bg-gray-800"
+                }`}
+                onClick={() => props.onChange?.(!props.enabled)}
+            >
+                {props.enabled ? (
+                    <p className="whitespace-nowrap">Done</p>
+                ) : (
+                    <>
+                        <img src={lookupIcon} className="w-4 h-4" />
+                        <p className="text-xs text-nowrap">Look Up</p>
+                    </>
+                )}
+            </button>
+        </MenuContainer>
+    </>
 );
 
 const FormatButton = (props: { onClick: () => void }) => (
@@ -456,33 +442,33 @@ const EditButton = (props: { onSelectAll: () => void; onUndo: () => void; onRedo
     </ContextMenuButton>
 );
 
-const PaletteButton = (props: { items: PaletteItem[] }) =>
-    props.items.length > 0 ? (
-        <ContextMenuButton
-            items={props.items.map((item) => ({
-                title: ({ onDismiss }) => (
-                    <div
-                        key={item.title}
-                        draggable
-                        className="flex flex-col items-start w-full"
-                        onDragStart={(event) => {
-                            event.dataTransfer.setData("wipple/snippet", item.code);
-                            onDismiss();
-                        }}
-                    >
-                        <code className="whitespace-nowrap">{item.title}</code>
-                    </div>
-                ),
-            }))}
-        >
-            <MenuContainer>
-                <button className="group flex flex-row items-center justify-center transition-colors rounded-md pl-2 pr-1 gap-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
-                    <p className="text-xs">Commands</p>
-                    <MaterialSymbol icon="expand_more" className="text-lg" />
-                </button>
-            </MenuContainer>
-        </ContextMenuButton>
-    ) : null;
+const PaletteButton = (props: { setup?: string; items: PaletteItem[] }) => (
+    <ContextMenuButton
+        items={props.items.map((item) => ({
+            title: ({ onDismiss }) => (
+                <div
+                    key={item.title}
+                    draggable
+                    className="flex flex-col items-start w-full"
+                    onDragStart={(event) => {
+                        event.dataTransfer.setData("wipple/snippet", item.code);
+                        onDismiss();
+                    }}
+                >
+                    <code className="whitespace-nowrap">{item.title}</code>
+                </div>
+            ),
+        }))}
+    >
+        <MenuContainer>
+            <button className="group flex flex-row items-center justify-center transition-colors rounded-md pl-2 pr-1 gap-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
+                {props.setup ? <SetupIcon setup={props.setup} size="sm" /> : null}
+                <p className="text-xs">Commands</p>
+                <MaterialSymbol icon="expand_more" className="text-lg" />
+            </button>
+        </MenuContainer>
+    </ContextMenuButton>
+);
 
 const DiagnosticBubble = (props: {
     top: number;

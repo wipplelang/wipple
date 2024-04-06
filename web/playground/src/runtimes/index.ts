@@ -1,3 +1,4 @@
+import { PaletteItem } from "../models";
 import { Turtle, paletteItems as turtlePaletteItems } from "./turtle";
 
 export interface Runtime {
@@ -16,3 +17,8 @@ export const runtimes = {
         paletteItems: turtlePaletteItems,
     },
 };
+
+export const defaultPaletteItems: PaletteItem[] = [
+    { title: "show", code: `show "Wipple"` },
+    { title: "repeat", code: `repeat (1 times) {\n  _\n}` },
+];

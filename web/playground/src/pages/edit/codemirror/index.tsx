@@ -37,76 +37,7 @@ const editable = new Compartment();
 
 const editableFromConfig = (config: { readOnly: boolean; onDrop?: () => void }): Extension => [
     EditorView.editable.of(!config.readOnly),
-    config.readOnly
-        ? []
-        : [
-              EditorView.domEventHandlers({
-                  dragover: (event) => event.preventDefault(),
-                  drop: (event, view) => {
-                      if (config.readOnly) {
-                          return;
-                      }
-
-                      if (!event.dataTransfer) {
-                          return;
-                      }
-
-                      let snippet = event.dataTransfer.getData("wipple/snippet");
-                      if (!snippet) {
-                          return;
-                      }
-
-                      const position = view.posAtCoords(
-                          { x: event.clientX, y: event.clientY },
-                          false,
-                      );
-
-                      if (
-                          !view.state.selection.main.empty &&
-                          position >= view.state.selection.main.from &&
-                          position <= view.state.selection.main.to
-                      ) {
-                          snippet = snippet.replace(
-                              "_",
-                              view.state.sliceDoc(
-                                  view.state.selection.main.from,
-                                  view.state.selection.main.to,
-                              ),
-                          );
-
-                          view.dispatch({
-                              changes: {
-                                  from: view.state.selection.main.from,
-                                  to: view.state.selection.main.to,
-                                  insert: snippet,
-                              },
-                              userEvent: "wipple.drop",
-                          });
-                      } else {
-                          snippet = snippet.replace("_", "...");
-
-                          let leftPadding = "";
-                          const rightPadding = "\n";
-                          let endOfLine = view.state.doc.lineAt(position).to;
-                          if (endOfLine === view.state.doc.length) {
-                              leftPadding = "\n";
-                          } else {
-                              endOfLine += 1;
-                          }
-
-                          view.dispatch({
-                              changes: {
-                                  from: endOfLine,
-                                  to: endOfLine,
-                                  insert: leftPadding + snippet + rightPadding,
-                              },
-                              userEvent: "wipple.drop",
-                          });
-                      }
-                  },
-              }),
-              dropCursor(),
-          ],
+    config.readOnly ? [] : dragAndDrop(config.readOnly),
 ];
 
 export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref) => {
@@ -268,3 +199,69 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
     return <div ref={containerRef} />;
 });
+
+const dragAndDrop = (readOnly: boolean) => [
+    EditorView.domEventHandlers({
+        dragover: (event) => event.preventDefault(),
+        drop: (event, view) => {
+            if (readOnly) {
+                return;
+            }
+
+            if (!event.dataTransfer) {
+                return;
+            }
+
+            let snippet = event.dataTransfer.getData("wipple/snippet");
+            if (!snippet) {
+                return;
+            }
+
+            const position = view.posAtCoords({ x: event.clientX, y: event.clientY }, false);
+
+            if (
+                !view.state.selection.main.empty &&
+                position >= view.state.selection.main.from &&
+                position <= view.state.selection.main.to
+            ) {
+                snippet = snippet.replace(
+                    "_",
+                    view.state.sliceDoc(
+                        view.state.selection.main.from,
+                        view.state.selection.main.to,
+                    ),
+                );
+
+                view.dispatch({
+                    changes: {
+                        from: view.state.selection.main.from,
+                        to: view.state.selection.main.to,
+                        insert: snippet,
+                    },
+                    userEvent: "wipple.drop",
+                });
+            } else {
+                snippet = snippet.replace("_", "...");
+
+                let leftPadding = "";
+                const rightPadding = "\n";
+                let endOfLine = view.state.doc.lineAt(position).to;
+                if (endOfLine === view.state.doc.length) {
+                    leftPadding = "\n";
+                } else {
+                    endOfLine += 1;
+                }
+
+                view.dispatch({
+                    changes: {
+                        from: endOfLine,
+                        to: endOfLine,
+                        insert: leftPadding + snippet + rightPadding,
+                    },
+                    userEvent: "wipple.drop",
+                });
+            }
+        },
+    }),
+    dropCursor(),
+];
