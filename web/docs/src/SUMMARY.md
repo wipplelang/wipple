@@ -10,4 +10,5 @@
 
 # Guides
 
+-   [Interactive elements in the playground](./guides/interactive-elements.md)
 -   [Custom error messages](./guides/custom-error-messages.md)
