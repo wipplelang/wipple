@@ -18,7 +18,7 @@ import { useWindowSize } from "usehooks-ts";
 import { HelpAlert } from "./help-alert";
 import { ColorPicker } from "./color-picker";
 import { AssetClickHandler } from "./codemirror/assets";
-import { colorAsset } from "./assets";
+import { colorAsset, dropdownAsset } from "./assets";
 import { RenderedDiagnostic, RenderedFix } from "wipple-render";
 import { defaultPaletteItems, runtimes } from "../../runtimes";
 import { SetupIcon } from "./setup-icon";
@@ -163,12 +163,12 @@ export const CodeEditor = (props: {
         ));
     }, []);
 
-    const onClickAsset: AssetClickHandler = useCallback(({ start, end, type, value }) => {
-        switch (type) {
-            case "Color":
+    const onClickAsset: AssetClickHandler = useCallback(({ start, end, asset }) => {
+        switch (asset.type) {
+            case "color": {
                 displayAlert(({ dismiss }) => (
                     <ColorPicker
-                        selection={value}
+                        selection={asset.color}
                         onDismiss={(color) => {
                             codeMirrorRef.current?.editorView.dispatch({
                                 changes: { from: start, to: end, insert: colorAsset(color) },
@@ -180,6 +180,18 @@ export const CodeEditor = (props: {
                 ));
 
                 break;
+            }
+            case "dropdown": {
+                codeMirrorRef.current?.editorView.dispatch({
+                    changes: {
+                        from: start,
+                        to: end,
+                        insert: dropdownAsset(asset.selection, asset.options),
+                    },
+                });
+
+                break;
+            }
             default:
                 break;
         }

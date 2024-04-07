@@ -219,10 +219,25 @@ function rescaleCanvas(canvas: any) {
 export { turtleImage };
 
 export const paletteItems: PaletteItem[] = [
-    { title: "forward", code: `forward (50 pixels)` },
-    { title: "backward", code: `backward (50 pixels)` },
-    { title: "left", code: `left (90 degrees)` },
-    { title: "right", code: `right (90 degrees)` },
+    {
+        title: "forward",
+        code: `forward ([Dropdown (Some 50) (10 , 20 , 30 , 40 , 50 , 100 , 200 , 500)] pixels)`,
+    },
+    {
+        title: "backward",
+        code: `backward ([Dropdown (Some 50) (10 , 20 , 30 , 40 , 50 , 100 , 200 , 500)] pixels)`,
+    },
+    {
+        title: "left",
+        code: `left ([Dropdown (Some 90) (10 , 20 , 30 , 45 , 60 , 90 , 180 , 270 , 360)] degrees)`,
+    },
+    {
+        title: "right",
+        code: `right ([Dropdown (Some 90) (10 , 20 , 30 , 45 , 60 , 90 , 180 , 270 , 360)] degrees)`,
+    },
     { title: "color", code: `color [Color "#3b82f6"]` },
-    { title: "repeat", code: `repeat (1 times) {\n  _\n}` },
+    {
+        title: "repeat",
+        code: `repeat ([Dropdown (Some 1) (1 , 2 , 3 , 4 , 5 , 10 , 20 , 50 , 100)] times) {\n  _\n}`,
+    },
 ];

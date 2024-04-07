@@ -1,53 +1,107 @@
 import { ColorAsset } from "./color";
+import { DropdownAsset } from "./dropdown";
 
-export const isAsset = (value: string) => value.match(/^\[(?:Color \".*\")\]$/) !== null;
+export const isAsset = (value: string) => getAsset(value) != null;
+
+export type Asset =
+    | { type: "color"; color: string }
+    | { type: "dropdown"; selection: string | undefined; options: string[] };
+
+export const getAsset = (code: string): Asset | undefined => {
+    const split = code.split(" ");
+
+    let [type, value] = split;
+    type ??= "";
+    value ??= "";
+    value += split.slice(2).length > 0 ? " " + split.slice(2).join(" ") : "";
+
+    switch (type) {
+        case "Color": {
+            value = value.slice(1, value.length - 1); // remove quotes
+            return { type: "color", color: value };
+        }
+        case "Dropdown": {
+            const typeMatch = value.match(
+                /(?:(?<none>None)|\(Some (?<some>[^)]+)\)) \((?<options>.+)\)/,
+            );
+
+            if (!typeMatch?.groups) {
+                return undefined;
+            }
+
+            const options = typeMatch.groups["options"].split(" , ");
+
+            let selection: string | undefined;
+            if (typeMatch.groups["none"]) {
+                selection = undefined;
+            } else if (typeMatch.groups["some"]) {
+                selection = typeMatch.groups["some"];
+            } else {
+                return undefined;
+            }
+
+            return { type: "dropdown", selection, options };
+        }
+        default: {
+            return undefined;
+        }
+    }
+};
 
 export const colorAsset = (color: string) => `[Color "${color}"]`;
 
-export const Asset = (props: {
-    children: string;
-    disabled?: boolean;
-    onClick?: (type: string, value: string) => void;
-}) => {
-    let [type, value] = props.children.split(" ", 2);
-    type ??= "";
-    value ??= "";
+export const dropdownAsset = (selection: string | undefined, options: string[]) => {
+    const optionsCode = options.length > 0 ? options.join(" , ") : ",";
 
-    if (value) {
-        value = value.slice(1, value.length - 1); // remove quotes
+    switch (typeof selection) {
+        case "undefined": {
+            return `[Dropdown None (${optionsCode})]`;
+        }
+        case "string": {
+            return `[Dropdown (Some ${selection}) (${optionsCode})]`;
+        }
     }
+};
+
+export const Asset = (props: {
+    children: Asset;
+    disabled?: boolean;
+    onClick?: (asset: Asset) => void;
+}) => {
+    const asset = props.children;
 
     let content: JSX.Element;
-    switch (type) {
-        case "Color":
+    switch (asset.type) {
+        case "color": {
             content = (
                 <ColorAsset
                     disabled={props.disabled}
-                    color={value}
-                    onClick={() => props.onClick?.("Color", value)}
+                    color={asset.color}
+                    onClick={() => props.onClick?.(asset)}
                 />
             );
             break;
-        default:
-            content = <UnknownAsset value={value} />;
+        }
+        case "dropdown": {
+            content = (
+                <DropdownAsset
+                    disabled={props.disabled}
+                    value={asset.selection}
+                    options={asset.options}
+                    onChange={(selection) => props.onClick?.({ ...asset, selection })}
+                />
+            );
+
             break;
+        }
+        default: {
+            return null;
+        }
     }
 
     return (
-        <button
-            className={`inline-block align-text-bottom w-fit ${
-                props.disabled ? "opacity-50" : "hover:scale-110 transition-transform"
-            }`}
-            disabled={props.disabled}
-            onClick={() => props.onClick?.(type, value)}
-        >
-            <div className="rounded-md border-2 border-gray-100 dark:border-gray-800 overflow-clip">
-                {content}
-            </div>
+        <button className={`inline-block w-fit ${props.disabled ? "opacity-50" : ""}`}>
+            {content}
         </button>
     );
 };
-
-const UnknownAsset = (props: { value: string }) => (
-    <div className="ui-font w-4 h-4">{props.value}</div>
-);

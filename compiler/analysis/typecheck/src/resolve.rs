@@ -3066,7 +3066,13 @@ fn resolve_expression<D: Driver>(
 
             // If we encounter a unit after a number, treat the unit as a
             // function
-            let function_is_number = (|| {
+            let is_number_with_unit = (|| {
+                if inputs.len() != 1 {
+                    return false;
+                }
+
+                let input = inputs.first().unwrap();
+
                 let number_type = match try_instantiated_language_type(
                     "number",
                     &expression.info,
@@ -3083,14 +3089,34 @@ fn resolve_expression<D: Driver>(
                     _ => return false,
                 };
 
-                matches!(
+                // Return true if the expression in function position is a
+                // number...
+                if matches!(
                     &function.item.r#type.kind,
                     TypeKind::Declared { path, .. }
                         if context.driver.paths_are_equal(path, &number_type_path),
-                )
+                ) {
+                    return true;
+                }
+
+                // ...or if the expression in input position is a function that
+                // accepts a number
+                if let TypeKind::Function { inputs, .. } = &input.item.r#type.kind {
+                    if inputs.len() != 1 {
+                        return false;
+                    }
+
+                    return matches!(
+                        &inputs.first().unwrap().kind,
+                        TypeKind::Declared { path, .. }
+                            if context.driver.paths_are_equal(path, &number_type_path),
+                    ) && !matches!(&function.item.r#type.kind, TypeKind::Function { .. });
+                }
+
+                false
             })();
 
-            if inputs.len() == 1 && function_is_number {
+            if is_number_with_unit {
                 let input = inputs.pop().unwrap();
 
                 let mut unit = resolve_expression(input, context);

@@ -9,16 +9,11 @@ import {
 } from "@codemirror/view";
 import { Compartment, Range } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
-import { Asset, isAsset } from "../assets";
+import { Asset, getAsset } from "../assets";
 
 export const assets = new Compartment();
 
-export type AssetClickHandler = (config: {
-    start: number;
-    end: number;
-    type: string;
-    value: string;
-}) => void;
+export type AssetClickHandler = (config: { start: number; end: number; asset: Asset }) => void;
 
 export const assetsFromConfig = (config: { disabled: boolean; onClick: AssetClickHandler }) =>
     ViewPlugin.fromClass(
@@ -61,15 +56,22 @@ const getDecorations = (
                 return;
             }
 
-            const code = view.state.sliceDoc(from, to);
+            let code = view.state.sliceDoc(from, to);
 
-            if (!isAsset(code) || code.includes("\n")) {
+            if (code.includes("\n")) {
+                return;
+            }
+
+            code = code.slice(1, code.length - 1); // remove brackets
+
+            const asset = getAsset(code);
+            if (!asset) {
                 return;
             }
 
             decorations.push(
                 Decoration.replace({
-                    widget: new AssetWidget(from, to, code, config),
+                    widget: new AssetWidget(from, to, asset, config),
                 }).range(from, to),
             );
         },
@@ -84,7 +86,7 @@ class AssetWidget extends WidgetType {
     constructor(
         public from: number,
         public to: number,
-        public code: string,
+        public asset: Asset,
         public config: { disabled: boolean; onClick: AssetClickHandler },
     ) {
         super();
@@ -94,7 +96,7 @@ class AssetWidget extends WidgetType {
         return (
             this.from === other.from &&
             this.to === other.to &&
-            this.code === other.code &&
+            this.asset === other.asset &&
             this.config === other.config
         );
     }
@@ -105,14 +107,13 @@ class AssetWidget extends WidgetType {
         this.root = ReactDOM.createRoot(container);
         this.root.render(
             <AssetWidgetComponent
-                code={this.code}
+                asset={this.asset}
                 disabled={this.config.disabled}
-                onClick={(type, value) =>
+                onClick={(asset) =>
                     this.config.onClick({
                         start: this.from,
                         end: this.to,
-                        type,
-                        value,
+                        asset,
                     })
                 }
             />,
@@ -129,11 +130,11 @@ class AssetWidget extends WidgetType {
 }
 
 const AssetWidgetComponent = (props: {
-    code: string;
+    asset: Asset;
     disabled: boolean;
-    onClick: (type: string, value: string) => void;
+    onClick: (asset: Asset) => void;
 }) => (
     <Asset disabled={props.disabled} onClick={props.onClick}>
-        {props.code.slice(1, props.code.length - 1)}
+        {props.asset}
     </Asset>
 );

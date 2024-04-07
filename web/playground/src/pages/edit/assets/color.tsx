@@ -55,13 +55,15 @@ export const ColorAsset = (props: { color: string; disabled?: boolean; onClick: 
     const description = useMemo(() => colorName(props.color), [props.color]);
 
     return (
-        <Tooltip
-            disabled={props.disabled}
-            description={<span className="capitalize">{description}</span>}
-            onClick={() => props.onClick}
-        >
-            <div className="w-4 h-4" style={{ backgroundColor: props.color }} />
-        </Tooltip>
+        <div className="inline-block align-text-bottom rounded-md border-2 border-gray-100 dark:border-gray-800 overflow-clip hover:scale-110 transition-transform">
+            <Tooltip
+                disabled={props.disabled}
+                description={<span className="capitalize">{description}</span>}
+                onClick={props.onClick}
+            >
+                <div className="w-4 h-4" style={{ backgroundColor: props.color }} />
+            </Tooltip>
+        </div>
     );
 };
 
