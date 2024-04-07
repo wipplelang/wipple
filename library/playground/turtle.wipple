@@ -63,6 +63,10 @@ very-slow : Speed 0
 slow :: Speed
 slow : Speed 0.25
 
+-- The default speed.
+normal :: Speed
+normal : Speed 0.5
+
 -- A fast speed.
 fast :: Speed
 fast : Speed 0.75

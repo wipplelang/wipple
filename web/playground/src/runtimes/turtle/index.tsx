@@ -235,7 +235,14 @@ export const paletteItems: PaletteItem[] = [
         title: "right",
         code: `right ([Dropdown (Some 90) (10 , 20 , 30 , 45 , 60 , 90 , 180 , 270 , 360)] degrees)`,
     },
-    { title: "color", code: `color [Color "#3b82f6"]` },
+    {
+        title: "color",
+        code: `color [Color "#3b82f6"]`,
+    },
+    {
+        title: "speed",
+        code: `speed [Dropdown (Some normal) (very-slow , slow , normal , fast , very-fast)]`,
+    },
     {
         title: "repeat",
         code: `repeat ([Dropdown (Some 1) (1 , 2 , 3 , 4 , 5 , 10 , 20 , 50 , 100)] times) {\n  _\n}`,
