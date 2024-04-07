@@ -3,9 +3,9 @@ import { ContextMenuButton } from "../../../components";
 
 export const DropdownAsset = (props: {
     disabled?: boolean;
-    value: string | undefined;
+    value: string;
     options: string[];
-    onChange: (value: string | undefined) => void;
+    onChange: (value: string) => void;
 }) => {
     return (
         <ContextMenuButton

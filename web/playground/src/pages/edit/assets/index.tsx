@@ -5,7 +5,7 @@ export const isAsset = (value: string) => getAsset(value) != null;
 
 export type Asset =
     | { type: "color"; color: string }
-    | { type: "dropdown"; selection: string | undefined; options: string[] };
+    | { type: "dropdown"; selection: string; options: string[] };
 
 export const getAsset = (code: string): Asset | undefined => {
     const split = code.split(" ");
@@ -21,24 +21,14 @@ export const getAsset = (code: string): Asset | undefined => {
             return { type: "color", color: value };
         }
         case "Dropdown": {
-            const typeMatch = value.match(
-                /(?:(?<none>None)|\(Some (?<some>[^)]+)\)) \((?<options>.+)\)/,
-            );
+            const typeMatch = value.match(/\((?<options>.+)\) (?<selection>.+)/);
 
             if (!typeMatch?.groups) {
                 return undefined;
             }
 
             const options = typeMatch.groups["options"].split(" , ");
-
-            let selection: string | undefined;
-            if (typeMatch.groups["none"]) {
-                selection = undefined;
-            } else if (typeMatch.groups["some"]) {
-                selection = typeMatch.groups["some"];
-            } else {
-                return undefined;
-            }
+            const selection = typeMatch.groups["selection"];
 
             return { type: "dropdown", selection, options };
         }
@@ -50,18 +40,8 @@ export const getAsset = (code: string): Asset | undefined => {
 
 export const colorAsset = (color: string) => `[Color "${color}"]`;
 
-export const dropdownAsset = (selection: string | undefined, options: string[]) => {
-    const optionsCode = options.length > 0 ? options.join(" , ") : ",";
-
-    switch (typeof selection) {
-        case "undefined": {
-            return `[Dropdown None (${optionsCode})]`;
-        }
-        case "string": {
-            return `[Dropdown (Some ${selection}) (${optionsCode})]`;
-        }
-    }
-};
+export const dropdownAsset = (selection: string, options: string[]) =>
+    `[Dropdown (${options.join(" , ")}) ${selection}]`;
 
 export const Asset = (props: {
     children: Asset;

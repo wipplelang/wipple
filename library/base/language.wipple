@@ -109,5 +109,5 @@ Body => default instance (Describe-Type {Body} "a block") : ...
 
 -- Display a dropdown with the provided options. The dropdown will evaluate to
 -- the selected item at runtime.
-Dropdown :: Value => (Maybe Value) (List Value) -> Value
-Dropdown : selection options -> selection or (first options or error "no options")
+Dropdown :: Value => (List Value) Value -> Value
+Dropdown : _ selection -> selection

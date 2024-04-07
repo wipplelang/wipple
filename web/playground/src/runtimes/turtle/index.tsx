@@ -221,19 +221,19 @@ export { turtleImage };
 export const paletteItems: PaletteItem[] = [
     {
         title: "forward",
-        code: `forward ([Dropdown (Some 50) (10 , 20 , 30 , 40 , 50 , 100 , 200 , 500)] pixels)`,
+        code: `forward ([Dropdown (10 , 20 , 30 , 40 , 50 , 100 , 200 , 500) 50] pixels)`,
     },
     {
         title: "backward",
-        code: `backward ([Dropdown (Some 50) (10 , 20 , 30 , 40 , 50 , 100 , 200 , 500)] pixels)`,
+        code: `backward ([Dropdown (10 , 20 , 30 , 40 , 50 , 100 , 200 , 500) 50] pixels)`,
     },
     {
         title: "left",
-        code: `left ([Dropdown (Some 90) (10 , 20 , 30 , 45 , 60 , 90 , 180 , 270 , 360)] degrees)`,
+        code: `left ([Dropdown (10 , 20 , 30 , 45 , 60 , 90 , 180 , 270 , 360) 90] degrees)`,
     },
     {
         title: "right",
-        code: `right ([Dropdown (Some 90) (10 , 20 , 30 , 45 , 60 , 90 , 180 , 270 , 360)] degrees)`,
+        code: `right ([Dropdown (10 , 20 , 30 , 45 , 60 , 90 , 180 , 270 , 360) 90] degrees)`,
     },
     {
         title: "color",
@@ -241,10 +241,10 @@ export const paletteItems: PaletteItem[] = [
     },
     {
         title: "speed",
-        code: `speed [Dropdown (Some normal) (very-slow , slow , normal , fast , very-fast)]`,
+        code: `speed [Dropdown (very-slow , slow , normal , fast , very-fast) normal]`,
     },
     {
         title: "repeat",
-        code: `repeat ([Dropdown (Some 1) (1 , 2 , 3 , 4 , 5 , 10 , 20 , 50 , 100)] times) {\n  _\n}`,
+        code: `repeat ([Dropdown (1 , 2 , 3 , 4 , 5 , 10 , 20 , 50 , 100) 1] times) {\n  _\n}`,
     },
 ];
