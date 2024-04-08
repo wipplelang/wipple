@@ -123,7 +123,13 @@ pub fn link<D: Driver>(
                 .intrinsic_variants
                 .extend(library.intrinsic_variants);
 
-            executable.instances.extend(library.instances);
+            for (r#trait, instances) in library.instances {
+                executable
+                    .instances
+                    .entry(r#trait)
+                    .or_default()
+                    .extend(instances);
+            }
 
             for (r#trait, instances) in library.default_instances {
                 executable
