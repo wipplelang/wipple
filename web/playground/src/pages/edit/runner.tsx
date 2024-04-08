@@ -353,7 +353,25 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
     return showOutput ? (
         <div className="flex flex-col px-4 pb-4 gap-3">
-            {props.runtime ? <props.runtime id={id} ref={runtimeRef} /> : null}
+            {props.runtime ? (
+                <props.runtime
+                    id={id}
+                    stopRunning={async () => {
+                        if (runtimeRef.current) {
+                            const mutex = runtimeMutexRef.current;
+                            const runtime = runtimeRef.current;
+
+                            await mutex.runExclusive(async () => {
+                                await runtime.cleanup();
+                            });
+                        }
+
+                        resetRunnerWorker();
+                        setShowRunAgain(true);
+                    }}
+                    ref={runtimeRef}
+                />
+            ) : null}
 
             {output.map((item, index) => {
                 let content: JSX.Element;

@@ -411,7 +411,6 @@ const AddPlaygroundPageItemAlert = (props: {
                 />
 
                 <AddPlaygroundPageItemAlertButton
-                    disabled // TODO
                     setup="music"
                     name="Music"
                     description="Make a musical composition."

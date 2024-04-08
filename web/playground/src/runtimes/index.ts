@@ -1,5 +1,6 @@
 import { PaletteItem } from "../models";
 import { Turtle, paletteItems as turtlePaletteItems } from "./turtle";
+import { Music, paletteItems as musicPaletteItems } from "./music";
 
 export interface Runtime {
     initialize: () => Promise<void>;
@@ -8,13 +9,17 @@ export interface Runtime {
 }
 
 export type RuntimeComponent = React.ForwardRefExoticComponent<
-    { id: string } & React.RefAttributes<Runtime>
+    { id: string; stopRunning: () => void } & React.RefAttributes<Runtime>
 >;
 
 export const runtimes = {
     turtle: {
         Component: Turtle,
         paletteItems: turtlePaletteItems,
+    },
+    music: {
+        Component: Music,
+        paletteItems: musicPaletteItems,
     },
 };
 

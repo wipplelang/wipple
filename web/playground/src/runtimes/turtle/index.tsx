@@ -5,10 +5,10 @@ import { useDebounceCallback, useResizeObserver } from "usehooks-ts";
 import { MaterialSymbol } from "react-material-symbols";
 import { Tooltip } from "../../components";
 import { format } from "date-fns";
+import { PaletteItem } from "../../models";
 
 // @ts-ignore
 import RealTurtle from "real-turtle";
-import { PaletteItem } from "../../models";
 
 const initializeTurtle = async (canvas: HTMLCanvasElement) => {
     const turtle = new RealTurtle(canvas, {

@@ -9,7 +9,7 @@ import {
 import { initializeApp } from "firebase/app";
 import { HomePage, EditPage, RootPage } from "./pages";
 import { NavbarProvider, AlertProvider } from "./components";
-import "react-material-symbols/outlined";
+import "react-material-symbols/rounded";
 import "react-loading-skeleton/dist/skeleton.css";
 import "./index.css";
 import { StoreProvider } from "./store";
