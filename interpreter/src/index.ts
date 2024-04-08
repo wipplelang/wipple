@@ -102,6 +102,7 @@ export interface Context {
                   value?: TypedValue;
               },
     ) => Error;
+    onceCache: TypedValue[];
 }
 
 export type IoRequest =
@@ -229,6 +230,7 @@ export const evaluate = async (
                 );
             }
         },
+        onceCache: [],
     };
 
     for (const item of executable.code) {
@@ -663,7 +665,7 @@ const findInstance = (trait: string, typeDescriptor: TypeDescriptor, executable:
     );
 };
 
-const unify = (
+export const unify = (
     left: TypeDescriptor,
     right: TypeDescriptor,
     substitutions: Record<string, TypeDescriptor>,

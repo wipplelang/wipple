@@ -48,6 +48,15 @@ Value => instance (Empty (Maybe Value)) : None
 runtime-message :: Input (Output : ()) => Text Input -> Output
 runtime-message : message data -> intrinsic "runtime-message" message data
 
+-- Used to ensure that the block provided to `once` is returning a value meant
+-- to be initialized once.
+Once : Value => trait ()
+
+-- Executes the provided block exactly once. If `once` has already been called
+-- for `Value`, returns the existing value.
+once :: Value where (Once Value) => {Value} -> Value
+once : block -> intrinsic "once" block
+
 -- Generate a compile-time error with the provided information. You may provide
 -- a single message, or a tuple with multiple pieces of information. Valid types
 -- for this tuple include text, `Error-Fix`, and `Error-Location`.

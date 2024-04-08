@@ -1,0 +1,17 @@
+-- [should compile]
+
+Test : type Text
+instance (Once Test) : ()
+instance (Empty Test) : once {
+    show "Initializing Test"
+    Test "Hello, world!"
+}
+
+show-test :: {}
+show-test : {
+    Test message : Empty
+    show message
+}
+
+do show-test
+do show-test

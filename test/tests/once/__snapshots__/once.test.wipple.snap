@@ -1,0 +1,12 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`once.test.wipple 1`] = `[]`;
+
+exports[`once.test.wipple 2`] = `
+{
+  "output": "Initializing Test
+Hello, world!
+Hello, world!
+",
+}
+`;

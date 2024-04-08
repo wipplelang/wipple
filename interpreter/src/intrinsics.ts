@@ -1,5 +1,11 @@
 import { Decimal } from "decimal.js";
-import type { Context, TaskGroup, TypeDescriptor, TypedValue } from "./index.js";
+import {
+    unify,
+    type Context,
+    type TaskGroup,
+    type TypeDescriptor,
+    type TypedValue,
+} from "./index.js";
 
 export type Intrinsic = (
     inputs: TypedValue[],
@@ -85,6 +91,18 @@ export const intrinsics: Record<string, Intrinsic> = {
                 completion: (value) => resolve(deserialize(value, expectedTypeDescriptor, context)),
             });
         });
+    },
+    once: async ([block], expectedTypeDescriptor, context) => {
+        for (const value of context.onceCache) {
+            const substitutions: Record<string, TypeDescriptor> = {};
+            if (unify(expectedTypeDescriptor, value.typeDescriptor, substitutions)) {
+                return value;
+            }
+        }
+
+        const value = await context.do(block);
+        context.onceCache.push(value);
+        return value;
     },
     "with-continuation": async ([callback], _expectedTypeDescriptor, context) => {
         if (callback.typeDescriptor.type !== "function") {
