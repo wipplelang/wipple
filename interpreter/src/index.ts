@@ -84,12 +84,13 @@ export interface Context {
     debug: boolean;
     gc: () => void;
     io: (request: IoRequest) => void;
-    call: (func: TypedValue, inputs: TypedValue[]) => Promise<TypedValue>;
-    do: (block: TypedValue) => Promise<TypedValue>;
+    call: (func: TypedValue, inputs: TypedValue[], task: any) => Promise<TypedValue>;
+    do: (block: TypedValue, task: any) => Promise<TypedValue>;
     getItem: (
         path: string,
         substitutions: TypeDescriptor[] | Record<string, TypeDescriptor>,
         typeDescriptor: TypeDescriptor,
+        task: any,
     ) => Promise<TypedValue>;
     error: (
         options:
@@ -103,6 +104,7 @@ export interface Context {
               },
     ) => Error;
     onceCache: [TypedValue, () => Promise<void>][];
+    taskLocals: Map<any, TypedValue[]>;
 }
 
 export type IoRequest =
@@ -152,7 +154,7 @@ export const evaluate = async (
         gc: options.gc,
         io: options.io,
         debug: options.debug,
-        call: async (func, inputs) => {
+        call: async (func, inputs, task) => {
             switch (func.type) {
                 case "function": {
                     const result = (await evaluateItem(
@@ -162,6 +164,7 @@ export const evaluate = async (
                         inputs.toReversed(),
                         { ...func.scope },
                         func.substitutions,
+                        task,
                         context,
                     ))!;
 
@@ -176,7 +179,7 @@ export const evaluate = async (
                     throw new InterpreterError("expected function");
             }
         },
-        do: async (block) => {
+        do: async (block, task) => {
             if (block.type !== "block") {
                 throw new InterpreterError("expected block value");
             }
@@ -188,6 +191,7 @@ export const evaluate = async (
                 [],
                 { ...block.scope },
                 block.substitutions,
+                task,
                 context,
             ))!;
 
@@ -195,7 +199,7 @@ export const evaluate = async (
 
             return result;
         },
-        getItem: async (path, parametersOrSubstitutions, typeDescriptor) => {
+        getItem: async (path, parametersOrSubstitutions, typeDescriptor, task) => {
             const item = context.executable.items[path];
 
             const substitutions = Array.isArray(parametersOrSubstitutions)
@@ -211,7 +215,16 @@ export const evaluate = async (
                 console.error("## initializing constant:", { path, typeDescriptor, substitutions });
             }
 
-            const result = (await evaluateItem(path, item.ir, 0, [], {}, substitutions, context))!;
+            const result = (await evaluateItem(
+                path,
+                item.ir,
+                0,
+                [],
+                {},
+                substitutions,
+                task,
+                context,
+            ))!;
 
             context.gc();
 
@@ -231,11 +244,13 @@ export const evaluate = async (
             }
         },
         onceCache: [],
+        taskLocals: new Map(),
     };
 
     for (const item of executable.code) {
-        const block = (await evaluateItem("top-level", item.ir, 0, [], {}, {}, context))!;
-        await context.do(block);
+        const task = () => {}; // marker
+        const block = (await evaluateItem("top-level", item.ir, 0, [], {}, {}, task, context))!;
+        await context.do(block, task);
     }
 
     for (const [_value, cleanup] of context.onceCache) {
@@ -250,6 +265,7 @@ const evaluateItem = async (
     stack: TypedValue[],
     scope: Record<number, { current: TypedValue }>,
     substitutions: Record<string, TypeDescriptor>,
+    task: any,
     context: Context,
 ) => {
     outer: while (true) {
@@ -356,7 +372,7 @@ const evaluateItem = async (
 
                     const func = pop();
 
-                    const result = await context.call(func, inputs);
+                    const result = await context.call(func, inputs, task);
                     stack.push(result);
 
                     break;
@@ -364,7 +380,7 @@ const evaluateItem = async (
                 case "do": {
                     const block = pop();
 
-                    const result = await context.do(block);
+                    const result = await context.do(block, task);
                     stack.push(result);
 
                     break;
@@ -409,6 +425,7 @@ const evaluateItem = async (
                                 inputs.reverse(),
                                 typeDescriptor,
                                 context,
+                                task,
                             );
 
                             stack.push(result);
@@ -547,6 +564,7 @@ const evaluateItem = async (
                                     substituteTypeDescriptor(parameter, substitutions),
                                 ),
                                 typeDescriptor,
+                                task,
                             );
 
                             stack.push(value);
@@ -563,6 +581,7 @@ const evaluateItem = async (
                                 path,
                                 substitutions,
                                 typeDescriptor,
+                                task,
                             );
 
                             stack.push(value);
@@ -619,7 +638,7 @@ const evaluateItem = async (
                         continue outer;
                     } else {
                         inputs.reverse();
-                        return await context.call(func, inputs);
+                        return await context.call(func, inputs, task);
                     }
                 }
                 case "tailDo": {

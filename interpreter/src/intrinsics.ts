@@ -11,10 +11,11 @@ export type Intrinsic = (
     inputs: TypedValue[],
     expectedTypeDescriptor: TypeDescriptor,
     context: Context,
+    task: any,
 ) => Promise<TypedValue>;
 
 export const intrinsics: Record<string, Intrinsic> = {
-    debug: async ([value], _expectedTypeDescriptor, _context) => {
+    debug: async ([value], _expectedTypeDescriptor) => {
         console.error(value);
         return value;
     },
@@ -36,7 +37,7 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         return unit;
     },
-    prompt: async ([message, validate], expectedTypeDescriptor, context) => {
+    prompt: async ([message, validate], expectedTypeDescriptor, context, task) => {
         let value: TypedValue | undefined;
         do {
             await new Promise<void>((resolve) => {
@@ -45,9 +46,11 @@ export const intrinsics: Record<string, Intrinsic> = {
                     message: textToJs(message, context),
                     validate: async (input) => {
                         value = maybeToJs(
-                            await context.call(validate, [
-                                jsToText(expectedTypeDescriptor, input, context),
-                            ]),
+                            await context.call(
+                                validate,
+                                [jsToText(expectedTypeDescriptor, input, context)],
+                                task,
+                            ),
                             context,
                         );
 
@@ -79,9 +82,9 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         return jsToNumber(expectedTypeDescriptor, new Decimal(index), context);
     },
-    "runtime-message": async ([message, value], expectedTypeDescriptor, context) => {
+    "runtime-message": async ([message, value], expectedTypeDescriptor, context, task) => {
         const messageValue = textToJs(message, context);
-        const serializedValue = serialize(value, context);
+        const serializedValue = serialize(value, context, task);
 
         return await new Promise<TypedValue>(async (resolve) => {
             context.io({
@@ -92,7 +95,7 @@ export const intrinsics: Record<string, Intrinsic> = {
             });
         });
     },
-    once: async ([block, cleanup], expectedTypeDescriptor, context) => {
+    once: async ([block, cleanup], expectedTypeDescriptor, context, task) => {
         for (const [value, _cleanup] of context.onceCache) {
             const substitutions: Record<string, TypeDescriptor> = {};
             if (unify(expectedTypeDescriptor, value.typeDescriptor, substitutions)) {
@@ -100,11 +103,11 @@ export const intrinsics: Record<string, Intrinsic> = {
             }
         }
 
-        const value = await context.do(block);
+        const value = await context.do(block, task);
         context.onceCache.push([
             value,
             async () => {
-                await context.call(cleanup, [value]);
+                await context.call(cleanup, [value], task);
             },
         ]);
 
@@ -130,16 +133,22 @@ export const intrinsics: Record<string, Intrinsic> = {
             value: [callbackTypeDescriptor.value[0], unit.typeDescriptor],
         };
 
-        return await new Promise<TypedValue>(async (resolve) => {
-            await context.call(callback, [
-                jsToFunction(typeDescriptor, async (result) => {
-                    resolve(result);
-                    return unit;
-                }),
-            ]);
-        });
+        const task = async (resolve: (value: TypedValue) => void) => {
+            await context.call(
+                callback,
+                [
+                    jsToFunction(typeDescriptor, async (result) => {
+                        resolve(result);
+                        return unit;
+                    }),
+                ],
+                task,
+            );
+        };
+
+        return await new Promise(task);
     },
-    "with-task-group": async ([callback], _expectedTypeDescriptor, context) => {
+    "with-task-group": async ([callback], _expectedTypeDescriptor, context, task) => {
         if (callback.typeDescriptor.type !== "function") {
             throw context.error("expected function");
         }
@@ -151,9 +160,25 @@ export const intrinsics: Record<string, Intrinsic> = {
         const taskGroupTypeDescriptor = callback.typeDescriptor.value[0][0];
 
         const taskGroup: TaskGroup = [];
-        await context.call(callback, [jsToTaskGroup(taskGroupTypeDescriptor, taskGroup, context)]);
+        await context.call(
+            callback,
+            [jsToTaskGroup(taskGroupTypeDescriptor, taskGroup, context)],
+            task,
+        );
 
         await Promise.all(taskGroup.map((task) => task()));
+
+        return unit;
+    },
+    "begin-task-group": async ([], expectedTypeDescriptor, context) => {
+        return jsToTaskGroup(expectedTypeDescriptor, [], context);
+    },
+    "end-task-group": async ([taskGroup], _expectedTypeDescriptor, context) => {
+        if (taskGroup.type !== "taskGroup") {
+            throw context.error("expected task group");
+        }
+
+        await Promise.all(taskGroup.value.map((task) => task()));
 
         return unit;
     },
@@ -162,18 +187,60 @@ export const intrinsics: Record<string, Intrinsic> = {
             throw context.error("expected task group");
         }
 
-        taskGroup.value.push(async () => {
-            await context.do(callback);
-        });
+        const task = async () => {
+            await context.do(callback, task);
+        };
+
+        taskGroup.value.push(task);
 
         return unit;
     },
     "in-background": async ([callback], _expectedTypeDescriptor, context) => {
-        (async () => {
-            await context.do(callback);
-        })();
+        const task = async () => {
+            await context.do(callback, task);
+        };
+
+        task();
 
         return unit;
+    },
+    "set-task-local": async ([value], _expectedTypeDescriptor, context, task) => {
+        const taskLocals =
+            context.taskLocals.get(task) ??
+            (() => {
+                const taskLocals: TypedValue[] = [];
+                context.taskLocals.set(task, taskLocals);
+                return taskLocals;
+            })();
+
+        for (let i = 0; i < taskLocals.length; i++) {
+            if (unify(taskLocals[i].typeDescriptor, value.typeDescriptor, {})) {
+                taskLocals[i] = value;
+                return unit;
+            }
+        }
+
+        taskLocals.push(value);
+
+        return unit;
+    },
+    "task-local": async ([], expectedTypeDescriptor, context, task) => {
+        if (expectedTypeDescriptor.type !== "named") {
+            throw context.error("expected named type");
+        }
+
+        const valueTypeDescriptor = expectedTypeDescriptor.value[1][0];
+
+        const taskLocals = context.taskLocals.get(task);
+        if (taskLocals) {
+            for (const value of taskLocals) {
+                if (unify(value.typeDescriptor, valueTypeDescriptor, {})) {
+                    return value;
+                }
+            }
+        }
+
+        return jsToNone(expectedTypeDescriptor, context);
     },
     delay: async ([duration], _expectedTypeDescriptor, context) => {
         if (duration.type !== "number") {
@@ -742,7 +809,7 @@ const randomInteger = () => Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
 
 const functions: ((inputs: TypedValue[]) => Promise<TypedValue>)[] = [];
 
-const serialize = (value: TypedValue, context: Context): any => {
+const serialize = (value: TypedValue, context: Context, task: any): any => {
     switch (value.type) {
         case "number":
             return numberToJs(value, context).toNumber();
@@ -750,13 +817,13 @@ const serialize = (value: TypedValue, context: Context): any => {
             return textToJs(value, context);
         case "function": {
             const index = functions.length;
-            functions.push((inputs) => context.call(value, inputs));
+            functions.push((inputs) => context.call(value, inputs, task));
             return { $wippleFunction: index };
         }
         case "list":
-            return listToJs(value, context).map((value) => serialize(value, context));
+            return listToJs(value, context).map((value) => serialize(value, context, task));
         case "tuple":
-            return tupleToJs(value, context).map((value) => serialize(value, context));
+            return tupleToJs(value, context).map((value) => serialize(value, context, task));
         default:
             throw new Error("cannot serialize value");
     }
