@@ -3,9 +3,11 @@
 Test : type Text
 instance (Once Test) : ()
 instance (Empty Test) : once {
-    show "Initializing Test"
+    show "Initializing"
     Test "Hello, world!"
-}
+} (_ -> do {
+    show "Cleaning up"
+})
 
 show-test :: {}
 show-test : {

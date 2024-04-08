@@ -4,9 +4,10 @@ exports[`once.test.wipple 1`] = `[]`;
 
 exports[`once.test.wipple 2`] = `
 {
-  "output": "Initializing Test
+  "output": "Initializing
 Hello, world!
 Hello, world!
+Cleaning up
 ",
 }
 `;

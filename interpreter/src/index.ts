@@ -102,7 +102,7 @@ export interface Context {
                   value?: TypedValue;
               },
     ) => Error;
-    onceCache: TypedValue[];
+    onceCache: [TypedValue, () => Promise<void>][];
 }
 
 export type IoRequest =
@@ -236,6 +236,10 @@ export const evaluate = async (
     for (const item of executable.code) {
         const block = (await evaluateItem("top-level", item.ir, 0, [], {}, {}, context))!;
         await context.do(block);
+    }
+
+    for (const [_value, cleanup] of context.onceCache) {
+        await cleanup();
     }
 };
 

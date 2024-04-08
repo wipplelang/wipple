@@ -92,8 +92,8 @@ export const intrinsics: Record<string, Intrinsic> = {
             });
         });
     },
-    once: async ([block], expectedTypeDescriptor, context) => {
-        for (const value of context.onceCache) {
+    once: async ([block, cleanup], expectedTypeDescriptor, context) => {
+        for (const [value, _cleanup] of context.onceCache) {
             const substitutions: Record<string, TypeDescriptor> = {};
             if (unify(expectedTypeDescriptor, value.typeDescriptor, substitutions)) {
                 return value;
@@ -101,7 +101,13 @@ export const intrinsics: Record<string, Intrinsic> = {
         }
 
         const value = await context.do(block);
-        context.onceCache.push(value);
+        context.onceCache.push([
+            value,
+            async () => {
+                await context.call(cleanup, [value]);
+            },
+        ]);
+
         return value;
     },
     "with-continuation": async ([callback], _expectedTypeDescriptor, context) => {
