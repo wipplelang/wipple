@@ -194,6 +194,46 @@ pub enum Operator {
     Function,
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+enum Precedence {
+    As,
+    To,
+    By,
+    Power,
+    Multiply,
+    Add,
+    Compare,
+    Is,
+    And,
+    Or,
+    Apply,
+    Function,
+}
+
+impl Operator {
+    fn precedence(&self) -> Precedence {
+        match self {
+            Operator::As => Precedence::As,
+            Operator::To => Precedence::To,
+            Operator::By => Precedence::By,
+            Operator::Power => Precedence::Power,
+            Operator::Multiply | Operator::Divide | Operator::Remainder => Precedence::Multiply,
+            Operator::Add | Operator::Subtract => Precedence::Add,
+            Operator::LessThan
+            | Operator::LessThanOrEqual
+            | Operator::GreaterThan
+            | Operator::GreaterThanOrEqual
+            | Operator::Equal
+            | Operator::NotEqual => Precedence::Compare,
+            Operator::Is => Precedence::Is,
+            Operator::And => Precedence::And,
+            Operator::Or => Precedence::Or,
+            Operator::Apply => Precedence::Apply,
+            Operator::Function => Precedence::Function,
+        }
+    }
+}
+
 /// A variadic operator.
 #[allow(missing_docs)]
 #[derive(
@@ -982,7 +1022,12 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                     )),
                     _ => None,
                 })
-                .max_set_by_key(|(_, operator)| operator.item);
+                .max_set_by(|(_, left), (_, right)| match (left.item, right.item) {
+                    (AnyOperator::Operator(left), AnyOperator::Operator(right)) => {
+                        left.precedence().cmp(&right.precedence())
+                    }
+                    (left, right) => left.cmp(&right),
+                });
 
             if operators.is_empty() {
                 return TokenTree::List(delimiter, expressions);
@@ -1089,16 +1134,20 @@ impl<'src, D: Driver> TokenTree<'src, D> {
             let info = operator.info.clone();
             match operator.item {
                 AnyOperator::Operator(operator) => {
-                    let index = {
+                    let (index, operator) = {
                         let (index, operator) = match operator.associativity() {
                             Associativity::Left => operators.last().unwrap(),
                             Associativity::Right => operators.first().unwrap(),
                         };
 
-                        WithInfo {
-                            info: operator.info.clone(),
-                            item: *index,
-                        }
+                        let info = operator.info.clone();
+
+                        let operator = match operator.item {
+                            AnyOperator::Operator(operator) => operator,
+                            _ => unreachable!("operators are grouped by type"),
+                        };
+
+                        (WithInfo { info, item: *index }, operator)
                     };
 
                     match tree(index, expressions, diagnostics) {
