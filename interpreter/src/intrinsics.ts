@@ -235,7 +235,7 @@ export const intrinsics: Record<string, Intrinsic> = {
         if (taskLocals) {
             for (const value of taskLocals) {
                 if (unify(value.typeDescriptor, valueTypeDescriptor, {})) {
-                    return value;
+                    return jsToSome(expectedTypeDescriptor, value, context);
                 }
             }
         }
