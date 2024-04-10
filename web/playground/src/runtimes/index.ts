@@ -9,7 +9,11 @@ export interface Runtime {
 }
 
 export type RuntimeComponent = React.ForwardRefExoticComponent<
-    { id: string; stopRunning: () => void } & React.RefAttributes<Runtime>
+    {
+        id: string;
+        call: (func: any, ...inputs: any[]) => Promise<any>;
+        stopRunning: () => void;
+    } & React.RefAttributes<Runtime>
 >;
 
 export const runtimes = {

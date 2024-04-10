@@ -25,10 +25,10 @@ export const Music: RuntimeComponent = forwardRef((props, ref) => {
     };
 
     const play = async () => {
-        onPlay();
         setStatus("playing");
         audioContext.current = new AudioContext();
         await audioContext.current.resume();
+        onPlay();
     };
 
     const stop = () => {
@@ -41,11 +41,9 @@ export const Music: RuntimeComponent = forwardRef((props, ref) => {
         },
         onMessage: async (message, value) => {
             switch (message) {
-                case "wait": {
-                    await waitForPlay();
-                    break;
-                }
                 case "load-instrument": {
+                    await waitForPlay();
+
                     if (!audioContext.current || instruments.current[value]) {
                         return;
                     }
@@ -55,21 +53,13 @@ export const Music: RuntimeComponent = forwardRef((props, ref) => {
 
                     break;
                 }
-                case "play": {
-                    console.log("play:", value); // TODO
-                    break;
-                }
                 case "notes": {
-                    const [instrumentName, msString, notes] = value;
+                    const [instrumentName, msString, notes, callback] = value;
 
                     const ms = parseFloat(msString);
 
                     const player = instruments.current[instrumentName];
-                    if (!player) {
-                        return;
-                    }
-
-                    if (!audioContext.current) {
+                    if (!player || !audioContext.current) {
                         return Promise.resolve(-1);
                     }
 
@@ -80,18 +70,18 @@ export const Music: RuntimeComponent = forwardRef((props, ref) => {
                         player.play(note, now, { duration: ms / 1000 });
                     }
 
-                    return new Promise<number>((resolve) => {
-                        const delta = new Date().valueOf() - startDate;
+                    const delta = new Date().valueOf() - startDate;
 
-                        setTimeout(() => {
-                            if (!audioContext.current) {
-                                resolve(-1);
-                                return;
-                            }
+                    setTimeout(() => {
+                        if (!audioContext.current) {
+                            props.call(callback, -1);
+                            return;
+                        }
 
-                            resolve(audioContext.current.currentTime - now);
-                        }, ms - delta);
-                    });
+                        props.call(callback, audioContext.current.currentTime - now);
+                    }, ms - delta);
+
+                    break;
                 }
                 default: {
                     throw new Error(`unsupported message: ${message}`);

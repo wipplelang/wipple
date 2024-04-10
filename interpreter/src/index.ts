@@ -1,7 +1,9 @@
 import { Decimal } from "decimal.js";
-import { intrinsics } from "./intrinsics.js";
+import { intrinsics, callFunction } from "./intrinsics.js";
 import { produce } from "immer";
 import type * as compiler from "wipple-compiler";
+
+export { callFunction };
 
 Decimal.set({ modulo: Decimal.EUCLID });
 

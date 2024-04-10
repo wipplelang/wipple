@@ -1,11 +1,38 @@
 import { format } from "wipple-compiler";
-import { evaluate, InterpreterError, IoRequest } from "wipple-interpreter";
+import { callFunction, evaluate, InterpreterError, IoRequest } from "wipple-interpreter";
+
+const withCallFunction =
+    (handler: (event: MessageEvent<any>) => void) => async (event: MessageEvent<any>) => {
+        switch (event.data.type) {
+            case "callFunction": {
+                const { func, inputs } = event.data;
+
+                const output = await callFunction(func, inputs);
+
+                postMessage({
+                    type: "completion",
+                    output,
+                });
+
+                break;
+            }
+            default: {
+                handler(event);
+                break;
+            }
+        }
+    };
 
 onmessage = async (event) => {
     const { type } = event.data;
     switch (type) {
         case "run": {
             try {
+                const prevonmessage = onmessage;
+                onmessage = withCallFunction(async (event) => {
+                    throw new Error(`unsupported message: ${event.data.type}`);
+                });
+
                 await evaluate(event.data.executable, {
                     debug: false,
                     gc: () => {
@@ -31,7 +58,7 @@ onmessage = async (event) => {
                             }
                             case "prompt": {
                                 const prevonmessage = onmessage;
-                                onmessage = async (event) => {
+                                onmessage = withCallFunction(async (event) => {
                                     const { type, input } = event.data;
                                     if (type !== "validate") {
                                         throw new Error("expected 'validate' event");
@@ -44,7 +71,7 @@ onmessage = async (event) => {
                                     }
 
                                     postMessage({ type: "validate", valid });
-                                };
+                                });
 
                                 postMessage({ type: "prompt", prompt: request.message });
 
@@ -72,7 +99,7 @@ onmessage = async (event) => {
                             }
                             case "ui": {
                                 const prevonmessage = onmessage;
-                                onmessage = async (event) => {
+                                onmessage = withCallFunction(async (event) => {
                                     const { type, value } = event.data;
                                     if (type !== "response") {
                                         throw new Error("expected 'response' event");
@@ -80,7 +107,7 @@ onmessage = async (event) => {
 
                                     onmessage = prevonmessage;
                                     request.completion(value);
-                                };
+                                });
 
                                 postMessage({
                                     type: "ui",
@@ -101,6 +128,7 @@ onmessage = async (event) => {
                     },
                 });
 
+                onmessage = prevonmessage;
                 postMessage({ type: "completion" });
             } catch (error) {
                 if (error instanceof InterpreterError) {
@@ -119,6 +147,6 @@ onmessage = async (event) => {
             break;
         }
         default:
-            throw new Error("unsupported message");
+            throw new Error(`unsupported message: ${type}`);
     }
 };

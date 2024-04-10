@@ -805,9 +805,31 @@ const hasherToJs = (value: TypedValue, context: Context): {} => {
     return value;
 };
 
-const randomInteger = () => Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+interface FunctionHandle {
+    func: (inputs: TypedValue[]) => Promise<TypedValue>;
+    inputTypeDescriptors: TypeDescriptor[];
+    context: Context;
+    task: any;
+}
 
-const functions: ((inputs: TypedValue[]) => Promise<TypedValue>)[] = [];
+const functions: FunctionHandle[] = [];
+
+export const callFunction = async (func: any, inputs: any[]) => {
+    if (!("$wippleFunction" in func)) {
+        throw new Error("expected function");
+    }
+
+    const index = func.$wippleFunction;
+    const handle = functions[index];
+
+    const output = await handle.func(
+        inputs.map((input, index) =>
+            deserialize(input, handle.inputTypeDescriptors[index], handle.context),
+        ),
+    );
+
+    return serialize(output, handle.context, handle.task);
+};
 
 const serialize = (value: TypedValue, context: Context, task: any): any => {
     switch (value.type) {
@@ -816,8 +838,20 @@ const serialize = (value: TypedValue, context: Context, task: any): any => {
         case "text":
             return textToJs(value, context);
         case "function": {
+            if (value.typeDescriptor.type !== "function") {
+                throw new Error("expected function");
+            }
+
+            const inputTypeDescriptors = value.typeDescriptor.value[0];
+
             const index = functions.length;
-            functions.push((inputs) => context.call(value, inputs, task));
+            functions.push({
+                func: (inputs) => context.call(value, inputs, task),
+                inputTypeDescriptors,
+                context,
+                task,
+            });
+
             return { $wippleFunction: index };
         }
         case "list":
@@ -849,9 +883,10 @@ const deserialize = (value: any, typeDescriptor: TypeDescriptor, context: Contex
             context,
         );
     } else if (typeof value === "object" && "$wippleFunction" in value) {
-        const func = functions[value.$wippleFunction];
+        const index = value.$wippleFunction;
+        const handle = functions[index];
         return jsToFunction(typeDescriptor, async (...inputs) => {
-            return deserialize(await func(inputs), typeDescriptor, context);
+            return deserialize(await handle.func(inputs), typeDescriptor, context);
         });
     } else {
         throw new Error("cannot deserialize value");

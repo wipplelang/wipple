@@ -356,6 +356,29 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
             {props.runtime ? (
                 <props.runtime
                     id={id}
+                    call={(func, ...inputs) =>
+                        new Promise((resolve) => {
+                            if (!runnerWorker.current) {
+                                throw new Error("runner not initialized");
+                            }
+
+                            const prevonmessage = runnerWorker.current.onmessage;
+                            runnerWorker.current.onmessage = async (event) => {
+                                if (event.data.type !== "completion") {
+                                    return prevonmessage?.call(runnerWorker.current!, event);
+                                }
+
+                                runnerWorker.current!.onmessage = prevonmessage;
+                                resolve(event.data.output);
+                            };
+
+                            runnerWorker.current.postMessage({
+                                type: "callFunction",
+                                func,
+                                inputs,
+                            });
+                        })
+                    }
                     stopRunning={async () => {
                         if (runtimeRef.current) {
                             const mutex = runtimeMutexRef.current;
