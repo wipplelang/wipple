@@ -119,7 +119,15 @@ const computeHelpDecorations = (syntaxTree: Tree, state: EditorState) => {
                 return;
             }
 
-            const widget = new HelpWidget(from, to, code, node.node, theme, help(from, code), onClick);
+            const widget = new HelpWidget(
+                from,
+                to,
+                code,
+                node.node,
+                theme,
+                help(from, code),
+                onClick,
+            );
             decorations.push(Decoration.replace({ widget }).range(from, to));
         },
     });

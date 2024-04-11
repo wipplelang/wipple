@@ -2,7 +2,10 @@ import { ColorAsset } from "./color";
 import { DropdownAsset } from "./dropdown";
 import { NoteAsset } from "./note";
 
-export const isAsset = (value: string) => getAsset(value) != null;
+export const isAsset = (value: string) =>
+    value.startsWith("[") &&
+    value.endsWith("]") &&
+    getAsset(value.slice(1, value.length - 1)) != null;
 
 export type Asset =
     | { type: "color"; color: string }
