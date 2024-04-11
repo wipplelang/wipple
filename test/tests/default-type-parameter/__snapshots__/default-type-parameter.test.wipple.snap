@@ -4,7 +4,8 @@ exports[`default-type-parameter.test.wipple 1`] = `[]`;
 
 exports[`default-type-parameter.test.wipple 2`] = `
 {
-  "output": "not implemented
+  "output": "X
+Y
 ",
 }
 `;

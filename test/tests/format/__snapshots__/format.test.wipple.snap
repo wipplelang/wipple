@@ -4,7 +4,7 @@ exports[`format.test.wipple 1`] = `[]`;
 
 exports[`format.test.wipple 2`] = `
 {
-  "output": "not implemented
+  "output": "Hello, Bob!
 ",
 }
 `;

@@ -4,7 +4,7 @@ exports[`number-units.test.wipple 1`] = `[]`;
 
 exports[`number-units.test.wipple 2`] = `
 {
-  "output": "no instance found for trait trait Equal with type descriptor {"type":"function","value":[[{"type":"named","value":["type Elephants",[]]},{"type":"named","value":["type Elephants",[]]}],{"type":"named","value":["type Boolean",[]]}]}
+  "output": "True
 ",
 }
 `;

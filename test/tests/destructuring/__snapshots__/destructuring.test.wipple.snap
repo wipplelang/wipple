@@ -6,7 +6,7 @@ exports[`destructuring.test.wipple 2`] = `
 {
   "output": "Alice
 Bob
-not implemented
+Charlie
 ",
 }
 `;
