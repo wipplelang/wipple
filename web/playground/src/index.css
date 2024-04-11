@@ -160,3 +160,13 @@ code,
         color: #b392f0;
     }
 }
+
+/* Piano */
+
+.piano-preview .ReactPiano__Keyboard {
+    pointer-events: none;
+}
+
+.ReactPiano__Key--active {
+    @apply bg-blue-500 border-blue-500 !important;
+}

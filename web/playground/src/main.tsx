@@ -9,10 +9,11 @@ import {
 import { initializeApp } from "firebase/app";
 import { HomePage, EditPage, RootPage } from "./pages";
 import { NavbarProvider, AlertProvider } from "./components";
+import { StoreProvider } from "./store";
 import "react-material-symbols/rounded";
 import "react-loading-skeleton/dist/skeleton.css";
 import "./index.css";
-import { StoreProvider } from "./store";
+import "react-piano/dist/styles.css";
 
 initializeApp({
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,

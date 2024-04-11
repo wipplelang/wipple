@@ -1,11 +1,13 @@
 import { ColorAsset } from "./color";
 import { DropdownAsset } from "./dropdown";
+import { NoteAsset } from "./note";
 
 export const isAsset = (value: string) => getAsset(value) != null;
 
 export type Asset =
     | { type: "color"; color: string }
-    | { type: "dropdown"; selection: string; options: string[] };
+    | { type: "dropdown"; selection: string; options: string[] }
+    | { type: "note"; note: string };
 
 export const getAsset = (code: string): Asset | undefined => {
     const split = code.split(" ");
@@ -32,6 +34,10 @@ export const getAsset = (code: string): Asset | undefined => {
 
             return { type: "dropdown", selection, options };
         }
+        case "Note": {
+            value = value.slice(1, value.length - 1); // remove quotes
+            return { type: "note", note: value };
+        }
         default: {
             return undefined;
         }
@@ -42,6 +48,8 @@ export const colorAsset = (color: string) => `[Color "${color}"]`;
 
 export const dropdownAsset = (selection: string, options: string[]) =>
     `[Dropdown (${options.join(" , ")}) ${selection}]`;
+
+export const noteAsset = (note: string) => `[Note "${note}"]`;
 
 export const Asset = (props: {
     children: Asset;
@@ -74,7 +82,18 @@ export const Asset = (props: {
 
             break;
         }
+        case "note": {
+            content = (
+                <NoteAsset
+                    disabled={props.disabled}
+                    note={asset.note}
+                    onClick={() => props.onClick?.(asset)}
+                />
+            );
+            break;
+        }
         default: {
+            asset satisfies never;
             return null;
         }
     }
