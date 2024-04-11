@@ -136,6 +136,18 @@ export const Music: RuntimeComponent = forwardRef((props, ref) => {
 
 export const paletteItems: PaletteItem[] = [
     {
+        title: "note",
+        code: 'note [Note "C4"] ([Dropdown (1 / 8 , 1 / 4 , 1 / 2 , 1 , 2 , 3 , 4) 1] beats)',
+    },
+    {
+        title: "chord",
+        code: 'chord ([Note "C4"] , [Note "E4"] , [Note "G4"]) ([Dropdown (1 / 8 , 1 / 4 , 1 / 2 , 1 , 2 , 3 , 4) 1] beats)',
+    },
+    {
+        title: "rest",
+        code: "rest ([Dropdown (1 / 8 , 1 / 4 , 1 / 2 , 1 , 2 , 3 , 4) 1] beats)",
+    },
+    {
         title: "repeat",
         code: `repeat ([Dropdown (1 , 2 , 3 , 4 , 5 , 10 , 20 , 50 , 100) 1] times) {\n  _\n}`,
     },
