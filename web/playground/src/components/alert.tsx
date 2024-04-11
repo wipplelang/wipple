@@ -32,7 +32,7 @@ export const AlertProvider = (props: React.PropsWithChildren<{}>) => {
             {props.children}
 
             <div
-                className={`absolute inset-0 transition ${
+                className={`fixed inset-0 transition ${
                     Contents ? "bg-black bg-opacity-10 backdrop-blur" : "pointer-events-none"
                 } z-10`}
             >
@@ -47,7 +47,7 @@ export const AlertProvider = (props: React.PropsWithChildren<{}>) => {
                             <div className="max-w-3xl p-4">
                                 <div className="bg-white dark:bg-gray-900 rounded-lg p-4">
                                     <Contents dismiss={() => setContents(undefined)} />
-                                </div>{" "}
+                                </div>
                             </div>
                         ) : null}
                     </Transition>
