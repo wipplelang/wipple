@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
     Animated,
     ContextMenuButton,
@@ -19,7 +19,7 @@ import { HelpAlert } from "./help-alert";
 import { ColorPicker } from "./color-picker";
 import { AssetClickHandler } from "./codemirror/assets";
 import { colorAsset, dropdownAsset, noteAsset } from "./assets";
-import { RenderedDiagnostic, RenderedFix } from "wipple-render";
+import { Render, RenderedDiagnostic, RenderedFix, RenderedHighlight } from "wipple-render";
 import { defaultPaletteItems, runtimes } from "../../runtimes";
 import { SetupIcon } from "./setup-icon";
 import { StateCommand } from "@codemirror/state";
@@ -54,11 +54,13 @@ export const CodeEditor = (props: {
     const [runnerHasFocus, setRunnerHasFocus] = useState(false);
 
     const [diagnostics, setDiagnostics] = useState<RenderedDiagnostic[]>([]);
+    const [highlightItems, setHighlightItems] = useState<Record<string, RenderedHighlight>>({});
 
     const [lookUpEnabled, setLookUpEnabled] = useState(false);
 
     const codeMirrorRef = useRef<CodeMirrorRef>(null);
     const runnerRef = useRef<RunnerRef>(null);
+    const render = useMemo(() => new Render(), []);
 
     const windowSize = useWindowSize();
 
@@ -304,6 +306,7 @@ export const CodeEditor = (props: {
                         onClickAsset={onClickAsset}
                         theme={props.theme}
                         diagnostics={diagnostics}
+                        highlightItems={highlightItems}
                     >
                         {props.children}
                     </CodeMirror>
@@ -354,10 +357,12 @@ export const CodeEditor = (props: {
                                     ? runtimes[props.runtime as keyof typeof runtimes].Component
                                     : undefined
                             }
+                            render={render}
                             hasFocus={runnerHasFocus}
                             onFocus={() => setRunnerHasFocus(true)}
                             onBlur={() => setRunnerHasFocus(false)}
                             onChangeDiagnostics={setDiagnostics}
+                            onChangeHighlightItems={setHighlightItems}
                         >
                             {props.children}
                         </Runner>

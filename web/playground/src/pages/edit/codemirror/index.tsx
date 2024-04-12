@@ -11,7 +11,7 @@ import { displayHelp, displayHelpFromEnabled } from "./help";
 import { Help } from "../../../models";
 import { diagnostics, diagnosticsFromConfig } from "./diagnostics";
 import { AssetClickHandler, assets, assetsFromConfig } from "./assets";
-import { RenderedDiagnostic } from "wipple-render";
+import { Render, RenderedDiagnostic, RenderedHighlight } from "wipple-render";
 
 export interface CodeMirrorProps {
     children: string;
@@ -26,6 +26,7 @@ export interface CodeMirrorProps {
     onClickAsset: AssetClickHandler;
     readOnly: boolean;
     diagnostics: RenderedDiagnostic[];
+    highlightItems: Record<string, RenderedHighlight>;
     theme: ThemeConfig;
 }
 
@@ -58,6 +59,7 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                             props.lookUpEnabled,
                             props.theme,
                             props.help,
+                            props.highlightItems,
                             props.onClickLookUp,
                         ),
                     ),
@@ -68,6 +70,8 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                         assetsFromConfig({
                             disabled: props.lookUpEnabled,
                             onClick: props.onClickAsset,
+                            highlightItems: props.highlightItems,
+                            theme: props.theme,
                         }),
                     ),
 
@@ -167,11 +171,19 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                     props.lookUpEnabled,
                     props.theme,
                     props.help,
+                    props.highlightItems,
                     props.onClickLookUp,
                 ),
             ),
         });
-    }, [editorView, props.lookUpEnabled, props.theme]);
+    }, [
+        editorView,
+        props.lookUpEnabled,
+        props.theme,
+        props.help,
+        props.highlightItems,
+        props.onClickLookUp,
+    ]);
 
     useEffect(() => {
         editorView.dispatch({
@@ -184,10 +196,15 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
     useEffect(() => {
         editorView.dispatch({
             effects: assets.reconfigure(
-                assetsFromConfig({ disabled: props.lookUpEnabled, onClick: props.onClickAsset }),
+                assetsFromConfig({
+                    disabled: props.lookUpEnabled,
+                    onClick: props.onClickAsset,
+                    highlightItems: props.highlightItems,
+                    theme: props.theme,
+                }),
             ),
         });
-    }, [editorView, props.lookUpEnabled, props.onClickAsset]);
+    }, [editorView, props.lookUpEnabled, props.onClickAsset, props.highlightItems, props.theme]);
 
     useEffect(() => {
         if (props.autoFocus) {

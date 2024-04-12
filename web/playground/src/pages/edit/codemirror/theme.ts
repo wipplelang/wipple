@@ -45,3 +45,10 @@ export const themeFromConfig = (config: ThemeConfig): Extension => [
 ];
 
 export const theme = new Compartment();
+
+export const highlightCategories: Record<string, string> = {
+    "control-flow": "bg-opacity-30 bg-orange-300 text-orange-500",
+    motion: "bg-opacity-30 bg-green-300 text-green-500",
+    turn: "bg-opacity-30 bg-blue-300 text-blue-500",
+    pen: "bg-opacity-30 bg-purple-300 text-purple-500",
+};

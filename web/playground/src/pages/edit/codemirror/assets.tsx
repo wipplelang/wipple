@@ -7,21 +7,32 @@ import {
     DecorationSet,
     WidgetType,
 } from "@codemirror/view";
-import { Compartment, Range } from "@codemirror/state";
+import { Compartment, Range, RangeSet } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { Asset, getAsset } from "../assets";
+import { RenderedHighlight } from "wipple-render";
+import { ThemeConfig, highlightCategories } from "./theme";
+import { MaterialSymbol } from "react-material-symbols";
 
 export const assets = new Compartment();
 
 export type AssetClickHandler = (config: { start: number; end: number; asset: Asset }) => void;
 
-export const assetsFromConfig = (config: { disabled: boolean; onClick: AssetClickHandler }) =>
+export const assetsFromConfig = (config: {
+    disabled: boolean;
+    onClick: AssetClickHandler;
+    highlightItems: Record<string, RenderedHighlight>;
+    theme: ThemeConfig;
+}) =>
     ViewPlugin.fromClass(
         class {
-            decorations: DecorationSet;
+            nonatomicDecorations: DecorationSet;
+            atomicDecorations: DecorationSet;
 
             constructor(view: EditorView) {
-                this.decorations = getDecorations(view, config);
+                const [nonatomicDecorations, atomicDecorations] = getDecorations(view, config);
+                this.nonatomicDecorations = nonatomicDecorations;
+                this.atomicDecorations = atomicDecorations;
             }
 
             update(update: ViewUpdate) {
@@ -29,56 +40,157 @@ export const assetsFromConfig = (config: { disabled: boolean; onClick: AssetClic
                     update.docChanged ||
                     syntaxTree(update.startState) !== syntaxTree(update.state)
                 ) {
-                    this.decorations = getDecorations(update.view, config);
+                    const [nonatomicDecorations, atomicDecorations] = getDecorations(
+                        update.view,
+                        config,
+                    );
+
+                    this.nonatomicDecorations = nonatomicDecorations;
+                    this.atomicDecorations = atomicDecorations;
                 }
             }
         },
         {
-            decorations: (v) => v.decorations,
+            decorations: (v) => RangeSet.join([v.nonatomicDecorations, v.atomicDecorations]),
             provide: (v) =>
                 EditorView.atomicRanges.of(
-                    (view) => view.plugin(v)?.decorations ?? Decoration.none,
+                    (view) => view.plugin(v)?.atomicDecorations ?? Decoration.none,
                 ),
         },
     );
 
 const getDecorations = (
     view: EditorView,
-    config: { disabled: boolean; onClick: AssetClickHandler },
-) => {
-    const decorations: Range<Decoration>[] = [];
-
+    config: {
+        disabled: boolean;
+        onClick: AssetClickHandler;
+        highlightItems: Record<string, RenderedHighlight>;
+        theme: ThemeConfig;
+    },
+): [DecorationSet, DecorationSet] => {
+    const nonatomicDecorations: Range<Decoration>[] = [];
+    const atomicDecorations: Range<Decoration>[] = [];
     syntaxTree(view.state).iterate({
         enter: (node) => {
             const { from, to } = node;
-
-            if (node.type.name !== "Asset") {
-                return;
-            }
-
             let code = view.state.sliceDoc(from, to);
 
-            if (code.includes("\n")) {
-                return;
+            switch (node.type.name) {
+                case "Name": {
+                    const highlight = config.highlightItems[code];
+
+                    if (highlight?.category && highlightCategories[highlight.category]) {
+                        const className = highlightCategories[highlight.category];
+
+                        nonatomicDecorations.push(
+                            Decoration.mark({
+                                class: `${className} ${
+                                    highlight.icon ? "rounded-r-[4px]" : "rounded-[4px]"
+                                }`,
+                            }).range(from, to),
+                        );
+
+                        if (highlight.icon) {
+                            nonatomicDecorations.push(
+                                Decoration.widget({
+                                    widget: new HighlightIconWidget(
+                                        from,
+                                        highlight.icon,
+                                        className,
+                                        config.theme.fontSize,
+                                    ),
+                                    side: 1,
+                                }).range(from),
+                            );
+                        }
+                    }
+
+                    break;
+                }
+                case "Asset": {
+                    if (code.includes("\n")) {
+                        break;
+                    }
+
+                    code = code.slice(1, code.length - 1); // remove brackets
+
+                    const asset = getAsset(code);
+                    if (asset) {
+                        atomicDecorations.push(
+                            Decoration.replace({
+                                widget: new AssetWidget(from, to, asset, config),
+                            }).range(from, to),
+                        );
+                    }
+
+                    break;
+                }
+                default:
+                    break;
             }
-
-            code = code.slice(1, code.length - 1); // remove brackets
-
-            const asset = getAsset(code);
-            if (!asset) {
-                return;
-            }
-
-            decorations.push(
-                Decoration.replace({
-                    widget: new AssetWidget(from, to, asset, config),
-                }).range(from, to),
-            );
         },
     });
 
-    return Decoration.set(decorations, true);
+    return [Decoration.set(nonatomicDecorations, true), Decoration.set(atomicDecorations, true)];
 };
+
+class HighlightIconWidget extends WidgetType {
+    private root?: ReactDOM.Root;
+
+    constructor(
+        public index: number,
+        public icon: string,
+        public className: string,
+        public fontSize: number,
+    ) {
+        super();
+    }
+
+    eq(other: this) {
+        return (
+            this.index === other.index &&
+            this.icon === other.icon &&
+            this.className === other.className &&
+            this.fontSize === other.fontSize
+        );
+    }
+
+    toDOM() {
+        const container = document.createElement("span");
+
+        this.root = ReactDOM.createRoot(container);
+        this.root.render(
+            <HighlightIconWidgetComponent
+                icon={this.icon}
+                className={this.className}
+                fontSize={this.fontSize}
+            />,
+        );
+
+        return container;
+    }
+
+    destroy() {
+        requestAnimationFrame(() => {
+            this.root?.unmount();
+        });
+    }
+}
+
+const HighlightIconWidgetComponent = (props: {
+    icon: string;
+    fontSize: number;
+    className: string;
+}) => (
+    <span
+        className={`inline-block relative w-[1rem] align-text-bottom rounded-l-[4px] ${props.className}`}
+        style={{ height: `${props.fontSize}pt` }}
+    >
+        <div className="flex items-center justify-center absolute inset-0">
+            <MaterialSymbol icon={props.icon.replace("-", "_") as any} />
+        </div>
+    </span>
+);
 
 class AssetWidget extends WidgetType {
     private root?: ReactDOM.Root;

@@ -45,6 +45,11 @@ export type RenderedDocumentationAttributeValue =
     | { type: "formattedString"; segments: [string, string][]; trailing: string }
     | { type: "boolean"; value: boolean };
 
+export interface RenderedHighlight {
+    category?: string;
+    icon?: string;
+}
+
 export class Render {
     private files: Record<string, compiler.File & { linesAndColumns: LinesAndColumns }> = {};
     private declarations: compiler.WithInfo<compiler.Info, AnyDeclaration>[] = [];
@@ -1150,6 +1155,84 @@ export class Render {
         docLines.reverse();
 
         return { docs: docLines.join("\n") };
+    }
+
+    renderHighlight(value: compiler.WithInfo<compiler.Info, unknown>): RenderedHighlight | null {
+        if (!this.interface) {
+            return null;
+        }
+
+        const declaration = this.getDeclarationFromInfo(value.info);
+
+        if (!declaration) {
+            return null;
+        }
+
+        const constantReferenceType: compiler.WithInfo<compiler.Info, compiler.typecheck_Type> = {
+            info: value.info,
+            item: {
+                type: "constant",
+                value: declaration.item.path,
+            },
+        };
+
+        const result = compiler.resolveAttributeLikeTrait(
+            "highlight",
+            constantReferenceType,
+            1,
+            this.interface,
+        );
+
+        if (!result) {
+            return null;
+        }
+
+        const [highlightOptions] = result;
+
+        const getOption = (
+            name: string,
+            type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
+        ) =>
+            type.item.type === "declared" &&
+            type.item.value.path === this.interface!.languageDeclarations[name] &&
+            type.item.value.parameters[0]?.item.type === "message"
+                ? this.renderTypeLevelText(type.item.value.parameters[0].item.value, false)
+                : null;
+
+        switch (highlightOptions.item.type) {
+            case "declared": {
+                const category = getOption("highlight-category", highlightOptions);
+                if (category) {
+                    return { category };
+                }
+
+                const icon = getOption("highlight-icon", highlightOptions);
+                if (icon) {
+                    return { icon };
+                }
+
+                return null;
+            }
+            case "tuple": {
+                const options: RenderedHighlight = {};
+
+                for (const parameter of highlightOptions.item.value) {
+                    const category = getOption("highlight-category", parameter);
+                    if (category) {
+                        options.category = category;
+                    }
+
+                    const icon = getOption("highlight-icon", parameter);
+                    if (icon) {
+                        options.icon = icon;
+                    }
+                }
+
+                return options;
+            }
+            default:
+                return null;
+        }
     }
 
     private traverseExpression(

@@ -117,6 +117,19 @@ instance (Describe-Type Text "a piece of text") : ...
 Input Output => default instance (Describe-Type (Input -> Output) "a function") : ...
 Body => default instance (Describe-Type {Body} "a block") : ...
 
+-- Change how a declaration is highlighted in the code editor. Currently, `Type`
+-- must be a constant reference.
+Highlight : Type (infer Options) => trait intrinsic
+intrinsic "trait" "highlight" : Highlight
+
+-- Set the highlight category when used with `Highlight`.
+Highlight-Category : Color => type intrinsic
+intrinsic "type" "highlight-category" : Highlight-Category
+
+-- Set the highlight icon when used with `Highlight`.
+Highlight-Icon : Icon => type intrinsic
+intrinsic "type" "highlight-icon" : Highlight-Icon
+
 -- Display a dropdown with the provided options. The dropdown will evaluate to
 -- the selected item at runtime.
 Dropdown :: Value => (List Value) Value -> Value

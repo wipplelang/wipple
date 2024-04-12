@@ -12,7 +12,7 @@ import { useDebounceValue } from "usehooks-ts";
 import * as compiler from "wipple-compiler";
 import { RunnerWorker } from "../../helpers";
 import { InterpreterError } from "wipple-interpreter";
-import { Render, RenderedDiagnostic } from "wipple-render";
+import { Render, RenderedDiagnostic, RenderedHighlight } from "wipple-render";
 import { Runtime, RuntimeComponent } from "../../runtimes";
 import { MaterialSymbol } from "react-material-symbols";
 import { Help, Output } from "../../models";
@@ -32,11 +32,13 @@ export interface RunnerRef {
 export interface RunnerProps {
     children: string;
     runtime?: RuntimeComponent;
+    render: Render;
     hasFocus: boolean;
     onFocus: () => void;
     onBlur: () => void;
     options: RunOptions;
     onChangeDiagnostics: (diagnostics: RenderedDiagnostic[]) => void;
+    onChangeHighlightItems: (highlightItems: Record<string, RenderedHighlight>) => void;
 }
 
 export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
@@ -50,8 +52,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
     const id = useId();
     const [code, setCode] = useDebounceValue(props.children, 500);
-
-    const render = useMemo(() => new Render(), []);
 
     const runtimeMutexRef = useRef(new Mutex());
     const runtimeRef = useRef<Runtime | null>(null);
@@ -87,6 +87,8 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     const [showRunAgain, setShowRunAgain] = useState(false);
 
     const [cachedBuiltinsHelp, setCachedBuiltinsHelp] = useState<Record<string, any>>();
+    const [cachedHighlightItems, setCachedHighlightItems] =
+        useState<Record<string, RenderedHighlight>>();
 
     const run = useCallback(async () => {
         if (!hasWaitedForLayout) {
@@ -117,14 +119,23 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
             const compileResult = compiler.compile(sources, dependencies?.interface ?? null);
 
-            render.update(compileResult.interface, [
+            if (!cachedHighlightItems) {
+                const highlightItems = getHighlightItems(compileResult.interface, props.render);
+                setCachedHighlightItems(highlightItems);
+
+                // FIXME: Only calling this once prevents user-defined highlight
+                // items from being recognized
+                props.onChangeHighlightItems(highlightItems);
+            }
+
+            props.render.update(compileResult.interface, [
                 compileResult.library,
                 ...(dependencies?.libraries ?? []),
             ]);
 
             if (compileResult.diagnostics.length > 0) {
                 const renderedDiagnostics = compileResult.diagnostics.flatMap((diagnostic) => {
-                    const rendered = render.renderDiagnostic(diagnostic);
+                    const rendered = props.render.renderDiagnostic(diagnostic);
                     return rendered ? [rendered] : [];
                 });
 
@@ -291,6 +302,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         props.options,
         resetRunnerWorker,
         cachedBuiltinsHelp,
+        cachedHighlightItems,
     ]);
 
     useEffect(() => {
@@ -307,17 +319,17 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 };
             }
 
-            const info = render.getInfoAtCursor("top-level", position);
+            const info = props.render.getInfoAtCursor("top-level", position);
             if (!info) {
                 return undefined;
             }
 
-            const declaration = render.getDeclarationFromInfo(info);
+            const declaration = props.render.getDeclarationFromInfo(info);
             if (!declaration) {
                 return undefined;
             }
 
-            const documentation = render.renderDocumentation(declaration);
+            const documentation = props.render.renderDocumentation(declaration);
             if (!documentation) {
                 return undefined;
             }
@@ -533,3 +545,30 @@ const fetchBuiltinsHelp = async (): Promise<Record<string, string>> =>
     fetch(new URL("/playground/library/help/builtins.json", window.location.origin)).then(
         (response) => response.json(),
     );
+
+const getHighlightItems = (
+    interface_: compiler.Interface,
+    render: Render,
+): Record<string, RenderedHighlight> => {
+    const highlightItems: Record<string, RenderedHighlight> = {};
+    for (const [name, declarationPaths] of Object.entries(interface_.topLevel)) {
+        if (declarationPaths.length > 1) {
+            continue;
+        }
+
+        for (const declarationPath of declarationPaths) {
+            const declaration = render.getDeclarationFromPath(declarationPath.item);
+            if (!declaration) {
+                continue;
+            }
+
+            const highlight = render.renderHighlight(declaration);
+            if (highlight) {
+                highlightItems[name] = highlight;
+                break;
+            }
+        }
+    }
+
+    return highlightItems;
+};

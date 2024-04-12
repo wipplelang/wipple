@@ -88,3 +88,5 @@ repeat : state body -> when (Repeat-Predicate state) {
     Continue next -> repeat (next (do body)) body
     Stop result -> result
 }
+
+instance (Highlight repeat (Highlight-Category "control-flow" ; Highlight-Icon "repeat")) : ...

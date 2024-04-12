@@ -14,10 +14,11 @@ import { SyntaxNode, Tree } from "@lezer/common";
 import { classHighlighter } from "@lezer/highlight";
 import { Markdown, Tooltip } from "../../../components";
 import { wippleTags } from "./language";
-import { ThemeConfig, defaultThemeConfig } from "./theme";
+import { ThemeConfig, defaultThemeConfig, highlightCategories } from "./theme";
 import { Help } from "../../../models";
 import { useEffect, useState } from "react";
 import { isAsset } from "../assets";
+import { RenderedHighlight } from "wipple-render";
 
 export const displayHelp = new Compartment();
 
@@ -25,11 +26,12 @@ export const displayHelpFromEnabled = (
     enabled: boolean,
     theme: ThemeConfig,
     help: (position: number, code: string) => Help | undefined,
+    highlightItems: Record<string, RenderedHighlight>,
     onClick: (help: Help) => void,
 ): Extension =>
     enabled
         ? [
-              configFacet.of({ theme, help, onClick }),
+              configFacet.of({ theme, help, onClick, highlightItems }),
               helpDecorations,
               helpDecorationsListener,
               EditorView.decorations.compute([helpDecorations], (state) =>
@@ -42,6 +44,7 @@ interface Config {
     theme: ThemeConfig;
     help: (position: number, code: string) => Help | undefined;
     onClick: (help: Help) => void;
+    highlightItems: Record<string, RenderedHighlight>;
 }
 
 const configFacet = Facet.define<Config, Config>({
@@ -85,7 +88,7 @@ const helpDecorationsListener = EditorView.updateListener.of((update) => {
 });
 
 const computeHelpDecorations = (syntaxTree: Tree, state: EditorState) => {
-    const { theme, help, onClick } = state.facet(configFacet);
+    const { theme, help, onClick, highlightItems } = state.facet(configFacet);
 
     const decorations: Range<Decoration>[] = [];
     syntaxTree.iterate({
@@ -119,6 +122,8 @@ const computeHelpDecorations = (syntaxTree: Tree, state: EditorState) => {
                 return;
             }
 
+            const highlight = node.type.name === "Name" ? highlightItems[code] : undefined;
+
             const widget = new HelpWidget(
                 from,
                 to,
@@ -126,6 +131,7 @@ const computeHelpDecorations = (syntaxTree: Tree, state: EditorState) => {
                 node.node,
                 theme,
                 help(from, code),
+                highlight,
                 onClick,
             );
             decorations.push(Decoration.replace({ widget }).range(from, to));
@@ -145,6 +151,7 @@ class HelpWidget extends WidgetType {
         public node: SyntaxNode,
         public theme: ThemeConfig,
         public help: Help | undefined,
+        public highlight: RenderedHighlight | undefined,
         public onClick: (help: Help) => void,
     ) {
         super();
@@ -158,6 +165,7 @@ class HelpWidget extends WidgetType {
             this.node === other.node &&
             this.theme === other.theme &&
             this.help === other.help &&
+            this.highlight === other.highlight &&
             this.onClick === other.onClick
         );
     }
@@ -179,6 +187,7 @@ class HelpWidget extends WidgetType {
                 node={this.node}
                 theme={this.theme}
                 help={this.help}
+                highlight={this.highlight}
                 onClick={this.onClick}
             />,
         );
@@ -216,6 +225,7 @@ const HelpWidgetComponent = (props: {
     node: SyntaxNode;
     theme: ThemeConfig;
     help: Help | undefined;
+    highlight: RenderedHighlight | undefined;
     onClick: (help: Help) => void;
 }) => {
     const [codeClassName, codeStyle] = codeStyles(props.node, props.theme);
@@ -234,6 +244,15 @@ const HelpWidgetComponent = (props: {
         });
     }, []);
 
+    let className = props.help == null ? (isAnimating ? "" : "opacity-25") : "cursor-pointer";
+    if (props.highlight?.category && highlightCategories[props.highlight.category]) {
+        className += ` ${highlightCategories[props.highlight.category]} ${
+            props.highlight.icon ? "rounded-r-[4px]" : "rounded-[4px]"
+        }`;
+    } else {
+        className += " rounded-[4px]";
+    }
+
     return (
         <Tooltip
             disabled={props.help == null}
@@ -248,17 +267,7 @@ const HelpWidgetComponent = (props: {
                 }
             }}
         >
-            <span
-                className={`rounded-lg transition-opacity ${
-                    props.help == null
-                        ? isAnimating
-                            ? ""
-                            : "opacity-25"
-                        : "hover:-m-0.5 hover:border-2 hover:border-gray-100 hover:dark:border-gray-800 cursor-pointer"
-                }`}
-            >
-                {renderedCode}
-            </span>
+            <span className={className}>{renderedCode}</span>
         </Tooltip>
     );
 };

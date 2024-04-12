@@ -14,9 +14,13 @@ pixels : Distance
 forward :: Distance -> ()
 forward : (Distance pixels) -> runtime-message "forward" pixels
 
+instance (Highlight forward (Highlight-Category "motion" ; Highlight-Icon "arrow-upward")) : ...
+
 -- Move the turtle backward by the specified distance.
 backward :: Distance -> ()
 backward : (Distance pixels) -> runtime-message "backward" pixels
+
+instance (Highlight backward (Highlight-Category "motion" ; Highlight-Icon "arrow-downward")) : ...
 
 -- An arc.
 Arc : type {
@@ -31,17 +35,25 @@ arc : {
     angle : (Angle angle)
 } -> runtime-message "arc" (radius ; angle)
 
+instance (Highlight arc (Highlight-Category "motion" ; Highlight-Icon "switch-access-shortcut")) : ...
+
 -- Rotate the turtle counterclockwise by the specified angle.
 left :: Angle -> ()
 left : (Angle degrees) -> runtime-message "left" degrees
+
+instance (Highlight left (Highlight-Category "turn" ; Highlight-Icon "rotate-left")) : ...
 
 -- Rotate the turtle clockwise by the specified angle.
 right :: Angle -> ()
 right : (Angle degrees) -> runtime-message "right" degrees
 
+instance (Highlight right (Highlight-Category "turn" ; Highlight-Icon "rotate-right")) : ...
+
 -- Set the pen color.
 color :: Color -> ()
 color : (Color color) -> runtime-message "color" color
+
+instance (Highlight color (Highlight-Category "pen" ; Highlight-Icon "edit")) : ...
 
 -- Draw a path and fill it with the specified color.
 fill :: Result => Color {Result} -> Result
@@ -51,6 +63,8 @@ fill : (Color color) body -> do {
     runtime-message "end-path" color
     result
 }
+
+instance (Highlight fill (Highlight-Category "pen" ; Highlight-Icon "colors")) : ...
 
 -- The speed of the turtle, from `very-slow` to `very-fast`.
 Speed : type Number
@@ -78,3 +92,5 @@ very-fast : Speed 1
 -- Set the speed of the turtle.
 speed :: Speed -> ()
 speed : (Speed value) -> runtime-message "speed" value
+
+instance (Highlight speed (Highlight-Category "control-flow" ; Highlight-Icon "speed")) : ...
