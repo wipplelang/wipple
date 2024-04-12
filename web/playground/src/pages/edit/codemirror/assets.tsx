@@ -85,7 +85,7 @@ const getDecorations = (
                         nonatomicDecorations.push(
                             Decoration.mark({
                                 class: `${className} ${
-                                    highlight.icon ? "rounded-r-[4px]" : "rounded-[4px]"
+                                    highlight.icon ? "pr-1 rounded-r-[4px]" : "px-1 rounded-[4px]"
                                 }`,
                             }).range(from, to),
                         );
@@ -99,7 +99,7 @@ const getDecorations = (
                                         className,
                                         config.theme.fontSize,
                                     ),
-                                    side: 1,
+                                    side: -1,
                                 }).range(from),
                             );
                         }
@@ -183,10 +183,10 @@ const HighlightIconWidgetComponent = (props: {
     className: string;
 }) => (
     <span
-        className={`inline-block relative w-[1rem] align-text-bottom rounded-l-[4px] ${props.className}`}
+        className={`inline-block relative w-[calc(1rem+4px)] align-text-bottom rounded-l-[4px] ${props.className}`}
         style={{ height: `${props.fontSize}pt` }}
     >
-        <div className="flex items-center justify-center absolute inset-0">
+        <div className="flex items-center justify-center absolute inset-0 left-[2px]">
             <MaterialSymbol icon={props.icon.replace("-", "_") as any} />
         </div>
     </span>

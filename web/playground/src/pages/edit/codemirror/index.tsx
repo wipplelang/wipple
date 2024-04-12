@@ -11,7 +11,7 @@ import { displayHelp, displayHelpFromEnabled } from "./help";
 import { Help } from "../../../models";
 import { diagnostics, diagnosticsFromConfig } from "./diagnostics";
 import { AssetClickHandler, assets, assetsFromConfig } from "./assets";
-import { Render, RenderedDiagnostic, RenderedHighlight } from "wipple-render";
+import { RenderedDiagnostic, RenderedHighlight } from "wipple-render";
 
 export interface CodeMirrorProps {
     children: string;
