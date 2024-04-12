@@ -29,6 +29,8 @@ tempo : tempo -> do {
     set-tempo tempo
 }
 
+instance (Highlight tempo (Highlight-Category "control-flow" ; Highlight-Icon "speed")) : ...
+
 -- A note length.
 Note-Length : type {
     ms-from-tempo :: Number -> Number
@@ -50,6 +52,8 @@ instance (Describe-Type Note "a note") : ...
 -- Play a note on an instrument.
 note :: Note Note-Length -> ()
 note : note length -> chord (note ,) length
+
+instance (Highlight note (Highlight-Category "music-play" ; Highlight-Icon "music-note")) : ...
 
 -- Play multiple notes on an instrument at the same time.
 chord :: (List Note) Note-Length -> ()
@@ -76,9 +80,13 @@ chord : notes { ms-from-tempo : ms-from-tempo } -> do {
     set-delta delta
 }
 
+instance (Highlight chord (Highlight-Category "music-play" ; Highlight-Icon "music-note")) : ...
+
 -- Rest for a period of time.
 rest :: Note-Length -> ()
 rest : length -> chord (,) length
+
+instance (Highlight rest (Highlight-Category "music-play" ; Highlight-Icon "music-off")) : ...
 
 Instrument : type {
   name :: Text
@@ -116,514 +124,772 @@ play-instrument : name -> body -> do {
 accordion :: (Body : ()) => {Body} -> ()
 accordion : play-instrument "accordion"
 
+instance (Highlight accordion (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the acoustic bass.
 acoustic-bass :: (Body : ()) => {Body} -> ()
 acoustic-bass : play-instrument "acoustic_bass"
+
+instance (Highlight acoustic-bass (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the acoustic grand piano.
 acoustic-grand-piano :: (Body : ()) => {Body} -> ()
 acoustic-grand-piano : play-instrument "acoustic_grand_piano"
 
+instance (Highlight acoustic-grand-piano (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the acoustic guitar nylon.
 acoustic-guitar-nylon :: (Body : ()) => {Body} -> ()
 acoustic-guitar-nylon : play-instrument "acoustic_guitar_nylon"
+
+instance (Highlight acoustic-guitar-nylon (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the acoustic guitar steel.
 acoustic-guitar-steel :: (Body : ()) => {Body} -> ()
 acoustic-guitar-steel : play-instrument "acoustic_guitar_steel"
 
+instance (Highlight acoustic-guitar-steel (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the agogo.
 agogo :: (Body : ()) => {Body} -> ()
 agogo : play-instrument "agogo"
+
+instance (Highlight agogo (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the alto sax.
 alto-sax :: (Body : ()) => {Body} -> ()
 alto-sax : play-instrument "alto_sax"
 
+instance (Highlight alto-sax (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the applause.
 applause :: (Body : ()) => {Body} -> ()
 applause : play-instrument "applause"
+
+instance (Highlight applause (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the bagpipe.
 bagpipe :: (Body : ()) => {Body} -> ()
 bagpipe : play-instrument "bagpipe"
 
+instance (Highlight bagpipe (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the banjo.
 banjo :: (Body : ()) => {Body} -> ()
 banjo : play-instrument "banjo"
+
+instance (Highlight banjo (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the baritone sax.
 baritone-sax :: (Body : ()) => {Body} -> ()
 baritone-sax : play-instrument "baritone_sax"
 
+instance (Highlight baritone-sax (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the bassoon.
 bassoon :: (Body : ()) => {Body} -> ()
 bassoon : play-instrument "bassoon"
+
+instance (Highlight bassoon (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the bird tweet.
 bird-tweet :: (Body : ()) => {Body} -> ()
 bird-tweet : play-instrument "bird_tweet"
 
+instance (Highlight bird-tweet (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the blown bottle.
 blown-bottle :: (Body : ()) => {Body} -> ()
 blown-bottle : play-instrument "blown_bottle"
+
+instance (Highlight blown-bottle (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the brass section.
 brass-section :: (Body : ()) => {Body} -> ()
 brass-section : play-instrument "brass_section"
 
+instance (Highlight brass-section (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the breath noise.
 breath-noise :: (Body : ()) => {Body} -> ()
 breath-noise : play-instrument "breath_noise"
+
+instance (Highlight breath-noise (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the bright acoustic piano.
 bright-acoustic-piano :: (Body : ()) => {Body} -> ()
 bright-acoustic-piano : play-instrument "bright_acoustic_piano"
 
+instance (Highlight bright-acoustic-piano (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the celesta.
 celesta :: (Body : ()) => {Body} -> ()
 celesta : play-instrument "celesta"
+
+instance (Highlight celesta (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the cello.
 cello :: (Body : ()) => {Body} -> ()
 cello : play-instrument "cello"
 
+instance (Highlight cello (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the choir aahs.
 choir-aahs :: (Body : ()) => {Body} -> ()
 choir-aahs : play-instrument "choir_aahs"
+
+instance (Highlight choir-aahs (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the church organ.
 church-organ :: (Body : ()) => {Body} -> ()
 church-organ : play-instrument "church_organ"
 
+instance (Highlight church-organ (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the clarinet.
 clarinet :: (Body : ()) => {Body} -> ()
 clarinet : play-instrument "clarinet"
+
+instance (Highlight clarinet (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the clavinet.
 clavinet :: (Body : ()) => {Body} -> ()
 clavinet : play-instrument "clavinet"
 
+instance (Highlight clavinet (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the contrabass.
 contrabass :: (Body : ()) => {Body} -> ()
 contrabass : play-instrument "contrabass"
+
+instance (Highlight contrabass (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the distortion guitar.
 distortion-guitar :: (Body : ()) => {Body} -> ()
 distortion-guitar : play-instrument "distortion_guitar"
 
+instance (Highlight distortion-guitar (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the drawbar organ.
 drawbar-organ :: (Body : ()) => {Body} -> ()
 drawbar-organ : play-instrument "drawbar_organ"
+
+instance (Highlight drawbar-organ (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the dulcimer.
 dulcimer :: (Body : ()) => {Body} -> ()
 dulcimer : play-instrument "dulcimer"
 
+instance (Highlight dulcimer (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the electric bass finger.
 electric-bass-finger :: (Body : ()) => {Body} -> ()
 electric-bass-finger : play-instrument "electric_bass_finger"
+
+instance (Highlight electric-bass-finger (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the electric bass pick.
 electric-bass-pick :: (Body : ()) => {Body} -> ()
 electric-bass-pick : play-instrument "electric_bass_pick"
 
+instance (Highlight electric-bass-pick (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the electric grand piano.
 electric-grand-piano :: (Body : ()) => {Body} -> ()
 electric-grand-piano : play-instrument "electric_grand_piano"
+
+instance (Highlight electric-grand-piano (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the electric guitar clean.
 electric-guitar-clean :: (Body : ()) => {Body} -> ()
 electric-guitar-clean : play-instrument "electric_guitar_clean"
 
+instance (Highlight electric-guitar-clean (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the electric guitar jazz.
 electric-guitar-jazz :: (Body : ()) => {Body} -> ()
 electric-guitar-jazz : play-instrument "electric_guitar_jazz"
+
+instance (Highlight electric-guitar-jazz (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the electric guitar muted.
 electric-guitar-muted :: (Body : ()) => {Body} -> ()
 electric-guitar-muted : play-instrument "electric_guitar_muted"
 
+instance (Highlight electric-guitar-muted (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the electric piano 1.
 electric-piano-1 :: (Body : ()) => {Body} -> ()
 electric-piano-1 : play-instrument "electric_piano_1"
+
+instance (Highlight electric-piano-1 (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the electric piano 2.
 electric-piano-2 :: (Body : ()) => {Body} -> ()
 electric-piano-2 : play-instrument "electric_piano_2"
 
+instance (Highlight electric-piano-2 (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the english horn.
 english-horn :: (Body : ()) => {Body} -> ()
 english-horn : play-instrument "english_horn"
+
+instance (Highlight english-horn (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the fiddle.
 fiddle :: (Body : ()) => {Body} -> ()
 fiddle : play-instrument "fiddle"
 
+instance (Highlight fiddle (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the flute.
 flute :: (Body : ()) => {Body} -> ()
 flute : play-instrument "flute"
+
+instance (Highlight flute (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the french horn.
 french-horn :: (Body : ()) => {Body} -> ()
 french-horn : play-instrument "french_horn"
 
+instance (Highlight french-horn (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the fretless bass.
 fretless-bass :: (Body : ()) => {Body} -> ()
 fretless-bass : play-instrument "fretless_bass"
+
+instance (Highlight fretless-bass (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the fx 1 rain.
 fx-1-rain :: (Body : ()) => {Body} -> ()
 fx-1-rain : play-instrument "fx_1_rain"
 
+instance (Highlight fx-1-rain (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the fx 2 soundtrack.
 fx-2-soundtrack :: (Body : ()) => {Body} -> ()
 fx-2-soundtrack : play-instrument "fx_2_soundtrack"
+
+instance (Highlight fx-2-soundtrack (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the fx 3 crystal.
 fx-3-crystal :: (Body : ()) => {Body} -> ()
 fx-3-crystal : play-instrument "fx_3_crystal"
 
+instance (Highlight fx-3-crystal (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the fx 4 atmosphere.
 fx-4-atmosphere :: (Body : ()) => {Body} -> ()
 fx-4-atmosphere : play-instrument "fx_4_atmosphere"
+
+instance (Highlight fx-4-atmosphere (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the fx 5 brightness.
 fx-5-brightness :: (Body : ()) => {Body} -> ()
 fx-5-brightness : play-instrument "fx_5_brightness"
 
+instance (Highlight fx-5-brightness (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the fx 6 goblins.
 fx-6-goblins :: (Body : ()) => {Body} -> ()
 fx-6-goblins : play-instrument "fx_6_goblins"
+
+instance (Highlight fx-6-goblins (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the fx 7 echoes.
 fx-7-echoes :: (Body : ()) => {Body} -> ()
 fx-7-echoes : play-instrument "fx_7_echoes"
 
+instance (Highlight fx-7-echoes (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the fx 8 scifi.
 fx-8-scifi :: (Body : ()) => {Body} -> ()
 fx-8-scifi : play-instrument "fx_8_scifi"
+
+instance (Highlight fx-8-scifi (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the glockenspiel.
 glockenspiel :: (Body : ()) => {Body} -> ()
 glockenspiel : play-instrument "glockenspiel"
 
+instance (Highlight glockenspiel (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the guitar fret noise.
 guitar-fret-noise :: (Body : ()) => {Body} -> ()
 guitar-fret-noise : play-instrument "guitar_fret_noise"
+
+instance (Highlight guitar-fret-noise (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the guitar harmonics.
 guitar-harmonics :: (Body : ()) => {Body} -> ()
 guitar-harmonics : play-instrument "guitar_harmonics"
 
+instance (Highlight guitar-harmonics (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the gunshot.
 gunshot :: (Body : ()) => {Body} -> ()
 gunshot : play-instrument "gunshot"
+
+instance (Highlight gunshot (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the harmonica.
 harmonica :: (Body : ()) => {Body} -> ()
 harmonica : play-instrument "harmonica"
 
+instance (Highlight harmonica (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the harpsichord.
 harpsichord :: (Body : ()) => {Body} -> ()
 harpsichord : play-instrument "harpsichord"
+
+instance (Highlight harpsichord (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the helicopter.
 helicopter :: (Body : ()) => {Body} -> ()
 helicopter : play-instrument "helicopter"
 
+instance (Highlight helicopter (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the honkytonk piano.
 honkytonk-piano :: (Body : ()) => {Body} -> ()
 honkytonk-piano : play-instrument "honkytonk_piano"
+
+instance (Highlight honkytonk-piano (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the kalimba.
 kalimba :: (Body : ()) => {Body} -> ()
 kalimba : play-instrument "kalimba"
 
+instance (Highlight kalimba (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the koto.
 koto :: (Body : ()) => {Body} -> ()
 koto : play-instrument "koto"
+
+instance (Highlight koto (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the lead 1 square.
 lead-1-square :: (Body : ()) => {Body} -> ()
 lead-1-square : play-instrument "lead_1_square"
 
+instance (Highlight lead-1-square (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the lead 2 sawtooth.
 lead-2-sawtooth :: (Body : ()) => {Body} -> ()
 lead-2-sawtooth : play-instrument "lead_2_sawtooth"
+
+instance (Highlight lead-2-sawtooth (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the lead 3 calliope.
 lead-3-calliope :: (Body : ()) => {Body} -> ()
 lead-3-calliope : play-instrument "lead_3_calliope"
 
+instance (Highlight lead-3-calliope (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the lead 4 chiff.
 lead-4-chiff :: (Body : ()) => {Body} -> ()
 lead-4-chiff : play-instrument "lead_4_chiff"
+
+instance (Highlight lead-4-chiff (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the lead 5 charang.
 lead-5-charang :: (Body : ()) => {Body} -> ()
 lead-5-charang : play-instrument "lead_5_charang"
 
+instance (Highlight lead-5-charang (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the lead 6 voice.
 lead-6-voice :: (Body : ()) => {Body} -> ()
 lead-6-voice : play-instrument "lead_6_voice"
+
+instance (Highlight lead-6-voice (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the lead 7 fifths.
 lead-7-fifths :: (Body : ()) => {Body} -> ()
 lead-7-fifths : play-instrument "lead_7_fifths"
 
+instance (Highlight lead-7-fifths (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the lead 8 bass lead.
 lead-8-bass-lead :: (Body : ()) => {Body} -> ()
 lead-8-bass-lead : play-instrument "lead_8_bass__lead"
+
+instance (Highlight lead-8-bass-lead (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the marimba.
 marimba :: (Body : ()) => {Body} -> ()
 marimba : play-instrument "marimba"
 
+instance (Highlight marimba (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the melodic tom.
 melodic-tom :: (Body : ()) => {Body} -> ()
 melodic-tom : play-instrument "melodic_tom"
+
+instance (Highlight melodic-tom (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the music box.
 music-box :: (Body : ()) => {Body} -> ()
 music-box : play-instrument "music_box"
 
+instance (Highlight music-box (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the muted trumpet.
 muted-trumpet :: (Body : ()) => {Body} -> ()
 muted-trumpet : play-instrument "muted_trumpet"
+
+instance (Highlight muted-trumpet (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the oboe.
 oboe :: (Body : ()) => {Body} -> ()
 oboe : play-instrument "oboe"
 
+instance (Highlight oboe (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the ocarina.
 ocarina :: (Body : ()) => {Body} -> ()
 ocarina : play-instrument "ocarina"
+
+instance (Highlight ocarina (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the orchestra hit.
 orchestra-hit :: (Body : ()) => {Body} -> ()
 orchestra-hit : play-instrument "orchestra_hit"
 
+instance (Highlight orchestra-hit (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the orchestral harp.
 orchestral-harp :: (Body : ()) => {Body} -> ()
 orchestral-harp : play-instrument "orchestral_harp"
+
+instance (Highlight orchestral-harp (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the overdriven guitar.
 overdriven-guitar :: (Body : ()) => {Body} -> ()
 overdriven-guitar : play-instrument "overdriven_guitar"
 
+instance (Highlight overdriven-guitar (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the pad 1 new age.
 pad-1-new-age :: (Body : ()) => {Body} -> ()
 pad-1-new-age : play-instrument "pad_1_new_age"
+
+instance (Highlight pad-1-new-age (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the pad 2 warm.
 pad-2-warm :: (Body : ()) => {Body} -> ()
 pad-2-warm : play-instrument "pad_2_warm"
 
+instance (Highlight pad-2-warm (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the pad 3 polysynth.
 pad-3-polysynth :: (Body : ()) => {Body} -> ()
 pad-3-polysynth : play-instrument "pad_3_polysynth"
+
+instance (Highlight pad-3-polysynth (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the pad 4 choir.
 pad-4-choir :: (Body : ()) => {Body} -> ()
 pad-4-choir : play-instrument "pad_4_choir"
 
+instance (Highlight pad-4-choir (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the pad 5 bowed.
 pad-5-bowed :: (Body : ()) => {Body} -> ()
 pad-5-bowed : play-instrument "pad_5_bowed"
+
+instance (Highlight pad-5-bowed (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the pad 6 metallic.
 pad-6-metallic :: (Body : ()) => {Body} -> ()
 pad-6-metallic : play-instrument "pad_6_metallic"
 
+instance (Highlight pad-6-metallic (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the pad 7 halo.
 pad-7-halo :: (Body : ()) => {Body} -> ()
 pad-7-halo : play-instrument "pad_7_halo"
+
+instance (Highlight pad-7-halo (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the pad 8 sweep.
 pad-8-sweep :: (Body : ()) => {Body} -> ()
 pad-8-sweep : play-instrument "pad_8_sweep"
 
+instance (Highlight pad-8-sweep (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the pan flute.
 pan-flute :: (Body : ()) => {Body} -> ()
 pan-flute : play-instrument "pan_flute"
+
+instance (Highlight pan-flute (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the percussive organ.
 percussive-organ :: (Body : ()) => {Body} -> ()
 percussive-organ : play-instrument "percussive_organ"
 
+instance (Highlight percussive-organ (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the percussion.
 percussion :: (Body : ()) => {Body} -> ()
 percussion : play-instrument "percussion"
+
+instance (Highlight percussion (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the piccolo.
 piccolo :: (Body : ()) => {Body} -> ()
 piccolo : play-instrument "piccolo"
 
+instance (Highlight piccolo (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the pizzicato strings.
 pizzicato-strings :: (Body : ()) => {Body} -> ()
 pizzicato-strings : play-instrument "pizzicato_strings"
+
+instance (Highlight pizzicato-strings (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the recorder.
 recorder :: (Body : ()) => {Body} -> ()
 recorder : play-instrument "recorder"
 
+instance (Highlight recorder (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the reed organ.
 reed-organ :: (Body : ()) => {Body} -> ()
 reed-organ : play-instrument "reed_organ"
+
+instance (Highlight reed-organ (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the reverse cymbal.
 reverse-cymbal :: (Body : ()) => {Body} -> ()
 reverse-cymbal : play-instrument "reverse_cymbal"
 
+instance (Highlight reverse-cymbal (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the rock organ.
 rock-organ :: (Body : ()) => {Body} -> ()
 rock-organ : play-instrument "rock_organ"
+
+instance (Highlight rock-organ (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the seashore.
 seashore :: (Body : ()) => {Body} -> ()
 seashore : play-instrument "seashore"
 
+instance (Highlight seashore (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the shakuhachi.
 shakuhachi :: (Body : ()) => {Body} -> ()
 shakuhachi : play-instrument "shakuhachi"
+
+instance (Highlight shakuhachi (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the shamisen.
 shamisen :: (Body : ()) => {Body} -> ()
 shamisen : play-instrument "shamisen"
 
+instance (Highlight shamisen (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the shanai.
 shanai :: (Body : ()) => {Body} -> ()
 shanai : play-instrument "shanai"
+
+instance (Highlight shanai (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the sitar.
 sitar :: (Body : ()) => {Body} -> ()
 sitar : play-instrument "sitar"
 
+instance (Highlight sitar (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the slap bass 1.
 slap-bass-1 :: (Body : ()) => {Body} -> ()
 slap-bass-1 : play-instrument "slap_bass_1"
+
+instance (Highlight slap-bass-1 (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the slap bass 2.
 slap-bass-2 :: (Body : ()) => {Body} -> ()
 slap-bass-2 : play-instrument "slap_bass_2"
 
+instance (Highlight slap-bass-2 (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the soprano sax.
 soprano-sax :: (Body : ()) => {Body} -> ()
 soprano-sax : play-instrument "soprano_sax"
+
+instance (Highlight soprano-sax (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the steel drums.
 steel-drums :: (Body : ()) => {Body} -> ()
 steel-drums : play-instrument "steel_drums"
 
+instance (Highlight steel-drums (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the string ensemble 1.
 string-ensemble-1 :: (Body : ()) => {Body} -> ()
 string-ensemble-1 : play-instrument "string_ensemble_1"
+
+instance (Highlight string-ensemble-1 (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the string ensemble 2.
 string-ensemble-2 :: (Body : ()) => {Body} -> ()
 string-ensemble-2 : play-instrument "string_ensemble_2"
 
+instance (Highlight string-ensemble-2 (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the synth bass 1.
 synth-bass-1 :: (Body : ()) => {Body} -> ()
 synth-bass-1 : play-instrument "synth_bass_1"
+
+instance (Highlight synth-bass-1 (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the synth bass 2.
 synth-bass-2 :: (Body : ()) => {Body} -> ()
 synth-bass-2 : play-instrument "synth_bass_2"
 
+instance (Highlight synth-bass-2 (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the synth brass 1.
 synth-brass-1 :: (Body : ()) => {Body} -> ()
 synth-brass-1 : play-instrument "synth_brass_1"
+
+instance (Highlight synth-brass-1 (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the synth brass 2.
 synth-brass-2 :: (Body : ()) => {Body} -> ()
 synth-brass-2 : play-instrument "synth_brass_2"
 
+instance (Highlight synth-brass-2 (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the synth choir.
 synth-choir :: (Body : ()) => {Body} -> ()
 synth-choir : play-instrument "synth_choir"
+
+instance (Highlight synth-choir (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the synth drum.
 synth-drum :: (Body : ()) => {Body} -> ()
 synth-drum : play-instrument "synth_drum"
 
+instance (Highlight synth-drum (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the synth strings 1.
 synth-strings-1 :: (Body : ()) => {Body} -> ()
 synth-strings-1 : play-instrument "synth_strings_1"
+
+instance (Highlight synth-strings-1 (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the synth strings 2.
 synth-strings-2 :: (Body : ()) => {Body} -> ()
 synth-strings-2 : play-instrument "synth_strings_2"
 
+instance (Highlight synth-strings-2 (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the taiko drum.
 taiko-drum :: (Body : ()) => {Body} -> ()
 taiko-drum : play-instrument "taiko_drum"
+
+instance (Highlight taiko-drum (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the tango accordion.
 tango-accordion :: (Body : ()) => {Body} -> ()
 tango-accordion : play-instrument "tango_accordion"
 
+instance (Highlight tango-accordion (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the telephone ring.
 telephone-ring :: (Body : ()) => {Body} -> ()
 telephone-ring : play-instrument "telephone_ring"
+
+instance (Highlight telephone-ring (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the tenor sax.
 tenor-sax :: (Body : ()) => {Body} -> ()
 tenor-sax : play-instrument "tenor_sax"
 
+instance (Highlight tenor-sax (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the timpani.
 timpani :: (Body : ()) => {Body} -> ()
 timpani : play-instrument "timpani"
+
+instance (Highlight timpani (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the tinkle bell.
 tinkle-bell :: (Body : ()) => {Body} -> ()
 tinkle-bell : play-instrument "tinkle_bell"
 
+instance (Highlight tinkle-bell (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the tremolo strings.
 tremolo-strings :: (Body : ()) => {Body} -> ()
 tremolo-strings : play-instrument "tremolo_strings"
+
+instance (Highlight tremolo-strings (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the trombone.
 trombone :: (Body : ()) => {Body} -> ()
 trombone : play-instrument "trombone"
 
+instance (Highlight trombone (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the trumpet.
 trumpet :: (Body : ()) => {Body} -> ()
 trumpet : play-instrument "trumpet"
+
+instance (Highlight trumpet (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the tuba.
 tuba :: (Body : ()) => {Body} -> ()
 tuba : play-instrument "tuba"
 
+instance (Highlight tuba (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the tubular bells.
 tubular-bells :: (Body : ()) => {Body} -> ()
 tubular-bells : play-instrument "tubular_bells"
+
+instance (Highlight tubular-bells (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the vibraphone.
 vibraphone :: (Body : ()) => {Body} -> ()
 vibraphone : play-instrument "vibraphone"
 
+instance (Highlight vibraphone (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the viola.
 viola :: (Body : ()) => {Body} -> ()
 viola : play-instrument "viola"
+
+instance (Highlight viola (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the violin.
 violin :: (Body : ()) => {Body} -> ()
 violin : play-instrument "violin"
 
+instance (Highlight violin (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the voice oohs.
 voice-oohs :: (Body : ()) => {Body} -> ()
 voice-oohs : play-instrument "voice_oohs"
+
+instance (Highlight voice-oohs (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
 
 -- Play music on the whistle.
 whistle :: (Body : ()) => {Body} -> ()
 whistle : play-instrument "whistle"
 
+instance (Highlight whistle (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the woodblock.
 woodblock :: (Body : ()) => {Body} -> ()
 woodblock : play-instrument "woodblock"
 
+instance (Highlight woodblock (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
+
 -- Play music on the xylophone.
 xylophone :: (Body : ()) => {Body} -> ()
 xylophone : play-instrument "xylophone"
+
+instance (Highlight xylophone (Highlight-Category "music-instrument" ; Highlight-Icon "piano")) : ...
