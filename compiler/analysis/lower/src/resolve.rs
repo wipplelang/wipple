@@ -1424,27 +1424,37 @@ fn resolve_type<D: Driver>(
             };
 
             match resolve_name(name, info, |candidates| {
-                candidates
-                    .iter()
-                    .filter_map(|path| match path.item.last().unwrap() {
-                        crate::PathComponent::Type(_) | crate::PathComponent::TypeParameter(_) => {
-                            Some(path.clone())
-                        }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>()
+                let mut candidates = candidates.to_vec();
+                candidates.sort_by_key(|path| match path.item.last().unwrap() {
+                    crate::PathComponent::Type(_) | crate::PathComponent::TypeParameter(_) => 0,
+                    crate::PathComponent::Constant(_) => 1,
+                    _ => 2,
+                });
+
+                match candidates.into_iter().next() {
+                    Some(candidate) => vec![candidate],
+                    None => Vec::new(),
+                }
             }) {
-                Some(path) => match path.item.last().unwrap() {
-                    crate::PathComponent::Type(_) => crate::Type::Declared {
-                        path,
-                        parameters: parameters
-                            .into_iter()
-                            .map(|parameter| resolve_type(parameter, info))
-                            .collect(),
-                    },
-                    crate::PathComponent::TypeParameter(_) => crate::Type::Parameter(path.item), // FIXME: disallow parameters passed to type parameters
-                    _ => unreachable!(),
-                },
+                Some(path) => {
+                    match path.item.last().unwrap() {
+                        crate::PathComponent::Type(_) => crate::Type::Declared {
+                            path,
+                            parameters: parameters
+                                .into_iter()
+                                .map(|parameter| resolve_type(parameter, info))
+                                .collect(),
+                        },
+                        crate::PathComponent::TypeParameter(_) => {
+                            // FIXME: disallow parameters passed to type parameters
+                            crate::Type::Parameter(path.item)
+                        }
+                        crate::PathComponent::Constant(_) => {
+                            crate::Type::Constant(path.item.clone())
+                        }
+                        _ => crate::Type::Error,
+                    }
+                }
                 None => crate::Type::Error,
             }
         }

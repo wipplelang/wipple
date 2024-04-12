@@ -472,7 +472,7 @@ pub fn substitute_defaults_in_parameters<D: Driver>(
                 substitute_defaults_in_parameters(driver, segment.r#type.as_mut());
             }
         }
-        crate::Type::Unknown | crate::Type::Intrinsic => {}
+        crate::Type::Unknown | crate::Type::Intrinsic | crate::Type::Constant(_) => {}
     }
 }
 
@@ -483,13 +483,15 @@ pub fn parameters_in<D: Driver>(r#type: WithInfo<D::Info, &crate::Type<D>>) -> V
     parameters
 }
 
-pub fn type_description<D: Driver>(
+pub fn resolve_attribute_like_trait<D: Driver>(
     driver: &D,
+    language_item: &str,
     r#type: WithInfo<D::Info, &crate::Type<D>>,
-) -> Option<crate::CustomMessage<D>> {
+    number_of_parameters: u32,
+) -> Option<Vec<WithInfo<D::Info, crate::Type<D>>>> {
     let r#type = infer_type(r#type, None, None);
 
-    if let Some(describe_type_trait_path) = driver.path_for_language_trait("describe-type") {
+    if let Some(describe_type_trait_path) = driver.path_for_language_trait(language_item) {
         let type_context = TypeContext::default();
 
         let temp_error_queue: RefCell<Vec<_>> = Default::default();
@@ -504,17 +506,23 @@ pub fn type_description<D: Driver>(
             bound_instances: Default::default(),
         };
 
-        let description_type = Type::new(
-            TypeKind::Variable(type_context.variable()),
-            r#type.info.clone(),
-            Vec::new(),
-        );
+        let parameter_types = std::iter::repeat_with(|| {
+            Type::new(
+                TypeKind::Variable(type_context.variable()),
+                r#type.info.clone(),
+                Vec::new(),
+            )
+        })
+        .take(number_of_parameters as usize)
+        .collect::<Vec<_>>();
 
         let query = WithInfo {
             info: r#type.info.clone(),
             item: Instance {
                 r#trait: describe_type_trait_path,
-                parameters: vec![r#type, description_type.clone()],
+                parameters: std::iter::once(r#type)
+                    .chain(parameter_types.clone())
+                    .collect(),
             },
         };
 
@@ -530,11 +538,12 @@ pub fn type_description<D: Driver>(
                 subexpression_types: None,
             };
 
-            let description_type = finalize_type(description_type, false, &finalize_context);
+            let parameter_types = parameter_types
+                .into_iter()
+                .map(|r#type| finalize_type(r#type, false, &finalize_context))
+                .collect();
 
-            if let crate::Type::Message { segments, trailing } = description_type.item {
-                return Some(crate::CustomMessage { segments, trailing });
-            }
+            return Some(parameter_types);
         }
     }
 
@@ -776,7 +785,8 @@ impl<D: Driver> Type<D> {
             TypeKind::Opaque(_)
             | TypeKind::Parameter(_)
             | TypeKind::Unknown
-            | TypeKind::Intrinsic => false,
+            | TypeKind::Intrinsic
+            | TypeKind::Constant(_) => false,
         }
     }
 
@@ -834,7 +844,7 @@ impl<D: Driver> Type<D> {
                     segment.value.apply_in_context_mut(context);
                 }
             }
-            TypeKind::Unknown | TypeKind::Intrinsic => {}
+            TypeKind::Unknown | TypeKind::Intrinsic | TypeKind::Constant(_) => {}
         }
     }
 
@@ -879,7 +889,8 @@ impl<D: Driver> Type<D> {
             | TypeKind::Opaque(_)
             | TypeKind::Parameter(_)
             | TypeKind::Unknown
-            | TypeKind::Intrinsic => {}
+            | TypeKind::Intrinsic
+            | TypeKind::Constant(_) => {}
         }
     }
 
@@ -919,7 +930,8 @@ impl<D: Driver> Type<D> {
             TypeKind::Variable(_)
             | TypeKind::Opaque(_)
             | TypeKind::Unknown
-            | TypeKind::Intrinsic => {}
+            | TypeKind::Intrinsic
+            | TypeKind::Constant(_) => {}
         }
     }
 }
@@ -945,6 +957,7 @@ enum TypeKind<D: Driver> {
         segments: Vec<FormatSegment<Type<D>>>,
         trailing: String,
     },
+    Constant(D::Path),
     Unknown,
 }
 
@@ -1151,7 +1164,7 @@ impl<D: Driver> Type<D> {
                     segment.value.instantiate_mut(driver, instantiation_context);
                 }
             }
-            TypeKind::Unknown | TypeKind::Intrinsic => {}
+            TypeKind::Unknown | TypeKind::Intrinsic | TypeKind::Constant(_) => {}
         }
     }
 
@@ -1196,7 +1209,7 @@ impl<D: Driver> Type<D> {
                     segment.value.instantiate_opaque_in_context_mut(context);
                 }
             }
-            TypeKind::Unknown | TypeKind::Intrinsic => {}
+            TypeKind::Unknown | TypeKind::Intrinsic | TypeKind::Constant(_) => {}
         }
     }
 }
@@ -1409,6 +1422,11 @@ fn unify_with_options<D: Driver>(
             // supposed to be wrapped in another type)
             (TypeKind::Intrinsic, TypeKind::Intrinsic) => true,
 
+            // Constant references unify if the paths are equal
+            (TypeKind::Constant(path), TypeKind::Constant(expected_path)) => {
+                driver.paths_are_equal(path, expected_path)
+            }
+
             // Unknown types unify with everything
             (TypeKind::Unknown, _) | (_, TypeKind::Unknown) => true,
 
@@ -1573,9 +1591,11 @@ fn substitute_defaults<D: Driver>(
 
             false
         }
-        TypeKind::Opaque(_) | TypeKind::Parameter(_) | TypeKind::Unknown | TypeKind::Intrinsic => {
-            false
-        }
+        TypeKind::Opaque(_)
+        | TypeKind::Parameter(_)
+        | TypeKind::Unknown
+        | TypeKind::Intrinsic
+        | TypeKind::Constant(_) => false,
     }
 }
 
@@ -1749,6 +1769,7 @@ fn infer_type<D: Driver>(
                     .collect(),
                 trailing: trailing.clone(),
             },
+            crate::Type::Constant(path) => TypeKind::Constant(path.clone()),
         },
         r#type.info,
         Vec::from_iter(role.into()),
@@ -2835,7 +2856,7 @@ fn resolve_pattern<D: Driver>(
 }
 
 fn instantiated_language_type<D: Driver>(
-    language_item: &'static str,
+    language_item: &str,
     info: &D::Info,
     driver: &D,
     type_context: &TypeContext<D>,
@@ -2855,7 +2876,7 @@ fn instantiated_language_type<D: Driver>(
 }
 
 fn try_instantiated_language_type<D: Driver>(
-    language_item: &'static str,
+    language_item: &str,
     info: &D::Info,
     driver: &D,
     type_context: &TypeContext<D>,
@@ -2885,7 +2906,7 @@ fn try_instantiated_language_type<D: Driver>(
 }
 
 fn instantiated_language_trait<D: Driver>(
-    language_item: &'static str,
+    language_item: &str,
     info: &D::Info,
     context: InferContext<'_, D>,
 ) -> WithInfo<D::Info, Expression<D>> {
@@ -2915,7 +2936,7 @@ fn instantiated_language_trait<D: Driver>(
 }
 
 fn instantiated_language_constant<D: Driver>(
-    language_item: &'static str,
+    language_item: &str,
     info: &D::Info,
     context: InferContext<'_, D>,
 ) -> WithInfo<D::Info, Expression<D>> {
@@ -4111,6 +4132,7 @@ fn finalize_type<D: Driver>(
                         .collect(),
                     trailing,
                 },
+                TypeKind::Constant(path) => crate::Type::Constant(path),
             },
         }
     }
@@ -4437,6 +4459,7 @@ fn debug_type<D: Driver>(r#type: &Type<D>, context: &TypeContext<D>) -> String {
 
             message
         }
+        TypeKind::Constant(path) => format!("({})", debug_path(&path)),
     }
 }
 

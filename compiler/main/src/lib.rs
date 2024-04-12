@@ -87,9 +87,15 @@ pub fn list_type_parameters(type_: &str) -> String {
     serialize(&parameters)
 }
 
-/// Retrieve the description of a type as defined by the `Describe-Type` trait.
+/// Resolve an attribute-like trait, where the first parameter is the provided
+/// type and the remaining parameters are returned.
 #[wasm_bindgen]
-pub fn type_description(type_: &str, interface_: &str) -> String {
+pub fn resolve_attribute_like_trait(
+    name: &str,
+    type_: &str,
+    number_of_parameters: u32,
+    interface_: &str,
+) -> String {
     initialize();
 
     let r#type: util::WithInfo<Info, typecheck::Type<Driver>> = deserialize(type_);
@@ -98,8 +104,14 @@ pub fn type_description(type_: &str, interface_: &str) -> String {
     let mut driver = Driver::new();
     driver.interface = interface;
 
-    let description = typecheck::type_description(&driver, r#type.as_ref());
-    serialize(&description)
+    let parameters = typecheck::resolve_attribute_like_trait(
+        &driver,
+        name,
+        r#type.as_ref(),
+        number_of_parameters,
+    );
+
+    serialize(&parameters)
 }
 
 /// The driver.
@@ -654,7 +666,7 @@ impl wipple_typecheck::Driver for Driver {
         .into()
     }
 
-    fn path_for_language_type(&self, language_item: &'static str) -> Option<Self::Path> {
+    fn path_for_language_type(&self, language_item: &str) -> Option<Self::Path> {
         Some(
             self.interface
                 .language_declarations
@@ -663,7 +675,7 @@ impl wipple_typecheck::Driver for Driver {
         )
     }
 
-    fn path_for_language_trait(&self, language_item: &'static str) -> Option<Self::Path> {
+    fn path_for_language_trait(&self, language_item: &str) -> Option<Self::Path> {
         Some(
             self.interface
                 .language_declarations
@@ -672,7 +684,7 @@ impl wipple_typecheck::Driver for Driver {
         )
     }
 
-    fn path_for_language_constructor(&self, language_item: &'static str) -> Option<Self::Path> {
+    fn path_for_language_constructor(&self, language_item: &str) -> Option<Self::Path> {
         Some(
             self.interface
                 .language_declarations
@@ -681,7 +693,7 @@ impl wipple_typecheck::Driver for Driver {
         )
     }
 
-    fn path_for_language_constant(&self, language_item: &'static str) -> Option<Self::Path> {
+    fn path_for_language_constant(&self, language_item: &str) -> Option<Self::Path> {
         Some(
             self.interface
                 .language_declarations

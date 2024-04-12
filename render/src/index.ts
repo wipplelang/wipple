@@ -247,7 +247,7 @@ export class Render {
                         { kind: "arrow" },
                     );
 
-                    const type = this.renderType(declaration.item.declaration.type, true, false);
+                    const type = this.renderType(declaration.item.declaration.type, false, false);
 
                     return `${declaration.item.name} :: ${typeFunction}${type}`;
                 } else {
@@ -353,9 +353,18 @@ export class Render {
         renderAsCode: boolean,
     ): string {
         if (isTopLevel && this.interface) {
-            const description = compiler.typeDescription(type, this.interface);
-            if (description) {
-                return this.renderTypeLevelText(description, false);
+            const result = compiler.resolveAttributeLikeTrait(
+                "describe-type",
+                type,
+                1,
+                this.interface,
+            );
+
+            if (result) {
+                const [description] = result;
+                if (description.item.type === "message") {
+                    return this.renderTypeLevelText(description.item.value, false);
+                }
             }
         }
 
@@ -426,6 +435,9 @@ export class Render {
                     message += type.item.value.trailing;
 
                     return message;
+                }
+                case "constant": {
+                    return this.nameForPath(type.item.value);
                 }
             }
         };

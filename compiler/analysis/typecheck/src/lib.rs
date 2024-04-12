@@ -25,16 +25,16 @@ pub trait Driver: Sized {
     fn top_level_info(&self) -> Self::Info;
 
     /// Retrieve the path of a type annotated with `[language]`.
-    fn path_for_language_type(&self, language_item: &'static str) -> Option<Self::Path>;
+    fn path_for_language_type(&self, language_item: &str) -> Option<Self::Path>;
 
     /// Retrieve the path of a trait annotated with `[language]`.
-    fn path_for_language_trait(&self, language_item: &'static str) -> Option<Self::Path>;
+    fn path_for_language_trait(&self, language_item: &str) -> Option<Self::Path>;
 
     /// Retrieve the path of a constructor annotated with `[language]`.
-    fn path_for_language_constructor(&self, language_item: &'static str) -> Option<Self::Path>;
+    fn path_for_language_constructor(&self, language_item: &str) -> Option<Self::Path>;
 
     /// Retrieve the path of a constant annotated with `[language]`.
-    fn path_for_language_constant(&self, language_item: &'static str) -> Option<Self::Path>;
+    fn path_for_language_constant(&self, language_item: &str) -> Option<Self::Path>;
 
     /// Check if two paths are equal.
     fn paths_are_equal(&self, left: &Self::Path, right: &Self::Path) -> bool;
@@ -89,19 +89,19 @@ impl Driver for wipple_util::TsAny {
         unimplemented!()
     }
 
-    fn path_for_language_type(&self, _language_item: &'static str) -> Option<Self::Path> {
+    fn path_for_language_type(&self, _language_item: &str) -> Option<Self::Path> {
         unimplemented!()
     }
 
-    fn path_for_language_trait(&self, _language_item: &'static str) -> Option<Self::Path> {
+    fn path_for_language_trait(&self, _language_item: &str) -> Option<Self::Path> {
         unimplemented!()
     }
 
-    fn path_for_language_constructor(&self, _language_item: &'static str) -> Option<Self::Path> {
+    fn path_for_language_constructor(&self, _language_item: &str) -> Option<Self::Path> {
         unimplemented!()
     }
 
-    fn path_for_language_constant(&self, _language_item: &'static str) -> Option<Self::Path> {
+    fn path_for_language_constant(&self, _language_item: &str) -> Option<Self::Path> {
         unimplemented!()
     }
 
@@ -233,12 +233,15 @@ pub fn parameters_in<D: Driver>(r#type: WithInfo<D::Info, &crate::Type<D>>) -> V
     resolve::parameters_in(r#type)
 }
 
-/// Retrieve the description of a type as defined by the `Describe-Type` trait.
-pub fn type_description<D: Driver>(
+/// Resolve an attribute-like trait, where the first parameter is the provided
+/// type and the remaining parameters are returned.
+pub fn resolve_attribute_like_trait<D: Driver>(
     driver: &D,
-    r#type: WithInfo<D::Info, &crate::Type<D>>,
-) -> Option<crate::CustomMessage<D>> {
-    resolve::type_description(driver, r#type)
+    language_item: &str,
+    r#type: WithInfo<D::Info, &Type<D>>,
+    number_of_parameters: u32,
+) -> Option<Vec<WithInfo<D::Info, Type<D>>>> {
+    resolve::resolve_attribute_like_trait(driver, language_item, r#type, number_of_parameters)
 }
 
 /// An error occurring during typechecking.
@@ -427,6 +430,9 @@ pub enum Type<D: Driver> {
         /// Any trailing text after the segments.
         trailing: String,
     },
+
+    /// A type-level reference to a constant.
+    Constant(D::Path),
 }
 
 /// A segment in a message type.

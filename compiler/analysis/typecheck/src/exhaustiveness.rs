@@ -175,7 +175,8 @@ fn convert_type<D: Driver>(
         crate::Type::Unknown
         | crate::Type::Block(_)
         | crate::Type::Function { .. }
-        | crate::Type::Message { .. } => None,
+        | crate::Type::Message { .. }
+        | crate::Type::Constant(_) => None,
     }
 }
 

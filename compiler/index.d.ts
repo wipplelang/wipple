@@ -13,9 +13,11 @@ export const listTypeParameters: (
     type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
 ) => compiler.lower_Path[];
 
-export const typeDescription: (
+export const resolveAttributeLikeTrait: (
+    name: string,
     type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
+    numberOfParameters: number,
     interface: compiler.Interface,
-) => compiler.typecheck_MessageType;
+) => compiler.WithInfo<compiler.Info, compiler.typecheck_Type>[] | null;
 
 export type * from "./generated/wipple-compiler.d.ts";
