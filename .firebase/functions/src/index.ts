@@ -23,9 +23,9 @@ export const listPlaygrounds = onCall<ListPlaygroundsRequest>(async (request) =>
                     admin.firestore.Filter.where(
                         "collaborators",
                         "array-contains",
-                        request.auth.uid
-                    )
-                )
+                        request.auth.uid,
+                    ),
+                ),
             );
             break;
         case "owned":
@@ -38,10 +38,14 @@ export const listPlaygrounds = onCall<ListPlaygroundsRequest>(async (request) =>
 
     const result = await query.select("owner", "name", "lastModified").get();
 
-    return {
-        playgrounds: result.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-        })),
-    };
+    const playgrounds = result.docs.map((doc): any => ({
+        id: doc.id,
+        ...doc.data(),
+    }));
+
+    playgrounds.sort(
+        (a, b) => new Date(b.lastModified).valueOf() - new Date(a.lastModified).valueOf(),
+    );
+
+    return { playgrounds };
 });

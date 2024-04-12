@@ -200,7 +200,7 @@ const PlaygroundCard = (props: {
             <p>{props.playground.name}</p>
 
             <div className="flex flex-row items-center gap-2.5 text-gray-500 dark:text-gray-400">
-                <p>{format(props.playground.lastModified, "MMMM d, yyyy")}</p>
+                <p>{format(props.playground.lastModified, "MMM d, h:mm a")}</p>
 
                 <button
                     onClick={(e) => {
