@@ -289,7 +289,21 @@ const PlaygroundPageItemEditor = (props: {
                         )
                     }
                     theme={theme}
-                    runtime={"setup" in props.item ? props.item.setup : undefined}
+                    runtime={
+                        "setup" in props.item
+                            ? {
+                                  name: props.item.setup,
+                                  settings: props.item.settings,
+                                  onChangeSettings: (settings) => {
+                                      props.onChange(
+                                          produce(props.item, (item) => {
+                                              (item as any).settings = settings;
+                                          }),
+                                      );
+                                  },
+                              }
+                            : undefined
+                    }
                 >
                     {props.item.code}
                 </CodeEditor>

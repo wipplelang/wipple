@@ -6,9 +6,11 @@ import { Tooltip } from "../../components";
 import { MaterialSymbol } from "react-material-symbols";
 import { Player, instrument } from "soundfont-player";
 
+export interface Settings {}
+
 type Status = "pending" | "playing" | "stopped";
 
-export const Music: RuntimeComponent = forwardRef((props, ref) => {
+export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
     const [status, setStatus] = useState<Status>("pending");

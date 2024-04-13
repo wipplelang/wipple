@@ -28,15 +28,19 @@ import formatIcon from "./assets/format.png";
 import lookupIcon from "./assets/lookup.svg";
 import { NotePicker } from "./note-picker";
 
-export const CodeEditor = (props: {
+export function CodeEditor<Settings>(props: {
     children: string;
     onChange: (value: string) => void;
     theme: ThemeConfig;
-    runtime?: string;
+    runtime?: {
+        name: string;
+        settings: Settings | undefined;
+        onChangeSettings: (settings: Settings) => void;
+    };
     autofocus?: boolean;
     onFocus?: () => void;
     onBlur?: () => void;
-}) => {
+}) {
     const [isFocused, setFocused] = useState(props.autofocus ?? false);
 
     useEffect(() => {
@@ -48,7 +52,7 @@ export const CodeEditor = (props: {
     }, [isFocused]);
 
     const [runOptions, setRunOptions] = useState<RunOptions>({
-        dependenciesPath: props.runtime ?? "base",
+        dependenciesPath: props.runtime?.name ?? "base",
     });
 
     const [runnerHasFocus, setRunnerHasFocus] = useState(false);
@@ -254,10 +258,10 @@ export const CodeEditor = (props: {
                     <div className="flex flex-row items-center">
                         {!lookUpEnabled ? (
                             <PaletteButton
-                                setup={props.runtime}
+                                setup={props.runtime?.name}
                                 items={
                                     props.runtime
-                                        ? runtimes[props.runtime as keyof typeof runtimes]
+                                        ? runtimes[props.runtime.name as keyof typeof runtimes]
                                               .paletteItems
                                         : defaultPaletteItems
                                 }
@@ -353,8 +357,14 @@ export const CodeEditor = (props: {
                             ref={runnerRef}
                             options={runOptions}
                             runtime={
-                                props.runtime != null && props.runtime in runtimes
-                                    ? runtimes[props.runtime as keyof typeof runtimes].Component
+                                props.runtime != null && props.runtime.name in runtimes
+                                    ? {
+                                          Component:
+                                              runtimes[props.runtime.name as keyof typeof runtimes]
+                                                  .Component,
+                                          settings: props.runtime.settings,
+                                          onChangeSettings: props.runtime.onChangeSettings,
+                                      }
                                     : undefined
                             }
                             render={render}
@@ -371,7 +381,7 @@ export const CodeEditor = (props: {
             </div>
         </div>
     );
-};
+}
 
 const AddLineButton = (props: {
     direction: "start" | "end";

@@ -11,6 +11,7 @@ import { getUser } from "../helpers";
 import { pureConverter } from "../helpers/database";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { nanoid } from "nanoid";
+import { MusicSettings, TurtleSettings } from "../runtimes";
 
 export interface PlaygroundListItem {
     id: string;
@@ -49,34 +50,17 @@ interface PlaygroundPageCodeItem {
     code: string;
 }
 
-interface PlaygroundPageTurtleItem extends PlaygroundPageCodeItem {
-    setup: "turtle";
-    canvasWidth: number;
-    canvasHeight: number;
-}
+type RuntimeItem<Name extends string, Settings> = PlaygroundPageCodeItem & {
+    setup: Name;
+    settings?: Settings;
+};
 
-interface PlaygroundPageMusicItem extends PlaygroundPageCodeItem {
-    setup: "music";
-}
-
-interface PlaygroundPageMathItem extends PlaygroundPageCodeItem {
-    setup: "math";
-}
-
-interface PlaygroundPageGameItem extends PlaygroundPageCodeItem {
-    setup: "game";
-    canvasScale: number;
-}
-
-interface PlaygroundPagePhysicsItem extends PlaygroundPageCodeItem {
-    setup: "physics";
-    canvasWidth: number;
-    canvasHeight: number;
-}
-
-interface PlaygroundPageEnergyItem extends PlaygroundPageCodeItem {
-    setup: "energy";
-}
+type PlaygroundPageTurtleItem = RuntimeItem<"turtle", TurtleSettings>;
+type PlaygroundPageMusicItem = RuntimeItem<"music", MusicSettings>;
+type PlaygroundPageMathItem = RuntimeItem<"math", {}>;
+type PlaygroundPageGameItem = RuntimeItem<"game", {}>;
+type PlaygroundPagePhysicsItem = RuntimeItem<"physics", {}>;
+type PlaygroundPageEnergyItem = RuntimeItem<"energy", {}>;
 
 interface PlaygroundPageTextItem {
     type: "text";

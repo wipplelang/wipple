@@ -11,6 +11,16 @@ import { flushSync } from "react-dom";
 // @ts-ignore
 import RealTurtle from "real-turtle";
 
+export interface Settings {
+    canvasWidth: number;
+    canvasHeight: number;
+}
+
+const defaultSettings: Settings = {
+    canvasWidth: 200,
+    canvasHeight: 200,
+};
+
 const initializeTurtle = async (canvas: HTMLCanvasElement) => {
     const turtle = new RealTurtle(canvas, {
         async: true,
@@ -28,15 +38,17 @@ const initializeTurtle = async (canvas: HTMLCanvasElement) => {
     return turtle;
 };
 
-export const Turtle: RuntimeComponent = forwardRef((_props, ref) => {
+export const Turtle: RuntimeComponent<Settings> = forwardRef((props, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
-        containerRef.current!.style.width = "200px";
-        containerRef.current!.style.width = "200px";
-        canvasRef.current!.width = 200;
-        canvasRef.current!.height = 200;
+        const settings = props.settings ?? defaultSettings;
+
+        containerRef.current!.style.width = `${settings.canvasWidth}px`;
+        containerRef.current!.style.height = `${settings.canvasHeight}px`;
+        canvasRef.current!.width = settings.canvasWidth;
+        canvasRef.current!.height = settings.canvasHeight;
 
         rescaleCanvas(canvasRef.current!);
     }, []);
@@ -53,10 +65,16 @@ export const Turtle: RuntimeComponent = forwardRef((_props, ref) => {
 
     const onResize = async ({ width, height }: { width?: number; height?: number }) => {
         if (canvasRef.current && width && height) {
+            if (width !== props.settings?.canvasWidth || height !== props.settings?.canvasHeight) {
+                props.onChangeSettings({
+                    canvasWidth: width,
+                    canvasHeight: height,
+                });
+            }
+
             canvasRef.current.width = width;
             canvasRef.current.height = height;
             rescaleCanvas(canvasRef.current!);
-
             await reset();
         }
     };

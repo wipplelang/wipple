@@ -35,7 +35,7 @@ arc : {
     angle : (Angle angle)
 } -> runtime-message "arc" (radius ; angle)
 
-instance (Highlight arc (Highlight-Category "turtle-motion" ; Highlight-Icon "switch-access-shortcut")) : ...
+instance (Highlight arc (Highlight-Category "turtle-motion" ; Highlight-Icon "progress-activity")) : ...
 
 -- Rotate the turtle counterclockwise by the specified angle.
 left :: Angle -> ()

@@ -31,7 +31,11 @@ export interface RunnerRef {
 
 export interface RunnerProps {
     children: string;
-    runtime?: RuntimeComponent;
+    runtime?: {
+        Component: RuntimeComponent<any>;
+        settings: any | undefined;
+        onChangeSettings: (settings: any) => void;
+    };
     render: Render;
     hasFocus: boolean;
     onFocus: () => void;
@@ -298,7 +302,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     }, [
         hasWaitedForLayout,
         code,
-        props.runtime,
+        props.runtime != null,
         props.options,
         resetRunnerWorker,
         cachedBuiltinsHelp,
@@ -366,8 +370,10 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     return showOutput ? (
         <div className="flex flex-col px-4 pb-4 gap-3">
             {props.runtime ? (
-                <props.runtime
+                <props.runtime.Component
                     id={id}
+                    settings={props.runtime.settings}
+                    onChangeSettings={props.runtime.onChangeSettings}
                     call={(func, ...inputs) =>
                         new Promise((resolve) => {
                             if (!runnerWorker.current) {
