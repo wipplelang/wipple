@@ -1,12 +1,12 @@
 import type { RuntimeComponent } from "..";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import turtleImage from "./turtle.png";
-import { useDebounceCallback, useResizeObserver } from "usehooks-ts";
 import { MaterialSymbol } from "react-material-symbols";
 import { Tooltip } from "../../components";
 import { format } from "date-fns";
 import { PaletteItem } from "../../models";
 import { flushSync } from "react-dom";
+import { Resizable } from "react-resizable";
 
 // @ts-ignore
 import RealTurtle from "real-turtle";
@@ -63,100 +63,112 @@ export const Turtle: RuntimeComponent<Settings> = forwardRef((props, ref) => {
     const [resizable, setResizable] = useState(false);
     const [showResizedPrompt, setShowResizedPrompt] = useState(false);
 
-    const onResize = async ({ width, height }: { width?: number; height?: number }) => {
-        if (canvasRef.current && width && height) {
-            if (width !== props.settings?.canvasWidth || height !== props.settings?.canvasHeight) {
-                props.onChangeSettings({
-                    canvasWidth: width,
-                    canvasHeight: height,
-                });
-            }
+    const [containerWidth, setContainerWidth] = useState(
+        (props.settings ?? defaultSettings).canvasWidth,
+    );
 
-            canvasRef.current.width = width;
-            canvasRef.current.height = height;
-            rescaleCanvas(canvasRef.current!);
-            await reset();
-        }
+    const [containerHeight, setContainerHeight] = useState(
+        (props.settings ?? defaultSettings).canvasHeight,
+    );
+
+    const [resizingImage, setResizingImage] = useState<{
+        src: string;
+        width: number;
+        height: number;
+    }>();
+
+    const beginResize = ({ width, height }: { width: number; height: number }) => {
+        const src = canvasRef.current!.toDataURL();
+        setResizingImage({ src, width, height });
     };
 
-    const debouncedResize = useDebounceCallback(async ({ width, height }) => {
-        setShowResizedPrompt(true);
-        await onResize({ width, height });
-    }, 50);
+    const onResize = ({ width, height }: { width: number; height: number }) => {
+        setContainerWidth(width);
+        setContainerHeight(height);
+    };
 
-    useResizeObserver({ ref: containerRef, onResize: debouncedResize });
+    const endResize = async ({ width, height }: { width: number; height: number }) => {
+        props.onChangeSettings({
+            canvasWidth: width,
+            canvasHeight: height,
+        });
+
+        canvasRef.current!.width = width;
+        canvasRef.current!.height = height;
+        rescaleCanvas(canvasRef.current!);
+
+        await reset();
+
+        setResizingImage(undefined);
+    };
 
     const turtleRef = useRef<RealTurtle>();
 
-    useImperativeHandle(
-        ref,
-        () => ({
-            initialize: async () => {
-                flushSync(() => {
-                    setResizable(false);
-                    setShowResizedPrompt(false);
-                });
+    useImperativeHandle(ref, () => ({
+        initialize: async () => {
+            flushSync(() => {
+                setResizable(false);
+                setShowResizedPrompt(false);
+            });
 
-                await onResize({
-                    width: containerRef.current!.clientWidth,
-                    height: containerRef.current!.clientHeight,
-                });
-            },
-            onMessage: async (message, value) => {
-                const turtle = turtleRef.current!;
+            await endResize({
+                width: containerRef.current!.clientWidth,
+                height: containerRef.current!.clientHeight,
+            });
+        },
+        onMessage: async (message, value) => {
+            const turtle = turtleRef.current!;
 
-                switch (message) {
-                    case "forward": {
-                        await turtle.forward(value);
-                        break;
-                    }
-                    case "backward": {
-                        await turtle.back(value);
-                        break;
-                    }
-                    case "arc": {
-                        const [radius, angle] = value;
-                        await turtle.arc(radius, angle);
-                        break;
-                    }
-                    case "left": {
-                        await turtle.left(value);
-                        break;
-                    }
-                    case "right": {
-                        await turtle.right(value);
-                        break;
-                    }
-                    case "color": {
-                        await turtle.setStrokeStyle(value);
-                        break;
-                    }
-                    case "begin-path": {
-                        await turtle.beginPath();
-                        break;
-                    }
-                    case "end-path": {
-                        await turtle.closePath();
-                        await turtle.setFillStyle(value);
-                        await turtle.fill();
-                        break;
-                    }
-                    case "speed": {
-                        await turtle.setSpeed(value);
-                        break;
-                    }
-                    default: {
-                        throw new Error(`unsupported message: ${message}`);
-                    }
+            switch (message) {
+                case "forward": {
+                    await turtle.forward(value);
+                    break;
                 }
-            },
-            cleanup: async () => {
-                turtleRef.current = undefined;
-                setResizable(true);
-            },
-        }),
-        [],
-    );
+                case "backward": {
+                    await turtle.back(value);
+                    break;
+                }
+                case "arc": {
+                    const [radius, angle] = value;
+                    await turtle.arc(radius, angle);
+                    break;
+                }
+                case "left": {
+                    await turtle.left(value);
+                    break;
+                }
+                case "right": {
+                    await turtle.right(value);
+                    break;
+                }
+                case "color": {
+                    await turtle.setStrokeStyle(value);
+                    break;
+                }
+                case "begin-path": {
+                    await turtle.beginPath();
+                    break;
+                }
+                case "end-path": {
+                    await turtle.closePath();
+                    await turtle.setFillStyle(value);
+                    await turtle.fill();
+                    break;
+                }
+                case "speed": {
+                    await turtle.setSpeed(value);
+                    break;
+                }
+                default: {
+                    throw new Error(`unsupported message: ${message}`);
+                }
+            }
+        },
+        cleanup: async () => {
+            turtleRef.current = undefined;
+            setResizable(true);
+        },
+    }));
 
     const savePhoto = () => {
         if (!canvasRef.current) {
@@ -171,36 +183,50 @@ export const Turtle: RuntimeComponent<Settings> = forwardRef((props, ref) => {
     };
 
     return (
-        <div
-            ref={containerRef}
-            className={`relative min-w-[200px] min-h-[200px] max-w-[716px] max-h-[716px] rounded-md overflow-hidden border-2 border-gray-100 dark:border-gray-800 ${
-                resizable ? "resize" : ""
-            }`}
+        <Resizable
+            width={containerWidth}
+            height={containerHeight}
+            minConstraints={[200, 200]}
+            maxConstraints={[600, 600]}
+            onResizeStart={resizable ? (_event, data) => beginResize(data.size) : undefined}
+            onResize={resizable ? (_event, data) => onResize(data.size) : undefined}
+            onResizeStop={resizable ? (_event, data) => endResize(data.size) : undefined}
         >
-            <canvas ref={canvasRef} className="w-full h-full" />
+            <div
+                ref={containerRef}
+                className={`relative rounded-md overflow-hidden border-2 border-gray-100 dark:border-gray-800`}
+                style={{ width: containerWidth, height: containerHeight }}
+            >
+                <canvas ref={canvasRef} className="w-full h-full" />
 
-            {showResizedPrompt ? (
-                <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center p-4 text-center bg-white text-black">
-                    <h1 className="text-lg font-semibold">Canvas Resized</h1>
-                    <p className="text-sm opacity-50">
-                        Click <strong>Run Again</strong> to start drawing.
-                    </p>
-                </div>
-            ) : turtleRef.current?.[1] == null ? (
-                <div className="absolute top-0 right-0 transition-opacity">
-                    <div className="flex flex-row items-center gap-2 p-2">
-                        <Tooltip description="Save Photo">
-                            <button
-                                className="flex items-center justify-center aspect-square p-1 bg-white hover:bg-gray-100 transition-colors border-2 border-gray-100 rounded-lg"
-                                onClick={savePhoto}
-                            >
-                                <MaterialSymbol icon="photo_camera" size={18} color="black" />
-                            </button>
-                        </Tooltip>
+                {resizingImage ? (
+                    <>
+                        <div className="absolute inset-0 bg-white" />
+
+                        <img
+                            src={resizingImage.src}
+                            width={resizingImage.width}
+                            height={resizingImage.height}
+                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 object-cover"
+                            style={{ width: resizingImage.width, height: resizingImage.height }}
+                        />
+                    </>
+                ) : turtleRef.current?.[1] == null ? (
+                    <div className="absolute top-0 right-0 transition-opacity">
+                        <div className="flex flex-row items-center gap-2 p-2">
+                            <Tooltip description="Save Photo">
+                                <button
+                                    className="flex items-center justify-center aspect-square p-1 bg-white hover:bg-gray-100 transition-colors border-2 border-gray-100 rounded-lg"
+                                    onClick={savePhoto}
+                                >
+                                    <MaterialSymbol icon="photo_camera" size={18} color="black" />
+                                </button>
+                            </Tooltip>
+                        </div>
                     </div>
-                </div>
-            ) : null}
-        </div>
+                ) : null}
+            </div>
+        </Resizable>
     );
 });
 
