@@ -61,6 +61,14 @@ It's not possible to create a value of type `intrinsic` in Wipple. The runtime a
 
 Type-level text is written the same way as regular text, except the inputs are types. Type-level text is currently only used for producing custom error messages at compile time — it's not possible to create a value with this type at runtime.
 
+### Type-level constant
+
+Some of Wipple's traits, like [`Highlight`](../guides/interactive-elements.md), accept a _constant_ as input rather than a type. These traits behave similarly to attributes in other languages — the compiler can look up what you provide to `Highlight` for the constant `foo`, for example, by constructing a type-level constant `foo`.
+
+It's important to note that type-level constants are only valid at the type level — just like type-level text, you can't create a value with this type at runtime. If you have a constant `pi :: Number`, `pi` has type `Number`, not `pi`.
+
+Why not just use `Number` as the input to `Highlight`? That would mean highlighting all values of type `Number`, since the type system uses its normal rules to determine what instance to use. It would also make things difficult to refactor, because changing the type of `pi` to something other than `Number` would break highlighting. Type-level constants effectively allow you define behavior for a single declaration in your program, regardless of its signature.
+
 ## User-defined types
 
 Wipple has four kinds of user-defined types: marker types, wrapper types, structure types, and enumeration types.
