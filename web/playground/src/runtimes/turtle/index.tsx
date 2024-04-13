@@ -6,6 +6,7 @@ import { MaterialSymbol } from "react-material-symbols";
 import { Tooltip } from "../../components";
 import { format } from "date-fns";
 import { PaletteItem } from "../../models";
+import { flushSync } from "react-dom";
 
 // @ts-ignore
 import RealTurtle from "real-turtle";
@@ -40,23 +41,32 @@ export const Turtle: RuntimeComponent = forwardRef((_props, ref) => {
         rescaleCanvas(canvasRef.current!);
     }, []);
 
+    const reset = async () => {
+        const ctx = canvasRef.current!.getContext("2d")!;
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
+        turtleRef.current = await initializeTurtle(canvasRef.current!);
+    };
+
     const [resizable, setResizable] = useState(false);
     const [showResizedPrompt, setShowResizedPrompt] = useState(false);
 
-    const onResize = useDebounceCallback(
-        ({ width, height }: { width?: number; height?: number }) => {
-            if (resizable && canvasRef.current && width && height) {
-                canvasRef.current.width = width;
-                canvasRef.current.height = height;
-                rescaleCanvas(canvasRef.current!);
+    const onResize = async ({ width, height }: { width?: number; height?: number }) => {
+        if (canvasRef.current && width && height) {
+            canvasRef.current.width = width;
+            canvasRef.current.height = height;
+            rescaleCanvas(canvasRef.current!);
 
-                setShowResizedPrompt(true);
-            }
-        },
-        10,
-    );
+            await reset();
+        }
+    };
 
-    useResizeObserver({ ref: containerRef, onResize });
+    const debouncedResize = useDebounceCallback(async ({ width, height }) => {
+        setShowResizedPrompt(true);
+        await onResize({ width, height });
+    }, 50);
+
+    useResizeObserver({ ref: containerRef, onResize: debouncedResize });
 
     const turtleRef = useRef<RealTurtle>();
 
@@ -64,14 +74,15 @@ export const Turtle: RuntimeComponent = forwardRef((_props, ref) => {
         ref,
         () => ({
             initialize: async () => {
-                const ctx = canvasRef.current!.getContext("2d")!;
-                ctx.fillStyle = "white";
-                ctx.fillRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
+                flushSync(() => {
+                    setResizable(false);
+                    setShowResizedPrompt(false);
+                });
 
-                turtleRef.current = await initializeTurtle(canvasRef.current!);
-
-                setResizable(false);
-                setShowResizedPrompt(false);
+                await onResize({
+                    width: containerRef.current!.clientWidth,
+                    height: containerRef.current!.clientHeight,
+                });
             },
             onMessage: async (message, value) => {
                 const turtle = turtleRef.current!;
@@ -194,7 +205,6 @@ function rescaleCanvas(canvas: any) {
     // finally query the various pixel ratios
 
     let ctx = canvas.getContext("2d");
-
     let [ratio, backingStoreRatio] = getPixelRatio(ctx);
 
     // upscale the canvas if the two ratios don't match
