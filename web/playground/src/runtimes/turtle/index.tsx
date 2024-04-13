@@ -61,7 +61,6 @@ export const Turtle: RuntimeComponent<Settings> = forwardRef((props, ref) => {
     };
 
     const [resizable, setResizable] = useState(false);
-    const [showResizedPrompt, setShowResizedPrompt] = useState(false);
 
     const [containerWidth, setContainerWidth] = useState(
         (props.settings ?? defaultSettings).canvasWidth,
@@ -88,10 +87,12 @@ export const Turtle: RuntimeComponent<Settings> = forwardRef((props, ref) => {
     };
 
     const endResize = async ({ width, height }: { width: number; height: number }) => {
-        props.onChangeSettings({
-            canvasWidth: width,
-            canvasHeight: height,
-        });
+        if (width !== props.settings?.canvasWidth || height !== props.settings?.canvasHeight) {
+            props.onChangeSettings({
+                canvasWidth: width,
+                canvasHeight: height,
+            });
+        }
 
         canvasRef.current!.width = width;
         canvasRef.current!.height = height;
@@ -108,7 +109,6 @@ export const Turtle: RuntimeComponent<Settings> = forwardRef((props, ref) => {
         initialize: async () => {
             flushSync(() => {
                 setResizable(false);
-                setShowResizedPrompt(false);
             });
 
             await endResize({

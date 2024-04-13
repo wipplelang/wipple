@@ -303,6 +303,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         hasWaitedForLayout,
         code,
         props.runtime != null,
+        props.runtime?.settings,
         props.options,
         resetRunnerWorker,
         cachedBuiltinsHelp,
