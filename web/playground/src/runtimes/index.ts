@@ -5,6 +5,7 @@ import {
     type Settings as TurtleSettings,
 } from "./turtle";
 import { Music, paletteItems as musicPaletteItems, type Settings as MusicSettings } from "./music";
+import { Math, paletteItems as mathPaletteItems, type Settings as MathSettings } from "./math";
 
 export interface Runtime {
     initialize: () => Promise<void>;
@@ -31,6 +32,10 @@ export const runtimes = {
         Component: Music,
         paletteItems: musicPaletteItems,
     },
+    math: {
+        Component: Math,
+        paletteItems: mathPaletteItems,
+    },
 };
 
 export const defaultPaletteItems: PaletteItem[] = [
@@ -38,4 +43,4 @@ export const defaultPaletteItems: PaletteItem[] = [
     { title: "repeat", code: `repeat (1 times) {\n  _\n}` },
 ];
 
-export type { TurtleSettings, MusicSettings };
+export type { TurtleSettings, MusicSettings, MathSettings };

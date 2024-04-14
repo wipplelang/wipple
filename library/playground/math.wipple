@@ -1,0 +1,42 @@
+-- Set the color of the graph.
+color :: Color -> ()
+color : (Color color) -> runtime-message "color" color
+
+instance (Highlight color (Highlight-Category "math-color" ; Highlight-Icon "palette")) : ...
+
+-- Set the minimum x-value displayed by the graph.
+min-x :: Number -> ()
+min-x : n -> runtime-message "min-x" n
+
+instance (Highlight min-x (Highlight-Category "control-flow" ; Highlight-Icon "function")) : ...
+
+-- Set the minimum y-value displayed by the graph.
+min-y :: Number -> ()
+min-y : n -> runtime-message "min-y" n
+
+instance (Highlight min-y (Highlight-Category "control-flow" ; Highlight-Icon "function")) : ...
+
+-- Set the maximum x-value displayed by the graph.
+max-x :: Number -> ()
+max-x : n -> runtime-message "max-x" n
+
+instance (Highlight max-x (Highlight-Category "control-flow" ; Highlight-Icon "function")) : ...
+
+-- Set the maximum y-value displayed by the graph.
+max-y :: Number -> ()
+max-y : n -> runtime-message "max-y" n
+
+instance (Highlight max-y (Highlight-Category "control-flow" ; Highlight-Icon "function")) : ...
+
+-- Set the space between individual points on the graph. A higher resolution
+-- will be more accurate, but will take longer to compute.
+resolution :: Number -> ()
+resolution : n -> runtime-message "resolution" n
+
+instance (Highlight resolution (Highlight-Category "control-flow" ; Highlight-Icon "query-stats")) : ...
+
+-- Add a function to the graph.
+plot :: (Number -> Number) -> ()
+plot : f -> runtime-message "function" f
+
+instance (Highlight plot (Highlight-Category "math-plot" ; Highlight-Icon "show-chart")) : ...

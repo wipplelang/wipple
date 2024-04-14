@@ -441,7 +441,6 @@ const AddPlaygroundPageItemAlert = (props: {
                 />
 
                 <AddPlaygroundPageItemAlertButton
-                    disabled // TODO
                     setup="graphing"
                     name="Math"
                     description="Plot mathematical functions."

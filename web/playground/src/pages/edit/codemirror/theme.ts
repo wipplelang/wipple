@@ -57,4 +57,6 @@ export const highlightCategories: Record<string, string> = {
     "turtle-pen": "bg-opacity-30 bg-purple-300 text-purple-500",
     "music-play": "bg-opacity-30 bg-green-300 text-green-500",
     "music-instrument": "bg-opacity-30 bg-purple-300 text-purple-500",
+    "math-plot": "bg-opacity-30 bg-green-300 text-green-500",
+    "math-color": "bg-opacity-30 bg-purple-300 text-purple-500",
 };
