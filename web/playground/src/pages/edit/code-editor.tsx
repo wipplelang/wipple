@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Animated,
     ContextMenuButton,
@@ -40,6 +40,7 @@ export function CodeEditor<Settings>(props: {
     autofocus?: boolean;
     onFocus?: () => void;
     onBlur?: () => void;
+    onDelete: () => void;
 }) {
     const [isFocused, setFocused] = useState(props.autofocus ?? false);
 
@@ -257,15 +258,34 @@ export function CodeEditor<Settings>(props: {
                 <div className="flex flex-row items-center justify-between w-full p-1 bg-gray-50 dark:bg-gray-900">
                     <div className="flex flex-row items-center">
                         {!lookUpEnabled ? (
-                            <PaletteButton
-                                setup={props.runtime?.name}
-                                items={
-                                    props.runtime
-                                        ? runtimes[props.runtime.name as keyof typeof runtimes]
-                                              .paletteItems
-                                        : defaultPaletteItems
-                                }
-                            />
+                            <>
+                                <ContextMenuButton
+                                    items={[
+                                        {
+                                            title: "Delete",
+                                            icon: "delete",
+                                            role: "destructive",
+                                            onClick: props.onDelete,
+                                        },
+                                    ]}
+                                >
+                                    <MenuContainer>
+                                        <button className="group transition-colors rounded-md px-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                            <MaterialSymbol icon="more_vert" className="text-lg" />
+                                        </button>
+                                    </MenuContainer>
+                                </ContextMenuButton>
+
+                                <PaletteButton
+                                    setup={props.runtime?.name}
+                                    items={
+                                        props.runtime
+                                            ? runtimes[props.runtime.name as keyof typeof runtimes]
+                                                  .paletteItems
+                                            : defaultPaletteItems
+                                    }
+                                />
+                            </>
                         ) : null}
                     </div>
 

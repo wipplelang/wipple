@@ -288,6 +288,7 @@ const PlaygroundPageItemEditor = (props: {
                             }),
                         )
                     }
+                    onDelete={props.onDelete}
                     theme={theme}
                     runtime={
                         "setup" in props.item
