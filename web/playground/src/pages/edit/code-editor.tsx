@@ -40,6 +40,8 @@ export function CodeEditor<Settings>(props: {
     autofocus?: boolean;
     onFocus?: () => void;
     onBlur?: () => void;
+    onMoveUp?: () => void;
+    onMoveDown?: () => void;
     onDelete: () => void;
 }) {
     const [isFocused, setFocused] = useState(props.autofocus ?? false);
@@ -261,6 +263,18 @@ export function CodeEditor<Settings>(props: {
                             <>
                                 <ContextMenuButton
                                     items={[
+                                        {
+                                            title: "Move Up",
+                                            icon: "arrow_upward",
+                                            disabled: props.onMoveUp == null,
+                                            onClick: () => props.onMoveUp!(),
+                                        },
+                                        {
+                                            title: "Move Down",
+                                            icon: "arrow_downward",
+                                            disabled: props.onMoveDown == null,
+                                            onClick: () => props.onMoveDown!(),
+                                        },
                                         {
                                             title: "Delete",
                                             icon: "delete",

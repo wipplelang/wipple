@@ -30,7 +30,7 @@ export const SetupIcon = (props: { setup: string | undefined; size: "sm" | "lg" 
                     className={`text-orange-500 ${padding}`}
                 />
             );
-        case "graphing":
+        case "math":
             return (
                 <MaterialSymbol
                     icon="calculate"
