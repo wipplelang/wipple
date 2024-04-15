@@ -8,3 +8,4 @@ export * from "./navbar";
 export * from "./skeleton";
 export * from "./tooltip";
 export * from "./transition";
+export * from "./tutorial";

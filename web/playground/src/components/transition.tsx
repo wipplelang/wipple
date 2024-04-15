@@ -14,7 +14,7 @@ export interface TransitionProps {
     inStyle?: HTMLMotionProps<"span">["animate"];
     outStyle?: HTMLMotionProps<"span">["initial"] & HTMLMotionProps<"span">["exit"];
     dynamicChildren?: boolean;
-    children: JSX.Element | null;
+    children: React.ReactNode;
 }
 
 export const Transition = (props: TransitionProps) => {

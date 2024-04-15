@@ -1,8 +1,10 @@
 import { User } from "firebase/auth";
 import { createContext, useContext, useState } from "react";
+import { TutorialStep } from "./models";
 
 export interface Store {
     user?: User;
+    activeTutorialStep?: TutorialStep;
 }
 
 const defaultStore: Store = {};

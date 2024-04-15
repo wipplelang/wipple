@@ -8,7 +8,7 @@ import {
 } from "react-router-dom";
 import { initializeApp } from "firebase/app";
 import { HomePage, EditPage, RootPage } from "./pages";
-import { NavbarProvider, AlertProvider } from "./components";
+import { NavbarProvider, AlertProvider, TutorialOverlay } from "./components";
 import { StoreProvider } from "./store";
 import "react-material-symbols/rounded";
 import "react-loading-skeleton/dist/skeleton.css";
@@ -38,11 +38,13 @@ const router = createBrowserRouter(
 ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
         <StoreProvider>
-            <AlertProvider>
-                <NavbarProvider>
-                    <RouterProvider router={router} />
-                </NavbarProvider>
-            </AlertProvider>
+            <TutorialOverlay>
+                <AlertProvider>
+                    <NavbarProvider>
+                        <RouterProvider router={router} />
+                    </NavbarProvider>
+                </AlertProvider>
+            </TutorialOverlay>
         </StoreProvider>
     </React.StrictMode>,
 );

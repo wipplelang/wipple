@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
-import { Button, Footer, Skeleton, useAlert, useNavbar } from "../../components";
+import { Button, Footer, Skeleton, TutorialItem, useAlert, useNavbar } from "../../components";
 import { MaterialSymbol } from "react-material-symbols";
 import {
     ListPlaygroundsFilter,
     PlaygroundListItem,
+    TutorialStep,
     createPlayground,
     deletePlayground,
     duplicatePlayground,
     listPlaygrounds,
+    startTutorial,
 } from "../../models";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { useStore } from "../../store";
+import { produce } from "immer";
 
 export const HomePage = () => {
     const { displayAlert } = useAlert();
@@ -25,7 +28,7 @@ export const HomePage = () => {
         };
     }, []);
 
-    const [store, _setStore] = useStore();
+    const [store, setStore] = useStore();
 
     const [filter, setFilter] = useState<ListPlaygroundsFilter>("all");
 
@@ -72,21 +75,41 @@ export const HomePage = () => {
             <div className="bg-gray-50 dark:bg-gray-900 flex flex-col items-center">
                 <div className="w-full max-w-screen-lg">
                     <div className="flex flex-row gap-4 p-4">
-                        <PrimaryCard title="New Playground" onClick={handleNewPlayground}>
-                            <MaterialSymbol
-                                icon="add"
-                                className="text-blue-500 font-semibold text-6xl"
-                            />
-                        </PrimaryCard>
+                        <TutorialItem id="newPlayground" className="flex-1">
+                            <PrimaryCard title="New Playground" onClick={handleNewPlayground}>
+                                <MaterialSymbol
+                                    icon="add"
+                                    className="text-blue-500 font-semibold text-6xl"
+                                />
+                            </PrimaryCard>
+                        </TutorialItem>
 
                         <PrimaryCard title="Browse Lessons" onClick={() => alert("TODO")}>
                             <img src="/playground/images/lesson-bg.png" />
                         </PrimaryCard>
 
-                        <PrimaryCard title="Latest News" onClick={() => alert("TODO")}>
-                            <div className="w-full h-full bg-gray-200 dark:bg-gray-600">
-                                {/* TODO */}
-                            </div>
+                        <PrimaryCard
+                            title="Tutorial"
+                            onClick={() => {
+                                const handleChangeStep = (step: TutorialStep | undefined) => {
+                                    setStore(
+                                        produce((store) => {
+                                            store.activeTutorialStep = step;
+                                        }),
+                                    );
+                                };
+
+                                setStore(
+                                    produce((store) => {
+                                        store.activeTutorialStep = startTutorial(handleChangeStep);
+                                    }),
+                                );
+                            }}
+                        >
+                            <MaterialSymbol
+                                icon="school"
+                                className="text-blue-500 font-semibold text-6xl"
+                            />
                         </PrimaryCard>
                     </div>
                 </div>
