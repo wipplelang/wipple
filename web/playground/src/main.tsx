@@ -36,15 +36,13 @@ const router = createBrowserRouter(
 );
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-    <React.StrictMode>
-        <StoreProvider>
-            <TutorialOverlay>
-                <AlertProvider>
-                    <NavbarProvider>
-                        <RouterProvider router={router} />
-                    </NavbarProvider>
-                </AlertProvider>
-            </TutorialOverlay>
-        </StoreProvider>
-    </React.StrictMode>,
+    <StoreProvider>
+        <TutorialOverlay>
+            <AlertProvider>
+                <NavbarProvider>
+                    <RouterProvider router={router} />
+                </NavbarProvider>
+            </AlertProvider>
+        </TutorialOverlay>
+    </StoreProvider>,
 );

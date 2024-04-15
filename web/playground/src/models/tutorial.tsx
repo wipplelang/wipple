@@ -1,18 +1,20 @@
+import { useEffect, useState } from "react";
 import { MaterialSymbol } from "react-material-symbols";
+import { useStore } from "../store";
+import { PlaygroundPageItem } from "./playground";
 
 interface TutorialStepBase {
     body: JSX.Element;
-    backButton: "back" | "hidden";
     continueButton: "continue" | "hidden" | "end";
 }
 
 interface TutorialStepBuilder extends TutorialStepBase {
+    actionId?: string;
     itemId?: string;
     clickItemToContinue?: boolean;
 }
 
 export interface TutorialStep extends TutorialStepBuilder {
-    onBack: () => void;
     onClickItem?: () => void;
     onContinue: () => void;
 }
@@ -30,13 +32,28 @@ export const startTutorial = (onChangeStep: (step: TutorialStep | undefined) => 
         return {
             ...builder,
             index,
-            onBack: () => onChangeStep(steps[Math.max(0, index - 1)]),
             onClickItem: builder.clickItemToContinue ? onContinue : undefined,
             onContinue,
         };
     });
 
-    return steps[0];
+    return steps[4]; // FIXME: Reset to 0
+};
+
+export const useOnTutorialAction = (
+    actionId: string,
+    action: () => boolean,
+    deps: React.DependencyList,
+) => {
+    const [store, _setStore] = useStore();
+
+    const [ran, setRan] = useState(false);
+    useEffect(() => {
+        if (!ran && store.activeTutorialStep?.actionId === actionId) {
+            action();
+            setRan(true);
+        }
+    }, [actionId, ran, ...deps]);
 };
 
 const tutorialSteps: TutorialStepBuilder[] = [
@@ -49,7 +66,6 @@ const tutorialSteps: TutorialStepBuilder[] = [
                 close the tutorial at any time.
             </p>
         ),
-        backButton: "hidden",
         continueButton: "continue",
     },
     {
@@ -58,9 +74,29 @@ const tutorialSteps: TutorialStepBuilder[] = [
                 Let's create a new playground. Click on the <strong>New Playground</strong> button.
             </p>
         ),
-        backButton: "back",
         continueButton: "hidden",
         itemId: "newPlayground",
         clickItemToContinue: true,
     },
+    {
+        body: <p>This is the playground editor.</p>,
+        actionId: "newPlayground",
+        continueButton: "continue",
+    },
+    {
+        body: <p>Playgrounds can have multiple pages, which are listed on the left.</p>,
+        continueButton: "continue",
+        itemId: "playgroundPageList",
+    },
+    {
+        body: <p>Your code is on the right. </p>,
+        continueButton: "continue",
+        itemId: "playgroundCodeEditor",
+    },
 ];
+
+export const newPlaygroundTutorialItem: PlaygroundPageItem = {
+    type: "code",
+    setup: "turtle",
+    code: "",
+};

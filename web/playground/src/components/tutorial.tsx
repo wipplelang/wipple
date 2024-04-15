@@ -1,76 +1,68 @@
 import { MaterialSymbol } from "react-material-symbols";
 import { useStore } from "../store";
-import { FloatingPortal, offset, size, useFloating } from "@floating-ui/react";
+import {
+    ClientRectObject,
+    FloatingPortal,
+    autoUpdate,
+    size,
+    useFloating,
+} from "@floating-ui/react";
 import { produce } from "immer";
+import { useState } from "react";
+import { useWindowSize } from "usehooks-ts";
 
 export const TutorialOverlay = (props: React.PropsWithChildren<{}>) => {
     const [store, setStore] = useStore();
 
     return (
         <div className="relative">
-            {props.children}
+            <div>{props.children}</div>
 
             {store.activeTutorialStep ? (
                 <>
                     <div className="h-20"></div>
 
-                    {store.activeTutorialStep.itemId ? (
-                        <div className="fixed inset-0 bg-black bg-opacity-20" />
-                    ) : null}
+                    <FloatingPortal>
+                        <div className="fixed left-0 right-0 bottom-8 mx-auto w-[480px] bg-white p-4 rounded-xl border border-gray-100 dark:border-gray-800 overflow-clip shadow-lg z-[9999]">
+                            <div className="flex flex-col gap-3 w-full h-full">
+                                <div className="flex flex-row items-start justify-between gap-2">
+                                    <div className="mt-0.5 ml-0.5">
+                                        {store.activeTutorialStep.body}
+                                    </div>
 
-                    <div className="fixed left-0 right-0 bottom-8 mx-auto w-[480px] bg-white p-4 rounded-xl border-2 border-gray-100 dark:border-gray-800 overflow-clip shadow-lg">
-                        <div className="flex flex-col gap-3 w-full h-full">
-                            <div className="flex flex-row items-start justify-between gap-2">
-                                <div className="mt-0.5 ml-0.5">{store.activeTutorialStep.body}</div>
-
-                                <TutorialOverlayButton
-                                    onClick={() => {
-                                        if (confirm("End the tutorial?")) {
-                                            setStore(
-                                                produce((store) => {
-                                                    store.activeTutorialStep = undefined;
-                                                }),
-                                            );
-                                        }
-                                    }}
-                                >
-                                    <MaterialSymbol icon="close" className="text-2xl" />
-                                </TutorialOverlayButton>
-                            </div>
-
-                            <div className="flex flex-row justify-between">
-                                {store.activeTutorialStep.backButton !== "hidden" ? (
                                     <TutorialOverlayButton
-                                        onClick={store.activeTutorialStep.onBack}
+                                        onClick={() => {
+                                            if (confirm("End the tutorial?")) {
+                                                setStore(
+                                                    produce((store) => {
+                                                        store.activeTutorialStep = undefined;
+                                                    }),
+                                                );
+                                            }
+                                        }}
                                     >
-                                        <div className="flex flex-row items-center gap-1 px-1">
-                                            <MaterialSymbol
-                                                icon="arrow_back_ios"
-                                                className="text-xl w-4"
-                                            />
-                                            Back
-                                        </div>
+                                        <MaterialSymbol icon="close" className="text-2xl" />
                                     </TutorialOverlayButton>
-                                ) : (
-                                    <div />
-                                )}
+                                </div>
 
-                                {store.activeTutorialStep.continueButton !== "hidden" ? (
-                                    <TutorialOverlayButton
-                                        onClick={store.activeTutorialStep.onContinue}
-                                    >
-                                        <div className="flex flex-row items-center gap-1 px-1">
-                                            Continue
-                                            <MaterialSymbol
-                                                icon="arrow_forward_ios"
-                                                className="text-xl w-4"
-                                            />
-                                        </div>
-                                    </TutorialOverlayButton>
-                                ) : null}
+                                <div className="flex flex-row justify-end">
+                                    {store.activeTutorialStep.continueButton !== "hidden" ? (
+                                        <TutorialOverlayButton
+                                            onClick={store.activeTutorialStep.onContinue}
+                                        >
+                                            <div className="flex flex-row items-center gap-1 px-1">
+                                                Continue
+                                                <MaterialSymbol
+                                                    icon="arrow_forward_ios"
+                                                    className="text-xl w-4"
+                                                />
+                                            </div>
+                                        </TutorialOverlayButton>
+                                    ) : null}
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </FloatingPortal>
                 </>
             ) : null}
         </div>
@@ -86,22 +78,31 @@ const TutorialOverlayButton = (props: React.PropsWithChildren<{ onClick: () => v
     </button>
 );
 
+const highlightPadding = 12;
+
 export const TutorialItem = (
-    props: React.PropsWithChildren<{ id: string; className?: string }>,
+    props: React.PropsWithChildren<{
+        id?: string;
+        className?: string;
+    }>,
 ) => {
     const [store, _setStore] = useStore();
 
-    const { refs, floatingStyles } = useFloating({
+    const isActive = props.id != null && store.activeTutorialStep?.itemId === props.id;
+
+    const windowSize = useWindowSize();
+    const [rect, setRect] = useState<DOMRect | ClientRectObject>();
+
+    const { refs } = useFloating({
         open: store.activeTutorialStep?.itemId === props.id,
+        transform: false,
+        whileElementsMounted: autoUpdate,
+
         middleware: [
-            offset(({ rects }) => {
-                return -rects.reference.height / 2 - rects.floating.height / 2;
-            }),
             size({
                 apply: ({ elements }) => {
-                    const { width, height } = elements.reference.getBoundingClientRect();
-                    elements.floating.style.width = `${width}px`;
-                    elements.floating.style.height = `${height}px`;
+                    const rect = elements.reference.getBoundingClientRect();
+                    setRect(rect);
                 },
             }),
         ],
@@ -109,19 +110,44 @@ export const TutorialItem = (
 
     return (
         <>
-            <div ref={refs.setReference} className={props.className}>
+            <div
+                ref={refs.setReference}
+                className={props.className}
+                onClick={store.activeTutorialStep?.onClickItem}
+            >
                 {props.children}
             </div>
 
-            {store.activeTutorialStep?.itemId === props.id ? (
+            {isActive ? (
+                // Dim background except over the highlighted element
                 <FloatingPortal>
                     <div
                         ref={refs.setFloating}
-                        style={floatingStyles}
-                        className={props.className}
-                        onClick={store.activeTutorialStep.onClickItem}
+                        className="fixed inset-0 text-black text-opacity-25 pointer-events-none"
                     >
-                        {props.children}
+                        <svg width={windowSize.width} height={windowSize.height}>
+                            <defs>
+                                <mask id="mask">
+                                    <rect width="100%" height="100%" fill="white" />
+                                    <rect
+                                        x={(rect?.x ?? 0) - highlightPadding}
+                                        y={(rect?.y ?? 0) - highlightPadding}
+                                        width={(rect?.width ?? 0) + 2 * highlightPadding}
+                                        height={(rect?.height ?? 0) + 2 * highlightPadding}
+                                        rx="12"
+                                        ry="12"
+                                        fill="black"
+                                    />
+                                </mask>
+                            </defs>
+
+                            <rect
+                                width={windowSize.width}
+                                height={windowSize.height}
+                                fill="currentColor"
+                                mask="url(#mask)"
+                            />
+                        </svg>
                     </div>
                 </FloatingPortal>
             ) : null}

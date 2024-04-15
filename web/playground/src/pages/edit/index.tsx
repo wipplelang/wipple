@@ -6,10 +6,18 @@ import {
     Button,
     ContextMenuButton,
     Skeleton,
+    TutorialItem,
     useAlert,
     useNavbar,
 } from "../../components";
-import { Playground, PlaygroundPageItem, getPlayground, updatePlayground } from "../../models";
+import {
+    Playground,
+    PlaygroundPageItem,
+    getPlayground,
+    newPlaygroundTutorialItem,
+    updatePlayground,
+    useOnTutorialAction,
+} from "../../models";
 import { MaterialSymbol } from "react-material-symbols";
 import { defaultThemeConfig } from "./codemirror/theme";
 import { produce } from "immer";
@@ -101,6 +109,25 @@ export const EditPage = () => {
         const index = playground.pages.findIndex((page) => page.id === selectedPageId);
         return index === -1 ? 0 : index;
     })();
+
+    useOnTutorialAction(
+        "newPlayground",
+        () => {
+            let ran = false;
+            setPlayground(
+                produce((playground) => {
+                    const items = playground?.pages[0]?.items;
+                    if (items) {
+                        items.push(newPlaygroundTutorialItem);
+                        ran = true;
+                    }
+                }),
+            );
+
+            return ran;
+        },
+        [playground],
+    );
 
     return (
         <div className="flex flex-row justify-center">
@@ -242,20 +269,24 @@ const PlaygroundPageEditor = (props: {
                     <>
                         {props.items.map((item, index) =>
                             index <= maxRenderIndex ? (
-                                <PlaygroundPageItemEditor
+                                <TutorialItem
                                     key={`${props.id!}-${index}`}
-                                    item={item}
-                                    onChange={(item) => props.onChangeItem(index, item)}
-                                    onMoveUp={
-                                        index > 0 ? () => props.onMoveItemUp(index) : undefined
-                                    }
-                                    onMoveDown={
-                                        index < props.items!.length - 1
-                                            ? () => props.onMoveItemDown(index)
-                                            : undefined
-                                    }
-                                    onDelete={() => props.onDeleteItem(index)}
-                                />
+                                    id={index === 0 ? "playgroundCodeEditor" : undefined}
+                                >
+                                    <PlaygroundPageItemEditor
+                                        item={item}
+                                        onChange={(item) => props.onChangeItem(index, item)}
+                                        onMoveUp={
+                                            index > 0 ? () => props.onMoveItemUp(index) : undefined
+                                        }
+                                        onMoveDown={
+                                            index < props.items!.length - 1
+                                                ? () => props.onMoveItemDown(index)
+                                                : undefined
+                                        }
+                                        onDelete={() => props.onDeleteItem(index)}
+                                    />
+                                </TutorialItem>
                             ) : null,
                         )}
 
@@ -378,90 +409,94 @@ const PlaygroundPageList = (props: {
     onMovePageDown: (pageIndex: number) => void;
     onDeletePage: (pageIndex: number) => void;
 }) => (
-    <ul className="flex flex-shrink-0 flex-row gap-1 lg:flex-col max-w-4xl lg:max-w-none w-full lg:w-[240px] lg:max-h-[calc(100vh-140px)] overflow-scroll px-4 pb-8 lg:pb-4">
-        {props.playground ? (
-            <>
-                {props.playground.pages.map((page, pageIndex) => {
-                    const isActive = page.id === props.selectedPage;
+    <TutorialItem id="playgroundPageList">
+        <ul className="flex flex-shrink-0 flex-row gap-1 lg:flex-col max-w-4xl lg:max-w-none w-full lg:w-[240px] lg:max-h-[calc(100vh-140px)] overflow-scroll px-4 pb-8 lg:pb-4">
+            {props.playground ? (
+                <>
+                    {props.playground.pages.map((page, pageIndex) => {
+                        const isActive = page.id === props.selectedPage;
 
-                    return (
-                        <Link key={page.id} to={`../${page.id}`} relative="path">
-                            <li
-                                className={`flex flex-row items-center justify-between lg:w-full px-3 py-1.5 rounded-lg transition-colors ${
-                                    isActive
-                                        ? "bg-blue-500 hover:bg-blue-600 dark:hover:bg-blue-400 shadow-md shadow-blue-200 dark:shadow-blue-950 text-white font-semibold"
-                                        : "hover:bg-gray-100 active:bg-gray-200 dark:hover:bg-gray-900 dark:active:bg-gray-800"
-                                }`}
-                            >
-                                <p className="text-nowrap lg:text-wrap">{page.name}</p>
+                        return (
+                            <Link key={page.id} to={`../${page.id}`} relative="path">
+                                <li
+                                    className={`flex flex-row items-center justify-between lg:w-full px-3 py-1.5 rounded-lg transition-colors ${
+                                        isActive
+                                            ? "bg-blue-500 hover:bg-blue-600 dark:hover:bg-blue-400 shadow-md shadow-blue-200 dark:shadow-blue-950 text-white font-semibold"
+                                            : "hover:bg-gray-100 active:bg-gray-200 dark:hover:bg-gray-900 dark:active:bg-gray-800"
+                                    }`}
+                                >
+                                    <p className="text-nowrap lg:text-wrap">{page.name}</p>
 
-                                {isActive ? (
-                                    <ContextMenuButton
-                                        className="flex items-center justify-center"
-                                        items={[
-                                            {
-                                                title: "Rename",
-                                                icon: "edit",
-                                                onClick: () => {
-                                                    const name = prompt(
-                                                        "Enter page name:",
-                                                        page.name,
-                                                    );
+                                    {isActive ? (
+                                        <ContextMenuButton
+                                            className="flex items-center justify-center"
+                                            items={[
+                                                {
+                                                    title: "Rename",
+                                                    icon: "edit",
+                                                    onClick: () => {
+                                                        const name = prompt(
+                                                            "Enter page name:",
+                                                            page.name,
+                                                        );
 
-                                                    if (name) {
-                                                        props.onRenamePage(pageIndex, name);
-                                                    }
+                                                        if (name) {
+                                                            props.onRenamePage(pageIndex, name);
+                                                        }
+                                                    },
                                                 },
-                                            },
-                                            {
-                                                title: "Move Up",
-                                                icon: "arrow_upward",
-                                                disabled: pageIndex === 0,
-                                                onClick: () => props.onMovePageUp(pageIndex),
-                                            },
-                                            {
-                                                title: "Move Down",
-                                                icon: "arrow_downward",
-                                                disabled:
-                                                    pageIndex ===
-                                                    props.playground!.pages.length - 1,
-                                                onClick: () => props.onMovePageDown(pageIndex),
-                                            },
-                                            {
-                                                title: "Delete",
-                                                icon: "delete",
-                                                role: "destructive",
-                                                disabled: props.playground!.pages.length <= 1,
-                                                onClick: () => props.onDeletePage(pageIndex),
-                                            },
-                                        ]}
-                                    >
-                                        <MaterialSymbol icon="more_horiz" size={22} />
-                                    </ContextMenuButton>
-                                ) : null}
-                            </li>
-                        </Link>
-                    );
-                })}
+                                                {
+                                                    title: "Move Up",
+                                                    icon: "arrow_upward",
+                                                    disabled: pageIndex === 0,
+                                                    onClick: () => props.onMovePageUp(pageIndex),
+                                                },
+                                                {
+                                                    title: "Move Down",
+                                                    icon: "arrow_downward",
+                                                    disabled:
+                                                        pageIndex ===
+                                                        props.playground!.pages.length - 1,
+                                                    onClick: () => props.onMovePageDown(pageIndex),
+                                                },
+                                                {
+                                                    title: "Delete",
+                                                    icon: "delete",
+                                                    role: "destructive",
+                                                    disabled: props.playground!.pages.length <= 1,
+                                                    onClick: () => props.onDeletePage(pageIndex),
+                                                },
+                                            ]}
+                                        >
+                                            <MaterialSymbol icon="more_horiz" size={22} />
+                                        </ContextMenuButton>
+                                    ) : null}
+                                </li>
+                            </Link>
+                        );
+                    })}
 
-                <button
-                    className="flex flex-row items-center gap-1 lg:w-full px-1.5 py-1.5 rounded-lg hover:bg-gray-100 active:bg-gray-200 dark:hover:bg-gray-900 dark:active:bg-gray-800 transition-colors text-blue-500 text-nowrap lg:text-wrap"
-                    onClick={() => {
-                        const name = prompt("Enter page name:");
-                        if (name) {
-                            props.onAddPage(name);
-                        }
-                    }}
-                >
-                    <MaterialSymbol icon="add" size={22} /> Add Page
-                </button>
-            </>
-        ) : (
-            new Array(4)
-                .fill(null)
-                .map((_, index) => <Skeleton key={index} className="w-20 h-8 lg:w-full lg:h-10" />)
-        )}
-    </ul>
+                    <button
+                        className="flex flex-row items-center gap-1 lg:w-full px-1.5 py-1.5 rounded-lg hover:bg-gray-100 active:bg-gray-200 dark:hover:bg-gray-900 dark:active:bg-gray-800 transition-colors text-blue-500 text-nowrap lg:text-wrap"
+                        onClick={() => {
+                            const name = prompt("Enter page name:");
+                            if (name) {
+                                props.onAddPage(name);
+                            }
+                        }}
+                    >
+                        <MaterialSymbol icon="add" size={22} /> Add Page
+                    </button>
+                </>
+            ) : (
+                new Array(4)
+                    .fill(null)
+                    .map((_, index) => (
+                        <Skeleton key={index} className="w-20 h-8 lg:w-full lg:h-10" />
+                    ))
+            )}
+        </ul>
+    </TutorialItem>
 );
 
 const AddPlaygroundPageItemAlert = (props: {

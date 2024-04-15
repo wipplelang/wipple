@@ -7,6 +7,7 @@ import { produce } from "immer";
 import { Button, Navbar, useAlert as useAlert } from "../components";
 import { useStore } from "../store";
 import { getUser, signInAsGuest, signInWithGoogle } from "../helpers";
+import { startTutorial } from "../models";
 
 export const RootPage = () => {
     const [store, setStore] = useStore();
@@ -31,6 +32,21 @@ export const RootPage = () => {
             }
         })();
     }, [store.user]);
+
+    // FIXME: TEMPORARY
+    useEffect(() => {
+        setStore(
+            produce((store) => {
+                store.activeTutorialStep = startTutorial((step) => {
+                    setStore(
+                        produce((store) => {
+                            store.activeTutorialStep = step;
+                        }),
+                    );
+                });
+            }),
+        );
+    }, []);
 
     return (
         <div className="w-screen flex flex-col items-stretch">

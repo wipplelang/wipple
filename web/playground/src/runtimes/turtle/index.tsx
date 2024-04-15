@@ -86,8 +86,19 @@ export const Turtle: RuntimeComponent<Settings> = forwardRef((props, ref) => {
         setContainerHeight(height);
     };
 
-    const endResize = async ({ width, height }: { width: number; height: number }) => {
-        if (width !== props.settings?.canvasWidth || height !== props.settings?.canvasHeight) {
+    const endResize = async ({
+        width,
+        height,
+        updateSettings,
+    }: {
+        width: number;
+        height: number;
+        updateSettings?: boolean;
+    }) => {
+        if (
+            (updateSettings == null || updateSettings) &&
+            (width !== props.settings?.canvasWidth || height !== props.settings?.canvasHeight)
+        ) {
             props.onChangeSettings({
                 canvasWidth: width,
                 canvasHeight: height,
@@ -112,6 +123,7 @@ export const Turtle: RuntimeComponent<Settings> = forwardRef((props, ref) => {
             });
 
             await endResize({
+                updateSettings: false,
                 width: containerRef.current!.clientWidth,
                 height: containerRef.current!.clientHeight,
             });
