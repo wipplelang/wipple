@@ -54,7 +54,7 @@ In addition to providing a message to `Error`, you may provide a tuple containin
 
     ```wipple
     Body where (Error ("missing `repeat` here" ; Error-Fix "add `repeat`" ("`repeat _`" Source))) =>
-        instance (Mismatch Times ({Body} -> ())) : ...
+        instance (Mismatch Times ({Body} -> ()))
 
     (4 times) { -- error: missing `repeat` here
         show "Hello, world!"
@@ -76,7 +76,7 @@ Whenever two types mismatch, Wipple will attempt to resolve an instance of `Mism
 Box : Value => type Value
 
 Value where (Error ("not a box" ; Error-Location Value ; Error-Fix "add `Box`" ("`(Box _)`" Value))) =>
-    instance (Mismatch Value (Box Value)) : ...
+    instance (Mismatch Value (Box Value))
 
 (42 :: Box _) -- not a box
 

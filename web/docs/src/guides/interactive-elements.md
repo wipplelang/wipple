@@ -13,7 +13,7 @@ You can also change how a declaration is highlighted using the `Highlight` trait
 my-if :: Value => Boolean {Value} {Value} -> Value
 my-if : if
 
-instance (Highlight my-if (Highlight-Category "control-flow")) : ...
+instance (Highlight my-if (Highlight-Category "control-flow"))
 ```
 
 Would be rendered as:
@@ -23,7 +23,7 @@ Would be rendered as:
 You can add an icon, too — the Wipple Playground uses Google's [Material Symbols](https://fonts.google.com/icons), so you have access to over 3000 different icons!
 
 ```wipple
-instance (Highlight my-if (Highlight-Category "control-flow" ; Highlight-Icon "question-mark")) : ...
+instance (Highlight my-if (Highlight-Category "control-flow" ; Highlight-Icon "question-mark"))
 ```
 
 ![Screenshot of declaration with custom icon](../images/custom-icon.png)
