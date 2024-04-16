@@ -5,6 +5,7 @@ import {
     Markdown,
     Tooltip,
     Transition,
+    TutorialItem,
     defaultAnimationDuration,
     useAlert,
 } from "../../components";
@@ -290,15 +291,18 @@ export function CodeEditor<Settings>(props: {
                                     </MenuContainer>
                                 </ContextMenuButton>
 
-                                <PaletteButton
-                                    setup={props.runtime?.name}
-                                    items={
-                                        props.runtime
-                                            ? runtimes[props.runtime.name as keyof typeof runtimes]
-                                                  .paletteItems
-                                            : defaultPaletteItems
-                                    }
-                                />
+                                <TutorialItem id="commandsButton">
+                                    <PaletteButton
+                                        setup={props.runtime?.name}
+                                        items={
+                                            props.runtime
+                                                ? runtimes[
+                                                      props.runtime.name as keyof typeof runtimes
+                                                  ].paletteItems
+                                                : defaultPaletteItems
+                                        }
+                                    />
+                                </TutorialItem>
                             </>
                         ) : null}
                     </div>
@@ -306,11 +310,13 @@ export function CodeEditor<Settings>(props: {
                     <div className="flex-1 flex flex-row items-center justify-end gap-1">
                         {!lookUpEnabled ? (
                             <>
-                                <EditButton
-                                    onSelectAll={() => runCommand(commands.selectAll)}
-                                    onUndo={() => runCommand(commands.undo)}
-                                    onRedo={() => runCommand(commands.redo)}
-                                />
+                                <TutorialItem id="editButton">
+                                    <EditButton
+                                        onSelectAll={() => runCommand(commands.selectAll)}
+                                        onUndo={() => runCommand(commands.undo)}
+                                        onRedo={() => runCommand(commands.redo)}
+                                    />
+                                </TutorialItem>
 
                                 <FormatButton onClick={format} />
                             </>
@@ -446,25 +452,27 @@ const LookUpToggle = (props: { enabled: boolean; onChange?: (enabled: boolean) =
             </p>
         ) : null}
 
-        <MenuContainer>
-            <button
-                className={`group flex flex-row items-center justify-center gap-1 transition-colors rounded-md ${
-                    props.enabled
-                        ? "mx-1 px-2 py-1 bg-blue-500 text-white text-sm"
-                        : "px-2 h-7 hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
-                onClick={() => props.onChange?.(!props.enabled)}
-            >
-                {props.enabled ? (
-                    <p className="whitespace-nowrap">Done</p>
-                ) : (
-                    <>
-                        <img src={lookupIcon} className="w-4 h-4" />
-                        <p className="text-xs text-nowrap">Look Up</p>
-                    </>
-                )}
-            </button>
-        </MenuContainer>
+        <TutorialItem id="lookUpButton">
+            <MenuContainer>
+                <button
+                    className={`group flex flex-row items-center justify-center gap-1 transition-colors rounded-md ${
+                        props.enabled
+                            ? "mx-1 px-2 py-1 bg-blue-500 text-white text-sm"
+                            : "px-2 h-7 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    }`}
+                    onClick={() => props.onChange?.(!props.enabled)}
+                >
+                    {props.enabled ? (
+                        <p className="whitespace-nowrap">Done</p>
+                    ) : (
+                        <>
+                            <img src={lookupIcon} className="w-4 h-4" />
+                            <p className="text-xs text-nowrap">Look Up</p>
+                        </>
+                    )}
+                </button>
+            </MenuContainer>
+        </TutorialItem>
     </>
 );
 
@@ -490,6 +498,7 @@ const EditButton = (props: { onSelectAll: () => void; onUndo: () => void; onRedo
                     win: "Ctrl A",
                 },
                 icon: "select_all",
+                tutorialItemId: "selectAll",
                 onClick: props.onSelectAll,
             },
             {

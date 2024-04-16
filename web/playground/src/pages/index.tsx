@@ -33,21 +33,6 @@ export const RootPage = () => {
         })();
     }, [store.user]);
 
-    // FIXME: TEMPORARY
-    useEffect(() => {
-        setStore(
-            produce((store) => {
-                store.activeTutorialStep = startTutorial((step) => {
-                    setStore(
-                        produce((store) => {
-                            store.activeTutorialStep = step;
-                        }),
-                    );
-                });
-            }),
-        );
-    }, []);
-
     return (
         <div className="w-screen flex flex-col items-stretch">
             <Navbar />

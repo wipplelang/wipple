@@ -8,7 +8,7 @@ import {
 } from "@floating-ui/react";
 import { useEffect, useState } from "react";
 import { MaterialSymbol, MaterialSymbolProps } from "react-material-symbols";
-import { Tooltip, Transition, defaultAnimationDuration } from ".";
+import { Tooltip, Transition, TutorialItem, defaultAnimationDuration } from ".";
 
 export interface ContextMenuItem {
     title: string | ((props: { onDismiss: () => void }) => React.ReactNode);
@@ -16,6 +16,7 @@ export interface ContextMenuItem {
     icon?: MaterialSymbolProps["icon"];
     role?: "destructive";
     disabled?: boolean;
+    tutorialItemId?: string;
     onClick?: () => void;
 }
 
@@ -91,41 +92,42 @@ export const ContextMenuButton = (props: {
 const ContextMenu = (props: { items: ContextMenuItem[]; onDismiss: () => void }) => (
     <ul className="flex flex-col items-stretch gap-0.5 bg-white dark:bg-gray-800 p-1 rounded-lg shadow-lg">
         {props.items.map((item, index) => (
-            <button
-                disabled={item.disabled}
-                key={index}
-                onClick={() => {
-                    if (item.onClick) {
-                        item.onClick();
-                        props.onDismiss();
-                    } else {
-                        alert("Click and hold to drag out of the menu.");
-                    }
-                }}
-                className={`flex flex-row items-center gap-1.5 text-sm disabled:opacity-50 rounded-md px-2 py-0.5 transition-colors ${
-                    item.role === "destructive"
-                        ? "text-red-500 enabled:hover:bg-red-50 enabled:dark:hover:bg-red-950 enabled:dark:hover:bg-opacity-50"
-                        : "text-gray-900 dark:text-gray-50 enabled:hover:bg-gray-100 enabled:dark:hover:bg-gray-700"
-                }`}
-            >
-                {item.icon ? <MaterialSymbol icon={item.icon} className="text-lg" /> : null}
+            <TutorialItem id={item.tutorialItemId} key={index}>
+                <button
+                    disabled={item.disabled}
+                    onClick={() => {
+                        if (item.onClick) {
+                            item.onClick();
+                            props.onDismiss();
+                        } else {
+                            alert("Click and hold to drag out of the menu.");
+                        }
+                    }}
+                    className={`flex flex-row items-center gap-1.5 text-sm disabled:opacity-50 rounded-md px-2 py-0.5 transition-colors w-full ${
+                        item.role === "destructive"
+                            ? "text-red-500 enabled:hover:bg-red-50 enabled:dark:hover:bg-red-950 enabled:dark:hover:bg-opacity-50"
+                            : "text-gray-900 dark:text-gray-50 enabled:hover:bg-gray-100 enabled:dark:hover:bg-gray-700"
+                    }`}
+                >
+                    {item.icon ? <MaterialSymbol icon={item.icon} className="text-lg" /> : null}
 
-                {typeof item.title === "string" ? (
-                    <p>{item.title}</p>
-                ) : (
-                    <item.title onDismiss={props.onDismiss} />
-                )}
+                    {typeof item.title === "string" ? (
+                        <p>{item.title}</p>
+                    ) : (
+                        <item.title onDismiss={props.onDismiss} />
+                    )}
 
-                <div className="flex-1" />
+                    <div className="flex-1" />
 
-                {item.shortcut ? (
-                    <p className="text-sm opacity-50">
-                        {/mac/.test(navigator.userAgent.toLowerCase())
-                            ? item.shortcut.mac
-                            : item.shortcut.win}
-                    </p>
-                ) : null}
-            </button>
+                    {item.shortcut ? (
+                        <p className="text-sm opacity-50">
+                            {/mac/.test(navigator.userAgent.toLowerCase())
+                                ? item.shortcut.mac
+                                : item.shortcut.win}
+                        </p>
+                    ) : null}
+                </button>
+            </TutorialItem>
         ))}
     </ul>
 );

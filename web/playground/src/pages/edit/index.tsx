@@ -14,6 +14,7 @@ import {
     Playground,
     PlaygroundPageItem,
     getPlayground,
+    hexagonTutorialItem,
     newPlaygroundTutorialItem,
     updatePlayground,
     useOnTutorialAction,
@@ -113,12 +114,30 @@ export const EditPage = () => {
     useOnTutorialAction(
         "newPlayground",
         () => {
+            setPlayground(
+                produce((playground) => {
+                    const items = playground?.pages[0]?.items;
+                    if (items) {
+                        console.log("adding newPlaygroundTutorialItem");
+                        items.push(newPlaygroundTutorialItem);
+                    }
+                }),
+            );
+
+            return playground?.pages[0]?.items != null;
+        },
+        [playground],
+    );
+
+    useOnTutorialAction(
+        "hexagonCode",
+        () => {
             let ran = false;
             setPlayground(
                 produce((playground) => {
                     const items = playground?.pages[0]?.items;
                     if (items) {
-                        items.push(newPlaygroundTutorialItem);
+                        items[0] = hexagonTutorialItem;
                         ran = true;
                     }
                 }),
@@ -409,7 +428,7 @@ const PlaygroundPageList = (props: {
     onMovePageDown: (pageIndex: number) => void;
     onDeletePage: (pageIndex: number) => void;
 }) => (
-    <TutorialItem id="playgroundPageList">
+    <TutorialItem id="playgroundPageList" className="w-full max-w-4xl lg:w-fit lg:max-w-none">
         <ul className="flex flex-shrink-0 flex-row gap-1 lg:flex-col max-w-4xl lg:max-w-none w-full lg:w-[240px] lg:max-h-[calc(100vh-140px)] overflow-scroll px-4 pb-8 lg:pb-4">
             {props.playground ? (
                 <>

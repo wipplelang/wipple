@@ -20,10 +20,8 @@ export const TutorialOverlay = (props: React.PropsWithChildren<{}>) => {
 
             {store.activeTutorialStep ? (
                 <>
-                    <div className="h-20"></div>
-
                     <FloatingPortal>
-                        <div className="fixed left-0 right-0 bottom-8 mx-auto w-[480px] bg-white p-4 rounded-xl border border-gray-100 dark:border-gray-800 overflow-clip shadow-lg z-[9999]">
+                        <div className="fixed left-0 right-0 bottom-8 mx-auto w-[480px] bg-white p-4 rounded-xl border-2 border-gray-100 dark:border-gray-800 overflow-clip shadow-lg z-[9999]">
                             <div className="flex flex-col gap-3 w-full h-full">
                                 <div className="flex flex-row items-start justify-between gap-2">
                                     <div className="mt-0.5 ml-0.5">
@@ -41,7 +39,7 @@ export const TutorialOverlay = (props: React.PropsWithChildren<{}>) => {
                                             }
                                         }}
                                     >
-                                        <MaterialSymbol icon="close" className="text-2xl" />
+                                        <MaterialSymbol icon="close" className="text-2xl -mt-1" />
                                     </TutorialOverlayButton>
                                 </div>
 
@@ -51,7 +49,9 @@ export const TutorialOverlay = (props: React.PropsWithChildren<{}>) => {
                                             onClick={store.activeTutorialStep.onContinue}
                                         >
                                             <div className="flex flex-row items-center gap-1 px-1">
-                                                Continue
+                                                {store.activeTutorialStep.continueButton === "end"
+                                                    ? "End Tutorial"
+                                                    : "Continue"}
                                                 <MaterialSymbol
                                                     icon="arrow_forward_ios"
                                                     className="text-xl w-4"
