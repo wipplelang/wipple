@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { EditorView, minimalSetup } from "codemirror";
 import { placeholder, keymap, dropCursor } from "@codemirror/view";
-import { Compartment, EditorState, Extension } from "@codemirror/state";
+import { Compartment, EditorSelection, EditorState, Extension } from "@codemirror/state";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { indentOnInput } from "@codemirror/language";
@@ -256,6 +256,7 @@ const dragAndDrop = (readOnly: boolean) => [
                         insert: snippet,
                     },
                     userEvent: "wipple.drop",
+                    selection: EditorSelection.cursor(view.state.selection.main.to),
                 });
             } else {
                 snippet = snippet.replace("_", "...");
