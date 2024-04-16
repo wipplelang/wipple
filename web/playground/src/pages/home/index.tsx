@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { Button, Footer, Skeleton, TutorialItem, useAlert, useNavbar } from "../../components";
+import {
+    Button,
+    ContextMenuButton,
+    Footer,
+    Skeleton,
+    TutorialItem,
+    useAlert,
+    useNavbar,
+} from "../../components";
 import { MaterialSymbol } from "react-material-symbols";
 import {
     ListPlaygroundsFilter,
@@ -55,19 +63,9 @@ export const HomePage = () => {
         await loadPlaygrounds();
     };
 
-    const handleDelete = (playground: PlaygroundListItem) => {
-        const handleConfirm = async () => {
-            await deletePlayground(playground.id);
-            await loadPlaygrounds();
-        };
-
-        displayAlert(({ dismiss }) => (
-            <ConfirmDeleteAlert
-                dismiss={dismiss}
-                playground={playground}
-                onConfirm={handleConfirm}
-            />
-        ));
+    const handleDelete = async (playground: PlaygroundListItem) => {
+        await deletePlayground(playground.id);
+        await loadPlaygrounds();
     };
 
     return (
@@ -212,113 +210,39 @@ const PlaygroundCard = (props: {
     playground: PlaygroundListItem;
     onDuplicate: () => void;
     onDelete?: () => void;
-}) => {
-    const { displayAlert } = useAlert();
+}) => (
+    <Link
+        to={`/playground/edit/${props.playground.id}`}
+        className="flex flex-row items-center justify-between p-4 hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors hover:rounded-md border-b hover:border-b-transparent"
+    >
+        <p>{props.playground.name}</p>
 
-    return (
-        <Link
-            to={`/playground/edit/${props.playground.id}`}
-            className="flex flex-row items-center justify-between p-4 hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors hover:rounded-md border-b hover:border-b-transparent"
-        >
-            <p>{props.playground.name}</p>
+        <div className="flex flex-row items-center gap-2.5 text-gray-500 dark:text-gray-400">
+            <p>{format(props.playground.lastModified, "MMM d, h:mm a")}</p>
 
-            <div className="flex flex-row items-center gap-2.5 text-gray-500 dark:text-gray-400">
-                <p>{format(props.playground.lastModified, "MMM d, h:mm a")}</p>
-
-                <button
-                    onClick={(e) => {
-                        e.preventDefault();
-                        displayAlert(({ dismiss }) => (
-                            <ManagePlaygroundAlert
-                                dismiss={dismiss}
-                                onDuplicate={props.onDuplicate}
-                                onDelete={props.onDelete}
-                            />
-                        ));
-                    }}
-                    className="text-2xl leading-3 w-8 h-8 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+            <ContextMenuButton
+                items={[
+                    {
+                        title: "Duplicate",
+                        icon: "file_copy",
+                        onClick: props.onDuplicate,
+                    },
+                    {
+                        title: "Delete",
+                        icon: "delete",
+                        role: "destructive",
+                        disabled: props.onDelete == null,
+                        onClick: props.onDelete,
+                    },
+                ]}
+            >
+                <div
+                    className="flex items-center justify-center text-2xl leading-3 w-8 h-8 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+                    onClick={(e) => e.preventDefault()}
                 >
                     <MaterialSymbol icon="more_vert" />
-                </button>
-            </div>
-        </Link>
-    );
-};
-
-const ManagePlaygroundAlert = (props: {
-    dismiss: () => void;
-    onDuplicate: () => void;
-    onDelete?: () => void;
-}) => (
-    <div className="flex flex-col gap-4 p-4">
-        <Button
-            role="primary"
-            icon="file_copy"
-            onClick={() => {
-                props.dismiss();
-
-                requestAnimationFrame(() => {
-                    props.onDuplicate();
-                });
-            }}
-        >
-            Duplicate
-        </Button>
-
-        {props.onDelete ? (
-            <Button
-                role="destructive"
-                icon="delete"
-                onClick={() => {
-                    props.dismiss();
-
-                    requestAnimationFrame(() => {
-                        props.onDelete!();
-                    });
-                }}
-            >
-                Delete
-            </Button>
-        ) : null}
-
-        <Button
-            role="secondary"
-            fill={false}
-            onClick={() => {
-                props.dismiss();
-            }}
-        >
-            Cancel
-        </Button>
-    </div>
-);
-
-const ConfirmDeleteAlert = (props: {
-    dismiss: () => void;
-    playground: PlaygroundListItem;
-    onConfirm: () => void;
-}) => (
-    <div className="flex flex-col gap-4 p-4">
-        <p>Delete “{props.playground.name}”?</p>
-
-        <Button
-            role="destructive"
-            onClick={() => {
-                props.dismiss();
-                props.onConfirm();
-            }}
-        >
-            Delete
-        </Button>
-
-        <Button
-            role="secondary"
-            fill={false}
-            onClick={() => {
-                props.dismiss();
-            }}
-        >
-            Cancel
-        </Button>
-    </div>
+                </div>
+            </ContextMenuButton>
+        </div>
+    </Link>
 );

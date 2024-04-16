@@ -95,7 +95,9 @@ const ContextMenu = (props: { items: ContextMenuItem[]; onDismiss: () => void })
             <TutorialItem id={item.tutorialItemId} key={index}>
                 <button
                     disabled={item.disabled}
-                    onClick={() => {
+                    onClick={(e) => {
+                        e.preventDefault();
+
                         if (item.onClick) {
                             item.onClick();
                             props.onDismiss();
