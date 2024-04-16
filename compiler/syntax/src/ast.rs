@@ -410,7 +410,7 @@ fn statements<D: Driver>(
 
                                     disallow_bounds(bounds, info);
 
-                                    let r#type = r#type(type_syntax, info);
+                                    let r#type = type_syntax.map(|type_syntax| r#type(type_syntax, info));
 
                                     Some(crate::Statement::Trait {
                                         name,
@@ -432,7 +432,7 @@ fn statements<D: Driver>(
 
                                     let instance = instance(instance_syntax, info);
 
-                                    let body = expression(body_syntax, info);
+                                    let body = body_syntax.map(|body_syntax| expression(body_syntax, info));
 
                                     Some(crate::Statement::Instance {
                                         parameters,
@@ -456,7 +456,7 @@ fn statements<D: Driver>(
 
                                     let instance = instance(instance_syntax, info);
 
-                                    let body = expression(body_syntax, info);
+                                    let body = body_syntax.map(|body_syntax| expression(body_syntax, info));
 
                                     Some(crate::Statement::Instance {
                                         parameters,

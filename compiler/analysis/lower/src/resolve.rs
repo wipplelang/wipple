@@ -379,7 +379,7 @@ fn resolve_statements<D: Driver>(
                     .filter_map(|type_parameter| resolve_type_parameter(type_parameter, info))
                     .collect::<Vec<_>>();
 
-                let r#type = resolve_type(r#type, info);
+                let r#type = r#type.map(|r#type| resolve_type(r#type, info));
 
                 info.scopes.pop_scope();
 
@@ -390,10 +390,12 @@ fn resolve_statements<D: Driver>(
                     r#type: r#type.clone(),
                 });
 
-                let (name, constructor) =
-                    generate_trait_constructor(name, parameters, r#type, info);
+                if let Some(r#type) = r#type {
+                    let (name, constructor) =
+                        generate_trait_constructor(name, parameters, r#type, info);
 
-                info.scopes.define(name, constructor);
+                    info.scopes.define(name, constructor);
+                }
 
                 info.path.pop().unwrap();
 
@@ -471,7 +473,7 @@ fn resolve_statements<D: Driver>(
                     }
                 };
 
-                let body = resolve_expression(body, info);
+                let body = body.map(|body| resolve_expression(body, info));
 
                 info.next_variable = prev_next_variable;
                 info.scopes.pop_scope();
@@ -595,7 +597,7 @@ fn resolve_statements<D: Driver>(
         let path = mem::replace(&mut info.path, prev_path);
         info.next_variable = prev_next_variable;
 
-        info.library.items.insert(path, body);
+        info.library.items.insert(path, Some(body));
     }
 
     statements
@@ -644,7 +646,7 @@ fn generate_marker_constructor<D: Driver>(
 
     info.library
         .items
-        .insert(constructor_path.clone(), constructor_body);
+        .insert(constructor_path.clone(), Some(constructor_body));
 
     (
         name.item,
@@ -737,7 +739,7 @@ fn generate_structure_constructor<D: Driver>(
 
     info.library
         .items
-        .insert(constructor_path.clone(), constructor_body);
+        .insert(constructor_path.clone(), Some(constructor_body));
 
     (
         name.item,
@@ -849,7 +851,7 @@ fn generate_variant_constructor<D: Driver>(
 
     info.library
         .items
-        .insert(constructor_path.clone(), constructor_body);
+        .insert(constructor_path.clone(), Some(constructor_body));
 
     (
         name.item,
@@ -934,7 +936,7 @@ fn generate_wrapper_constructor<D: Driver>(
 
     info.library
         .items
-        .insert(constructor_path.clone(), constructor_body);
+        .insert(constructor_path.clone(), Some(constructor_body));
 
     (
         name.item,
@@ -980,7 +982,7 @@ fn generate_trait_constructor<D: Driver>(
 
     info.library
         .items
-        .insert(constructor_path.clone(), constructor_body);
+        .insert(constructor_path.clone(), Some(constructor_body));
 
     (
         name.item,

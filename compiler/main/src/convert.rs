@@ -19,7 +19,7 @@ pub mod interface {
     ) -> wipple_util::WithInfo<crate::Info, wipple_lower::TraitDeclaration<crate::Driver>> {
         trait_declaration.map(|trait_declaration| wipple_lower::TraitDeclaration {
             parameters: trait_declaration.parameters,
-            r#type: convert_type(trait_declaration.r#type),
+            r#type: trait_declaration.r#type.map(convert_type),
         })
     }
 
@@ -223,7 +223,7 @@ pub mod lower {
             } => wipple_lower::UnresolvedStatement::Trait {
                 name,
                 parameters: parameters.into_iter().map(convert_type_parameter).collect(),
-                r#type: convert_type(r#type),
+                r#type: r#type.map(convert_type),
             },
             wipple_syntax::Statement::Constant {
                 name,
@@ -248,7 +248,7 @@ pub mod lower {
                 parameters: parameters.into_iter().map(convert_type_parameter).collect(),
                 bounds: bounds.into_iter().map(convert_instance).collect(),
                 instance: convert_instance(instance),
-                body: convert_expression(body),
+                body: body.map(convert_expression),
                 default,
             },
             wipple_syntax::Statement::Language { name, kind, item } => {
@@ -665,7 +665,7 @@ pub mod typecheck {
     ) -> wipple_util::WithInfo<Info, wipple_typecheck::TraitDeclaration<crate::Driver>> {
         trait_declaration.map(|trait_declaration| wipple_typecheck::TraitDeclaration {
             parameters: trait_declaration.parameters,
-            r#type: convert_type(trait_declaration.r#type),
+            r#type: trait_declaration.r#type.map(convert_type),
         })
     }
 

@@ -22,16 +22,20 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
         WithInfo<D::Info, crate::UntypedExpression<D>>,
     )
 {
-    fn into_item_declaration(self, _driver: &D) -> WithInfo<D::Info, crate::ItemDeclaration<D>> {
+    fn into_item_declaration(
+        self,
+        _driver: &D,
+        _errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
+    ) -> WithInfo<D::Info, Option<crate::ItemDeclaration<D>>> {
         let (declaration, body) = self;
 
         declaration.map(|declaration| {
-            crate::ItemDeclaration(ItemDeclarationInner {
+            Some(crate::ItemDeclaration(ItemDeclarationInner {
                 bounds: declaration.bounds,
                 r#type: declaration.r#type,
                 body,
                 top_level: false,
-            })
+            }))
         })
     }
 }
@@ -39,33 +43,71 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
 impl<D: Driver> crate::IntoItemDeclaration<D>
     for (
         WithInfo<D::Info, crate::InstanceDeclaration<D>>,
-        WithInfo<D::Info, crate::UntypedExpression<D>>,
+        Option<WithInfo<D::Info, crate::UntypedExpression<D>>>,
     )
 {
-    fn into_item_declaration(self, driver: &D) -> WithInfo<D::Info, crate::ItemDeclaration<D>> {
+    fn into_item_declaration(
+        self,
+        driver: &D,
+        errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
+    ) -> WithInfo<D::Info, Option<crate::ItemDeclaration<D>>> {
         let (declaration, body) = self;
 
-        declaration.map(|declaration| {
-            let r#type = resolve_trait_type_from_instance(driver, declaration.instance.as_ref());
+        let info = declaration.info.clone();
 
-            crate::ItemDeclaration(ItemDeclarationInner {
-                bounds: declaration.bounds,
-                r#type,
-                body,
-                top_level: false,
-            })
-        })
+        let r#type = resolve_trait_type_from_instance(driver, declaration.item.instance.as_ref());
+
+        WithInfo {
+            info: info.clone(),
+            item: match (r#type, body) {
+                (Some(r#type), Some(body)) => Some(crate::ItemDeclaration(ItemDeclarationInner {
+                    bounds: declaration.item.bounds,
+                    r#type,
+                    body,
+                    top_level: false,
+                })),
+                (Some(r#type), None) => {
+                    errors.push(WithInfo {
+                        info,
+                        item: crate::Diagnostic::ExpectedInstanceValue,
+                    });
+
+                    Some(crate::ItemDeclaration(ItemDeclarationInner {
+                        bounds: declaration.item.bounds,
+                        r#type,
+                        body: WithInfo {
+                            info: declaration.info,
+                            item: crate::UntypedExpression::Unknown,
+                        },
+                        top_level: false,
+                    }))
+                }
+                (None, Some(_)) => {
+                    errors.push(WithInfo {
+                        info,
+                        item: crate::Diagnostic::UnexpectedInstanceValue,
+                    });
+
+                    None
+                }
+                (None, None) => None,
+            },
+        }
     }
 }
 
 impl<D: Driver> crate::IntoItemDeclaration<D>
     for WithInfo<D::Info, Vec<WithInfo<D::Info, crate::UntypedExpression<D>>>>
 {
-    fn into_item_declaration(self, _driver: &D) -> WithInfo<D::Info, crate::ItemDeclaration<D>> {
+    fn into_item_declaration(
+        self,
+        _driver: &D,
+        _errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
+    ) -> WithInfo<D::Info, Option<crate::ItemDeclaration<D>>> {
         let info = self.info.clone();
 
         self.map(|code| {
-            crate::ItemDeclaration(ItemDeclarationInner {
+            Some(crate::ItemDeclaration(ItemDeclarationInner {
                 bounds: Vec::new(),
                 r#type: WithInfo {
                     info: info.clone(),
@@ -76,7 +118,7 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
                     item: crate::UntypedExpression::Block(code),
                 },
                 top_level: true,
-            })
+            }))
         })
     }
 }
@@ -91,10 +133,6 @@ pub fn resolve<D: Driver>(
         bounds: RefCell<Vec<Vec<WithInfo<D::Info, Instance<D>>>>>,
         body: WithInfo<D::Info, Expression<D>>,
     }
-
-    let item_declaration = item_declaration
-        .into_item_declaration(driver)
-        .map(|declaration| declaration.0);
 
     let recursion_stack: RefCell<Vec<_>> = Default::default();
     let recursion_limit = driver.recursion_limit();
@@ -111,6 +149,21 @@ pub fn resolve<D: Driver>(
         error_queue: &error_queue,
         errors: &errors,
         variables: &variables,
+    };
+
+    let item_declaration = item_declaration.into_item_declaration(driver, &mut errors.borrow_mut());
+
+    let item_declaration = match item_declaration.item {
+        Some(declaration) => WithInfo {
+            info: item_declaration.info,
+            item: declaration.0,
+        },
+        None => {
+            return crate::Result {
+                item: None,
+                diagnostics: errors.into_inner(),
+            }
+        }
     };
 
     let declared_type = infer_type(
@@ -259,7 +312,7 @@ pub fn resolve<D: Driver>(
     }
 
     crate::Result {
-        item,
+        item: Some(item),
         diagnostics: errors,
     }
 }
@@ -382,8 +435,10 @@ pub fn instances_overlap<D: Driver>(
 pub fn resolve_trait_type_from_instance<D: Driver>(
     driver: &D,
     instance: WithInfo<D::Info, &crate::Instance<D>>,
-) -> WithInfo<D::Info, crate::Type<D>> {
+) -> Option<WithInfo<D::Info, crate::Type<D>>> {
     let trait_declaration = driver.get_trait_declaration(&instance.item.r#trait);
+
+    let r#type = trait_declaration.item.r#type.as_ref()?.as_ref();
 
     let role = trait_declaration.replace(Role::Trait);
 
@@ -414,12 +469,8 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
         ));
     }
 
-    let r#type = infer_type(
-        trait_declaration.item.r#type.as_ref(),
-        role,
-        Some(&type_context),
-    )
-    .instantiate(driver, &instantiation_context);
+    let r#type =
+        infer_type(r#type, role, Some(&type_context)).instantiate(driver, &instantiation_context);
 
     assert!(errors.into_inner().is_empty());
 
@@ -434,7 +485,7 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
         subexpression_types: None,
     };
 
-    finalize_type(r#type, false, &finalize_context)
+    Some(finalize_type(r#type, false, &finalize_context))
 }
 
 pub fn substitute_defaults_in_parameters<D: Driver>(
@@ -1866,12 +1917,26 @@ fn infer_expression<D: Driver>(
                 context.errors,
             );
 
-            let r#type = infer_type(
-                trait_declaration.item.r#type.as_ref(),
-                trait_declaration.replace(Role::Trait),
-                Some(context.type_context),
-            )
-            .instantiate(context.driver, &instantiation_context);
+            let r#type = match trait_declaration.item.r#type.as_ref() {
+                Some(r#type) => infer_type(
+                    r#type.as_ref(),
+                    trait_declaration.replace(Role::Trait),
+                    Some(context.type_context),
+                )
+                .instantiate(context.driver, &instantiation_context),
+                None => {
+                    context.errors.borrow_mut().push(WithInfo {
+                        info: info.clone(),
+                        item: crate::Diagnostic::TraitHasNoValue(path.clone()),
+                    });
+
+                    Type::new(
+                        TypeKind::Variable(context.type_context.variable()),
+                        info.clone(),
+                        Vec::new(),
+                    )
+                }
+            };
 
             Expression {
                 r#type,
@@ -3021,19 +3086,28 @@ fn resolve_expression<D: Driver>(
         ExpressionKind::UnresolvedTrait(ref path) => {
             let path = path.clone();
 
-            let parameters =
-                resolve_trait_parameters_from_type(&path, expression.as_mut(), context);
+            match resolve_trait_parameters_from_type(&path, expression.as_mut(), context) {
+                Some(parameters) => {
+                    let query = expression.replace(Instance {
+                        r#trait: path,
+                        parameters,
+                    });
 
-            let query = expression.replace(Instance {
-                r#trait: path,
-                parameters,
-            });
+                    match resolve_trait(query.as_ref(), context) {
+                        Ok(()) => ExpressionKind::ResolvedTrait(query.item.r#trait),
+                        Err(error) => {
+                            context.error_queue.borrow_mut().push(error);
+                            ExpressionKind::Unknown(Some(query.item.r#trait))
+                        }
+                    }
+                }
+                None => {
+                    context.errors.borrow_mut().push(WithInfo {
+                        info: expression.info.clone(),
+                        item: crate::Diagnostic::TraitHasNoValue(path.clone()),
+                    });
 
-            match resolve_trait(query.as_ref(), context) {
-                Ok(()) => ExpressionKind::ResolvedTrait(query.item.r#trait),
-                Err(error) => {
-                    context.error_queue.borrow_mut().push(error);
-                    ExpressionKind::Unknown(Some(query.item.r#trait))
+                    ExpressionKind::Unknown(Some(path))
                 }
             }
         }
@@ -3659,7 +3733,7 @@ fn resolve_trait_parameters_from_type<D: Driver>(
     path: &D::Path,
     use_expression: WithInfo<D::Info, &mut Expression<D>>,
     context: &ResolveContext<'_, D>,
-) -> Vec<Type<D>> {
+) -> Option<Vec<Type<D>>> {
     let trait_declaration = context.driver.get_trait_declaration(path);
 
     let use_info = use_expression.info.clone();
@@ -3675,7 +3749,7 @@ fn resolve_trait_parameters_from_type<D: Driver>(
     );
 
     let trait_type = infer_type(
-        trait_declaration.item.r#type.as_ref(),
+        trait_declaration.item.r#type.as_ref()?.as_ref(),
         role,
         Some(context.type_context),
     )
@@ -3689,7 +3763,7 @@ fn resolve_trait_parameters_from_type<D: Driver>(
         context.error_queue,
     );
 
-    instantiation_context.into_types_for_parameters()
+    Some(instantiation_context.into_types_for_parameters())
 }
 
 fn resolve_trait<D: Driver>(

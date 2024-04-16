@@ -48,8 +48,9 @@ pub struct Interface<D: Driver> {
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub struct Library<D: Driver> {
-    /// The implementations of constants and instances.
-    pub items: HashMap<Path, WithInfo<D::Info, crate::Expression<D>>>,
+    /// The implementations of constants and instances. A `None` value indicates
+    /// that the implementation was omitted (eg. an instance with no value).
+    pub items: HashMap<Path, Option<WithInfo<D::Info, crate::Expression<D>>>>,
 
     /// Any code to be run when the program starts.
     pub code: Vec<WithInfo<D::Info, Expression<D>>>,
@@ -186,7 +187,7 @@ pub enum UnresolvedStatement<D: Driver> {
         parameters: Vec<WithInfo<D::Info, UnresolvedTypeParameter<D>>>,
 
         /// The trait's type.
-        r#type: WithInfo<D::Info, UnresolvedType<D>>,
+        r#type: Option<WithInfo<D::Info, UnresolvedType<D>>>,
     },
 
     /// A constant declaration.
@@ -221,7 +222,7 @@ pub enum UnresolvedStatement<D: Driver> {
         instance: WithInfo<D::Info, UnresolvedInstance<D>>,
 
         /// The instance's body.
-        body: WithInfo<D::Info, UnresolvedExpression<D>>,
+        body: Option<WithInfo<D::Info, UnresolvedExpression<D>>>,
 
         /// Whether the instance is the default instance.
         default: bool,
@@ -839,7 +840,7 @@ pub struct TraitDeclaration<D: Driver> {
     pub parameters: Vec<crate::Path>,
 
     /// The trait's type.
-    pub r#type: WithInfo<D::Info, crate::Type<D>>,
+    pub r#type: Option<WithInfo<D::Info, crate::Type<D>>>,
 }
 
 /// A resolved constant declaration.

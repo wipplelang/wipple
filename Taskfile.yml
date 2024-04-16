@@ -124,12 +124,11 @@ tasks:
         cmds:
             - WIPPLE_COMPILER_WASM_OPTIMIZE=1 task cli:build
             - task base:compile
-            - rm -rf .wipple
-            - wipple compile ../../library/base/*.wipple --interface .wipple/base.wippleinterface --library .wipple/base.wipplelibrary
+            - wipple compile ../../library/base/*.wipple --interface ../../.wipple/base.wippleinterface --library ../../.wipple/base.wipplelibrary
             - wipple bundle-for-playground ../../library/base/*.wipple --output ./public/library/base.wipplebundle
-            - wipple bundle-for-playground ../../library/playground/turtle.wipple --dependency .wipple/base.wippleinterface --link .wipple/base.wipplelibrary --output ./public/library/turtle.wipplebundle
-            - wipple bundle-for-playground ../../library/playground/music.wipple --dependency .wipple/base.wippleinterface --link .wipple/base.wipplelibrary --output ./public/library/music.wipplebundle
-            - wipple bundle-for-playground ../../library/playground/math.wipple --dependency .wipple/base.wippleinterface --link .wipple/base.wipplelibrary --output ./public/library/math.wipplebundle
+            - wipple bundle-for-playground ../../library/playground/turtle.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/turtle.wipplebundle
+            - wipple bundle-for-playground ../../library/playground/music.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/music.wipplebundle
+            - wipple bundle-for-playground ../../library/playground/math.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/math.wipplebundle
             - cp -r ../../library/help ./public/library
 
     web:playground:serve:

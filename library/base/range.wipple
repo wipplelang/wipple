@@ -6,7 +6,7 @@ Range : (N : Number) => type {
 
 To : N => trait (N N -> Range N)
 intrinsic "trait" "to" : To
-(N : Number) => instance (To N) : max min -> {
+(N : Number) => instance (To N) : min max -> {
     min : min
     max : max
 }

@@ -14,7 +14,7 @@ describe : Describe
 show :: (Value : Text) where (Describe Value) => Value -> ()
 show : value -> intrinsic "display" (describe value)
 
-instance (Highlight show (Highlight-Category "io" ; Highlight-Icon "article")) : ...
+instance (Highlight show (Highlight-Category "io" ; Highlight-Icon "article"))
 
 print :: (Value : Text) where (Error "use `show` to display on the screen") => Value -> ()
 print : ...
@@ -46,7 +46,7 @@ instance (Read Number) : text -> intrinsic "text-to-number" text
 prompt :: Value where (Read Value) => Text -> Value
 prompt : prompt -> intrinsic "prompt" prompt Read
 
-instance (Highlight prompt (Highlight-Category "io" ; Highlight-Icon "live-help")) : ...
+instance (Highlight prompt (Highlight-Category "io" ; Highlight-Icon "live-help"))
 
 -- -- Ask the user to pick from a list of choices.
 choice :: Element where (Describe Element) => Text (List Element) -> Element
@@ -56,4 +56,4 @@ choice : prompt items -> do {
     (items . nth index) or unreachable
 }
 
-instance (Highlight choice (Highlight-Category "io" ; Highlight-Icon "format-list-bulleted")) : ...
+instance (Highlight choice (Highlight-Category "io" ; Highlight-Icon "format-list-bulleted"))

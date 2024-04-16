@@ -400,9 +400,15 @@ impl Driver {
         }
 
         for (path, item) in lower_result.interface.constant_declarations {
-            let body = match lower_result.library.items.get(&path) {
+            let body = match lower_result
+                .library
+                .items
+                .get(&path)
+                // Constants always have values; skip ones that somehow don't...
+                .and_then(|item| item.as_ref())
+            {
                 Some(body) => body.clone(),
-                None => continue,
+                None => continue, // ...here
             };
 
             let declaration = convert::typecheck::convert_constant_declaration(&self, item);
@@ -415,6 +421,11 @@ impl Driver {
                 ),
             );
 
+            let item = match typecheck_result.item {
+                Some(item) => item,
+                None => continue,
+            };
+
             diagnostics.extend(
                 typecheck_result
                     .diagnostics
@@ -423,7 +434,7 @@ impl Driver {
             );
 
             let exhaustiveness_diagnostics =
-                wipple_typecheck::check_exhaustiveness(&self, typecheck_result.item.as_ref());
+                wipple_typecheck::check_exhaustiveness(&self, item.as_ref());
 
             diagnostics.extend(
                 exhaustiveness_diagnostics
@@ -431,14 +442,13 @@ impl Driver {
                     .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            let codegen_result =
-                codegen::compile(&self, path.clone(), typecheck_result.item.as_ref());
+            let codegen_result = codegen::compile(&self, path.clone(), item.as_ref());
 
             self.library.items.insert(
                 path,
                 Item {
                     parameters: declaration.item.parameters,
-                    expression: typecheck_result.item,
+                    expression: item,
                     ir: codegen_result.map(|result| result.labels),
                 },
             );
@@ -446,19 +456,22 @@ impl Driver {
 
         for (path, item) in lower_result.interface.instance_declarations {
             let body = match lower_result.library.items.get(&path) {
-                Some(body) => body.clone(),
-                None => continue,
+                Some(body) => body.clone().map(convert::typecheck::convert_expression),
+                None => {
+                    // `None` here means that the implementation is in a
+                    // different library; skip it
+                    continue;
+                }
             };
 
             let declaration = convert::typecheck::convert_instance_declaration(item);
 
-            let typecheck_result = wipple_typecheck::resolve(
-                &self,
-                (
-                    declaration.clone(),
-                    convert::typecheck::convert_expression(body),
-                ),
-            );
+            let typecheck_result = wipple_typecheck::resolve(&self, (declaration.clone(), body));
+
+            let item = match typecheck_result.item {
+                Some(item) => item,
+                None => continue,
+            };
 
             diagnostics.extend(
                 typecheck_result
@@ -468,7 +481,7 @@ impl Driver {
             );
 
             let exhaustiveness_diagnostics =
-                wipple_typecheck::check_exhaustiveness(&self, typecheck_result.item.as_ref());
+                wipple_typecheck::check_exhaustiveness(&self, item.as_ref());
 
             diagnostics.extend(
                 exhaustiveness_diagnostics
@@ -476,14 +489,13 @@ impl Driver {
                     .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            let codegen_result =
-                codegen::compile(&self, path.clone(), typecheck_result.item.as_ref());
+            let codegen_result = codegen::compile(&self, path.clone(), item.as_ref());
 
             self.library.items.insert(
                 path,
                 Item {
                     parameters: declaration.item.parameters,
-                    expression: typecheck_result.item,
+                    expression: item,
                     ir: codegen_result.map(|result| result.labels),
                 },
             );
@@ -503,33 +515,32 @@ impl Driver {
                 },
             );
 
-            diagnostics.extend(
-                typecheck_result
-                    .diagnostics
-                    .into_iter()
-                    .map(|error| error.map(Diagnostic::Typecheck)),
-            );
+            if let Some(item) = typecheck_result.item {
+                diagnostics.extend(
+                    typecheck_result
+                        .diagnostics
+                        .into_iter()
+                        .map(|error| error.map(Diagnostic::Typecheck)),
+                );
 
-            let exhaustiveness_diagnostics =
-                wipple_typecheck::check_exhaustiveness(&self, typecheck_result.item.as_ref());
+                let exhaustiveness_diagnostics =
+                    wipple_typecheck::check_exhaustiveness(&self, item.as_ref());
 
-            diagnostics.extend(
-                exhaustiveness_diagnostics
-                    .into_iter()
-                    .map(|error| error.map(Diagnostic::Typecheck)),
-            );
+                diagnostics.extend(
+                    exhaustiveness_diagnostics
+                        .into_iter()
+                        .map(|error| error.map(Diagnostic::Typecheck)),
+                );
 
-            let codegen_result = codegen::compile(
-                &self,
-                lower::Path::top_level(),
-                typecheck_result.item.as_ref(),
-            );
+                let codegen_result =
+                    codegen::compile(&self, lower::Path::top_level(), item.as_ref());
 
-            self.library.code.push(Item {
-                parameters: Vec::new(),
-                expression: typecheck_result.item,
-                ir: codegen_result.map(|result| result.labels),
-            });
+                self.library.code.push(Item {
+                    parameters: Vec::new(),
+                    expression: item,
+                    ir: codegen_result.map(|result| result.labels),
+                });
+            }
         }
 
         let instances_by_trait = self

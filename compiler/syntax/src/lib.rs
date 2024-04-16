@@ -213,7 +213,7 @@ pub enum Statement<D: Driver> {
         parameters: Vec<WithInfo<D::Info, TypeParameter<D>>>,
 
         /// The trait's type.
-        r#type: WithInfo<D::Info, Type<D>>,
+        r#type: Option<WithInfo<D::Info, Type<D>>>,
     },
 
     /// A constant declaration.
@@ -248,7 +248,7 @@ pub enum Statement<D: Driver> {
         instance: WithInfo<D::Info, Instance<D>>,
 
         /// The instance's body.
-        body: WithInfo<D::Info, Expression<D>>,
+        body: Option<WithInfo<D::Info, Expression<D>>>,
 
         /// Whether the instance is the default instance.
         default: bool,

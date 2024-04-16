@@ -161,7 +161,11 @@ pub struct ItemDeclaration<D: Driver>(resolve::ItemDeclarationInner<D>);
 /// the same representation for typechecking.
 pub trait IntoItemDeclaration<D: Driver> {
     /// Convert the value into the representation used by the typechecker.
-    fn into_item_declaration(self, driver: &D) -> WithInfo<D::Info, ItemDeclaration<D>>;
+    fn into_item_declaration(
+        self,
+        driver: &D,
+        errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
+    ) -> WithInfo<D::Info, Option<ItemDeclaration<D>>>;
 }
 
 /// Resolve a constant, instance, or the top level.
@@ -179,7 +183,7 @@ pub fn resolve<D: Driver>(
 #[serde(bound(serialize = "", deserialize = ""))]
 pub struct Result<D: Driver> {
     /// The resolved item.
-    pub item: WithInfo<D::Info, TypedExpression<D>>,
+    pub item: Option<WithInfo<D::Info, TypedExpression<D>>>,
 
     /// Any errors encountered while resolving the item.
     pub diagnostics: Vec<WithInfo<D::Info, Diagnostic<D>>>,
@@ -219,7 +223,7 @@ pub fn check_exhaustiveness<D: Driver>(
 pub fn resolve_trait_type_from_instance<D: Driver>(
     driver: &D,
     instance: WithInfo<D::Info, &crate::Instance<D>>,
-) -> WithInfo<D::Info, crate::Type<D>> {
+) -> Option<WithInfo<D::Info, crate::Type<D>>> {
     resolve::resolve_trait_type_from_instance(driver, instance)
 }
 
@@ -311,6 +315,15 @@ pub enum Diagnostic<D: Driver> {
         /// [`ErrorKind::UnresolvedInstance::trait`].
         stack: Vec<WithInfo<D::Info, Instance<D>>>,
     },
+
+    /// A trait that doesn't have a value was used in expression position.
+    TraitHasNoValue(D::Path),
+
+    /// An instance is missing a value.
+    ExpectedInstanceValue,
+
+    /// An instance has a value, but the trait doesn't declare one.
+    UnexpectedInstanceValue,
 
     /// A structure expression was used, but the expression does not have a
     /// structure type.
@@ -505,7 +518,7 @@ pub struct TraitDeclaration<D: Driver> {
     pub parameters: Vec<D::Path>,
 
     /// The trait's type.
-    pub r#type: WithInfo<D::Info, Type<D>>,
+    pub r#type: Option<WithInfo<D::Info, Type<D>>>,
 }
 
 /// A type parameter declaration.

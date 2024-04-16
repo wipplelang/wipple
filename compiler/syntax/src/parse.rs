@@ -56,19 +56,19 @@ pub(crate) enum Statement<D: Driver> {
     TraitDeclaration {
         name: WithInfo<D::Info, Option<String>>,
         parameters: WithInfo<D::Info, TypeFunction<D>>,
-        r#type: WithInfo<D::Info, Type<D>>,
+        r#type: Option<WithInfo<D::Info, Type<D>>>,
     },
     #[serde(rename_all = "camelCase")]
     DefaultInstanceDeclaration {
         parameters: WithInfo<D::Info, TypeFunction<D>>,
         instance: WithInfo<D::Info, Option<Instance<D>>>,
-        body: WithInfo<D::Info, Expression<D>>,
+        body: Option<WithInfo<D::Info, Expression<D>>>,
     },
     #[serde(rename_all = "camelCase")]
     InstanceDeclaration {
         parameters: WithInfo<D::Info, TypeFunction<D>>,
         instance: WithInfo<D::Info, Option<Instance<D>>>,
-        body: WithInfo<D::Info, Expression<D>>,
+        body: Option<WithInfo<D::Info, Expression<D>>>,
     },
     #[serde(rename_all = "camelCase")]
     ConstantDeclaration {
@@ -985,13 +985,26 @@ mod rules {
                     SyntaxKind::TraitDeclaration,
                     [
                         || {
+                            Rule::keyword0(
+                                SyntaxKind::TraitDeclaration,
+                                Keyword::Trait,
+                                |_, info: D::Info, _| WithInfo {
+                                    info: info.clone(),
+                                    item: (
+                                        TypeFunction::default_from_info(info.clone()),
+                                        Option::default_from_info(info),
+                                    ),
+                                },
+                            )
+                        },
+                        || {
                             Rule::keyword1(
                                 SyntaxKind::TraitDeclaration,
                                 Keyword::Trait,
                                 || r#type().no_backtrack(),
                                 |_, info: D::Info, r#type, _| WithInfo {
                                     info: info.clone(),
-                                    item: (TypeFunction::default_from_info(info), r#type),
+                                    item: (TypeFunction::default_from_info(info), r#type.map(Some)),
                                 },
                             )
                         },
@@ -1001,11 +1014,27 @@ mod rules {
                                 NonAssociativeOperator::TypeFunction,
                                 type_function,
                                 || {
-                                    Rule::keyword1(
+                                    Rule::switch(
                                         SyntaxKind::TraitDeclaration,
-                                        Keyword::Trait,
-                                        || r#type().no_backtrack(),
-                                        |_, _, r#type, _| r#type,
+                                        [
+                                            || {
+                                                Rule::keyword0(
+                                                    SyntaxKind::TraitDeclaration,
+                                                    Keyword::Trait,
+                                                    |_, info: D::Info, _| {
+                                                        Option::default_from_info(info)
+                                                    },
+                                                )
+                                            },
+                                            || {
+                                                Rule::keyword1(
+                                                    SyntaxKind::TraitDeclaration,
+                                                    Keyword::Trait,
+                                                    || r#type().no_backtrack(),
+                                                    |_, _, r#type, _| r#type.map(Some),
+                                                )
+                                            },
+                                        ],
                                     )
                                 },
                                 |_, info, type_function, r#type, _| WithInfo {
@@ -1025,7 +1054,7 @@ mod rules {
                     item: Statement::TraitDeclaration {
                         name,
                         parameters,
-                        r#type,
+                        r#type: r#type.try_unwrap(),
                     },
                 }
             },
@@ -1034,133 +1063,261 @@ mod rules {
     }
 
     pub fn default_instance_declaration<D: Driver>() -> Rule<D, Statement<D>> {
-        Rule::non_associative_operator(
+        Rule::switch(
             SyntaxKind::InstanceDeclaration,
-            NonAssociativeOperator::Assign,
-            || {
-                Rule::switch(
-                    SyntaxKind::InstanceDeclaration,
-                    [
+            [
+                || {
+                    Rule::non_associative_operator(
+                        SyntaxKind::InstanceDeclaration,
+                        NonAssociativeOperator::Assign,
                         || {
-                            Rule::non_associative_operator(
+                            Rule::switch(
                                 SyntaxKind::InstanceDeclaration,
-                                NonAssociativeOperator::TypeFunction,
-                                type_function,
-                                || {
-                                    Rule::keyword2(
-                                        SyntaxKind::InstanceDeclaration,
-                                        Keyword::Default,
-                                        || {
-                                            Rule::match_terminal(
-                                                SyntaxKind::InstanceDeclaration,
-                                                RuleToRender::Keyword(
-                                                    Keyword::Instance.to_string(),
+                                [
+                                    || {
+                                        Rule::non_associative_operator(
+                                            SyntaxKind::InstanceDeclaration,
+                                            NonAssociativeOperator::TypeFunction,
+                                            type_function,
+                                            || {
+                                                Rule::keyword2(
+                                                    SyntaxKind::InstanceDeclaration,
+                                                    Keyword::Default,
+                                                    || {
+                                                        Rule::match_terminal(
+                                                            SyntaxKind::InstanceDeclaration,
+                                                            RuleToRender::Keyword(
+                                                                Keyword::Instance.to_string(),
+                                                            ),
+                                                            |_, info, _| Some(info.replace(())),
+                                                        )
+                                                    },
+                                                    || instance().wrapped(),
+                                                    |_, _, _, instance, _| instance,
+                                                )
+                                            },
+                                            |_, info, type_function, instance, _| WithInfo {
+                                                info,
+                                                item: (type_function, instance),
+                                            },
+                                        )
+                                    },
+                                    || {
+                                        Rule::keyword2(
+                                            SyntaxKind::InstanceDeclaration,
+                                            Keyword::Default,
+                                            || {
+                                                Rule::match_terminal(
+                                                    SyntaxKind::InstanceDeclaration,
+                                                    RuleToRender::Keyword(
+                                                        Keyword::Instance.to_string(),
+                                                    ),
+                                                    |_, info, _| Some(info.replace(())),
+                                                )
+                                            },
+                                            || instance().wrapped(),
+                                            |_, info: D::Info, _, instance, _| WithInfo {
+                                                info: info.clone(),
+                                                item: (
+                                                    TypeFunction::default_from_info(info),
+                                                    instance,
                                                 ),
-                                                |_, info, _| Some(info.replace(())),
-                                            )
-                                        },
-                                        || instance().wrapped(),
-                                        |_, _, _, instance, _| instance,
-                                    )
-                                },
-                                |_, info, type_function, instance, _| WithInfo {
-                                    info,
-                                    item: (type_function, instance),
-                                },
+                                            },
+                                        )
+                                    },
+                                ],
                             )
                         },
-                        || {
-                            Rule::keyword2(
-                                SyntaxKind::InstanceDeclaration,
-                                Keyword::Default,
-                                || {
-                                    Rule::match_terminal(
-                                        SyntaxKind::InstanceDeclaration,
-                                        RuleToRender::Keyword(Keyword::Instance.to_string()),
-                                        |_, info, _| Some(info.replace(())),
-                                    )
-                                },
-                                || instance().wrapped(),
-                                |_, info: D::Info, _, instance, _| WithInfo {
-                                    info: info.clone(),
-                                    item: (TypeFunction::default_from_info(info), instance),
-                                },
-                            )
-                        },
-                    ],
-                )
-            },
-            expression,
-            |_, info, declaration, body, _| {
-                let (parameters, instance) = declaration.item;
+                        expression,
+                        |_, info, declaration, body, _| {
+                            let (parameters, instance) = declaration.item;
 
-                WithInfo {
-                    info,
-                    item: Statement::DefaultInstanceDeclaration {
-                        parameters,
-                        instance,
-                        body,
-                    },
-                }
-            },
+                            WithInfo {
+                                info,
+                                item: Statement::DefaultInstanceDeclaration {
+                                    parameters,
+                                    instance,
+                                    body: Some(body),
+                                },
+                            }
+                        },
+                    )
+                },
+                || {
+                    Rule::switch(
+                        SyntaxKind::InstanceDeclaration,
+                        [
+                            || {
+                                Rule::non_associative_operator(
+                                    SyntaxKind::InstanceDeclaration,
+                                    NonAssociativeOperator::TypeFunction,
+                                    type_function,
+                                    || {
+                                        Rule::keyword2(
+                                            SyntaxKind::InstanceDeclaration,
+                                            Keyword::Default,
+                                            || {
+                                                Rule::match_terminal(
+                                                    SyntaxKind::InstanceDeclaration,
+                                                    RuleToRender::Keyword(
+                                                        Keyword::Instance.to_string(),
+                                                    ),
+                                                    |_, info, _| Some(info.replace(())),
+                                                )
+                                            },
+                                            || instance().wrapped(),
+                                            |_, _, _, instance, _| instance,
+                                        )
+                                    },
+                                    |_, info, type_function, instance, _| WithInfo {
+                                        info,
+                                        item: Statement::DefaultInstanceDeclaration {
+                                            parameters: type_function,
+                                            instance,
+                                            body: None,
+                                        },
+                                    },
+                                )
+                            },
+                            || {
+                                Rule::keyword2(
+                                    SyntaxKind::InstanceDeclaration,
+                                    Keyword::Default,
+                                    || {
+                                        Rule::match_terminal(
+                                            SyntaxKind::InstanceDeclaration,
+                                            RuleToRender::Keyword(Keyword::Instance.to_string()),
+                                            |_, info, _| Some(info.replace(())),
+                                        )
+                                    },
+                                    || instance().wrapped(),
+                                    |_, info: D::Info, _, instance, _| WithInfo {
+                                        info: info.clone(),
+                                        item: Statement::DefaultInstanceDeclaration {
+                                            parameters: TypeFunction::default_from_info(info),
+                                            instance,
+                                            body: None,
+                                        },
+                                    },
+                                )
+                            },
+                        ],
+                    )
+                },
+            ],
         )
         .named("A default instance declaration.")
     }
 
     pub fn instance_declaration<D: Driver>() -> Rule<D, Statement<D>> {
-        Rule::non_associative_operator(
+        Rule::switch(
             SyntaxKind::InstanceDeclaration,
-            NonAssociativeOperator::Assign,
-            || {
-                Rule::switch(
-                    SyntaxKind::InstanceDeclaration,
-                    [
+            [
+                || {
+                    Rule::non_associative_operator(
+                        SyntaxKind::InstanceDeclaration,
+                        NonAssociativeOperator::Assign,
                         || {
-                            Rule::non_associative_operator(
+                            Rule::switch(
                                 SyntaxKind::InstanceDeclaration,
-                                NonAssociativeOperator::TypeFunction,
-                                type_function,
-                                || {
-                                    Rule::keyword1(
-                                        SyntaxKind::InstanceDeclaration,
-                                        Keyword::Instance,
-                                        || instance().wrapped(),
-                                        |_, _, instance, _| instance,
-                                    )
-                                },
-                                |_, info, type_function, instance, _| WithInfo {
-                                    info,
-                                    item: (type_function, instance),
-                                },
+                                [
+                                    || {
+                                        Rule::non_associative_operator(
+                                            SyntaxKind::InstanceDeclaration,
+                                            NonAssociativeOperator::TypeFunction,
+                                            type_function,
+                                            || {
+                                                Rule::keyword1(
+                                                    SyntaxKind::InstanceDeclaration,
+                                                    Keyword::Instance,
+                                                    || instance().wrapped(),
+                                                    |_, _, instance, _| instance,
+                                                )
+                                            },
+                                            |_, info, type_function, instance, _| WithInfo {
+                                                info,
+                                                item: (type_function, instance),
+                                            },
+                                        )
+                                    },
+                                    || {
+                                        Rule::keyword1(
+                                            SyntaxKind::InstanceDeclaration,
+                                            Keyword::Instance,
+                                            || instance().wrapped(),
+                                            |_, info: D::Info, instance, _| WithInfo {
+                                                info: info.clone(),
+                                                item: (
+                                                    TypeFunction::default_from_info(info),
+                                                    instance,
+                                                ),
+                                            },
+                                        )
+                                    },
+                                ],
                             )
                         },
-                        || {
-                            Rule::keyword1(
-                                SyntaxKind::InstanceDeclaration,
-                                Keyword::Instance,
-                                || instance().wrapped(),
-                                |_, info: D::Info, instance, _| WithInfo {
-                                    info: info.clone(),
-                                    item: (TypeFunction::default_from_info(info), instance),
-                                },
-                            )
-                        },
-                    ],
-                )
-            },
-            expression,
-            |_, info, declaration, body, _| {
-                let (parameters, instance) = declaration.item;
+                        expression,
+                        |_, info, declaration, body, _| {
+                            let (parameters, instance) = declaration.item;
 
-                WithInfo {
-                    info,
-                    item: Statement::InstanceDeclaration {
-                        parameters,
-                        instance,
-                        body,
-                    },
-                }
-            },
+                            WithInfo {
+                                info,
+                                item: Statement::InstanceDeclaration {
+                                    parameters,
+                                    instance,
+                                    body: Some(body),
+                                },
+                            }
+                        },
+                    )
+                },
+                || {
+                    Rule::switch(
+                        SyntaxKind::InstanceDeclaration,
+                        [
+                            || {
+                                Rule::non_associative_operator(
+                                    SyntaxKind::InstanceDeclaration,
+                                    NonAssociativeOperator::TypeFunction,
+                                    type_function,
+                                    || {
+                                        Rule::keyword1(
+                                            SyntaxKind::InstanceDeclaration,
+                                            Keyword::Instance,
+                                            || instance().wrapped(),
+                                            |_, _, instance, _| instance,
+                                        )
+                                    },
+                                    |_, info, type_function, instance, _| WithInfo {
+                                        info,
+                                        item: Statement::InstanceDeclaration {
+                                            parameters: type_function,
+                                            instance,
+                                            body: None,
+                                        },
+                                    },
+                                )
+                            },
+                            || {
+                                Rule::keyword1(
+                                    SyntaxKind::InstanceDeclaration,
+                                    Keyword::Instance,
+                                    || instance().wrapped(),
+                                    |_, info: D::Info, instance, _| WithInfo {
+                                        info: info.clone(),
+                                        item: Statement::InstanceDeclaration {
+                                            parameters: TypeFunction::default_from_info(info),
+                                            instance,
+                                            body: None,
+                                        },
+                                    },
+                                )
+                            },
+                        ],
+                    )
+                },
+            ],
         )
         .named("An instance declaration.")
     }

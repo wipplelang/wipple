@@ -8,5 +8,5 @@ instance (T Text) : just ()
 f :: A B where (T A) (T B) => (A ; B)
 f : ...
 
-[`B` should not be inferred to be `Number`]
+-- `B` should not be inferred to be `Number`
 just f () :: (Number ; _)

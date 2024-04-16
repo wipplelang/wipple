@@ -796,6 +796,21 @@ export class Render {
                         message = `this code requires \`${renderedInstance}\``;
                         break;
                     }
+                    case "traitHasNoValue": {
+                        severity = "error";
+                        message = "this trait can't be used as a value";
+                        break;
+                    }
+                    case "expectedInstanceValue": {
+                        severity = "error";
+                        message = "`instance` declaration is missing a value";
+                        break;
+                    }
+                    case "unexpectedInstanceValue": {
+                        severity = "error";
+                        message = "`instance` declaration declares a value, but the trait doesn't";
+                        break;
+                    }
                     case "notAStructure": {
                         const renderedType = this.renderType(
                             diagnostic.item.value.value,
