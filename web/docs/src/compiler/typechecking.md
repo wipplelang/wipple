@@ -21,9 +21,9 @@ g :: B -> C
 h :: C -> D
 
 -- The type of every expression in this program is preserved during evaluation.
-h (g (f (x :: A) :: B) :: C) :: D
-h (g (f x :: B) :: C) :: D
-h (g (f x) :: C) :: D
+(h (g (f (x :: A) :: B) :: C) :: D)
+(h (g (f x :: B) :: C) :: D)
+(h (g (f x) :: C) :: D)
 (h (g (f x)) :: D)
 ```
 
