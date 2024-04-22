@@ -21,13 +21,13 @@ g :: B -> C
 h :: C -> D
 
 -- The type of every expression in this program is preserved during evaluation.
-h (g (f (... :: A) :: B) :: C) :: D
-h (g (... :: B) :: C) :: D
-h (... :: C) :: D
-(... :: D)
+h (g (f (x :: A) :: B) :: C) :: D
+h (g (f x :: B) :: C) :: D
+h (g (f x) :: C) :: D
+(h (g (f x)) :: D)
 ```
 
-With this rule (**"type preservation"**) in mind, we can apply some constraints to the expressions. For example, if `f :: A -> B`, we know that `f x :: B` and `x :: A`. Likewise, if we know `x :: A`, then we at least know `f :: A -> _` (where `_` is unknown). If the result of `f x` is then assigned to a variable with type `B`, now we know the full type of `f` to be `A -> B`. By building a giant list of constraints and solving them, we can **infer** the types of most expressions automatically, without the need for explicit type annotations everywhere!
+With this rule of **type preservation** in mind, we can apply some constraints to the expressions. For example, if `f :: A -> B`, we know that `f x :: B` and `x :: A`. Likewise, if we know `x :: A`, then we at least know `f :: A -> _` (where `_` is unknown). If the result of `f x` is then assigned to a variable with type `B`, now we know the full type of `f` to be `A -> B`. By building a giant list of constraints and solving them, we can **infer** the types of most expressions automatically, without the need for explicit type annotations everywhere!
 
 In Wipple, there is only one type of constraint used for type inference: the **substitution**. Essentially, we have a map between **type variables** (not to be confused with variables defined with `:`) and types that is stored in a **context**. We can:
 
