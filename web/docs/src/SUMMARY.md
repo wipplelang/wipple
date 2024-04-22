@@ -12,3 +12,7 @@
 
 -   [Interactive elements in the playground](./guides/interactive-elements.md)
 -   [Custom error messages](./guides/custom-error-messages.md)
+
+# Compiler documentation
+
+-   [Typechecking](./compiler/typechecking.md)
