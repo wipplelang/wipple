@@ -259,25 +259,37 @@ const dragAndDrop = (readOnly: boolean) => [
                     selection: EditorSelection.cursor(view.state.selection.main.to),
                 });
             } else {
-                snippet = snippet.replace("_", "...");
+                const replace = snippet.includes("_");
+                snippet = snippet.replace("_", view.state.sliceDoc());
 
-                let leftPadding = "";
-                const rightPadding = "\n";
-                let endOfLine = view.state.doc.lineAt(position).to;
-                if (endOfLine === view.state.doc.length) {
-                    leftPadding = "\n";
+                if (replace) {
+                    view.dispatch({
+                        changes: {
+                            from: 0,
+                            to: view.state.doc.length,
+                            insert: snippet,
+                        },
+                        userEvent: "wipple.drop",
+                    });
                 } else {
-                    endOfLine += 1;
-                }
+                    let leftPadding = "";
+                    const rightPadding = "\n";
+                    let endOfLine = view.state.doc.lineAt(position).to;
+                    if (endOfLine === view.state.doc.length) {
+                        leftPadding = "\n";
+                    } else {
+                        endOfLine += 1;
+                    }
 
-                view.dispatch({
-                    changes: {
-                        from: endOfLine,
-                        to: endOfLine,
-                        insert: leftPadding + snippet + rightPadding,
-                    },
-                    userEvent: "wipple.drop",
-                });
+                    view.dispatch({
+                        changes: {
+                            from: endOfLine,
+                            to: endOfLine,
+                            insert: leftPadding + snippet + rightPadding,
+                        },
+                        userEvent: "wipple.drop",
+                    });
+                }
             }
         },
     }),
