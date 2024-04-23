@@ -4327,36 +4327,46 @@ fn finalize_expression<D: Driver>(
         ExpressionKind::ResolvedTrait(path) => crate::TypedExpressionKind::Trait(path),
         ExpressionKind::Number(number) => crate::TypedExpressionKind::Number(number),
         ExpressionKind::Text(text) => crate::TypedExpressionKind::Text(text),
-        ExpressionKind::Block(statements) => crate::TypedExpressionKind::Block(
-            statements
-                .into_iter()
-                .map(|statement| {
-                    let statement = finalize_expression(statement, context);
+        ExpressionKind::Block(statements) => {
+            let statement_count = statements.len();
 
-                    // Disallow statements containing only uncalled functions
-                    if let crate::Type::Function { inputs, .. } = &statement.item.r#type {
-                        if let crate::TypedExpressionKind::Constant { .. }
-                        | crate::TypedExpressionKind::Trait { .. }
-                        | crate::TypedExpressionKind::Variable { .. } = &statement.item.kind
-                        {
-                            if let Some(errors) = &context.errors {
-                                let error = WithInfo {
-                                    info: statement.info.clone(),
-                                    item: crate::Diagnostic::WrongNumberOfInputs {
-                                        actual: 0,
-                                        expected: inputs.len() as u32,
-                                    },
-                                };
+            crate::TypedExpressionKind::Block(
+                statements
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, statement)| {
+                        let is_last_statement = index + 1 == statement_count;
 
-                                errors.borrow_mut().push(error);
+                        let statement = finalize_expression(statement, context);
+
+                        // Disallow statements containing only uncalled functions
+                        if !is_last_statement {
+                            if let crate::Type::Function { inputs, .. } = &statement.item.r#type {
+                                if let crate::TypedExpressionKind::Constant { .. }
+                                | crate::TypedExpressionKind::Trait { .. }
+                                | crate::TypedExpressionKind::Variable { .. } =
+                                    &statement.item.kind
+                                {
+                                    if let Some(errors) = &context.errors {
+                                        let error = WithInfo {
+                                            info: statement.info.clone(),
+                                            item: crate::Diagnostic::WrongNumberOfInputs {
+                                                actual: 0,
+                                                expected: inputs.len() as u32,
+                                            },
+                                        };
+
+                                        errors.borrow_mut().push(error);
+                                    }
+                                }
                             }
                         }
-                    }
 
-                    statement
-                })
-                .collect(),
-        ),
+                        statement
+                    })
+                    .collect(),
+            )
+        }
         ExpressionKind::Do(block) => {
             crate::TypedExpressionKind::Do(finalize_expression(block.unboxed(), context).boxed())
         }

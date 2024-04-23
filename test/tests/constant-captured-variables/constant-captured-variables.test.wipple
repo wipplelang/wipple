@@ -6,7 +6,7 @@ f : do {
   f :: () -> Number
   f : () -> n
 
-  f -- FIXME: Allow returning a function
+  f
 }
 
 show (f ())
