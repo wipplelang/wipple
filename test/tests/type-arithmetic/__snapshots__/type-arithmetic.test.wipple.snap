@@ -2,6 +2,6 @@
 
 exports[`type-arithmetic.test.wipple 1`] = `
 [
-  "type-arithmetic/type-arithmetic.test.wipple:12:4: error: this code produces a function, but the \`_\`s are unknown",
+  "type-arithmetic/type-arithmetic.test.wipple:12:4: error: this code produces \`_ -> (S (S (S (S (S Z)))))\`, but the \`_\`s are unknown",
 ]
 `;

@@ -252,12 +252,18 @@ export class Render {
                         { kind: "arrow" },
                     );
 
-                    const type = this.renderType(declaration.item.declaration.type, false, false);
+                    const type = this.renderType(
+                        declaration.item.declaration.type,
+                        false,
+                        false,
+                        false,
+                    );
 
                     return `${declaration.item.name} :: ${typeFunction}${type}`;
                 } else {
                     const type = this.renderType(
                         declaration.item.declaration.simplifiedType,
+                        true,
                         true,
                         false,
                     );
@@ -355,9 +361,10 @@ export class Render {
     renderType(
         type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
         isTopLevel: boolean,
+        describe: boolean,
         renderAsCode: boolean,
     ): string {
-        if (isTopLevel && this.interface) {
+        if (isTopLevel && describe && this.interface) {
             const result = compiler.resolveAttributeLikeTrait(
                 "describe-type",
                 type,
@@ -482,7 +489,7 @@ export class Render {
                 return `${renderedParameters}${renderedBounds} => `;
             }
             case "description": {
-                const renderedType = this.renderType(format.type, true, true);
+                const renderedType = this.renderType(format.type, true, false, true);
 
                 switch (parameters.length) {
                     case 0: {
@@ -499,6 +506,7 @@ export class Render {
                         return `${this.renderType(
                             format.type,
                             true,
+                            false,
                             true,
                         )} for any types ${parameters
                             .map((parameter) => `\`${this.nameForPath(parameter)}\``)
@@ -518,7 +526,7 @@ export class Render {
         const trait = this.nameForPath(instance.item.trait);
 
         const parameters = instance.item.parameters
-            .map((type) => this.renderType(type, false, false))
+            .map((type) => this.renderType(type, false, false, false))
             .join(" ");
 
         return parameters.length === 0 ? trait : `(${trait} ${parameters})`;
@@ -741,6 +749,7 @@ export class Render {
                         const renderedType = this.renderType(
                             { info: diagnostic.info, item: diagnostic.item.value.value },
                             true,
+                            false,
                             true,
                         );
 
@@ -767,17 +776,19 @@ export class Render {
                                 ? this.renderTypeRole(expectedRoles[0].item)
                                 : "";
 
+                        let expectedMessage = this.renderType(expected, true, true, true);
+                        let actualMessage = this.renderType(actual, true, true, true);
+
+                        // If the type descriptions are equal, try rendering the
+                        // actual type by setting `describe` to false
+                        if (expectedMessage === actualMessage) {
+                            expectedMessage = this.renderType(expected, true, false, true);
+                            actualMessage = this.renderType(actual, true, false, true);
+                        }
+
                         message = renderedRole
-                            ? `expected this ${renderedRole} to be ${this.renderType(
-                                  expected,
-                                  true,
-                                  true,
-                              )} here, but found ${this.renderType(actual, true, true)}`
-                            : `expected ${this.renderType(
-                                  expected,
-                                  true,
-                                  true,
-                              )} here, but found ${this.renderType(actual, true, true)}`;
+                            ? `expected this ${renderedRole} to be ${expectedMessage} here, but found ${actualMessage}`
+                            : `expected ${expectedMessage} here, but found ${actualMessage}`;
 
                         break;
                     }
@@ -814,6 +825,7 @@ export class Render {
                     case "notAStructure": {
                         const renderedType = this.renderType(
                             diagnostic.item.value.value,
+                            true,
                             true,
                             true,
                         );
@@ -917,7 +929,7 @@ export class Render {
                 renderSegmentsAsCode || segment.text.slice(segment.text.length - 1) === "`"
                     ? this.renderCode(segment.type)
                     : null;
-            message += segment.text + (code ?? this.renderType(segment.type, true, true));
+            message += segment.text + (code ?? this.renderType(segment.type, true, true, true));
         }
         message += text.trailing;
 
