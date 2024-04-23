@@ -11,6 +11,7 @@ export default defineConfig({
         rust({
             verbose: true,
             inlineWasm: true,
+            debug: process.env.WIPPLE_COMPILER_WASM_OPTIMIZE ? false : true,
             wasmOptArgs: process.env.WIPPLE_COMPILER_WASM_OPTIMIZE ? ["-O"] : [],
             experimental: {
                 synchronous: true,
