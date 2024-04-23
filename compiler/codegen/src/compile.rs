@@ -405,6 +405,9 @@ fn compile_pattern<D: crate::Driver>(
 
             info.current_label = then_label;
         }
+        wipple_typecheck::Pattern::Annotate { pattern, .. } => {
+            compile_pattern(pattern.as_deref(), break_label, info)?;
+        }
     }
 
     Some(())

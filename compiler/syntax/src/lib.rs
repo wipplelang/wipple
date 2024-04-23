@@ -622,6 +622,15 @@ pub enum Pattern<D: Driver> {
 
     /// A pattern that changes the value of an existing variable.
     Mutate(WithInfo<D::Info, Option<String>>),
+
+    /// Annotate a pattern with an explicit type.
+    Annotate {
+        /// The pattern to annotate.
+        pattern: WithInfo<D::Info, Box<Pattern<D>>>,
+
+        /// The explicit type of the pattern.
+        r#type: WithInfo<D::Info, Type<D>>,
+    },
 }
 
 /// A field in a destructuring pattern.

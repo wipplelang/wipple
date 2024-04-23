@@ -1040,6 +1040,8 @@ export class Render {
                 return "or pattern";
             case "mutatePattern":
                 return "mutate pattern";
+            case "annotatePattern":
+                return "annotate pattern";
             case "expression":
                 return "expression";
             case "type":

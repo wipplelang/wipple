@@ -2917,6 +2917,26 @@ fn resolve_pattern<D: Driver>(
             resolve_pattern(left.as_deref(), r#type.as_ref(), context);
             resolve_pattern(right.as_deref(), r#type.as_ref(), context);
         }
+        crate::Pattern::Annotate {
+            pattern,
+            r#type: annotated_type,
+        } => {
+            let annotated_type = infer_type(
+                annotated_type.as_ref(),
+                r#type.replace(Role::Annotation),
+                Some(context.type_context),
+            );
+
+            try_unify(
+                context.driver,
+                r#type.as_ref(),
+                &annotated_type,
+                context.type_context,
+                context.error_queue,
+            );
+
+            resolve_pattern(pattern.as_deref(), r#type.as_ref(), context)
+        }
     }
 }
 

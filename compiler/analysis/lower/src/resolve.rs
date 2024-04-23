@@ -1409,6 +1409,10 @@ fn resolve_pattern_inner<D: Driver>(
 
             crate::Pattern::Error
         }
+        crate::UnresolvedPattern::Annotate { pattern, r#type } => crate::Pattern::Annotate {
+            pattern: resolve_pattern_inner(pattern.unboxed(), defines, info).boxed(),
+            r#type: resolve_type(r#type, info),
+        },
     })
 }
 

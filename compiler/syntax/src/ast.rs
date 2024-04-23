@@ -611,6 +611,13 @@ fn pattern<D: Driver>(
             right: pattern(right_syntax.unboxed(), info).boxed(),
         },
         parse::Pattern::Mutate(name) => crate::Pattern::Mutate(name),
+        parse::Pattern::Annotate {
+            pattern: pattern_syntax,
+            r#type: type_syntax,
+        } => crate::Pattern::Annotate {
+            pattern: pattern(pattern_syntax.unboxed(), info).boxed(),
+            r#type: r#type(type_syntax, info),
+        },
     })
 }
 

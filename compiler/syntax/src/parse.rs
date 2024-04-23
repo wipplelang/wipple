@@ -409,6 +409,10 @@ pub(crate) enum Pattern<D: Driver> {
         right: WithInfo<D::Info, Box<Pattern<D>>>,
     },
     Mutate(WithInfo<D::Info, Option<String>>),
+    Annotate {
+        pattern: WithInfo<D::Info, Box<Pattern<D>>>,
+        r#type: WithInfo<D::Info, Type<D>>,
+    },
 }
 
 impl<D: Driver> DefaultFromInfo<D::Info> for Pattern<D> {
@@ -555,6 +559,7 @@ pub enum SyntaxKind {
     TuplePattern,
     OrPattern,
     MutatePattern,
+    AnnotatePattern,
     Expression,
     Type,
     PlaceholderType,
@@ -1888,6 +1893,7 @@ mod rules {
                 or_pattern,
                 mutate_pattern,
                 variant_pattern,
+                annotate_pattern,
             ],
         )
         .unwrap_parentheses()
@@ -2026,6 +2032,23 @@ mod rules {
             },
         )
         .named("A pattern that changes the value of an existing variable.")
+    }
+
+    pub fn annotate_pattern<D: Driver>() -> Rule<D, Pattern<D>> {
+        Rule::non_associative_operator(
+            SyntaxKind::AnnotatePattern,
+            NonAssociativeOperator::Annotate,
+            pattern,
+            r#type,
+            |_, info, pattern, r#type, _| WithInfo {
+                info,
+                item: Pattern::Annotate {
+                    pattern: pattern.boxed(),
+                    r#type,
+                },
+            },
+        )
+        .named("Annotate a pattern with a type.")
     }
 
     pub fn expression<D: Driver>() -> Rule<D, Expression<D>> {

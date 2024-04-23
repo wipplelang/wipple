@@ -614,6 +614,15 @@ pub enum UnresolvedPattern<D: Driver> {
 
     /// A pattern that changes the value of an existing variable.
     Mutate(WithInfo<D::Info, Option<String>>),
+
+    /// Annotate a pattern with an explicit type.
+    Annotate {
+        /// The pattern to annotate.
+        pattern: WithInfo<D::Info, Box<UnresolvedPattern<D>>>,
+
+        /// The explicit type of the pattern.
+        r#type: WithInfo<D::Info, UnresolvedType<D>>,
+    },
 }
 
 /// A field in a destructuring pattern.
@@ -1212,6 +1221,15 @@ pub enum Pattern<D: Driver> {
 
         /// The pattern to match if matching [`PatternKind::Or::left`] fails.
         right: WithInfo<D::Info, Box<Pattern<D>>>,
+    },
+
+    /// Annotate a pattern with an explicit type.
+    Annotate {
+        /// The pattern to annotate.
+        pattern: WithInfo<D::Info, Box<Pattern<D>>>,
+
+        /// The explicit type of the pattern.
+        r#type: WithInfo<D::Info, Type<D>>,
     },
 }
 

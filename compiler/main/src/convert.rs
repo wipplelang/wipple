@@ -549,6 +549,12 @@ pub mod lower {
                 right: convert_pattern(right.unboxed()).boxed(),
             },
             wipple_syntax::Pattern::Mutate(name) => wipple_lower::UnresolvedPattern::Mutate(name),
+            wipple_syntax::Pattern::Annotate { pattern, r#type } => {
+                wipple_lower::UnresolvedPattern::Annotate {
+                    pattern: convert_pattern(pattern.unboxed()).boxed(),
+                    r#type: convert_type(r#type),
+                }
+            }
         })
     }
 
@@ -954,6 +960,12 @@ pub mod typecheck {
                 left: convert_pattern(left.unboxed()).boxed(),
                 right: convert_pattern(right.unboxed()).boxed(),
             },
+            wipple_lower::Pattern::Annotate { pattern, r#type } => {
+                wipple_typecheck::Pattern::Annotate {
+                    pattern: convert_pattern(pattern.unboxed()).boxed(),
+                    r#type: convert_type(r#type),
+                }
+            }
         })
     }
 }

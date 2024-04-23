@@ -1055,6 +1055,15 @@ pub enum Pattern<D: Driver> {
         /// The pattern to match if matching [`PatternKind::Or::left`] fails.
         right: WithInfo<D::Info, Box<Pattern<D>>>,
     },
+
+    /// Annotate a pattern with an explicit type.
+    Annotate {
+        /// The pattern to annotate.
+        pattern: WithInfo<D::Info, Box<Pattern<D>>>,
+
+        /// The explicit type of the pattern.
+        r#type: WithInfo<D::Info, Type<D>>,
+    },
 }
 
 /// A field in a destructuring pattern.
@@ -1215,6 +1224,9 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a Pattern<D>> 
             Pattern::Or { left, right } => {
                 left.as_deref().traverse(f);
                 right.as_deref().traverse(f);
+            }
+            Pattern::Annotate { pattern, .. } => {
+                pattern.as_deref().traverse(f);
             }
             Pattern::Unknown
             | Pattern::Wildcard

@@ -2,7 +2,6 @@
 
 exports[`call-function-diagnostic.test.wipple 1`] = `
 [
-  "call-function-diagnostic/call-function-diagnostic.test.wipple:3:16: error: expected pattern here while reading this function inputs",
-  "call-function-diagnostic/call-function-diagnostic.test.wipple:3:39: error: can't find \`text\`",
+  "call-function-diagnostic/call-function-diagnostic.test.wipple:5:14: error: expected this annotation to be a piece of text here, but found a function",
 ]
 `;

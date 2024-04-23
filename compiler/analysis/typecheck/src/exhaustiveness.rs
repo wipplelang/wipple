@@ -233,6 +233,7 @@ fn convert_pattern<D: Driver>(pattern: &crate::Pattern<D>) -> Option<Pattern<D>>
 
             Some(Pattern::Or(vec![left, right]))
         }
+        crate::Pattern::Annotate { pattern, .. } => convert_pattern(&pattern.item),
     }
 }
 
