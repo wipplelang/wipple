@@ -1,12 +1,12 @@
 -- [should error]
 
-f : {
+f : do {
   n : 42
 
   f :: () -> Number
   f : () -> n
 
-  f
+  f -- FIXME: Allow returning a function
 }
 
 show (f ())

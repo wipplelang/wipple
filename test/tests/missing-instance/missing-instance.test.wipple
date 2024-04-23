@@ -1,4 +1,4 @@
 -- [should error]
 
-Foo : type (Foo)
+Foo : type
 show Foo

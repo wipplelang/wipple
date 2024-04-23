@@ -2,8 +2,6 @@
 
 exports[`exhaustiveness-checking.test.wipple 1`] = `
 [
-  "exhaustiveness-checking/exhaustiveness-checking.test.wipple:2:13: error: could not determine what kind of value this code produces",
-  "exhaustiveness-checking/exhaustiveness-checking.test.wipple:2:14: error: can't find \`A\`",
-  "exhaustiveness-checking/exhaustiveness-checking.test.wipple:5:23: error: expected expression here while reading this call expression",
+  "exhaustiveness-checking/exhaustiveness-checking.test.wipple:11:23: error: this code doesn't handle <unknown> or <unknown>",
 ]
 `;

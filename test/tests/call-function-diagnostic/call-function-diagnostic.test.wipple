@@ -1,6 +1,6 @@
 -- [should error]
 
 produces-text : () -> "Hello, world!"
-displays-text : (text :: Text) -> show text
+displays-text : (text :: Text) -> show text -- FIXME: Annotations in patterns
 
 displays-text produces-text

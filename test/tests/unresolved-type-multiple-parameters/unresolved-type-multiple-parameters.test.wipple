@@ -3,15 +3,15 @@
 T : A => type
 U : A B => type
 
-f :: A => T A -> ()
+f :: A => (T A) -> ()
 f : _ -> ()
 
 _ : f T
 
-same-types :: A => U A A -> ()
+same-types :: A => (U A A) -> ()
 same-types : _ -> ()
 
-different-types :: A B => U A B -> ()
+different-types :: A B => (U A B) -> ()
 different-types : _ -> ()
 
 _ : same-types U

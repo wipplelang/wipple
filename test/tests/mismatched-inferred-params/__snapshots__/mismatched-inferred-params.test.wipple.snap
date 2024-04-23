@@ -2,6 +2,6 @@
 
 exports[`mismatched-inferred-params.test.wipple 1`] = `
 [
-  "mismatched-inferred-params/mismatched-inferred-params.test.wipple:2:25: error: expected pattern here while reading this function inputs",
+  "mismatched-inferred-params/mismatched-inferred-params.test.wipple:2:14: error: expected this annotation to be a function here, but found a function",
 ]
 `;

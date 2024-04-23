@@ -1,8 +1,9 @@
 -- [should error]
 
-[show-code : True]
-[on-unimplemented : "_ is not compatible with _" Left Right]
-Compatible : Left Right => trait (Left -> Right -> ())
+Compatible : Left Right => trait (Left Right -> ())
+
+Left Right where (Error ("`_` is not compatible with `_`" Left Right)) =>
+    default instance (Compatible Left Right) : ...
 
 Foo : type (Foo)
 foo : Foo
