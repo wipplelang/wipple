@@ -80,7 +80,7 @@ pub fn resolve<D: Driver>(
     );
 
     assert!(info.scopes.0.len() == 1);
-    for (name, paths) in info.scopes.pop_scope().1 {
+    for (name, paths) in info.scopes.pop_scope().into_paths() {
         for path in paths {
             interface
                 .top_level
@@ -129,10 +129,29 @@ impl<D: Driver> Info<D> {
     }
 }
 
-pub type Scope<D> = (
-    ScopeKind,
-    HashMap<String, Vec<WithInfo<<D as Driver>::Info, crate::Path>>>,
-);
+#[derive(Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
+pub struct Scope<D: Driver> {
+    kind: ScopeKind,
+    paths: HashMap<String, Vec<WithInfo<<D as Driver>::Info, crate::Path>>>,
+}
+
+impl<D: Driver> Scope<D> {
+    fn new(kind: ScopeKind) -> Self {
+        Self {
+            kind,
+            paths: HashMap::new(),
+        }
+    }
+
+    fn into_paths(self) -> HashMap<String, Vec<WithInfo<D::Info, crate::Path>>> {
+        self.paths
+    }
+
+    fn filters_locals(&self) -> bool {
+        matches!(self.kind, ScopeKind::Constant)
+    }
+}
 
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""), Default(bound = ""))]
@@ -146,11 +165,11 @@ pub enum ScopeKind {
 
 impl<D: Driver> Scopes<D> {
     pub fn push_block_scope(&mut self) {
-        self.0.push((ScopeKind::Block, HashMap::new()));
+        self.0.push(Scope::new(ScopeKind::Block));
     }
 
     pub fn push_constant_scope(&mut self) {
-        self.0.push((ScopeKind::Constant, HashMap::new()));
+        self.0.push(Scope::new(ScopeKind::Constant));
     }
 
     pub fn pop_scope(&mut self) -> Scope<D> {
@@ -158,9 +177,10 @@ impl<D: Driver> Scopes<D> {
     }
 
     pub fn define(&mut self, name: String, path: WithInfo<D::Info, crate::Path>) {
-        let (_, paths) = self.0.last_mut().unwrap();
+        let paths = &mut self.0.last_mut().unwrap().paths;
         let paths = paths.entry(name).or_default();
 
+        // Overwrite existing locals with the same name
         if path.item.last().unwrap().is_local() {
             paths.retain(|path| !path.item.last().unwrap().is_local());
         }
@@ -1583,8 +1603,8 @@ fn try_resolve_name<D: Driver, T>(
     mut filter: impl FnMut(&[WithInfo<D::Info, crate::Path>]) -> Vec<T>,
 ) -> Option<T> {
     let mut allow_locals = true;
-    for (kind, scope) in info.scopes.0.iter().rev() {
-        if let Some(paths) = scope.get(&name.item) {
+    for scope in info.scopes.0.iter().rev() {
+        if let Some(paths) = scope.paths.get(&name.item) {
             let paths = paths
                 .iter()
                 .filter(|path| allow_locals || !path.item.last().unwrap().is_local())
@@ -1595,8 +1615,7 @@ fn try_resolve_name<D: Driver, T>(
 
             match candidates.len() {
                 0 => {
-                    // Don't allow accessing locals outside a constant boundary
-                    if matches!(kind, ScopeKind::Constant) {
+                    if scope.filters_locals() {
                         allow_locals = false;
                     }
 
@@ -1613,6 +1632,8 @@ fn try_resolve_name<D: Driver, T>(
                     return Some(candidates.pop().unwrap()); // try the last candidate defined
                 }
             }
+        } else if scope.filters_locals() {
+            allow_locals = false;
         }
     }
 
