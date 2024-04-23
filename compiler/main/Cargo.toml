@@ -24,7 +24,7 @@ ts-rs = { git = "https://github.com/WilsonGramer/ts-rs", branch = "bound-attribu
 wasm-bindgen = "0.2"
 wipple-codegen = { path = "../codegen" }
 wipple-linker = { path = "../linker" }
-wipple-lower = { path = "../analysis/lower" }
+wipple-lower = { path = "../lower" }
 wipple-syntax = { path = "../syntax" }
-wipple-typecheck = { path = "../analysis/typecheck" }
+wipple-typecheck = { path = "../typecheck" }
 wipple-util = { path = "../util" }

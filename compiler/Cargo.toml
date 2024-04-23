@@ -1,12 +1,12 @@
 [workspace]
 resolver = "2"
 members = [
-    "analysis/lower",
-    "analysis/typecheck",
     "codegen",
     "linker",
+    "lower",
     "main",
     "syntax",
+    "typecheck",
     "util",
 ]
 
