@@ -226,7 +226,7 @@ pub fn resolve<D: Driver>(
             resolve_context.error_queue,
         );
 
-        queued.body = resolve_expression(queued.body, &mut resolve_context);
+        queued.body = resolve_expression(queued.body, None, &mut resolve_context);
 
         let subexpression_types = {
             let mut subexpression_types = Vec::new();
@@ -657,6 +657,8 @@ fn report_queued_errors<D: Driver>(
                 mut actual,
                 mut expected,
             } => (|| {
+                refine_mismatch_error(&mut actual, &mut expected, finalize_context.type_context);
+
                 // Special case: Display a user-provided message if there is a
                 // corresponding instance for `Mismatch`
                 if try_report_custom_mismatch_error(
@@ -669,8 +671,6 @@ fn report_queued_errors<D: Driver>(
                 ) {
                     return None;
                 }
-
-                refine_mismatch_error(&mut actual, &mut expected);
 
                 Some(crate::Diagnostic::Mismatch {
                     actual_roles: actual.roles.clone(),
@@ -800,8 +800,8 @@ struct Type<D: Driver> {
     kind: TypeKind<D>,
     info: D::Info,
     roles: Vec<WithInfo<D::Info, Role>>,
-    // expression: Option<&'src WithInfo<D::Info, Expression<D>>>,
-    // parent_expression: Option<&'src WithInfo<D::Info, Expression<D>>>,
+    expression: Option<TrackedExpressionId<D>>,
+    parent_expression: Option<TrackedExpressionId<D>>,
 }
 
 impl<D: Driver> Type<D> {
@@ -810,8 +810,8 @@ impl<D: Driver> Type<D> {
             kind,
             info,
             roles,
-            // expression: None,
-            // parent_expression: None,
+            expression: None,
+            parent_expression: None,
         }
     }
 
@@ -824,15 +824,15 @@ impl<D: Driver> Type<D> {
         self
     }
 
-    // fn with_expression(
-    //     mut self,
-    //     expression: &'src WithInfo<D::Info, Expression<D>>,
-    //     parent: Option<&'src WithInfo<D::Info, Expression<D>>>,
-    // ) -> Self {
-    //     self.expression = Some(expression);
-    //     self.parent_expression = parent;
-    //     self
-    // }
+    fn with_expression(
+        mut self,
+        expression: TrackedExpressionId<D>,
+        parent: Option<TrackedExpressionId<D>>,
+    ) -> Self {
+        self.expression = Some(expression);
+        self.parent_expression = parent;
+        self
+    }
 
     fn contains_variable(&self, variable: &TypeVariable<D>) -> bool {
         match &self.kind {
@@ -1071,6 +1071,7 @@ struct Instance<D: Driver> {
 #[derivative(Clone(bound = ""), Default(bound = ""))]
 struct TypeContext<D: Driver> {
     next_variable: u32,
+    tracked_expressions: Vec<WithInfo<D::Info, Expression<D>>>,
     substitutions: BTreeMap<u32, Type<D>>,
     defaults: BTreeMap<u32, Type<D>>,
 }
@@ -1080,6 +1081,52 @@ impl<D: Driver> TypeContext<D> {
         self.next_variable = other.next_variable;
         self.substitutions = other.substitutions;
         self.defaults = other.defaults;
+    }
+}
+
+#[derive(Derivative)]
+#[derivative(
+    Copy(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
+struct TrackedExpressionId<D: Driver> {
+    _driver: std::marker::PhantomData<D>,
+    counter: u32,
+}
+
+impl<D: Driver> Clone for TrackedExpressionId<D> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<D: Driver> Debug for TrackedExpressionId<D> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "TrackedExpressionId({})", self.counter)
+    }
+}
+
+impl<D: Driver> ResolveContext<'_, D> {
+    pub fn with_tracked_expression(
+        &mut self,
+        parent_id: Option<TrackedExpressionId<D>>,
+        expression: impl FnOnce(&mut Self, TrackedExpressionId<D>) -> WithInfo<D::Info, Expression<D>>,
+    ) -> WithInfo<D::Info, Expression<D>> {
+        let id = TrackedExpressionId {
+            _driver: std::marker::PhantomData,
+            counter: self.type_context.tracked_expressions.len() as u32,
+        };
+
+        let mut expression = expression(self, id);
+        expression.item.r#type = expression.item.r#type.with_expression(id, parent_id);
+
+        self.type_context
+            .tracked_expressions
+            .push(expression.clone());
+
+        expression
     }
 }
 
@@ -3106,469 +3153,496 @@ struct ResolveContext<'a, D: Driver> {
 
 fn resolve_expression<D: Driver>(
     mut expression: WithInfo<D::Info, Expression<D>>,
+    parent_id: Option<TrackedExpressionId<D>>,
     context: &mut ResolveContext<'_, D>,
 ) -> WithInfo<D::Info, Expression<D>> {
-    let kind = match expression.item.kind {
-        ExpressionKind::Unknown(path) => ExpressionKind::Unknown(path),
-        ExpressionKind::Variable(ref name, ref variable) => {
-            let variable_type = context.variables.get(variable).cloned().unwrap_or_else(|| {
-                Type::new(TypeKind::Unknown, expression.info.clone(), Vec::new())
-            });
+    context.with_tracked_expression(parent_id, |context, parent| {
+        let kind = match expression.item.kind {
+            ExpressionKind::Unknown(path) => ExpressionKind::Unknown(path),
+            ExpressionKind::Variable(ref name, ref variable) => {
+                let variable_type = context.variables.get(variable).cloned().unwrap_or_else(|| {
+                    Type::new(TypeKind::Unknown, expression.info.clone(), Vec::new())
+                });
 
-            let name = name.clone();
-            let variable = variable.clone();
+                let name = name.clone();
+                let variable = variable.clone();
 
-            try_unify_expression(
-                context.driver,
-                expression.as_mut(),
-                &variable_type,
-                context.type_context,
-                context.error_queue,
-            );
+                try_unify_expression(
+                    context.driver,
+                    expression.as_mut(),
+                    &variable_type,
+                    context.type_context,
+                    context.error_queue,
+                );
 
-            ExpressionKind::Variable(name, variable)
-        }
-        ExpressionKind::UnresolvedConstant(ref path) => {
-            let path = path.clone();
-
-            match resolve_item(&path, expression.as_mut(), true, context) {
-                Ok(Some(parameters)) => ExpressionKind::ResolvedConstant { path, parameters },
-                Ok(None) => ExpressionKind::UnresolvedConstant(path), // try again with more type information
-                Err(error) => {
-                    context.error_queue.push(error);
-                    ExpressionKind::Unknown(Some(path))
-                }
+                ExpressionKind::Variable(name, variable)
             }
-        }
-        ExpressionKind::UnresolvedTrait(ref path) => {
-            let path = path.clone();
+            ExpressionKind::UnresolvedConstant(ref path) => {
+                let path = path.clone();
 
-            match resolve_trait_parameters_from_type(&path, expression.as_mut(), context) {
-                Some(parameters) => {
-                    let query = expression.replace(Instance {
-                        r#trait: path,
-                        parameters,
-                    });
-
-                    match resolve_trait(query.as_ref(), context) {
-                        Ok(()) => ExpressionKind::ResolvedTrait(query.item.r#trait),
-                        Err(error) => {
-                            context.error_queue.push(error);
-                            ExpressionKind::Unknown(Some(query.item.r#trait))
-                        }
+                match resolve_item(&path, expression.as_mut(), true, context) {
+                    Ok(Some(parameters)) => ExpressionKind::ResolvedConstant { path, parameters },
+                    Ok(None) => ExpressionKind::UnresolvedConstant(path), // try again with more type information
+                    Err(error) => {
+                        context.error_queue.push(error);
+                        ExpressionKind::Unknown(Some(path))
                     }
                 }
-                None => {
-                    context.errors.push(WithInfo {
-                        info: expression.info.clone(),
-                        item: crate::Diagnostic::TraitHasNoValue(path.clone()),
-                    });
+            }
+            ExpressionKind::UnresolvedTrait(ref path) => {
+                let path = path.clone();
 
-                    ExpressionKind::Unknown(Some(path))
+                match resolve_trait_parameters_from_type(&path, expression.as_mut(), context) {
+                    Some(parameters) => {
+                        let query = expression.replace(Instance {
+                            r#trait: path,
+                            parameters,
+                        });
+
+                        match resolve_trait(query.as_ref(), context) {
+                            Ok(()) => ExpressionKind::ResolvedTrait(query.item.r#trait),
+                            Err(error) => {
+                                context.error_queue.push(error);
+                                ExpressionKind::Unknown(Some(query.item.r#trait))
+                            }
+                        }
+                    }
+                    None => {
+                        context.errors.push(WithInfo {
+                            info: expression.info.clone(),
+                            item: crate::Diagnostic::TraitHasNoValue(path.clone()),
+                        });
+
+                        ExpressionKind::Unknown(Some(path))
+                    }
                 }
             }
-        }
-        ExpressionKind::ResolvedConstant { path, parameters } => {
-            ExpressionKind::ResolvedConstant { path, parameters }
-        }
-        ExpressionKind::ResolvedTrait(path) => ExpressionKind::ResolvedTrait(path),
-        ExpressionKind::Number(number) => ExpressionKind::Number(number),
-        ExpressionKind::Text(text) => ExpressionKind::Text(text),
-        ExpressionKind::Block(statements) => ExpressionKind::Block(
-            statements
-                .into_iter()
-                .map(|expression| resolve_expression(expression, context))
-                .collect(),
-        ),
-        ExpressionKind::Do(block) => {
-            ExpressionKind::Do(resolve_expression(block.unboxed(), context).boxed())
-        }
-        ExpressionKind::Function { inputs, body } => {
-            if let TypeKind::Function {
-                inputs: input_types,
-                ..
-            } = &expression.item.r#type.kind
-            {
-                for (pattern, input_type) in inputs.iter().zip(input_types) {
-                    let mut infer_context = InferContext::from_resolve_context(context);
-
-                    resolve_pattern(
-                        pattern.as_ref(),
-                        pattern.replace(input_type),
-                        &mut infer_context,
-                    );
-                }
+            ExpressionKind::ResolvedConstant { path, parameters } => {
+                ExpressionKind::ResolvedConstant { path, parameters }
             }
+            ExpressionKind::ResolvedTrait(path) => ExpressionKind::ResolvedTrait(path),
+            ExpressionKind::Number(number) => ExpressionKind::Number(number),
+            ExpressionKind::Text(text) => ExpressionKind::Text(text),
+            ExpressionKind::Block(statements) => ExpressionKind::Block(
+                statements
+                    .into_iter()
+                    .map(|expression| resolve_expression(expression, Some(parent), context))
+                    .collect(),
+            ),
+            ExpressionKind::Do(block) => ExpressionKind::Do(
+                resolve_expression(block.unboxed(), Some(parent), context).boxed(),
+            ),
+            ExpressionKind::Function { inputs, body } => {
+                if let TypeKind::Function {
+                    inputs: input_types,
+                    ..
+                } = &expression.item.r#type.kind
+                {
+                    for (pattern, input_type) in inputs.iter().zip(input_types) {
+                        let mut infer_context = InferContext::from_resolve_context(context);
 
-            ExpressionKind::Function {
-                inputs,
-                body: resolve_expression(body.unboxed(), context).boxed(),
-            }
-        }
-        ExpressionKind::Call {
-            mut function,
-            mut inputs,
-        } => {
-            function
-                .item
-                .r#type
-                .apply_in_context_mut(context.type_context);
-
-            for input in &mut inputs {
-                input.item.r#type.apply_in_context_mut(context.type_context);
-            }
-
-            // If we encounter a unit after a number, treat the unit as a
-            // function
-            let is_number_with_unit = (|| {
-                if inputs.len() != 1 {
-                    return false;
+                        resolve_pattern(
+                            pattern.as_ref(),
+                            pattern.replace(input_type),
+                            &mut infer_context,
+                        );
+                    }
                 }
 
-                let input = inputs.first().unwrap();
+                ExpressionKind::Function {
+                    inputs,
+                    body: resolve_expression(body.unboxed(), Some(parent), context).boxed(),
+                }
+            }
+            ExpressionKind::Call {
+                mut function,
+                mut inputs,
+            } => {
+                function
+                    .item
+                    .r#type
+                    .apply_in_context_mut(context.type_context);
 
-                let number_type = match try_instantiated_language_type(
-                    "number",
-                    expression.info.clone(),
-                    context.driver,
-                    context.type_context,
-                    context.errors,
-                ) {
-                    Some(number_type) => number_type,
-                    None => return false,
-                };
-
-                let number_type_path = match number_type.kind {
-                    TypeKind::Declared { path, .. } => path,
-                    _ => return false,
-                };
-
-                // Return true if the expression in function position is a
-                // number...
-                if matches!(
-                    &function.item.r#type.kind,
-                    TypeKind::Declared { path, .. }
-                        if context.driver.paths_are_equal(path, &number_type_path),
-                ) {
-                    return true;
+                for input in &mut inputs {
+                    input.item.r#type.apply_in_context_mut(context.type_context);
                 }
 
-                // ...or if the expression in input position is a function that
-                // accepts a number
-                if let TypeKind::Function { inputs, .. } = &input.item.r#type.kind {
+                // If we encounter a unit after a number, treat the unit as a
+                // function
+                let is_number_with_unit = (|| {
                     if inputs.len() != 1 {
                         return false;
                     }
 
-                    return matches!(
-                        &inputs.first().unwrap().kind,
+                    let input = inputs.first().unwrap();
+
+                    let number_type = match try_instantiated_language_type(
+                        "number",
+                        expression.info.clone(),
+                        context.driver,
+                        context.type_context,
+                        context.errors,
+                    ) {
+                        Some(number_type) => number_type,
+                        None => return false,
+                    };
+
+                    let number_type_path = match number_type.kind {
+                        TypeKind::Declared { path, .. } => path,
+                        _ => return false,
+                    };
+
+                    // Return true if the expression in function position is a
+                    // number...
+                    if matches!(
+                        &function.item.r#type.kind,
                         TypeKind::Declared { path, .. }
                             if context.driver.paths_are_equal(path, &number_type_path),
-                    ) && !matches!(&function.item.r#type.kind, TypeKind::Function { .. });
-                }
-
-                false
-            })();
-
-            if is_number_with_unit {
-                let input = inputs.pop().unwrap();
-
-                let mut unit = resolve_expression(input, context);
-                let number = resolve_expression(function.unboxed(), context);
-
-                let unit_type = Type::new(
-                    TypeKind::Function {
-                        inputs: vec![number
-                            .item
-                            .r#type
-                            .clone()
-                            .with_role(number.replace(Role::FunctionInput))],
-                        output: Box::new(expression.item.r#type.clone().with_role(WithInfo {
-                            info: expression.info.clone(),
-                            item: Role::FunctionOutput,
-                        })),
-                    },
-                    expression.info.clone(),
-                    Vec::new(),
-                );
-
-                if try_unify_expression(
-                    context.driver,
-                    unit.as_mut(),
-                    &unit_type,
-                    context.type_context,
-                    context.error_queue,
-                ) {
-                    ExpressionKind::Call {
-                        function: unit.boxed(),
-                        inputs: vec![number],
+                    ) {
+                        return true;
                     }
-                } else {
-                    // Prevent duplicate errors caused by recreating the call
-                    // expression
-                    ExpressionKind::Unknown(None)
-                }
-            } else if let TypeKind::Function {
-                inputs: input_types,
-                output: output_type,
-            } = &function.item.r#type.kind
-            {
-                if input_types.len() == inputs.len() {
-                    for (input, input_type) in inputs.iter_mut().zip(input_types) {
-                        try_unify_expression(
-                            context.driver,
-                            input.as_mut(),
-                            input_type,
-                            context.type_context,
-                            context.error_queue,
+
+                    // ...or if the expression in input position is a function that
+                    // accepts a number
+                    if let TypeKind::Function { inputs, .. } = &input.item.r#type.kind {
+                        if inputs.len() != 1 {
+                            return false;
+                        }
+
+                        return matches!(
+                            &inputs.first().unwrap().kind,
+                            TypeKind::Declared { path, .. }
+                                if context.driver.paths_are_equal(path, &number_type_path),
+                        ) && !matches!(
+                            &function.item.r#type.kind,
+                            TypeKind::Function { .. }
                         );
                     }
 
-                    try_unify(
-                        context.driver,
-                        WithInfo {
-                            info: expression.info.clone(),
-                            item: &expression.item.r#type,
+                    false
+                })();
+
+                if is_number_with_unit {
+                    let input = inputs.pop().unwrap();
+
+                    let mut unit = resolve_expression(input, Some(parent), context);
+                    let number = resolve_expression(function.unboxed(), Some(parent), context);
+
+                    let unit_type = Type::new(
+                        TypeKind::Function {
+                            inputs: vec![number
+                                .item
+                                .r#type
+                                .clone()
+                                .with_role(number.replace(Role::FunctionInput))],
+                            output: Box::new(expression.item.r#type.clone().with_role(WithInfo {
+                                info: expression.info.clone(),
+                                item: Role::FunctionOutput,
+                            })),
                         },
-                        output_type,
-                        context.type_context,
-                        context.error_queue,
+                        expression.info.clone(),
+                        Vec::new(),
                     );
 
-                    let inputs = inputs
-                        .into_iter()
-                        .map(|input| resolve_expression(input, context))
-                        .collect::<Vec<_>>();
-
-                    let function = resolve_expression(function.unboxed(), context);
-
-                    ExpressionKind::Call {
-                        function: function.boxed(),
-                        inputs,
+                    if try_unify_expression(
+                        context.driver,
+                        unit.as_mut(),
+                        &unit_type,
+                        context.type_context,
+                        context.error_queue,
+                    ) {
+                        ExpressionKind::Call {
+                            function: unit.boxed(),
+                            inputs: vec![number],
+                        }
+                    } else {
+                        // Prevent duplicate errors caused by recreating the call
+                        // expression
+                        ExpressionKind::Unknown(None)
                     }
-                } else {
-                    context.error_queue.push(WithInfo {
-                        info: expression.info.clone(),
-                        item: QueuedError::WrongNumberOfInputs {
-                            actual: inputs.len() as u32,
-                            expected: input_types.len() as u32,
-                        },
-                    });
-
-                    ExpressionKind::Unknown(None)
-                }
-            } else {
-                let inputs = inputs
-                    .into_iter()
-                    .map(|input| resolve_expression(input, context))
-                    .collect::<Vec<_>>();
-
-                let mut function = resolve_expression(function.unboxed(), context);
-
-                let function_type = Type::new(
-                    TypeKind::Function {
-                        inputs: inputs
-                            .iter()
-                            .map(|input| {
-                                input
-                                    .item
-                                    .r#type
-                                    .clone()
-                                    .with_role(input.replace(Role::FunctionInput))
-                            })
-                            .collect(),
-                        output: Box::new(expression.item.r#type.clone().with_role(WithInfo {
-                            info: expression.info.clone(),
-                            item: Role::FunctionOutput,
-                        })),
-                    },
-                    function.info.clone(),
-                    Vec::new(),
-                );
-
-                try_unify_expression(
-                    context.driver,
-                    function.as_mut(),
-                    &function_type,
-                    context.type_context,
-                    context.error_queue,
-                );
-
-                ExpressionKind::Call {
-                    function: function.boxed(),
-                    inputs,
-                }
-            }
-        }
-        ExpressionKind::When { input, arms } => {
-            let input = resolve_expression(input.unboxed(), context).boxed();
-
-            let arms = arms
-                .into_iter()
-                .map(|arm| {
-                    arm.map(|arm| {
-                        resolve_pattern(
-                            arm.pattern.as_ref(),
-                            input.as_ref().map(|input| &input.r#type),
-                            &mut InferContext::from_resolve_context(context),
-                        );
-
-                        Arm {
-                            pattern: arm.pattern,
-                            body: resolve_expression(arm.body, context),
+                } else if let TypeKind::Function {
+                    inputs: input_types,
+                    output: output_type,
+                } = &function.item.r#type.kind
+                {
+                    if input_types.len() == inputs.len() {
+                        for (input, input_type) in inputs.iter_mut().zip(input_types) {
+                            try_unify_expression(
+                                context.driver,
+                                input.as_mut(),
+                                input_type,
+                                context.type_context,
+                                context.error_queue,
+                            );
                         }
-                    })
-                })
-                .collect::<Vec<_>>();
-
-            ExpressionKind::When { input, arms }
-        }
-        ExpressionKind::Intrinsic { name, inputs } => ExpressionKind::Intrinsic {
-            name,
-            inputs: inputs
-                .into_iter()
-                .map(|expression| resolve_expression(expression, context))
-                .collect(),
-        },
-        ExpressionKind::Initialize { pattern, value } => {
-            let value = resolve_expression(value.unboxed(), context).boxed();
-
-            resolve_pattern(
-                pattern.as_ref(),
-                value.as_ref().map(|value| &value.r#type),
-                &mut InferContext::from_resolve_context(context),
-            );
-
-            ExpressionKind::Initialize { pattern, value }
-        }
-        ExpressionKind::Mutate { name, path, value } => {
-            let value = resolve_expression(value.unboxed(), context).boxed();
-
-            resolve_pattern(
-                path.as_ref()
-                    .map(|path| crate::Pattern::Variable(name.clone(), path.clone()))
-                    .as_ref(),
-                value.as_ref().map(|value| &value.r#type),
-                &mut InferContext::from_resolve_context(context),
-            );
-
-            ExpressionKind::Mutate { name, path, value }
-        }
-        ExpressionKind::Marker(r#type) => ExpressionKind::Marker(r#type),
-        ExpressionKind::UnresolvedStructure(fields) => {
-            expression
-                .item
-                .r#type
-                .apply_in_context_mut(context.type_context);
-
-            match &expression.item.r#type.kind {
-                TypeKind::Variable(_) | TypeKind::Opaque(_) => ExpressionKind::UnresolvedStructure(
-                    fields
-                        .into_iter()
-                        .map(|field_value| {
-                            field_value.map(|field_value| StructureFieldValue {
-                                name: field_value.name,
-                                value: resolve_expression(field_value.value, context),
-                            })
-                        })
-                        .collect(),
-                ),
-                TypeKind::Declared { path, .. } => {
-                    let path = path.clone();
-
-                    let type_declaration = context.driver.get_type_declaration(&path);
-
-                    if let crate::TypeRepresentation::Structure(mut field_types) =
-                        type_declaration.item.representation.item
-                    {
-                        let mut instantiation_context = InstantiationContext::from_parameters(
-                            context.driver,
-                            type_declaration.item.parameters.clone(),
-                            context.type_context,
-                            expression.info.clone(),
-                            context.errors,
-                        );
-
-                        let fields = fields
-                            .into_iter()
-                            .filter_map(|field_value| {
-                                let declared_type = match field_types.remove(&field_value.item.name)
-                                {
-                                    Some(field) => infer_type(
-                                        field.item.r#type.as_ref(),
-                                        field.replace(Role::StructureField),
-                                        Some(instantiation_context.type_context),
-                                    )
-                                    .instantiate(context.driver, &mut instantiation_context),
-                                    None => {
-                                        context.error_queue.push(WithInfo {
-                                            info: field_value.info.clone(),
-                                            item: QueuedError::ExtraField,
-                                        });
-
-                                        return None;
-                                    }
-                                };
-
-                                Some((field_value, declared_type))
-                            })
-                            .collect::<Vec<_>>();
-
-                        let missing_fields = field_types.into_keys().collect::<Vec<_>>();
-                        if !missing_fields.is_empty() {
-                            context.error_queue.push(WithInfo {
-                                info: expression.info.clone(),
-                                item: QueuedError::MissingFields(missing_fields),
-                            });
-                        }
-
-                        let instantiated_declared_type = Type::new(
-                            TypeKind::Declared {
-                                path: path.clone(),
-                                parameters: instantiation_context.into_types_for_parameters(),
-                            },
-                            expression.info.clone(),
-                            Vec::new(),
-                        );
 
                         try_unify(
                             context.driver,
                             WithInfo {
                                 info: expression.info.clone(),
-                                item: &instantiated_declared_type,
+                                item: &expression.item.r#type,
                             },
-                            &expression.item.r#type,
+                            output_type,
                             context.type_context,
                             context.error_queue,
                         );
 
-                        let fields = fields
+                        let inputs = inputs
                             .into_iter()
-                            .map(|(field_value, declared_type)| {
-                                field_value.map(|field_value| {
-                                    let mut value = resolve_expression(field_value.value, context);
+                            .map(|input| resolve_expression(input, Some(parent), context))
+                            .collect::<Vec<_>>();
 
-                                    try_unify_expression(
-                                        context.driver,
-                                        value.as_mut(),
-                                        &declared_type,
-                                        context.type_context,
-                                        context.error_queue,
-                                    );
+                        let function =
+                            resolve_expression(function.unboxed(), Some(parent), context);
 
-                                    StructureFieldValue {
-                                        name: field_value.name,
-                                        value,
-                                    }
-                                })
-                            })
-                            .collect();
-
-                        ExpressionKind::ResolvedStructure {
-                            structure: path,
-                            fields,
+                        ExpressionKind::Call {
+                            function: function.boxed(),
+                            inputs,
                         }
                     } else {
+                        context.error_queue.push(WithInfo {
+                            info: expression.info.clone(),
+                            item: QueuedError::WrongNumberOfInputs {
+                                actual: inputs.len() as u32,
+                                expected: input_types.len() as u32,
+                            },
+                        });
+
+                        ExpressionKind::Unknown(None)
+                    }
+                } else {
+                    let inputs = inputs
+                        .into_iter()
+                        .map(|input| resolve_expression(input, Some(parent), context))
+                        .collect::<Vec<_>>();
+
+                    let mut function =
+                        resolve_expression(function.unboxed(), Some(parent), context);
+
+                    let function_type = Type::new(
+                        TypeKind::Function {
+                            inputs: inputs
+                                .iter()
+                                .map(|input| {
+                                    input
+                                        .item
+                                        .r#type
+                                        .clone()
+                                        .with_role(input.replace(Role::FunctionInput))
+                                })
+                                .collect(),
+                            output: Box::new(expression.item.r#type.clone().with_role(WithInfo {
+                                info: expression.info.clone(),
+                                item: Role::FunctionOutput,
+                            })),
+                        },
+                        function.info.clone(),
+                        Vec::new(),
+                    );
+
+                    try_unify_expression(
+                        context.driver,
+                        function.as_mut(),
+                        &function_type,
+                        context.type_context,
+                        context.error_queue,
+                    );
+
+                    ExpressionKind::Call {
+                        function: function.boxed(),
+                        inputs,
+                    }
+                }
+            }
+            ExpressionKind::When { input, arms } => {
+                let input = resolve_expression(input.unboxed(), Some(parent), context).boxed();
+
+                let arms = arms
+                    .into_iter()
+                    .map(|arm| {
+                        arm.map(|arm| {
+                            resolve_pattern(
+                                arm.pattern.as_ref(),
+                                input.as_ref().map(|input| &input.r#type),
+                                &mut InferContext::from_resolve_context(context),
+                            );
+
+                            Arm {
+                                pattern: arm.pattern,
+                                body: resolve_expression(arm.body, Some(parent), context),
+                            }
+                        })
+                    })
+                    .collect::<Vec<_>>();
+
+                ExpressionKind::When { input, arms }
+            }
+            ExpressionKind::Intrinsic { name, inputs } => ExpressionKind::Intrinsic {
+                name,
+                inputs: inputs
+                    .into_iter()
+                    .map(|expression| resolve_expression(expression, Some(parent), context))
+                    .collect(),
+            },
+            ExpressionKind::Initialize { pattern, value } => {
+                let value = resolve_expression(value.unboxed(), Some(parent), context).boxed();
+
+                resolve_pattern(
+                    pattern.as_ref(),
+                    value.as_ref().map(|value| &value.r#type),
+                    &mut InferContext::from_resolve_context(context),
+                );
+
+                ExpressionKind::Initialize { pattern, value }
+            }
+            ExpressionKind::Mutate { name, path, value } => {
+                let value = resolve_expression(value.unboxed(), Some(parent), context).boxed();
+
+                resolve_pattern(
+                    path.as_ref()
+                        .map(|path| crate::Pattern::Variable(name.clone(), path.clone()))
+                        .as_ref(),
+                    value.as_ref().map(|value| &value.r#type),
+                    &mut InferContext::from_resolve_context(context),
+                );
+
+                ExpressionKind::Mutate { name, path, value }
+            }
+            ExpressionKind::Marker(r#type) => ExpressionKind::Marker(r#type),
+            ExpressionKind::UnresolvedStructure(fields) => {
+                expression
+                    .item
+                    .r#type
+                    .apply_in_context_mut(context.type_context);
+
+                match &expression.item.r#type.kind {
+                    TypeKind::Variable(_) | TypeKind::Opaque(_) => {
+                        ExpressionKind::UnresolvedStructure(
+                            fields
+                                .into_iter()
+                                .map(|field_value| {
+                                    field_value.map(|field_value| StructureFieldValue {
+                                        name: field_value.name,
+                                        value: resolve_expression(
+                                            field_value.value,
+                                            Some(parent),
+                                            context,
+                                        ),
+                                    })
+                                })
+                                .collect(),
+                        )
+                    }
+                    TypeKind::Declared { path, .. } => {
+                        let path = path.clone();
+
+                        let type_declaration = context.driver.get_type_declaration(&path);
+
+                        if let crate::TypeRepresentation::Structure(mut field_types) =
+                            type_declaration.item.representation.item
+                        {
+                            let mut instantiation_context = InstantiationContext::from_parameters(
+                                context.driver,
+                                type_declaration.item.parameters.clone(),
+                                context.type_context,
+                                expression.info.clone(),
+                                context.errors,
+                            );
+
+                            let fields = fields
+                                .into_iter()
+                                .filter_map(|field_value| {
+                                    let declared_type = match field_types
+                                        .remove(&field_value.item.name)
+                                    {
+                                        Some(field) => infer_type(
+                                            field.item.r#type.as_ref(),
+                                            field.replace(Role::StructureField),
+                                            Some(instantiation_context.type_context),
+                                        )
+                                        .instantiate(context.driver, &mut instantiation_context),
+                                        None => {
+                                            context.error_queue.push(WithInfo {
+                                                info: field_value.info.clone(),
+                                                item: QueuedError::ExtraField,
+                                            });
+
+                                            return None;
+                                        }
+                                    };
+
+                                    Some((field_value, declared_type))
+                                })
+                                .collect::<Vec<_>>();
+
+                            let missing_fields = field_types.into_keys().collect::<Vec<_>>();
+                            if !missing_fields.is_empty() {
+                                context.error_queue.push(WithInfo {
+                                    info: expression.info.clone(),
+                                    item: QueuedError::MissingFields(missing_fields),
+                                });
+                            }
+
+                            let instantiated_declared_type = Type::new(
+                                TypeKind::Declared {
+                                    path: path.clone(),
+                                    parameters: instantiation_context.into_types_for_parameters(),
+                                },
+                                expression.info.clone(),
+                                Vec::new(),
+                            );
+
+                            try_unify(
+                                context.driver,
+                                WithInfo {
+                                    info: expression.info.clone(),
+                                    item: &instantiated_declared_type,
+                                },
+                                &expression.item.r#type,
+                                context.type_context,
+                                context.error_queue,
+                            );
+
+                            let fields = fields
+                                .into_iter()
+                                .map(|(field_value, declared_type)| {
+                                    field_value.map(|field_value| {
+                                        let mut value = resolve_expression(
+                                            field_value.value,
+                                            Some(parent),
+                                            context,
+                                        );
+
+                                        try_unify_expression(
+                                            context.driver,
+                                            value.as_mut(),
+                                            &declared_type,
+                                            context.type_context,
+                                            context.error_queue,
+                                        );
+
+                                        StructureFieldValue {
+                                            name: field_value.name,
+                                            value,
+                                        }
+                                    })
+                                })
+                                .collect();
+
+                            ExpressionKind::ResolvedStructure {
+                                structure: path,
+                                fields,
+                            }
+                        } else {
+                            context.error_queue.push(WithInfo {
+                                info: expression.info.clone(),
+                                item: QueuedError::NotAStructure(expression.item.r#type.clone()),
+                            });
+
+                            ExpressionKind::Unknown(None)
+                        }
+                    }
+                    _ => {
                         context.error_queue.push(WithInfo {
                             info: expression.info.clone(),
                             item: QueuedError::NotAStructure(expression.item.r#type.clone()),
@@ -3577,65 +3651,57 @@ fn resolve_expression<D: Driver>(
                         ExpressionKind::Unknown(None)
                     }
                 }
-                _ => {
-                    context.error_queue.push(WithInfo {
-                        info: expression.info.clone(),
-                        item: QueuedError::NotAStructure(expression.item.r#type.clone()),
-                    });
-
-                    ExpressionKind::Unknown(None)
+            }
+            ExpressionKind::ResolvedStructure { structure, fields } => {
+                ExpressionKind::ResolvedStructure {
+                    structure,
+                    fields: fields
+                        .into_iter()
+                        .map(|field| {
+                            field.map(|field| StructureFieldValue {
+                                name: field.name,
+                                value: resolve_expression(field.value, Some(parent), context),
+                            })
+                        })
+                        .collect(),
                 }
             }
-        }
-        ExpressionKind::ResolvedStructure { structure, fields } => {
-            ExpressionKind::ResolvedStructure {
-                structure,
-                fields: fields
+            ExpressionKind::Variant { variant, values } => ExpressionKind::Variant {
+                variant,
+                values: values
                     .into_iter()
-                    .map(|field| {
-                        field.map(|field| StructureFieldValue {
-                            name: field.name,
-                            value: resolve_expression(field.value, context),
-                        })
+                    .map(|expression| resolve_expression(expression, Some(parent), context))
+                    .collect(),
+            },
+            ExpressionKind::Wrapper(value) => ExpressionKind::Wrapper(
+                resolve_expression(value.unboxed(), Some(parent), context).boxed(),
+            ),
+            ExpressionKind::Tuple(elements) => ExpressionKind::Tuple(
+                elements
+                    .into_iter()
+                    .map(|expression| resolve_expression(expression, Some(parent), context))
+                    .collect(),
+            ),
+            ExpressionKind::Format { segments, trailing } => ExpressionKind::Format {
+                segments: segments
+                    .into_iter()
+                    .map(|segment| FormatSegment {
+                        text: segment.text,
+                        value: resolve_expression(segment.value, Some(parent), context),
                     })
                     .collect(),
-            }
-        }
-        ExpressionKind::Variant { variant, values } => ExpressionKind::Variant {
-            variant,
-            values: values
-                .into_iter()
-                .map(|expression| resolve_expression(expression, context))
-                .collect(),
-        },
-        ExpressionKind::Wrapper(value) => {
-            ExpressionKind::Wrapper(resolve_expression(value.unboxed(), context).boxed())
-        }
-        ExpressionKind::Tuple(elements) => ExpressionKind::Tuple(
-            elements
-                .into_iter()
-                .map(|expression| resolve_expression(expression, context))
-                .collect(),
-        ),
-        ExpressionKind::Format { segments, trailing } => ExpressionKind::Format {
-            segments: segments
-                .into_iter()
-                .map(|segment| FormatSegment {
-                    text: segment.text,
-                    value: resolve_expression(segment.value, context),
-                })
-                .collect(),
-            trailing,
-        },
-    };
+                trailing,
+            },
+        };
 
-    WithInfo {
-        info: expression.info,
-        item: Expression {
-            r#type: expression.item.r#type,
-            kind,
-        },
-    }
+        WithInfo {
+            info: expression.info,
+            item: Expression {
+                r#type: expression.item.r#type,
+                kind,
+            },
+        }
+    })
 }
 
 fn resolve_item<D: Driver>(
@@ -4539,7 +4605,11 @@ fn finalize_instance<D: Driver>(
     }
 }
 
-fn refine_mismatch_error<D: Driver>(actual: &mut Type<D>, expected: &mut Type<D>) {
+fn refine_mismatch_error<D: Driver>(
+    actual: &mut Type<D>,
+    expected: &mut Type<D>,
+    type_context: &mut TypeContext<D>,
+) {
     todo!()
 }
 
