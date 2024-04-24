@@ -792,7 +792,7 @@ fn try_report_custom_mismatch_error<D: Driver>(
     false
 }
 
-// region: Types and type variables
+// MARK: Types and type variables
 
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
@@ -1065,7 +1065,7 @@ struct Instance<D: Driver> {
     parameters: Vec<Type<D>>,
 }
 
-// region: Type context
+// MARK: Type context
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = ""), Default(bound = ""))]
@@ -1083,7 +1083,7 @@ impl<D: Driver> TypeContext<D> {
     }
 }
 
-// region: Instantiation context
+// MARK: Instantiation context
 
 struct InstantiationContext<'a, D: Driver> {
     type_context: &'a mut TypeContext<D>,
@@ -1337,7 +1337,7 @@ impl<D: Driver> Instance<D> {
     }
 }
 
-// region: Unification
+// MARK: Unification
 
 impl<D: Driver> TypeContext<D> {
     pub fn variable(&mut self) -> TypeVariable<D> {
@@ -1682,7 +1682,7 @@ fn substitute_defaults<D: Driver>(
     }
 }
 
-// region: Resolution
+// MARK: Resolution
 
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
@@ -1776,7 +1776,7 @@ struct Arm<D: Driver> {
     body: WithInfo<D::Info, Expression<D>>,
 }
 
-// region: Infer
+// MARK: Infer
 
 struct InferContext<'a, D: Driver> {
     driver: &'a D,
@@ -3092,7 +3092,7 @@ fn instantiated_language_constant<D: Driver>(
     }
 }
 
-// region: Resolve
+// MARK: Resolve
 
 struct ResolveContext<'a, D: Driver> {
     driver: &'a D,
@@ -4188,7 +4188,7 @@ fn substitute_defaults_in_expression<D: Driver>(
         || substitute_defaults(driver, &mut expression.item.r#type, context.type_context)
 }
 
-// region: Finalize
+// MARK: Finalize
 
 struct FinalizeContext<'a, D: Driver> {
     driver: &'a D,
