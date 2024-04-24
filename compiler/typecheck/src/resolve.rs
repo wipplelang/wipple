@@ -125,11 +125,11 @@ pub fn resolve<D: Driver>(
     driver: &D,
     item_declaration: impl crate::IntoItemDeclaration<D>,
 ) -> crate::Result<D> {
-    struct Queued<'src, D: Driver> {
+    struct Queued<D: Driver> {
         use_info: D::Info,
-        type_context: TypeContext<'src, D>,
-        bounds: Vec<Vec<WithInfo<D::Info, Instance<'src, D>>>>,
-        body: WithInfo<D::Info, Expression<'src, D>>,
+        type_context: TypeContext<D>,
+        bounds: Vec<Vec<WithInfo<D::Info, Instance<D>>>>,
+        body: WithInfo<D::Info, Expression<D>>,
     }
 
     let mut recursion_stack = Vec::new();
@@ -314,7 +314,7 @@ pub fn resolve<D: Driver>(
 }
 
 #[allow(clippy::extra_unused_lifetimes)] // 'src is used in the body
-pub fn instances_overlap<'src, D: Driver>(
+pub fn instances_overlap<D: Driver>(
     driver: &D,
     r#trait: &D::Path,
     mut instances: Vec<D::Path>,
@@ -370,7 +370,7 @@ pub fn instances_overlap<'src, D: Driver>(
 
                 let mut instantiate_instance =
                     |parameters: Vec<<D as Driver>::Path>,
-                     instance: WithInfo<D::Info, &mut Instance<'src, D>>| {
+                     instance: WithInfo<D::Info, &mut Instance<D>>| {
                         let mut unused_errors = Vec::new();
 
                         let mut instantiation_context = InstantiationContext::from_parameters(
@@ -600,12 +600,12 @@ pub fn resolve_attribute_like_trait<D: Driver>(
 
 // Instead of reporting unification errors immediately, queue them and then
 // report them all once all type information has been collected.
-enum QueuedError<'src, D: Driver> {
+enum QueuedError<D: Driver> {
     RecursionLimit,
 
     Mismatch {
-        actual: Type<'src, D>,
-        expected: Type<'src, D>,
+        actual: Type<D>,
+        expected: Type<D>,
     },
 
     WrongNumberOfInputs {
@@ -614,28 +614,28 @@ enum QueuedError<'src, D: Driver> {
     },
 
     UnresolvedInstance {
-        instance: Instance<'src, D>,
+        instance: Instance<D>,
         candidates: Vec<D::Info>,
-        stack: Vec<WithInfo<D::Info, Instance<'src, D>>>,
+        stack: Vec<WithInfo<D::Info, Instance<D>>>,
     },
 
-    NotAStructure(Type<'src, D>),
+    NotAStructure(Type<D>),
 
     MissingFields(Vec<String>),
 
     ExtraField,
 
     Custom {
-        message: FormattedText<Type<'src, D>>,
-        fix: Option<(FormattedText<Type<'src, D>>, FormattedText<Type<'src, D>>)>,
-        location: Option<Type<'src, D>>,
+        message: FormattedText<Type<D>>,
+        fix: Option<(FormattedText<Type<D>>, FormattedText<Type<D>>)>,
+        location: Option<Type<D>>,
     },
 }
 
-fn report_queued_errors<'src, D: Driver>(
+fn report_queued_errors<D: Driver>(
     driver: &D,
-    type_context: &mut TypeContext<'src, D>,
-    error_queue: Vec<WithInfo<D::Info, QueuedError<'src, D>>>,
+    type_context: &mut TypeContext<D>,
+    error_queue: Vec<WithInfo<D::Info, QueuedError<D>>>,
     errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
 ) {
     let mut finalize_context = FinalizeContext {
@@ -706,9 +706,9 @@ fn report_queued_errors<'src, D: Driver>(
                 fix,
                 location,
             } => {
-                fn report_message<'src, D: Driver>(
-                    text: FormattedText<Type<'src, D>>,
-                    finalize_context: &mut FinalizeContext<'_, 'src, D>,
+                fn report_message<D: Driver>(
+                    text: FormattedText<Type<D>>,
+                    finalize_context: &mut FinalizeContext<'_, D>,
                 ) -> crate::CustomMessage<D> {
                     crate::CustomMessage {
                         segments: text
@@ -747,12 +747,12 @@ fn report_queued_errors<'src, D: Driver>(
     }
 }
 
-fn try_report_custom_mismatch_error<'src, D: Driver>(
+fn try_report_custom_mismatch_error<D: Driver>(
     driver: &D,
     info: &D::Info,
-    actual: &Type<'src, D>,
-    expected: &Type<'src, D>,
-    type_context: &mut TypeContext<'src, D>,
+    actual: &Type<D>,
+    expected: &Type<D>,
+    type_context: &mut TypeContext<D>,
     errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
 ) -> bool {
     if let Some(mismatch_trait_path) = driver.path_for_language_trait("mismatch") {
@@ -796,22 +796,22 @@ fn try_report_custom_mismatch_error<'src, D: Driver>(
 
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-struct Type<'src, D: Driver> {
-    kind: TypeKind<'src, D>,
+struct Type<D: Driver> {
+    kind: TypeKind<D>,
     info: D::Info,
     roles: Vec<WithInfo<D::Info, Role>>,
-    expression: Option<&'src WithInfo<D::Info, Expression<'src, D>>>,
-    parent_expression: Option<&'src WithInfo<D::Info, Expression<'src, D>>>,
+    // expression: Option<&'src WithInfo<D::Info, Expression<D>>>,
+    // parent_expression: Option<&'src WithInfo<D::Info, Expression<D>>>,
 }
 
-impl<'src, D: Driver> Type<'src, D> {
-    fn new(kind: TypeKind<'src, D>, info: D::Info, roles: Vec<WithInfo<D::Info, Role>>) -> Self {
+impl<D: Driver> Type<D> {
+    fn new(kind: TypeKind<D>, info: D::Info, roles: Vec<WithInfo<D::Info, Role>>) -> Self {
         Type {
             kind,
             info,
             roles,
-            expression: None,
-            parent_expression: None,
+            // expression: None,
+            // parent_expression: None,
         }
     }
 
@@ -824,15 +824,15 @@ impl<'src, D: Driver> Type<'src, D> {
         self
     }
 
-    fn with_expression(
-        mut self,
-        expression: &'src WithInfo<D::Info, Expression<'src, D>>,
-        parent: Option<&'src WithInfo<D::Info, Expression<'src, D>>>,
-    ) -> Self {
-        self.expression = Some(expression);
-        self.parent_expression = parent;
-        self
-    }
+    // fn with_expression(
+    //     mut self,
+    //     expression: &'src WithInfo<D::Info, Expression<D>>,
+    //     parent: Option<&'src WithInfo<D::Info, Expression<D>>>,
+    // ) -> Self {
+    //     self.expression = Some(expression);
+    //     self.parent_expression = parent;
+    //     self
+    // }
 
     fn contains_variable(&self, variable: &TypeVariable<D>) -> bool {
         match &self.kind {
@@ -862,13 +862,13 @@ impl<'src, D: Driver> Type<'src, D> {
     }
 
     #[must_use]
-    fn apply_in_context(&self, context: &mut TypeContext<'src, D>) -> Self {
+    fn apply_in_context(&self, context: &mut TypeContext<D>) -> Self {
         let mut r#type = self.clone();
         r#type.apply_in_context_mut(context);
         r#type
     }
 
-    fn apply_in_context_mut(&mut self, context: &mut TypeContext<'src, D>) {
+    fn apply_in_context_mut(&mut self, context: &mut TypeContext<D>) {
         match &mut self.kind {
             TypeKind::Variable(variable) => {
                 let r#type =
@@ -886,8 +886,8 @@ impl<'src, D: Driver> Type<'src, D> {
                 self.kind = r#type.kind;
                 self.info = r#type.info;
                 self.roles.extend(r#type.roles);
-                self.expression = self.expression.or(r#type.expression);
-                self.parent_expression = self.parent_expression.or(r#type.parent_expression);
+                // self.expression = self.expression.or(r#type.expression);
+                // self.parent_expression = self.parent_expression.or(r#type.parent_expression);
                 self.apply_in_context_mut(context);
             }
             TypeKind::Opaque(_) => {}
@@ -921,7 +921,7 @@ impl<'src, D: Driver> Type<'src, D> {
         }
     }
 
-    fn set_source_info(&mut self, context: &mut ResolveContext<'_, 'src, D>, info: &D::Info) {
+    fn set_source_info(&mut self, context: &mut ResolveContext<'_, D>, info: &D::Info) {
         self.apply_in_context_mut(context.type_context);
 
         match &mut self.kind {
@@ -1011,23 +1011,23 @@ impl<'src, D: Driver> Type<'src, D> {
 
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-enum TypeKind<'src, D: Driver> {
+enum TypeKind<D: Driver> {
     Variable(TypeVariable<D>),
     Opaque(TypeVariable<D>),
     Parameter(D::Path),
     Declared {
         path: D::Path,
-        parameters: Vec<Type<'src, D>>,
+        parameters: Vec<Type<D>>,
     },
     Function {
-        inputs: Vec<Type<'src, D>>,
-        output: Box<Type<'src, D>>,
+        inputs: Vec<Type<D>>,
+        output: Box<Type<D>>,
     },
-    Tuple(Vec<Type<'src, D>>),
-    Block(Box<Type<'src, D>>),
+    Tuple(Vec<Type<D>>),
+    Block(Box<Type<D>>),
     Intrinsic,
     Message {
-        segments: Vec<FormatSegment<Type<'src, D>>>,
+        segments: Vec<FormatSegment<Type<D>>>,
         trailing: String,
     },
     Constant(D::Path),
@@ -1060,23 +1060,22 @@ impl<D: Driver> Debug for TypeVariable<D> {
 
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-struct Instance<'src, D: Driver> {
+struct Instance<D: Driver> {
     r#trait: D::Path,
-    parameters: Vec<Type<'src, D>>,
+    parameters: Vec<Type<D>>,
 }
 
 // region: Type context
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = ""), Default(bound = ""))]
-struct TypeContext<'src, D: Driver> {
+struct TypeContext<D: Driver> {
     next_variable: u32,
-    substitutions: BTreeMap<u32, Type<'src, D>>,
-    defaults: BTreeMap<u32, Type<'src, D>>,
-    _covariant: std::marker::PhantomData<&'src ()>,
+    substitutions: BTreeMap<u32, Type<D>>,
+    defaults: BTreeMap<u32, Type<D>>,
 }
 
-impl<D: Driver> TypeContext<'_, D> {
+impl<D: Driver> TypeContext<D> {
     fn replace_with(&mut self, other: Self) {
         self.next_variable = other.next_variable;
         self.substitutions = other.substitutions;
@@ -1086,9 +1085,9 @@ impl<D: Driver> TypeContext<'_, D> {
 
 // region: Instantiation context
 
-struct InstantiationContext<'a, 'src, D: Driver> {
-    type_context: &'a mut TypeContext<'src, D>,
-    types: Vec<(D::Path, Type<'src, D>)>,
+struct InstantiationContext<'a, D: Driver> {
+    type_context: &'a mut TypeContext<D>,
+    types: Vec<(D::Path, Type<D>)>,
     info: D::Info,
     errors: &'a mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
 }
@@ -1099,11 +1098,11 @@ struct InstantiationOptions {
     instantiate_inferred_parameters_as_opaque: bool,
 }
 
-impl<'a, 'src, D: Driver> InstantiationContext<'a, 'src, D> {
+impl<'a, D: Driver> InstantiationContext<'a, D> {
     pub fn from_parameters(
         driver: &D,
         parameters: impl IntoIterator<Item = D::Path>,
-        type_context: &'a mut TypeContext<'src, D>,
+        type_context: &'a mut TypeContext<D>,
         info: D::Info,
         errors: &'a mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
     ) -> Self {
@@ -1120,7 +1119,7 @@ impl<'a, 'src, D: Driver> InstantiationContext<'a, 'src, D> {
     pub fn from_parameters_with_options(
         driver: &D,
         parameters: impl IntoIterator<Item = D::Path>,
-        type_context: &'a mut TypeContext<'src, D>,
+        type_context: &'a mut TypeContext<D>,
         info: D::Info,
         errors: &'a mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
         options: InstantiationOptions,
@@ -1172,7 +1171,7 @@ impl<'a, 'src, D: Driver> InstantiationContext<'a, 'src, D> {
         context
     }
 
-    pub fn type_for_parameter(&mut self, driver: &D, parameter: &D::Path) -> Type<'src, D> {
+    pub fn type_for_parameter(&mut self, driver: &D, parameter: &D::Path) -> Type<D> {
         self.types
             .iter()
             .find_map(|(instantiation_path, r#type)| {
@@ -1191,17 +1190,17 @@ impl<'a, 'src, D: Driver> InstantiationContext<'a, 'src, D> {
             })
     }
 
-    pub fn into_types_for_parameters(self) -> Vec<Type<'src, D>> {
+    pub fn into_types_for_parameters(self) -> Vec<Type<D>> {
         self.types.into_iter().map(|(_, r#type)| r#type).collect()
     }
 }
 
-impl<'src, D: Driver> Type<'src, D> {
+impl<D: Driver> Type<D> {
     #[must_use]
     fn instantiate(
         &self,
         driver: &D,
-        instantiation_context: &mut InstantiationContext<'_, 'src, D>,
+        instantiation_context: &mut InstantiationContext<'_, D>,
     ) -> Self {
         let mut r#type = self.clone();
         r#type.instantiate_mut(driver, instantiation_context);
@@ -1211,7 +1210,7 @@ impl<'src, D: Driver> Type<'src, D> {
     fn instantiate_mut(
         &mut self,
         driver: &D,
-        instantiation_context: &mut InstantiationContext<'_, 'src, D>,
+        instantiation_context: &mut InstantiationContext<'_, D>,
     ) {
         self.apply_in_context_mut(instantiation_context.type_context);
 
@@ -1251,13 +1250,13 @@ impl<'src, D: Driver> Type<'src, D> {
     }
 
     #[must_use]
-    fn instantiate_opaque_in_context(&self, context: &mut TypeContext<'src, D>) -> Self {
+    fn instantiate_opaque_in_context(&self, context: &mut TypeContext<D>) -> Self {
         let mut r#type = self.clone();
         r#type.instantiate_opaque_in_context_mut(context);
         r#type
     }
 
-    fn instantiate_opaque_in_context_mut(&mut self, context: &mut TypeContext<'src, D>) {
+    fn instantiate_opaque_in_context_mut(&mut self, context: &mut TypeContext<D>) {
         self.apply_in_context_mut(context);
 
         match &mut self.kind {
@@ -1296,12 +1295,12 @@ impl<'src, D: Driver> Type<'src, D> {
     }
 }
 
-impl<'src, D: Driver> Instance<'src, D> {
+impl<D: Driver> Instance<D> {
     #[must_use]
     fn instantiate(
         &self,
         driver: &D,
-        instantiation_context: &mut InstantiationContext<'_, 'src, D>,
+        instantiation_context: &mut InstantiationContext<'_, D>,
     ) -> Self {
         let mut instance = self.clone();
         instance.instantiate_mut(driver, instantiation_context);
@@ -1311,7 +1310,7 @@ impl<'src, D: Driver> Instance<'src, D> {
     fn instantiate_mut(
         &mut self,
         driver: &D,
-        instantiation_context: &mut InstantiationContext<'_, 'src, D>,
+        instantiation_context: &mut InstantiationContext<'_, D>,
     ) {
         for parameter in &mut self.parameters {
             parameter.instantiate_mut(driver, instantiation_context);
@@ -1319,19 +1318,19 @@ impl<'src, D: Driver> Instance<'src, D> {
     }
 
     #[must_use]
-    fn instantiate_opaque(&self, context: &mut TypeContext<'src, D>) -> Self {
+    fn instantiate_opaque(&self, context: &mut TypeContext<D>) -> Self {
         let mut instance = self.clone();
         instance.instantiate_opaque_mut(context);
         instance
     }
 
-    fn instantiate_opaque_mut(&mut self, context: &mut TypeContext<'src, D>) {
+    fn instantiate_opaque_mut(&mut self, context: &mut TypeContext<D>) {
         for parameter in &mut self.parameters {
             parameter.instantiate_opaque_in_context_mut(context);
         }
     }
 
-    fn set_source_info(&mut self, context: &mut ResolveContext<'_, 'src, D>, info: &D::Info) {
+    fn set_source_info(&mut self, context: &mut ResolveContext<'_, D>, info: &D::Info) {
         for parameter in &mut self.parameters {
             parameter.set_source_info(context, info);
         }
@@ -1340,14 +1339,14 @@ impl<'src, D: Driver> Instance<'src, D> {
 
 // region: Unification
 
-impl<'src, D: Driver> TypeContext<'src, D> {
+impl<D: Driver> TypeContext<D> {
     pub fn variable(&mut self) -> TypeVariable<D> {
         self.variable_with_default(None)
     }
 
     pub fn variable_with_default(
         &mut self,
-        default: impl Into<Option<Type<'src, D>>>,
+        default: impl Into<Option<Type<D>>>,
     ) -> TypeVariable<D> {
         let counter = self.next_variable;
         self.next_variable += 1;
@@ -1363,16 +1362,16 @@ impl<'src, D: Driver> TypeContext<'src, D> {
     }
 }
 
-impl<'src, D: Driver> TypeVariable<D> {
+impl<D: Driver> TypeVariable<D> {
     fn with_substitution_mut<T>(
         &self,
-        context: &mut TypeContext<'src, D>,
-        f: impl FnOnce(btree_map::Entry<'_, u32, Type<'src, D>>) -> T,
+        context: &mut TypeContext<D>,
+        f: impl FnOnce(btree_map::Entry<'_, u32, Type<D>>) -> T,
     ) -> T {
         f(context.substitutions.entry(self.counter))
     }
 
-    fn default(&self, context: &mut TypeContext<'src, D>) -> Option<Type<'src, D>> {
+    fn default(&self, context: &mut TypeContext<D>) -> Option<Type<D>> {
         context.defaults.get(&self.counter).cloned()
     }
 }
@@ -1384,17 +1383,17 @@ struct UnifyOptions {
 }
 
 #[must_use]
-fn unify_with_options<'src, D: Driver>(
+fn unify_with_options<D: Driver>(
     driver: &D,
-    r#type: &Type<'src, D>,
-    expected_type: &Type<'src, D>,
-    context: &mut TypeContext<'src, D>,
+    r#type: &Type<D>,
+    expected_type: &Type<D>,
+    context: &mut TypeContext<D>,
     options: UnifyOptions,
 ) -> bool {
-    fn unify_variable<'src, D: Driver>(
+    fn unify_variable<D: Driver>(
         variable: &TypeVariable<D>,
-        r#type: &Type<'src, D>,
-        context: &mut TypeContext<'src, D>,
+        r#type: &Type<D>,
+        context: &mut TypeContext<D>,
     ) -> bool {
         if r#type.contains_variable(variable) {
             return false;
@@ -1416,11 +1415,11 @@ fn unify_with_options<'src, D: Driver>(
         true
     }
 
-    fn unify_inner<'src, D: Driver>(
+    fn unify_inner<D: Driver>(
         driver: &D,
-        r#type: &Type<'src, D>,
-        expected_type: &Type<'src, D>,
-        context: &mut TypeContext<'src, D>,
+        r#type: &Type<D>,
+        expected_type: &Type<D>,
+        context: &mut TypeContext<D>,
         options: UnifyOptions,
     ) -> bool {
         let r#type = r#type.apply_in_context(context);
@@ -1523,11 +1522,11 @@ fn unify_with_options<'src, D: Driver>(
 }
 
 #[must_use]
-fn unify<'src, D: Driver>(
+fn unify<D: Driver>(
     driver: &D,
-    r#type: &Type<'src, D>,
-    expected_type: &Type<'src, D>,
-    context: &mut TypeContext<'src, D>,
+    r#type: &Type<D>,
+    expected_type: &Type<D>,
+    context: &mut TypeContext<D>,
 ) -> bool {
     unify_with_options(
         driver,
@@ -1539,11 +1538,11 @@ fn unify<'src, D: Driver>(
 }
 
 #[must_use]
-fn unify_parameters_with_options<'src, D: Driver>(
+fn unify_parameters_with_options<D: Driver>(
     driver: &D,
-    parameters: &[Type<'src, D>],
-    expected_parameters: &[Type<'src, D>],
-    context: &mut TypeContext<'src, D>,
+    parameters: &[Type<D>],
+    expected_parameters: &[Type<D>],
+    context: &mut TypeContext<D>,
     options: UnifyOptions,
 ) -> bool {
     let mut unified = true;
@@ -1555,11 +1554,11 @@ fn unify_parameters_with_options<'src, D: Driver>(
 }
 
 #[must_use]
-fn unify_instance_with_options<'src, D: Driver>(
+fn unify_instance_with_options<D: Driver>(
     driver: &D,
-    instance: WithInfo<D::Info, &Instance<'src, D>>,
-    expected_instance: WithInfo<D::Info, &Instance<'src, D>>,
-    context: &mut TypeContext<'src, D>,
+    instance: WithInfo<D::Info, &Instance<D>>,
+    expected_instance: WithInfo<D::Info, &Instance<D>>,
+    context: &mut TypeContext<D>,
     options: UnifyOptions,
 ) -> bool {
     driver.paths_are_equal(&instance.item.r#trait, &expected_instance.item.r#trait)
@@ -1573,11 +1572,11 @@ fn unify_instance_with_options<'src, D: Driver>(
 }
 
 #[must_use]
-fn unify_instance<'src, D: Driver>(
+fn unify_instance<D: Driver>(
     driver: &D,
-    actual_instance: WithInfo<D::Info, &Instance<'src, D>>,
-    expected_instance: WithInfo<D::Info, &Instance<'src, D>>,
-    context: &mut TypeContext<'src, D>,
+    actual_instance: WithInfo<D::Info, &Instance<D>>,
+    expected_instance: WithInfo<D::Info, &Instance<D>>,
+    context: &mut TypeContext<D>,
 ) -> bool {
     unify_instance_with_options(
         driver,
@@ -1588,12 +1587,12 @@ fn unify_instance<'src, D: Driver>(
     )
 }
 
-fn try_unify_expression<'src, D: Driver>(
+fn try_unify_expression<D: Driver>(
     driver: &D,
-    expression: WithInfo<D::Info, &mut Expression<'src, D>>,
-    expected_type: &Type<'src, D>,
-    context: &mut TypeContext<'src, D>,
-    error_queue: &mut Vec<WithInfo<D::Info, QueuedError<'src, D>>>,
+    expression: WithInfo<D::Info, &mut Expression<D>>,
+    expected_type: &Type<D>,
+    context: &mut TypeContext<D>,
+    error_queue: &mut Vec<WithInfo<D::Info, QueuedError<D>>>,
 ) -> bool {
     let unified = unify(driver, &expression.item.r#type, expected_type, context);
     if !unified {
@@ -1609,12 +1608,12 @@ fn try_unify_expression<'src, D: Driver>(
     unified
 }
 
-fn try_unify<'src, D: Driver>(
+fn try_unify<D: Driver>(
     driver: &D,
-    r#type: WithInfo<D::Info, &Type<'src, D>>,
-    expected_type: &Type<'src, D>,
-    context: &mut TypeContext<'src, D>,
-    error_queue: &mut Vec<WithInfo<D::Info, QueuedError<'src, D>>>,
+    r#type: WithInfo<D::Info, &Type<D>>,
+    expected_type: &Type<D>,
+    context: &mut TypeContext<D>,
+    error_queue: &mut Vec<WithInfo<D::Info, QueuedError<D>>>,
 ) {
     if !unify(driver, r#type.item, expected_type, context) {
         error_queue.push(WithInfo {
@@ -1627,10 +1626,10 @@ fn try_unify<'src, D: Driver>(
     }
 }
 
-fn substitute_defaults<'src, D: Driver>(
+fn substitute_defaults<D: Driver>(
     driver: &D,
-    r#type: &mut Type<'src, D>,
-    context: &mut TypeContext<'src, D>,
+    r#type: &mut Type<D>,
+    context: &mut TypeContext<D>,
 ) -> bool {
     r#type.apply_in_context_mut(context);
 
@@ -1687,66 +1686,66 @@ fn substitute_defaults<'src, D: Driver>(
 
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-struct Expression<'src, D: Driver> {
-    r#type: Type<'src, D>,
-    kind: ExpressionKind<'src, D>,
+struct Expression<D: Driver> {
+    r#type: Type<D>,
+    kind: ExpressionKind<D>,
 }
 
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-enum ExpressionKind<'src, D: Driver> {
+enum ExpressionKind<D: Driver> {
     Unknown(Option<D::Path>),
     Variable(String, D::Path),
     UnresolvedConstant(D::Path),
     UnresolvedTrait(D::Path),
     ResolvedConstant {
         path: D::Path,
-        parameters: Vec<Type<'src, D>>,
+        parameters: Vec<Type<D>>,
     },
     ResolvedTrait(D::Path),
     Number(String),
     Text(String),
-    Block(Vec<WithInfo<D::Info, Expression<'src, D>>>),
-    Do(WithInfo<D::Info, Box<Expression<'src, D>>>),
+    Block(Vec<WithInfo<D::Info, Expression<D>>>),
+    Do(WithInfo<D::Info, Box<Expression<D>>>),
     Function {
         inputs: Vec<WithInfo<D::Info, crate::Pattern<D>>>,
-        body: WithInfo<D::Info, Box<Expression<'src, D>>>,
+        body: WithInfo<D::Info, Box<Expression<D>>>,
     },
     Call {
-        function: WithInfo<D::Info, Box<Expression<'src, D>>>,
-        inputs: Vec<WithInfo<D::Info, Expression<'src, D>>>,
+        function: WithInfo<D::Info, Box<Expression<D>>>,
+        inputs: Vec<WithInfo<D::Info, Expression<D>>>,
     },
     When {
-        input: WithInfo<D::Info, Box<Expression<'src, D>>>,
-        arms: Vec<WithInfo<D::Info, Arm<'src, D>>>,
+        input: WithInfo<D::Info, Box<Expression<D>>>,
+        arms: Vec<WithInfo<D::Info, Arm<D>>>,
     },
     Intrinsic {
         name: String,
-        inputs: Vec<WithInfo<D::Info, Expression<'src, D>>>,
+        inputs: Vec<WithInfo<D::Info, Expression<D>>>,
     },
     Initialize {
         pattern: WithInfo<D::Info, crate::Pattern<D>>,
-        value: WithInfo<D::Info, Box<Expression<'src, D>>>,
+        value: WithInfo<D::Info, Box<Expression<D>>>,
     },
     Mutate {
         name: String,
         path: WithInfo<D::Info, D::Path>,
-        value: WithInfo<D::Info, Box<Expression<'src, D>>>,
+        value: WithInfo<D::Info, Box<Expression<D>>>,
     },
     Marker(D::Path),
-    UnresolvedStructure(Vec<WithInfo<D::Info, StructureFieldValue<'src, D>>>),
+    UnresolvedStructure(Vec<WithInfo<D::Info, StructureFieldValue<D>>>),
     ResolvedStructure {
         structure: D::Path,
-        fields: Vec<WithInfo<D::Info, StructureFieldValue<'src, D>>>,
+        fields: Vec<WithInfo<D::Info, StructureFieldValue<D>>>,
     },
     Variant {
         variant: WithInfo<D::Info, D::Path>,
-        values: Vec<WithInfo<D::Info, Expression<'src, D>>>,
+        values: Vec<WithInfo<D::Info, Expression<D>>>,
     },
-    Wrapper(WithInfo<D::Info, Box<Expression<'src, D>>>),
-    Tuple(Vec<WithInfo<D::Info, Expression<'src, D>>>),
+    Wrapper(WithInfo<D::Info, Box<Expression<D>>>),
+    Tuple(Vec<WithInfo<D::Info, Expression<D>>>),
     Format {
-        segments: Vec<FormatSegment<WithInfo<D::Info, Expression<'src, D>>>>,
+        segments: Vec<FormatSegment<WithInfo<D::Info, Expression<D>>>>,
         trailing: String,
     },
 }
@@ -1765,30 +1764,30 @@ struct FormatSegment<T> {
 
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-struct StructureFieldValue<'src, D: Driver> {
+struct StructureFieldValue<D: Driver> {
     name: String,
-    value: WithInfo<D::Info, Expression<'src, D>>,
+    value: WithInfo<D::Info, Expression<D>>,
 }
 
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-struct Arm<'src, D: Driver> {
+struct Arm<D: Driver> {
     pattern: WithInfo<D::Info, crate::Pattern<D>>,
-    body: WithInfo<D::Info, Expression<'src, D>>,
+    body: WithInfo<D::Info, Expression<D>>,
 }
 
 // region: Infer
 
-struct InferContext<'a, 'src, D: Driver> {
+struct InferContext<'a, D: Driver> {
     driver: &'a D,
-    type_context: &'a mut TypeContext<'src, D>,
-    error_queue: &'a mut Vec<WithInfo<D::Info, QueuedError<'src, D>>>,
+    type_context: &'a mut TypeContext<D>,
+    error_queue: &'a mut Vec<WithInfo<D::Info, QueuedError<D>>>,
     errors: &'a mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
-    variables: &'a mut HashMap<D::Path, Type<'src, D>>,
+    variables: &'a mut HashMap<D::Path, Type<D>>,
 }
 
-impl<'a, 'b: 'a, 'src, D: Driver> InferContext<'a, 'src, D> {
-    fn from_resolve_context(context: &'a mut ResolveContext<'b, 'src, D>) -> Self {
+impl<'a, 'b: 'a, D: Driver> InferContext<'a, D> {
+    fn from_resolve_context(context: &'a mut ResolveContext<'b, D>) -> Self {
         InferContext {
             driver: context.driver,
             type_context: context.type_context,
@@ -1799,11 +1798,11 @@ impl<'a, 'b: 'a, 'src, D: Driver> InferContext<'a, 'src, D> {
     }
 }
 
-fn infer_type<'src, D: Driver>(
+fn infer_type<D: Driver>(
     r#type: WithInfo<D::Info, &crate::Type<D>>,
     role: impl Into<Option<WithInfo<D::Info, Role>>>,
-    mut type_context: Option<&mut TypeContext<'src, D>>,
-) -> Type<'src, D> {
+    mut type_context: Option<&mut TypeContext<D>>,
+) -> Type<D> {
     Type::new(
         match r#type.item {
             crate::Type::Parameter(path) => TypeKind::Parameter(path.clone()),
@@ -1863,9 +1862,9 @@ fn infer_type<'src, D: Driver>(
     )
 }
 
-fn infer_instance<'src, D: Driver>(
+fn infer_instance<D: Driver>(
     instance: WithInfo<D::Info, crate::Instance<D>>,
-) -> WithInfo<D::Info, Instance<'src, D>> {
+) -> WithInfo<D::Info, Instance<D>> {
     instance.map(|instance| Instance {
         r#trait: instance.r#trait,
         parameters: instance
@@ -1876,10 +1875,10 @@ fn infer_instance<'src, D: Driver>(
     })
 }
 
-fn infer_expression<'src, D: Driver>(
+fn infer_expression<D: Driver>(
     expression: WithInfo<D::Info, crate::UntypedExpression<D>>,
-    context: &mut InferContext<'_, 'src, D>,
-) -> WithInfo<<D as Driver>::Info, Expression<'src, D>> {
+    context: &mut InferContext<'_, D>,
+) -> WithInfo<<D as Driver>::Info, Expression<D>> {
     let info = expression.info.clone();
 
     let mut expression = expression.map(|expression| match expression {
@@ -2590,10 +2589,10 @@ fn infer_expression<'src, D: Driver>(
     expression
 }
 
-fn resolve_pattern<'src, D: Driver>(
+fn resolve_pattern<D: Driver>(
     pattern: WithInfo<D::Info, &crate::Pattern<D>>,
-    r#type: WithInfo<D::Info, &Type<'src, D>>,
-    context: &mut InferContext<'_, 'src, D>,
+    r#type: WithInfo<D::Info, &Type<D>>,
+    context: &mut InferContext<'_, D>,
 ) {
     let mut r#type = r#type.map(|r#type| r#type.clone());
     r#type.item.apply_in_context_mut(context.type_context);
@@ -2981,13 +2980,13 @@ fn resolve_pattern<'src, D: Driver>(
     }
 }
 
-fn instantiated_language_type<'src, D: Driver>(
+fn instantiated_language_type<D: Driver>(
     language_item: &str,
     info: D::Info,
     driver: &D,
-    type_context: &mut TypeContext<'src, D>,
+    type_context: &mut TypeContext<D>,
     errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
-) -> Option<Type<'src, D>> {
+) -> Option<Type<D>> {
     match try_instantiated_language_type(language_item, info.clone(), driver, type_context, errors)
     {
         Some(path) => Some(path),
@@ -3002,13 +3001,13 @@ fn instantiated_language_type<'src, D: Driver>(
     }
 }
 
-fn try_instantiated_language_type<'src, D: Driver>(
+fn try_instantiated_language_type<D: Driver>(
     language_item: &str,
     info: D::Info,
     driver: &D,
-    type_context: &mut TypeContext<'src, D>,
+    type_context: &mut TypeContext<D>,
     errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
-) -> Option<Type<'src, D>> {
+) -> Option<Type<D>> {
     let path = driver.path_for_language_type(language_item)?;
     let type_declaration = driver.get_type_declaration(&path);
 
@@ -3033,11 +3032,11 @@ fn try_instantiated_language_type<'src, D: Driver>(
     ))
 }
 
-fn instantiated_language_trait<'src, D: Driver>(
+fn instantiated_language_trait<D: Driver>(
     language_item: &str,
     info: &D::Info,
-    context: &mut InferContext<'_, 'src, D>,
-) -> WithInfo<D::Info, Expression<'src, D>> {
+    context: &mut InferContext<'_, D>,
+) -> WithInfo<D::Info, Expression<D>> {
     match context.driver.path_for_language_constructor(language_item) {
         Some(path) => infer_expression(
             WithInfo {
@@ -3063,11 +3062,11 @@ fn instantiated_language_trait<'src, D: Driver>(
     }
 }
 
-fn instantiated_language_constant<'src, D: Driver>(
+fn instantiated_language_constant<D: Driver>(
     language_item: &str,
     info: &D::Info,
-    context: &mut InferContext<'_, 'src, D>,
-) -> WithInfo<D::Info, Expression<'src, D>> {
+    context: &mut InferContext<'_, D>,
+) -> WithInfo<D::Info, Expression<D>> {
     match context.driver.path_for_language_constant(language_item) {
         Some(path) => infer_expression(
             WithInfo {
@@ -3095,20 +3094,20 @@ fn instantiated_language_constant<'src, D: Driver>(
 
 // region: Resolve
 
-struct ResolveContext<'a, 'src, D: Driver> {
+struct ResolveContext<'a, D: Driver> {
     driver: &'a D,
-    type_context: &'a mut TypeContext<'src, D>,
-    error_queue: &'a mut Vec<WithInfo<D::Info, QueuedError<'src, D>>>,
+    type_context: &'a mut TypeContext<D>,
+    error_queue: &'a mut Vec<WithInfo<D::Info, QueuedError<D>>>,
     errors: &'a mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
-    variables: &'a mut HashMap<D::Path, Type<'src, D>>,
+    variables: &'a mut HashMap<D::Path, Type<D>>,
     recursion_stack: &'a mut Vec<D::Info>,
-    bound_instances: Vec<Vec<WithInfo<D::Info, Instance<'src, D>>>>,
+    bound_instances: Vec<Vec<WithInfo<D::Info, Instance<D>>>>,
 }
 
-fn resolve_expression<'src, D: Driver>(
-    mut expression: WithInfo<D::Info, Expression<'src, D>>,
-    context: &mut ResolveContext<'_, 'src, D>,
-) -> WithInfo<D::Info, Expression<'src, D>> {
+fn resolve_expression<D: Driver>(
+    mut expression: WithInfo<D::Info, Expression<D>>,
+    context: &mut ResolveContext<'_, D>,
+) -> WithInfo<D::Info, Expression<D>> {
     let kind = match expression.item.kind {
         ExpressionKind::Unknown(path) => ExpressionKind::Unknown(path),
         ExpressionKind::Variable(ref name, ref variable) => {
@@ -3639,12 +3638,12 @@ fn resolve_expression<'src, D: Driver>(
     }
 }
 
-fn resolve_item<'src, D: Driver>(
+fn resolve_item<D: Driver>(
     path: &D::Path,
-    mut use_expression: WithInfo<D::Info, &mut Expression<'src, D>>,
+    mut use_expression: WithInfo<D::Info, &mut Expression<D>>,
     allow_unresolved_bounds: bool,
-    context: &mut ResolveContext<'_, 'src, D>,
-) -> Result<Option<Vec<Type<'src, D>>>, WithInfo<D::Info, QueuedError<'src, D>>> {
+    context: &mut ResolveContext<'_, D>,
+) -> Result<Option<Vec<Type<D>>>, WithInfo<D::Info, QueuedError<D>>> {
     let item_declaration = context.driver.get_constant_declaration(path);
 
     let use_info = use_expression.info.clone();
@@ -3704,9 +3703,9 @@ fn resolve_item<'src, D: Driver>(
         let use_type = use_expression.item.r#type.clone();
         let info = &use_info;
 
-        move |bounds: &[WithInfo<D::Info, Instance<'src, D>>],
+        move |bounds: &[WithInfo<D::Info, Instance<D>>],
               allow_unresolved: bool,
-              context: &mut ResolveContext<'_, 'src, D>| {
+              context: &mut ResolveContext<'_, D>| {
             bounds
                 .iter()
                 .map(|bound| {
@@ -3797,11 +3796,11 @@ fn resolve_item<'src, D: Driver>(
     }))
 }
 
-fn resolve_trait_parameters_from_type<'src, D: Driver>(
+fn resolve_trait_parameters_from_type<D: Driver>(
     path: &D::Path,
-    use_expression: WithInfo<D::Info, &mut Expression<'src, D>>,
-    context: &mut ResolveContext<'_, 'src, D>,
-) -> Option<Vec<Type<'src, D>>> {
+    use_expression: WithInfo<D::Info, &mut Expression<D>>,
+    context: &mut ResolveContext<'_, D>,
+) -> Option<Vec<Type<D>>> {
     let trait_declaration = context.driver.get_trait_declaration(path);
 
     let use_info = use_expression.info.clone();
@@ -3834,21 +3833,21 @@ fn resolve_trait_parameters_from_type<'src, D: Driver>(
     Some(instantiation_context.into_types_for_parameters())
 }
 
-fn resolve_trait<'src, D: Driver>(
-    query: WithInfo<D::Info, &Instance<'src, D>>,
-    context: &mut ResolveContext<'_, 'src, D>,
-) -> Result<(), WithInfo<D::Info, QueuedError<'src, D>>> {
-    type Candidate<'src, D> = (
-        TypeContext<'src, D>,
-        WithInfo<<D as Driver>::Info, Instance<'src, D>>,
-        Vec<WithInfo<<D as Driver>::Info, Instance<'src, D>>>,
+fn resolve_trait<D: Driver>(
+    query: WithInfo<D::Info, &Instance<D>>,
+    context: &mut ResolveContext<'_, D>,
+) -> Result<(), WithInfo<D::Info, QueuedError<D>>> {
+    type Candidate<D> = (
+        TypeContext<D>,
+        WithInfo<<D as Driver>::Info, Instance<D>>,
+        Vec<WithInfo<<D as Driver>::Info, Instance<D>>>,
     );
 
-    fn pick_from_candidates<'src, D: Driver>(
-        mut candidates: Vec<Candidate<'src, D>>,
-        query: WithInfo<D::Info, &Instance<'src, D>>,
-        stack: &[WithInfo<D::Info, &Instance<'src, D>>],
-    ) -> Result<Option<Candidate<'src, D>>, WithInfo<D::Info, QueuedError<'src, D>>> {
+    fn pick_from_candidates<D: Driver>(
+        mut candidates: Vec<Candidate<D>>,
+        query: WithInfo<D::Info, &Instance<D>>,
+        stack: &[WithInfo<D::Info, &Instance<D>>],
+    ) -> Result<Option<Candidate<D>>, WithInfo<D::Info, QueuedError<D>>> {
         match candidates.len() {
             0 => Ok(None),
             1 => Ok(Some(candidates.pop().unwrap())),
@@ -3866,11 +3865,11 @@ fn resolve_trait<'src, D: Driver>(
         }
     }
 
-    fn resolve_trait_inner<'src, D: Driver>(
-        query: WithInfo<D::Info, &Instance<'src, D>>,
-        context: &mut ResolveContext<'_, 'src, D>,
-        stack: &[WithInfo<D::Info, &Instance<'src, D>>],
-    ) -> Result<WithInfo<D::Info, Instance<'src, D>>, WithInfo<D::Info, QueuedError<'src, D>>> {
+    fn resolve_trait_inner<D: Driver>(
+        query: WithInfo<D::Info, &Instance<D>>,
+        context: &mut ResolveContext<'_, D>,
+        stack: &[WithInfo<D::Info, &Instance<D>>],
+    ) -> Result<WithInfo<D::Info, Instance<D>>, WithInfo<D::Info, QueuedError<D>>> {
         let r#trait = query.item.r#trait.clone();
 
         let recursion_limit = context.driver.recursion_limit();
@@ -4037,11 +4036,11 @@ fn resolve_trait<'src, D: Driver>(
     Ok(())
 }
 
-fn resolve_custom_error<'src, D: Driver>(
+fn resolve_custom_error<D: Driver>(
     error_info: &D::Info,
-    message_type: &Type<'src, D>,
-    context: &mut ResolveContext<'_, 'src, D>,
-) -> Option<WithInfo<D::Info, QueuedError<'src, D>>> {
+    message_type: &Type<D>,
+    context: &mut ResolveContext<'_, D>,
+) -> Option<WithInfo<D::Info, QueuedError<D>>> {
     let message_type = message_type.apply_in_context(context.type_context);
 
     let mut error_message = None;
@@ -4118,10 +4117,10 @@ fn resolve_custom_error<'src, D: Driver>(
     })
 }
 
-fn substitute_defaults_in_expression<'src, D: Driver>(
+fn substitute_defaults_in_expression<D: Driver>(
     driver: &D,
-    expression: WithInfo<D::Info, &mut Expression<'src, D>>,
-    context: &mut ResolveContext<'_, 'src, D>,
+    expression: WithInfo<D::Info, &mut Expression<D>>,
+    context: &mut ResolveContext<'_, D>,
 ) -> bool {
     let substituted_subexpression = match &mut expression.item.kind {
         ExpressionKind::Block(statements) => statements.iter_mut().any(|statement| {
@@ -4191,25 +4190,25 @@ fn substitute_defaults_in_expression<'src, D: Driver>(
 
 // region: Finalize
 
-struct FinalizeContext<'a, 'src, D: Driver> {
+struct FinalizeContext<'a, D: Driver> {
     driver: &'a D,
-    type_context: &'a mut TypeContext<'src, D>,
-    bound_instances: Vec<Vec<WithInfo<D::Info, Instance<'src, D>>>>,
-    error_queue: Option<&'a mut Vec<WithInfo<D::Info, QueuedError<'src, D>>>>,
+    type_context: &'a mut TypeContext<D>,
+    bound_instances: Vec<Vec<WithInfo<D::Info, Instance<D>>>>,
+    error_queue: Option<&'a mut Vec<WithInfo<D::Info, QueuedError<D>>>>,
     errors: Option<&'a mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>>,
     unresolved_variables: Option<&'a mut HashSet<TypeVariable<D>>>,
     contains_unknown: bool,
     subexpression_types: Option<&'a mut Vec<crate::Type<D>>>, // in the order of traversal
 }
 
-fn finalize_type<'src, D: Driver>(
-    r#type: Type<'src, D>,
+fn finalize_type<D: Driver>(
+    r#type: Type<D>,
     report_error: bool,
-    context: &mut FinalizeContext<'_, 'src, D>,
+    context: &mut FinalizeContext<'_, D>,
 ) -> WithInfo<D::Info, crate::Type<D>> {
-    fn finalize_type_inner<'src, D: Driver>(
-        mut r#type: Type<'src, D>,
-        context: &mut FinalizeContext<'_, 'src, D>,
+    fn finalize_type_inner<D: Driver>(
+        mut r#type: Type<D>,
+        context: &mut FinalizeContext<'_, D>,
         fully_resolved: &mut bool,
     ) -> WithInfo<D::Info, crate::Type<D>> {
         r#type.apply_in_context_mut(context.type_context);
@@ -4294,9 +4293,9 @@ fn finalize_type<'src, D: Driver>(
     finalized_type
 }
 
-fn finalize_expression<'src, D: Driver>(
-    mut expression: WithInfo<D::Info, Expression<'src, D>>,
-    context: &mut FinalizeContext<'_, 'src, D>,
+fn finalize_expression<D: Driver>(
+    mut expression: WithInfo<D::Info, Expression<D>>,
+    context: &mut FinalizeContext<'_, D>,
 ) -> WithInfo<D::Info, crate::TypedExpression<D>> {
     let mut report_errors = true;
     let kind = match expression.item.kind {
@@ -4526,9 +4525,9 @@ fn finalize_expression<'src, D: Driver>(
     }
 }
 
-fn finalize_instance<'src, D: Driver>(
-    instance: Instance<'src, D>,
-    context: &mut FinalizeContext<'_, 'src, D>,
+fn finalize_instance<D: Driver>(
+    instance: Instance<D>,
+    context: &mut FinalizeContext<'_, D>,
 ) -> crate::Instance<D> {
     crate::Instance {
         r#trait: instance.r#trait,
@@ -4540,18 +4539,12 @@ fn finalize_instance<'src, D: Driver>(
     }
 }
 
-fn refine_mismatch_error<'src, D: Driver>(
-    actual: &mut Type<'src, D>,
-    expected: &mut Type<'src, D>,
-) {
+fn refine_mismatch_error<D: Driver>(actual: &mut Type<D>, expected: &mut Type<D>) {
     todo!()
 }
 
 #[allow(dead_code)]
-fn debug_instance<'src, D: Driver>(
-    instance: &Instance<'src, D>,
-    context: &mut TypeContext<'src, D>,
-) -> String {
+fn debug_instance<D: Driver>(instance: &Instance<D>, context: &mut TypeContext<D>) -> String {
     format!(
         "({:?}{})",
         debug_path(&instance.r#trait),
@@ -4567,10 +4560,7 @@ fn debug_instance<'src, D: Driver>(
 }
 
 #[allow(dead_code)]
-fn debug_type<'src, D: Driver>(
-    r#type: &Type<'src, D>,
-    context: &mut TypeContext<'src, D>,
-) -> String {
+fn debug_type<D: Driver>(r#type: &Type<D>, context: &mut TypeContext<D>) -> String {
     let r#type = r#type.apply_in_context(context);
 
     match r#type.kind {
