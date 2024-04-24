@@ -767,14 +767,9 @@ export class Render {
                         break;
                     }
                     case "mismatch": {
-                        const { expected, actual, expectedRoles } = diagnostic.item.value.value;
+                        const { expected, actual } = diagnostic.item.value.value;
 
                         severity = "error";
-
-                        const renderedRole =
-                            expectedRoles.length > 0
-                                ? this.renderTypeRole(expectedRoles[0].item)
-                                : "";
 
                         let expectedMessage = this.renderType(expected, true, true, true);
                         let actualMessage = this.renderType(actual, true, true, true);
@@ -786,9 +781,7 @@ export class Render {
                             actualMessage = this.renderType(actual, true, false, true);
                         }
 
-                        message = renderedRole
-                            ? `expected this ${renderedRole} to be ${expectedMessage} here, but found ${actualMessage}`
-                            : `expected ${expectedMessage} here, but found ${actualMessage}`;
+                        message = `expected ${expectedMessage} here, but found ${actualMessage}`;
 
                         break;
                     }

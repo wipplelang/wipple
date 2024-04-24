@@ -4,6 +4,6 @@ exports[`type-span.test.wipple 1`] = `
 [
   "type-span/type-span.test.wipple:2:0: error: cannot add a function and a number",
   "type-span/type-span.test.wipple:3:0: error: can't find \`Show\`",
-  "type-span/type-span.test.wipple:3:0: error: expected this annotation to be \`_ Number -> Number\` here, but found \`_ Number -> ()\`",
+  "type-span/type-span.test.wipple:3:0: error: expected \`()\` here, but found a number",
 ]
 `;

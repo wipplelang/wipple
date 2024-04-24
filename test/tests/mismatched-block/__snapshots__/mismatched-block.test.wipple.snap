@@ -2,6 +2,6 @@
 
 exports[`mismatched-block.test.wipple 1`] = `
 [
-  "mismatched-block/mismatched-block.test.wipple:5:4: error: expected this annotation to be a number here, but found a piece of text",
+  "mismatched-block/mismatched-block.test.wipple:5:4: error: expected a number here, but found a piece of text",
 ]
 `;

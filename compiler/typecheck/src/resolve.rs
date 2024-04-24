@@ -170,7 +170,13 @@ pub fn resolve<D: Driver>(
         Some(&mut infer_context.type_context),
     );
 
-    let body = infer_expression(item_declaration.item.body, &mut infer_context);
+    let body = infer_context.with_tracked_expression(None, |infer_context, expression_id| {
+        infer_expression(
+            item_declaration.item.body,
+            Some(expression_id),
+            infer_context,
+        )
+    });
 
     let bounds = vec![item_declaration
         .item
@@ -226,9 +232,7 @@ pub fn resolve<D: Driver>(
             resolve_context.error_queue,
         );
 
-        queued.body = resolve_context.with_tracked_expression(None, |resolve_context, parent| {
-            resolve_expression(queued.body, Some(parent), resolve_context)
-        });
+        queued.body = resolve_expression(queued.body, &mut resolve_context);
 
         let subexpression_types = {
             let mut subexpression_types = Vec::new();
@@ -905,8 +909,8 @@ impl<D: Driver> Type<D> {
                 self.kind = r#type.kind;
                 self.info = r#type.info;
                 self.roles.extend(r#type.roles);
-                // self.expression = self.expression.or(r#type.expression);
-                // self.parent_expression = self.parent_expression.or(r#type.parent_expression);
+                self.expression = self.expression.or(r#type.expression);
+                self.parent_expression = self.parent_expression.or(r#type.parent_expression);
                 self.apply_in_context_mut(context);
             }
             TypeKind::Opaque(_) => {}
@@ -1133,7 +1137,7 @@ impl<D: Driver> Debug for TrackedExpressionId<D> {
     }
 }
 
-impl<D: Driver> ResolveContext<'_, D> {
+impl<D: Driver> InferContext<'_, D> {
     pub fn with_tracked_expression(
         &mut self,
         parent_id: Option<TrackedExpressionId<D>>,
@@ -1949,716 +1953,740 @@ fn infer_instance<D: Driver>(
 
 fn infer_expression<D: Driver>(
     expression: WithInfo<D::Info, crate::UntypedExpression<D>>,
+    parent_id: Option<TrackedExpressionId<D>>,
     context: &mut InferContext<'_, D>,
 ) -> WithInfo<<D as Driver>::Info, Expression<D>> {
-    let info = expression.info.clone();
+    context.with_tracked_expression(parent_id, |context, expression_id| {
+        let info = expression.info.clone();
 
-    let mut expression = expression.map(|expression| match expression {
-        crate::UntypedExpression::Unknown => Expression {
-            r#type: Type::new(TypeKind::Unknown, info.clone(), Vec::new()),
-            kind: ExpressionKind::Unknown(None),
-        },
-        crate::UntypedExpression::Annotate { value, r#type } => {
-            let mut value = infer_expression(value.unboxed(), context);
+        let mut expression = expression.map(|expression| match expression {
+            crate::UntypedExpression::Unknown => Expression {
+                r#type: Type::new(TypeKind::Unknown, info.clone(), Vec::new()),
+                kind: ExpressionKind::Unknown(None),
+            },
+            crate::UntypedExpression::Annotate { value, r#type } => {
+                let mut value = infer_expression(value.unboxed(), Some(expression_id), context);
 
-            let r#type = infer_type(
-                r#type.as_ref(),
-                value.replace(Role::Annotation),
-                Some(context.type_context),
-            );
-
-            try_unify_expression(
-                context.driver,
-                value.as_mut(),
-                &r#type,
-                context.type_context,
-                context.error_queue,
-            );
-
-            value.item
-        }
-        crate::UntypedExpression::Variable(name, variable) => {
-            let r#type = context
-                .variables
-                .get(&variable)
-                .cloned()
-                .unwrap_or_else(|| Type::new(TypeKind::Unknown, info.clone(), Vec::new()));
-
-            Expression {
-                r#type,
-                kind: ExpressionKind::Variable(name, variable),
-            }
-        }
-        crate::UntypedExpression::Constant(path) => {
-            let constant_declaration = context.driver.get_constant_declaration(&path);
-
-            let mut instantiation_context = InstantiationContext::from_parameters(
-                context.driver,
-                constant_declaration.item.parameters.clone(),
-                context.type_context,
-                info.clone(),
-                context.errors,
-            );
-
-            let r#type = infer_type(
-                constant_declaration.item.r#type.as_ref(),
-                constant_declaration.replace(Role::Annotation),
-                Some(instantiation_context.type_context),
-            )
-            .instantiate(context.driver, &mut instantiation_context);
-
-            Expression {
-                r#type,
-                kind: ExpressionKind::UnresolvedConstant(path),
-            }
-        }
-        crate::UntypedExpression::Trait(path) => {
-            let trait_declaration = context.driver.get_trait_declaration(&path);
-
-            let mut instantiation_context = InstantiationContext::from_parameters(
-                context.driver,
-                trait_declaration.item.parameters.clone(),
-                context.type_context,
-                info.clone(),
-                context.errors,
-            );
-
-            let r#type = match trait_declaration.item.r#type.as_ref() {
-                Some(r#type) => infer_type(
+                let r#type = infer_type(
                     r#type.as_ref(),
-                    trait_declaration.replace(Role::Trait),
+                    value.replace(Role::Annotation),
+                    Some(context.type_context),
+                );
+
+                try_unify_expression(
+                    context.driver,
+                    value.as_mut(),
+                    &r#type,
+                    context.type_context,
+                    context.error_queue,
+                );
+
+                value.item
+            }
+            crate::UntypedExpression::Variable(name, variable) => {
+                let r#type = context
+                    .variables
+                    .get(&variable)
+                    .cloned()
+                    .unwrap_or_else(|| Type::new(TypeKind::Unknown, info.clone(), Vec::new()));
+
+                Expression {
+                    r#type,
+                    kind: ExpressionKind::Variable(name, variable),
+                }
+            }
+            crate::UntypedExpression::Constant(path) => {
+                let constant_declaration = context.driver.get_constant_declaration(&path);
+
+                let mut instantiation_context = InstantiationContext::from_parameters(
+                    context.driver,
+                    constant_declaration.item.parameters.clone(),
+                    context.type_context,
+                    info.clone(),
+                    context.errors,
+                );
+
+                let r#type = infer_type(
+                    constant_declaration.item.r#type.as_ref(),
+                    constant_declaration.replace(Role::Annotation),
                     Some(instantiation_context.type_context),
                 )
-                .instantiate(context.driver, &mut instantiation_context),
-                None => {
-                    context.errors.push(WithInfo {
-                        info: info.clone(),
-                        item: crate::Diagnostic::TraitHasNoValue(path.clone()),
-                    });
+                .instantiate(context.driver, &mut instantiation_context);
 
-                    Type::new(
-                        TypeKind::Variable(context.type_context.variable()),
-                        info.clone(),
-                        Vec::new(),
-                    )
+                Expression {
+                    r#type,
+                    kind: ExpressionKind::UnresolvedConstant(path),
                 }
-            };
-
-            Expression {
-                r#type,
-                kind: ExpressionKind::UnresolvedTrait(path),
             }
-        }
-        crate::UntypedExpression::Number(number) => {
-            let r#type = instantiated_language_type(
-                "number",
-                info.clone(),
-                context.driver,
-                context.type_context,
-                context.errors,
-            )
-            .unwrap_or_else(|| {
-                Type::new(
-                    TypeKind::Variable(context.type_context.variable()),
+            crate::UntypedExpression::Trait(path) => {
+                let trait_declaration = context.driver.get_trait_declaration(&path);
+
+                let mut instantiation_context = InstantiationContext::from_parameters(
+                    context.driver,
+                    trait_declaration.item.parameters.clone(),
+                    context.type_context,
                     info.clone(),
-                    Vec::new(),
-                )
-            });
+                    context.errors,
+                );
 
-            Expression {
-                r#type,
-                kind: ExpressionKind::Number(number),
-            }
-        }
-        crate::UntypedExpression::Text(text) => {
-            let r#type = instantiated_language_type(
-                "text",
-                info.clone(),
-                context.driver,
-                context.type_context,
-                context.errors,
-            )
-            .unwrap_or_else(|| {
-                Type::new(
-                    TypeKind::Variable(context.type_context.variable()),
-                    info.clone(),
-                    Vec::new(),
-                )
-            });
-
-            Expression {
-                r#type,
-                kind: ExpressionKind::Text(text),
-            }
-        }
-        crate::UntypedExpression::Block(statements) => {
-            let statement_count = statements.len();
-
-            let statements = statements
-                .into_iter()
-                .enumerate()
-                .map(|(index, expression)| {
-                    let statement = infer_expression(expression, context);
-
-                    if index + 1 < statement_count {
-                        // Statements have type `()` by default, but any other type is also OK
-                        let _ = unify(
-                            context.driver,
-                            &statement.item.r#type,
-                            &Type::new(
-                                TypeKind::Tuple(Vec::new()),
-                                statement.info.clone(),
-                                Vec::new(),
-                            ),
-                            context.type_context,
-                        );
-                    }
-
-                    statement
-                })
-                .collect::<Vec<_>>();
-
-            let r#type = statements.last().map_or_else(
-                || {
-                    Type::new(
-                        TypeKind::Tuple(Vec::new()),
-                        info.clone(),
-                        vec![WithInfo {
-                            info: info.clone(),
-                            item: Role::EmptyBlock,
-                        }],
+                let r#type = match trait_declaration.item.r#type.as_ref() {
+                    Some(r#type) => infer_type(
+                        r#type.as_ref(),
+                        trait_declaration.replace(Role::Trait),
+                        Some(instantiation_context.type_context),
                     )
-                },
-                |expression| expression.item.r#type.clone(),
-            );
+                    .instantiate(context.driver, &mut instantiation_context),
+                    None => {
+                        context.errors.push(WithInfo {
+                            info: info.clone(),
+                            item: crate::Diagnostic::TraitHasNoValue(path.clone()),
+                        });
 
-            Expression {
-                r#type: Type::new(TypeKind::Block(Box::new(r#type)), info.clone(), Vec::new()),
-                kind: ExpressionKind::Block(statements),
+                        Type::new(
+                            TypeKind::Variable(context.type_context.variable()),
+                            info.clone(),
+                            Vec::new(),
+                        )
+                    }
+                };
+
+                Expression {
+                    r#type,
+                    kind: ExpressionKind::UnresolvedTrait(path),
+                }
             }
-        }
-        crate::UntypedExpression::Do(block) => {
-            let output_type = Type::new(
-                TypeKind::Variable(context.type_context.variable()),
-                info.clone(),
-                Vec::new(),
-            );
-
-            let block_type = Type::new(
-                TypeKind::Block(Box::new(output_type.clone())),
-                info.clone(),
-                Vec::new(),
-            );
-
-            let mut block = infer_expression(block.unboxed(), context);
-
-            try_unify_expression(
-                context.driver,
-                block.as_mut(),
-                &block_type,
-                context.type_context,
-                context.error_queue,
-            );
-
-            Expression {
-                r#type: output_type,
-                kind: ExpressionKind::Do(block.boxed()),
-            }
-        }
-        crate::UntypedExpression::Function { inputs, body } => {
-            let input_types = inputs
-                .iter()
-                .map(|_| {
+            crate::UntypedExpression::Number(number) => {
+                let r#type = instantiated_language_type(
+                    "number",
+                    info.clone(),
+                    context.driver,
+                    context.type_context,
+                    context.errors,
+                )
+                .unwrap_or_else(|| {
                     Type::new(
                         TypeKind::Variable(context.type_context.variable()),
                         info.clone(),
                         Vec::new(),
                     )
-                })
-                .collect::<Vec<_>>();
+                });
 
-            for (pattern, input_type) in inputs.iter().zip(&input_types) {
-                resolve_pattern(pattern.as_ref(), pattern.replace(input_type), context);
+                Expression {
+                    r#type,
+                    kind: ExpressionKind::Number(number),
+                }
             }
+            crate::UntypedExpression::Text(text) => {
+                let r#type = instantiated_language_type(
+                    "text",
+                    info.clone(),
+                    context.driver,
+                    context.type_context,
+                    context.errors,
+                )
+                .unwrap_or_else(|| {
+                    Type::new(
+                        TypeKind::Variable(context.type_context.variable()),
+                        info.clone(),
+                        Vec::new(),
+                    )
+                });
 
-            let body = infer_expression(body.unboxed(), context);
+                Expression {
+                    r#type,
+                    kind: ExpressionKind::Text(text),
+                }
+            }
+            crate::UntypedExpression::Block(statements) => {
+                let statement_count = statements.len();
 
-            Expression {
+                let statements = statements
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, expression)| {
+                        let statement = infer_expression(expression, Some(expression_id), context);
+
+                        if index + 1 < statement_count {
+                            // Statements have type `()` by default, but any other type is also OK
+                            let _ = unify(
+                                context.driver,
+                                &statement.item.r#type,
+                                &Type::new(
+                                    TypeKind::Tuple(Vec::new()),
+                                    statement.info.clone(),
+                                    Vec::new(),
+                                ),
+                                context.type_context,
+                            );
+                        }
+
+                        statement
+                    })
+                    .collect::<Vec<_>>();
+
+                let r#type = statements.last().map_or_else(
+                    || {
+                        Type::new(
+                            TypeKind::Tuple(Vec::new()),
+                            info.clone(),
+                            vec![WithInfo {
+                                info: info.clone(),
+                                item: Role::EmptyBlock,
+                            }],
+                        )
+                    },
+                    |expression| expression.item.r#type.clone(),
+                );
+
+                Expression {
+                    r#type: Type::new(TypeKind::Block(Box::new(r#type)), info.clone(), Vec::new()),
+                    kind: ExpressionKind::Block(statements),
+                }
+            }
+            crate::UntypedExpression::Do(block) => {
+                let output_type = Type::new(
+                    TypeKind::Variable(context.type_context.variable()),
+                    info.clone(),
+                    Vec::new(),
+                );
+
+                let block_type = Type::new(
+                    TypeKind::Block(Box::new(output_type.clone())),
+                    info.clone(),
+                    Vec::new(),
+                );
+
+                let mut block = infer_expression(block.unboxed(), Some(expression_id), context);
+
+                try_unify_expression(
+                    context.driver,
+                    block.as_mut(),
+                    &block_type,
+                    context.type_context,
+                    context.error_queue,
+                );
+
+                Expression {
+                    r#type: output_type,
+                    kind: ExpressionKind::Do(block.boxed()),
+                }
+            }
+            crate::UntypedExpression::Function { inputs, body } => {
+                let input_types = inputs
+                    .iter()
+                    .map(|_| {
+                        Type::new(
+                            TypeKind::Variable(context.type_context.variable()),
+                            info.clone(),
+                            Vec::new(),
+                        )
+                    })
+                    .collect::<Vec<_>>();
+
+                for (pattern, input_type) in inputs.iter().zip(&input_types) {
+                    resolve_pattern(pattern.as_ref(), pattern.replace(input_type), context);
+                }
+
+                let body = infer_expression(body.unboxed(), Some(expression_id), context);
+
+                Expression {
+                    r#type: Type::new(
+                        TypeKind::Function {
+                            inputs: input_types,
+                            output: Box::new(
+                                body.item
+                                    .r#type
+                                    .clone()
+                                    .with_role(body.replace(Role::FunctionOutput)),
+                            ),
+                        },
+                        info.clone(),
+                        Vec::new(),
+                    ),
+                    kind: ExpressionKind::Function {
+                        inputs,
+                        body: body.boxed(),
+                    },
+                }
+            }
+            crate::UntypedExpression::Call { function, inputs } => {
+                let function = infer_expression(function.unboxed(), Some(expression_id), context);
+
+                let inputs = inputs
+                    .into_iter()
+                    .map(|input| {
+                        let mut input = infer_expression(input, Some(expression_id), context);
+                        let role = input.replace(Role::FunctionInput);
+                        input.item.r#type = input.item.r#type.with_role(role);
+                        input
+                    })
+                    .collect::<Vec<_>>();
+
+                let r#type = match &function.item.r#type.kind {
+                    TypeKind::Function { output, .. } => output.as_ref().clone(),
+                    _ => Type::new(
+                        TypeKind::Variable(context.type_context.variable()),
+                        info.clone(),
+                        vec![function.replace(Role::FunctionOutput)],
+                    ),
+                };
+
+                Expression {
+                    r#type,
+                    kind: ExpressionKind::Call {
+                        function: function.boxed(),
+                        inputs,
+                    },
+                }
+            }
+            crate::UntypedExpression::When { input, arms } => {
+                let input = infer_expression(input.unboxed(), Some(expression_id), context);
+
+                let r#type = Type::new(
+                    TypeKind::Variable(context.type_context.variable()),
+                    info.clone(),
+                    Vec::new(),
+                );
+
+                let arms = arms
+                    .into_iter()
+                    .map(|arm| {
+                        arm.map(|arm| {
+                            resolve_pattern(
+                                arm.pattern.as_ref(),
+                                input.as_ref().map(|input| &input.r#type),
+                                context,
+                            );
+
+                            let mut arm = Arm {
+                                pattern: arm.pattern,
+                                body: infer_expression(arm.body, Some(expression_id), context),
+                            };
+
+                            try_unify_expression(
+                                context.driver,
+                                arm.body.as_mut(),
+                                &r#type,
+                                context.type_context,
+                                context.error_queue,
+                            );
+
+                            arm
+                        })
+                    })
+                    .collect();
+
+                Expression {
+                    r#type,
+                    kind: ExpressionKind::When {
+                        input: input.boxed(),
+                        arms,
+                    },
+                }
+            }
+            crate::UntypedExpression::Intrinsic { name, inputs } => Expression {
                 r#type: Type::new(
-                    TypeKind::Function {
-                        inputs: input_types,
-                        output: Box::new(
-                            body.item
-                                .r#type
-                                .clone()
-                                .with_role(body.replace(Role::FunctionOutput)),
-                        ),
+                    TypeKind::Variable(context.type_context.variable()),
+                    info.clone(),
+                    Vec::new(),
+                ),
+                kind: ExpressionKind::Intrinsic {
+                    name,
+                    inputs: inputs
+                        .into_iter()
+                        .map(|expression| {
+                            infer_expression(expression, Some(expression_id), context)
+                        })
+                        .collect(),
+                },
+            },
+            crate::UntypedExpression::Initialize { pattern, value } => {
+                let value = infer_expression(value.unboxed(), Some(expression_id), context);
+
+                resolve_pattern(
+                    pattern.as_ref(),
+                    value.as_ref().map(|value| &value.r#type),
+                    context,
+                );
+
+                Expression {
+                    r#type: Type::new(TypeKind::Tuple(Vec::new()), info.clone(), Vec::new()),
+                    kind: ExpressionKind::Initialize {
+                        pattern,
+                        value: value.boxed(),
+                    },
+                }
+            }
+            crate::UntypedExpression::Mutate { name, path, value } => {
+                let mut value = infer_expression(value.unboxed(), Some(expression_id), context);
+
+                let r#type = context
+                    .variables
+                    .get(&path.item)
+                    .cloned()
+                    .unwrap_or_else(|| Type::new(TypeKind::Unknown, info.clone(), Vec::new()));
+
+                try_unify_expression(
+                    context.driver,
+                    value.as_mut(),
+                    &r#type,
+                    context.type_context,
+                    context.error_queue,
+                );
+
+                Expression {
+                    r#type: Type::new(TypeKind::Tuple(Vec::new()), info.clone(), Vec::new()),
+                    kind: ExpressionKind::Mutate {
+                        name,
+                        path,
+                        value: value.boxed(),
+                    },
+                }
+            }
+            crate::UntypedExpression::Marker(path) => {
+                let type_declaration = context.driver.get_type_declaration(&path);
+
+                let mut instantiation_context = InstantiationContext::from_parameters(
+                    context.driver,
+                    type_declaration.item.parameters.clone(),
+                    context.type_context,
+                    info.clone(),
+                    context.errors,
+                );
+
+                let r#type = Type::new(
+                    TypeKind::Declared {
+                        path: path.clone(),
+                        parameters: type_declaration
+                            .item
+                            .parameters
+                            .into_iter()
+                            .map(|path| {
+                                instantiation_context.type_for_parameter(context.driver, &path)
+                            })
+                            .collect(),
                     },
                     info.clone(),
                     Vec::new(),
-                ),
-                kind: ExpressionKind::Function {
-                    inputs,
-                    body: body.boxed(),
-                },
+                );
+
+                Expression {
+                    r#type,
+                    kind: ExpressionKind::Marker(path),
+                }
             }
-        }
-        crate::UntypedExpression::Call { function, inputs } => {
-            let function = infer_expression(function.unboxed(), context);
-
-            let inputs = inputs
-                .into_iter()
-                .map(|input| {
-                    let mut input = infer_expression(input, context);
-                    let role = input.replace(Role::FunctionInput);
-                    input.item.r#type = input.item.r#type.with_role(role);
-                    input
-                })
-                .collect::<Vec<_>>();
-
-            let r#type = match &function.item.r#type.kind {
-                TypeKind::Function { output, .. } => output.as_ref().clone(),
-                _ => Type::new(
+            crate::UntypedExpression::Structure(fields) => Expression {
+                r#type: Type::new(
                     TypeKind::Variable(context.type_context.variable()),
                     info.clone(),
-                    vec![function.replace(Role::FunctionOutput)],
+                    Vec::new(),
                 ),
-            };
+                kind: ExpressionKind::UnresolvedStructure(
+                    fields
+                        .into_iter()
+                        .map(|field| {
+                            field.map(|field| StructureFieldValue {
+                                name: field.name,
+                                value: infer_expression(field.value, Some(expression_id), context),
+                            })
+                        })
+                        .collect(),
+                ),
+            },
+            crate::UntypedExpression::Variant { variant, values } => {
+                let enumeration = context.driver.get_enumeration_for_variant(&variant.item);
+                let type_declaration = context.driver.get_type_declaration(&enumeration);
 
-            Expression {
-                r#type,
-                kind: ExpressionKind::Call {
-                    function: function.boxed(),
-                    inputs,
-                },
-            }
-        }
-        crate::UntypedExpression::When { input, arms } => {
-            let input = infer_expression(input.unboxed(), context);
+                let mut instantiation_context = InstantiationContext::from_parameters(
+                    context.driver,
+                    type_declaration.item.parameters.clone(),
+                    context.type_context,
+                    info.clone(),
+                    context.errors,
+                );
 
-            let r#type = Type::new(
-                TypeKind::Variable(context.type_context.variable()),
-                info.clone(),
-                Vec::new(),
-            );
+                let values = match type_declaration.item.representation.item {
+                    crate::TypeRepresentation::Enumeration(declared_variants) => {
+                        if let Some(declared_variant) = declared_variants.get(&variant.item) {
+                            values
+                                .into_iter()
+                                .zip(&declared_variant.item.value_types)
+                                .map(|(value, declared_type)| {
+                                    let declared_type = infer_type(
+                                        declared_type.as_ref(),
+                                        declared_variant.replace(Role::VariantElement),
+                                        Some(instantiation_context.type_context),
+                                    )
+                                    .instantiate(context.driver, &mut instantiation_context);
 
-            let arms = arms
-                .into_iter()
-                .map(|arm| {
-                    arm.map(|arm| {
-                        resolve_pattern(
-                            arm.pattern.as_ref(),
-                            input.as_ref().map(|input| &input.r#type),
-                            context,
-                        );
+                                    (value, declared_type)
+                                })
+                                .collect()
+                        } else {
+                            Vec::new()
+                        }
+                    }
+                    _ => Vec::new(),
+                };
 
-                        let mut arm = Arm {
-                            pattern: arm.pattern,
-                            body: infer_expression(arm.body, context),
-                        };
+                let parameters = type_declaration
+                    .item
+                    .parameters
+                    .into_iter()
+                    .map(|path| instantiation_context.type_for_parameter(context.driver, &path))
+                    .collect::<Vec<_>>();
+
+                let r#type = Type::new(
+                    TypeKind::Declared {
+                        path: enumeration,
+                        parameters,
+                    },
+                    info.clone(),
+                    Vec::new(),
+                );
+
+                let values = values
+                    .into_iter()
+                    .map(|(value, declared_type)| {
+                        let mut value = infer_expression(value, Some(expression_id), context);
 
                         try_unify_expression(
                             context.driver,
-                            arm.body.as_mut(),
-                            &r#type,
+                            value.as_mut(),
+                            &declared_type,
                             context.type_context,
                             context.error_queue,
                         );
 
-                        arm
+                        value
                     })
-                })
-                .collect();
+                    .collect::<Vec<_>>();
 
-            Expression {
-                r#type,
-                kind: ExpressionKind::When {
-                    input: input.boxed(),
-                    arms,
-                },
+                Expression {
+                    r#type,
+                    kind: ExpressionKind::Variant { variant, values },
+                }
             }
-        }
-        crate::UntypedExpression::Intrinsic { name, inputs } => Expression {
-            r#type: Type::new(
-                TypeKind::Variable(context.type_context.variable()),
-                info.clone(),
-                Vec::new(),
-            ),
-            kind: ExpressionKind::Intrinsic {
-                name,
-                inputs: inputs
-                    .into_iter()
-                    .map(|expression| infer_expression(expression, context))
-                    .collect(),
-            },
-        },
-        crate::UntypedExpression::Initialize { pattern, value } => {
-            let value = infer_expression(value.unboxed(), context);
+            crate::UntypedExpression::Wrapper {
+                r#type: path,
+                value,
+            } => {
+                let type_declaration = context.driver.get_type_declaration(&path);
 
-            resolve_pattern(
-                pattern.as_ref(),
-                value.as_ref().map(|value| &value.r#type),
-                context,
-            );
+                let mut instantiation_context = InstantiationContext::from_parameters(
+                    context.driver,
+                    type_declaration.item.parameters.clone(),
+                    context.type_context,
+                    info.clone(),
+                    context.errors,
+                );
 
-            Expression {
-                r#type: Type::new(TypeKind::Tuple(Vec::new()), info.clone(), Vec::new()),
-                kind: ExpressionKind::Initialize {
-                    pattern,
-                    value: value.boxed(),
-                },
-            }
-        }
-        crate::UntypedExpression::Mutate { name, path, value } => {
-            let mut value = infer_expression(value.unboxed(), context);
-
-            let r#type = context
-                .variables
-                .get(&path.item)
-                .cloned()
-                .unwrap_or_else(|| Type::new(TypeKind::Unknown, info.clone(), Vec::new()));
-
-            try_unify_expression(
-                context.driver,
-                value.as_mut(),
-                &r#type,
-                context.type_context,
-                context.error_queue,
-            );
-
-            Expression {
-                r#type: Type::new(TypeKind::Tuple(Vec::new()), info.clone(), Vec::new()),
-                kind: ExpressionKind::Mutate {
-                    name,
-                    path,
-                    value: value.boxed(),
-                },
-            }
-        }
-        crate::UntypedExpression::Marker(path) => {
-            let type_declaration = context.driver.get_type_declaration(&path);
-
-            let mut instantiation_context = InstantiationContext::from_parameters(
-                context.driver,
-                type_declaration.item.parameters.clone(),
-                context.type_context,
-                info.clone(),
-                context.errors,
-            );
-
-            let r#type = Type::new(
-                TypeKind::Declared {
-                    path: path.clone(),
-                    parameters: type_declaration
-                        .item
-                        .parameters
-                        .into_iter()
-                        .map(|path| instantiation_context.type_for_parameter(context.driver, &path))
-                        .collect(),
-                },
-                info.clone(),
-                Vec::new(),
-            );
-
-            Expression {
-                r#type,
-                kind: ExpressionKind::Marker(path),
-            }
-        }
-        crate::UntypedExpression::Structure(fields) => Expression {
-            r#type: Type::new(
-                TypeKind::Variable(context.type_context.variable()),
-                info.clone(),
-                Vec::new(),
-            ),
-            kind: ExpressionKind::UnresolvedStructure(
-                fields
-                    .into_iter()
-                    .map(|field| {
-                        field.map(|field| StructureFieldValue {
-                            name: field.name,
-                            value: infer_expression(field.value, context),
-                        })
-                    })
-                    .collect(),
-            ),
-        },
-        crate::UntypedExpression::Variant { variant, values } => {
-            let enumeration = context.driver.get_enumeration_for_variant(&variant.item);
-            let type_declaration = context.driver.get_type_declaration(&enumeration);
-
-            let mut instantiation_context = InstantiationContext::from_parameters(
-                context.driver,
-                type_declaration.item.parameters.clone(),
-                context.type_context,
-                info.clone(),
-                context.errors,
-            );
-
-            let values = match type_declaration.item.representation.item {
-                crate::TypeRepresentation::Enumeration(declared_variants) => {
-                    if let Some(declared_variant) = declared_variants.get(&variant.item) {
-                        values
+                let r#type = Type::new(
+                    TypeKind::Declared {
+                        path,
+                        parameters: type_declaration
+                            .item
+                            .parameters
                             .into_iter()
-                            .zip(&declared_variant.item.value_types)
-                            .map(|(value, declared_type)| {
-                                let declared_type = infer_type(
-                                    declared_type.as_ref(),
-                                    declared_variant.replace(Role::VariantElement),
-                                    Some(instantiation_context.type_context),
-                                )
-                                .instantiate(context.driver, &mut instantiation_context);
-
-                                (value, declared_type)
+                            .map(|path| {
+                                instantiation_context.type_for_parameter(context.driver, &path)
                             })
-                            .collect()
-                    } else {
-                        Vec::new()
-                    }
-                }
-                _ => Vec::new(),
-            };
-
-            let parameters = type_declaration
-                .item
-                .parameters
-                .into_iter()
-                .map(|path| instantiation_context.type_for_parameter(context.driver, &path))
-                .collect::<Vec<_>>();
-
-            let r#type = Type::new(
-                TypeKind::Declared {
-                    path: enumeration,
-                    parameters,
-                },
-                info.clone(),
-                Vec::new(),
-            );
-
-            let values = values
-                .into_iter()
-                .map(|(value, declared_type)| {
-                    let mut value = infer_expression(value, context);
-
-                    try_unify_expression(
-                        context.driver,
-                        value.as_mut(),
-                        &declared_type,
-                        context.type_context,
-                        context.error_queue,
-                    );
-
-                    value
-                })
-                .collect::<Vec<_>>();
-
-            Expression {
-                r#type,
-                kind: ExpressionKind::Variant { variant, values },
-            }
-        }
-        crate::UntypedExpression::Wrapper {
-            r#type: path,
-            value,
-        } => {
-            let type_declaration = context.driver.get_type_declaration(&path);
-
-            let mut instantiation_context = InstantiationContext::from_parameters(
-                context.driver,
-                type_declaration.item.parameters.clone(),
-                context.type_context,
-                info.clone(),
-                context.errors,
-            );
-
-            let r#type = Type::new(
-                TypeKind::Declared {
-                    path,
-                    parameters: type_declaration
-                        .item
-                        .parameters
-                        .into_iter()
-                        .map(|path| instantiation_context.type_for_parameter(context.driver, &path))
-                        .collect(),
-                },
-                info.clone(),
-                Vec::new(),
-            );
-
-            let value = match type_declaration.item.representation.item {
-                crate::TypeRepresentation::Wrapper(declared_type) => {
-                    let declared_type = infer_type(
-                        declared_type.as_ref(),
-                        declared_type.replace(Role::WrappedType),
-                        Some(instantiation_context.type_context),
-                    )
-                    .instantiate(context.driver, &mut instantiation_context);
-
-                    let mut value = infer_expression(value.unboxed(), context);
-
-                    try_unify_expression(
-                        context.driver,
-                        value.as_mut(),
-                        &declared_type,
-                        context.type_context,
-                        context.error_queue,
-                    );
-
-                    value
-                }
-                _ => WithInfo {
-                    info: info.clone(),
-                    item: Expression {
-                        r#type: Type::new(
-                            TypeKind::Variable(context.type_context.variable()),
-                            info.clone(),
-                            Vec::new(),
-                        ),
-                        kind: ExpressionKind::Unknown(None),
-                    },
-                },
-            };
-
-            Expression {
-                r#type,
-                kind: ExpressionKind::Wrapper(value.boxed()),
-            }
-        }
-        crate::UntypedExpression::Tuple(elements) => {
-            let elements = elements
-                .into_iter()
-                .map(|expression| infer_expression(expression, context))
-                .collect::<Vec<_>>();
-
-            Expression {
-                r#type: Type::new(
-                    TypeKind::Tuple(
-                        elements
-                            .iter()
-                            .map(|element| element.item.r#type.clone())
                             .collect(),
-                    ),
+                    },
                     info.clone(),
                     Vec::new(),
-                ),
-                kind: ExpressionKind::Tuple(elements),
-            }
-        }
-        crate::UntypedExpression::Collection(elements) => {
-            let element_type = Type::new(
-                TypeKind::Variable(context.type_context.variable()),
-                info.clone(),
-                vec![WithInfo {
-                    info: info.clone(),
-                    item: Role::CollectionElement,
-                }],
-            );
+                );
 
-            let initial_collection =
-                instantiated_language_constant("initial-collection", &info, context);
+                let value = match type_declaration.item.representation.item {
+                    crate::TypeRepresentation::Wrapper(declared_type) => {
+                        let declared_type = infer_type(
+                            declared_type.as_ref(),
+                            declared_type.replace(Role::WrappedType),
+                            Some(instantiation_context.type_context),
+                        )
+                        .instantiate(context.driver, &mut instantiation_context);
 
-            let collection_type = initial_collection.item.r#type.clone();
+                        let mut value =
+                            infer_expression(value.unboxed(), Some(expression_id), context);
 
-            elements
-                .into_iter()
-                .fold(initial_collection, |current, expression| {
-                    let mut expression = infer_expression(expression, context);
+                        try_unify_expression(
+                            context.driver,
+                            value.as_mut(),
+                            &declared_type,
+                            context.type_context,
+                            context.error_queue,
+                        );
 
-                    try_unify_expression(
-                        context.driver,
-                        expression.as_mut(),
-                        &element_type,
-                        context.type_context,
-                        context.error_queue,
-                    );
-
-                    expression.item.r#type = element_type.clone();
-
-                    let build_collection_trait =
-                        instantiated_language_trait("build-collection", &info, context);
-
-                    WithInfo {
-                        info: expression.info.clone(),
-                        item: Expression {
-                            r#type: collection_type.clone(),
-                            kind: ExpressionKind::Call {
-                                function: WithInfo {
-                                    info: current.info.clone(),
-                                    item: Box::new(Expression {
-                                        r#type: Type::new(
-                                            TypeKind::Function {
-                                                inputs: vec![collection_type.clone()],
-                                                output: Box::new(collection_type.clone()),
-                                            },
-                                            current.info.clone(),
-                                            Vec::new(),
-                                        ),
-                                        kind: ExpressionKind::Call {
-                                            function: build_collection_trait.boxed(),
-                                            inputs: vec![expression],
-                                        },
-                                    }),
-                                },
-                                inputs: vec![current],
-                            },
-                        },
+                        value
                     }
-                })
-                .item
-        }
-        crate::UntypedExpression::Format { segments, trailing } => {
-            let text_type = instantiated_language_type(
-                "text",
-                info.clone(),
-                context.driver,
-                context.type_context,
-                context.errors,
-            )
-            .unwrap_or_else(|| {
-                Type::new(
+                    _ => WithInfo {
+                        info: info.clone(),
+                        item: Expression {
+                            r#type: Type::new(
+                                TypeKind::Variable(context.type_context.variable()),
+                                info.clone(),
+                                Vec::new(),
+                            ),
+                            kind: ExpressionKind::Unknown(None),
+                        },
+                    },
+                };
+
+                Expression {
+                    r#type,
+                    kind: ExpressionKind::Wrapper(value.boxed()),
+                }
+            }
+            crate::UntypedExpression::Tuple(elements) => {
+                let elements = elements
+                    .into_iter()
+                    .map(|expression| infer_expression(expression, Some(expression_id), context))
+                    .collect::<Vec<_>>();
+
+                Expression {
+                    r#type: Type::new(
+                        TypeKind::Tuple(
+                            elements
+                                .iter()
+                                .map(|element| element.item.r#type.clone())
+                                .collect(),
+                        ),
+                        info.clone(),
+                        Vec::new(),
+                    ),
+                    kind: ExpressionKind::Tuple(elements),
+                }
+            }
+            crate::UntypedExpression::Collection(elements) => {
+                let element_type = Type::new(
                     TypeKind::Variable(context.type_context.variable()),
                     info.clone(),
-                    Vec::new(),
-                )
-            });
+                    vec![WithInfo {
+                        info: info.clone(),
+                        item: Role::CollectionElement,
+                    }],
+                );
 
-            let segments = segments
-                .into_iter()
-                .map(|segment| {
-                    let value = infer_expression(segment.value, context);
+                let initial_collection = instantiated_language_constant(
+                    "initial-collection",
+                    &info,
+                    Some(expression_id),
+                    context,
+                );
 
-                    let show_trait = instantiated_language_trait("show", &info, context);
+                let collection_type = initial_collection.item.r#type.clone();
 
-                    FormatSegment {
-                        text: segment.text,
-                        value: WithInfo {
-                            info: value.info.clone(),
+                elements
+                    .into_iter()
+                    .fold(initial_collection, |current, expression| {
+                        let mut expression =
+                            infer_expression(expression, Some(expression_id), context);
+
+                        try_unify_expression(
+                            context.driver,
+                            expression.as_mut(),
+                            &element_type,
+                            context.type_context,
+                            context.error_queue,
+                        );
+
+                        expression.item.r#type = element_type.clone();
+
+                        let build_collection_trait = instantiated_language_trait(
+                            "build-collection",
+                            &info,
+                            Some(expression_id),
+                            context,
+                        );
+
+                        WithInfo {
+                            info: expression.info.clone(),
                             item: Expression {
-                                r#type: Type::new(
-                                    TypeKind::Variable(context.type_context.variable()),
-                                    value.info.clone(),
-                                    Vec::new(),
-                                ),
+                                r#type: collection_type.clone(),
                                 kind: ExpressionKind::Call {
-                                    function: show_trait.boxed(),
-                                    inputs: vec![value],
+                                    function: WithInfo {
+                                        info: current.info.clone(),
+                                        item: Box::new(Expression {
+                                            r#type: Type::new(
+                                                TypeKind::Function {
+                                                    inputs: vec![collection_type.clone()],
+                                                    output: Box::new(collection_type.clone()),
+                                                },
+                                                current.info.clone(),
+                                                Vec::new(),
+                                            ),
+                                            kind: ExpressionKind::Call {
+                                                function: build_collection_trait.boxed(),
+                                                inputs: vec![expression],
+                                            },
+                                        }),
+                                    },
+                                    inputs: vec![current],
                                 },
                             },
-                        },
-                    }
-                })
-                .collect();
-
-            Expression {
-                r#type: text_type,
-                kind: ExpressionKind::Format { segments, trailing },
+                        }
+                    })
+                    .item
             }
-        }
-    });
+            crate::UntypedExpression::Format { segments, trailing } => {
+                let text_type = instantiated_language_type(
+                    "text",
+                    info.clone(),
+                    context.driver,
+                    context.type_context,
+                    context.errors,
+                )
+                .unwrap_or_else(|| {
+                    Type::new(
+                        TypeKind::Variable(context.type_context.variable()),
+                        info.clone(),
+                        Vec::new(),
+                    )
+                });
 
-    expression.item.r#type.info = info;
+                let segments = segments
+                    .into_iter()
+                    .map(|segment| {
+                        let value = infer_expression(segment.value, Some(expression_id), context);
 
-    expression
+                        let show_trait = instantiated_language_trait(
+                            "show",
+                            &info,
+                            Some(expression_id),
+                            context,
+                        );
+
+                        FormatSegment {
+                            text: segment.text,
+                            value: WithInfo {
+                                info: value.info.clone(),
+                                item: Expression {
+                                    r#type: Type::new(
+                                        TypeKind::Variable(context.type_context.variable()),
+                                        value.info.clone(),
+                                        Vec::new(),
+                                    ),
+                                    kind: ExpressionKind::Call {
+                                        function: show_trait.boxed(),
+                                        inputs: vec![value],
+                                    },
+                                },
+                            },
+                        }
+                    })
+                    .collect();
+
+                Expression {
+                    r#type: text_type,
+                    kind: ExpressionKind::Format { segments, trailing },
+                }
+            }
+        });
+
+        expression.item.r#type.info = info;
+
+        expression
+    })
 }
 
 fn resolve_pattern<D: Driver>(
@@ -3107,16 +3135,20 @@ fn try_instantiated_language_type<D: Driver>(
 fn instantiated_language_trait<D: Driver>(
     language_item: &str,
     info: &D::Info,
+    parent_id: Option<TrackedExpressionId<D>>,
     context: &mut InferContext<'_, D>,
 ) -> WithInfo<D::Info, Expression<D>> {
     match context.driver.path_for_language_constructor(language_item) {
-        Some(path) => infer_expression(
-            WithInfo {
-                info: info.clone(),
-                item: crate::UntypedExpression::Constant(path),
-            },
-            context,
-        ),
+        Some(path) => context.with_tracked_expression(parent_id, |context, expression_id| {
+            infer_expression(
+                WithInfo {
+                    info: info.clone(),
+                    item: crate::UntypedExpression::Constant(path),
+                },
+                Some(expression_id),
+                context,
+            )
+        }),
         None => {
             context.errors.push(WithInfo {
                 info: info.clone(),
@@ -3137,16 +3169,20 @@ fn instantiated_language_trait<D: Driver>(
 fn instantiated_language_constant<D: Driver>(
     language_item: &str,
     info: &D::Info,
+    parent_id: Option<TrackedExpressionId<D>>,
     context: &mut InferContext<'_, D>,
 ) -> WithInfo<D::Info, Expression<D>> {
     match context.driver.path_for_language_constant(language_item) {
-        Some(path) => infer_expression(
-            WithInfo {
-                info: info.clone(),
-                item: crate::UntypedExpression::Constant(path),
-            },
-            context,
-        ),
+        Some(path) => context.with_tracked_expression(parent_id, |context, expression_id| {
+            infer_expression(
+                WithInfo {
+                    info: info.clone(),
+                    item: crate::UntypedExpression::Constant(path),
+                },
+                Some(expression_id),
+                context,
+            )
+        }),
         None => {
             context.errors.push(WithInfo {
                 info: info.clone(),
@@ -3178,496 +3214,469 @@ struct ResolveContext<'a, D: Driver> {
 
 fn resolve_expression<D: Driver>(
     mut expression: WithInfo<D::Info, Expression<D>>,
-    parent_id: Option<TrackedExpressionId<D>>,
     context: &mut ResolveContext<'_, D>,
 ) -> WithInfo<D::Info, Expression<D>> {
-    context.with_tracked_expression(parent_id, |context, parent| {
-        let kind = match expression.item.kind {
-            ExpressionKind::Unknown(path) => ExpressionKind::Unknown(path),
-            ExpressionKind::Variable(ref name, ref variable) => {
-                let variable_type = context.variables.get(variable).cloned().unwrap_or_else(|| {
-                    Type::new(TypeKind::Unknown, expression.info.clone(), Vec::new())
-                });
+    let kind = match expression.item.kind {
+        ExpressionKind::Unknown(path) => ExpressionKind::Unknown(path),
+        ExpressionKind::Variable(ref name, ref variable) => {
+            let variable_type = context.variables.get(variable).cloned().unwrap_or_else(|| {
+                Type::new(TypeKind::Unknown, expression.info.clone(), Vec::new())
+            });
 
-                let name = name.clone();
-                let variable = variable.clone();
+            let name = name.clone();
+            let variable = variable.clone();
 
-                try_unify_expression(
-                    context.driver,
-                    expression.as_mut(),
-                    &variable_type,
-                    context.type_context,
-                    context.error_queue,
-                );
+            try_unify_expression(
+                context.driver,
+                expression.as_mut(),
+                &variable_type,
+                context.type_context,
+                context.error_queue,
+            );
 
-                ExpressionKind::Variable(name, variable)
-            }
-            ExpressionKind::UnresolvedConstant(ref path) => {
-                let path = path.clone();
+            ExpressionKind::Variable(name, variable)
+        }
+        ExpressionKind::UnresolvedConstant(ref path) => {
+            let path = path.clone();
 
-                match resolve_item(&path, expression.as_mut(), true, context) {
-                    Ok(Some(parameters)) => ExpressionKind::ResolvedConstant { path, parameters },
-                    Ok(None) => ExpressionKind::UnresolvedConstant(path), // try again with more type information
-                    Err(error) => {
-                        context.error_queue.push(error);
-                        ExpressionKind::Unknown(Some(path))
-                    }
+            match resolve_item(&path, expression.as_mut(), true, context) {
+                Ok(Some(parameters)) => ExpressionKind::ResolvedConstant { path, parameters },
+                Ok(None) => ExpressionKind::UnresolvedConstant(path), // try again with more type information
+                Err(error) => {
+                    context.error_queue.push(error);
+                    ExpressionKind::Unknown(Some(path))
                 }
             }
-            ExpressionKind::UnresolvedTrait(ref path) => {
-                let path = path.clone();
+        }
+        ExpressionKind::UnresolvedTrait(ref path) => {
+            let path = path.clone();
 
-                match resolve_trait_parameters_from_type(&path, expression.as_mut(), context) {
-                    Some(parameters) => {
-                        let query = expression.replace(Instance {
-                            r#trait: path,
-                            parameters,
-                        });
+            match resolve_trait_parameters_from_type(&path, expression.as_mut(), context) {
+                Some(parameters) => {
+                    let query = expression.replace(Instance {
+                        r#trait: path,
+                        parameters,
+                    });
 
-                        match resolve_trait(query.as_ref(), context) {
-                            Ok(()) => ExpressionKind::ResolvedTrait(query.item.r#trait),
-                            Err(error) => {
-                                context.error_queue.push(error);
-                                ExpressionKind::Unknown(Some(query.item.r#trait))
-                            }
+                    match resolve_trait(query.as_ref(), context) {
+                        Ok(()) => ExpressionKind::ResolvedTrait(query.item.r#trait),
+                        Err(error) => {
+                            context.error_queue.push(error);
+                            ExpressionKind::Unknown(Some(query.item.r#trait))
                         }
                     }
-                    None => {
-                        context.errors.push(WithInfo {
-                            info: expression.info.clone(),
-                            item: crate::Diagnostic::TraitHasNoValue(path.clone()),
-                        });
+                }
+                None => {
+                    context.errors.push(WithInfo {
+                        info: expression.info.clone(),
+                        item: crate::Diagnostic::TraitHasNoValue(path.clone()),
+                    });
 
-                        ExpressionKind::Unknown(Some(path))
-                    }
+                    ExpressionKind::Unknown(Some(path))
                 }
             }
-            ExpressionKind::ResolvedConstant { path, parameters } => {
-                ExpressionKind::ResolvedConstant { path, parameters }
-            }
-            ExpressionKind::ResolvedTrait(path) => ExpressionKind::ResolvedTrait(path),
-            ExpressionKind::Number(number) => ExpressionKind::Number(number),
-            ExpressionKind::Text(text) => ExpressionKind::Text(text),
-            ExpressionKind::Block(statements) => ExpressionKind::Block(
-                statements
-                    .into_iter()
-                    .map(|expression| resolve_expression(expression, Some(parent), context))
-                    .collect(),
-            ),
-            ExpressionKind::Do(block) => ExpressionKind::Do(
-                resolve_expression(block.unboxed(), Some(parent), context).boxed(),
-            ),
-            ExpressionKind::Function { inputs, body } => {
-                if let TypeKind::Function {
-                    inputs: input_types,
-                    ..
-                } = &expression.item.r#type.kind
-                {
-                    for (pattern, input_type) in inputs.iter().zip(input_types) {
-                        let mut infer_context = InferContext::from_resolve_context(context);
+        }
+        ExpressionKind::ResolvedConstant { path, parameters } => {
+            ExpressionKind::ResolvedConstant { path, parameters }
+        }
+        ExpressionKind::ResolvedTrait(path) => ExpressionKind::ResolvedTrait(path),
+        ExpressionKind::Number(number) => ExpressionKind::Number(number),
+        ExpressionKind::Text(text) => ExpressionKind::Text(text),
+        ExpressionKind::Block(statements) => ExpressionKind::Block(
+            statements
+                .into_iter()
+                .map(|expression| resolve_expression(expression, context))
+                .collect(),
+        ),
+        ExpressionKind::Do(block) => {
+            ExpressionKind::Do(resolve_expression(block.unboxed(), context).boxed())
+        }
+        ExpressionKind::Function { inputs, body } => {
+            if let TypeKind::Function {
+                inputs: input_types,
+                ..
+            } = &expression.item.r#type.kind
+            {
+                for (pattern, input_type) in inputs.iter().zip(input_types) {
+                    let mut infer_context = InferContext::from_resolve_context(context);
 
-                        resolve_pattern(
-                            pattern.as_ref(),
-                            pattern.replace(input_type),
-                            &mut infer_context,
-                        );
-                    }
-                }
-
-                ExpressionKind::Function {
-                    inputs,
-                    body: resolve_expression(body.unboxed(), Some(parent), context).boxed(),
+                    resolve_pattern(
+                        pattern.as_ref(),
+                        pattern.replace(input_type),
+                        &mut infer_context,
+                    );
                 }
             }
-            ExpressionKind::Call {
-                mut function,
-                mut inputs,
-            } => {
-                function
-                    .item
-                    .r#type
-                    .apply_in_context_mut(context.type_context);
 
-                for input in &mut inputs {
-                    input.item.r#type.apply_in_context_mut(context.type_context);
+            ExpressionKind::Function {
+                inputs,
+                body: resolve_expression(body.unboxed(), context).boxed(),
+            }
+        }
+        ExpressionKind::Call {
+            mut function,
+            mut inputs,
+        } => {
+            function
+                .item
+                .r#type
+                .apply_in_context_mut(context.type_context);
+
+            for input in &mut inputs {
+                input.item.r#type.apply_in_context_mut(context.type_context);
+            }
+
+            // If we encounter a unit after a number, treat the unit as a
+            // function
+            let is_number_with_unit = (|| {
+                if inputs.len() != 1 {
+                    return false;
                 }
 
-                // If we encounter a unit after a number, treat the unit as a
-                // function
-                let is_number_with_unit = (|| {
+                let input = inputs.first().unwrap();
+
+                let number_type = match try_instantiated_language_type(
+                    "number",
+                    expression.info.clone(),
+                    context.driver,
+                    context.type_context,
+                    context.errors,
+                ) {
+                    Some(number_type) => number_type,
+                    None => return false,
+                };
+
+                let number_type_path = match number_type.kind {
+                    TypeKind::Declared { path, .. } => path,
+                    _ => return false,
+                };
+
+                // Return true if the expression in function position is a
+                // number...
+                if matches!(
+                    &function.item.r#type.kind,
+                    TypeKind::Declared { path, .. }
+                        if context.driver.paths_are_equal(path, &number_type_path),
+                ) {
+                    return true;
+                }
+
+                // ...or if the expression in input position is a function that
+                // accepts a number
+                if let TypeKind::Function { inputs, .. } = &input.item.r#type.kind {
                     if inputs.len() != 1 {
                         return false;
                     }
 
-                    let input = inputs.first().unwrap();
-
-                    let number_type = match try_instantiated_language_type(
-                        "number",
-                        expression.info.clone(),
-                        context.driver,
-                        context.type_context,
-                        context.errors,
-                    ) {
-                        Some(number_type) => number_type,
-                        None => return false,
-                    };
-
-                    let number_type_path = match number_type.kind {
-                        TypeKind::Declared { path, .. } => path,
-                        _ => return false,
-                    };
-
-                    // Return true if the expression in function position is a
-                    // number...
-                    if matches!(
-                        &function.item.r#type.kind,
+                    return matches!(
+                        &inputs.first().unwrap().kind,
                         TypeKind::Declared { path, .. }
                             if context.driver.paths_are_equal(path, &number_type_path),
-                    ) {
-                        return true;
+                    ) && !matches!(&function.item.r#type.kind, TypeKind::Function { .. });
+                }
+
+                false
+            })();
+
+            if is_number_with_unit {
+                let input = inputs.pop().unwrap();
+
+                let mut unit = resolve_expression(input, context);
+                let number = resolve_expression(function.unboxed(), context);
+
+                let unit_type = Type::new(
+                    TypeKind::Function {
+                        inputs: vec![number
+                            .item
+                            .r#type
+                            .clone()
+                            .with_role(number.replace(Role::FunctionInput))],
+                        output: Box::new(expression.item.r#type.clone().with_role(WithInfo {
+                            info: expression.info.clone(),
+                            item: Role::FunctionOutput,
+                        })),
+                    },
+                    expression.info.clone(),
+                    Vec::new(),
+                );
+
+                if try_unify_expression(
+                    context.driver,
+                    unit.as_mut(),
+                    &unit_type,
+                    context.type_context,
+                    context.error_queue,
+                ) {
+                    ExpressionKind::Call {
+                        function: unit.boxed(),
+                        inputs: vec![number],
                     }
-
-                    // ...or if the expression in input position is a function that
-                    // accepts a number
-                    if let TypeKind::Function { inputs, .. } = &input.item.r#type.kind {
-                        if inputs.len() != 1 {
-                            return false;
-                        }
-
-                        return matches!(
-                            &inputs.first().unwrap().kind,
-                            TypeKind::Declared { path, .. }
-                                if context.driver.paths_are_equal(path, &number_type_path),
-                        ) && !matches!(
-                            &function.item.r#type.kind,
-                            TypeKind::Function { .. }
-                        );
-                    }
-
-                    false
-                })();
-
-                if is_number_with_unit {
-                    let input = inputs.pop().unwrap();
-
-                    let mut unit = resolve_expression(input, Some(parent), context);
-                    let number = resolve_expression(function.unboxed(), Some(parent), context);
-
-                    let unit_type = Type::new(
-                        TypeKind::Function {
-                            inputs: vec![number
-                                .item
-                                .r#type
-                                .clone()
-                                .with_role(number.replace(Role::FunctionInput))],
-                            output: Box::new(expression.item.r#type.clone().with_role(WithInfo {
-                                info: expression.info.clone(),
-                                item: Role::FunctionOutput,
-                            })),
-                        },
-                        expression.info.clone(),
-                        Vec::new(),
-                    );
-
-                    if try_unify_expression(
-                        context.driver,
-                        unit.as_mut(),
-                        &unit_type,
-                        context.type_context,
-                        context.error_queue,
-                    ) {
-                        ExpressionKind::Call {
-                            function: unit.boxed(),
-                            inputs: vec![number],
-                        }
-                    } else {
-                        // Prevent duplicate errors caused by recreating the call
-                        // expression
-                        ExpressionKind::Unknown(None)
-                    }
-                } else if let TypeKind::Function {
-                    inputs: input_types,
-                    output: output_type,
-                } = &function.item.r#type.kind
-                {
-                    if input_types.len() == inputs.len() {
-                        for (input, input_type) in inputs.iter_mut().zip(input_types) {
-                            try_unify_expression(
-                                context.driver,
-                                input.as_mut(),
-                                input_type,
-                                context.type_context,
-                                context.error_queue,
-                            );
-                        }
-
-                        try_unify(
+                } else {
+                    // Prevent duplicate errors caused by recreating the call
+                    // expression
+                    ExpressionKind::Unknown(None)
+                }
+            } else if let TypeKind::Function {
+                inputs: input_types,
+                output: output_type,
+            } = &function.item.r#type.kind
+            {
+                if input_types.len() == inputs.len() {
+                    for (input, input_type) in inputs.iter_mut().zip(input_types) {
+                        try_unify_expression(
                             context.driver,
-                            WithInfo {
-                                info: expression.info.clone(),
-                                item: &expression.item.r#type,
-                            },
-                            output_type,
+                            input.as_mut(),
+                            input_type,
                             context.type_context,
                             context.error_queue,
                         );
-
-                        let inputs = inputs
-                            .into_iter()
-                            .map(|input| resolve_expression(input, Some(parent), context))
-                            .collect::<Vec<_>>();
-
-                        let function =
-                            resolve_expression(function.unboxed(), Some(parent), context);
-
-                        ExpressionKind::Call {
-                            function: function.boxed(),
-                            inputs,
-                        }
-                    } else {
-                        context.error_queue.push(WithInfo {
-                            info: expression.info.clone(),
-                            item: QueuedError::WrongNumberOfInputs {
-                                actual: inputs.len() as u32,
-                                expected: input_types.len() as u32,
-                            },
-                        });
-
-                        ExpressionKind::Unknown(None)
                     }
-                } else {
-                    let inputs = inputs
-                        .into_iter()
-                        .map(|input| resolve_expression(input, Some(parent), context))
-                        .collect::<Vec<_>>();
 
-                    let mut function =
-                        resolve_expression(function.unboxed(), Some(parent), context);
-
-                    let function_type = Type::new(
-                        TypeKind::Function {
-                            inputs: inputs
-                                .iter()
-                                .map(|input| {
-                                    input
-                                        .item
-                                        .r#type
-                                        .clone()
-                                        .with_role(input.replace(Role::FunctionInput))
-                                })
-                                .collect(),
-                            output: Box::new(expression.item.r#type.clone().with_role(WithInfo {
-                                info: expression.info.clone(),
-                                item: Role::FunctionOutput,
-                            })),
-                        },
-                        function.info.clone(),
-                        Vec::new(),
-                    );
-
-                    try_unify_expression(
+                    try_unify(
                         context.driver,
-                        function.as_mut(),
-                        &function_type,
+                        WithInfo {
+                            info: expression.info.clone(),
+                            item: &expression.item.r#type,
+                        },
+                        output_type,
                         context.type_context,
                         context.error_queue,
                     );
+
+                    let inputs = inputs
+                        .into_iter()
+                        .map(|input| resolve_expression(input, context))
+                        .collect::<Vec<_>>();
+
+                    let function = resolve_expression(function.unboxed(), context);
 
                     ExpressionKind::Call {
                         function: function.boxed(),
                         inputs,
                     }
+                } else {
+                    context.error_queue.push(WithInfo {
+                        info: expression.info.clone(),
+                        item: QueuedError::WrongNumberOfInputs {
+                            actual: inputs.len() as u32,
+                            expected: input_types.len() as u32,
+                        },
+                    });
+
+                    ExpressionKind::Unknown(None)
                 }
-            }
-            ExpressionKind::When { input, arms } => {
-                let input = resolve_expression(input.unboxed(), Some(parent), context).boxed();
-
-                let arms = arms
+            } else {
+                let inputs = inputs
                     .into_iter()
-                    .map(|arm| {
-                        arm.map(|arm| {
-                            resolve_pattern(
-                                arm.pattern.as_ref(),
-                                input.as_ref().map(|input| &input.r#type),
-                                &mut InferContext::from_resolve_context(context),
-                            );
-
-                            Arm {
-                                pattern: arm.pattern,
-                                body: resolve_expression(arm.body, Some(parent), context),
-                            }
-                        })
-                    })
+                    .map(|input| resolve_expression(input, context))
                     .collect::<Vec<_>>();
 
-                ExpressionKind::When { input, arms }
-            }
-            ExpressionKind::Intrinsic { name, inputs } => ExpressionKind::Intrinsic {
-                name,
-                inputs: inputs
-                    .into_iter()
-                    .map(|expression| resolve_expression(expression, Some(parent), context))
-                    .collect(),
-            },
-            ExpressionKind::Initialize { pattern, value } => {
-                let value = resolve_expression(value.unboxed(), Some(parent), context).boxed();
+                let mut function = resolve_expression(function.unboxed(), context);
 
-                resolve_pattern(
-                    pattern.as_ref(),
-                    value.as_ref().map(|value| &value.r#type),
-                    &mut InferContext::from_resolve_context(context),
+                let function_type = Type::new(
+                    TypeKind::Function {
+                        inputs: inputs
+                            .iter()
+                            .map(|input| {
+                                input
+                                    .item
+                                    .r#type
+                                    .clone()
+                                    .with_role(input.replace(Role::FunctionInput))
+                            })
+                            .collect(),
+                        output: Box::new(expression.item.r#type.clone().with_role(WithInfo {
+                            info: expression.info.clone(),
+                            item: Role::FunctionOutput,
+                        })),
+                    },
+                    function.info.clone(),
+                    Vec::new(),
                 );
 
-                ExpressionKind::Initialize { pattern, value }
-            }
-            ExpressionKind::Mutate { name, path, value } => {
-                let value = resolve_expression(value.unboxed(), Some(parent), context).boxed();
-
-                resolve_pattern(
-                    path.as_ref()
-                        .map(|path| crate::Pattern::Variable(name.clone(), path.clone()))
-                        .as_ref(),
-                    value.as_ref().map(|value| &value.r#type),
-                    &mut InferContext::from_resolve_context(context),
+                try_unify_expression(
+                    context.driver,
+                    function.as_mut(),
+                    &function_type,
+                    context.type_context,
+                    context.error_queue,
                 );
 
-                ExpressionKind::Mutate { name, path, value }
+                ExpressionKind::Call {
+                    function: function.boxed(),
+                    inputs,
+                }
             }
-            ExpressionKind::Marker(r#type) => ExpressionKind::Marker(r#type),
-            ExpressionKind::UnresolvedStructure(fields) => {
-                expression
-                    .item
-                    .r#type
-                    .apply_in_context_mut(context.type_context);
+        }
+        ExpressionKind::When { input, arms } => {
+            let input = resolve_expression(input.unboxed(), context).boxed();
 
-                match &expression.item.r#type.kind {
-                    TypeKind::Variable(_) | TypeKind::Opaque(_) => {
-                        ExpressionKind::UnresolvedStructure(
-                            fields
-                                .into_iter()
-                                .map(|field_value| {
-                                    field_value.map(|field_value| StructureFieldValue {
-                                        name: field_value.name,
-                                        value: resolve_expression(
-                                            field_value.value,
-                                            Some(parent),
-                                            context,
-                                        ),
-                                    })
-                                })
-                                .collect(),
-                        )
-                    }
-                    TypeKind::Declared { path, .. } => {
-                        let path = path.clone();
+            let arms = arms
+                .into_iter()
+                .map(|arm| {
+                    arm.map(|arm| {
+                        resolve_pattern(
+                            arm.pattern.as_ref(),
+                            input.as_ref().map(|input| &input.r#type),
+                            &mut InferContext::from_resolve_context(context),
+                        );
 
-                        let type_declaration = context.driver.get_type_declaration(&path);
+                        Arm {
+                            pattern: arm.pattern,
+                            body: resolve_expression(arm.body, context),
+                        }
+                    })
+                })
+                .collect::<Vec<_>>();
 
-                        if let crate::TypeRepresentation::Structure(mut field_types) =
-                            type_declaration.item.representation.item
-                        {
-                            let mut instantiation_context = InstantiationContext::from_parameters(
-                                context.driver,
-                                type_declaration.item.parameters.clone(),
-                                context.type_context,
-                                expression.info.clone(),
-                                context.errors,
-                            );
+            ExpressionKind::When { input, arms }
+        }
+        ExpressionKind::Intrinsic { name, inputs } => ExpressionKind::Intrinsic {
+            name,
+            inputs: inputs
+                .into_iter()
+                .map(|expression| resolve_expression(expression, context))
+                .collect(),
+        },
+        ExpressionKind::Initialize { pattern, value } => {
+            let value = resolve_expression(value.unboxed(), context).boxed();
 
-                            let fields = fields
-                                .into_iter()
-                                .filter_map(|field_value| {
-                                    let declared_type = match field_types
-                                        .remove(&field_value.item.name)
-                                    {
-                                        Some(field) => infer_type(
-                                            field.item.r#type.as_ref(),
-                                            field.replace(Role::StructureField),
-                                            Some(instantiation_context.type_context),
-                                        )
-                                        .instantiate(context.driver, &mut instantiation_context),
-                                        None => {
-                                            context.error_queue.push(WithInfo {
-                                                info: field_value.info.clone(),
-                                                item: QueuedError::ExtraField,
-                                            });
+            resolve_pattern(
+                pattern.as_ref(),
+                value.as_ref().map(|value| &value.r#type),
+                &mut InferContext::from_resolve_context(context),
+            );
 
-                                            return None;
-                                        }
-                                    };
+            ExpressionKind::Initialize { pattern, value }
+        }
+        ExpressionKind::Mutate { name, path, value } => {
+            let value = resolve_expression(value.unboxed(), context).boxed();
 
-                                    Some((field_value, declared_type))
-                                })
-                                .collect::<Vec<_>>();
+            resolve_pattern(
+                path.as_ref()
+                    .map(|path| crate::Pattern::Variable(name.clone(), path.clone()))
+                    .as_ref(),
+                value.as_ref().map(|value| &value.r#type),
+                &mut InferContext::from_resolve_context(context),
+            );
 
-                            let missing_fields = field_types.into_keys().collect::<Vec<_>>();
-                            if !missing_fields.is_empty() {
-                                context.error_queue.push(WithInfo {
-                                    info: expression.info.clone(),
-                                    item: QueuedError::MissingFields(missing_fields),
-                                });
-                            }
+            ExpressionKind::Mutate { name, path, value }
+        }
+        ExpressionKind::Marker(r#type) => ExpressionKind::Marker(r#type),
+        ExpressionKind::UnresolvedStructure(fields) => {
+            expression
+                .item
+                .r#type
+                .apply_in_context_mut(context.type_context);
 
-                            let instantiated_declared_type = Type::new(
-                                TypeKind::Declared {
-                                    path: path.clone(),
-                                    parameters: instantiation_context.into_types_for_parameters(),
-                                },
-                                expression.info.clone(),
-                                Vec::new(),
-                            );
+            match &expression.item.r#type.kind {
+                TypeKind::Variable(_) | TypeKind::Opaque(_) => ExpressionKind::UnresolvedStructure(
+                    fields
+                        .into_iter()
+                        .map(|field_value| {
+                            field_value.map(|field_value| StructureFieldValue {
+                                name: field_value.name,
+                                value: resolve_expression(field_value.value, context),
+                            })
+                        })
+                        .collect(),
+                ),
+                TypeKind::Declared { path, .. } => {
+                    let path = path.clone();
 
-                            try_unify(
-                                context.driver,
-                                WithInfo {
-                                    info: expression.info.clone(),
-                                    item: &instantiated_declared_type,
-                                },
-                                &expression.item.r#type,
-                                context.type_context,
-                                context.error_queue,
-                            );
+                    let type_declaration = context.driver.get_type_declaration(&path);
 
-                            let fields = fields
-                                .into_iter()
-                                .map(|(field_value, declared_type)| {
-                                    field_value.map(|field_value| {
-                                        let mut value = resolve_expression(
-                                            field_value.value,
-                                            Some(parent),
-                                            context,
-                                        );
+                    if let crate::TypeRepresentation::Structure(mut field_types) =
+                        type_declaration.item.representation.item
+                    {
+                        let mut instantiation_context = InstantiationContext::from_parameters(
+                            context.driver,
+                            type_declaration.item.parameters.clone(),
+                            context.type_context,
+                            expression.info.clone(),
+                            context.errors,
+                        );
 
-                                        try_unify_expression(
-                                            context.driver,
-                                            value.as_mut(),
-                                            &declared_type,
-                                            context.type_context,
-                                            context.error_queue,
-                                        );
+                        let fields = fields
+                            .into_iter()
+                            .filter_map(|field_value| {
+                                let declared_type = match field_types.remove(&field_value.item.name)
+                                {
+                                    Some(field) => infer_type(
+                                        field.item.r#type.as_ref(),
+                                        field.replace(Role::StructureField),
+                                        Some(instantiation_context.type_context),
+                                    )
+                                    .instantiate(context.driver, &mut instantiation_context),
+                                    None => {
+                                        context.error_queue.push(WithInfo {
+                                            info: field_value.info.clone(),
+                                            item: QueuedError::ExtraField,
+                                        });
 
-                                        StructureFieldValue {
-                                            name: field_value.name,
-                                            value,
-                                        }
-                                    })
-                                })
-                                .collect();
+                                        return None;
+                                    }
+                                };
 
-                            ExpressionKind::ResolvedStructure {
-                                structure: path,
-                                fields,
-                            }
-                        } else {
+                                Some((field_value, declared_type))
+                            })
+                            .collect::<Vec<_>>();
+
+                        let missing_fields = field_types.into_keys().collect::<Vec<_>>();
+                        if !missing_fields.is_empty() {
                             context.error_queue.push(WithInfo {
                                 info: expression.info.clone(),
-                                item: QueuedError::NotAStructure(expression.item.r#type.clone()),
+                                item: QueuedError::MissingFields(missing_fields),
                             });
-
-                            ExpressionKind::Unknown(None)
                         }
-                    }
-                    _ => {
+
+                        let instantiated_declared_type = Type::new(
+                            TypeKind::Declared {
+                                path: path.clone(),
+                                parameters: instantiation_context.into_types_for_parameters(),
+                            },
+                            expression.info.clone(),
+                            Vec::new(),
+                        );
+
+                        try_unify(
+                            context.driver,
+                            WithInfo {
+                                info: expression.info.clone(),
+                                item: &instantiated_declared_type,
+                            },
+                            &expression.item.r#type,
+                            context.type_context,
+                            context.error_queue,
+                        );
+
+                        let fields = fields
+                            .into_iter()
+                            .map(|(field_value, declared_type)| {
+                                field_value.map(|field_value| {
+                                    let mut value = resolve_expression(field_value.value, context);
+
+                                    try_unify_expression(
+                                        context.driver,
+                                        value.as_mut(),
+                                        &declared_type,
+                                        context.type_context,
+                                        context.error_queue,
+                                    );
+
+                                    StructureFieldValue {
+                                        name: field_value.name,
+                                        value,
+                                    }
+                                })
+                            })
+                            .collect();
+
+                        ExpressionKind::ResolvedStructure {
+                            structure: path,
+                            fields,
+                        }
+                    } else {
                         context.error_queue.push(WithInfo {
                             info: expression.info.clone(),
                             item: QueuedError::NotAStructure(expression.item.r#type.clone()),
@@ -3676,57 +3685,65 @@ fn resolve_expression<D: Driver>(
                         ExpressionKind::Unknown(None)
                     }
                 }
-            }
-            ExpressionKind::ResolvedStructure { structure, fields } => {
-                ExpressionKind::ResolvedStructure {
-                    structure,
-                    fields: fields
-                        .into_iter()
-                        .map(|field| {
-                            field.map(|field| StructureFieldValue {
-                                name: field.name,
-                                value: resolve_expression(field.value, Some(parent), context),
-                            })
-                        })
-                        .collect(),
+                _ => {
+                    context.error_queue.push(WithInfo {
+                        info: expression.info.clone(),
+                        item: QueuedError::NotAStructure(expression.item.r#type.clone()),
+                    });
+
+                    ExpressionKind::Unknown(None)
                 }
             }
-            ExpressionKind::Variant { variant, values } => ExpressionKind::Variant {
-                variant,
-                values: values
+        }
+        ExpressionKind::ResolvedStructure { structure, fields } => {
+            ExpressionKind::ResolvedStructure {
+                structure,
+                fields: fields
                     .into_iter()
-                    .map(|expression| resolve_expression(expression, Some(parent), context))
-                    .collect(),
-            },
-            ExpressionKind::Wrapper(value) => ExpressionKind::Wrapper(
-                resolve_expression(value.unboxed(), Some(parent), context).boxed(),
-            ),
-            ExpressionKind::Tuple(elements) => ExpressionKind::Tuple(
-                elements
-                    .into_iter()
-                    .map(|expression| resolve_expression(expression, Some(parent), context))
-                    .collect(),
-            ),
-            ExpressionKind::Format { segments, trailing } => ExpressionKind::Format {
-                segments: segments
-                    .into_iter()
-                    .map(|segment| FormatSegment {
-                        text: segment.text,
-                        value: resolve_expression(segment.value, Some(parent), context),
+                    .map(|field| {
+                        field.map(|field| StructureFieldValue {
+                            name: field.name,
+                            value: resolve_expression(field.value, context),
+                        })
                     })
                     .collect(),
-                trailing,
-            },
-        };
-
-        WithInfo {
-            info: expression.info,
-            item: Expression {
-                r#type: expression.item.r#type,
-                kind,
-            },
+            }
         }
-    })
+        ExpressionKind::Variant { variant, values } => ExpressionKind::Variant {
+            variant,
+            values: values
+                .into_iter()
+                .map(|expression| resolve_expression(expression, context))
+                .collect(),
+        },
+        ExpressionKind::Wrapper(value) => {
+            ExpressionKind::Wrapper(resolve_expression(value.unboxed(), context).boxed())
+        }
+        ExpressionKind::Tuple(elements) => ExpressionKind::Tuple(
+            elements
+                .into_iter()
+                .map(|expression| resolve_expression(expression, context))
+                .collect(),
+        ),
+        ExpressionKind::Format { segments, trailing } => ExpressionKind::Format {
+            segments: segments
+                .into_iter()
+                .map(|segment| FormatSegment {
+                    text: segment.text,
+                    value: resolve_expression(segment.value, context),
+                })
+                .collect(),
+            trailing,
+        },
+    };
+
+    WithInfo {
+        info: expression.info,
+        item: Expression {
+            r#type: expression.item.r#type,
+            kind,
+        },
+    }
 }
 
 fn resolve_item<D: Driver>(
@@ -4636,6 +4653,9 @@ fn refine_mismatch_error<D: Driver>(
     expected: &mut Type<D>,
     finalize_context: &mut FinalizeContext<'_, D>,
 ) {
+    actual.apply_in_context_mut(finalize_context.type_context);
+    expected.apply_in_context_mut(finalize_context.type_context);
+
     loop {
         let prev_actual = actual.clone();
         let prev_expected = expected.clone();
@@ -4651,6 +4671,50 @@ fn refine_mismatch_error<D: Driver>(
                     if let Some(last_statement) = statements.last() {
                         *info = last_statement.info.clone();
                         *actual = last_statement.item.r#type.clone();
+                    }
+                }
+            }
+        }
+
+        // Highlight the call expression instead of the function if the output
+        // is mismatched
+        if let TypeKind::Function {
+            inputs: actual_inputs,
+            output: actual_output,
+        } = &actual.kind
+        {
+            if let TypeKind::Function {
+                inputs: expected_inputs,
+                output: expected_output,
+            } = &expected.kind
+            {
+                if actual_inputs.len() == expected_inputs.len()
+                    && actual_inputs
+                        .iter()
+                        .zip(expected_inputs)
+                        .all(|(actual, expected)| {
+                            unify(
+                                finalize_context.driver,
+                                actual,
+                                expected,
+                                finalize_context.type_context,
+                            )
+                        })
+                {
+                    if let Some(actual_parent_expression_id) = actual.parent_expression {
+                        let actual_parent_expression = finalize_context
+                            .type_context
+                            .tracked_expression(actual_parent_expression_id);
+
+                        if let ExpressionKind::Call { .. } = &actual_parent_expression.item.kind {
+                            let actual_output = actual_output.as_ref().clone();
+                            let expected_output = expected_output.as_ref().clone();
+
+                            // A function's output type is contravariant, so swap the order
+                            *info = actual_parent_expression.info.clone();
+                            *expected = actual_output;
+                            *actual = expected_output;
+                        }
                     }
                 }
             }

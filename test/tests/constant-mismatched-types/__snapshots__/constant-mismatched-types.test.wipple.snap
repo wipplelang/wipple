@@ -2,6 +2,6 @@
 
 exports[`constant-mismatched-types.test.wipple 1`] = `
 [
-  "constant-mismatched-types/constant-mismatched-types.test.wipple:3:4: error: expected this annotation to be a number here, but found a piece of text",
+  "constant-mismatched-types/constant-mismatched-types.test.wipple:3:4: error: expected a number here, but found a piece of text",
 ]
 `;

@@ -2,6 +2,6 @@
 
 exports[`mismatched-call.test.wipple 1`] = `
 [
-  "mismatched-call/mismatched-call.test.wipple:7:13: error: expected this annotation to be \`Number Number -> Number\` here, but found \`Number Number -> Text\`",
+  "mismatched-call/mismatched-call.test.wipple:7:13: error: expected a piece of text here, but found a number",
 ]
 `;

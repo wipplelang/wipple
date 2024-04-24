@@ -2,6 +2,6 @@
 
 exports[`call-function-diagnostic.test.wipple 1`] = `
 [
-  "call-function-diagnostic/call-function-diagnostic.test.wipple:5:14: error: expected this annotation to be a piece of text here, but found a function",
+  "call-function-diagnostic/call-function-diagnostic.test.wipple:5:14: error: expected a piece of text here, but found a function",
 ]
 `;
