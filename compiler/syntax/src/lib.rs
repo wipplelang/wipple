@@ -65,6 +65,38 @@ pub struct Location {
     pub span: Range<u32>,
 }
 
+impl PartialOrd for Location {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Location {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.path.cmp(&other.path) {
+            std::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+
+        match self.visible_path.cmp(&other.visible_path) {
+            std::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+
+        match self.span.start.cmp(&other.span.start) {
+            std::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+
+        match self.span.end.cmp(&other.span.end) {
+            std::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+
+        std::cmp::Ordering::Equal
+    }
+}
+
 impl Location {
     /// Check if `self` is contained within `other`.
     pub fn span_is_within(&self, other: &Self) -> bool {

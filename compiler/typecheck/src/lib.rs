@@ -13,7 +13,7 @@ use wipple_util::WithInfo;
 /// Provides the typechecker with information about the program.
 pub trait Driver: Sized + 'static {
     /// Additional information attached to every item.
-    type Info: Debug + Clone + Eq + Hash + Serialize + DeserializeOwned + TS + 'static;
+    type Info: Debug + Clone + Eq + Ord + Hash + Serialize + DeserializeOwned + TS + 'static;
 
     /// Represents a path used to resolve declarations.
     type Path: Debug + Clone + Eq + Ord + Hash + Serialize + DeserializeOwned + TS + 'static;

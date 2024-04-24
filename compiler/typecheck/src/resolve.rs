@@ -226,7 +226,9 @@ pub fn resolve<D: Driver>(
             resolve_context.error_queue,
         );
 
-        queued.body = resolve_expression(queued.body, None, &mut resolve_context);
+        queued.body = resolve_context.with_tracked_expression(None, |resolve_context, parent| {
+            resolve_expression(queued.body, Some(parent), resolve_context)
+        });
 
         let subexpression_types = {
             let mut subexpression_types = Vec::new();
@@ -600,6 +602,8 @@ pub fn resolve_attribute_like_trait<D: Driver>(
 
 // Instead of reporting unification errors immediately, queue them and then
 // report them all once all type information has been collected.
+#[derive(Derivative)]
+#[derivative(Debug(bound = ""), PartialEq(bound = ""))]
 enum QueuedError<D: Driver> {
     RecursionLimit,
 
@@ -635,7 +639,7 @@ enum QueuedError<D: Driver> {
 fn report_queued_errors<D: Driver>(
     driver: &D,
     type_context: &mut TypeContext<D>,
-    error_queue: Vec<WithInfo<D::Info, QueuedError<D>>>,
+    mut error_queue: Vec<WithInfo<D::Info, QueuedError<D>>>,
     errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
 ) {
     let mut finalize_context = FinalizeContext {
@@ -649,6 +653,13 @@ fn report_queued_errors<D: Driver>(
         subexpression_types: None,
     };
 
+    // We `reverse` before `dedup`ing because if two errors are created for an
+    // expression, the second one will have more specific type information, and
+    // we want to keep that one when we `dedup`
+    error_queue.sort_by_key(|error| error.info.clone());
+    error_queue.reverse();
+    error_queue.dedup();
+
     for error in error_queue {
         let mut info = error.info;
         let error = match error.item {
@@ -657,7 +668,7 @@ fn report_queued_errors<D: Driver>(
                 mut actual,
                 mut expected,
             } => (|| {
-                refine_mismatch_error(&mut actual, &mut expected, finalize_context.type_context);
+                refine_mismatch_error(&mut info, &mut actual, &mut expected, &mut finalize_context);
 
                 // Special case: Display a user-provided message if there is a
                 // corresponding instance for `Mismatch`
@@ -745,6 +756,11 @@ fn report_queued_errors<D: Driver>(
             errors.push(WithInfo { info, item: error });
         }
     }
+
+    // Some errors may have been refined, so `dedup` again, but we don't need to
+    // `reverse` again
+    errors.sort_by_key(|error| error.info.clone());
+    errors.dedup();
 }
 
 fn try_report_custom_mismatch_error<D: Driver>(
@@ -795,12 +811,15 @@ fn try_report_custom_mismatch_error<D: Driver>(
 // MARK: Types and type variables
 
 #[derive(Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[derivative(Debug(bound = ""), Clone(bound = ""), PartialEq(bound = ""))]
 struct Type<D: Driver> {
     kind: TypeKind<D>,
     info: D::Info,
+    #[derivative(PartialEq = "ignore")]
     roles: Vec<WithInfo<D::Info, Role>>,
+    #[derivative(PartialEq = "ignore")]
     expression: Option<TrackedExpressionId<D>>,
+    #[derivative(PartialEq = "ignore")]
     parent_expression: Option<TrackedExpressionId<D>>,
 }
 
@@ -1010,7 +1029,7 @@ impl<D: Driver> Type<D> {
 }
 
 #[derive(Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[derivative(Debug(bound = ""), Clone(bound = ""), PartialEq(bound = ""))]
 enum TypeKind<D: Driver> {
     Variable(TypeVariable<D>),
     Opaque(TypeVariable<D>),
@@ -1059,7 +1078,7 @@ impl<D: Driver> Debug for TypeVariable<D> {
 }
 
 #[derive(Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[derivative(Debug(bound = ""), Clone(bound = ""), PartialEq(bound = ""))]
 struct Instance<D: Driver> {
     r#trait: D::Path,
     parameters: Vec<Type<D>>,
@@ -1071,7 +1090,7 @@ struct Instance<D: Driver> {
 #[derivative(Clone(bound = ""), Default(bound = ""))]
 struct TypeContext<D: Driver> {
     next_variable: u32,
-    tracked_expressions: Vec<WithInfo<D::Info, Expression<D>>>,
+    tracked_expressions: Vec<Option<WithInfo<D::Info, Expression<D>>>>,
     substitutions: BTreeMap<u32, Type<D>>,
     defaults: BTreeMap<u32, Type<D>>,
 }
@@ -1081,6 +1100,12 @@ impl<D: Driver> TypeContext<D> {
         self.next_variable = other.next_variable;
         self.substitutions = other.substitutions;
         self.defaults = other.defaults;
+    }
+
+    fn tracked_expression(&self, id: TrackedExpressionId<D>) -> &WithInfo<D::Info, Expression<D>> {
+        self.tracked_expressions[id.counter as usize]
+            .as_ref()
+            .expect("uninitialized tracked expression")
     }
 }
 
@@ -1119,12 +1144,12 @@ impl<D: Driver> ResolveContext<'_, D> {
             counter: self.type_context.tracked_expressions.len() as u32,
         };
 
+        self.type_context.tracked_expressions.push(None);
+
         let mut expression = expression(self, id);
         expression.item.r#type = expression.item.r#type.with_expression(id, parent_id);
 
-        self.type_context
-            .tracked_expressions
-            .push(expression.clone());
+        self.type_context.tracked_expressions[id.counter as usize] = Some(expression.clone());
 
         expression
     }
@@ -1797,13 +1822,13 @@ enum ExpressionKind<D: Driver> {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct FormattedText<T> {
     segments: Vec<FormatSegment<T>>,
     trailing: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct FormatSegment<T> {
     text: String,
     value: T,
@@ -4606,11 +4631,35 @@ fn finalize_instance<D: Driver>(
 }
 
 fn refine_mismatch_error<D: Driver>(
+    info: &mut D::Info,
     actual: &mut Type<D>,
     expected: &mut Type<D>,
-    type_context: &mut TypeContext<D>,
+    finalize_context: &mut FinalizeContext<'_, D>,
 ) {
-    todo!()
+    loop {
+        let prev_actual = actual.clone();
+        let prev_expected = expected.clone();
+
+        // Highlight the last statement in a 'do' block instead of the entire block
+        if let Some(actual_expression_id) = actual.expression {
+            let actual_expression = finalize_context
+                .type_context
+                .tracked_expression(actual_expression_id);
+
+            if let ExpressionKind::Do(block_expression) = &actual_expression.item.kind {
+                if let ExpressionKind::Block(statements) = &block_expression.item.kind {
+                    if let Some(last_statement) = statements.last() {
+                        *info = last_statement.info.clone();
+                        *actual = last_statement.item.r#type.clone();
+                    }
+                }
+            }
+        }
+
+        if prev_actual == *actual && prev_expected == *expected {
+            break;
+        }
+    }
 }
 
 #[allow(dead_code)]
