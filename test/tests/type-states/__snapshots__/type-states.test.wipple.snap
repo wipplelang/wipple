@@ -2,19 +2,6 @@
 
 exports[`type-states.test.wipple 1`] = `
 [
-  "type-states/type-states.test.wipple:11:11: error: can't find \`just\`",
-  "type-states/type-states.test.wipple:14:7: error: can't find \`just\`",
-  "type-states/type-states.test.wipple:16:26: error: expected a function here, but found \`Drone Idle\`",
-  "type-states/type-states.test.wipple:16:26: error: missing \`Hovering\` for \`land [works!]\`",
-  "type-states/type-states.test.wipple:16:32: error: can't find \`works\`",
-  "type-states/type-states.test.wipple:16:37: error: unexpected the word \`mutate\` here",
-  "type-states/type-states.test.wipple:16:4: error: missing \`Idle\` for \`my-drone . take-off\`",
-  "type-states/type-states.test.wipple:18:15: error: expected a function here, but found \`Drone Idle\`",
-  "type-states/type-states.test.wipple:18:15: error: missing \`Hovering\` for \`land [cannot land because drone is already idle]\`",
-  "type-states/type-states.test.wipple:18:21: error: can't find \`cannot\`",
-  "type-states/type-states.test.wipple:18:33: error: can't find \`because\`",
-  "type-states/type-states.test.wipple:18:41: error: can't find \`drone\`",
-  "type-states/type-states.test.wipple:18:50: error: can't find \`already\`",
-  "type-states/type-states.test.wipple:8:11: error: expected \`Drone Idle\` here, but found a function",
+  "type-states/type-states.test.wipple:23:4: error: expected a hovering drone here, but found a idle drone",
 ]
 `;

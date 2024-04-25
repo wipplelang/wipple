@@ -1,19 +1,24 @@
 -- [should error]
 
 Idle : type
-Hovering : type
+instance (Describe-Type Idle "idle")
 
-Drone : State => type (Drone)
+Hovering : type
+instance (Describe-Type Hovering "hovering")
+
+Drone : State => type
+
+State => instance (Describe-Type (Drone State) ("a _ drone" State))
 
 my-drone :: Drone Idle
 my-drone : Drone
 
-take-off :: Drone Idle -> Drone Hovering
-take-off : just Drone
+take-off :: (Drone Idle) -> Drone Hovering
+take-off : _ -> Drone
 
-land :: Drone Hovering -> Drone Idle
-land : just Drone
+land :: (Drone Hovering) -> Drone Idle
+land : _ -> Drone
 
-_ : my-drone . take-off . land [works!]
+_ : my-drone . take-off . land -- works!
 
-_ : my-drone . land [cannot land because drone is already idle]
+_ : my-drone . land -- cannot land because drone is already idle
