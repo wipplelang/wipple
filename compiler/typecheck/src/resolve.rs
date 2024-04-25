@@ -616,10 +616,9 @@ enum QueuedError<D: Driver> {
         expected: Type<D>,
     },
 
-    WrongNumberOfInputs {
-        actual: u32,
-        expected: u32,
-    },
+    MissingInputs(Vec<Type<D>>),
+
+    ExtraInput,
 
     UnresolvedInstance {
         instance: Instance<D>,
@@ -694,9 +693,13 @@ fn report_queued_errors<D: Driver>(
                     expected: finalize_type(expected, false, &mut finalize_context),
                 })
             })(),
-            QueuedError::WrongNumberOfInputs { actual, expected } => {
-                Some(crate::Diagnostic::WrongNumberOfInputs { actual, expected })
-            }
+            QueuedError::MissingInputs(inputs) => Some(crate::Diagnostic::MissingInputs(
+                inputs
+                    .into_iter()
+                    .map(|input| finalize_type(input, false, &mut finalize_context))
+                    .collect(),
+            )),
+            QueuedError::ExtraInput => Some(crate::Diagnostic::ExtraInput),
             QueuedError::UnresolvedInstance {
                 instance,
                 candidates,
@@ -3421,49 +3424,59 @@ fn resolve_expression<D: Driver>(
                 output: output_type,
             } = &function.item.r#type.kind
             {
-                if input_types.len() == inputs.len() {
-                    for (input, input_type) in inputs.iter_mut().zip(input_types) {
-                        try_unify_expression(
+                match inputs.len().cmp(&input_types.len()) {
+                    std::cmp::Ordering::Equal => {
+                        for (input, input_type) in inputs.iter_mut().zip(input_types) {
+                            try_unify_expression(
+                                context.driver,
+                                input.as_mut(),
+                                input_type,
+                                context.type_context,
+                                context.error_queue,
+                            );
+                        }
+
+                        try_unify(
                             context.driver,
-                            input.as_mut(),
-                            input_type,
+                            WithInfo {
+                                info: expression.info.clone(),
+                                item: &expression.item.r#type,
+                            },
+                            output_type,
                             context.type_context,
                             context.error_queue,
                         );
-                    }
 
-                    try_unify(
-                        context.driver,
-                        WithInfo {
+                        let inputs = inputs
+                            .into_iter()
+                            .map(|input| resolve_expression(input, context))
+                            .collect::<Vec<_>>();
+
+                        let function = resolve_expression(function.unboxed(), context);
+
+                        ExpressionKind::Call {
+                            function: function.boxed(),
+                            inputs,
+                        }
+                    }
+                    std::cmp::Ordering::Less => {
+                        context.error_queue.push(WithInfo {
                             info: expression.info.clone(),
-                            item: &expression.item.r#type,
-                        },
-                        output_type,
-                        context.type_context,
-                        context.error_queue,
-                    );
+                            item: QueuedError::MissingInputs(input_types[inputs.len()..].to_vec()),
+                        });
 
-                    let inputs = inputs
-                        .into_iter()
-                        .map(|input| resolve_expression(input, context))
-                        .collect::<Vec<_>>();
-
-                    let function = resolve_expression(function.unboxed(), context);
-
-                    ExpressionKind::Call {
-                        function: function.boxed(),
-                        inputs,
+                        ExpressionKind::Unknown(None)
                     }
-                } else {
-                    context.error_queue.push(WithInfo {
-                        info: expression.info.clone(),
-                        item: QueuedError::WrongNumberOfInputs {
-                            actual: inputs.len() as u32,
-                            expected: input_types.len() as u32,
-                        },
-                    });
+                    std::cmp::Ordering::Greater => {
+                        for _ in &inputs[input_types.len()..] {
+                            context.error_queue.push(WithInfo {
+                                info: expression.info.clone(),
+                                item: QueuedError::ExtraInput,
+                            });
+                        }
 
-                    ExpressionKind::Unknown(None)
+                        ExpressionKind::Unknown(None)
+                    }
                 }
             } else {
                 let inputs = inputs
@@ -4501,15 +4514,10 @@ fn finalize_expression<D: Driver>(
                                     &statement.item.kind
                                 {
                                     if let Some(errors) = context.errors.as_deref_mut() {
-                                        let error = WithInfo {
+                                        errors.push(WithInfo {
                                             info: statement.info.clone(),
-                                            item: crate::Diagnostic::WrongNumberOfInputs {
-                                                actual: 0,
-                                                expected: inputs.len() as u32,
-                                            },
-                                        };
-
-                                        errors.push(error);
+                                            item: crate::Diagnostic::MissingInputs(inputs.clone()),
+                                        });
                                     }
                                 }
                             }

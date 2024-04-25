@@ -2,6 +2,6 @@
 
 exports[`too-many-inputs.test.wipple 1`] = `
 [
-  "too-many-inputs/too-many-inputs.test.wipple:2:0: error: this function takes 1 inputs, but 3 were provided",
+  "too-many-inputs/too-many-inputs.test.wipple:2:0: error: extra input provided to \`show 1 2 3\`",
 ]
 `;

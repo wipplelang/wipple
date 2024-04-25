@@ -785,24 +785,52 @@ export class Render {
 
                         break;
                     }
-                    case "wrongNumberOfInputs": {
-                        const { expected, actual } = diagnostic.item.value.value;
+                    case "missingInputs": {
+                        const code = this.renderCode(diagnostic);
+
+                        const inputs = diagnostic.item.value.value.map((type) =>
+                            this.renderType(type, true, true, true),
+                        );
+
                         severity = "error";
-                        message = `this function takes ${expected} inputs, but ${actual} were provided`;
+
+                        switch (inputs.length) {
+                            case 1:
+                                message = `missing ${inputs[0]} for \`${code}\``;
+                                break;
+                            case 2:
+                                message = `missing ${inputs[0]} and ${inputs[1]} for \`${code}\``;
+                                break;
+                            default:
+                                message = `missing ${inputs.slice(0, -1).join(", ")}, and ${
+                                    inputs[inputs.length - 1]
+                                } for \`${code}\``;
+
+                                break;
+                        }
+
+                        break;
+                    }
+                    case "extraInput": {
+                        const code = this.renderCode(diagnostic);
+                        severity = "error";
+                        message = `extra input provided to \`${code}\``;
                         break;
                     }
                     case "unresolvedInstance": {
+                        const code = this.renderCode(diagnostic);
                         const renderedInstance = this.renderInstance({
                             info: diagnostic.info,
                             item: diagnostic.item.value.value.instance,
                         });
                         severity = "error";
-                        message = `this code requires \`${renderedInstance}\``;
+                        message = `\`${code}\` requires \`${renderedInstance}\``;
                         break;
                     }
                     case "traitHasNoValue": {
+                        const code = this.renderCode(diagnostic);
                         severity = "error";
-                        message = "this trait can't be used as a value";
+                        message = `\`${code}\` can't be used as a value`;
                         break;
                     }
                     case "expectedInstanceValue": {

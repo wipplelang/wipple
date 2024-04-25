@@ -292,14 +292,11 @@ pub enum Diagnostic<D: Driver> {
         expected: WithInfo<D::Info, Type<D>>,
     },
 
-    /// The wrong number of inputs were provided to a function.
-    WrongNumberOfInputs {
-        /// The number of inputs provided to the function.
-        actual: u32,
+    /// A function is missing an input.
+    MissingInputs(Vec<WithInfo<D::Info, Type<D>>>),
 
-        /// The number of inputs expected by the function.
-        expected: u32,
-    },
+    /// An extra input was provided to a function.
+    ExtraInput,
 
     /// No instance satisfying the provided parameters could be resolved.
     #[serde(rename_all = "camelCase")]
