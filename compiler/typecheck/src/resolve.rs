@@ -1784,7 +1784,10 @@ enum ExpressionKind<D: Driver> {
     ResolvedTrait(D::Path),
     Number(String),
     Text(String),
-    Block(Vec<WithInfo<D::Info, Expression<D>>>),
+    Block {
+        statements: Vec<WithInfo<D::Info, Expression<D>>>,
+        top_level: bool,
+    },
     Do(WithInfo<D::Info, Box<Expression<D>>>),
     Function {
         inputs: Vec<WithInfo<D::Info, crate::Pattern<D>>>,
@@ -2143,7 +2146,10 @@ fn infer_expression<D: Driver>(
 
                 Expression {
                     r#type: Type::new(TypeKind::Block(Box::new(r#type)), info.clone(), Vec::new()),
-                    kind: ExpressionKind::Block(statements),
+                    kind: ExpressionKind::Block {
+                        statements,
+                        top_level: parent_id.is_none(),
+                    },
                 }
             }
             crate::UntypedExpression::Do(block) => {
@@ -3285,12 +3291,16 @@ fn resolve_expression<D: Driver>(
         ExpressionKind::ResolvedTrait(path) => ExpressionKind::ResolvedTrait(path),
         ExpressionKind::Number(number) => ExpressionKind::Number(number),
         ExpressionKind::Text(text) => ExpressionKind::Text(text),
-        ExpressionKind::Block(statements) => ExpressionKind::Block(
-            statements
+        ExpressionKind::Block {
+            statements,
+            top_level,
+        } => ExpressionKind::Block {
+            statements: statements
                 .into_iter()
                 .map(|expression| resolve_expression(expression, context))
                 .collect(),
-        ),
+            top_level,
+        },
         ExpressionKind::Do(block) => {
             ExpressionKind::Do(resolve_expression(block.unboxed(), context).boxed())
         }
@@ -4244,7 +4254,7 @@ fn substitute_defaults_in_expression<D: Driver>(
     context: &mut ResolveContext<'_, D>,
 ) -> bool {
     let substituted_subexpression = match &mut expression.item.kind {
-        ExpressionKind::Block(statements) => statements.iter_mut().any(|statement| {
+        ExpressionKind::Block { statements, .. } => statements.iter_mut().any(|statement| {
             substitute_defaults_in_expression(driver, statement.as_mut(), context)
         }),
         ExpressionKind::Do(block) => {
@@ -4493,7 +4503,10 @@ fn finalize_expression<D: Driver>(
         ExpressionKind::ResolvedTrait(path) => crate::TypedExpressionKind::Trait(path),
         ExpressionKind::Number(number) => crate::TypedExpressionKind::Number(number),
         ExpressionKind::Text(text) => crate::TypedExpressionKind::Text(text),
-        ExpressionKind::Block(statements) => {
+        ExpressionKind::Block {
+            statements,
+            top_level,
+        } => {
             let statement_count = statements.len();
 
             crate::TypedExpressionKind::Block(
@@ -4506,7 +4519,7 @@ fn finalize_expression<D: Driver>(
                         let statement = finalize_expression(statement, context);
 
                         // Disallow statements containing only uncalled functions
-                        if !is_last_statement {
+                        if top_level || !is_last_statement {
                             if let crate::Type::Function { inputs, .. } = &statement.item.r#type {
                                 if let crate::TypedExpressionKind::Constant { .. }
                                 | crate::TypedExpressionKind::Trait { .. }
@@ -4675,7 +4688,7 @@ fn refine_mismatch_error<D: Driver>(
                 .tracked_expression(actual_expression_id);
 
             if let ExpressionKind::Do(block_expression) = &actual_expression.item.kind {
-                if let ExpressionKind::Block(statements) = &block_expression.item.kind {
+                if let ExpressionKind::Block { statements, .. } = &block_expression.item.kind {
                     if let Some(last_statement) = statements.last() {
                         *info = last_statement.info.clone();
                         *actual = last_statement.item.r#type.clone();
