@@ -163,15 +163,7 @@ export function CodeEditor<Settings>(props: {
     const { displayAlert } = useAlert();
 
     const onClickLookUp = useCallback((help: Help) => {
-        displayAlert(({ dismiss }) => (
-            <HelpAlert
-                help={help}
-                dismiss={() => {
-                    setLookUpEnabled(false);
-                    dismiss();
-                }}
-            />
-        ));
+        displayAlert(({ dismiss }) => <HelpAlert help={help} dismiss={dismiss} />);
     }, []);
 
     const onClickAsset: AssetClickHandler = useCallback(({ start, end, asset }) => {
