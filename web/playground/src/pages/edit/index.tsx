@@ -7,6 +7,7 @@ import {
     ContextMenuButton,
     Skeleton,
     TutorialItem,
+    TutorialSection,
     useAlert,
     useNavbar,
 } from "../../components";
@@ -149,111 +150,117 @@ export const EditPage = () => {
     );
 
     return (
-        <div className="flex flex-row justify-center">
-            <div className="flex flex-col items-center lg:items-start lg:flex-row w-full max-w-screen-lg">
-                <PlaygroundPageList
-                    playground={playground}
-                    selectedPage={selectedPageId}
-                    onAddPage={(name) => {
-                        const id = nanoid(20);
+        <div className="flex flex-col">
+            <div className="w-full max-w-screen-lg mx-auto px-4 pb-8">
+                <TutorialSection />
+            </div>
 
-                        setPlayground(
-                            produce((playground) => {
-                                playground!.pages.push({
-                                    id,
-                                    name,
-                                    items: [],
-                                });
-                            }),
-                        );
+            <div className="flex flex-row justify-center">
+                <div className="flex flex-col items-center lg:items-start lg:flex-row w-full max-w-screen-lg">
+                    <PlaygroundPageList
+                        playground={playground}
+                        selectedPage={selectedPageId}
+                        onAddPage={(name) => {
+                            const id = nanoid(20);
 
-                        navigate(`../${id}`, { relative: "path" });
-                    }}
-                    onRenamePage={(pageIndex, name) => {
-                        setPlayground(
-                            produce((playground) => {
-                                playground!.pages[pageIndex].name = name;
-                            }),
-                        );
-                    }}
-                    onMovePageUp={(index) => {
-                        setPlayground(
-                            produce((playground) => {
-                                const [page] = playground!.pages.splice(index, 1);
-                                playground!.pages.splice(index - 1, 0, page);
-                            }),
-                        );
-                    }}
-                    onMovePageDown={(index) => {
-                        setPlayground(
-                            produce((playground) => {
-                                const [page] = playground!.pages.splice(index, 1);
-                                playground!.pages.splice(index + 1, 0, page);
-                            }),
-                        );
-                    }}
-                    onDeletePage={(pageIndex) => {
-                        setPlayground(
-                            produce((playground) => {
-                                playground!.pages.splice(pageIndex, 1);
+                            setPlayground(
+                                produce((playground) => {
+                                    playground!.pages.push({
+                                        id,
+                                        name,
+                                        items: [],
+                                    });
+                                }),
+                            );
 
-                                const newPageIndex = pageIndex === 0 ? 0 : pageIndex - 1;
+                            navigate(`../${id}`, { relative: "path" });
+                        }}
+                        onRenamePage={(pageIndex, name) => {
+                            setPlayground(
+                                produce((playground) => {
+                                    playground!.pages[pageIndex].name = name;
+                                }),
+                            );
+                        }}
+                        onMovePageUp={(index) => {
+                            setPlayground(
+                                produce((playground) => {
+                                    const [page] = playground!.pages.splice(index, 1);
+                                    playground!.pages.splice(index - 1, 0, page);
+                                }),
+                            );
+                        }}
+                        onMovePageDown={(index) => {
+                            setPlayground(
+                                produce((playground) => {
+                                    const [page] = playground!.pages.splice(index, 1);
+                                    playground!.pages.splice(index + 1, 0, page);
+                                }),
+                            );
+                        }}
+                        onDeletePage={(pageIndex) => {
+                            setPlayground(
+                                produce((playground) => {
+                                    playground!.pages.splice(pageIndex, 1);
 
-                                navigate(`../${playground!.pages[newPageIndex].id}`, {
-                                    relative: "path",
-                                });
-                            }),
-                        );
-                    }}
-                />
+                                    const newPageIndex = pageIndex === 0 ? 0 : pageIndex - 1;
 
-                <PlaygroundPageEditor
-                    id={selectedPageId}
-                    items={
-                        playgroundPageIndex != null
-                            ? playground!.pages[playgroundPageIndex].items
-                            : undefined
-                    }
-                    onAddItem={(item) => {
-                        setPlayground(
-                            produce((playground) => {
-                                playground!.pages[playgroundPageIndex!].items.push(item);
-                            }),
-                        );
-                    }}
-                    onChangeItem={(index, item) => {
-                        setPlayground(
-                            produce((playground) => {
-                                playground!.pages[playgroundPageIndex!].items[index] = item;
-                            }),
-                        );
-                    }}
-                    onMoveItemUp={(index) => {
-                        setPlayground(
-                            produce((playground) => {
-                                const page = playground!.pages[playgroundPageIndex!];
-                                const [item] = page.items.splice(index, 1);
-                                page.items.splice(index - 1, 0, item);
-                            }),
-                        );
-                    }}
-                    onMoveItemDown={(index) => {
-                        setPlayground(
-                            produce((playground) => {
-                                const page = playground!.pages[playgroundPageIndex!];
-                                const [item] = page.items.splice(index, 1);
-                                page.items.splice(index + 1, 0, item);
-                            }),
-                        );
-                    }}
-                    onDeleteItem={(index) => {
-                        setPlayground(
-                            produce((playground) => {
-                                playground!.pages[playgroundPageIndex!].items.splice(index, 1);
-                            }),
-                        );
-                    }}
-                />
+                                    navigate(`../${playground!.pages[newPageIndex].id}`, {
+                                        relative: "path",
+                                    });
+                                }),
+                            );
+                        }}
+                    />
+
+                    <PlaygroundPageEditor
+                        id={selectedPageId}
+                        items={
+                            playgroundPageIndex != null
+                                ? playground!.pages[playgroundPageIndex].items
+                                : undefined
+                        }
+                        onAddItem={(item) => {
+                            setPlayground(
+                                produce((playground) => {
+                                    playground!.pages[playgroundPageIndex!].items.push(item);
+                                }),
+                            );
+                        }}
+                        onChangeItem={(index, item) => {
+                            setPlayground(
+                                produce((playground) => {
+                                    playground!.pages[playgroundPageIndex!].items[index] = item;
+                                }),
+                            );
+                        }}
+                        onMoveItemUp={(index) => {
+                            setPlayground(
+                                produce((playground) => {
+                                    const page = playground!.pages[playgroundPageIndex!];
+                                    const [item] = page.items.splice(index, 1);
+                                    page.items.splice(index - 1, 0, item);
+                                }),
+                            );
+                        }}
+                        onMoveItemDown={(index) => {
+                            setPlayground(
+                                produce((playground) => {
+                                    const page = playground!.pages[playgroundPageIndex!];
+                                    const [item] = page.items.splice(index, 1);
+                                    page.items.splice(index + 1, 0, item);
+                                }),
+                            );
+                        }}
+                        onDeleteItem={(index) => {
+                            setPlayground(
+                                produce((playground) => {
+                                    playground!.pages[playgroundPageIndex!].items.splice(index, 1);
+                                }),
+                            );
+                        }}
+                    />
+                </div>
             </div>
         </div>
     );

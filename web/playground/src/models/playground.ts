@@ -102,7 +102,15 @@ export const updatePlayground = async (playground: Playground) => {
     await setDoc(doc(collection(firestore, "playgrounds"), playground.id), playground);
 };
 
-export const createPlayground = async () => {
+export const createPlayground = async ({
+    name = "Untitled",
+    pageName = "Untitled",
+    initialItems = [],
+}: {
+    name?: string;
+    pageName?: string;
+    initialItems?: PlaygroundPageItem[];
+} = {}) => {
     const user = await getUser();
     if (!user) {
         throw new Error("must be logged in to create a playground");
@@ -113,13 +121,13 @@ export const createPlayground = async () => {
     const playground: Omit<Playground, "id"> = {
         owner: user.uid,
         collaborators: [],
-        name: "Untitled",
+        name,
         lastModified: new Date().toISOString(),
         pages: [
             {
                 id: nanoid(20),
-                name: "Untitled",
-                items: [],
+                name: pageName,
+                items: initialItems,
             },
         ],
     };

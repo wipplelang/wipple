@@ -17,6 +17,7 @@ import {
     deletePlayground,
     duplicatePlayground,
     listPlaygrounds,
+    newPlaygroundTutorialItem,
     startTutorial,
 } from "../../models";
 import { Link, useNavigate } from "react-router-dom";
@@ -25,7 +26,6 @@ import { useStore } from "../../store";
 import { produce } from "immer";
 
 export const HomePage = () => {
-    const { displayAlert } = useAlert();
     const { setPrimaryActions } = useNavbar();
 
     useEffect(() => {
@@ -58,6 +58,30 @@ export const HomePage = () => {
         navigate(`edit/${id}`);
     };
 
+    const handleStartTutorial = async () => {
+        const id = await createPlayground({
+            name: "Tutorial",
+            pageName: "Tutorial",
+            initialItems: [newPlaygroundTutorialItem],
+        });
+
+        navigate(`edit/${id}`);
+
+        const handleChangeStep = (step: TutorialStep | undefined) => {
+            setStore(
+                produce((store) => {
+                    store.activeTutorialStep = step;
+                }),
+            );
+        };
+
+        setStore(
+            produce((store) => {
+                store.activeTutorialStep = startTutorial(handleChangeStep);
+            }),
+        );
+    };
+
     const handleDuplicate = async (playground: PlaygroundListItem) => {
         await duplicatePlayground(playground.id);
         await loadPlaygrounds();
@@ -82,28 +106,14 @@ export const HomePage = () => {
                             </PrimaryCard>
                         </TutorialItem>
 
-                        <PrimaryCard title="Browse Lessons" onClick={() => alert("TODO")}>
+                        <PrimaryCard
+                            title="Browse Lessons"
+                            onClick={() => alert("Lessons aren't available yet.")}
+                        >
                             <img src="/playground/images/lesson-bg.png" />
                         </PrimaryCard>
 
-                        <PrimaryCard
-                            title="Tutorial"
-                            onClick={() => {
-                                const handleChangeStep = (step: TutorialStep | undefined) => {
-                                    setStore(
-                                        produce((store) => {
-                                            store.activeTutorialStep = step;
-                                        }),
-                                    );
-                                };
-
-                                setStore(
-                                    produce((store) => {
-                                        store.activeTutorialStep = startTutorial(handleChangeStep);
-                                    }),
-                                );
-                            }}
-                        >
+                        <PrimaryCard title="Tutorial" onClick={handleStartTutorial}>
                             <MaterialSymbol
                                 icon="school"
                                 className="text-blue-500 font-semibold text-6xl"

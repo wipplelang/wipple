@@ -5,6 +5,7 @@ import { PlaygroundPageItem } from "./playground";
 
 interface TutorialStepBase {
     body: JSX.Element;
+    image?: string;
     continueButton: "continue" | "hidden" | "end";
 }
 
@@ -70,31 +71,6 @@ const tutorialSteps: TutorialStepBuilder[] = [
     {
         body: (
             <p>
-                Let's create a new playground. Click on the <strong>New Playground</strong> button.
-            </p>
-        ),
-        continueButton: "hidden",
-        itemId: "newPlayground",
-        clickItemToContinue: true,
-    },
-    {
-        body: <p>This is the playground editor.</p>,
-        actionId: "newPlayground",
-        continueButton: "continue",
-    },
-    {
-        body: <p>Playgrounds can have multiple pages, which are listed on the left.</p>,
-        continueButton: "continue",
-        itemId: "playgroundPageList",
-    },
-    {
-        body: <p>Your code is on the right. </p>,
-        continueButton: "continue",
-        itemId: "playgroundCodeEditor",
-    },
-    {
-        body: (
-            <p>
                 Let's make the turtle draw a square! Click <strong>Commands</strong>.
             </p>
         ),
@@ -112,6 +88,7 @@ const tutorialSteps: TutorialStepBuilder[] = [
                 and drag it into the code box. When you're done, click <strong>Continue</strong>.
             </p>
         ),
+        image: "/playground/images/tutorial-drag-drop.gif",
         continueButton: "continue",
     },
     {
@@ -121,7 +98,7 @@ const tutorialSteps: TutorialStepBuilder[] = [
                 <strong>
                     <code>left</code>
                 </strong>{" "}
-                into the code editor from the <strong>Commands</strong> menu.
+                on top of <code>forward</code>.
             </p>
         ),
         continueButton: "continue",
@@ -129,8 +106,8 @@ const tutorialSteps: TutorialStepBuilder[] = [
     {
         body: (
             <p>
-                Great, we have one side of the square! Now we need to draw the remaining sides.
-                Click <strong>Continue</strong> when you're ready.
+                Great, we have one side of the square! Now we need to draw the remaining sides. Can
+                you guess which command to use?
             </p>
         ),
         continueButton: "continue",
@@ -138,40 +115,11 @@ const tutorialSteps: TutorialStepBuilder[] = [
     {
         body: (
             <p>
-                To draw the remaining sides, we're going to use{" "}
-                <strong>
-                    <code>repeat</code>
-                </strong>
-                . To use <code>repeat</code>, we need to select all our code. Click the{" "}
-                <strong>Edit</strong> button.
-            </p>
-        ),
-        continueButton: "hidden",
-        clickItemToContinue: true,
-        itemId: "editButton",
-    },
-    {
-        body: (
-            <p>
-                Click <strong>Select All</strong>.
-            </p>
-        ),
-        continueButton: "hidden",
-        clickItemToContinue: true,
-        itemId: "selectAll",
-    },
-    {
-        body: (
-            <p>
-                Now that our code is selected, we can drag{" "}
+                We need to use{" "}
                 <strong>
                     <code>repeat</code>
                 </strong>{" "}
-                over it. Go ahead and drag{" "}
-                <strong>
-                    <code>repeat</code>
-                </strong>{" "}
-                onto your selection from the <strong>Commands</strong> menu.
+                — try dragging it into your code!
             </p>
         ),
         continueButton: "continue",
@@ -179,7 +127,7 @@ const tutorialSteps: TutorialStepBuilder[] = [
     {
         body: (
             <p>
-                Finally, click the dropdown and change it to{" "}
+                Finally, click the dropdown next to <code>repeat</code> and change it to{" "}
                 <strong>
                     <code>4 times</code>.
                 </strong>

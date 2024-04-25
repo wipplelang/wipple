@@ -1,4 +1,3 @@
-import React from "react";
 import ReactDOM from "react-dom/client";
 import {
     Route,
@@ -8,7 +7,7 @@ import {
 } from "react-router-dom";
 import { initializeApp } from "firebase/app";
 import { HomePage, EditPage, RootPage } from "./pages";
-import { NavbarProvider, AlertProvider, TutorialOverlay } from "./components";
+import { NavbarProvider, AlertProvider } from "./components";
 import { StoreProvider } from "./store";
 import "react-material-symbols/rounded";
 import "react-loading-skeleton/dist/skeleton.css";
@@ -37,12 +36,10 @@ const router = createBrowserRouter(
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
     <StoreProvider>
-        <TutorialOverlay>
-            <AlertProvider>
-                <NavbarProvider>
-                    <RouterProvider router={router} />
-                </NavbarProvider>
-            </AlertProvider>
-        </TutorialOverlay>
+        <AlertProvider>
+            <NavbarProvider>
+                <RouterProvider router={router} />
+            </NavbarProvider>
+        </AlertProvider>
     </StoreProvider>,
 );
