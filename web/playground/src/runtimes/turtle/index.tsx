@@ -196,6 +196,7 @@ export const Turtle: RuntimeComponent<Settings> = forwardRef((props, ref) => {
 
     return (
         <Resizable
+            handle={resizable ? undefined : <></>}
             width={containerWidth}
             height={containerHeight}
             minConstraints={[200, 200]}
