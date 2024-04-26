@@ -93,7 +93,7 @@ fn missing_extra_patterns_in<'a, D: Driver + 'a>(
         .map(|pattern| {
             let id = match_compiler.new_row_id();
             row_ids.insert(id, pattern.info);
-            Some((id, convert_pattern(pattern.item)?))
+            Some((id, convert_pattern(driver, pattern.item)?))
         })
         .collect::<Option<Vec<_>>>()?;
 
@@ -180,17 +180,30 @@ fn convert_type<D: Driver>(
     }
 }
 
-fn convert_pattern<D: Driver>(pattern: &crate::Pattern<D>) -> Option<Pattern<D>> {
+fn convert_pattern<D: Driver>(driver: &D, pattern: &crate::Pattern<D>) -> Option<Pattern<D>> {
     match pattern {
         crate::Pattern::Unknown => None,
         crate::Pattern::Wildcard | crate::Pattern::Variable(_, _) => Some(Pattern::Binding),
-        crate::Pattern::Text(_) | crate::Pattern::Number(_) => {
-            Some(Pattern::Constructor(Constructor::Unbounded, Vec::new()))
+        crate::Pattern::Text(_) => {
+            let path = driver.path_for_language_type("text")?;
+
+            Some(Pattern::Constructor(
+                Constructor::Wrapper(path),
+                vec![Pattern::Constructor(Constructor::Unbounded, Vec::new())],
+            ))
+        }
+        crate::Pattern::Number(_) => {
+            let path = driver.path_for_language_type("number")?;
+
+            Some(Pattern::Constructor(
+                Constructor::Wrapper(path),
+                vec![Pattern::Constructor(Constructor::Unbounded, Vec::new())],
+            ))
         }
         crate::Pattern::Destructure(fields) => {
             let patterns = fields
                 .iter()
-                .map(|field| convert_pattern(&field.item.pattern.item))
+                .map(|field| convert_pattern(driver, &field.item.pattern.item))
                 .collect::<Option<Vec<_>>>()?;
 
             Some(Pattern::Constructor(Constructor::Structure, patterns))
@@ -201,7 +214,7 @@ fn convert_pattern<D: Driver>(pattern: &crate::Pattern<D>) -> Option<Pattern<D>>
         } => {
             let patterns = value_patterns
                 .iter()
-                .map(|pattern| convert_pattern(&pattern.item))
+                .map(|pattern| convert_pattern(driver, &pattern.item))
                 .collect::<Option<Vec<_>>>()?;
 
             Some(Pattern::Constructor(
@@ -213,7 +226,7 @@ fn convert_pattern<D: Driver>(pattern: &crate::Pattern<D>) -> Option<Pattern<D>>
             path,
             value_pattern,
         } => {
-            let pattern = convert_pattern(&value_pattern.item)?;
+            let pattern = convert_pattern(driver, &value_pattern.item)?;
             Some(Pattern::Constructor(
                 Constructor::Wrapper(path.item.clone()),
                 vec![pattern],
@@ -222,18 +235,18 @@ fn convert_pattern<D: Driver>(pattern: &crate::Pattern<D>) -> Option<Pattern<D>>
         crate::Pattern::Tuple(elements) => {
             let patterns = elements
                 .iter()
-                .map(|pattern| convert_pattern(&pattern.item))
+                .map(|pattern| convert_pattern(driver, &pattern.item))
                 .collect::<Option<Vec<_>>>()?;
 
             Some(Pattern::Constructor(Constructor::Tuple, patterns))
         }
         crate::Pattern::Or { left, right } => {
-            let left = convert_pattern(&left.item)?;
-            let right = convert_pattern(&right.item)?;
+            let left = convert_pattern(driver, &left.item)?;
+            let right = convert_pattern(driver, &right.item)?;
 
             Some(Pattern::Or(vec![left, right]))
         }
-        crate::Pattern::Annotate { pattern, .. } => convert_pattern(&pattern.item),
+        crate::Pattern::Annotate { pattern, .. } => convert_pattern(driver, &pattern.item),
     }
 }
 

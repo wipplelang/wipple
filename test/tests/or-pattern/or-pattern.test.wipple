@@ -1,4 +1,4 @@
--- [should warn] -- FIXME: 'should compile' without warnings
+-- [should compile]
 
 show (when 3 {
   1 -> "oh no"

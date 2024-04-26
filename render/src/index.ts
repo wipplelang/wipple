@@ -880,7 +880,9 @@ export class Render {
                         severity = "error";
                         message =
                             patterns.length === 0
-                                ? `this code doesn't handle ${this.renderPattern(last, true)}`
+                                ? last.type === "binding"
+                                    ? "missing variable to handle remaining patterns"
+                                    : `this code doesn't handle ${this.renderPattern(last, true)}`
                                 : `this code doesn't handle ${patterns
                                       .map((pattern) => this.renderPattern(pattern, true))
                                       .join(", ")} or ${this.renderPattern(last, true)}`;
