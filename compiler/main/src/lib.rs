@@ -384,7 +384,7 @@ impl Driver {
         self.interface.language_declarations = lower_result.interface.language_declarations;
 
         for (path, item) in &lower_result.interface.constant_declarations {
-            let declaration = convert::typecheck::convert_constant_declaration(&self, item.clone());
+            let declaration = convert::typecheck::convert_constant_declaration(item.clone());
 
             self.interface
                 .constant_declarations
@@ -411,7 +411,7 @@ impl Driver {
                 None => continue, // ...here
             };
 
-            let declaration = convert::typecheck::convert_constant_declaration(&self, item);
+            let declaration = convert::typecheck::convert_constant_declaration(item);
 
             let typecheck_result = wipple_typecheck::resolve(
                 &self,

@@ -589,9 +589,6 @@ pub struct ConstantDeclaration<D: Driver> {
 
     /// The constant's declared type.
     pub r#type: WithInfo<D::Info, Type<D>>,
-
-    /// The constant's simplified type.
-    pub simplified_type: WithInfo<D::Info, Type<D>>,
 }
 
 /// An instance declaration.

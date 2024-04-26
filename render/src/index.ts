@@ -234,7 +234,7 @@ export class Render {
             }
             case "constant": {
                 const usedParameters = compiler.listTypeParameters(
-                    declaration.item.declaration.simplifiedType,
+                    declaration.item.declaration.type,
                 );
 
                 const usedBounds = declaration.item.declaration.bounds.filter((bound) =>
@@ -262,9 +262,9 @@ export class Render {
                     return `${declaration.item.name} :: ${typeFunction}${type}`;
                 } else {
                     const type = this.renderType(
-                        declaration.item.declaration.simplifiedType,
+                        declaration.item.declaration.type,
                         true,
-                        true,
+                        false,
                         false,
                     );
 

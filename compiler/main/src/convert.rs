@@ -691,7 +691,6 @@ pub mod typecheck {
     }
 
     pub fn convert_constant_declaration(
-        driver: &crate::Driver,
         constant_declaration: wipple_util::WithInfo<
             crate::Info,
             wipple_lower::ConstantDeclaration<crate::Driver>,
@@ -699,9 +698,6 @@ pub mod typecheck {
     ) -> wipple_util::WithInfo<Info, wipple_typecheck::ConstantDeclaration<crate::Driver>> {
         constant_declaration.map(|constant_declaration| {
             let r#type = convert_type(constant_declaration.r#type);
-
-            let mut simplified_type = r#type.clone();
-            wipple_typecheck::substitute_defaults(driver, simplified_type.as_mut());
 
             wipple_typecheck::ConstantDeclaration {
                 parameters: constant_declaration.parameters,
@@ -711,7 +707,6 @@ pub mod typecheck {
                     .map(convert_instance)
                     .collect(),
                 r#type,
-                simplified_type,
             }
         })
     }
