@@ -341,10 +341,13 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
             const docString = documentation.docs.split("\n\n");
 
+            const declarationString = props.render.renderDeclaration(declaration) ?? undefined;
+
             return {
                 name: declaration.item.name ?? code,
                 summary: docString[0],
                 doc: docString.slice(1).join("\n\n"),
+                declaration: declarationString,
             };
         },
         format: async (code) => {
@@ -548,7 +551,7 @@ const fetchDependencies = async (name: string): Promise<FetchDependenciesResult>
         (response) => response.json(),
     );
 
-const fetchBuiltinsHelp = async (): Promise<Record<string, string>> =>
+const fetchBuiltinsHelp = async (): Promise<Record<string, any>> =>
     fetch(new URL("/playground/library/help/builtins.json", window.location.origin)).then(
         (response) => response.json(),
     );

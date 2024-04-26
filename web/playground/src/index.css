@@ -50,7 +50,7 @@ code,
 }
 
 .help .markdown pre:has(code) {
-    @apply my-4 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg;
+    @apply my-4 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg overflow-x-scroll;
 }
 
 /* Animations */
