@@ -163,7 +163,7 @@ export const evaluate = async (
                         func.path,
                         func.ir,
                         func.label,
-                        inputs.toReversed(),
+                        [...inputs].reverse(),
                         { ...func.scope },
                         func.substitutions,
                         task,
