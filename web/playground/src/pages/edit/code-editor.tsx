@@ -546,7 +546,7 @@ const PaletteButton = (props: { setup?: string; items: PaletteItem[] }) => (
                 <div
                     key={item.title}
                     draggable
-                    className="flex flex-col items-start w-full"
+                    className="flex flex-col items-start w-full pointer-events-[bounding-box]"
                     onDragStart={(event) => {
                         event.dataTransfer.setData("wipple/snippet", item.code);
                         onDismiss();
