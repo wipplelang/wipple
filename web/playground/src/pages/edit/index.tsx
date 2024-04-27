@@ -27,6 +27,7 @@ import { nanoid } from "nanoid";
 import { useDebounceCallback } from "usehooks-ts";
 import { flushSync } from "react-dom";
 import { SetupIcon } from "./setup-icon";
+import QRCode from "react-qr-code";
 
 export const EditPage = () => {
     const params = useParams();
@@ -34,6 +35,7 @@ export const EditPage = () => {
     const selectedPageId = params.page;
 
     const navigate = useNavigate();
+    const { displayAlert } = useAlert();
 
     const [playground, setPlayground] = useState<Playground>();
 
@@ -86,15 +88,58 @@ export const EditPage = () => {
         }
     }, []);
 
+    const makePublic = useCallback(() => {
+        if (!playground) return;
+
+        setPlayground(
+            produce((playground) => {
+                if (!playground) return;
+
+                if (!playground.collaborators.includes("*")) {
+                    playground.collaborators.push("*");
+                }
+            }),
+        );
+
+        const playgroundId = playground?.id;
+
+        displayAlert(({ dismiss }) => (
+            <div className="flex flex-col items-stretch justify-center gap-4 p-2 text-center">
+                <p>
+                    Playground is public!
+                    <br />
+                    Share it with this QR code:
+                </p>
+
+                <QRCode value={`${window.origin}/playground/edit/${playgroundId}`} />
+
+                <Button role="primary" fill onClick={dismiss}>
+                    Done
+                </Button>
+            </div>
+        ));
+    }, [playground]);
+
     useEffect(() => {
         setPrimaryActions(
             playground?.name ? (
-                <button
+                <ContextMenuButton
                     className="flex flex-row items-center gap-4 -mx-2 -my-1 px-2 p-1 rounded-lg transition hover:bg-gray-200 dark:hover:bg-gray-800"
-                    onClick={rename}
+                    items={[
+                        {
+                            title: "Rename",
+                            icon: "edit",
+                            onClick: rename,
+                        },
+                        {
+                            title: "Make Public",
+                            icon: "public",
+                            onClick: makePublic,
+                        },
+                    ]}
                 >
                     <p className="text-lg font-semibold">{playground.name}</p>
-                </button>
+                </ContextMenuButton>
             ) : null,
         );
 
