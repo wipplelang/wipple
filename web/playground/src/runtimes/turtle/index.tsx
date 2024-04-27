@@ -10,6 +10,7 @@ import { Resizable } from "react-resizable";
 
 // @ts-ignore
 import RealTurtle from "real-turtle";
+import { animalImageUrl } from "../../pages/edit/assets/animal";
 
 export interface Settings {
     canvasWidth: number;
@@ -171,6 +172,10 @@ export const Turtle: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                     await turtle.setSpeed(value);
                     break;
                 }
+                case "animal": {
+                    await turtle.setImage(animalImageUrl(value));
+                    break;
+                }
                 default: {
                     throw new Error(`unsupported message: ${message}`);
                 }
@@ -309,6 +314,10 @@ export const paletteItems: PaletteItem[] = [
     {
         title: "speed",
         code: `speed [Dropdown (very-slow , slow , normal , fast , very-fast) normal]`,
+    },
+    {
+        title: "animal",
+        code: `animal [Animal "frog"]`,
     },
     {
         title: "repeat",

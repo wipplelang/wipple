@@ -1,3 +1,4 @@
+import { AnimalAsset } from "./animal";
 import { ColorAsset } from "./color";
 import { DropdownAsset } from "./dropdown";
 import { NoteAsset } from "./note";
@@ -9,6 +10,7 @@ export const isAsset = (value: string) =>
 
 export type Asset =
     | { type: "color"; color: string }
+    | { type: "animal"; animal: string }
     | { type: "dropdown"; selection: string; options: string[] }
     | { type: "note"; note: string };
 
@@ -24,6 +26,10 @@ export const getAsset = (code: string): Asset | undefined => {
         case "Color": {
             value = value.slice(1, value.length - 1); // remove quotes
             return { type: "color", color: value };
+        }
+        case "Animal": {
+            value = value.slice(1, value.length - 1); // remove quotes
+            return { type: "animal", animal: value };
         }
         case "Dropdown": {
             const typeMatch = value.match(/\((?<options>.+)\) (?<selection>.+)/);
@@ -49,6 +55,8 @@ export const getAsset = (code: string): Asset | undefined => {
 
 export const colorAsset = (color: string) => `[Color "${color}"]`;
 
+export const animalAsset = (animal: string) => `[Animal "${animal}"]`;
+
 export const dropdownAsset = (selection: string, options: string[]) =>
     `[Dropdown (${options.join(" , ")}) ${selection}]`;
 
@@ -68,6 +76,16 @@ export const Asset = (props: {
                 <ColorAsset
                     disabled={props.disabled}
                     color={asset.color}
+                    onClick={() => props.onClick?.(asset)}
+                />
+            );
+            break;
+        }
+        case "animal": {
+            content = (
+                <AnimalAsset
+                    disabled={props.disabled}
+                    animal={asset.animal}
                     onClick={() => props.onClick?.(asset)}
                 />
             );

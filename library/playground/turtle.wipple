@@ -94,3 +94,13 @@ speed :: Speed -> ()
 speed : (Speed value) -> runtime-message "speed" value
 
 instance (Highlight speed (Highlight-Category "control-flow" ; Highlight-Icon "speed"))
+
+-- An animal to use instead of the turtle.
+Animal : type Text
+instance (Describe-Type Animal "an animal")
+
+-- Change the animal being displayed.
+animal :: Animal -> ()
+animal : (Animal name) -> runtime-message "animal" name
+
+instance (Highlight animal (Highlight-Category "turtle-pen" ; Highlight-Icon "mood"))

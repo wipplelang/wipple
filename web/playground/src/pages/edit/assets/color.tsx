@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Tooltip, useAlert } from "../../../components";
+import { Tooltip } from "../../../components";
 import namer from "color-namer";
 import {
     slate,
