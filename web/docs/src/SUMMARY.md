@@ -6,7 +6,7 @@
 
 -   [Hello, world!](./tour/hello-world.md)
 -   [Variables](./tour/variables.md)
--   [Blocks and loops](./tour/blocks-and-loops.md)
+-   [Blocks and control flow](./tour/blocks-and-control-flow.md)
 -   [Functions](./tour/functions.md)
 -   [Types](./tour/types.md)
 -   [Patterns](./tour/patterns.md)
