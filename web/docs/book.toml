@@ -8,4 +8,5 @@ title = "Wipple Documentation"
 
 [output.html]
 site-url = "/docs/"
+no-section-label = true
 additional-js = ["js/custom.js"]
