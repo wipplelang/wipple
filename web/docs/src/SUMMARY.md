@@ -8,7 +8,7 @@
 -   [Variables](./tour/variables.md)
 -   [Blocks and control flow](./tour/blocks-and-control-flow.md)
 -   [Functions](./tour/functions.md)
--   [Types](./tour/types.md)
+-   [Constants and types](./tour/constants-and-types.md)
 -   [Patterns](./tour/patterns.md)
 -   [Type functions and traits](./tour/type-functions-and-traits.md)
 -   [Advanced functions](./tour/advanced-functions.md)
