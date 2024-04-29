@@ -20,6 +20,15 @@ tasks:
         cmds:
             - npm test -- {{.CLI_ARGS}}
 
+    doctest:
+        run: once
+        # deps:
+        # - cli:build
+        # - base:compile
+        cmds:
+            - rm -rf .wipple/doctest && mkdir -p .wipple/doctest
+            - for f in web/docs/src/tour/*.md; do wipple doctest $f --dependency .wipple/base.wippleinterface --link .wipple/base.wipplelibrary > .wipple/doctest/$(basename $f).xml; done
+
     compile:
         run: once
         deps:

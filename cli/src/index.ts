@@ -14,7 +14,16 @@ import {
 } from "cmd-ts";
 import { File } from "cmd-ts/batteries/fs";
 import * as compiler from "wipple-compiler";
-import { evaluate, InterpreterError, IoRequest } from "wipple-interpreter";
+import { evaluate, InterpreterError, IoRequest, Executable } from "wipple-interpreter";
+import { Render } from "wipple-render";
+import builder from "junit-report-builder";
+import { marked } from "marked";
+
+interface DoctestItem {
+    file: string;
+    code: string;
+    output: string | null;
+}
 
 Error.stackTraceLimit = Infinity;
 
@@ -57,7 +66,7 @@ const app = subcommands({
                 const result = compiler.compile(sources, dependencies);
 
                 if (result.diagnostics.length > 0) {
-                    console.log(JSON.stringify(result.diagnostics, null, 4));
+                    console.error(renderDiagnostics(result.diagnostics, result.interface));
                 }
 
                 if (outputInterfacePath) {
@@ -104,7 +113,7 @@ const app = subcommands({
                 const result = compiler.compile(sources, dependencies);
 
                 if (result.diagnostics.length > 0) {
-                    console.log(JSON.stringify(result.diagnostics, null, 4));
+                    console.error(renderDiagnostics(result.diagnostics, result.interface));
                     process.exit(1);
                 }
 
@@ -153,43 +162,150 @@ const app = subcommands({
                     fs.readFileSync(executablePath, "utf8").replace(shebang, ""),
                 );
 
-                const handleIo = async (request: IoRequest) => {
-                    switch (request.type) {
-                        case "display": {
-                            console.log(request.message);
-                            request.completion();
-                            break;
-                        }
-                        case "prompt": {
-                            throw new Error("TODO");
-                        }
-                        case "choice": {
-                            throw new Error("TODO");
-                        }
-                        case "ui": {
-                            throw new InterpreterError(
-                                "UI is not supported outside the Wipple Playground",
-                            );
-                        }
-                        case "sleep": {
-                            setTimeout(request.completion, request.ms);
-                            break;
-                        }
-                    }
-                };
+                await runExecutable(executable);
+            },
+        }),
+        doctest: command({
+            name: "doctest",
+            args: {
+                dependencyInterfacePath: option({ long: "dependency", type: optional(File) }),
+                dependencyLibrariesPaths: multioption({ long: "link", type: array(File) }),
+                filePaths: restPositionals({ type: File }),
+            },
+            handler: async ({ dependencyInterfacePath, dependencyLibrariesPaths, filePaths }) => {
+                const dependencies: compiler.Interface | null = dependencyInterfacePath
+                    ? JSON.parse(fs.readFileSync(dependencyInterfacePath, "utf8"))
+                    : null;
 
-                try {
-                    await evaluate(executable, {
-                        debug: process.env.WIPPLE_DEBUG_INTERPRETER != null,
-                        gc: () => {},
-                        io: handleIo,
+                const libraries: compiler.linker_UnlinkedLibrary[] = dependencyLibrariesPaths.map(
+                    (path) => JSON.parse(fs.readFileSync(path, "utf8")),
+                );
+
+                const items = filePaths.flatMap((filePath) => {
+                    const file = fs.readFileSync(filePath, "utf8");
+
+                    filePath = `${path.basename(path.dirname(filePath))}/${path.basename(
+                        filePath,
+                    )}`;
+
+                    const codeBlocks = marked.lexer(file).flatMap((token) => {
+                        if (token.type === "code") {
+                            return [
+                                {
+                                    lang: token.lang as string,
+                                    text: token.text as string,
+                                },
+                            ];
+                        }
+
+                        return [];
                     });
-                } catch (error) {
-                    if (error instanceof InterpreterError) {
-                        console.error(error.message);
-                    } else {
-                        throw error;
+
+                    const items: DoctestItem[] = [];
+                    while (codeBlocks.length > 0) {
+                        const { lang, text: code } = codeBlocks.shift()!;
+                        if (lang === "wipple") {
+                            const next = codeBlocks.shift();
+                            if (next && next.lang === "wipple-output") {
+                                items.push({
+                                    file: filePath,
+                                    code,
+                                    output: next.text,
+                                });
+                            } else if (next && next.lang === "wipple") {
+                                items.push({
+                                    file: filePath,
+                                    code,
+                                    output: null,
+                                });
+
+                                codeBlocks.unshift(next);
+                            } else {
+                                items.push({
+                                    file: filePath,
+                                    code,
+                                    output: null,
+                                });
+                            }
+                        }
                     }
+
+                    return items;
+                });
+
+                const testBuilder = builder.newBuilder();
+                testBuilder.testSuite().name("doctest");
+
+                let success = true;
+                for (let { file, code, output: expectedOutput } of items) {
+                    code = code
+                        .split("\n")
+                        .map((line) => {
+                            const match = /^# *(.*)$/.exec(line);
+                            return match ? match[1] : line;
+                        })
+                        .join("\n");
+
+                    const sources = [
+                        {
+                            path: "example",
+                            visiblePath: "example",
+                            code,
+                        },
+                    ];
+
+                    let output = "";
+
+                    const result = compiler.compile(sources, dependencies);
+
+                    if (result.diagnostics.length > 0) {
+                        output += renderDiagnostics(result.diagnostics, result.interface) + "\n";
+                    }
+
+                    const linkOutput = compiler.link([...libraries, result.library]);
+
+                    if (linkOutput) {
+                        await runExecutable(
+                            linkOutput,
+                            (message) => {
+                                output += message + "\n";
+                            },
+                            (message) => {
+                                output += `error: ${message}\n`;
+                            },
+                        );
+                    }
+
+                    if (expectedOutput == null && result.diagnostics.length > 0) {
+                        testBuilder
+                            .testCase()
+                            .name(file)
+                            .failure("compilation failed with no expected output");
+
+                        success = false;
+                        continue;
+                    } else if (expectedOutput) {
+                        output = output.trim();
+                        expectedOutput = expectedOutput.trim();
+
+                        if (output !== expectedOutput) {
+                            testBuilder
+                                .testCase()
+                                .name(file)
+                                .failure(`expected:\n${expectedOutput}\n\nactual:\n${output}`);
+
+                            success = false;
+                            continue;
+                        }
+                    }
+
+                    testBuilder.testCase().name(file);
+                }
+
+                console.log(testBuilder.build());
+
+                if (!success) {
+                    process.exit(1);
                 }
             },
         }),
@@ -197,3 +313,65 @@ const app = subcommands({
 });
 
 run(app, process.argv.slice(2));
+
+const renderDiagnostics = (
+    diagnostics: compiler.WithInfo<compiler.Info, compiler.Diagnostic>[],
+    interface_: compiler.Interface,
+) => {
+    const render = new Render();
+    render.update(interface_, []);
+
+    return diagnostics
+        .flatMap((diagnostic) => {
+            const renderedDiagnostic = render.renderDiagnostic(diagnostic);
+            if (!renderedDiagnostic) {
+                return [];
+            }
+
+            return [render.renderDiagnosticToDebugString(renderedDiagnostic)];
+        })
+        .join("\n");
+};
+
+const runExecutable = async (
+    executable: Executable,
+    handleOutput: (message: string) => void = console.log,
+    handleError: (message: string) => void = console.error,
+) => {
+    const handleIo = async (request: IoRequest) => {
+        switch (request.type) {
+            case "display": {
+                handleOutput(request.message);
+                request.completion();
+                break;
+            }
+            case "prompt": {
+                throw new Error("TODO");
+            }
+            case "choice": {
+                throw new Error("TODO");
+            }
+            case "ui": {
+                throw new InterpreterError("UI is not supported outside the Wipple Playground");
+            }
+            case "sleep": {
+                setTimeout(request.completion, request.ms);
+                break;
+            }
+        }
+    };
+
+    try {
+        await evaluate(executable, {
+            debug: process.env.WIPPLE_DEBUG_INTERPRETER != null,
+            gc: () => {},
+            io: handleIo,
+        });
+    } catch (error) {
+        if (error instanceof InterpreterError) {
+            handleError(error.message);
+        } else {
+            throw error;
+        }
+    }
+};

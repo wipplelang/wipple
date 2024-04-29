@@ -10,3 +10,6 @@ title = "Wipple Documentation"
 site-url = "/docs/"
 no-section-label = true
 additional-js = ["js/custom.js"]
+
+[output.html.code.hidelines]
+wipple = "#"
