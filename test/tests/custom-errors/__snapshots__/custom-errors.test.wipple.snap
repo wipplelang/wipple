@@ -2,6 +2,6 @@
 
 exports[`custom-errors.test.wipple 1`] = `
 [
-  "custom-errors/custom-errors.test.wipple:14:0: error: expected a distance in \`pixels\`",
+  "custom-errors/custom-errors.test.wipple:15:1: error: expected a distance in \`pixels\`",
 ]
 `;

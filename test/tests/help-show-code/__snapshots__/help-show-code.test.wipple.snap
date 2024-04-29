@@ -2,6 +2,6 @@
 
 exports[`help-show-code.test.wipple 1`] = `
 [
-  "help-show-code/help-show-code.test.wipple:13:0: error: \`foo\` is not compatible with \`bar\`",
+  "help-show-code/help-show-code.test.wipple:14:1: error: \`foo\` is not compatible with \`bar\`",
 ]
 `;

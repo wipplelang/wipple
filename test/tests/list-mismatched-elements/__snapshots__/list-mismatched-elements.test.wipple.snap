@@ -2,7 +2,7 @@
 
 exports[`list-mismatched-elements.test.wipple 1`] = `
 [
-  "list-mismatched-elements/list-mismatched-elements.test.wipple:2:14: error: expected a number here, but found a piece of text",
-  "list-mismatched-elements/list-mismatched-elements.test.wipple:2:21: error: expected a number here, but found \`()\`",
+  "list-mismatched-elements/list-mismatched-elements.test.wipple:3:15: error: expected a number here, but found a piece of text",
+  "list-mismatched-elements/list-mismatched-elements.test.wipple:3:22: error: expected a number here, but found \`()\`",
 ]
 `;

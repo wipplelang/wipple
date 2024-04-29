@@ -2,8 +2,8 @@
 
 exports[`unresolved-type-multiple-parameters.test.wipple 1`] = `
 [
-  "unresolved-type-multiple-parameters/unresolved-type-multiple-parameters.test.wipple:16:4: error: could not determine what kind of value this code produces",
-  "unresolved-type-multiple-parameters/unresolved-type-multiple-parameters.test.wipple:17:4: error: could not determine what kind of value this code produces",
-  "unresolved-type-multiple-parameters/unresolved-type-multiple-parameters.test.wipple:8:4: error: could not determine what kind of value this code produces",
+  "unresolved-type-multiple-parameters/unresolved-type-multiple-parameters.test.wipple:17:5: error: could not determine what kind of value this code produces",
+  "unresolved-type-multiple-parameters/unresolved-type-multiple-parameters.test.wipple:18:5: error: could not determine what kind of value this code produces",
+  "unresolved-type-multiple-parameters/unresolved-type-multiple-parameters.test.wipple:9:5: error: could not determine what kind of value this code produces",
 ]
 `;

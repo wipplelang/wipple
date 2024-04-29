@@ -2,6 +2,6 @@
 
 exports[`bounds-are-one-way.test.wipple 1`] = `
 [
-  "bounds-are-one-way/bounds-are-one-way.test.wipple:5:4: error: \`T\` requires \`(T Number)\`",
+  "bounds-are-one-way/bounds-are-one-way.test.wipple:6:5: error: \`T\` requires \`(T Number)\`",
 ]
 `;

@@ -2,6 +2,6 @@
 
 exports[`constant-captured-variables.test.wipple 1`] = `
 [
-  "constant-captured-variables/constant-captured-variables.test.wipple:6:12: error: can't find \`n\`",
+  "constant-captured-variables/constant-captured-variables.test.wipple:7:13: error: can't find \`n\`",
 ]
 `;
