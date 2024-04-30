@@ -206,26 +206,39 @@ const app = subcommands({
                         const { lang, text: code } = codeBlocks.shift()!;
                         if (lang === "wipple") {
                             const next = codeBlocks.shift();
-                            if (next && next.lang === "wipple-output") {
-                                items.push({
-                                    file: filePath,
-                                    code,
-                                    output: next.text,
-                                });
-                            } else if (next && next.lang === "wipple") {
-                                items.push({
-                                    file: filePath,
-                                    code,
-                                    output: null,
-                                });
+                            if (!next) break;
+                            if (!next.lang) continue;
 
-                                codeBlocks.unshift(next);
-                            } else {
-                                items.push({
-                                    file: filePath,
-                                    code,
-                                    output: null,
-                                });
+                            switch (next.lang) {
+                                case "wipple-output": {
+                                    items.push({
+                                        file: filePath,
+                                        code,
+                                        output: next.text,
+                                    });
+
+                                    break;
+                                }
+                                case "wipple": {
+                                    items.push({
+                                        file: filePath,
+                                        code,
+                                        output: null,
+                                    });
+
+                                    codeBlocks.unshift(next);
+
+                                    break;
+                                }
+                                default: {
+                                    items.push({
+                                        file: filePath,
+                                        code,
+                                        output: null,
+                                    });
+
+                                    break;
+                                }
                             }
                         }
                     }
@@ -260,20 +273,20 @@ const app = subcommands({
 
                     if (result.diagnostics.length > 0) {
                         output += renderDiagnostics(result.diagnostics, result.interface) + "\n";
-                    }
+                    } else {
+                        const linkOutput = compiler.link([...libraries, result.library]);
 
-                    const linkOutput = compiler.link([...libraries, result.library]);
-
-                    if (linkOutput) {
-                        await runExecutable(
-                            linkOutput,
-                            (message) => {
-                                output += message + "\n";
-                            },
-                            (message) => {
-                                output += `error: ${message}\n`;
-                            },
-                        );
+                        if (linkOutput) {
+                            await runExecutable(
+                                linkOutput,
+                                (message) => {
+                                    output += message + "\n";
+                                },
+                                (message) => {
+                                    output += `error: ${message}\n`;
+                                },
+                            );
+                        }
                     }
 
                     if (expectedOutput == null && result.diagnostics.length > 0) {
