@@ -110,4 +110,4 @@ show (42 :: Number)
 42
 ```
 
-Usually this is unnecessary, but in some cases, Wipple's type inference algorithm needs help. You'll see an example of type annotations being used for this purpose in [Lists and sequences](./lists-and-sequences.md).
+Usually this is unnecessary, but in some cases, Wipple's type inference algorithm needs help. You'll see an example of type annotations being used for this purpose in [Type functions and traits](./type-functions-and-traits.md).

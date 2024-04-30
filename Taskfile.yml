@@ -24,7 +24,7 @@ tasks:
         run: once
         cmds:
             - rm -rf .wipple/doctest && mkdir -p .wipple/doctest
-            - for f in web/docs/src/tour/*.md; do wipple doctest $f --dependency .wipple/base.wippleinterface --link .wipple/base.wipplelibrary > .wipple/doctest/$(basename $f).xml; done
+            - for f in web/docs/src/tour/*.md; do echo -e "testing $(basename $f)" && wipple doctest $f --dependency .wipple/base.wippleinterface --link .wipple/base.wipplelibrary > .wipple/doctest/$(basename $f).xml; done
 
     compile:
         run: once
