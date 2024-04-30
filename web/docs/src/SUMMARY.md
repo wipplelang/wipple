@@ -13,7 +13,6 @@
 -   [Type functions and traits](./tour/type-functions-and-traits.md)
 -   [Advanced functions](./tour/advanced-functions.md)
 -   [Lists and sequences](./tour/lists-and-sequences.md)
--   [Advanced types and traits](./tour/advanced-types-and-traits.md)
 -   [Conventions](./tour/conventions.md)
 
 # Advanced guides
