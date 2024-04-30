@@ -241,7 +241,7 @@ const app = subcommands({
                     code = code
                         .split("\n")
                         .map((line) => {
-                            const match = /^# *(.*)$/.exec(line);
+                            const match = /^#(.*)$/.exec(line);
                             return match ? match[1] : line;
                         })
                         .join("\n");

@@ -56,10 +56,10 @@ Sport : type {
 Any block containing only variables is assumed to be a structure value:
 
 ```wipple
-# Sport : type {
-#     name :: Text
-#     players :: Number
-# }
+#Sport : type {
+#    name :: Text
+#    players :: Number
+#}
 basketball :: Sport
 basketball : {
     name : "Basketball"
@@ -70,10 +70,10 @@ basketball : {
 When you define the `Sport` type, Wipple also generates a function `Sport` that accepts the block and returns it as-is. This is useful because it allows Wipple to infer the type of the structure without needing a type annotation:
 
 ```wipple
-# Sport : type {
-#     name :: Text
-#     players :: Number
-# }
+#Sport : type {
+#    name :: Text
+#    players :: Number
+#}
 basketball : Sport {
     name : "Basketball"
     players : 5
@@ -83,15 +83,15 @@ basketball : Sport {
 To get the values out of a structure, you can put a block on the left-hand side of the colon (`:`), listing the field(s)' names and the corresponding variable names.
 
 ```wipple
-# Sport : type {
-#     name :: Text
-#     players :: Number
-# }
+#Sport : type {
+#    name :: Text
+#    players :: Number
+#}
 #
-# basketball : Sport {
-#     name : "Basketball"
-#     players : 5
-# }
+#basketball : Sport {
+#    name : "Basketball"
+#    players : 5
+#}
 {name : sport-name} : basketball
 show sport-name
 ```
