@@ -258,7 +258,13 @@ export const intrinsics: Record<string, Intrinsic> = {
         return unit;
     },
     "number-to-text": async ([number], expectedTypeDescriptor, context) => {
-        return jsToText(expectedTypeDescriptor, numberToJs(number, context).toString(), context);
+        const jsNumber = numberToJs(number, context);
+
+        return jsToText(
+            expectedTypeDescriptor,
+            jsNumber.isFinite() ? jsNumber.toString() : "undefined",
+            context,
+        );
     },
     "text-to-number": async ([text], expectedTypeDescriptor, context) => {
         if (expectedTypeDescriptor.type !== "named") {
@@ -365,7 +371,7 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         return jsToBoolean(
             expectedTypeDescriptor,
-            (leftNumber.isNaN() && rightNumber.isNaN()) || leftNumber.eq(rightNumber),
+            (!leftNumber.isFinite() && !rightNumber.isFinite()) || leftNumber.eq(rightNumber),
             context,
         );
     },
@@ -626,7 +632,7 @@ const jsToNumber = (
 ): TypedValue => ({
     type: "number",
     typeDescriptor,
-    value: number,
+    value: number.isFinite() ? number : undefined,
 });
 
 const numberToJs = (value: TypedValue, context: Context): Decimal => {
@@ -634,7 +640,7 @@ const numberToJs = (value: TypedValue, context: Context): Decimal => {
         throw context.error("expected number");
     }
 
-    return value.value;
+    return value.value ? value.value : new Decimal(NaN);
 };
 
 const jsToBoolean = (

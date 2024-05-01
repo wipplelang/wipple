@@ -18,7 +18,7 @@ export type TypedValue = Value & { typeDescriptor: TypeDescriptor };
 type Value =
     | {
           type: "number";
-          value: Decimal;
+          value: Decimal | undefined;
       }
     | {
           type: "text";
