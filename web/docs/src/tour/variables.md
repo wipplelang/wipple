@@ -68,3 +68,13 @@ show n
 ```wipple-output
 example:1:5: error: can't find `n`
 ```
+
+Sometimes, you need to change the value of an existing variable. You can do this by putting an exclamation mark (`!`) after the variable name:
+
+```wipple
+n : 0
+n! : n + 1
+show n
+```
+
+Now, any code that refers to `n` will observe the updated value.

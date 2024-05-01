@@ -12,7 +12,7 @@
 -   [Patterns](./tour/patterns.md)
 -   [Type functions and traits](./tour/type-functions-and-traits.md)
 -   [Modeling data](./tour/modeling-data.md)
--   [Lists and sequences](./tour/lists-and-sequences.md)
+-   [Collections and sequences](./tour/collections-and-sequences.md)
 -   [Conventions](./tour/conventions.md)
 
 # Advanced guides
