@@ -38,8 +38,20 @@ jobs:
                   EOF
 
             - run: task install-dependencies
+
             - run: task cli:build
+
             - run: task test
+
+            - run: task doctest
+
+            - uses: mikepenz/action-junit-report@v4
+              if: success() || failure() # always run even if the previous step fails
+              with:
+                  check_name: "Doctests"
+                  include_passed: true
+                  report_paths: ".wipple/doctest/*.xml"
+
             - run: task web:build
 
             - uses: actions/upload-artifact@master

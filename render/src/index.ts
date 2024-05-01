@@ -1167,7 +1167,10 @@ export class Render {
     }
 
     renderDiagnosticToDebugString(diagnostic: RenderedDiagnostic): string {
-        return `${diagnostic.location.visiblePath}:${diagnostic.location.start.line}:${diagnostic.location.start.column}: ${diagnostic.severity}: ${diagnostic.message}`;
+        const line = diagnostic.location.start.line + 1;
+        const column = diagnostic.location.start.column + 1;
+
+        return `${diagnostic.location.visiblePath}:${line}:${column}: ${diagnostic.severity}: ${diagnostic.message}`;
     }
 
     renderDocumentation(

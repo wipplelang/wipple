@@ -2,8 +2,8 @@
 
 exports[`redundant-case.test.wipple 1`] = `
 [
-  "redundant-case/redundant-case.test.wipple:4:2: warning: this pattern is unnecessary because it is already handled above",
-  "redundant-case/redundant-case.test.wipple:6:2: warning: this pattern is unnecessary because it is already handled above",
+  "redundant-case/redundant-case.test.wipple:5:3: warning: this pattern is unnecessary because it is already handled above",
+  "redundant-case/redundant-case.test.wipple:7:3: warning: this pattern is unnecessary because it is already handled above",
 ]
 `;
 

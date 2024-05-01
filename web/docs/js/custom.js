@@ -2,7 +2,7 @@ hljs.registerLanguage("wipple", (hljs) => ({
     name: "Wipple",
     aliases: ["wipple"],
     keywords: {
-        keyword: "_ ! when type trait instance intrinsic infer do default",
+        keyword: "_ ! when where type trait instance intrinsic infer do default",
     },
     contains: [
         {

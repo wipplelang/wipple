@@ -2,7 +2,7 @@
 
 exports[`custom-errors-formatting.test.wipple 1`] = `
 [
-  "custom-errors-formatting/custom-errors-formatting.test.wipple:18:0: error: \`Carnivore\`s do not eat \`Plants\`",
-  "custom-errors-formatting/custom-errors-formatting.test.wipple:19:0: error: \`Herbivore\`s do not eat \`Meat\`",
+  "custom-errors-formatting/custom-errors-formatting.test.wipple:19:1: error: \`Carnivore\`s do not eat \`Plants\`",
+  "custom-errors-formatting/custom-errors-formatting.test.wipple:20:1: error: \`Herbivore\`s do not eat \`Meat\`",
 ]
 `;

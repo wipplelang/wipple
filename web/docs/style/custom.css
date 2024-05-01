@@ -1,0 +1,23 @@
+@import url("https://rsms.me/inter/inter.css");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap");
+
+:root {
+    font-family: Inter, sans-serif;
+    font-feature-settings: "liga" 1, "calt" 1;
+}
+
+@supports (font-variation-settings: normal) {
+    :root {
+        font-family: InterVariable, sans-serif;
+    }
+}
+
+:root {
+    --mono-font: "JetBrains Mono", monospace;
+}
+
+pre,
+code {
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0;
+}

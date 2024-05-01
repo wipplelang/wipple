@@ -29,4 +29,19 @@ intrinsic "trait" "by" : By
     step : step
 }
 
--- TODO: 'As-Sequence' and 'slice'
+N where (Add N N N) (Order N) => instance (As-Sequence (Stride N) N) : {
+    min : min
+    max : max
+    step : step
+} -> do {
+    current : min
+    sequence {
+        if (current < max) {
+            n : current
+            current! : current + step
+            Some n
+        } {
+            None
+        }
+    }
+}

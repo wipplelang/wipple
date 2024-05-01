@@ -2,6 +2,6 @@
 
 exports[`mismatched-types.test.wipple 1`] = `
 [
-  "mismatched-types/mismatched-types.test.wipple:2:1: error: expected a piece of text here, but found a number",
+  "mismatched-types/mismatched-types.test.wipple:3:2: error: expected a piece of text here, but found a number",
 ]
 `;
