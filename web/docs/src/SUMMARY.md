@@ -11,7 +11,7 @@
 -   [Constants and types](./tour/constants-and-types.md)
 -   [Patterns](./tour/patterns.md)
 -   [Type functions and traits](./tour/type-functions-and-traits.md)
--   [Advanced functions](./tour/advanced-functions.md)
+-   [Modeling data](./tour/modeling-data.md)
 -   [Lists and sequences](./tour/lists-and-sequences.md)
 -   [Conventions](./tour/conventions.md)
 
