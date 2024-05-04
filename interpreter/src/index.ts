@@ -9,9 +9,9 @@ Decimal.set({ modulo: Decimal.EUCLID });
 
 export type Executable = compiler.linker_Executable;
 export type Item = compiler.linker_LinkedItem;
-export type TypeDescriptor = compiler.codegen_TypeDescriptor;
-export type Instruction = compiler.codegen_Instruction;
-export type TypedInstruction = compiler.codegen_TypedInstruction;
+export type TypeDescriptor = compiler.ir_TypeDescriptor;
+export type Instruction = compiler.ir_Instruction;
+export type TypedInstruction = compiler.ir_TypedInstruction;
 
 export type TypedValue = Value & { typeDescriptor: TypeDescriptor };
 

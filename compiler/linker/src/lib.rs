@@ -7,7 +7,7 @@ use ts_rs::TS;
 use wipple_util::WithInfo;
 
 /// Provides the linker with information about the program.
-pub trait Driver: wipple_codegen::Driver {}
+pub trait Driver: wipple_ir::Driver {}
 
 impl Driver for wipple_util::TsAny {}
 
@@ -48,7 +48,7 @@ pub struct UnlinkedItem<D: Driver> {
     pub expression: WithInfo<D::Info, wipple_typecheck::TypedExpression<D>>,
 
     /// The compiled IR.
-    pub ir: Option<Vec<Vec<wipple_codegen::Instruction<D>>>>,
+    pub ir: Option<Vec<Vec<wipple_ir::Instruction<D>>>>,
 }
 
 /// A linked executable.
@@ -87,10 +87,10 @@ pub struct LinkedItem<D: Driver> {
     pub parameters: Vec<D::Path>,
 
     /// The item's type descriptor.
-    pub type_descriptor: wipple_codegen::TypeDescriptor<D>,
+    pub type_descriptor: wipple_ir::TypeDescriptor<D>,
 
     /// The compiled IR.
-    pub ir: Vec<Vec<wipple_codegen::Instruction<D>>>,
+    pub ir: Vec<Vec<wipple_ir::Instruction<D>>>,
 }
 
 /// The linked executable, or the linking error.
@@ -150,7 +150,7 @@ pub fn link<D: Driver>(
 fn convert_item<D: Driver>(item: UnlinkedItem<D>) -> Result<LinkedItem<D>, D> {
     Ok(LinkedItem {
         parameters: item.parameters,
-        type_descriptor: wipple_codegen::type_descriptor(&item.expression.item.r#type).ok_or_else(
+        type_descriptor: wipple_ir::type_descriptor(&item.expression.item.r#type).ok_or_else(
             || WithInfo {
                 info: item.expression.info.clone(),
                 item: Error::TypeDescriptor,

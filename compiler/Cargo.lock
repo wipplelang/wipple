@@ -462,17 +462,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
-name = "wipple-codegen"
-version = "0.0.0"
-dependencies = [
- "derivative",
- "serde",
- "ts-rs",
- "wipple-typecheck",
- "wipple-util",
-]
-
-[[package]]
 name = "wipple-compiler"
 version = "0.0.0"
 dependencies = [
@@ -485,10 +474,21 @@ dependencies = [
  "serde_json",
  "ts-rs",
  "wasm-bindgen",
- "wipple-codegen",
+ "wipple-ir",
  "wipple-linker",
  "wipple-lower",
  "wipple-syntax",
+ "wipple-typecheck",
+ "wipple-util",
+]
+
+[[package]]
+name = "wipple-ir"
+version = "0.0.0"
+dependencies = [
+ "derivative",
+ "serde",
+ "ts-rs",
  "wipple-typecheck",
  "wipple-util",
 ]
@@ -500,7 +500,7 @@ dependencies = [
  "derivative",
  "serde",
  "ts-rs",
- "wipple-codegen",
+ "wipple-ir",
  "wipple-typecheck",
  "wipple-util",
 ]

@@ -100,7 +100,7 @@ pub type Label = usize;
 )]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound = "")]
-#[ts(export, rename = "codegen_Instruction", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
+#[ts(export, rename = "ir_Instruction", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Instruction<D: Driver> {
     /// (Stack management) Duplicate the top of the stack.
     Copy,
@@ -177,7 +177,7 @@ pub enum Instruction<D: Driver> {
 )]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound = "")]
-#[ts(export, rename = "codegen_TypedInstruction", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
+#[ts(export, rename = "ir_TypedInstruction", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum TypedInstruction<D: Driver> {
     /// (Consuming) An intrinsic provided by the runtime with _n_ inputs.
     Intrinsic(String, u32),
@@ -227,7 +227,7 @@ pub enum TypedInstruction<D: Driver> {
 )]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound = "")]
-#[ts(export, rename = "codegen_TypeDescriptor", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
+#[ts(export, rename = "ir_TypeDescriptor", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum TypeDescriptor<D: Driver> {
     /// A type parameter. This will only occur in the type descriptor for a
     /// generic item, never in a value.

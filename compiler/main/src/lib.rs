@@ -12,7 +12,7 @@ use std::{
 use ts_rs::TS;
 use wasm_bindgen::prelude::wasm_bindgen;
 
-pub use wipple_codegen as codegen;
+pub use wipple_ir as ir;
 pub use wipple_linker as linker;
 pub use wipple_lower as lower;
 pub use wipple_syntax as syntax;
@@ -442,14 +442,14 @@ impl Driver {
                     .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            let codegen_result = codegen::compile(&self, path.clone(), item.as_ref());
+            let ir_result = ir::compile(&self, path.clone(), item.as_ref());
 
             self.library.items.insert(
                 path,
                 Item {
                     parameters: declaration.item.parameters,
                     expression: item,
-                    ir: codegen_result.map(|result| result.labels),
+                    ir: ir_result.map(|result| result.labels),
                 },
             );
         }
@@ -489,14 +489,14 @@ impl Driver {
                     .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            let codegen_result = codegen::compile(&self, path.clone(), item.as_ref());
+            let ir_result = ir::compile(&self, path.clone(), item.as_ref());
 
             self.library.items.insert(
                 path,
                 Item {
                     parameters: declaration.item.parameters,
                     expression: item,
-                    ir: codegen_result.map(|result| result.labels),
+                    ir: ir_result.map(|result| result.labels),
                 },
             );
         }
@@ -532,13 +532,12 @@ impl Driver {
                         .map(|error| error.map(Diagnostic::Typecheck)),
                 );
 
-                let codegen_result =
-                    codegen::compile(&self, lower::Path::top_level(), item.as_ref());
+                let ir_result = ir::compile(&self, lower::Path::top_level(), item.as_ref());
 
                 self.library.code.push(Item {
                     parameters: Vec::new(),
                     expression: item,
-                    ir: codegen_result.map(|result| result.labels),
+                    ir: ir_result.map(|result| result.labels),
                 });
             }
         }
@@ -787,7 +786,7 @@ impl wipple_typecheck::Driver for Driver {
     }
 }
 
-impl wipple_codegen::Driver for Driver {
+impl wipple_ir::Driver for Driver {
     fn number_type(&self) -> Option<Self::Path> {
         self.interface.language_declarations.get("number").cloned()
     }

@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "codegen",
+    "ir",
     "linker",
     "lower",
     "main",
