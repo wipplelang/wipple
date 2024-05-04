@@ -293,7 +293,7 @@ const app = subcommands({
                         testBuilder
                             .testCase()
                             .name(file)
-                            .failure("compilation failed with no expected output");
+                            .failure(`compilation failed with no expected output:\n${output}`);
 
                         success = false;
                         continue;

@@ -13,6 +13,7 @@
 -   [Type functions and traits](./tour/type-functions-and-traits.md)
 -   [Modeling data](./tour/modeling-data.md)
 -   [Collections and sequences](./tour/collections-and-sequences.md)
+-   [API design](./tour/api-design.md)
 
 # Advanced guides
 
