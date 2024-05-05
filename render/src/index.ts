@@ -202,7 +202,7 @@ export class Render {
 
                     const type = this.renderType(
                         declaration.item.declaration.type,
-                        false,
+                        true,
                         false,
                         false,
                     );
@@ -353,7 +353,7 @@ export class Render {
                                   .map((parameter) => render(parameter, false, false))
                                   .join(" ")}`;
 
-                    return isTopLevel || type.item.value.parameters.length === 0
+                    return isTopLevel || isReturn || type.item.value.parameters.length === 0
                         ? rendered
                         : `(${rendered})`;
                 }
@@ -366,7 +366,7 @@ export class Render {
 
                     const rendered = `${inputs} -> ${output}`;
 
-                    return isTopLevel && isReturn ? rendered : `(${rendered})`;
+                    return isTopLevel || isReturn ? rendered : `(${rendered})`;
                 }
                 case "tuple": {
                     const rendered =
@@ -378,7 +378,9 @@ export class Render {
                                   .map((value) => render(value, false, false))
                                   .join(" ; ")})`;
 
-                    return isTopLevel || type.item.value.length === 0 ? rendered : `(${rendered})`;
+                    return isTopLevel || isReturn || type.item.value.length === 0
+                        ? rendered
+                        : `(${rendered})`;
                 }
                 case "block": {
                     return `{${render(type.item.value, true, false)}}`;
