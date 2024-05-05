@@ -19,6 +19,9 @@ pub use wipple_syntax as syntax;
 pub use wipple_typecheck as typecheck;
 pub use wipple_util as util;
 
+#[global_allocator]
+static ALLOC: wee_alloc::WeeAlloc<'_> = wee_alloc::WeeAlloc::INIT;
+
 /// The default recursion limit.
 // TODO: Make this configurable
 pub const DEFAULT_RECURSION_LIMIT: u32 = 64;
