@@ -4,7 +4,6 @@ import {
     useEffect,
     useId,
     useImperativeHandle,
-    useMemo,
     useRef,
     useState,
 } from "react";
@@ -324,12 +323,17 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 };
             }
 
-            const info = props.render.getInfoAtCursor("top-level", position);
-            if (!info) {
+            const expression = props.render.getExpressionAtCursor("top-level", position);
+            if (!expression) {
                 return undefined;
             }
 
-            const declaration = props.render.getDeclarationFromInfo(info);
+            const declarationPath = props.render.getDeclarationPathFromExpression(expression);
+            if (!declarationPath) {
+                return undefined;
+            }
+
+            const declaration = props.render.getDeclarationFromPath(declarationPath);
             if (!declaration) {
                 return undefined;
             }
