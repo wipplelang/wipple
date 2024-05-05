@@ -48,6 +48,7 @@ connection.onInitialize((params) => {
             },
             hoverProvider: true,
             completionProvider: {},
+            definitionProvider: true,
         },
     };
 });
@@ -218,6 +219,50 @@ connection.onCompletion(async (params) => {
             documentation: suggestion.docs?.docs,
         };
     });
+});
+
+connection.onDefinition(async (params) => {
+    const uri = URI.parse(params.textDocument.uri);
+    if (uri.scheme !== "file") {
+        return null;
+    }
+
+    const document = documents.get(params.textDocument.uri);
+    if (!document) {
+        return null;
+    }
+
+    const position = document.offsetAt(params.position);
+
+    const expression = render.getExpressionAtCursor(getVisiblePath(uri.fsPath), position);
+    if (!expression) {
+        return null;
+    }
+
+    const declarationPath = render.getDeclarationPathFromExpression(expression);
+    if (!declarationPath) {
+        return null;
+    }
+
+    const declaration = render.getDeclarationFromPath(declarationPath);
+    if (!declaration) {
+        return null;
+    }
+
+    const declarationUri = `file://${declaration.info.location.path}`;
+
+    const declarationDocument = documents.get(declarationUri);
+    if (!declarationDocument) {
+        return null;
+    }
+
+    return {
+        uri: declarationUri,
+        range: {
+            start: declarationDocument.positionAt(declaration.info.location.span.start),
+            end: declarationDocument.positionAt(declaration.info.location.span.end),
+        },
+    };
 });
 
 documents.listen(connection);
