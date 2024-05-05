@@ -7,6 +7,8 @@ import {
     TextDocumentSyncKind,
     TextDocuments,
     createConnection,
+    CompletionItem,
+    CompletionItemKind,
 } from "vscode-languageserver/node";
 import { URI } from "vscode-uri";
 import * as fs from "fs/promises";
@@ -45,6 +47,7 @@ connection.onInitialize((params) => {
                 workspaceDiagnostics: false,
             },
             hoverProvider: true,
+            completionProvider: {},
         },
     };
 });
@@ -52,6 +55,8 @@ connection.onInitialize((params) => {
 connection.onInitialized(() => {
     console.log("Connection initialized");
 });
+
+const getVisiblePath = (uri: string) => `${path.basename(path.dirname(uri))}/${path.basename(uri)}`;
 
 documents.onDidChangeContent(async (change) => {
     const uri = URI.parse(change.document.uri);
@@ -128,23 +133,33 @@ connection.onHover(async (params) => {
 
     const position = document.offsetAt(params.position);
 
-    const info = render.getInfoAtCursor("top-level", position);
-    if (!info) {
+    const expression = render.getExpressionAtCursor(getVisiblePath(uri.fsPath), position);
+    if (!expression) {
         return null;
     }
 
-    const content: string[] = [];
-
-    const declaration = render.getDeclarationFromInfo(info);
-    const code = declaration ? render.renderDeclaration(declaration) : null;
-
-    if (code) {
-        content.push("```wipple\n" + code + "\n```");
+    const declarationPath = render.getDeclarationPathFromExpression(expression);
+    if (!declarationPath) {
+        return null;
     }
 
-    const renderedDocumentation = render.renderDocumentation({ info, item: null });
-    if (renderedDocumentation) {
-        content.push(renderedDocumentation.docs);
+    const declaration = render.getDeclarationFromPath(declarationPath);
+
+    const content: string[] = [];
+    if (declaration) {
+        const code = render.renderDeclaration(declaration);
+        if (code) {
+            content.push("```wipple\n" + code + "\n```");
+        }
+
+        const renderedDocumentation = render.renderDocumentation(declaration);
+        if (renderedDocumentation) {
+            content.push(renderedDocumentation.docs);
+        }
+    }
+
+    if (content.length === 0) {
+        return null;
     }
 
     return {
@@ -153,6 +168,56 @@ connection.onHover(async (params) => {
             value: content.join("\n\n"),
         },
     };
+});
+
+connection.onCompletion(async (params) => {
+    const uri = URI.parse(params.textDocument.uri);
+    if (uri.scheme !== "file") {
+        return null;
+    }
+
+    const document = documents.get(params.textDocument.uri);
+    if (!document) {
+        return null;
+    }
+
+    const position = document.offsetAt(params.position);
+
+    const suggestions = render.renderSuggestionsAtCursor(getVisiblePath(uri.fsPath), position);
+
+    return suggestions.map((suggestion): CompletionItem => {
+        let kind: CompletionItemKind;
+        switch (suggestion.kind) {
+            case "type":
+                kind = CompletionItemKind.Class;
+                break;
+            case "trait":
+                kind = CompletionItemKind.Interface;
+                break;
+            case "typeParameter":
+                kind = CompletionItemKind.TypeParameter;
+                break;
+            case "constant":
+                kind = CompletionItemKind.Constant;
+                break;
+            case "variable":
+                kind = CompletionItemKind.Variable;
+                break;
+            case "keyword":
+                kind = CompletionItemKind.Keyword;
+                break;
+            case "operator":
+                kind = CompletionItemKind.Operator;
+                break;
+        }
+
+        return {
+            kind,
+            label: suggestion.name,
+            detail: suggestion.code ?? undefined,
+            documentation: suggestion.docs?.docs,
+        };
+    });
 });
 
 documents.listen(connection);
@@ -182,9 +247,7 @@ const compileAll = async (
         sourcePaths.map(
             async (sourcePath): Promise<compiler.File> => ({
                 path: sourcePath,
-                visiblePath: `${path.basename(path.dirname(sourcePath))}/${path.basename(
-                    sourcePath,
-                )}`,
+                visiblePath: getVisiblePath(sourcePath),
                 code:
                     path.normalize(activeFile) === path.normalize(sourcePath)
                         ? activeCode

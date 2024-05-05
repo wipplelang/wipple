@@ -50,6 +50,16 @@ export interface RenderedHighlight {
     icon?: string;
 }
 
+export interface RenderedSuggestion {
+    kind: "type" | "trait" | "typeParameter" | "constant" | "variable" | "keyword" | "operator";
+    name: string;
+    code: string | null;
+    docs: RenderedDocumentation | null;
+}
+
+const keywords = ["do", "when", "type", "trait", "instance", "intrinsic", "infer", "default"];
+const operators = ["as", "to", "by", "is", "and", "or"];
+
 export class Render {
     private files: Record<string, compiler.File & { linesAndColumns: LinesAndColumns }> = {};
     private declarations: compiler.WithInfo<compiler.Info, AnyDeclaration>[] = [];
@@ -101,68 +111,6 @@ export class Render {
         for (const declaration of this.declarations) {
             if (this.compareInfo(declaration.info, info)) {
                 return declaration;
-            }
-        }
-
-        return null;
-    }
-
-    getInfoAtCursor(path: string, index: number): compiler.Info | null {
-        for (const item of this.libraries.flatMap((library) => [
-            ...Object.values(library.items),
-            ...library.code,
-        ])) {
-            if (
-                path !== item.expression.info.location.path ||
-                (path !== "top-level" &&
-                    (index < item.expression.info.location.span.start ||
-                        index >= item.expression.info.location.span.end))
-            ) {
-                continue;
-            }
-
-            const candidates: compiler.WithInfo<
-                compiler.Info,
-                compiler.typecheck_TypedExpression
-            >[] = [];
-
-            this.traverseExpression(item.expression, (expression) => {
-                if (
-                    index >= expression.info.location.span.start &&
-                    index < expression.info.location.span.end
-                ) {
-                    candidates.push(expression);
-                }
-
-                return false;
-            });
-
-            if (candidates.length === 0) {
-                continue;
-            }
-
-            candidates.sort((left, right) => {
-                const length = (
-                    expression: compiler.WithInfo<
-                        compiler.Info,
-                        compiler.typecheck_TypedExpression
-                    >,
-                ) => expression.info.location.span.end - expression.info.location.span.start;
-
-                return length(left) - length(right);
-            });
-
-            const expression = candidates[0];
-            switch (expression.item.kind.type) {
-                case "constant":
-                case "trait":
-                    return (
-                        this.getDeclarationFromPath(expression.item.kind.value.path)?.info ?? null
-                    );
-                case "variable":
-                    return this.getDeclarationFromPath(expression.item.kind.value[1])?.info ?? null;
-                default:
-                    return expression.info;
             }
         }
 
@@ -1290,6 +1238,199 @@ export class Render {
         }
     }
 
+    renderSuggestionsAtCursor(path: string, index: number): RenderedSuggestion[] {
+        const keywordSuggestions = keywords.map(
+            (keyword): RenderedSuggestion => ({
+                kind: "keyword",
+                name: keyword,
+                code: null,
+                docs: null, // TODO: Documentation for keywords
+            }),
+        );
+
+        const operatorSuggestions = operators.map(
+            (operator): RenderedSuggestion => ({
+                kind: "operator",
+                name: operator,
+                code: null,
+                docs: null, // TODO: Documentation for keywords
+            }),
+        );
+
+        const getDeclarations = (kind: Exclude<AnyDeclaration["type"], "instance">) =>
+            Object.entries(this.interface?.[`${kind}Declarations`] ?? {}).map(
+                ([path, declaration]): [
+                    string,
+                    compiler.WithInfo<compiler.Info, AnyDeclaration>,
+                ] => [
+                    path,
+                    {
+                        info: declaration.info,
+                        item: {
+                            type: kind,
+                            path,
+                            name: this.nameForPath(path),
+                            declaration: declaration.item,
+                        },
+                    },
+                ],
+            );
+
+        const getSuggestions = (kind: Exclude<AnyDeclaration["type"], "instance">) =>
+            getDeclarations(kind).map(
+                ([path, declaration]): RenderedSuggestion => ({
+                    kind,
+                    name: this.nameForPath(path),
+                    code: this.renderDeclaration(declaration),
+                    docs: this.renderDocumentation(declaration),
+                }),
+            );
+
+        const typeSuggestions = getSuggestions("type");
+        const traitSuggestions = getSuggestions("trait");
+        const constantSuggestions = getSuggestions("constant");
+        const localSuggestions = this.getLocalsAtCursor(path, index).map(
+            (declaration): RenderedSuggestion => ({
+                kind: declaration.item.type as "variable" | "typeParameter",
+                name: declaration.item.name!,
+                code: this.renderDeclaration(declaration),
+                docs: null, // locals cannot have documentation
+            }),
+        );
+
+        return [
+            ...keywordSuggestions,
+            ...operatorSuggestions,
+            ...typeSuggestions,
+            ...traitSuggestions,
+            ...constantSuggestions,
+            ...localSuggestions,
+        ];
+    }
+
+    private getLocalsAtCursor(path: string, index: number) {
+        const expressionTree = this.getExpressionTreeAtCursor(path, index);
+        if (!expressionTree) {
+            return [];
+        }
+
+        const locals: compiler.WithInfo<compiler.Info, AnyDeclaration>[] = [];
+
+        const info = expressionTree[0].info;
+        if (info) {
+            const declaration = this.getDeclarationFromInfo(info);
+            if (declaration?.item.type === "constant" || declaration?.item.type === "instance") {
+                for (const typeParameter of declaration.item.declaration.parameters) {
+                    const typeParameterDeclaration = this.getDeclarationFromPath(typeParameter);
+                    if (typeParameterDeclaration?.item.name) {
+                        locals.push(typeParameterDeclaration);
+                    }
+                }
+            }
+        }
+
+        for (const expression of expressionTree) {
+            if (expression.item.kind.type === "variable") {
+                const [_name, path] = expression.item.kind.value;
+
+                const declaration = this.getDeclarationFromPath(path);
+                if (!declaration) {
+                    continue;
+                }
+
+                locals.push(declaration);
+            }
+        }
+
+        return locals;
+    }
+
+    getExpressionAtCursor(
+        path: string,
+        index: number,
+    ): compiler.WithInfo<compiler.Info, compiler.typecheck_TypedExpression> | null {
+        const expressionTree = this.getExpressionTreeAtCursor(path, index);
+        if (!expressionTree) {
+            return null;
+        }
+
+        return expressionTree[0];
+    }
+
+    getDeclarationPathFromExpression(
+        expression: compiler.WithInfo<compiler.Info, compiler.typecheck_TypedExpression>,
+    ): compiler.lower_Path | null {
+        switch (expression.item.kind.type) {
+            case "constant":
+                return expression.item.kind.value.path;
+            case "trait":
+                return expression.item.kind.value;
+            case "variable":
+                return expression.item.kind.value[1];
+        }
+
+        return null;
+    }
+
+    private getExpressionTreeAtCursor(
+        path: string,
+        index: number,
+    ): compiler.WithInfo<compiler.Info, compiler.typecheck_TypedExpression>[] | null {
+        for (const item of this.libraries.flatMap((library) => [
+            ...Object.values(library.items),
+            ...library.code,
+        ])) {
+            // HACK: The top level has a span of 0..0
+            const isTopLevel =
+                item.expression.info.location.span.start === 0 &&
+                item.expression.info.location.span.end === 0;
+
+            if (
+                !isTopLevel &&
+                (path !== item.expression.info.location.visiblePath ||
+                    index < item.expression.info.location.span.start ||
+                    index >= item.expression.info.location.span.end)
+            ) {
+                continue;
+            }
+
+            const candidates: compiler.WithInfo<
+                compiler.Info,
+                compiler.typecheck_TypedExpression
+            >[] = [];
+
+            this.traverseExpression(item.expression, (expression) => {
+                if (
+                    index >= expression.info.location.span.start &&
+                    index < expression.info.location.span.end
+                ) {
+                    candidates.push(expression);
+                }
+
+                return false;
+            });
+
+            if (candidates.length === 0) {
+                continue;
+            }
+
+            candidates.sort((left, right) => {
+                const length = (
+                    expression: compiler.WithInfo<
+                        compiler.Info,
+                        compiler.typecheck_TypedExpression
+                    >,
+                ) => expression.info.location.span.end - expression.info.location.span.start;
+
+                return length(left) - length(right);
+            });
+
+            return candidates;
+        }
+
+        return null;
+    }
+
     private traverseExpression(
         expression: compiler.WithInfo<compiler.Info, compiler.typecheck_TypedExpression>,
         f: (
@@ -1403,8 +1544,8 @@ export class Render {
     private compareInfo(left: compiler.Info, right: compiler.Info): boolean {
         return (
             left.location.visiblePath === right.location.visiblePath &&
-            left.location.span.start === right.location.span.start &&
-            left.location.span.end === right.location.span.end
+            left.location.span.start >= right.location.span.start &&
+            left.location.span.end <= right.location.span.end
         );
     }
 
