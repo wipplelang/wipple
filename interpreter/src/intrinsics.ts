@@ -290,11 +290,15 @@ export const intrinsics: Record<string, Intrinsic> = {
     },
     "list-initial": async ([list], context) => {
         const listValue = listToJs(list, context);
-        return jsToList(listValue.slice(0, listValue.length - 1), context);
+        return listValue.length > 0
+            ? jsToSome(jsToList(listValue.slice(0, listValue.length - 1), context), context)
+            : jsToNone(context);
     },
     "list-tail": async ([list], context) => {
         const listValue = listToJs(list, context);
-        return jsToList(listValue.slice(1), context);
+        return listValue.length > 0
+            ? jsToSome(jsToList(listValue.slice(1), context), context)
+            : jsToNone(context);
     },
     "list-nth": async ([list, position], context) => {
         const listValue = listToJs(list, context);
