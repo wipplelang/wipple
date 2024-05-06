@@ -13,7 +13,7 @@ export type TypeDescriptor = compiler.ir_TypeDescriptor;
 export type Instruction = compiler.ir_Instruction;
 export type TypedInstruction = compiler.ir_TypedInstruction;
 
-export type TypedValue = Value & { typeDescriptor: TypeDescriptor };
+export type TypedValue = Value;
 
 type Value =
     | {
@@ -396,10 +396,6 @@ const evaluateItem = async (
                     elements.reverse();
 
                     stack.push({
-                        typeDescriptor: {
-                            type: "tuple",
-                            value: elements.map((element) => element.typeDescriptor),
-                        },
                         type: "tuple",
                         values: elements,
                     });
@@ -407,9 +403,10 @@ const evaluateItem = async (
                     break;
                 }
                 case "typed": {
-                    const typeDescriptor = produce(instruction.value[0], (typeDescriptor) =>
-                        substituteTypeDescriptor(typeDescriptor, substitutions),
-                    );
+                    const getTypeDescriptor = () =>
+                        produce(instruction.value[0], (typeDescriptor) =>
+                            substituteTypeDescriptor(typeDescriptor, substitutions),
+                        );
 
                     switch (instruction.value[1].type) {
                         case "intrinsic": {
@@ -423,12 +420,7 @@ const evaluateItem = async (
                                 inputs.push(pop());
                             }
 
-                            const result = await intrinsic(
-                                inputs.reverse(),
-                                typeDescriptor,
-                                context,
-                                task,
-                            );
+                            const result = await intrinsic(inputs.reverse(), context, task);
 
                             stack.push(result);
 
@@ -436,7 +428,6 @@ const evaluateItem = async (
                         }
                         case "number": {
                             stack.push({
-                                typeDescriptor,
                                 type: "number",
                                 value: new Decimal(instruction.value[1].value),
                             });
@@ -445,7 +436,6 @@ const evaluateItem = async (
                         }
                         case "text": {
                             stack.push({
-                                typeDescriptor,
                                 type: "text",
                                 value: instruction.value[1].value,
                             });
@@ -468,7 +458,6 @@ const evaluateItem = async (
                             result += instruction.value[1].value[1];
 
                             stack.push({
-                                typeDescriptor,
                                 type: "text",
                                 value: result,
                             });
@@ -477,7 +466,6 @@ const evaluateItem = async (
                         }
                         case "marker": {
                             stack.push({
-                                typeDescriptor,
                                 type: "marker",
                             });
 
@@ -495,7 +483,6 @@ const evaluateItem = async (
                             }
 
                             stack.push({
-                                typeDescriptor,
                                 type: "structure",
                                 fields,
                             });
@@ -509,7 +496,6 @@ const evaluateItem = async (
                             }
 
                             stack.push({
-                                typeDescriptor,
                                 type: "variant",
                                 variant: instruction.value[1].value[0],
                                 values: elements.reverse(),
@@ -520,7 +506,6 @@ const evaluateItem = async (
                         case "wrapper": {
                             const value = pop();
                             stack.push({
-                                typeDescriptor,
                                 type: "wrapper",
                                 value,
                             });
@@ -531,7 +516,6 @@ const evaluateItem = async (
                             const path = instruction.value[1].value[1];
 
                             stack.push({
-                                typeDescriptor,
                                 type: "function",
                                 path,
                                 ir: path ? context.executable.items[path].ir : item,
@@ -547,7 +531,6 @@ const evaluateItem = async (
 
                             stack.push({
                                 type: "block",
-                                typeDescriptor,
                                 path,
                                 ir: path ? context.executable.items[path].ir : item,
                                 label: instruction.value[1].value[2],
@@ -565,7 +548,7 @@ const evaluateItem = async (
                                 parameters.map((parameter) =>
                                     substituteTypeDescriptor(parameter, substitutions),
                                 ),
-                                typeDescriptor,
+                                getTypeDescriptor(),
                                 task,
                             );
 
@@ -573,6 +556,8 @@ const evaluateItem = async (
                             break;
                         }
                         case "instance": {
+                            const typeDescriptor = getTypeDescriptor();
+
                             const [path, substitutions] = findInstance(
                                 instruction.value[1].value,
                                 typeDescriptor,

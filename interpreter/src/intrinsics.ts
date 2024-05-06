@@ -7,26 +7,21 @@ import {
     type TypedValue,
 } from "./index.js";
 
-export type Intrinsic = (
-    inputs: TypedValue[],
-    expectedTypeDescriptor: TypeDescriptor,
-    context: Context,
-    task: any,
-) => Promise<TypedValue>;
+export type Intrinsic = (inputs: TypedValue[], context: Context, task: any) => Promise<TypedValue>;
 
 export const intrinsics: Record<string, Intrinsic> = {
-    debug: async ([value], _expectedTypeDescriptor) => {
+    debug: async ([value]) => {
         console.error(value);
         return value;
     },
-    crash: async ([message], _expectedTypeDescriptor, context) => {
+    crash: async ([message], context) => {
         if (message.type !== "text") {
             throw context.error("expected text");
         }
 
         throw context.error(message.value);
     },
-    display: async ([message], _expectedTypeDescriptor, context) => {
+    display: async ([message], context) => {
         await new Promise<void>((resolve) => {
             context.io({
                 type: "display",
@@ -37,7 +32,7 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         return unit;
     },
-    prompt: async ([message, validate], expectedTypeDescriptor, context, task) => {
+    prompt: async ([message, validate], context, task) => {
         let value: TypedValue | undefined;
         do {
             await new Promise<void>((resolve) => {
@@ -46,11 +41,7 @@ export const intrinsics: Record<string, Intrinsic> = {
                     message: textToJs(message, context),
                     validate: async (input) => {
                         value = maybeToJs(
-                            await context.call(
-                                validate,
-                                [jsToText(expectedTypeDescriptor, input, context)],
-                                task,
-                            ),
+                            await context.call(validate, [jsToText(input, context)], task),
                             context,
                         );
 
@@ -68,7 +59,7 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         return value;
     },
-    choice: async ([message, options], expectedTypeDescriptor, context) => {
+    choice: async ([message, options], context) => {
         const choices = listToJs(options, context).map((option) => textToJs(option, context));
 
         const index = await new Promise<number>((resolve) => {
@@ -80,9 +71,9 @@ export const intrinsics: Record<string, Intrinsic> = {
             });
         });
 
-        return jsToNumber(expectedTypeDescriptor, new Decimal(index), context);
+        return jsToNumber(new Decimal(index), context);
     },
-    "runtime-message": async ([message, value], expectedTypeDescriptor, context, task) => {
+    "runtime-message": async ([message, value], context, task) => {
         const messageValue = textToJs(message, context);
         const serializedValue = serialize(value, context, task);
 
@@ -91,53 +82,16 @@ export const intrinsics: Record<string, Intrinsic> = {
                 type: "ui",
                 message: messageValue,
                 value: serializedValue,
-                completion: (value) => resolve(deserialize(value, expectedTypeDescriptor, context)),
+                completion: (value) => resolve(deserialize(value, context)),
             });
         });
     },
-    once: async ([block, cleanup], expectedTypeDescriptor, context, task) => {
-        for (const [value, _cleanup] of context.onceCache) {
-            const substitutions: Record<string, TypeDescriptor> = {};
-            if (unify(expectedTypeDescriptor, value.typeDescriptor, substitutions)) {
-                return value;
-            }
-        }
-
-        const value = await context.do(block, task);
-        context.onceCache.push([
-            value,
-            async () => {
-                await context.call(cleanup, [value], task);
-            },
-        ]);
-
-        return value;
-    },
-    "with-continuation": async ([callback], _expectedTypeDescriptor, context) => {
-        if (callback.typeDescriptor.type !== "function") {
-            throw context.error("expected function");
-        }
-
-        if (callback.typeDescriptor.value[0].length !== 1) {
-            throw context.error("expected function with one input");
-        }
-
-        const callbackTypeDescriptor = callback.typeDescriptor.value[0][0];
-
-        if (callbackTypeDescriptor.type !== "function") {
-            throw context.error("expected function");
-        }
-
-        const typeDescriptor: TypeDescriptor = {
-            type: "function",
-            value: [callbackTypeDescriptor.value[0], unit.typeDescriptor],
-        };
-
+    "with-continuation": async ([callback], context) => {
         const task = async (resolve: (value: TypedValue) => void) => {
             await context.call(
                 callback,
                 [
-                    jsToFunction(typeDescriptor, async (result) => {
+                    jsToFunction(async (result) => {
                         resolve(result);
                         return unit;
                     }),
@@ -148,32 +102,18 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         return await new Promise(task);
     },
-    "with-task-group": async ([callback], _expectedTypeDescriptor, context, task) => {
-        if (callback.typeDescriptor.type !== "function") {
-            throw context.error("expected function");
-        }
-
-        if (callback.typeDescriptor.value[0].length !== 1) {
-            throw context.error("expected function with one input");
-        }
-
-        const taskGroupTypeDescriptor = callback.typeDescriptor.value[0][0];
-
+    "with-task-group": async ([callback], context, task) => {
         const taskGroup: TaskGroup = [];
-        await context.call(
-            callback,
-            [jsToTaskGroup(taskGroupTypeDescriptor, taskGroup, context)],
-            task,
-        );
+        await context.call(callback, [jsToTaskGroup(taskGroup, context)], task);
 
         await Promise.all(taskGroup.map((task) => task()));
 
         return unit;
     },
-    "begin-task-group": async ([], expectedTypeDescriptor, context) => {
-        return jsToTaskGroup(expectedTypeDescriptor, [], context);
+    "begin-task-group": async ([], context) => {
+        return jsToTaskGroup([], context);
     },
-    "end-task-group": async ([taskGroup], _expectedTypeDescriptor, context) => {
+    "end-task-group": async ([taskGroup], context) => {
         if (taskGroup.type !== "taskGroup") {
             throw context.error("expected task group");
         }
@@ -182,7 +122,7 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         return unit;
     },
-    task: async ([taskGroup, callback], _expectedTypeDescriptor, context) => {
+    task: async ([taskGroup, callback], context) => {
         if (taskGroup.type !== "taskGroup") {
             throw context.error("expected task group");
         }
@@ -195,7 +135,7 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         return unit;
     },
-    "in-background": async ([callback], _expectedTypeDescriptor, context) => {
+    "in-background": async ([callback], context) => {
         const task = async () => {
             await context.do(callback, task);
         };
@@ -204,45 +144,7 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         return unit;
     },
-    "set-task-local": async ([value], _expectedTypeDescriptor, context, task) => {
-        const taskLocals =
-            context.taskLocals.get(task) ??
-            (() => {
-                const taskLocals: TypedValue[] = [];
-                context.taskLocals.set(task, taskLocals);
-                return taskLocals;
-            })();
-
-        for (let i = 0; i < taskLocals.length; i++) {
-            if (unify(taskLocals[i].typeDescriptor, value.typeDescriptor, {})) {
-                taskLocals[i] = value;
-                return unit;
-            }
-        }
-
-        taskLocals.push(value);
-
-        return unit;
-    },
-    "task-local": async ([], expectedTypeDescriptor, context, task) => {
-        if (expectedTypeDescriptor.type !== "named") {
-            throw context.error("expected named type");
-        }
-
-        const valueTypeDescriptor = expectedTypeDescriptor.value[1][0];
-
-        const taskLocals = context.taskLocals.get(task);
-        if (taskLocals) {
-            for (const value of taskLocals) {
-                if (unify(value.typeDescriptor, valueTypeDescriptor, {})) {
-                    return jsToSome(expectedTypeDescriptor, value, context);
-                }
-            }
-        }
-
-        return jsToNone(expectedTypeDescriptor, context);
-    },
-    delay: async ([duration], _expectedTypeDescriptor, context) => {
+    delay: async ([duration], context) => {
         if (duration.type !== "number") {
             throw context.error("expected number");
         }
@@ -257,125 +159,82 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         return unit;
     },
-    "number-to-text": async ([number], expectedTypeDescriptor, context) => {
+    "number-to-text": async ([number], context) => {
         const jsNumber = numberToJs(number, context);
 
-        return jsToText(
-            expectedTypeDescriptor,
-            jsNumber.isFinite() ? jsNumber.toString() : "undefined",
-            context,
-        );
+        return jsToText(jsNumber.isFinite() ? jsNumber.toString() : "undefined", context);
     },
-    "text-to-number": async ([text], expectedTypeDescriptor, context) => {
-        if (expectedTypeDescriptor.type !== "named") {
-            throw context.error("expected result to be a named type");
-        }
-
-        const numberTypeDescriptor = expectedTypeDescriptor.value[1][0];
-
+    "text-to-number": async ([text], context) => {
         const input = textToJs(text, context);
         if (input === "undefined") {
-            return jsToSome(
-                expectedTypeDescriptor,
-                jsToNumber(numberTypeDescriptor, new Decimal(NaN), context),
-                context,
-            );
+            return jsToSome(jsToNumber(new Decimal(NaN), context), context);
         }
 
         let number: Decimal;
         try {
             number = new Decimal(input);
         } catch {
-            return jsToNone(expectedTypeDescriptor, context);
+            return jsToNone(context);
         }
 
-        return jsToSome(
-            expectedTypeDescriptor,
-            jsToNumber(numberTypeDescriptor, number, context),
-            context,
-        );
+        return jsToSome(jsToNumber(number, context), context);
     },
-    "add-number": async ([left, right], expectedTypeDescriptor, context) => {
-        return jsToNumber(
-            expectedTypeDescriptor,
-            numberToJs(left, context).add(numberToJs(right, context)),
-            context,
-        );
+    "add-number": async ([left, right], context) => {
+        return jsToNumber(numberToJs(left, context).add(numberToJs(right, context)), context);
     },
-    "subtract-number": async ([left, right], expectedTypeDescriptor, context) => {
-        return jsToNumber(
-            expectedTypeDescriptor,
-            numberToJs(left, context).sub(numberToJs(right, context)),
-            context,
-        );
+    "subtract-number": async ([left, right], context) => {
+        return jsToNumber(numberToJs(left, context).sub(numberToJs(right, context)), context);
     },
-    "multiply-number": async ([left, right], expectedTypeDescriptor, context) => {
-        return jsToNumber(
-            expectedTypeDescriptor,
-            numberToJs(left, context).mul(numberToJs(right, context)),
-            context,
-        );
+    "multiply-number": async ([left, right], context) => {
+        return jsToNumber(numberToJs(left, context).mul(numberToJs(right, context)), context);
     },
-    "divide-number": async ([left, right], expectedTypeDescriptor, context) => {
-        return jsToNumber(
-            expectedTypeDescriptor,
-            numberToJs(left, context).div(numberToJs(right, context)),
-            context,
-        );
+    "divide-number": async ([left, right], context) => {
+        return jsToNumber(numberToJs(left, context).div(numberToJs(right, context)), context);
     },
-    "remainder-number": async ([left, right], expectedTypeDescriptor, context) => {
-        return jsToNumber(
-            expectedTypeDescriptor,
-            numberToJs(left, context).mod(numberToJs(right, context)),
-            context,
-        );
+    "remainder-number": async ([left, right], context) => {
+        return jsToNumber(numberToJs(left, context).mod(numberToJs(right, context)), context);
     },
-    "power-number": async ([left, right], expectedTypeDescriptor, context) => {
-        return jsToNumber(
-            expectedTypeDescriptor,
-            numberToJs(left, context).pow(numberToJs(right, context)),
-            context,
-        );
+    "power-number": async ([left, right], context) => {
+        return jsToNumber(numberToJs(left, context).pow(numberToJs(right, context)), context);
     },
-    "floor-number": async ([number], expectedTypeDescriptor, context) => {
-        return jsToNumber(expectedTypeDescriptor, numberToJs(number, context).floor(), context);
+    "floor-number": async ([number], context) => {
+        return jsToNumber(numberToJs(number, context).floor(), context);
     },
-    "ceiling-number": async ([number], expectedTypeDescriptor, context) => {
-        return jsToNumber(expectedTypeDescriptor, numberToJs(number, context).ceil(), context);
+    "ceiling-number": async ([number], context) => {
+        return jsToNumber(numberToJs(number, context).ceil(), context);
     },
-    "sqrt-number": async ([number], expectedTypeDescriptor, context) => {
-        return jsToNumber(expectedTypeDescriptor, numberToJs(number, context).sqrt(), context);
+    "sqrt-number": async ([number], context) => {
+        return jsToNumber(numberToJs(number, context).sqrt(), context);
     },
-    sin: async ([number], expectedTypeDescriptor, context) => {
-        return jsToNumber(expectedTypeDescriptor, numberToJs(number, context).sin(), context);
+    sin: async ([number], context) => {
+        return jsToNumber(numberToJs(number, context).sin(), context);
     },
-    cos: async ([number], expectedTypeDescriptor, context) => {
-        return jsToNumber(expectedTypeDescriptor, numberToJs(number, context).cos(), context);
+    cos: async ([number], context) => {
+        return jsToNumber(numberToJs(number, context).cos(), context);
     },
-    tan: async ([number], expectedTypeDescriptor, context) => {
-        return jsToNumber(expectedTypeDescriptor, numberToJs(number, context).tan(), context);
+    tan: async ([number], context) => {
+        return jsToNumber(numberToJs(number, context).tan(), context);
     },
-    "negate-number": async ([number], expectedTypeDescriptor, context) => {
-        return jsToNumber(expectedTypeDescriptor, numberToJs(number, context).neg(), context);
+    "negate-number": async ([number], context) => {
+        return jsToNumber(numberToJs(number, context).neg(), context);
     },
-    "text-equality": async ([left, right], expectedTypeDescriptor, context) => {
+    "text-equality": async ([left, right], context) => {
         if (left.type !== "text" || right.type !== "text") {
             throw context.error("expected text");
         }
 
-        return jsToBoolean(expectedTypeDescriptor, left.value === right.value, context);
+        return jsToBoolean(left.value === right.value, context);
     },
-    "number-equality": async ([left, right], expectedTypeDescriptor, context) => {
+    "number-equality": async ([left, right], context) => {
         const leftNumber = numberToJs(left, context);
         const rightNumber = numberToJs(right, context);
 
         return jsToBoolean(
-            expectedTypeDescriptor,
             (!leftNumber.isFinite() && !rightNumber.isFinite()) || leftNumber.eq(rightNumber),
             context,
         );
     },
-    "text-ordering": async ([left, right], expectedTypeDescriptor, context) => {
+    "text-ordering": async ([left, right], context) => {
         if (left.type !== "text" || right.type !== "text") {
             throw context.error("expected text");
         }
@@ -383,63 +242,61 @@ export const intrinsics: Record<string, Intrinsic> = {
         const ordering = left.value.localeCompare(right.value);
 
         if (ordering < 0) {
-            return jsToIsLessThan(expectedTypeDescriptor, context);
+            return jsToIsLessThan(context);
         } else if (ordering > 0) {
-            return jsToIsGreaterThan(expectedTypeDescriptor, context);
+            return jsToIsGreaterThan(context);
         } else {
-            return jsToIsEqual(expectedTypeDescriptor, context);
+            return jsToIsEqual(context);
         }
     },
-    "number-ordering": async ([left, right], expectedTypeDescriptor, context) => {
+    "number-ordering": async ([left, right], context) => {
         const leftNumber = numberToJs(left, context);
         const rightNumber = numberToJs(right, context);
 
         if (leftNumber.isNaN() && rightNumber.isNaN()) {
-            return jsToIsEqual(expectedTypeDescriptor, context);
+            return jsToIsEqual(context);
         }
 
         if (leftNumber.lt(rightNumber)) {
-            return jsToIsLessThan(expectedTypeDescriptor, context);
+            return jsToIsLessThan(context);
         } else if (leftNumber.gt(rightNumber)) {
-            return jsToIsGreaterThan(expectedTypeDescriptor, context);
+            return jsToIsGreaterThan(context);
         } else {
-            return jsToIsEqual(expectedTypeDescriptor, context);
+            return jsToIsEqual(context);
         }
     },
-    "make-reference": async ([value], expectedTypeDescriptor, context) => {
-        return jsToReference(expectedTypeDescriptor, value, context);
+    "make-reference": async ([value], context) => {
+        return jsToReference(value, context);
     },
-    "get-reference": async ([reference], _expectedTypeDescriptor, context) => {
+    "get-reference": async ([reference], context) => {
         return referenceToJs(reference, context).current;
     },
-    "set-reference": async ([reference, value], _expectedTypeDescriptor, context) => {
+    "set-reference": async ([reference, value], context) => {
         referenceToJs(reference, context).current = value;
         return unit;
     },
-    "make-empty-list": async ([], expectedTypeDescriptor, context) => {
-        return jsToList(expectedTypeDescriptor, [], context);
+    "make-empty-list": async ([], context) => {
+        return jsToList([], context);
     },
-    "list-first": async ([list], expectedTypeDescriptor, context) => {
+    "list-first": async ([list], context) => {
+        const listValue = listToJs(list, context);
+        return listValue.length > 0 ? jsToSome(listValue[0], context) : jsToNone(context);
+    },
+    "list-last": async ([list], context) => {
         const listValue = listToJs(list, context);
         return listValue.length > 0
-            ? jsToSome(expectedTypeDescriptor, listValue[0], context)
-            : jsToNone(expectedTypeDescriptor, context);
+            ? jsToSome(listValue[listValue.length - 1], context)
+            : jsToNone(context);
     },
-    "list-last": async ([list], expectedTypeDescriptor, context) => {
+    "list-initial": async ([list], context) => {
         const listValue = listToJs(list, context);
-        return listValue.length > 0
-            ? jsToSome(expectedTypeDescriptor, listValue[listValue.length - 1], context)
-            : jsToNone(expectedTypeDescriptor, context);
+        return jsToList(listValue.slice(0, listValue.length - 1), context);
     },
-    "list-initial": async ([list], expectedTypeDescriptor, context) => {
+    "list-tail": async ([list], context) => {
         const listValue = listToJs(list, context);
-        return jsToList(expectedTypeDescriptor, listValue.slice(0, listValue.length - 1), context);
+        return jsToList(listValue.slice(1), context);
     },
-    "list-tail": async ([list], expectedTypeDescriptor, context) => {
-        const listValue = listToJs(list, context);
-        return jsToList(expectedTypeDescriptor, listValue.slice(1), context);
-    },
-    "list-nth": async ([list, position], expectedTypeDescriptor, context) => {
+    "list-nth": async ([list, position], context) => {
         const listValue = listToJs(list, context);
         const positionValue = numberToJs(position, context);
 
@@ -450,24 +307,18 @@ export const intrinsics: Record<string, Intrinsic> = {
         const index = positionValue.toNumber();
 
         return index >= 0 && index < listValue.length
-            ? jsToSome(expectedTypeDescriptor, listValue[index], context)
-            : jsToNone(expectedTypeDescriptor, context);
+            ? jsToSome(listValue[index], context)
+            : jsToNone(context);
     },
-    "list-append": async ([list, element], expectedTypeDescriptor, context) => {
+    "list-append": async ([list, element], context) => {
         const listValue = listToJs(list, context);
-        return jsToList(expectedTypeDescriptor, [...listValue, element], context);
+        return jsToList([...listValue, element], context);
     },
-    "list-prepend": async ([list, element], expectedTypeDescriptor, context) => {
+    "list-prepend": async ([list, element], context) => {
         const listValue = listToJs(list, context);
-        return jsToList(expectedTypeDescriptor, [element, ...listValue], context);
+        return jsToList([element, ...listValue], context);
     },
-    "list-insert-at": async ([list, position, element], expectedTypeDescriptor, context) => {
-        if (expectedTypeDescriptor.type !== "named") {
-            throw context.error("expected result to be a named type");
-        }
-
-        const listTypeDescriptor = expectedTypeDescriptor.value[1][0];
-
+    "list-insert-at": async ([list, position, element], context) => {
         const listValue = listToJs(list, context);
         const positionValue = numberToJs(position, context);
 
@@ -479,23 +330,15 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         return index >= 0 && index <= listValue.length
             ? jsToSome(
-                  expectedTypeDescriptor,
                   jsToList(
-                      listTypeDescriptor,
                       [...listValue.slice(0, index), element, ...listValue.slice(index)],
                       context,
                   ),
                   context,
               )
-            : jsToNone(expectedTypeDescriptor, context);
+            : jsToNone(context);
     },
-    "list-remove-at": async ([list, position], expectedTypeDescriptor, context) => {
-        if (expectedTypeDescriptor.type !== "named") {
-            throw context.error("expected result to be a named type");
-        }
-
-        const listTypeDescriptor = expectedTypeDescriptor.value[1][0];
-
+    "list-remove-at": async ([list, position], context) => {
         const listValue = listToJs(list, context);
         const positionValue = numberToJs(position, context);
 
@@ -507,24 +350,15 @@ export const intrinsics: Record<string, Intrinsic> = {
 
         return index >= 0 && index <= listValue.length
             ? jsToSome(
-                  expectedTypeDescriptor,
-                  jsToList(
-                      listTypeDescriptor,
-                      [...listValue.slice(0, index), ...listValue.slice(index + 1)],
-                      context,
-                  ),
+                  jsToList([...listValue.slice(0, index), ...listValue.slice(index + 1)], context),
                   context,
               )
-            : jsToNone(expectedTypeDescriptor, context);
+            : jsToNone(context);
     },
-    "list-count": async ([list], expectedTypeDescriptor, context) => {
-        return jsToNumber(
-            expectedTypeDescriptor,
-            new Decimal(listToJs(list, context).length),
-            context,
-        );
+    "list-count": async ([list], context) => {
+        return jsToNumber(new Decimal(listToJs(list, context).length), context);
     },
-    "list-slice": async ([list, start, end], expectedTypeDescriptor, context) => {
+    "list-slice": async ([list, start, end], context) => {
         const listValue = listToJs(list, context);
         const startValue = numberToJs(start, context);
         const endValue = numberToJs(end, context);
@@ -540,24 +374,17 @@ export const intrinsics: Record<string, Intrinsic> = {
         const startIndex = startValue.toNumber();
         const endIndex = endValue.toNumber();
 
-        return jsToList(expectedTypeDescriptor, listValue.slice(startIndex, endIndex), context);
+        return jsToList(listValue.slice(startIndex, endIndex), context);
     },
-    "text-characters": async ([text], expectedTypeDescriptor, context) => {
+    "text-characters": async ([text], context) => {
         const textValue = textToJs(text, context);
 
-        if (expectedTypeDescriptor.type !== "named") {
-            throw context.error("expected result to be a named type");
-        }
-
-        const textTypeDescriptor = expectedTypeDescriptor.value[1][0];
-
         return jsToList(
-            expectedTypeDescriptor,
-            [...textValue].map((character) => jsToText(textTypeDescriptor, character, context)),
+            [...textValue].map((character) => jsToText(character, context)),
             context,
         );
     },
-    "random-number": async ([min, max], expectedTypeDescriptor, context) => {
+    "random-number": async ([min, max], context) => {
         const minValue = numberToJs(min, context);
         const maxValue = numberToJs(max, context);
 
@@ -568,52 +395,39 @@ export const intrinsics: Record<string, Intrinsic> = {
         const sd = Math.max(minValue.sd(), maxValue.sd()) - 1;
         const random = minValue.add(maxValue.sub(minValue).mul(Decimal.random()));
 
-        return jsToNumber(
-            expectedTypeDescriptor,
-            sd === 0 ? random.floor() : random.toSignificantDigits(sd),
-            context,
-        );
+        return jsToNumber(sd === 0 ? random.floor() : random.toSignificantDigits(sd), context);
     },
-    "undefined-number": async ([], expectedTypeDescriptor, context) => {
-        return jsToNumber(expectedTypeDescriptor, new Decimal(NaN), context);
+    "undefined-number": async ([], context) => {
+        return jsToNumber(new Decimal(NaN), context);
     },
-    "make-hasher": async ([], expectedTypeDescriptor, context) => {
-        return jsToHasher(expectedTypeDescriptor, context);
+    "make-hasher": async ([], context) => {
+        return jsToHasher(context);
     },
-    "hash-number": async ([hasher, number], expectedTypeDescriptor, context) => {
+    "hash-number": async ([hasher, number], context) => {
         const _hasherValue = hasherToJs(hasher, context);
         const numberValue = numberToJs(number, context);
 
         const hashValue = hash(numberValue.toNumber().toString());
 
-        return jsToNumber(expectedTypeDescriptor, new Decimal(hashValue), context);
+        return jsToNumber(new Decimal(hashValue), context);
     },
-    "hash-text": async ([hasher, text], expectedTypeDescriptor, context) => {
+    "hash-text": async ([hasher, text], context) => {
         const _hasherValue = hasherToJs(hasher, context);
         const textValue = textToJs(text, context);
 
         const hashValue = hash(textValue);
 
-        return jsToNumber(expectedTypeDescriptor, new Decimal(hashValue), context);
+        return jsToNumber(new Decimal(hashValue), context);
     },
 };
 
 const unit: TypedValue = {
     type: "tuple",
-    typeDescriptor: {
-        type: "tuple",
-        value: [],
-    },
     values: [],
 };
 
-const jsToText = (
-    typeDescriptor: TypeDescriptor,
-    string: string,
-    _context: Context,
-): TypedValue => ({
+const jsToText = (string: string, _context: Context): TypedValue => ({
     type: "text",
-    typeDescriptor,
     value: string,
 });
 
@@ -625,13 +439,8 @@ const textToJs = (value: TypedValue, context: Context): string => {
     return value.value;
 };
 
-const jsToNumber = (
-    typeDescriptor: TypeDescriptor,
-    number: Decimal,
-    _context: Context,
-): TypedValue => ({
+const jsToNumber = (number: Decimal, _context: Context): TypedValue => ({
     type: "number",
-    typeDescriptor,
     value: number.isFinite() ? number : undefined,
 });
 
@@ -643,12 +452,7 @@ const numberToJs = (value: TypedValue, context: Context): Decimal => {
     return value.value ? value.value : new Decimal(NaN);
 };
 
-const jsToBoolean = (
-    typeDescriptor: TypeDescriptor,
-    boolean: boolean,
-    context: Context,
-): TypedValue => ({
-    typeDescriptor,
+const jsToBoolean = (boolean: boolean, context: Context): TypedValue => ({
     type: "variant",
     variant: boolean
         ? context.executable.intrinsicVariants.true
@@ -671,40 +475,31 @@ const booleanToJs = (value: TypedValue, context: Context): boolean => {
     }
 };
 
-const jsToSome = (
-    typeDescriptor: TypeDescriptor,
-    value: TypedValue,
-    context: Context,
-): TypedValue => ({
-    typeDescriptor,
+const jsToSome = (value: TypedValue, context: Context): TypedValue => ({
     type: "variant",
     variant: context.executable.intrinsicVariants.some,
     values: [value],
 });
 
-const jsToNone = (typeDescriptor: TypeDescriptor, context: Context): TypedValue => ({
-    typeDescriptor,
+const jsToNone = (context: Context): TypedValue => ({
     type: "variant",
     variant: context.executable.intrinsicVariants.none,
     values: [],
 });
 
-const jsToIsLessThan = (typeDescriptor: TypeDescriptor, context: Context): TypedValue => ({
-    typeDescriptor,
+const jsToIsLessThan = (context: Context): TypedValue => ({
     type: "variant",
     variant: context.executable.intrinsicVariants["is-less-than"],
     values: [],
 });
 
-const jsToIsEqual = (typeDescriptor: TypeDescriptor, context: Context): TypedValue => ({
-    typeDescriptor,
+const jsToIsEqual = (context: Context): TypedValue => ({
     type: "variant",
     variant: context.executable.intrinsicVariants["is-equal-to"],
     values: [],
 });
 
-const jsToIsGreaterThan = (typeDescriptor: TypeDescriptor, context: Context): TypedValue => ({
-    typeDescriptor,
+const jsToIsGreaterThan = (context: Context): TypedValue => ({
     type: "variant",
     variant: context.executable.intrinsicVariants["is-greater-than"],
     values: [],
@@ -725,12 +520,7 @@ const maybeToJs = (value: TypedValue, context: Context): TypedValue | undefined 
     }
 };
 
-const jsToList = (
-    typeDescriptor: TypeDescriptor,
-    values: TypedValue[],
-    _context: Context,
-): TypedValue => ({
-    typeDescriptor,
+const jsToList = (values: TypedValue[], _context: Context): TypedValue => ({
     type: "list",
     values,
 });
@@ -743,12 +533,7 @@ const listToJs = (value: TypedValue, context: Context): TypedValue[] => {
     return value.values;
 };
 
-const jsToTuple = (
-    typeDescriptor: TypeDescriptor,
-    values: TypedValue[],
-    _context: Context,
-): TypedValue => ({
-    typeDescriptor,
+const jsToTuple = (values: TypedValue[], _context: Context): TypedValue => ({
     type: "tuple",
     values,
 });
@@ -761,32 +546,18 @@ const tupleToJs = (value: TypedValue, context: Context): TypedValue[] => {
     return value.values;
 };
 
-const jsToFunction = (
-    typeDescriptor: TypeDescriptor,
-    func: (...inputs: TypedValue[]) => Promise<TypedValue>,
-): TypedValue => ({
+const jsToFunction = (func: (...inputs: TypedValue[]) => Promise<TypedValue>): TypedValue => ({
     type: "nativeFunction",
-    typeDescriptor,
     value: func,
 });
 
-const jsToTaskGroup = (
-    typeDescriptor: TypeDescriptor,
-    taskGroup: TaskGroup,
-    _context: Context,
-): TypedValue => ({
+const jsToTaskGroup = (taskGroup: TaskGroup, _context: Context): TypedValue => ({
     type: "taskGroup",
-    typeDescriptor,
     value: taskGroup,
 });
 
-const jsToReference = (
-    typeDescriptor: TypeDescriptor,
-    value: TypedValue,
-    _context: Context,
-): TypedValue => ({
+const jsToReference = (value: TypedValue, _context: Context): TypedValue => ({
     type: "reference",
-    typeDescriptor,
     value: { current: value },
 });
 
@@ -798,9 +569,8 @@ const referenceToJs = (value: TypedValue, context: Context): { current: TypedVal
     return value.value;
 };
 
-const jsToHasher = (typeDescriptor: TypeDescriptor, _context: Context): TypedValue => ({
+const jsToHasher = (_context: Context): TypedValue => ({
     type: "hasher",
-    typeDescriptor,
 });
 
 const hasherToJs = (value: TypedValue, context: Context): {} => {
@@ -813,7 +583,6 @@ const hasherToJs = (value: TypedValue, context: Context): {} => {
 
 interface FunctionHandle {
     func: (inputs: TypedValue[]) => Promise<TypedValue>;
-    inputTypeDescriptors: TypeDescriptor[];
     context: Context;
     task: any;
 }
@@ -829,9 +598,7 @@ export const callFunction = async (func: any, inputs: any[]) => {
     const handle = functions[index];
 
     const output = await handle.func(
-        inputs.map((input, index) =>
-            deserialize(input, handle.inputTypeDescriptors[index], handle.context),
-        ),
+        inputs.map((input, index) => deserialize(input, handle.context)),
     );
 
     return serialize(output, handle.context, handle.task);
@@ -844,16 +611,9 @@ const serialize = (value: TypedValue, context: Context, task: any): any => {
         case "text":
             return textToJs(value, context);
         case "function": {
-            if (value.typeDescriptor.type !== "function") {
-                throw new Error("expected function");
-            }
-
-            const inputTypeDescriptors = value.typeDescriptor.value[0];
-
             const index = functions.length;
             functions.push({
                 func: (inputs) => context.call(value, inputs, task),
-                inputTypeDescriptors,
                 context,
                 task,
             });
@@ -869,30 +629,29 @@ const serialize = (value: TypedValue, context: Context, task: any): any => {
     }
 };
 
-const deserialize = (value: any, typeDescriptor: TypeDescriptor, context: Context): TypedValue => {
+const deserialize = (value: any, context: Context): TypedValue => {
     if (value == null) {
         return unit;
     } else if (typeof value === "number") {
-        return jsToNumber(typeDescriptor, new Decimal(value), context);
+        return jsToNumber(new Decimal(value), context);
     } else if (typeof value === "string") {
-        return jsToText(typeDescriptor, value, context);
+        return jsToText(value, context);
     } else if (typeof value === "function") {
-        return jsToFunction(typeDescriptor, async (...inputs) => {
-            return deserialize(await value(...inputs), typeDescriptor, context);
+        return jsToFunction(async (...inputs) => {
+            return deserialize(await value(...inputs), context);
         });
     } else if (typeof value === "boolean") {
-        return jsToBoolean(typeDescriptor, value, context);
+        return jsToBoolean(value, context);
     } else if (Array.isArray(value)) {
         return jsToTuple(
-            typeDescriptor,
-            value.map((value) => deserialize(value, typeDescriptor, context)),
+            value.map((value) => deserialize(value, context)),
             context,
         );
     } else if (typeof value === "object" && "$wippleFunction" in value) {
         const index = value.$wippleFunction;
         const handle = functions[index];
-        return jsToFunction(typeDescriptor, async (...inputs) => {
-            return deserialize(await handle.func(inputs), typeDescriptor, context);
+        return jsToFunction(async (...inputs) => {
+            return deserialize(await handle.func(inputs), context);
         });
     } else {
         throw new Error("cannot deserialize value");
