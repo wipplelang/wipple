@@ -618,12 +618,14 @@ pub mod typecheck {
                         wipple_typecheck::TypeRepresentation::Structure(
                             fields
                                 .into_iter()
-                                .map(|field| {
+                                .enumerate()
+                                .map(|(index, field)| {
                                     (
                                         field.item.name.item,
                                         wipple_util::WithInfo {
                                             info: field.info,
                                             item: wipple_typecheck::StructureField {
+                                                index: index as u32,
                                                 r#type: convert_type(field.item.r#type),
                                             },
                                         },
@@ -636,12 +638,14 @@ pub mod typecheck {
                         wipple_typecheck::TypeRepresentation::Enumeration(
                             variants
                                 .into_iter()
-                                .map(|variant| {
+                                .enumerate()
+                                .map(|(index, variant)| {
                                     (
                                         variant.item.name.item,
                                         wipple_util::WithInfo {
                                             info: variant.info,
                                             item: wipple_typecheck::EnumerationVariant {
+                                                index: index as u32,
                                                 value_types: variant
                                                     .item
                                                     .types
@@ -827,20 +831,25 @@ pub mod typecheck {
                     trailing,
                 }
             }
-            wipple_lower::Expression::Block(statements) => {
-                wipple_typecheck::UntypedExpression::Block(
-                    statements.into_iter().map(convert_expression).collect(),
-                )
-            }
+            wipple_lower::Expression::Block {
+                statements,
+                captures,
+            } => wipple_typecheck::UntypedExpression::Block {
+                statements: statements.into_iter().map(convert_expression).collect(),
+                captures,
+            },
             wipple_lower::Expression::Do(block) => {
                 wipple_typecheck::UntypedExpression::Do(convert_expression(block.unboxed()).boxed())
             }
-            wipple_lower::Expression::Function { inputs, body } => {
-                wipple_typecheck::UntypedExpression::Function {
-                    inputs: inputs.into_iter().map(convert_pattern).collect(),
-                    body: convert_expression(body.unboxed()).boxed(),
-                }
-            }
+            wipple_lower::Expression::Function {
+                inputs,
+                body,
+                captures,
+            } => wipple_typecheck::UntypedExpression::Function {
+                inputs: inputs.into_iter().map(convert_pattern).collect(),
+                body: convert_expression(body.unboxed()).boxed(),
+                captures,
+            },
             wipple_lower::Expression::Call { function, inputs } => {
                 wipple_typecheck::UntypedExpression::Call {
                     function: convert_expression(function.unboxed()).boxed(),
@@ -921,8 +930,9 @@ pub mod typecheck {
             wipple_lower::Pattern::Variable(name, variable) => {
                 wipple_typecheck::Pattern::Variable(name, variable)
             }
-            wipple_lower::Pattern::Destructure(fields) => wipple_typecheck::Pattern::Destructure(
-                fields
+            wipple_lower::Pattern::Destructure(fields) => wipple_typecheck::Pattern::Destructure {
+                structure: None, // will be inferred during typechecking
+                field_patterns: fields
                     .into_iter()
                     .filter_map(|field| {
                         field.filter_map(|field| {
@@ -933,7 +943,7 @@ pub mod typecheck {
                         })
                     })
                     .collect(),
-            ),
+            },
             wipple_lower::Pattern::Variant {
                 variant,
                 value_patterns,

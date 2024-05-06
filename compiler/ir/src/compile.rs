@@ -1,25 +1,24 @@
 use derivative::Derivative;
-use std::mem;
+use std::{collections::HashMap, mem};
 use wipple_util::WithInfo;
 
 pub fn compile<D: crate::Driver>(
     driver: &D,
     path: D::Path,
     expression: WithInfo<D::Info, &wipple_typecheck::TypedExpression<D>>,
-) -> Option<Vec<Vec<crate::Instruction<D>>>> {
+) -> Option<HashMap<D::Path, crate::Item<D>>> {
     let mut info = Info {
         driver,
-        path,
-        labels: vec![Vec::new()],
-        current_label: 0,
-        variables: Vec::new(),
-        captures: Vec::new(),
+        path: path.clone(),
+        items: Default::default(),
+        context: Default::default(),
     };
 
-    compile_expression(expression, &mut info)?;
-    info.push_instruction(crate::Instruction::Return);
+    compile_item_with_captures(path, &[], expression, &mut info, |expression, info| {
+        compile_expression(expression, info)
+    })?;
 
-    Some(info.labels)
+    Some(info.items)
 }
 
 #[derive(Derivative)]
@@ -29,23 +28,97 @@ struct Info<'a, D: crate::Driver> {
     driver: &'a D,
 
     path: D::Path,
-    labels: Vec<Vec<crate::Instruction<D>>>,
-    current_label: crate::Label,
+    items: HashMap<D::Path, crate::Item<D>>,
+    context: Context<D>,
+}
+
+#[derive(Derivative)]
+#[derivative(Debug(bound = ""), Default(bound = ""))]
+struct Context<D: crate::Driver> {
+    label: crate::Label,
     variables: Vec<D::Path>,
-    captures: Vec<u32>,
 }
 
 impl<D: crate::Driver> Info<'_, D> {
     #[must_use]
     fn push_label(&mut self) -> crate::Label {
-        let label = self.labels.len();
-        self.labels.push(Vec::new());
+        let labels = &mut self.items.get_mut(&self.path).unwrap().labels;
+        let label = labels.len();
+        labels.push(Vec::new());
         label
     }
 
     fn push_instruction(&mut self, instruction: crate::Instruction<D>) {
-        self.labels[self.current_label].push(instruction);
+        self.items.get_mut(&self.path).unwrap().labels[self.context.label].push(instruction);
     }
+
+    fn true_variant(&self) -> Option<u32> {
+        let true_variant = self.driver.true_variant()?;
+        let enumeration = self.driver.get_enumeration_for_variant(&true_variant);
+
+        match self
+            .driver
+            .get_type_declaration(&enumeration)
+            .item
+            .representation
+            .item
+        {
+            wipple_typecheck::TypeRepresentation::Enumeration(variants) => variants
+                .iter()
+                .find_map(|(path, value)| (path == &true_variant).then_some(value.item.index)),
+            _ => None,
+        }
+    }
+}
+
+#[must_use]
+fn compile_item_with_captures<'a, D: crate::Driver>(
+    path: D::Path,
+    captures_paths: &[D::Path],
+    expression: WithInfo<D::Info, &'a wipple_typecheck::TypedExpression<D>>,
+    info: &mut Info<'_, D>,
+    body: impl FnOnce(
+        WithInfo<D::Info, &'a wipple_typecheck::TypedExpression<D>>,
+        &mut Info<'_, D>,
+    ) -> Option<()>,
+) -> Option<Vec<u32>> {
+    let captures = captures_paths
+        .iter()
+        .map(|path| {
+            Some(
+                info.context
+                    .variables
+                    .iter()
+                    .position(|p| p == path)
+                    .unwrap_or_else(|| panic!("{path:?}")) as u32,
+            )
+        })
+        .collect::<Option<Vec<_>>>()?;
+
+    info.items.insert(
+        path.clone(),
+        crate::Item {
+            captures: captures.len() as u32,
+            expression: expression.as_deref().map(Clone::clone),
+            labels: vec![Vec::new()],
+        },
+    );
+
+    let context = Context {
+        label: 0,
+        variables: captures_paths.to_vec(),
+    };
+
+    let prev_path = mem::replace(&mut info.path, path);
+    let prev_context = mem::replace(&mut info.context, context);
+
+    body(expression, info)?;
+    info.push_instruction(crate::Instruction::Return);
+
+    info.context = prev_context;
+    info.path = prev_path;
+
+    Some(captures)
 }
 
 #[must_use]
@@ -56,14 +129,11 @@ fn compile_expression<D: crate::Driver>(
     match &expression.item.kind {
         wipple_typecheck::TypedExpressionKind::Unknown(_) => return None,
         wipple_typecheck::TypedExpressionKind::Variable(_, path) => {
-            let variable = info.variables.iter().position(|p| p == path)? as u32;
-
-            info.captures.push(variable);
-
+            let variable = info.context.variables.iter().position(|p| p == path)? as u32;
             info.push_instruction(crate::Instruction::Variable(variable));
         }
-        wipple_typecheck::TypedExpressionKind::Constant { path, parameters } => info
-            .push_instruction(crate::Instruction::Typed(
+        wipple_typecheck::TypedExpressionKind::Constant { path, parameters } => {
+            info.push_instruction(crate::Instruction::Typed(
                 type_descriptor(&expression.item.r#type)?,
                 crate::TypedInstruction::Constant(
                     path.clone(),
@@ -72,7 +142,8 @@ fn compile_expression<D: crate::Driver>(
                         .map(type_descriptor)
                         .collect::<Option<_>>()?,
                 ),
-            )),
+            ));
+        }
         wipple_typecheck::TypedExpressionKind::Trait(path) => {
             info.push_instruction(crate::Instruction::Typed(
                 type_descriptor(&expression.item.r#type)?,
@@ -91,58 +162,73 @@ fn compile_expression<D: crate::Driver>(
                 crate::TypedInstruction::Text(text.clone()),
             ));
         }
-        wipple_typecheck::TypedExpressionKind::Block(statements) => {
-            let lazy_label = info.push_label();
-            let previous_label = mem::replace(&mut info.current_label, lazy_label);
+        wipple_typecheck::TypedExpressionKind::Block {
+            statements,
+            captures,
+        } => {
+            let block_path = info
+                .driver
+                .item_path_in(&info.path, info.items.len() as u32);
 
-            let prev_num_vars = info.variables.len() as u32;
-            let prev_captures = mem::take(&mut info.captures);
+            let captures = compile_item_with_captures(
+                block_path.clone(),
+                captures,
+                expression.clone(),
+                info,
+                |_, info| {
+                    if statements.is_empty() {
+                        info.push_instruction(crate::Instruction::Tuple(0));
+                    } else {
+                        for (index, statement) in statements.iter().enumerate() {
+                            compile_expression(statement.as_ref(), info)?;
 
-            if statements.is_empty() {
-                info.push_instruction(crate::Instruction::Tuple(0));
-            } else {
-                for (index, statement) in statements.iter().enumerate() {
-                    compile_expression(statement.as_ref(), info)?;
-
-                    if index + 1 != statements.len() {
-                        info.push_instruction(crate::Instruction::Drop);
+                            if index + 1 != statements.len() {
+                                info.push_instruction(crate::Instruction::Drop);
+                            }
+                        }
                     }
-                }
-            }
 
-            info.push_instruction(crate::Instruction::Return);
-            let mut captures = mem::replace(&mut info.captures, prev_captures);
-            captures.retain(|&var| var < prev_num_vars);
-            info.current_label = previous_label;
+                    Some(())
+                },
+            )?;
 
             info.push_instruction(crate::Instruction::Typed(
                 type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Block(captures, info.path.clone(), lazy_label),
+                crate::TypedInstruction::Function(captures, block_path),
             ));
         }
         wipple_typecheck::TypedExpressionKind::Do(block) => {
             compile_expression(block.as_deref(), info)?;
             info.push_instruction(crate::Instruction::Do);
         }
-        wipple_typecheck::TypedExpressionKind::Function { inputs, body } => {
-            let function_label = info.push_label();
-            let previous_label = mem::replace(&mut info.current_label, function_label);
+        wipple_typecheck::TypedExpressionKind::Function {
+            inputs,
+            body,
+            captures,
+        } => {
+            let function_path = info
+                .driver
+                .item_path_in(&info.path, info.items.len() as u32);
 
-            let prev_num_vars = info.variables.len() as u32;
-            for pattern in inputs {
-                compile_exhaustive_pattern(pattern.as_ref(), info)?;
-            }
+            let captures = compile_item_with_captures(
+                function_path.clone(),
+                captures,
+                expression.clone(),
+                info,
+                |_, info| {
+                    for pattern in inputs {
+                        compile_exhaustive_pattern(pattern.as_ref(), info)?;
+                    }
 
-            let prev_captures = mem::take(&mut info.captures);
-            compile_expression(body.as_deref(), info)?;
-            info.push_instruction(crate::Instruction::Return);
-            let mut captures = mem::replace(&mut info.captures, prev_captures);
-            captures.retain(|&var| var < prev_num_vars);
-            info.current_label = previous_label;
+                    compile_expression(body.as_deref(), info)?;
+
+                    Some(())
+                },
+            )?;
 
             info.push_instruction(crate::Instruction::Typed(
                 type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Function(captures, info.path.clone(), function_label),
+                crate::TypedInstruction::Function(captures, function_path),
             ));
         }
         wipple_typecheck::TypedExpressionKind::Call { function, inputs } => {
@@ -174,8 +260,11 @@ fn compile_expression<D: crate::Driver>(
             info.push_instruction(crate::Instruction::Tuple(0));
         }
         wipple_typecheck::TypedExpressionKind::Mutate { path, value, .. } => {
-            let variable = info.variables.iter().position(|p| *p == path.item)? as u32;
-            info.captures.push(variable);
+            let variable = info
+                .context
+                .variables
+                .iter()
+                .position(|p| *p == path.item)? as u32;
 
             compile_expression(value.as_deref(), info)?;
 
@@ -193,7 +282,7 @@ fn compile_expression<D: crate::Driver>(
                 .iter()
                 .map(|field| {
                     compile_expression(field.item.value.as_ref(), info)?;
-                    Some(field.item.name.clone())
+                    field.item.index
                 })
                 .collect::<Option<_>>()?;
 
@@ -207,9 +296,23 @@ fn compile_expression<D: crate::Driver>(
                 compile_expression(value.as_ref(), info)?;
             }
 
+            // TODO: Get variant index
+
+            let enumeration_path = info.driver.get_enumeration_for_variant(&variant.item);
+            let enumeration = info.driver.get_type_declaration(&enumeration_path);
+
+            let variant_index = match enumeration.item.representation.item {
+                wipple_typecheck::TypeRepresentation::Enumeration(variants) => {
+                    variants.iter().find_map(|(path, value)| {
+                        (path == &variant.item).then_some(value.item.index)
+                    })?
+                }
+                _ => return None,
+            };
+
             info.push_instruction(crate::Instruction::Typed(
                 type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Variant(variant.item.clone(), values.len() as u32),
+                crate::TypedInstruction::Variant(variant_index, values.len() as u32),
             ));
         }
         wipple_typecheck::TypedExpressionKind::Wrapper(value) => {
@@ -255,12 +358,12 @@ fn compile_exhaustive_pattern<'a, D: crate::Driver + 'a>(
     compile_pattern(pattern, else_label, info)?;
     info.push_instruction(crate::Instruction::Drop);
 
-    let then_label = info.current_label;
+    let then_label = info.context.label;
 
-    info.current_label = else_label;
+    info.context.label = else_label;
     info.push_instruction(crate::Instruction::Unreachable);
 
-    info.current_label = then_label;
+    info.context.label = then_label;
 
     Some(())
 }
@@ -281,12 +384,12 @@ fn compile_exhaustive_arms<'a, D: crate::Driver + 'a>(
         compile_expression(arm.item.body.as_ref(), info)?;
         info.push_instruction(crate::Instruction::Jump(continue_label));
 
-        info.current_label = else_label;
+        info.context.label = else_label;
     }
 
     info.push_instruction(crate::Instruction::Unreachable);
 
-    info.current_label = continue_label;
+    info.context.label = continue_label;
 
     Some(())
 }
@@ -316,16 +419,16 @@ fn compile_pattern<D: crate::Driver>(
             let else_label = info.push_label();
 
             info.push_instruction(crate::Instruction::JumpIfNot(
-                info.driver.true_variant()?,
+                info.true_variant()?,
                 else_label,
             ));
 
             info.push_instruction(crate::Instruction::Drop);
 
-            let prev_label = mem::replace(&mut info.current_label, else_label);
+            let prev_label = mem::replace(&mut info.context.label, else_label);
             info.push_instruction(crate::Instruction::Drop);
             info.push_instruction(crate::Instruction::Jump(break_label));
-            info.current_label = prev_label;
+            info.context.label = prev_label;
         }
         wipple_typecheck::Pattern::Text(text) => {
             info.push_instruction(crate::Instruction::Copy);
@@ -343,25 +446,45 @@ fn compile_pattern<D: crate::Driver>(
             let else_label = info.push_label();
 
             info.push_instruction(crate::Instruction::JumpIfNot(
-                info.driver.true_variant()?,
+                info.true_variant()?,
                 else_label,
             ));
 
             info.push_instruction(crate::Instruction::Drop);
 
-            let prev_label = mem::replace(&mut info.current_label, else_label);
+            let prev_label = mem::replace(&mut info.context.label, else_label);
             info.push_instruction(crate::Instruction::Drop);
             info.push_instruction(crate::Instruction::Jump(break_label));
-            info.current_label = prev_label;
+            info.context.label = prev_label;
         }
         wipple_typecheck::Pattern::Variable(_, path) => {
-            let variable = info.variables.len() as u32;
-            info.variables.push(path.clone());
+            let variable = info.context.variables.len() as u32;
+            info.context.variables.push(path.clone());
             info.push_instruction(crate::Instruction::Initialize(variable));
         }
-        wipple_typecheck::Pattern::Destructure(fields) => {
-            for field in fields {
-                info.push_instruction(crate::Instruction::Field(field.item.name.clone()));
+        wipple_typecheck::Pattern::Destructure {
+            structure,
+            field_patterns,
+        } => {
+            let structure = &structure.as_ref()?.item;
+
+            let field_indices = match info
+                .driver
+                .get_type_declaration(structure)
+                .item
+                .representation
+                .item
+            {
+                wipple_typecheck::TypeRepresentation::Structure(fields) => fields
+                    .into_iter()
+                    .map(|(name, field)| (name, field.item.index))
+                    .collect::<HashMap<_, _>>(),
+                _ => return None,
+            };
+
+            for field in field_patterns {
+                let field_index = field_indices.get(&field.item.name).copied()?;
+                info.push_instruction(crate::Instruction::Field(field_index));
                 compile_pattern(field.item.pattern.as_ref(), break_label, info)?;
                 info.push_instruction(crate::Instruction::Drop);
             }
@@ -370,13 +493,25 @@ fn compile_pattern<D: crate::Driver>(
             variant,
             value_patterns,
         } => {
-            info.push_instruction(crate::Instruction::JumpIfNot(
-                variant.item.clone(),
-                break_label,
-            ));
+            let enumeration = info.driver.get_enumeration_for_variant(&variant.item);
+
+            let variant_index = match info
+                .driver
+                .get_type_declaration(&enumeration)
+                .item
+                .representation
+                .item
+            {
+                wipple_typecheck::TypeRepresentation::Enumeration(variants) => variants
+                    .into_iter()
+                    .find_map(|(path, value)| (path == variant.item).then_some(value.item.index))?,
+                _ => return None,
+            };
+
+            info.push_instruction(crate::Instruction::JumpIfNot(variant_index, break_label));
 
             for (index, pattern) in value_patterns.iter().enumerate() {
-                info.push_instruction(crate::Instruction::Element(index as u32));
+                info.push_instruction(crate::Instruction::VariantElement(index as u32));
                 compile_pattern(pattern.as_ref(), break_label, info)?;
                 info.push_instruction(crate::Instruction::Drop);
             }
@@ -388,7 +523,7 @@ fn compile_pattern<D: crate::Driver>(
         }
         wipple_typecheck::Pattern::Tuple(elements) => {
             for (index, pattern) in elements.iter().enumerate() {
-                info.push_instruction(crate::Instruction::Element(index as u32));
+                info.push_instruction(crate::Instruction::TupleElement(index as u32));
                 compile_pattern(pattern.as_ref(), break_label, info)?;
                 info.push_instruction(crate::Instruction::Drop);
             }
@@ -399,11 +534,11 @@ fn compile_pattern<D: crate::Driver>(
             compile_pattern(left.as_deref(), else_label, info)?;
             info.push_instruction(crate::Instruction::Jump(then_label));
 
-            info.current_label = else_label;
+            info.context.label = else_label;
             compile_pattern(right.as_deref(), break_label, info)?;
             info.push_instruction(crate::Instruction::Jump(then_label));
 
-            info.current_label = then_label;
+            info.context.label = then_label;
         }
         wipple_typecheck::Pattern::Annotate { pattern, .. } => {
             compile_pattern(pattern.as_deref(), break_label, info)?;

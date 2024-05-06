@@ -11,6 +11,7 @@ import {
     positional,
     multioption,
     array,
+    flag,
 } from "cmd-ts";
 import { File } from "cmd-ts/batteries/fs";
 import * as compiler from "wipple-compiler";
@@ -38,12 +39,14 @@ const app = subcommands({
         compile: command({
             name: "compile",
             args: {
+                entrypoint: flag({ long: "entrypoint" }),
                 dependencyPath: option({ long: "dependency", type: optional(File) }),
                 outputInterfacePath: option({ long: "interface", type: optional(string) }),
                 outputLibraryPath: option({ long: "library", type: optional(string) }),
                 sourcePaths: restPositionals({ type: File }),
             },
             handler: async ({
+                entrypoint,
                 dependencyPath,
                 outputInterfacePath,
                 outputLibraryPath,
@@ -63,7 +66,7 @@ const app = subcommands({
                     ? JSON.parse(fs.readFileSync(dependencyPath, "utf8"))
                     : null;
 
-                const result = compiler.compile(sources, dependencies);
+                const result = compiler.compile(sources, dependencies, entrypoint);
 
                 if (result.diagnostics.length > 0) {
                     console.error(renderDiagnostics(result.diagnostics, result.interface));
@@ -110,7 +113,7 @@ const app = subcommands({
                     (path) => JSON.parse(fs.readFileSync(path, "utf8")),
                 );
 
-                const result = compiler.compile(sources, dependencies);
+                const result = compiler.compile(sources, dependencies, false);
 
                 if (result.diagnostics.length > 0) {
                     console.error(renderDiagnostics(result.diagnostics, result.interface));
@@ -269,7 +272,7 @@ const app = subcommands({
 
                     let output = "";
 
-                    const result = compiler.compile(sources, dependencies);
+                    const result = compiler.compile(sources, dependencies, true);
 
                     if (result.diagnostics.length > 0) {
                         output += renderDiagnostics(result.diagnostics, result.interface) + "\n";

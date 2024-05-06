@@ -1,0 +1,15 @@
+[package]
+name = "wipple-codegen"
+version = "0.0.0"
+edition = "2021"
+
+[lints]
+workspace = true
+
+[dependencies]
+derivative = "2"
+wasm-encoder = "0.206"
+wasmparser = "0.206"
+wipple-util = { path = "../util" }
+wipple-ir = { path = "../ir" }
+wipple-linker = { path = "../linker" }

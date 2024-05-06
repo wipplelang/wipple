@@ -674,6 +674,11 @@ impl Path {
     pub fn top_level() -> Self {
         Path(Vec::new())
     }
+
+    /// Append a [`PathComponent`] to the path.
+    pub fn join(&self, component: PathComponent) -> Self {
+        Path(self.0.iter().cloned().chain([component]).collect())
+    }
 }
 
 impl std::ops::Deref for Path {
@@ -761,6 +766,9 @@ pub enum PathComponent {
 
     /// A variable.
     Variable(u32),
+
+    /// An item (used during IR generation).
+    Item(u32),
 }
 
 impl PathComponent {
@@ -784,7 +792,9 @@ impl PathComponent {
             | PathComponent::Variant(name)
             | PathComponent::Language(name)
             | PathComponent::TypeParameter(name) => Some(name),
-            PathComponent::Instance(_) | PathComponent::Variable(_) => None,
+            PathComponent::Instance(_) | PathComponent::Variable(_) | PathComponent::Item(_) => {
+                None
+            }
         }
     }
 }
@@ -801,6 +811,7 @@ impl std::fmt::Display for PathComponent {
             PathComponent::Language(name) => write!(f, "language {}", name),
             PathComponent::TypeParameter(name) => write!(f, "type-parameter {}", name),
             PathComponent::Variable(index) => write!(f, "variable {}", index),
+            PathComponent::Item(index) => write!(f, "item {}", index),
         }
     }
 }
@@ -821,6 +832,7 @@ impl std::str::FromStr for PathComponent {
             "language" => Ok(PathComponent::Language(name.to_string())),
             "type-parameter" => Ok(PathComponent::TypeParameter(name.to_string())),
             "variable" => Ok(PathComponent::Variable(name.parse().map_err(|_| ())?)),
+            "item" => Ok(PathComponent::Item(name.parse().map_err(|_| ())?)),
             _ => Err(()),
         }
     }
@@ -966,7 +978,13 @@ pub enum Expression<D: Driver> {
     },
 
     /// A block.
-    Block(Vec<WithInfo<D::Info, Expression<D>>>),
+    Block {
+        /// The block's statements.
+        statements: Vec<WithInfo<D::Info, Expression<D>>>,
+
+        /// The list of variables the block captures.
+        captures: Vec<Path>,
+    },
 
     /// Evaluate a block.
     Do(WithInfo<D::Info, Box<Expression<D>>>),
@@ -979,6 +997,9 @@ pub enum Expression<D: Driver> {
 
         /// The function's output.
         body: WithInfo<D::Info, Box<Expression<D>>>,
+
+        /// The list of variables the function captures.
+        captures: Vec<Path>,
     },
 
     /// A function call.

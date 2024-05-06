@@ -200,8 +200,8 @@ fn convert_pattern<D: Driver>(driver: &D, pattern: &crate::Pattern<D>) -> Option
                 vec![Pattern::Constructor(Constructor::Unbounded, Vec::new())],
             ))
         }
-        crate::Pattern::Destructure(fields) => {
-            let patterns = fields
+        crate::Pattern::Destructure { field_patterns, .. } => {
+            let patterns = field_patterns
                 .iter()
                 .map(|field| convert_pattern(driver, &field.item.pattern.item))
                 .collect::<Option<Vec<_>>>()?;

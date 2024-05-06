@@ -21,17 +21,17 @@ pub struct UnlinkedLibrary<D: Driver> {
     /// The implementations of constants and instances.
     pub items: HashMap<D::Path, UnlinkedItem<D>>,
 
-    /// The variants required for various intrinsics.
-    pub intrinsic_variants: HashMap<String, D::Path>,
-
     /// The list of instances for each trait.
     pub instances: HashMap<D::Path, Vec<D::Path>>,
 
     /// The default instance for each trait.
     pub default_instances: HashMap<D::Path, Vec<D::Path>>,
 
-    /// Any code to be run when the program starts.
-    pub code: Vec<UnlinkedItem<D>>,
+    /// The item to run when the program starts.
+    pub entrypoint: Option<D::Path>,
+
+    /// Items exported by the executable.
+    pub exports: HashMap<String, D::Path>,
 }
 
 /// An analyzed expression along with its compiled IR.
@@ -48,7 +48,7 @@ pub struct UnlinkedItem<D: Driver> {
     pub expression: WithInfo<D::Info, wipple_typecheck::TypedExpression<D>>,
 
     /// The compiled IR.
-    pub ir: Option<Vec<Vec<wipple_ir::Instruction<D>>>>,
+    pub ir: Vec<Vec<wipple_ir::Instruction<D>>>,
 }
 
 /// A linked executable.
@@ -62,17 +62,17 @@ pub struct Executable<D: Driver> {
     /// The implementations of constants and instances.
     pub items: HashMap<D::Path, LinkedItem<D>>,
 
-    /// The variants required for various intrinsics.
-    pub intrinsic_variants: HashMap<String, D::Path>,
-
     /// The list of instances for each trait.
     pub instances: HashMap<D::Path, Vec<D::Path>>,
 
     /// The default instance for each trait.
     pub default_instances: HashMap<D::Path, Vec<D::Path>>,
 
-    /// Any code to be run when the program starts.
-    pub code: Vec<LinkedItem<D>>,
+    /// The item to run when the program starts.
+    pub entrypoint: Option<D::Path>,
+
+    /// Items exported by the executable.
+    pub exports: HashMap<String, D::Path>,
 }
 
 /// An item in an [`Executable`].
@@ -106,6 +106,9 @@ pub enum Error {
 
     /// Failed to produce IR for the item.
     Ir,
+
+    /// Multiple libraries contained an entrypoint.
+    MultipleEntrypoints,
 }
 
 /// Link multiple [`UnlinkedLibrary`]s into a single [`Executable`].
@@ -115,13 +118,30 @@ pub fn link<D: Driver>(
     libraries
         .into_iter()
         .try_fold(Executable::default(), |mut executable, library| {
+            if let Some(entrypoint) = library.entrypoint {
+                if executable.entrypoint.is_some() {
+                    let info = library
+                        .items
+                        .get(&entrypoint)
+                        .unwrap()
+                        .expression
+                        .info
+                        .clone();
+
+                    return Err(WithInfo {
+                        info,
+                        item: Error::MultipleEntrypoints,
+                    });
+                }
+
+                executable.entrypoint = Some(entrypoint);
+            }
+
             for (path, item) in library.items {
                 executable.items.insert(path, convert_item(item)?);
             }
 
-            executable
-                .intrinsic_variants
-                .extend(library.intrinsic_variants);
+            executable.exports.extend(library.exports);
 
             for (r#trait, instances) in library.instances {
                 executable
@@ -139,10 +159,6 @@ pub fn link<D: Driver>(
                     .extend(instances);
             }
 
-            for item in library.code {
-                executable.code.push(convert_item(item)?);
-            }
-
             Ok(executable)
         })
 }
@@ -156,9 +172,6 @@ fn convert_item<D: Driver>(item: UnlinkedItem<D>) -> Result<LinkedItem<D>, D> {
                 item: Error::TypeDescriptor,
             },
         )?,
-        ir: item.ir.ok_or(WithInfo {
-            info: item.expression.info,
-            item: Error::Ir,
-        })?,
+        ir: item.ir,
     })
 }

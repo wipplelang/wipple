@@ -56,6 +56,7 @@ test(path.basename(file), async () => {
             },
         ],
         baseInterface,
+        true,
     );
 
     const render = new Render();
@@ -99,7 +100,7 @@ test(path.basename(file), async () => {
         return;
     }
 
-    const executable = link([compileResult.library, baseLibrary]);
+    const executable = link([baseLibrary, compileResult.library]);
 
     let output = "";
     const handleIo = async (request) => {

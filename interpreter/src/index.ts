@@ -2,6 +2,7 @@ import { Decimal } from "decimal.js";
 import { intrinsics, callFunction } from "./intrinsics.js";
 import { produce } from "immer";
 import type * as compiler from "wipple-compiler";
+import { inspect } from "util";
 
 export { callFunction };
 
@@ -26,27 +27,17 @@ type Value =
       }
     | {
           type: "function";
-          scope: Record<number, { current: TypedValue }>;
           path: string;
-          ir: Instruction[][];
-          label: number;
           substitutions: Record<string, TypeDescriptor>;
+          captures: { current: TypedValue }[];
       }
     | {
           type: "nativeFunction";
           value: (...inputs: TypedValue[]) => Promise<TypedValue>;
       }
     | {
-          type: "block";
-          scope: Record<number, { current: TypedValue }>;
-          path: string;
-          ir: Instruction[][];
-          label: number;
-          substitutions: Record<string, TypeDescriptor>;
-      }
-    | {
           type: "variant";
-          variant: string;
+          variant: number;
           values: TypedValue[];
       }
     | {
@@ -66,7 +57,7 @@ type Value =
       }
     | {
           type: "structure";
-          fields: Record<string, TypedValue>;
+          fields: TypedValue[];
       }
     | {
           type: "tuple";
@@ -82,7 +73,6 @@ type Value =
 
 export interface Context {
     executable: Executable;
-    topLevel: Item[];
     debug: boolean;
     gc: () => void;
     io: (request: IoRequest) => void;
@@ -152,19 +142,22 @@ export const evaluate = async (
 ) => {
     const context: Context = {
         executable,
-        topLevel: executable.code,
         gc: options.gc,
         io: options.io,
         debug: options.debug,
         call: async (func, inputs, task) => {
             switch (func.type) {
                 case "function": {
+                    const scope: Record<number, { current: TypedValue }> = {};
+                    func.captures.forEach((value, index) => {
+                        scope[index] = value;
+                    });
+
                     const result = (await evaluateItem(
                         func.path,
-                        func.ir,
-                        func.label,
+                        executable.items[func.path].ir,
                         [...inputs].reverse(),
-                        { ...func.scope },
+                        scope,
                         func.substitutions,
                         task,
                         context,
@@ -182,16 +175,20 @@ export const evaluate = async (
             }
         },
         do: async (block, task) => {
-            if (block.type !== "block") {
-                throw new InterpreterError("expected block value");
+            if (block.type !== "function") {
+                throw new InterpreterError("expected function value");
             }
+
+            const scope: Record<number, { current: TypedValue }> = {};
+            block.captures.forEach((value, index) => {
+                scope[index] = value;
+            });
 
             const result = (await evaluateItem(
                 block.path,
-                block.ir,
-                block.label,
+                executable.items[block.path].ir,
                 [],
-                { ...block.scope },
+                scope,
                 block.substitutions,
                 task,
                 context,
@@ -203,6 +200,9 @@ export const evaluate = async (
         },
         getItem: async (path, parametersOrSubstitutions, typeDescriptor, task) => {
             const item = context.executable.items[path];
+            if (!item) {
+                throw new InterpreterError(`missing item: ${path}`);
+            }
 
             const substitutions = Array.isArray(parametersOrSubstitutions)
                 ? Object.fromEntries(
@@ -220,7 +220,6 @@ export const evaluate = async (
             const result = (await evaluateItem(
                 path,
                 item.ir,
-                0,
                 [],
                 {},
                 substitutions,
@@ -249,11 +248,20 @@ export const evaluate = async (
         taskLocals: new Map(),
     };
 
-    for (const item of executable.code) {
-        const task = () => {}; // marker
-        const block = (await evaluateItem("top-level", item.ir, 0, [], {}, {}, task, context))!;
-        await context.do(block, task);
+    const entrypoint = executable.items[executable.entrypoint];
+    const task = () => {}; // marker
+
+    if (context.debug) {
+        console.error("## evaluating entrypoint block");
     }
+
+    const block = (await evaluateItem("top-level", entrypoint.ir, [], {}, {}, task, context))!;
+
+    if (context.debug) {
+        console.error("## executing entrypoint block");
+    }
+
+    await context.do(block, task);
 
     for (const [_value, cleanup] of context.onceCache) {
         await cleanup();
@@ -263,13 +271,13 @@ export const evaluate = async (
 const evaluateItem = async (
     path: string,
     item: Instruction[][],
-    label: number,
     stack: TypedValue[],
     scope: Record<number, { current: TypedValue }>,
     substitutions: Record<string, TypeDescriptor>,
     task: any,
     context: Context,
 ) => {
+    let label = 0;
     outer: while (true) {
         const instructions = item[label];
 
@@ -296,14 +304,23 @@ const evaluateItem = async (
             };
 
             if (context.debug) {
-                console.error("## evaluating:", {
-                    path,
-                    label,
-                    instruction,
-                    stack,
-                    scope,
-                    substitutions,
-                });
+                console.error(
+                    "## evaluating:",
+                    inspect(
+                        {
+                            path,
+                            label,
+                            instruction,
+                            stack,
+                            scope,
+                            substitutions,
+                        },
+                        {
+                            depth: Infinity,
+                            colors: true,
+                        },
+                    ),
+                );
             }
 
             switch (instruction.type) {
@@ -348,10 +365,21 @@ const evaluateItem = async (
 
                     break;
                 }
-                case "element": {
+                case "variantElement": {
                     const value = peek();
-                    if (value.type !== "variant" && value.type !== "tuple") {
-                        throw error("expected variant or tuple", value);
+                    if (value.type !== "variant") {
+                        throw error("expected variant", value);
+                    }
+
+                    const element = value.values[instruction.value]!;
+                    stack.push(element);
+
+                    break;
+                }
+                case "tupleElement": {
+                    const value = peek();
+                    if (value.type !== "tuple") {
+                        throw error("expected tuple", value);
                     }
 
                     const element = value.values[instruction.value]!;
@@ -477,9 +505,12 @@ const evaluateItem = async (
                                 elements.push(pop());
                             }
 
-                            const fields: Record<string, TypedValue> = {};
-                            for (const field of instruction.value[1].value) {
-                                fields[field] = elements.pop()!;
+                            const fields: TypedValue[] = new Array(
+                                instruction.value[1].value.length,
+                            );
+
+                            for (const index of instruction.value[1].value) {
+                                fields[index] = elements.pop()!;
                             }
 
                             stack.push({
@@ -513,29 +544,15 @@ const evaluateItem = async (
                             break;
                         }
                         case "function": {
-                            const path = instruction.value[1].value[1];
+                            const [captureList, path] = instruction.value[1].value;
+
+                            const captures = captureList.map((index) => scope[index]);
 
                             stack.push({
                                 type: "function",
                                 path,
-                                ir: path ? context.executable.items[path].ir : item,
-                                label: instruction.value[1].value[2],
                                 substitutions,
-                                scope,
-                            });
-
-                            break;
-                        }
-                        case "block": {
-                            const path = instruction.value[1].value[1];
-
-                            stack.push({
-                                type: "block",
-                                path,
-                                ir: path ? context.executable.items[path].ir : item,
-                                label: instruction.value[1].value[2],
-                                substitutions,
-                                scope,
+                                captures,
                             });
 
                             break;
@@ -589,10 +606,6 @@ const evaluateItem = async (
                         throw error("expected variant", value);
                     }
 
-                    if (!value.variant) {
-                        throw error("variant is undefined", value);
-                    }
-
                     if (value.variant !== instruction.value[0]) {
                         label = instruction.value[1];
                         continue outer;
@@ -616,10 +629,17 @@ const evaluateItem = async (
                     const func = pop();
 
                     if (func.type === "function") {
-                        item = func.ir;
-                        label = func.label;
+                        path = func.path;
+                        item = context.executable.items[func.path].ir;
+                        label = 0;
+                        if (stack.length !== 0) {
+                            throw error("stack is not empty");
+                        }
                         stack.push(...inputs);
-                        scope = { ...func.scope };
+                        scope = {};
+                        func.captures.forEach((value, index) => {
+                            scope[index] = value;
+                        });
                         substitutions = func.substitutions;
                         context.gc();
                         continue outer;
@@ -631,13 +651,20 @@ const evaluateItem = async (
                 case "tailDo": {
                     const block = pop();
 
-                    if (block.type !== "block") {
-                        throw error("expected block", block);
+                    if (block.type !== "function") {
+                        throw error("expected function", block);
                     }
 
-                    item = block.ir;
-                    label = block.label;
-                    scope = { ...block.scope };
+                    path = block.path;
+                    item = context.executable.items[block.path].ir;
+                    label = 0;
+                    if (stack.length !== 0) {
+                        throw error("stack is not empty");
+                    }
+                    scope = {};
+                    block.captures.forEach((value, index) => {
+                        scope[index] = value;
+                    });
                     substitutions = block.substitutions;
                     context.gc();
                     continue outer;

@@ -5,6 +5,7 @@ mod tail_call;
 
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use ts_rs::TS;
 use wipple_util::WithInfo;
 
@@ -27,6 +28,9 @@ pub trait Driver: wipple_typecheck::Driver {
 
     /// The name of the intrinsic that compares text.
     fn text_equality_intrinsic(&self) -> Option<String>;
+
+    /// The path of an item contained within the item at the provided path.
+    fn item_path_in(&self, path: &Self::Path, index: u32) -> Self::Path;
 }
 
 impl Driver for wipple_util::TsAny {
@@ -53,6 +57,10 @@ impl Driver for wipple_util::TsAny {
     fn text_equality_intrinsic(&self) -> Option<String> {
         unimplemented!()
     }
+
+    fn item_path_in(&self, _path: &Self::Path, _index: u32) -> Self::Path {
+        unimplemented!()
+    }
 }
 
 /// Generate IR from an expression. This function must only be called if
@@ -62,13 +70,15 @@ pub fn compile<D: Driver>(
     path: D::Path,
     expression: WithInfo<D::Info, &wipple_typecheck::TypedExpression<D>>,
 ) -> Option<Result<D>> {
-    let mut labels = compile::compile(driver, path, expression)?;
+    let mut items = compile::compile(driver, path, expression)?;
 
-    for instructions in &mut labels {
-        tail_call::apply(instructions);
+    for item in items.values_mut() {
+        for instructions in &mut item.labels {
+            tail_call::apply(instructions);
+        }
     }
 
-    Some(Result { labels })
+    Some(Result { items })
 }
 
 /// Generate a type descriptor from a type.
@@ -82,11 +92,25 @@ pub fn type_descriptor<D: crate::Driver>(
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""))]
 pub struct Result<D: Driver> {
-    /// The compiled instructions, grouped by label.
-    pub labels: Vec<Vec<Instruction<D>>>,
+    /// The compiled items.
+    pub items: HashMap<D::Path, Item<D>>,
 }
 
-/// A label to jump to (ie. an index of [`Result::labels`]).
+/// A compiled item.
+#[derive(Derivative)]
+#[derivative(Debug(bound = ""))]
+pub struct Item<D: Driver> {
+    /// The number of variables this item captures.
+    pub captures: u32,
+
+    /// The expression from which this item was compiled.
+    pub expression: WithInfo<D::Info, wipple_typecheck::TypedExpression<D>>,
+
+    /// The compiled instructions, grouped by label.
+    pub labels: Vec<Vec<crate::Instruction<D>>>,
+}
+
+/// A label to jump to (ie. an index of an item in [`Result::items`]).
 pub type Label = usize;
 
 /// An instruction.
@@ -114,11 +138,15 @@ pub enum Instruction<D: Driver> {
 
     /// (Pattern matching) Retrieve a field of the structure value on the top of
     /// the stack, keeping the value on the top of the stack.
-    Field(String),
+    Field(u32),
 
-    /// (Pattern matching) Retrieve the _n_th element of the tuple or variant
-    /// value on the top of the stack, keeping the value on the top of the stack.
-    Element(u32),
+    /// (Pattern matching) Retrieve the _n_th element of the variant on the top
+    /// of the stack, keeping the value on the top of the stack.
+    VariantElement(u32),
+
+    /// (Pattern matching) Retrieve the _n_th element of the tuple on the top of
+    /// the stack, keeping the value on the top of the stack.
+    TupleElement(u32),
 
     /// (Pattern matching) Unwrap the wrapper type on the top of the stack,
     /// keeping the value on the top of the stack.
@@ -144,7 +172,7 @@ pub enum Instruction<D: Driver> {
 
     /// (Control flow) Go to another label if the variant on the top of the
     /// stack does not match the variant in the condition.
-    JumpIfNot(D::Path, Label),
+    JumpIfNot(u32, Label),
 
     /// (Control flow) Return the top of the stack as the result of this
     /// function.
@@ -195,19 +223,16 @@ pub enum TypedInstruction<D: Driver> {
     Marker,
 
     /// Create a structure, mapping each field to the next value on the stack.
-    Structure(Vec<String>),
+    Structure(Vec<u32>),
 
     /// Create a variant from the top _n_ values on the stack.
-    Variant(D::Path, u32),
+    Variant(u32, u32),
 
     /// Create a wrapper value from the top value on the stack.
     Wrapper,
 
-    /// A function that can potentially capture variables.
-    Function(Vec<u32>, D::Path, Label),
-
-    /// A block expression.
-    Block(Vec<u32>, D::Path, Label),
+    /// A function (or block) expression that can capture variables.
+    Function(Vec<u32>, D::Path),
 
     /// A constant.
     Constant(D::Path, Vec<TypeDescriptor<D>>),
@@ -259,7 +284,8 @@ where
             Instruction::Drop => write!(f, "drop"),
             Instruction::Initialize(variable) => write!(f, "initialize {variable}"),
             Instruction::Field(field) => write!(f, "field {field}"),
-            Instruction::Element(element) => write!(f, "element {element}"),
+            Instruction::VariantElement(element) => write!(f, "variant element {element}"),
+            Instruction::TupleElement(element) => write!(f, "tuple element {element}"),
             Instruction::Unwrap => write!(f, "unwrap"),
             Instruction::Variable(variable) => write!(f, "variable {variable}"),
             Instruction::Call(inputs) => write!(f, "call {inputs}"),
@@ -305,11 +331,8 @@ where
                 write!(f, "variant {variant:?} {elements}")
             }
             TypedInstruction::Wrapper => write!(f, "wrapper"),
-            TypedInstruction::Function(captures, path, label) => {
-                write!(f, "function {captures:?} ({path}) {label}")
-            }
-            TypedInstruction::Block(captures, path, label) => {
-                write!(f, "block {captures:?} ({path}) {label}")
+            TypedInstruction::Function(captures, path) => {
+                write!(f, "function {captures:?} ({path})")
             }
             TypedInstruction::Constant(path, _) => write!(f, "constant {path}"),
             TypedInstruction::Instance(path) => write!(f, "instance {path}"),
