@@ -2,7 +2,6 @@ import { Decimal } from "decimal.js";
 import { intrinsics, callFunction } from "./intrinsics.js";
 import { produce } from "immer";
 import type * as compiler from "wipple-compiler";
-import { inspect } from "util";
 
 export { callFunction };
 
@@ -304,23 +303,14 @@ const evaluateItem = async (
             };
 
             if (context.debug) {
-                console.error(
-                    "## evaluating:",
-                    inspect(
-                        {
-                            path,
-                            label,
-                            instruction,
-                            stack,
-                            scope,
-                            substitutions,
-                        },
-                        {
-                            depth: Infinity,
-                            colors: true,
-                        },
-                    ),
-                );
+                console.error("## evaluating:", {
+                    path,
+                    label,
+                    instruction,
+                    stack,
+                    scope,
+                    substitutions,
+                });
             }
 
             switch (instruction.type) {
