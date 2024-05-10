@@ -1,6 +1,6 @@
 //! Generate a WebAssembly module from a linked executable.
 
-mod monomorphize;
+mod transform;
 
 use std::collections::HashMap;
 use wasm_encoder as wasm;

@@ -24,7 +24,7 @@ pub struct Module<D: crate::Driver> {
     Eq(bound = ""),
     Hash(bound = "")
 )]
-enum Type<D: crate::Driver> {
+pub enum Type<D: crate::Driver> {
     Named(TypeReference<D>),
     Function(Vec<Type<D>>, Box<Type<D>>),
     Tuple(Vec<Type<D>>),
@@ -66,7 +66,13 @@ pub struct ItemReference<D: crate::Driver>(pub usize, PhantomData<D>);
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 pub struct Item<D: crate::Driver> {
-    pub ir: Vec<Vec<Instruction<D>>>,
+    pub entrypoint: Block<D>,
+}
+
+#[derive(Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
+pub struct Block<D: crate::Driver> {
+    pub instructions: Vec<Instruction<D>>,
 }
 
 #[derive(Derivative)]
@@ -85,9 +91,9 @@ pub enum Instruction<D: crate::Driver> {
     Mutate(u32),
     Tuple(u32),
     Typed(TypeReference<D>, TypedInstruction<D>),
-    JumpIfNot(u32, ir::Label),
+    JumpIfNot(u32, Box<Block<D>>),
     Return,
-    Jump(ir::Label),
+    Jump(Box<Block<D>>),
     TailCall(u32),
     TailDo,
     Unreachable,
@@ -194,26 +200,32 @@ impl<D: crate::Driver> Module<D> {
             self.item_map.insert(key, item_reference);
         }
 
-        let ir = item
-            .ir
-            .iter()
-            .map(|block| {
-                block
-                    .iter()
-                    .map(|instruction| self.compile_instruction(instruction, context))
-                    .collect()
-            })
-            .collect::<Vec<_>>();
+        let entrypoint = self.compile_block(0, &item.ir, context);
 
-        let item = Item { ir };
+        let item = Item { entrypoint };
         self.items.push(item);
 
         item_reference
     }
 
+    fn compile_block(
+        &mut self,
+        label: ir::Label,
+        item: &[Vec<ir::Instruction<D>>],
+        context: &mut Context<'_, D>,
+    ) -> Block<D> {
+        let instructions = item[label]
+            .iter()
+            .map(|instruction| self.compile_instruction(instruction, item, context))
+            .collect();
+
+        Block { instructions }
+    }
+
     fn compile_instruction(
         &mut self,
         instruction: &ir::Instruction<D>,
+        item: &[Vec<ir::Instruction<D>>],
         context: &mut Context<'_, D>,
     ) -> Instruction<D> {
         match instruction {
@@ -236,9 +248,15 @@ impl<D: crate::Driver> Module<D> {
 
                 Instruction::Typed(r#type, instruction)
             }
-            ir::Instruction::JumpIfNot(variant, label) => Instruction::JumpIfNot(*variant, *label),
+            ir::Instruction::JumpIfNot(variant, label) => {
+                let block = self.compile_block(*label, item, context);
+                Instruction::JumpIfNot(*variant, Box::new(block))
+            }
             ir::Instruction::Return => Instruction::Return,
-            ir::Instruction::Jump(label) => Instruction::Jump(*label),
+            ir::Instruction::Jump(label) => {
+                let block = self.compile_block(*label, item, context);
+                Instruction::Jump(Box::new(block))
+            }
             ir::Instruction::TailCall(inputs) => Instruction::TailCall(*inputs),
             ir::Instruction::TailDo => Instruction::TailDo,
             ir::Instruction::Unreachable => Instruction::Unreachable,
