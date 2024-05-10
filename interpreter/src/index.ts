@@ -147,16 +147,11 @@ export const evaluate = async (
         call: async (func, inputs, task) => {
             switch (func.type) {
                 case "function": {
-                    const scope: Record<number, { current: TypedValue }> = {};
-                    func.captures.forEach((value, index) => {
-                        scope[index] = value;
-                    });
-
                     const result = (await evaluateItem(
                         func.path,
                         executable.items[func.path].ir,
                         [...inputs].reverse(),
-                        scope,
+                        func.captures,
                         func.substitutions,
                         task,
                         context,
@@ -187,7 +182,7 @@ export const evaluate = async (
                 block.path,
                 executable.items[block.path].ir,
                 [],
-                scope,
+                block.captures,
                 block.substitutions,
                 task,
                 context,
@@ -220,7 +215,7 @@ export const evaluate = async (
                 path,
                 item.ir,
                 [],
-                {},
+                [],
                 substitutions,
                 task,
                 context,
@@ -254,7 +249,7 @@ export const evaluate = async (
         console.error("## evaluating entrypoint block");
     }
 
-    const block = (await evaluateItem("top-level", entrypoint.ir, [], {}, {}, task, context))!;
+    const block = (await evaluateItem("top-level", entrypoint.ir, [], [], {}, task, context))!;
 
     if (context.debug) {
         console.error("## executing entrypoint block");
@@ -271,7 +266,7 @@ const evaluateItem = async (
     path: string,
     item: Instruction[][],
     stack: TypedValue[],
-    scope: Record<number, { current: TypedValue }>,
+    scope: { current: TypedValue }[],
     substitutions: Record<string, TypeDescriptor>,
     task: any,
     context: Context,
@@ -626,10 +621,7 @@ const evaluateItem = async (
                             throw error("stack is not empty");
                         }
                         stack.push(...inputs);
-                        scope = {};
-                        func.captures.forEach((value, index) => {
-                            scope[index] = value;
-                        });
+                        scope = func.captures;
                         substitutions = func.substitutions;
                         context.gc();
                         continue outer;
@@ -651,10 +643,7 @@ const evaluateItem = async (
                     if (stack.length !== 0) {
                         throw error("stack is not empty");
                     }
-                    scope = {};
-                    block.captures.forEach((value, index) => {
-                        scope[index] = value;
-                    });
+                    scope = block.captures;
                     substitutions = block.substitutions;
                     context.gc();
                     continue outer;
