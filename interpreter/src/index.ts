@@ -150,7 +150,7 @@ export const evaluate = async (
                         func.path,
                         executable.items[func.path].ir,
                         [...inputs].reverse(),
-                        func.captures,
+                        [...func.captures],
                         func.substitutions,
                         task,
                         context,
@@ -170,16 +170,11 @@ export const evaluate = async (
                 throw new InterpreterError("expected function value");
             }
 
-            const scope: Record<number, { current: TypedValue }> = {};
-            block.captures.forEach((value, index) => {
-                scope[index] = value;
-            });
-
             const result = (await evaluateItem(
                 block.path,
                 executable.items[block.path].ir,
                 [],
-                block.captures,
+                [...block.captures],
                 block.substitutions,
                 task,
                 context,
@@ -277,7 +272,7 @@ const evaluateItem = async (
     let instruction: Instruction | undefined;
     let blocks = [[...instructions]];
     while (true) {
-        while ((instruction = blocks[blocks.length - 1].shift())) {
+        while ((instruction = blocks[blocks.length - 1]?.shift())) {
             const error = (message: string, value?: TypedValue) =>
                 context.error({ instruction: instruction!, message, stack, value });
 
@@ -623,14 +618,15 @@ const evaluateItem = async (
 
                     const func = pop();
 
+                    if (stack.length !== 0) {
+                        throw error("stack is not empty");
+                    }
+
                     if (func.type === "function") {
                         path = func.path;
                         blocks = [[...context.executable.items[func.path].ir]];
-                        if (stack.length !== 0) {
-                            throw error("stack is not empty");
-                        }
                         stack.push(...inputs);
-                        scope = func.captures;
+                        scope = [...func.captures];
                         substitutions = func.substitutions;
                         context.gc();
                         continue;
@@ -642,16 +638,17 @@ const evaluateItem = async (
                 case "tailDo": {
                     const block = pop();
 
+                    if (stack.length !== 0) {
+                        throw error("stack is not empty");
+                    }
+
                     if (block.type !== "function") {
                         throw error("expected function", block);
                     }
 
                     path = block.path;
                     blocks = [[...context.executable.items[block.path].ir]];
-                    if (stack.length !== 0) {
-                        throw error("stack is not empty");
-                    }
-                    scope = block.captures;
+                    scope = [...block.captures];
                     substitutions = block.substitutions;
                     context.gc();
                     continue;

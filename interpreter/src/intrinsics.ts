@@ -5,7 +5,7 @@ export type Intrinsic = (inputs: TypedValue[], context: Context, task: any) => P
 
 export const intrinsics: Record<string, Intrinsic> = {
     debug: async ([value]) => {
-        console.error(value);
+        console.error(JSON.stringify(value, null, 4));
         return value;
     },
     crash: async ([message], context) => {
@@ -447,7 +447,7 @@ const numberToJs = (value: TypedValue, context: Context): Decimal => {
         throw context.error("expected number");
     }
 
-    return value.value ? value.value : new Decimal(NaN);
+    return value.value != null ? value.value : new Decimal(NaN);
 };
 
 const jsToBoolean = (boolean: boolean, _context: Context): TypedValue => ({
