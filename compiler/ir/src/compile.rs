@@ -582,15 +582,16 @@ fn compile_pattern<D: crate::Driver>(
             }
         }
         wipple_typecheck::Pattern::Or { left, right } => {
-            let continue_block = info.begin_block();
-            let else_block_id = info.begin_block();
+            let continue_block_id = info.begin_block();
 
-            compile_pattern(left.as_deref(), else_block_id, info)?;
-            info.break_out_of_block(continue_block);
+            let left_block_id = info.begin_block();
+            compile_pattern(left.as_deref(), left_block_id, info)?;
+            info.break_out_of_block(continue_block_id);
             info.end_block();
 
             compile_pattern(right.as_deref(), else_block_id, info)?;
-            info.break_out_of_block(continue_block);
+            info.break_out_of_block(continue_block_id);
+
             info.end_block();
         }
         wipple_typecheck::Pattern::Annotate { pattern, .. } => {
