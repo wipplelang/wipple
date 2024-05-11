@@ -146,6 +146,7 @@ pub mod interface {
                         .map(|(name, field)| wipple_util::WithInfo {
                             info: field.info.clone(),
                             item: wipple_lower::Field {
+                                index: field.item.index,
                                 name: wipple_util::WithInfo {
                                     info: field.info,
                                     item: name,
@@ -163,6 +164,7 @@ pub mod interface {
                         .map(|(name, variant)| wipple_util::WithInfo {
                             info: variant.info.clone(),
                             item: wipple_lower::Variant {
+                                index: variant.item.index,
                                 name: wipple_util::WithInfo {
                                     info: variant.info,
                                     item: name,
@@ -306,8 +308,10 @@ pub mod lower {
                 wipple_lower::UnresolvedTypeRepresentation::Structure(
                     fields
                         .into_iter()
-                        .map(|field| {
+                        .enumerate()
+                        .map(|(index, field)| {
                             field.map(|field| wipple_lower::UnresolvedField {
+                                index: index as u32,
                                 name: field.name,
                                 r#type: convert_type(field.r#type),
                             })
@@ -319,8 +323,10 @@ pub mod lower {
                 wipple_lower::UnresolvedTypeRepresentation::Enumeration(
                     variants
                         .into_iter()
-                        .map(|variant| {
+                        .enumerate()
+                        .map(|(index, variant)| {
                             variant.map(|variant| wipple_lower::UnresolvedVariant {
+                                index: index as u32,
                                 name: variant.name,
                                 types: variant.types.into_iter().map(convert_type).collect(),
                             })
@@ -618,14 +624,13 @@ pub mod typecheck {
                         wipple_typecheck::TypeRepresentation::Structure(
                             fields
                                 .into_iter()
-                                .enumerate()
-                                .map(|(index, field)| {
+                                .map(|field| {
                                     (
                                         field.item.name.item,
                                         wipple_util::WithInfo {
                                             info: field.info,
                                             item: wipple_typecheck::StructureField {
-                                                index: index as u32,
+                                                index: field.item.index,
                                                 r#type: convert_type(field.item.r#type),
                                             },
                                         },
@@ -638,14 +643,13 @@ pub mod typecheck {
                         wipple_typecheck::TypeRepresentation::Enumeration(
                             variants
                                 .into_iter()
-                                .enumerate()
-                                .map(|(index, variant)| {
+                                .map(|variant| {
                                     (
                                         variant.item.name.item,
                                         wipple_util::WithInfo {
                                             info: variant.info,
                                             item: wipple_typecheck::EnumerationVariant {
-                                                index: index as u32,
+                                                index: variant.item.index,
                                                 value_types: variant
                                                     .item
                                                     .types

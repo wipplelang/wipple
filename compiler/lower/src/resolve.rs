@@ -345,6 +345,7 @@ fn resolve_statements<D: Driver>(
                                 .into_iter()
                                 .map(|field| {
                                     field.map(|field| crate::Field {
+                                        index: field.index,
                                         name: field.name,
                                         r#type: resolve_type(field.r#type, info),
                                     })
@@ -380,6 +381,7 @@ fn resolve_statements<D: Driver>(
                                             .push((variant.name.item, variant_path.clone()));
 
                                         crate::Variant {
+                                            index: variant.index,
                                             name: variant_path,
                                             types: value_types,
                                         }

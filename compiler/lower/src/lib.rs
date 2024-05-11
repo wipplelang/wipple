@@ -478,6 +478,9 @@ pub enum UnresolvedTypeRepresentation<D: Driver> {
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub struct UnresolvedField<D: Driver> {
+    /// The index of the field.
+    pub index: u32,
+
     /// The name of the field.
     pub name: WithInfo<D::Info, String>,
 
@@ -491,6 +494,9 @@ pub struct UnresolvedField<D: Driver> {
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub struct UnresolvedVariant<D: Driver> {
+    /// The index of the variant.
+    pub index: u32,
+
     /// The name of the variant.
     pub name: WithInfo<D::Info, String>,
 
@@ -1095,6 +1101,9 @@ pub enum TypeRepresentation<D: Driver> {
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub struct Field<D: Driver> {
+    /// The index of the field.
+    pub index: u32,
+
     /// The name of the field.
     pub name: WithInfo<D::Info, String>,
 
@@ -1108,6 +1117,9 @@ pub struct Field<D: Driver> {
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub struct Variant<D: Driver> {
+    /// The index of the variant.
+    pub index: u32,
+
     /// The name of the variant.
     pub name: WithInfo<D::Info, Path>,
 
