@@ -458,7 +458,7 @@ impl Driver {
                         Item {
                             parameters: declaration.item.parameters.clone(),
                             expression: item.expression,
-                            ir: item.labels,
+                            ir: item.instructions,
                         },
                     );
                 }
@@ -507,7 +507,7 @@ impl Driver {
                         Item {
                             parameters: declaration.item.parameters.clone(),
                             expression: item.expression,
-                            ir: item.labels,
+                            ir: item.instructions,
                         },
                     );
                 }
@@ -554,7 +554,7 @@ impl Driver {
                             Item {
                                 parameters: Vec::new(),
                                 expression: item.expression,
-                                ir: item.labels,
+                                ir: item.instructions,
                             },
                         );
                     }

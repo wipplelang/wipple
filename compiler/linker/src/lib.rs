@@ -48,7 +48,7 @@ pub struct UnlinkedItem<D: Driver> {
     pub expression: WithInfo<D::Info, wipple_typecheck::TypedExpression<D>>,
 
     /// The compiled IR.
-    pub ir: Vec<Vec<wipple_ir::Instruction<D>>>,
+    pub ir: Vec<wipple_ir::Instruction<D>>,
 }
 
 /// A linked executable.
@@ -90,7 +90,7 @@ pub struct LinkedItem<D: Driver> {
     pub type_descriptor: wipple_ir::TypeDescriptor<D>,
 
     /// The compiled IR.
-    pub ir: Vec<Vec<wipple_ir::Instruction<D>>>,
+    pub ir: Vec<wipple_ir::Instruction<D>>,
 }
 
 /// The linked executable, or the linking error.

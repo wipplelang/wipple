@@ -87,7 +87,6 @@ export interface Context {
         options:
             | string
             | {
-                  label: number;
                   instruction: Instruction;
                   message: string;
                   stack: TypedValue[];
@@ -156,9 +155,7 @@ export const evaluate = async (
                         task,
                         context,
                     ))!;
-
                     context.gc();
-
                     return result;
                 }
                 case "nativeFunction": {
@@ -208,7 +205,12 @@ export const evaluate = async (
                 : parametersOrSubstitutions;
 
             if (context.debug) {
-                console.error("## initializing constant:", { path, typeDescriptor, substitutions });
+                console.error("## initializing constant:", {
+                    path,
+                    typeDescriptor,
+                    substitutions,
+                    item,
+                });
             }
 
             const result = (await evaluateItem(
@@ -229,10 +231,10 @@ export const evaluate = async (
             if (typeof options === "string") {
                 return new InterpreterError(options);
             } else {
-                const { label, instruction, message, stack, value } = options;
+                const { instruction, message, stack, value } = options;
 
                 return new InterpreterError(
-                    `${label}: ${JSON.stringify(instruction)}: ${message}\n${
+                    `${JSON.stringify(instruction)}: ${message}\n${
                         value ? `while evaluating ${JSON.stringify(value, null, 4)}\n` : ""
                     }stack: ${JSON.stringify(stack, null, 4)}`,
                 );
@@ -243,6 +245,7 @@ export const evaluate = async (
     };
 
     const entrypoint = executable.items[executable.entrypoint];
+
     const task = () => {}; // marker
 
     if (context.debug) {
@@ -264,20 +267,19 @@ export const evaluate = async (
 
 const evaluateItem = async (
     path: string,
-    item: Instruction[][],
+    instructions: Instruction[],
     stack: TypedValue[],
     scope: { current: TypedValue }[],
     substitutions: Record<string, TypeDescriptor>,
     task: any,
     context: Context,
 ) => {
-    let label = 0;
-    outer: while (true) {
-        const instructions = item[label];
-
-        for (const instruction of instructions) {
+    let instruction: Instruction | undefined;
+    let blocks = [[...instructions]];
+    while (true) {
+        while ((instruction = blocks[blocks.length - 1].shift())) {
             const error = (message: string, value?: TypedValue) =>
-                context.error({ label, instruction, message, stack, value });
+                context.error({ instruction: instruction!, message, stack, value });
 
             const peek = () => {
                 const value = stack[stack.length - 1];
@@ -297,15 +299,19 @@ const evaluateItem = async (
                 return value;
             };
 
+            const break_ = (n: number) => {
+                for (let i = 0; i <= n; i++) {
+                    if (!blocks.pop()) {
+                        throw error("ran out of blocks");
+                    }
+                }
+            };
+
             if (context.debug) {
-                console.error("## evaluating:", {
-                    path,
-                    label,
-                    instruction,
-                    stack,
-                    scope,
-                    substitutions,
-                });
+                console.error(
+                    "## evaluating:",
+                    JSON.stringify({ path, instruction, stack, scope, substitutions }, null, 4),
+                );
             }
 
             switch (instruction.type) {
@@ -416,8 +422,9 @@ const evaluateItem = async (
                     break;
                 }
                 case "typed": {
+                    const typedInstruction = instruction;
                     const getTypeDescriptor = () =>
-                        produce(instruction.value[0], (typeDescriptor) =>
+                        produce(typedInstruction.value[0], (typeDescriptor) =>
                             substituteTypeDescriptor(typeDescriptor, substitutions),
                         );
 
@@ -585,25 +592,28 @@ const evaluateItem = async (
 
                     break;
                 }
-                case "jumpIfNot": {
+                case "block": {
+                    blocks.push([...instruction.value]);
+                    break;
+                }
+                case "break": {
+                    break_(instruction.value);
+                    break;
+                }
+                case "breakIfNot": {
                     const value = peek();
                     if (value.type !== "variant") {
                         throw error("expected variant", value);
                     }
 
                     if (value.variant !== instruction.value[0]) {
-                        label = instruction.value[1];
-                        continue outer;
+                        break_(instruction.value[1]);
                     }
 
                     break;
                 }
                 case "return": {
                     return pop();
-                }
-                case "jump": {
-                    label = instruction.value;
-                    continue outer;
                 }
                 case "tailCall": {
                     const inputs: TypedValue[] = [];
@@ -615,8 +625,7 @@ const evaluateItem = async (
 
                     if (func.type === "function") {
                         path = func.path;
-                        item = context.executable.items[func.path].ir;
-                        label = 0;
+                        blocks = [[...context.executable.items[func.path].ir]];
                         if (stack.length !== 0) {
                             throw error("stack is not empty");
                         }
@@ -624,7 +633,7 @@ const evaluateItem = async (
                         scope = func.captures;
                         substitutions = func.substitutions;
                         context.gc();
-                        continue outer;
+                        continue;
                     } else {
                         inputs.reverse();
                         return await context.call(func, inputs, task);
@@ -638,15 +647,14 @@ const evaluateItem = async (
                     }
 
                     path = block.path;
-                    item = context.executable.items[block.path].ir;
-                    label = 0;
+                    blocks = [[...context.executable.items[block.path].ir]];
                     if (stack.length !== 0) {
                         throw error("stack is not empty");
                     }
                     scope = block.captures;
                     substitutions = block.substitutions;
                     context.gc();
-                    continue outer;
+                    continue;
                 }
                 case "unreachable": {
                     throw error("evaluated unreachable instruction");
@@ -657,7 +665,13 @@ const evaluateItem = async (
                 }
             }
         }
+
+        if (!blocks.pop()) {
+            break;
+        }
     }
+
+    throw context.error("ran out of instructions");
 };
 
 const findInstance = (trait: string, typeDescriptor: TypeDescriptor, executable: Executable) => {

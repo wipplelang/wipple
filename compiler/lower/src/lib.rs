@@ -695,17 +695,25 @@ impl std::ops::DerefMut for Path {
     }
 }
 
+impl std::fmt::Display for Path {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(
+            &self
+                .0
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(" / "),
+        )
+    }
+}
+
 impl Serialize for Path {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        self.0
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>()
-            .join(" / ")
-            .serialize(serializer)
+        self.to_string().serialize(serializer)
     }
 }
 

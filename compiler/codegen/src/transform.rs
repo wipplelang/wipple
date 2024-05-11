@@ -200,7 +200,7 @@ impl<D: crate::Driver> Module<D> {
             self.item_map.insert(key, item_reference);
         }
 
-        let entrypoint = self.compile_block(0, &item.ir, context);
+        let entrypoint = todo!(); // self.compile_block(0, &item.ir, context);
 
         let item = Item { entrypoint };
         self.items.push(item);
@@ -208,60 +208,60 @@ impl<D: crate::Driver> Module<D> {
         item_reference
     }
 
-    fn compile_block(
-        &mut self,
-        label: ir::Label,
-        item: &[Vec<ir::Instruction<D>>],
-        context: &mut Context<'_, D>,
-    ) -> Block<D> {
-        let instructions = item[label]
-            .iter()
-            .map(|instruction| self.compile_instruction(instruction, item, context))
-            .collect();
+    // fn compile_block(
+    //     &mut self,
+    //     label: ir::Label,
+    //     item: &[Vec<ir::Instruction<D>>],
+    //     context: &mut Context<'_, D>,
+    // ) -> Block<D> {
+    //     let instructions = item[label]
+    //         .iter()
+    //         .map(|instruction| self.compile_instruction(instruction, item, context))
+    //         .collect();
 
-        Block { instructions }
-    }
+    //     Block { instructions }
+    // }
 
-    fn compile_instruction(
-        &mut self,
-        instruction: &ir::Instruction<D>,
-        item: &[Vec<ir::Instruction<D>>],
-        context: &mut Context<'_, D>,
-    ) -> Instruction<D> {
-        match instruction {
-            ir::Instruction::Copy => Instruction::Copy,
-            ir::Instruction::Drop => Instruction::Drop,
-            ir::Instruction::Initialize(variable) => Instruction::Initialize(*variable),
-            ir::Instruction::Field(field) => Instruction::Field(*field),
-            ir::Instruction::TupleElement(index) => Instruction::TupleElement(*index),
-            ir::Instruction::VariantElement(index) => Instruction::VariantElement(*index),
-            ir::Instruction::Unwrap => Instruction::Unwrap,
-            ir::Instruction::Variable(variable) => Instruction::Variable(*variable),
-            ir::Instruction::Call(inputs) => Instruction::Call(*inputs),
-            ir::Instruction::Do => Instruction::Do,
-            ir::Instruction::Mutate(variable) => Instruction::Mutate(*variable),
-            ir::Instruction::Tuple(elements) => Instruction::Tuple(*elements),
-            ir::Instruction::Typed(type_descriptor, instruction) => {
-                let r#type = self.compile_type(type_descriptor, context);
+    // fn compile_instruction(
+    //     &mut self,
+    //     instruction: &ir::Instruction<D>,
+    //     item: &[Vec<ir::Instruction<D>>],
+    //     context: &mut Context<'_, D>,
+    // ) -> Instruction<D> {
+    //     match instruction {
+    //         ir::Instruction::Copy => Instruction::Copy,
+    //         ir::Instruction::Drop => Instruction::Drop,
+    //         ir::Instruction::Initialize(variable) => Instruction::Initialize(*variable),
+    //         ir::Instruction::Field(field) => Instruction::Field(*field),
+    //         ir::Instruction::TupleElement(index) => Instruction::TupleElement(*index),
+    //         ir::Instruction::VariantElement(index) => Instruction::VariantElement(*index),
+    //         ir::Instruction::Unwrap => Instruction::Unwrap,
+    //         ir::Instruction::Variable(variable) => Instruction::Variable(*variable),
+    //         ir::Instruction::Call(inputs) => Instruction::Call(*inputs),
+    //         ir::Instruction::Do => Instruction::Do,
+    //         ir::Instruction::Mutate(variable) => Instruction::Mutate(*variable),
+    //         ir::Instruction::Tuple(elements) => Instruction::Tuple(*elements),
+    //         ir::Instruction::Typed(type_descriptor, instruction) => {
+    //             let r#type = self.compile_type(type_descriptor, context);
 
-                let instruction = self.compile_typed_instruction(instruction, r#type, context);
+    //             let instruction = self.compile_typed_instruction(instruction, r#type, context);
 
-                Instruction::Typed(r#type, instruction)
-            }
-            ir::Instruction::JumpIfNot(variant, label) => {
-                let block = self.compile_block(*label, item, context);
-                Instruction::JumpIfNot(*variant, Box::new(block))
-            }
-            ir::Instruction::Return => Instruction::Return,
-            ir::Instruction::Jump(label) => {
-                let block = self.compile_block(*label, item, context);
-                Instruction::Jump(Box::new(block))
-            }
-            ir::Instruction::TailCall(inputs) => Instruction::TailCall(*inputs),
-            ir::Instruction::TailDo => Instruction::TailDo,
-            ir::Instruction::Unreachable => Instruction::Unreachable,
-        }
-    }
+    //             Instruction::Typed(r#type, instruction)
+    //         }
+    //         ir::Instruction::BreakIfNot(variant, label) => {
+    //             let block = self.compile_block(*label, item, context);
+    //             Instruction::JumpIfNot(*variant, Box::new(block))
+    //         }
+    //         ir::Instruction::Return => Instruction::Return,
+    //         ir::Instruction::Break(label) => {
+    //             let block = self.compile_block(*label, item, context);
+    //             Instruction::Jump(Box::new(block))
+    //         }
+    //         ir::Instruction::TailCall(inputs) => Instruction::TailCall(*inputs),
+    //         ir::Instruction::TailDo => Instruction::TailDo,
+    //         ir::Instruction::Unreachable => Instruction::Unreachable,
+    //     }
+    // }
 
     fn compile_typed_instruction(
         &mut self,

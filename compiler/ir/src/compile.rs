@@ -35,21 +35,67 @@ struct Info<'a, D: crate::Driver> {
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""), Default(bound = ""))]
 struct Context<D: crate::Driver> {
-    label: crate::Label,
+    next_block_id: u32,
+    block_stack: Vec<(u32, Vec<crate::Instruction<D>>)>,
     variables: Vec<D::Path>,
 }
 
 impl<D: crate::Driver> Info<'_, D> {
-    #[must_use]
-    fn push_label(&mut self) -> crate::Label {
-        let labels = &mut self.items.get_mut(&self.path).unwrap().labels;
-        let label = labels.len();
-        labels.push(Vec::new());
-        label
+    fn begin_block(&mut self) -> u32 {
+        let block_id = self.context.next_block_id;
+        self.context.next_block_id += 1;
+        self.context.block_stack.push((block_id, Vec::new()));
+        block_id
+    }
+
+    fn end_block(&mut self) {
+        let (_, instructions) = self
+            .context
+            .block_stack
+            .pop()
+            .expect("block stack is empty");
+
+        self.push_instruction(crate::Instruction::Block(instructions));
+    }
+
+    fn current_block(&self) -> Option<u32> {
+        let (id, _) = self.context.block_stack.last()?;
+        Some(*id)
+    }
+
+    fn break_out_of_block(&mut self, id: u32) {
+        let relative = self
+            .context
+            .block_stack
+            .iter()
+            .rev()
+            .take_while(|&&(block_id, _)| block_id != id)
+            .count() as u32;
+
+        self.push_instruction(crate::Instruction::Break(relative));
+    }
+
+    fn break_out_of_block_if_not(&mut self, variant: u32, id: u32) {
+        let relative = self
+            .context
+            .block_stack
+            .iter()
+            .rev()
+            .take_while(|&&(block_id, _)| block_id != id)
+            .count() as u32;
+
+        self.push_instruction(crate::Instruction::BreakIfNot(variant, relative));
     }
 
     fn push_instruction(&mut self, instruction: crate::Instruction<D>) {
-        self.items.get_mut(&self.path).unwrap().labels[self.context.label].push(instruction);
+        let instructions = self
+            .context
+            .block_stack
+            .last_mut()
+            .map(|(_, instructions)| instructions)
+            .unwrap_or_else(|| &mut self.items.get_mut(&self.path).unwrap().instructions);
+
+        instructions.push(instruction);
     }
 
     fn true_variant(&self) -> Option<u32> {
@@ -100,19 +146,20 @@ fn compile_item_with_captures<'a, D: crate::Driver>(
         crate::Item {
             captures: captures.len() as u32,
             expression: expression.as_deref().map(Clone::clone),
-            labels: vec![Vec::new()],
+            instructions: Vec::new(),
         },
     );
 
     let context = Context {
-        label: 0,
         variables: captures_paths.to_vec(),
+        ..Default::default()
     };
 
     let prev_path = mem::replace(&mut info.path, path);
     let prev_context = mem::replace(&mut info.context, context);
 
     body(expression, info)?;
+    assert!(info.context.block_stack.is_empty());
     info.push_instruction(crate::Instruction::Return);
 
     info.context = prev_context;
@@ -354,42 +401,52 @@ fn compile_exhaustive_pattern<'a, D: crate::Driver + 'a>(
     pattern: WithInfo<D::Info, &'a wipple_typecheck::Pattern<D>>,
     info: &mut Info<'_, D>,
 ) -> Option<()> {
-    let else_label = info.push_label();
-    compile_pattern(pattern, else_label, info)?;
+    let entry_block = info.current_block();
+
+    let continue_block = info.begin_block();
+    let else_block_id = info.begin_block();
+
+    compile_pattern(pattern, else_block_id, info)?;
     info.push_instruction(crate::Instruction::Drop);
 
-    let then_label = info.context.label;
+    info.break_out_of_block(continue_block);
 
-    info.context.label = else_label;
+    info.end_block();
+
     info.push_instruction(crate::Instruction::Unreachable);
+    info.end_block();
 
-    info.context.label = then_label;
+    assert_eq!(info.current_block(), entry_block);
 
     Some(())
 }
 
 #[must_use]
 fn compile_exhaustive_arms<'a, D: crate::Driver + 'a>(
-    arms: impl IntoIterator<Item = WithInfo<D::Info, &'a wipple_typecheck::TypedArm<D>>>,
+    mut arms: impl ExactSizeIterator<Item = WithInfo<D::Info, &'a wipple_typecheck::TypedArm<D>>>,
     info: &mut Info<'_, D>,
 ) -> Option<()> {
-    let continue_label = info.push_label();
+    let entry_block = info.current_block();
 
-    let mut else_label;
-    for arm in arms {
-        else_label = info.push_label();
-        compile_pattern(arm.item.pattern.as_ref(), else_label, info)?;
+    let continue_block = info.begin_block();
+    let else_block_ids = (0..arms.len())
+        .map(|_| info.begin_block())
+        .collect::<Vec<_>>();
+
+    for (arm, else_block_id) in arms.by_ref().zip(else_block_ids.into_iter().rev()) {
+        compile_pattern(arm.item.pattern.as_ref(), else_block_id, info)?;
         info.push_instruction(crate::Instruction::Drop);
 
         compile_expression(arm.item.body.as_ref(), info)?;
-        info.push_instruction(crate::Instruction::Jump(continue_label));
+        info.break_out_of_block(continue_block);
 
-        info.context.label = else_label;
+        info.end_block();
     }
 
     info.push_instruction(crate::Instruction::Unreachable);
+    info.end_block();
 
-    info.context.label = continue_label;
+    assert_eq!(info.current_block(), entry_block);
 
     Some(())
 }
@@ -397,7 +454,7 @@ fn compile_exhaustive_arms<'a, D: crate::Driver + 'a>(
 #[must_use]
 fn compile_pattern<D: crate::Driver>(
     pattern: WithInfo<D::Info, &wipple_typecheck::Pattern<D>>,
-    break_label: crate::Label,
+    else_block_id: u32,
     info: &mut Info<'_, D>,
 ) -> Option<()> {
     match &pattern.item {
@@ -411,24 +468,22 @@ fn compile_pattern<D: crate::Driver>(
                 crate::TypedInstruction::Number(number.clone()),
             ));
 
+            let continue_block_id = info.begin_block();
+            let drop_block_id = info.begin_block();
+
             info.push_instruction(crate::Instruction::Typed(
                 crate::TypeDescriptor::Named(info.driver.boolean_type()?, Vec::new()),
                 crate::TypedInstruction::Intrinsic(info.driver.number_equality_intrinsic()?, 2),
             ));
 
-            let else_label = info.push_label();
-
-            info.push_instruction(crate::Instruction::JumpIfNot(
-                info.true_variant()?,
-                else_label,
-            ));
+            info.break_out_of_block_if_not(info.true_variant()?, drop_block_id);
+            info.push_instruction(crate::Instruction::Drop);
+            info.break_out_of_block(continue_block_id);
+            info.end_block();
 
             info.push_instruction(crate::Instruction::Drop);
-
-            let prev_label = mem::replace(&mut info.context.label, else_label);
-            info.push_instruction(crate::Instruction::Drop);
-            info.push_instruction(crate::Instruction::Jump(break_label));
-            info.context.label = prev_label;
+            info.break_out_of_block(else_block_id);
+            info.end_block();
         }
         wipple_typecheck::Pattern::Text(text) => {
             info.push_instruction(crate::Instruction::Copy);
@@ -438,24 +493,22 @@ fn compile_pattern<D: crate::Driver>(
                 crate::TypedInstruction::Text(text.clone()),
             ));
 
+            let continue_block_id = info.begin_block();
+            let drop_block_id = info.begin_block();
+
             info.push_instruction(crate::Instruction::Typed(
                 crate::TypeDescriptor::Named(info.driver.boolean_type()?, Vec::new()),
                 crate::TypedInstruction::Intrinsic(info.driver.text_equality_intrinsic()?, 2),
             ));
 
-            let else_label = info.push_label();
-
-            info.push_instruction(crate::Instruction::JumpIfNot(
-                info.true_variant()?,
-                else_label,
-            ));
+            info.break_out_of_block_if_not(info.true_variant()?, drop_block_id);
+            info.push_instruction(crate::Instruction::Drop);
+            info.break_out_of_block(continue_block_id);
+            info.end_block();
 
             info.push_instruction(crate::Instruction::Drop);
-
-            let prev_label = mem::replace(&mut info.context.label, else_label);
-            info.push_instruction(crate::Instruction::Drop);
-            info.push_instruction(crate::Instruction::Jump(break_label));
-            info.context.label = prev_label;
+            info.break_out_of_block(else_block_id);
+            info.end_block();
         }
         wipple_typecheck::Pattern::Variable(_, path) => {
             let variable = info.context.variables.len() as u32;
@@ -485,7 +538,7 @@ fn compile_pattern<D: crate::Driver>(
             for field in field_patterns {
                 let field_index = field_indices.get(&field.item.name).copied()?;
                 info.push_instruction(crate::Instruction::Field(field_index));
-                compile_pattern(field.item.pattern.as_ref(), break_label, info)?;
+                compile_pattern(field.item.pattern.as_ref(), else_block_id, info)?;
                 info.push_instruction(crate::Instruction::Drop);
             }
         }
@@ -508,40 +561,40 @@ fn compile_pattern<D: crate::Driver>(
                 _ => return None,
             };
 
-            info.push_instruction(crate::Instruction::JumpIfNot(variant_index, break_label));
+            info.break_out_of_block_if_not(variant_index, else_block_id);
 
             for (index, pattern) in value_patterns.iter().enumerate() {
                 info.push_instruction(crate::Instruction::VariantElement(index as u32));
-                compile_pattern(pattern.as_ref(), break_label, info)?;
+                compile_pattern(pattern.as_ref(), else_block_id, info)?;
                 info.push_instruction(crate::Instruction::Drop);
             }
         }
         wipple_typecheck::Pattern::Wrapper { value_pattern, .. } => {
             info.push_instruction(crate::Instruction::Unwrap);
-            compile_pattern(value_pattern.as_deref(), break_label, info)?;
+            compile_pattern(value_pattern.as_deref(), else_block_id, info)?;
             info.push_instruction(crate::Instruction::Drop);
         }
         wipple_typecheck::Pattern::Tuple(elements) => {
             for (index, pattern) in elements.iter().enumerate() {
                 info.push_instruction(crate::Instruction::TupleElement(index as u32));
-                compile_pattern(pattern.as_ref(), break_label, info)?;
+                compile_pattern(pattern.as_ref(), else_block_id, info)?;
                 info.push_instruction(crate::Instruction::Drop);
             }
         }
         wipple_typecheck::Pattern::Or { left, right } => {
-            let then_label = info.push_label();
-            let else_label = info.push_label();
-            compile_pattern(left.as_deref(), else_label, info)?;
-            info.push_instruction(crate::Instruction::Jump(then_label));
+            let continue_block = info.begin_block();
+            let else_block_id = info.begin_block();
 
-            info.context.label = else_label;
-            compile_pattern(right.as_deref(), break_label, info)?;
-            info.push_instruction(crate::Instruction::Jump(then_label));
+            compile_pattern(left.as_deref(), else_block_id, info)?;
+            info.break_out_of_block(continue_block);
+            info.end_block();
 
-            info.context.label = then_label;
+            compile_pattern(right.as_deref(), else_block_id, info)?;
+            info.break_out_of_block(continue_block);
+            info.end_block();
         }
         wipple_typecheck::Pattern::Annotate { pattern, .. } => {
-            compile_pattern(pattern.as_deref(), break_label, info)?;
+            compile_pattern(pattern.as_deref(), else_block_id, info)?;
         }
     }
 

@@ -73,9 +73,7 @@ pub fn compile<D: Driver>(
     let mut items = compile::compile(driver, path, expression)?;
 
     for item in items.values_mut() {
-        for instructions in &mut item.labels {
-            tail_call::apply(instructions);
-        }
+        tail_call::apply(&mut item.instructions);
     }
 
     Some(Result { items })
@@ -106,12 +104,9 @@ pub struct Item<D: Driver> {
     /// The expression from which this item was compiled.
     pub expression: WithInfo<D::Info, wipple_typecheck::TypedExpression<D>>,
 
-    /// The compiled instructions, grouped by label.
-    pub labels: Vec<Vec<crate::Instruction<D>>>,
+    /// The compiled instructions.
+    pub instructions: Vec<crate::Instruction<D>>,
 }
-
-/// A label to jump to (ie. an index of an item in [`Result::items`]).
-pub type Label = usize;
 
 /// An instruction.
 #[derive(Serialize, Deserialize, Derivative, TS)]
@@ -170,16 +165,19 @@ pub enum Instruction<D: Driver> {
     /// (Values) Produce a new value with a runtime type.
     Typed(TypeDescriptor<D>, TypedInstruction<D>),
 
-    /// (Control flow) Go to another label if the variant on the top of the
+    /// (Control flow) Begin a block.
+    Block(Vec<Instruction<D>>),
+
+    /// (Control flow) Break out of _n_ blocks.
+    Break(u32),
+
+    /// (Control flow) Break out of _n_ blocks if the variant on the top of the
     /// stack does not match the variant in the condition.
-    JumpIfNot(u32, Label),
+    BreakIfNot(u32, u32),
 
     /// (Control flow) Return the top of the stack as the result of this
     /// function.
     Return,
-
-    /// (Control flow) Go to another label.
-    Jump(Label),
 
     /// (Control flow) Call the function on the top of the stack, replacing the
     /// current stack.
@@ -279,6 +277,17 @@ where
     D::Path: std::fmt::Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.display(f, 0)
+    }
+}
+
+impl<D: Driver> Instruction<D>
+where
+    D::Path: std::fmt::Display,
+{
+    fn display(&self, f: &mut std::fmt::Formatter<'_>, indent: usize) -> std::fmt::Result {
+        write!(f, "{}", "  ".repeat(indent))?;
+
         match self {
             Instruction::Copy => write!(f, "copy"),
             Instruction::Drop => write!(f, "drop"),
@@ -292,14 +301,22 @@ where
             Instruction::Do => write!(f, "do"),
             Instruction::Mutate(variable) => write!(f, "mutate {variable}"),
             Instruction::Tuple(elements) => write!(f, "tuple {elements}"),
-            Instruction::Typed(descriptor, instruction) => {
-                write!(f, "{instruction} :: {descriptor}")
+            Instruction::Typed(_, instruction) => write!(f, "{instruction}"),
+            Instruction::Block(instructions) => {
+                writeln!(f, "block")?;
+
+                for instruction in instructions {
+                    instruction.display(f, indent + 1)?;
+                    writeln!(f)?;
+                }
+
+                write!(f, "{}end", "  ".repeat(indent))
             }
-            Instruction::JumpIfNot(variant, label) => {
-                write!(f, "jump if not {variant:?} {label}")
+            Instruction::Break(label) => write!(f, "jump {label}"),
+            Instruction::BreakIfNot(variant, label) => {
+                write!(f, "jump if not {variant} {label}")
             }
             Instruction::Return => write!(f, "return"),
-            Instruction::Jump(label) => write!(f, "jump {label}"),
             Instruction::TailCall(inputs) => write!(f, "tail call {inputs}"),
             Instruction::TailDo => write!(f, "tail do"),
             Instruction::Unreachable => write!(f, "unreachable"),
@@ -349,7 +366,7 @@ where
             TypeDescriptor::Parameter(parameter) => write!(f, "{parameter}"),
             TypeDescriptor::Named(path, parameters) => write!(
                 f,
-                "({path} {})",
+                "({path}{})",
                 parameters
                     .iter()
                     .fold(String::new(), |mut result, parameter| {
