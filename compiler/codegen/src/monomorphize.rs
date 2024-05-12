@@ -70,6 +70,7 @@ pub struct ItemReference<D: crate::Driver>(pub usize, PhantomData<D>);
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 pub struct Item<D: crate::Driver> {
     pub entrypoint: Vec<Instruction<D>>,
+    pub captures: Vec<TypeReference<D>>,
 }
 
 #[derive(Derivative)]
@@ -206,8 +207,16 @@ impl<D: crate::Driver> Module<D> {
             .map(|instruction| self.compile_instruction(instruction, context))
             .collect::<Option<_>>()?;
 
-        let item = Item { entrypoint };
-        self.items.push(item);
+        let captures = item
+            .captures
+            .iter()
+            .map(|capture| self.compile_type(capture, context))
+            .collect::<Option<_>>()?;
+
+        self.items.push(Item {
+            entrypoint,
+            captures,
+        });
 
         Some(item_reference)
     }

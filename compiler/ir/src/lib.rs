@@ -69,8 +69,9 @@ pub fn compile<D: Driver>(
     driver: &D,
     path: D::Path,
     expression: WithInfo<D::Info, &wipple_typecheck::TypedExpression<D>>,
+    variables: &HashMap<D::Path, WithInfo<D::Info, wipple_typecheck::Type<D>>>,
 ) -> Option<Result<D>> {
-    let mut items = compile::compile(driver, path, expression)?;
+    let mut items = compile::compile(driver, path, expression, variables)?;
 
     for item in items.values_mut() {
         tail_call::apply(&mut item.instructions);
@@ -105,8 +106,8 @@ pub struct Result<D: Driver> {
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""))]
 pub struct Item<D: Driver> {
-    /// The number of variables this item captures.
-    pub captures: u32,
+    /// The variables this item captures.
+    pub captures: Vec<crate::TypeDescriptor<D>>,
 
     /// The expression from which this item was compiled.
     pub expression: WithInfo<D::Info, wipple_typecheck::TypedExpression<D>>,

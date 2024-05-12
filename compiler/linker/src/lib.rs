@@ -52,6 +52,9 @@ pub struct UnlinkedItem<D: Driver> {
 
     /// The compiled IR.
     pub ir: Vec<wipple_ir::Instruction<D>>,
+
+    /// The variables captured by this item.
+    pub captures: Vec<wipple_ir::TypeDescriptor<D>>,
 }
 
 /// A linked executable.
@@ -97,6 +100,9 @@ pub struct LinkedItem<D: Driver> {
 
     /// The compiled IR.
     pub ir: Vec<wipple_ir::Instruction<D>>,
+
+    /// The variables captured by this item.
+    pub captures: Vec<wipple_ir::TypeDescriptor<D>>,
 }
 
 /// The linked executable, or the linking error.
@@ -181,5 +187,6 @@ fn convert_item<D: Driver>(item: UnlinkedItem<D>) -> Result<LinkedItem<D>, D> {
             },
         )?,
         ir: item.ir,
+        captures: item.captures,
     })
 }

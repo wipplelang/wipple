@@ -451,7 +451,12 @@ impl Driver {
                     .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            if let Some(ir_result) = ir::compile(&self, path.clone(), item.as_ref()) {
+            if let Some(ir_result) = ir::compile(
+                &self,
+                path.clone(),
+                item.as_ref(),
+                &typecheck_result.variables,
+            ) {
                 for (path, item) in ir_result.items {
                     self.library.items.insert(
                         path,
@@ -459,6 +464,7 @@ impl Driver {
                             parameters: declaration.item.parameters.clone(),
                             expression: item.expression,
                             ir: item.instructions,
+                            captures: item.captures,
                         },
                     );
                 }
@@ -500,7 +506,12 @@ impl Driver {
                     .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            if let Some(ir_result) = ir::compile(&self, path.clone(), item.as_ref()) {
+            if let Some(ir_result) = ir::compile(
+                &self,
+                path.clone(),
+                item.as_ref(),
+                &typecheck_result.variables,
+            ) {
                 for (path, item) in ir_result.items {
                     self.library.items.insert(
                         path,
@@ -508,6 +519,7 @@ impl Driver {
                             parameters: declaration.item.parameters.clone(),
                             expression: item.expression,
                             ir: item.instructions,
+                            captures: item.captures,
                         },
                     );
                 }
@@ -547,7 +559,12 @@ impl Driver {
 
                 let path = lower::Path::top_level();
 
-                if let Some(ir_result) = ir::compile(&self, path.clone(), item.as_ref()) {
+                if let Some(ir_result) = ir::compile(
+                    &self,
+                    path.clone(),
+                    item.as_ref(),
+                    &typecheck_result.variables,
+                ) {
                     for (path, item) in ir_result.items {
                         self.library.items.insert(
                             path,
@@ -555,6 +572,7 @@ impl Driver {
                                 parameters: Vec::new(),
                                 expression: item.expression,
                                 ir: item.instructions,
+                                captures: item.captures,
                             },
                         );
                     }

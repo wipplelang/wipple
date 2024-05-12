@@ -7,9 +7,11 @@ pub fn compile<D: crate::Driver>(
     driver: &D,
     path: D::Path,
     expression: WithInfo<D::Info, &wipple_typecheck::TypedExpression<D>>,
+    variables: &HashMap<D::Path, WithInfo<D::Info, wipple_typecheck::Type<D>>>,
 ) -> Option<HashMap<D::Path, crate::Item<D>>> {
     let mut info = Info {
         driver,
+        variables,
         path: path.clone(),
         items: Default::default(),
         context: Default::default(),
@@ -24,9 +26,17 @@ pub fn compile<D: crate::Driver>(
 
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""))]
+pub struct Result<D: crate::Driver> {
+    pub items: HashMap<D::Path, crate::Item<D>>,
+    pub variables: HashMap<u32, crate::TypeDescriptor<D>>,
+}
+
+#[derive(Derivative)]
+#[derivative(Debug(bound = ""))]
 struct Info<'a, D: crate::Driver> {
     #[derivative(Debug = "ignore")]
     driver: &'a D,
+    variables: &'a HashMap<D::Path, WithInfo<D::Info, wipple_typecheck::Type<D>>>,
 
     path: D::Path,
     items: HashMap<D::Path, crate::Item<D>>,
@@ -145,7 +155,10 @@ fn compile_item_with_captures<'a, D: crate::Driver>(
     info.items.insert(
         path.clone(),
         crate::Item {
-            captures: captures.len() as u32,
+            captures: captures_paths
+                .iter()
+                .map(|path| type_descriptor(&info.variables.get(path)?.item))
+                .collect::<Option<_>>()?,
             expression: expression.as_deref().map(Clone::clone),
             instructions: Vec::new(),
         },

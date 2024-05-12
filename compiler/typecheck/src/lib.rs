@@ -185,6 +185,10 @@ pub struct Result<D: Driver> {
     /// The resolved item.
     pub item: Option<WithInfo<D::Info, TypedExpression<D>>>,
 
+    /// The types of variables initialized by the item. This will only be
+    /// populated if the item typechecked successfully.
+    pub variables: HashMap<D::Path, WithInfo<D::Info, Type<D>>>,
+
     /// Any errors encountered while resolving the item.
     pub diagnostics: Vec<WithInfo<D::Info, Diagnostic<D>>>,
 }

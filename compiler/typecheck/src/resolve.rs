@@ -162,6 +162,7 @@ pub fn resolve<D: Driver>(
         None => {
             return crate::Result {
                 item: None,
+                variables: HashMap::new(),
                 diagnostics: errors,
             }
         }
@@ -196,7 +197,7 @@ pub fn resolve<D: Driver>(
     };
 
     let mut prev_subexpression_types = Vec::new();
-    let item = loop {
+    let (item, variables) = loop {
         if recursion_stack.len() as u32 > recursion_limit {
             errors.push(WithInfo {
                 info: queued.body.info.clone(),
@@ -214,7 +215,8 @@ pub fn resolve<D: Driver>(
                 subexpression_types: None,
             };
 
-            break finalize_expression(queued.body, &mut finalize_context);
+            let expression = finalize_expression(queued.body, &mut finalize_context);
+            break (expression, HashMap::new());
         }
 
         let mut resolve_context = ResolveContext {
@@ -254,7 +256,7 @@ pub fn resolve<D: Driver>(
             let item = finalize_expression(queued.body.clone(), &mut finalize_context);
 
             if finalize_context.contains_unknown {
-                break item;
+                break (item, HashMap::new());
             }
 
             subexpression_types
@@ -297,7 +299,16 @@ pub fn resolve<D: Driver>(
                     subexpression_types: None,
                 };
 
-                break finalize_expression(queued.body, &mut finalize_context);
+                let item = finalize_expression(queued.body, &mut finalize_context);
+
+                let variables = variables
+                    .into_iter()
+                    .map(|(path, r#type)| {
+                        (path, finalize_type(r#type, false, &mut finalize_context))
+                    })
+                    .collect();
+
+                break (item, variables);
             }
         }
 
@@ -318,6 +329,7 @@ pub fn resolve<D: Driver>(
 
     crate::Result {
         item: Some(item),
+        variables,
         diagnostics: errors,
     }
 }
