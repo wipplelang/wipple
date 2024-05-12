@@ -86,6 +86,13 @@ pub fn type_descriptor<D: crate::Driver>(
     compile::type_descriptor(r#type)
 }
 
+/// Generate a layout descriptor from a type declaration.
+pub fn layout_descriptor<D: crate::Driver>(
+    type_declaration: &wipple_typecheck::TypeDeclaration<D>,
+) -> Option<crate::LayoutDescriptor<D>> {
+    compile::layout_descriptor(type_declaration)
+}
+
 /// The result of [`compile`].
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""))]
@@ -270,6 +277,35 @@ pub enum TypeDescriptor<D: Driver> {
 
     /// An intrinsic type provided by the runtime.
     Intrinsic,
+}
+
+/// Contains layout information for a named type.
+#[derive(Serialize, Deserialize, Derivative, TS)]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
+#[serde(bound = "")]
+#[ts(export, rename = "ir_LayoutDescriptor", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
+pub enum LayoutDescriptor<D: Driver> {
+    /// A marker.
+    Marker,
+
+    /// A wrapper.
+    Wrapper(Box<TypeDescriptor<D>>),
+
+    /// A structure.
+    Structure(Vec<TypeDescriptor<D>>),
+
+    /// An enumeration.
+    Enumeration(Vec<Vec<TypeDescriptor<D>>>),
+
+    /// An intrinsic.
+    Intrinsic, // TODO: Remove 'intrinsic' and specify layout with attribute
 }
 
 impl<D: Driver> std::fmt::Display for Instruction<D>

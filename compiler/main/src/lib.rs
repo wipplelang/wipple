@@ -566,6 +566,12 @@ impl Driver {
             }
         }
 
+        for (path, type_declaration) in &self.interface.type_declarations {
+            if let Some(layout) = ir::layout_descriptor(&type_declaration.item) {
+                self.library.layouts.insert(path.clone(), layout);
+            }
+        }
+
         let instances_by_trait = self
             .interface
             .instance_declarations

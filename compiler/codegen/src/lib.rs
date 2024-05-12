@@ -1,6 +1,6 @@
 //! Generate a WebAssembly module from a linked executable.
 
-mod transform;
+mod monomorphize;
 
 use std::collections::HashMap;
 use wasm_encoder as wasm;
@@ -15,15 +15,13 @@ pub trait Driver: linker::Driver {
 
 /// Generate a WebAssembly module from a linked executable.
 pub fn to_wasm<D: Driver>(driver: &D, executable: &linker::Executable<D>) -> Vec<u8> {
+    let module = monomorphize::Module::from_executable(driver, executable);
+
     let mut codegen = Codegen::new(driver);
 
-    for (path, item) in &executable.items {
-        codegen.compile_item(path, item);
-    }
+    let wasm = codegen.into_wasm();
 
-    let module = codegen.into_module();
-
-    let bytes = module.finish();
+    let bytes = wasm.finish();
     wasmparser::validate(&bytes).expect("invalid wasm module");
 
     bytes
@@ -144,7 +142,7 @@ impl<'a, D: Driver> Codegen<'a, D> {
         todo!()
     }
 
-    fn into_module(self) -> wasm::Module {
+    fn into_wasm(self) -> wasm::Module {
         let mut module = wasm::Module::new();
         module.section(&self.types);
         module.section(&self.functions);

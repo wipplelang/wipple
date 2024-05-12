@@ -1,4 +1,5 @@
 use derivative::Derivative;
+use itertools::Itertools;
 use std::{collections::HashMap, mem};
 use wipple_util::WithInfo;
 
@@ -186,7 +187,7 @@ fn compile_expression<D: crate::Driver>(
                     path.clone(),
                     parameters
                         .iter()
-                        .map(type_descriptor)
+                        .map(|parameter| type_descriptor(parameter))
                         .collect::<Option<_>>()?,
                 ),
             ));
@@ -640,5 +641,51 @@ pub fn type_descriptor<D: crate::Driver>(
         ))),
         wipple_typecheck::Type::Intrinsic => Some(crate::TypeDescriptor::Intrinsic),
         wipple_typecheck::Type::Message { .. } | wipple_typecheck::Type::Constant(_) => None,
+    }
+}
+
+pub fn layout_descriptor<D: crate::Driver>(
+    type_declaration: &wipple_typecheck::TypeDeclaration<D>,
+) -> Option<crate::LayoutDescriptor<D>> {
+    match &type_declaration.representation.item {
+        wipple_typecheck::TypeRepresentation::Marker => Some(crate::LayoutDescriptor::Marker),
+        wipple_typecheck::TypeRepresentation::Structure(fields) => {
+            let fields = fields
+                .values()
+                .map(|field| Some((field.item.index, type_descriptor(&field.item.r#type.item)?)))
+                .collect::<Option<Vec<_>>>()?
+                .into_iter()
+                .sorted_by_key(|(index, _)| *index)
+                .map(|(_, r#type)| r#type)
+                .collect();
+
+            Some(crate::LayoutDescriptor::Structure(fields))
+        }
+        wipple_typecheck::TypeRepresentation::Enumeration(variants) => {
+            let variants = variants
+                .values()
+                .map(|variant| {
+                    Some((
+                        variant.item.index,
+                        variant
+                            .item
+                            .value_types
+                            .iter()
+                            .map(|r#type| type_descriptor(&r#type.item))
+                            .collect::<Option<_>>()?,
+                    ))
+                })
+                .collect::<Option<Vec<_>>>()?
+                .into_iter()
+                .sorted_by_key(|(index, _)| *index)
+                .map(|(_, r#type)| r#type)
+                .collect();
+
+            Some(crate::LayoutDescriptor::Enumeration(variants))
+        }
+        wipple_typecheck::TypeRepresentation::Wrapper(r#type) => {
+            let r#type = type_descriptor(&r#type.item)?;
+            Some(crate::LayoutDescriptor::Wrapper(Box::new(r#type)))
+        }
     }
 }

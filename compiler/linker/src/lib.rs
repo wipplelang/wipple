@@ -21,6 +21,9 @@ pub struct UnlinkedLibrary<D: Driver> {
     /// The implementations of constants and instances.
     pub items: HashMap<D::Path, UnlinkedItem<D>>,
 
+    /// The layouts of each declared type.
+    pub layouts: HashMap<D::Path, wipple_ir::LayoutDescriptor<D>>,
+
     /// The list of instances for each trait.
     pub instances: HashMap<D::Path, Vec<D::Path>>,
 
@@ -61,6 +64,9 @@ pub struct UnlinkedItem<D: Driver> {
 pub struct Executable<D: Driver> {
     /// The implementations of constants and instances.
     pub items: HashMap<D::Path, LinkedItem<D>>,
+
+    /// The layouts of each declared type.
+    pub layouts: HashMap<D::Path, wipple_ir::LayoutDescriptor<D>>,
 
     /// The list of instances for each trait.
     pub instances: HashMap<D::Path, Vec<D::Path>>,
@@ -140,6 +146,8 @@ pub fn link<D: Driver>(
             for (path, item) in library.items {
                 executable.items.insert(path, convert_item(item)?);
             }
+
+            executable.layouts.extend(library.layouts);
 
             executable.exports.extend(library.exports);
 
