@@ -16,6 +16,8 @@ done
 rm -r generated/types
 echo " done"
 
+echo -n "Building compiler..."
 rollup -c rollup.config.mjs
 cp -r generated dist
 cp *.d.ts dist
+echo " done"

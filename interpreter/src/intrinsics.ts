@@ -1,17 +1,11 @@
 import { Decimal } from "decimal.js";
-import {
-    unify,
-    type Context,
-    type TaskGroup,
-    type TypeDescriptor,
-    type TypedValue,
-} from "./index.js";
+import { type Context, type TaskGroup, type TypedValue } from "./index.js";
 
 export type Intrinsic = (inputs: TypedValue[], context: Context, task: any) => Promise<TypedValue>;
 
 export const intrinsics: Record<string, Intrinsic> = {
     debug: async ([value]) => {
-        console.error(value);
+        console.error(JSON.stringify(value, null, 4));
         return value;
     },
     crash: async ([message], context) => {
@@ -453,14 +447,12 @@ const numberToJs = (value: TypedValue, context: Context): Decimal => {
         throw context.error("expected number");
     }
 
-    return value.value ? value.value : new Decimal(NaN);
+    return value.value != null ? value.value : new Decimal(NaN);
 };
 
-const jsToBoolean = (boolean: boolean, context: Context): TypedValue => ({
+const jsToBoolean = (boolean: boolean, _context: Context): TypedValue => ({
     type: "variant",
-    variant: boolean
-        ? context.executable.intrinsicVariants.true
-        : context.executable.intrinsicVariants.false,
+    variant: boolean ? 1 : 0,
     values: [],
 });
 
@@ -470,42 +462,42 @@ const booleanToJs = (value: TypedValue, context: Context): boolean => {
     }
 
     switch (value.variant) {
-        case context.executable.intrinsicVariants.true:
+        case 1:
             return true;
-        case context.executable.intrinsicVariants.false:
+        case 0:
             return false;
         default:
             throw context.error("expected boolean");
     }
 };
 
-const jsToSome = (value: TypedValue, context: Context): TypedValue => ({
+const jsToNone = (_context: Context): TypedValue => ({
     type: "variant",
-    variant: context.executable.intrinsicVariants.some,
+    variant: 0,
+    values: [],
+});
+
+const jsToSome = (value: TypedValue, _context: Context): TypedValue => ({
+    type: "variant",
+    variant: 1,
     values: [value],
 });
 
-const jsToNone = (context: Context): TypedValue => ({
+const jsToIsLessThan = (_context: Context): TypedValue => ({
     type: "variant",
-    variant: context.executable.intrinsicVariants.none,
+    variant: 0,
     values: [],
 });
 
-const jsToIsLessThan = (context: Context): TypedValue => ({
+const jsToIsEqual = (_context: Context): TypedValue => ({
     type: "variant",
-    variant: context.executable.intrinsicVariants["is-less-than"],
+    variant: 1,
     values: [],
 });
 
-const jsToIsEqual = (context: Context): TypedValue => ({
+const jsToIsGreaterThan = (_context: Context): TypedValue => ({
     type: "variant",
-    variant: context.executable.intrinsicVariants["is-equal-to"],
-    values: [],
-});
-
-const jsToIsGreaterThan = (context: Context): TypedValue => ({
-    type: "variant",
-    variant: context.executable.intrinsicVariants["is-greater-than"],
+    variant: 2,
     values: [],
 });
 
@@ -515,9 +507,9 @@ const maybeToJs = (value: TypedValue, context: Context): TypedValue | undefined 
     }
 
     switch (value.variant) {
-        case context.executable.intrinsicVariants.some:
+        case 1:
             return value.values[0];
-        case context.executable.intrinsicVariants.none:
+        case 0:
             return undefined;
         default:
             throw context.error("expected maybe");

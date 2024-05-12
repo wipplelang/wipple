@@ -41,14 +41,14 @@ fn deserialize<'de, T: serde::Deserialize<'de>>(value: &'de str) -> T {
 
 /// JavaScript entrypoint to the compiler.
 #[wasm_bindgen]
-pub fn compile(files: &str, dependencies: &str) -> String {
+pub fn compile(files: &str, dependencies: &str, entrypoint: bool) -> String {
     initialize();
 
     let files: Vec<File> = deserialize(files);
     let dependencies: Option<Interface> = deserialize(dependencies);
 
     let driver = Driver::new();
-    let result = driver.compile(files, dependencies);
+    let result = driver.compile(files, dependencies, entrypoint);
 
     serialize(&result)
 }
@@ -246,11 +246,17 @@ pub enum Diagnostic {
     Syntax(syntax::Diagnostic),
     Lower(lower::Diagnostic),
     Typecheck(typecheck::Diagnostic<Driver>),
+    Ir,
 }
 
 impl Driver {
     /// Compile a set of source files into a [`Library`] and [`Interface`].
-    pub fn compile(mut self, files: Vec<File>, dependencies: Option<Interface>) -> Result {
+    pub fn compile(
+        mut self,
+        files: Vec<File>,
+        dependencies: Option<Interface>,
+        entrypoint: bool,
+    ) -> Result {
         let mut diagnostics = Vec::new();
 
         if let Some(dependencies) = &dependencies {
@@ -445,16 +451,18 @@ impl Driver {
                     .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            let ir_result = ir::compile(&self, path.clone(), item.as_ref());
-
-            self.library.items.insert(
-                path,
-                Item {
-                    parameters: declaration.item.parameters,
-                    expression: item,
-                    ir: ir_result.map(|result| result.labels),
-                },
-            );
+            if let Some(ir_result) = ir::compile(&self, path.clone(), item.as_ref()) {
+                for (path, item) in ir_result.items {
+                    self.library.items.insert(
+                        path,
+                        Item {
+                            parameters: declaration.item.parameters.clone(),
+                            expression: item.expression,
+                            ir: item.instructions,
+                        },
+                    );
+                }
+            }
         }
 
         for (path, item) in lower_result.interface.instance_declarations {
@@ -492,16 +500,18 @@ impl Driver {
                     .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            let ir_result = ir::compile(&self, path.clone(), item.as_ref());
-
-            self.library.items.insert(
-                path,
-                Item {
-                    parameters: declaration.item.parameters,
-                    expression: item,
-                    ir: ir_result.map(|result| result.labels),
-                },
-            );
+            if let Some(ir_result) = ir::compile(&self, path.clone(), item.as_ref()) {
+                for (path, item) in ir_result.items {
+                    self.library.items.insert(
+                        path,
+                        Item {
+                            parameters: declaration.item.parameters.clone(),
+                            expression: item.expression,
+                            ir: item.instructions,
+                        },
+                    );
+                }
+            }
         }
 
         {
@@ -535,13 +545,30 @@ impl Driver {
                         .map(|error| error.map(Diagnostic::Typecheck)),
                 );
 
-                let ir_result = ir::compile(&self, lower::Path::top_level(), item.as_ref());
+                let path = lower::Path::top_level();
 
-                self.library.code.push(Item {
-                    parameters: Vec::new(),
-                    expression: item,
-                    ir: ir_result.map(|result| result.labels),
-                });
+                if let Some(ir_result) = ir::compile(&self, path.clone(), item.as_ref()) {
+                    for (path, item) in ir_result.items {
+                        self.library.items.insert(
+                            path,
+                            Item {
+                                parameters: Vec::new(),
+                                expression: item.expression,
+                                ir: item.instructions,
+                            },
+                        );
+                    }
+
+                    if entrypoint {
+                        self.library.entrypoint = Some(path);
+                    }
+                }
+            }
+        }
+
+        for (path, type_declaration) in &self.interface.type_declarations {
+            if let Some(layout) = ir::layout_descriptor(&type_declaration.item) {
+                self.library.layouts.insert(path.clone(), layout);
             }
         }
 
@@ -583,29 +610,6 @@ impl Driver {
                 instances.entry(r#trait.clone()).or_default().push(instance);
             }
         }
-
-        macro_rules! insert_intrinsic_variant {
-            ($name:literal) => {
-                if let Some(value) = self.interface.language_declarations.get($name) {
-                    self.library
-                        .intrinsic_variants
-                        .insert(String::from($name), variant_from_constructor(value.clone()));
-                }
-            };
-            ($($name:literal),* $(,)?) => {
-                $(insert_intrinsic_variant!($name);)*
-            }
-        }
-
-        insert_intrinsic_variant!(
-            "false",
-            "true",
-            "none",
-            "some",
-            "is-less-than",
-            "is-equal-to",
-            "is-greater-than",
-        );
 
         Result {
             interface: self.interface,
@@ -816,6 +820,10 @@ impl wipple_ir::Driver for Driver {
 
     fn text_equality_intrinsic(&self) -> Option<String> {
         Some(String::from("text-equality"))
+    }
+
+    fn item_path_in(&self, path: &Self::Path, index: u32) -> Self::Path {
+        path.join(lower::PathComponent::Item(index))
     }
 }
 

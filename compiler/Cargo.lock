@@ -518,6 +518,7 @@ name = "wipple-ir"
 version = "0.0.0"
 dependencies = [
  "derivative",
+ "itertools",
  "serde",
  "ts-rs",
  "wipple-typecheck",

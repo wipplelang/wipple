@@ -120,7 +120,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 },
             ];
 
-            const compileResult = compiler.compile(sources, dependencies?.interface ?? null);
+            const compileResult = compiler.compile(sources, dependencies?.interface ?? null, true);
 
             if (!cachedHighlightItems) {
                 const highlightItems = getHighlightItems(compileResult.interface, props.render);
@@ -152,8 +152,8 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
             }
 
             const executable = compiler.link([
-                compileResult.library,
                 ...(dependencies?.libraries ?? []),
+                compileResult.library,
             ]);
             if (!executable) {
                 throw new Error("linker error");

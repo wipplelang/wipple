@@ -1,6 +1,9 @@
 use crate::Driver;
 use derivative::Derivative;
-use std::{collections::HashMap, mem};
+use std::{
+    collections::{HashMap, HashSet},
+    mem,
+};
 use wipple_util::WithInfo;
 
 /// Resolve a list of files into an interface and a library.
@@ -9,6 +12,7 @@ pub fn resolve<D: Driver>(
     dependencies: crate::Interface<D>,
 ) -> crate::Result<D> {
     let mut info = Info::default();
+    info.captures.push(Captures::default());
     info.scopes.push_block_scope();
 
     macro_rules! add {
@@ -115,6 +119,7 @@ struct Info<D: Driver> {
     path: crate::Path,
     scopes: Scopes<D>,
     next_variable: u32,
+    captures: Vec<Captures>,
 }
 
 impl<D: Driver> Info<D> {
@@ -186,6 +191,36 @@ impl<D: Driver> Scopes<D> {
         }
 
         paths.push(path);
+    }
+}
+
+#[derive(Debug, Default)]
+struct Captures {
+    declared: HashSet<crate::Path>,
+    used: HashSet<crate::Path>,
+}
+
+impl<D: Driver> Info<D> {
+    fn declare_variable(&mut self, path: &crate::Path) {
+        self.captures
+            .last_mut()
+            .unwrap()
+            .declared
+            .insert(path.clone());
+    }
+
+    fn capture_if_variable(&mut self, path: &crate::Path) {
+        if !matches!(path.last(), Some(crate::PathComponent::Variable(_))) {
+            return;
+        }
+
+        for captures in self.captures.iter_mut().rev() {
+            if captures.declared.contains(path) {
+                break;
+            }
+
+            captures.used.insert(path.clone());
+        }
     }
 }
 
@@ -310,6 +345,7 @@ fn resolve_statements<D: Driver>(
                                 .into_iter()
                                 .map(|field| {
                                     field.map(|field| crate::Field {
+                                        index: field.index,
                                         name: field.name,
                                         r#type: resolve_type(field.r#type, info),
                                     })
@@ -345,6 +381,7 @@ fn resolve_statements<D: Driver>(
                                             .push((variant.name.item, variant_path.clone()));
 
                                         crate::Variant {
+                                            index: variant.index,
                                             name: variant_path,
                                             types: value_types,
                                         }
@@ -534,7 +571,7 @@ fn resolve_statements<D: Driver>(
                             }
                             _ => false,
                         })
-                        .cloned()
+                        .map(|path| (path.item.clone(), path.clone()))
                         .collect()
                 })?;
 
@@ -565,7 +602,9 @@ fn resolve_statements<D: Driver>(
                             candidates
                                 .iter()
                                 .filter_map(|path| match path.item.last().unwrap() {
-                                    crate::PathComponent::Variable(_) => Some(path.clone()),
+                                    crate::PathComponent::Variable(_) => {
+                                        Some((path.item.clone(), path.clone()))
+                                    }
                                     _ => None,
                                 })
                                 .collect::<Vec<_>>()
@@ -745,6 +784,7 @@ fn generate_structure_constructor<D: Driver>(
                     item: crate::Expression::Variable(name.item.clone(), input_variable),
                 }
                 .boxed(),
+                captures: Vec::new(),
             },
         }
     };
@@ -856,6 +896,7 @@ fn generate_variant_constructor<D: Driver>(
                         })
                         .collect(),
                     body: output.boxed(),
+                    captures: Vec::new(),
                 },
             }
         }
@@ -942,6 +983,7 @@ fn generate_wrapper_constructor<D: Driver>(
                     },
                 }
                 .boxed(),
+                captures: Vec::new(),
             },
         }
     };
@@ -1046,10 +1088,16 @@ fn resolve_expression<D: Driver>(
 
                 match path.item.last().unwrap() {
                     crate::PathComponent::Variable(_) => {
-                        vec![crate::Expression::Variable(name.clone(), path.item.clone())]
+                        vec![(
+                            path.item.clone(),
+                            crate::Expression::Variable(name.clone(), path.item.clone()),
+                        )]
                     }
                     crate::PathComponent::Constant(_) | crate::PathComponent::Constructor(_) => {
-                        vec![crate::Expression::Constant(path.item.clone())]
+                        vec![(
+                            path.item.clone(),
+                            crate::Expression::Constant(path.item.clone()),
+                        )]
                     }
                     _ => Vec::new(),
                 }
@@ -1070,13 +1118,21 @@ fn resolve_expression<D: Driver>(
         },
         crate::UnresolvedExpression::Block(statements) => {
             info.scopes.push_block_scope();
-            let block = resolve_statements(statements, info);
+            info.captures.push(Captures::default());
+
+            let statements = resolve_statements(statements, info);
+
+            let captures = info.captures.pop().unwrap();
             info.scopes.pop_scope();
 
-            crate::Expression::Block(block)
+            crate::Expression::Block {
+                statements,
+                captures: Vec::from_iter(captures.used),
+            }
         }
         crate::UnresolvedExpression::Function { inputs, body } => {
             info.scopes.push_block_scope();
+            info.captures.push(Captures::default());
 
             let inputs = inputs
                 .into_iter()
@@ -1085,11 +1141,13 @@ fn resolve_expression<D: Driver>(
 
             let body = resolve_expression(body.unboxed(), info);
 
+            let captures = info.captures.pop().unwrap();
             info.scopes.pop_scope();
 
             crate::Expression::Function {
                 inputs,
                 body: body.boxed(),
+                captures: Vec::from_iter(captures.used),
             }
         }
         crate::UnresolvedExpression::Do(block) => {
@@ -1288,6 +1346,8 @@ fn resolve_pattern_inner<D: Driver>(
                 },
             ));
 
+            info.declare_variable(&path);
+
             crate::Pattern::Variable(name, path)
         }
         crate::UnresolvedPattern::VariantOrName(name) => {
@@ -1306,7 +1366,9 @@ fn resolve_pattern_inner<D: Driver>(
                     candidates
                         .iter()
                         .filter_map(|path| match path.item.last().unwrap() {
-                            crate::PathComponent::Variant(_) => Some(path.clone()),
+                            crate::PathComponent::Variant(_) => {
+                                Some((path.item.clone(), path.clone()))
+                            }
                             _ => None,
                         })
                         .collect::<Vec<_>>()
@@ -1353,7 +1415,7 @@ fn resolve_pattern_inner<D: Driver>(
                 candidates
                     .iter()
                     .filter_map(|path| match path.item.last().unwrap() {
-                        crate::PathComponent::Variant(_) => Some(path.clone()),
+                        crate::PathComponent::Variant(_) => Some((path.item.clone(), path.clone())),
                         _ => None,
                     })
                     .collect::<Vec<_>>()
@@ -1371,7 +1433,7 @@ fn resolve_pattern_inner<D: Driver>(
                 candidates
                     .iter()
                     .filter_map(|path| match path.item.last().unwrap() {
-                        crate::PathComponent::Type(_) => Some(path.clone()),
+                        crate::PathComponent::Type(_) => Some((path.item.clone(), path.clone())),
                         _ => None,
                     })
                     .collect::<Vec<_>>()
@@ -1449,7 +1511,7 @@ fn resolve_type<D: Driver>(
                 None => return crate::Type::Error,
             };
 
-            match resolve_name(name, info, |candidates| {
+            let filter = |candidates: &[WithInfo<D::Info, crate::Path>]| {
                 let mut candidates = candidates.to_vec();
                 candidates.sort_by_key(|path| match path.item.last().unwrap() {
                     crate::PathComponent::Type(_) | crate::PathComponent::TypeParameter(_) => 0,
@@ -1458,10 +1520,12 @@ fn resolve_type<D: Driver>(
                 });
 
                 match candidates.into_iter().next() {
-                    Some(candidate) => vec![candidate],
+                    Some(candidate) => vec![(candidate.item.clone(), candidate)],
                     None => Vec::new(),
                 }
-            }) {
+            };
+
+            match resolve_name(name, info, filter) {
                 Some(path) => {
                     match path.item.last().unwrap() {
                         crate::PathComponent::Type(_) => crate::Type::Declared {
@@ -1562,7 +1626,7 @@ fn resolve_instance<D: Driver>(
             candidates
                 .iter()
                 .filter_map(|path| match path.item.last().unwrap() {
-                    crate::PathComponent::Trait(_) => Some(path.clone()),
+                    crate::PathComponent::Trait(_) => Some((path.item.clone(), path.clone())),
                     _ => None,
                 })
                 .collect::<Vec<_>>()
@@ -1585,7 +1649,7 @@ fn resolve_instance<D: Driver>(
 fn resolve_name<D: Driver, T>(
     name: WithInfo<D::Info, String>,
     info: &mut Info<D>,
-    filter: impl FnMut(&[WithInfo<D::Info, crate::Path>]) -> Vec<T>,
+    filter: impl FnMut(&[WithInfo<D::Info, crate::Path>]) -> Vec<(crate::Path, T)>,
 ) -> Option<T> {
     let result = try_resolve_name(name.clone(), info, filter);
 
@@ -1600,7 +1664,7 @@ fn resolve_name<D: Driver, T>(
 fn try_resolve_name<D: Driver, T>(
     name: WithInfo<D::Info, String>,
     info: &mut Info<D>,
-    mut filter: impl FnMut(&[WithInfo<D::Info, crate::Path>]) -> Vec<T>,
+    mut filter: impl FnMut(&[WithInfo<D::Info, crate::Path>]) -> Vec<(crate::Path, T)>,
 ) -> Option<T> {
     let mut allow_locals = true;
     for scope in info.scopes.0.iter().rev() {
@@ -1621,7 +1685,12 @@ fn try_resolve_name<D: Driver, T>(
 
                     continue;
                 }
-                1 => return Some(candidates.pop().unwrap()),
+                1 => {
+                    let (path, candidate) = candidates.pop().unwrap();
+                    info.capture_if_variable(&path);
+
+                    return Some(candidate);
+                }
                 _ => {
                     info.errors
                         .push(name.replace(crate::Diagnostic::AmbiguousName {
@@ -1629,7 +1698,11 @@ fn try_resolve_name<D: Driver, T>(
                             candidates: paths.into_iter().map(|path| path.item).collect(),
                         }));
 
-                    return Some(candidates.pop().unwrap()); // try the last candidate defined
+                    // Try the last candidate defined
+                    let (path, candidate) = candidates.pop().unwrap();
+                    info.capture_if_variable(&path);
+
+                    return Some(candidate);
                 }
             }
         } else if scope.filters_locals() {
@@ -1663,15 +1736,23 @@ fn resolve_binary_operator<D: Driver>(
     );
 
     let left = resolve_expression(left, info);
-    let right = resolve_expression(right, info);
 
     let right = if operator.item.short_circuits() {
-        WithInfo {
-            info: right.info.clone(),
-            item: crate::Expression::Block(vec![right]),
-        }
+        let right_info = right.info.clone();
+        resolve_expression(
+            right.map(|right| {
+                crate::UnresolvedExpression::Block(vec![WithInfo {
+                    info: right_info.clone(),
+                    item: crate::UnresolvedStatement::Expression(WithInfo {
+                        info: right_info,
+                        item: right,
+                    }),
+                }])
+            }),
+            info,
+        )
     } else {
-        right
+        resolve_expression(right, info)
     };
 
     crate::Expression::Call {

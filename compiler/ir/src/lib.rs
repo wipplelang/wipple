@@ -5,6 +5,7 @@ mod tail_call;
 
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use ts_rs::TS;
 use wipple_util::WithInfo;
 
@@ -27,6 +28,9 @@ pub trait Driver: wipple_typecheck::Driver {
 
     /// The name of the intrinsic that compares text.
     fn text_equality_intrinsic(&self) -> Option<String>;
+
+    /// The path of an item contained within the item at the provided path.
+    fn item_path_in(&self, path: &Self::Path, index: u32) -> Self::Path;
 }
 
 impl Driver for wipple_util::TsAny {
@@ -53,6 +57,10 @@ impl Driver for wipple_util::TsAny {
     fn text_equality_intrinsic(&self) -> Option<String> {
         unimplemented!()
     }
+
+    fn item_path_in(&self, _path: &Self::Path, _index: u32) -> Self::Path {
+        unimplemented!()
+    }
 }
 
 /// Generate IR from an expression. This function must only be called if
@@ -62,13 +70,13 @@ pub fn compile<D: Driver>(
     path: D::Path,
     expression: WithInfo<D::Info, &wipple_typecheck::TypedExpression<D>>,
 ) -> Option<Result<D>> {
-    let mut labels = compile::compile(driver, path, expression)?;
+    let mut items = compile::compile(driver, path, expression)?;
 
-    for instructions in &mut labels {
-        tail_call::apply(instructions);
+    for item in items.values_mut() {
+        tail_call::apply(&mut item.instructions);
     }
 
-    Some(Result { labels })
+    Some(Result { items })
 }
 
 /// Generate a type descriptor from a type.
@@ -78,16 +86,34 @@ pub fn type_descriptor<D: crate::Driver>(
     compile::type_descriptor(r#type)
 }
 
+/// Generate a layout descriptor from a type declaration.
+pub fn layout_descriptor<D: crate::Driver>(
+    type_declaration: &wipple_typecheck::TypeDeclaration<D>,
+) -> Option<crate::LayoutDescriptor<D>> {
+    compile::layout_descriptor(type_declaration)
+}
+
 /// The result of [`compile`].
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""))]
 pub struct Result<D: Driver> {
-    /// The compiled instructions, grouped by label.
-    pub labels: Vec<Vec<Instruction<D>>>,
+    /// The compiled items.
+    pub items: HashMap<D::Path, Item<D>>,
 }
 
-/// A label to jump to (ie. an index of [`Result::labels`]).
-pub type Label = usize;
+/// A compiled item.
+#[derive(Derivative)]
+#[derivative(Debug(bound = ""))]
+pub struct Item<D: Driver> {
+    /// The number of variables this item captures.
+    pub captures: u32,
+
+    /// The expression from which this item was compiled.
+    pub expression: WithInfo<D::Info, wipple_typecheck::TypedExpression<D>>,
+
+    /// The compiled instructions.
+    pub instructions: Vec<crate::Instruction<D>>,
+}
 
 /// An instruction.
 #[derive(Serialize, Deserialize, Derivative, TS)]
@@ -114,11 +140,15 @@ pub enum Instruction<D: Driver> {
 
     /// (Pattern matching) Retrieve a field of the structure value on the top of
     /// the stack, keeping the value on the top of the stack.
-    Field(String),
+    Field(u32),
 
-    /// (Pattern matching) Retrieve the _n_th element of the tuple or variant
-    /// value on the top of the stack, keeping the value on the top of the stack.
-    Element(u32),
+    /// (Pattern matching) Retrieve the _n_th element of the variant on the top
+    /// of the stack, keeping the value on the top of the stack.
+    VariantElement(u32),
+
+    /// (Pattern matching) Retrieve the _n_th element of the tuple on the top of
+    /// the stack, keeping the value on the top of the stack.
+    TupleElement(u32),
 
     /// (Pattern matching) Unwrap the wrapper type on the top of the stack,
     /// keeping the value on the top of the stack.
@@ -142,16 +172,19 @@ pub enum Instruction<D: Driver> {
     /// (Values) Produce a new value with a runtime type.
     Typed(TypeDescriptor<D>, TypedInstruction<D>),
 
-    /// (Control flow) Go to another label if the variant on the top of the
+    /// (Control flow) Begin a block.
+    Block(Vec<Instruction<D>>),
+
+    /// (Control flow) Break out of _n_ blocks.
+    Break(u32),
+
+    /// (Control flow) Break out of _n_ blocks if the variant on the top of the
     /// stack does not match the variant in the condition.
-    JumpIfNot(D::Path, Label),
+    BreakIfNot(u32, u32),
 
     /// (Control flow) Return the top of the stack as the result of this
     /// function.
     Return,
-
-    /// (Control flow) Go to another label.
-    Jump(Label),
 
     /// (Control flow) Call the function on the top of the stack, replacing the
     /// current stack.
@@ -195,19 +228,16 @@ pub enum TypedInstruction<D: Driver> {
     Marker,
 
     /// Create a structure, mapping each field to the next value on the stack.
-    Structure(Vec<String>),
+    Structure(Vec<u32>),
 
     /// Create a variant from the top _n_ values on the stack.
-    Variant(D::Path, u32),
+    Variant(u32, u32),
 
     /// Create a wrapper value from the top value on the stack.
     Wrapper,
 
-    /// A function that can potentially capture variables.
-    Function(Vec<u32>, D::Path, Label),
-
-    /// A block expression.
-    Block(Vec<u32>, D::Path, Label),
+    /// A function (or block) expression that can capture variables.
+    Function(Vec<u32>, D::Path),
 
     /// A constant.
     Constant(D::Path, Vec<TypeDescriptor<D>>),
@@ -249,31 +279,80 @@ pub enum TypeDescriptor<D: Driver> {
     Intrinsic,
 }
 
+/// Contains layout information for a named type.
+#[derive(Serialize, Deserialize, Derivative, TS)]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
+#[serde(bound = "")]
+#[ts(export, rename = "ir_LayoutDescriptor", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
+pub enum LayoutDescriptor<D: Driver> {
+    /// A marker.
+    Marker,
+
+    /// A wrapper.
+    Wrapper(Box<TypeDescriptor<D>>),
+
+    /// A structure.
+    Structure(Vec<TypeDescriptor<D>>),
+
+    /// An enumeration.
+    Enumeration(Vec<Vec<TypeDescriptor<D>>>),
+
+    /// An intrinsic.
+    Intrinsic, // TODO: Remove 'intrinsic' and specify layout with attribute
+}
+
 impl<D: Driver> std::fmt::Display for Instruction<D>
 where
     D::Path: std::fmt::Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.display(f, 0)
+    }
+}
+
+impl<D: Driver> Instruction<D>
+where
+    D::Path: std::fmt::Display,
+{
+    fn display(&self, f: &mut std::fmt::Formatter<'_>, indent: usize) -> std::fmt::Result {
+        write!(f, "{}", "  ".repeat(indent))?;
+
         match self {
             Instruction::Copy => write!(f, "copy"),
             Instruction::Drop => write!(f, "drop"),
             Instruction::Initialize(variable) => write!(f, "initialize {variable}"),
             Instruction::Field(field) => write!(f, "field {field}"),
-            Instruction::Element(element) => write!(f, "element {element}"),
+            Instruction::VariantElement(element) => write!(f, "variant element {element}"),
+            Instruction::TupleElement(element) => write!(f, "tuple element {element}"),
             Instruction::Unwrap => write!(f, "unwrap"),
             Instruction::Variable(variable) => write!(f, "variable {variable}"),
             Instruction::Call(inputs) => write!(f, "call {inputs}"),
             Instruction::Do => write!(f, "do"),
             Instruction::Mutate(variable) => write!(f, "mutate {variable}"),
             Instruction::Tuple(elements) => write!(f, "tuple {elements}"),
-            Instruction::Typed(descriptor, instruction) => {
-                write!(f, "{instruction} :: {descriptor}")
+            Instruction::Typed(_, instruction) => write!(f, "{instruction}"),
+            Instruction::Block(instructions) => {
+                writeln!(f, "block")?;
+
+                for instruction in instructions {
+                    instruction.display(f, indent + 1)?;
+                    writeln!(f)?;
+                }
+
+                write!(f, "{}end", "  ".repeat(indent))
             }
-            Instruction::JumpIfNot(variant, label) => {
-                write!(f, "jump if not {variant:?} {label}")
+            Instruction::Break(label) => write!(f, "jump {label}"),
+            Instruction::BreakIfNot(variant, label) => {
+                write!(f, "jump if not {variant} {label}")
             }
             Instruction::Return => write!(f, "return"),
-            Instruction::Jump(label) => write!(f, "jump {label}"),
             Instruction::TailCall(inputs) => write!(f, "tail call {inputs}"),
             Instruction::TailDo => write!(f, "tail do"),
             Instruction::Unreachable => write!(f, "unreachable"),
@@ -305,11 +384,8 @@ where
                 write!(f, "variant {variant:?} {elements}")
             }
             TypedInstruction::Wrapper => write!(f, "wrapper"),
-            TypedInstruction::Function(captures, path, label) => {
-                write!(f, "function {captures:?} ({path}) {label}")
-            }
-            TypedInstruction::Block(captures, path, label) => {
-                write!(f, "block {captures:?} ({path}) {label}")
+            TypedInstruction::Function(captures, path) => {
+                write!(f, "function {captures:?} ({path})")
             }
             TypedInstruction::Constant(path, _) => write!(f, "constant {path}"),
             TypedInstruction::Instance(path) => write!(f, "instance {path}"),
@@ -326,7 +402,7 @@ where
             TypeDescriptor::Parameter(parameter) => write!(f, "{parameter}"),
             TypeDescriptor::Named(path, parameters) => write!(
                 f,
-                "({path} {})",
+                "({path}{})",
                 parameters
                     .iter()
                     .fold(String::new(), |mut result, parameter| {

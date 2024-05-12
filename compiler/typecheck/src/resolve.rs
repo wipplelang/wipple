@@ -104,7 +104,7 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
     ) -> WithInfo<D::Info, Option<crate::ItemDeclaration<D>>> {
         let info = self.info.clone();
 
-        self.map(|code| {
+        self.map(|statements| {
             Some(crate::ItemDeclaration(ItemDeclarationInner {
                 bounds: Vec::new(),
                 r#type: WithInfo {
@@ -113,7 +113,10 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
                 },
                 body: WithInfo {
                     info,
-                    item: crate::UntypedExpression::Block(code),
+                    item: crate::UntypedExpression::Block {
+                        statements,
+                        captures: Vec::new(),
+                    },
                 },
                 top_level: true,
             }))
@@ -1786,12 +1789,14 @@ enum ExpressionKind<D: Driver> {
     Text(String),
     Block {
         statements: Vec<WithInfo<D::Info, Expression<D>>>,
+        captures: Vec<D::Path>,
         top_level: bool,
     },
     Do(WithInfo<D::Info, Box<Expression<D>>>),
     Function {
         inputs: Vec<WithInfo<D::Info, crate::Pattern<D>>>,
         body: WithInfo<D::Info, Box<Expression<D>>>,
+        captures: Vec<D::Path>,
     },
     Call {
         function: WithInfo<D::Info, Box<Expression<D>>>,
@@ -2103,7 +2108,10 @@ fn infer_expression<D: Driver>(
                     kind: ExpressionKind::Text(text),
                 }
             }
-            crate::UntypedExpression::Block(statements) => {
+            crate::UntypedExpression::Block {
+                statements,
+                captures,
+            } => {
                 let statement_count = statements.len();
 
                 let statements = statements
@@ -2149,6 +2157,7 @@ fn infer_expression<D: Driver>(
                     kind: ExpressionKind::Block {
                         statements,
                         top_level: parent_id.is_none(),
+                        captures,
                     },
                 }
             }
@@ -2180,7 +2189,11 @@ fn infer_expression<D: Driver>(
                     kind: ExpressionKind::Do(block.boxed()),
                 }
             }
-            crate::UntypedExpression::Function { inputs, body } => {
+            crate::UntypedExpression::Function {
+                mut inputs,
+                body,
+                captures,
+            } => {
                 let input_types = inputs
                     .iter()
                     .map(|_| {
@@ -2192,8 +2205,9 @@ fn infer_expression<D: Driver>(
                     })
                     .collect::<Vec<_>>();
 
-                for (pattern, input_type) in inputs.iter().zip(&input_types) {
-                    resolve_pattern(pattern.as_ref(), pattern.replace(input_type), context);
+                for (pattern, input_type) in inputs.iter_mut().zip(&input_types) {
+                    let input_type = pattern.replace(input_type);
+                    resolve_pattern(pattern.as_mut(), input_type, context);
                 }
 
                 let body = infer_expression(body.unboxed(), Some(expression_id), context);
@@ -2215,6 +2229,7 @@ fn infer_expression<D: Driver>(
                     kind: ExpressionKind::Function {
                         inputs,
                         body: body.boxed(),
+                        captures,
                     },
                 }
             }
@@ -2260,9 +2275,9 @@ fn infer_expression<D: Driver>(
                 let arms = arms
                     .into_iter()
                     .map(|arm| {
-                        arm.map(|arm| {
+                        arm.map(|mut arm| {
                             resolve_pattern(
-                                arm.pattern.as_ref(),
+                                arm.pattern.as_mut(),
                                 input.as_ref().map(|input| &input.r#type),
                                 context,
                             );
@@ -2309,11 +2324,11 @@ fn infer_expression<D: Driver>(
                         .collect(),
                 },
             },
-            crate::UntypedExpression::Initialize { pattern, value } => {
+            crate::UntypedExpression::Initialize { mut pattern, value } => {
                 let value = infer_expression(value.unboxed(), Some(expression_id), context);
 
                 resolve_pattern(
-                    pattern.as_ref(),
+                    pattern.as_mut(),
                     value.as_ref().map(|value| &value.r#type),
                     context,
                 );
@@ -2699,14 +2714,14 @@ fn infer_expression<D: Driver>(
 }
 
 fn resolve_pattern<D: Driver>(
-    pattern: WithInfo<D::Info, &crate::Pattern<D>>,
+    pattern: WithInfo<D::Info, &mut crate::Pattern<D>>,
     r#type: WithInfo<D::Info, &Type<D>>,
     context: &mut InferContext<'_, D>,
 ) {
     let mut r#type = r#type.map(|r#type| r#type.clone());
     r#type.item.apply_in_context_mut(context.type_context);
 
-    match &pattern.item {
+    match pattern.item {
         crate::Pattern::Unknown => {}
         crate::Pattern::Wildcard => {}
         crate::Pattern::Number(_) => {
@@ -2781,7 +2796,10 @@ fn resolve_pattern<D: Driver>(
                 }
             }
         }
-        crate::Pattern::Destructure(fields) => {
+        crate::Pattern::Destructure {
+            field_patterns,
+            structure,
+        } => {
             let field_types = match &r#type.item.kind {
                 TypeKind::Declared { path, parameters } => {
                     let type_declaration = context.driver.get_type_declaration(path);
@@ -2804,26 +2822,30 @@ fn resolve_pattern<D: Driver>(
                     }
 
                     match type_declaration.item.representation.item {
-                        crate::TypeRepresentation::Structure(field_types) => fields
-                            .iter()
-                            .map(|field| {
-                                infer_type(
-                                    field_types
-                                        .get(&field.item.name)
-                                        .unwrap()
-                                        .item
-                                        .r#type
-                                        .as_ref(),
-                                    field.replace(Role::StructureField),
-                                    Some(instantiation_context.type_context),
-                                )
-                                .instantiate(context.driver, &mut instantiation_context)
-                            })
-                            .collect::<Vec<_>>(),
+                        crate::TypeRepresentation::Structure(field_types) => {
+                            *structure = Some(r#type.replace(path.clone()));
+
+                            field_patterns
+                                .iter()
+                                .map(|field| {
+                                    infer_type(
+                                        field_types
+                                            .get(&field.item.name)
+                                            .unwrap()
+                                            .item
+                                            .r#type
+                                            .as_ref(),
+                                        field.replace(Role::StructureField),
+                                        Some(instantiation_context.type_context),
+                                    )
+                                    .instantiate(context.driver, &mut instantiation_context)
+                                })
+                                .collect::<Vec<_>>()
+                        }
                         _ => return,
                     }
                 }
-                _ => fields
+                _ => field_patterns
                     .iter()
                     .map(|field| {
                         Type::new(
@@ -2835,8 +2857,9 @@ fn resolve_pattern<D: Driver>(
                     .collect::<Vec<_>>(),
             };
 
-            for (field, r#type) in fields.iter().zip(field_types) {
-                resolve_pattern(field.item.pattern.as_ref(), field.replace(&r#type), context);
+            for (field, r#type) in field_patterns.iter_mut().zip(field_types) {
+                let r#type = field.replace(&r#type);
+                resolve_pattern(field.item.pattern.as_mut(), r#type, context);
             }
         }
         crate::Pattern::Variant {
@@ -2924,7 +2947,7 @@ fn resolve_pattern<D: Driver>(
                             path: enumeration,
                             parameters: instantiation_context.into_types_for_parameters(),
                         },
-                        pattern.info.clone(),
+                        pattern.info,
                         Vec::new(),
                     );
 
@@ -2940,8 +2963,9 @@ fn resolve_pattern<D: Driver>(
                 }
             };
 
-            for (pattern, r#type) in value_patterns.iter().zip(value_types) {
-                resolve_pattern(pattern.as_ref(), pattern.replace(&r#type), context);
+            for (pattern, r#type) in value_patterns.iter_mut().zip(value_types) {
+                let r#type = pattern.replace(&r#type);
+                resolve_pattern(pattern.as_mut(), r#type, context);
             }
         }
         crate::Pattern::Wrapper {
@@ -3005,7 +3029,7 @@ fn resolve_pattern<D: Driver>(
                             path: path.item.clone(),
                             parameters: instantiation_context.into_types_for_parameters(),
                         },
-                        pattern.info.clone(),
+                        pattern.info,
                         Vec::new(),
                     );
 
@@ -3021,11 +3045,8 @@ fn resolve_pattern<D: Driver>(
                 }
             };
 
-            resolve_pattern(
-                value_pattern.as_deref(),
-                value_pattern.replace(&value_type),
-                context,
-            );
+            let value_type = value_pattern.replace(&value_type);
+            resolve_pattern(value_pattern.as_deref_mut(), value_type, context);
         }
         crate::Pattern::Tuple(elements) => {
             let element_types = match &r#type.item.kind {
@@ -3046,7 +3067,7 @@ fn resolve_pattern<D: Driver>(
 
             let tuple_type = Type::new(
                 TypeKind::Tuple(element_types.iter().map(Type::clone).collect()),
-                pattern.info.clone(),
+                pattern.info,
                 Vec::new(),
             );
 
@@ -3058,13 +3079,14 @@ fn resolve_pattern<D: Driver>(
                 context.error_queue,
             );
 
-            for (element, r#type) in elements.iter().zip(element_types) {
-                resolve_pattern(element.as_ref(), element.replace(&r#type), context);
+            for (element, r#type) in elements.iter_mut().zip(element_types) {
+                let r#type = element.replace(&r#type);
+                resolve_pattern(element.as_mut(), r#type, context);
             }
         }
         crate::Pattern::Or { left, right } => {
-            resolve_pattern(left.as_deref(), r#type.as_ref(), context);
-            resolve_pattern(right.as_deref(), r#type.as_ref(), context);
+            resolve_pattern(left.as_deref_mut(), r#type.as_ref(), context);
+            resolve_pattern(right.as_deref_mut(), r#type.as_ref(), context);
         }
         crate::Pattern::Annotate {
             pattern,
@@ -3084,7 +3106,7 @@ fn resolve_pattern<D: Driver>(
                 context.error_queue,
             );
 
-            resolve_pattern(pattern.as_deref(), r#type.as_ref(), context)
+            resolve_pattern(pattern.as_deref_mut(), r#type.as_ref(), context)
         }
     }
 }
@@ -3294,36 +3316,41 @@ fn resolve_expression<D: Driver>(
         ExpressionKind::Block {
             statements,
             top_level,
+            captures,
         } => ExpressionKind::Block {
             statements: statements
                 .into_iter()
                 .map(|expression| resolve_expression(expression, context))
                 .collect(),
             top_level,
+            captures,
         },
         ExpressionKind::Do(block) => {
             ExpressionKind::Do(resolve_expression(block.unboxed(), context).boxed())
         }
-        ExpressionKind::Function { inputs, body } => {
+        ExpressionKind::Function {
+            mut inputs,
+            body,
+            captures,
+        } => {
             if let TypeKind::Function {
                 inputs: input_types,
                 ..
             } = &expression.item.r#type.kind
             {
-                for (pattern, input_type) in inputs.iter().zip(input_types) {
+                for (pattern, input_type) in inputs.iter_mut().zip(input_types) {
                     let mut infer_context = InferContext::from_resolve_context(context);
 
-                    resolve_pattern(
-                        pattern.as_ref(),
-                        pattern.replace(input_type),
-                        &mut infer_context,
-                    );
+                    let input_type = pattern.replace(input_type);
+
+                    resolve_pattern(pattern.as_mut(), input_type, &mut infer_context);
                 }
             }
 
             ExpressionKind::Function {
                 inputs,
                 body: resolve_expression(body.unboxed(), context).boxed(),
+                captures,
             }
         }
         ExpressionKind::Call {
@@ -3537,9 +3564,9 @@ fn resolve_expression<D: Driver>(
             let arms = arms
                 .into_iter()
                 .map(|arm| {
-                    arm.map(|arm| {
+                    arm.map(|mut arm| {
                         resolve_pattern(
-                            arm.pattern.as_ref(),
+                            arm.pattern.as_mut(),
                             input.as_ref().map(|input| &input.r#type),
                             &mut InferContext::from_resolve_context(context),
                         );
@@ -3561,11 +3588,11 @@ fn resolve_expression<D: Driver>(
                 .map(|expression| resolve_expression(expression, context))
                 .collect(),
         },
-        ExpressionKind::Initialize { pattern, value } => {
+        ExpressionKind::Initialize { mut pattern, value } => {
             let value = resolve_expression(value.unboxed(), context).boxed();
 
             resolve_pattern(
-                pattern.as_ref(),
+                pattern.as_mut(),
                 value.as_ref().map(|value| &value.r#type),
                 &mut InferContext::from_resolve_context(context),
             );
@@ -3578,7 +3605,7 @@ fn resolve_expression<D: Driver>(
             resolve_pattern(
                 path.as_ref()
                     .map(|path| crate::Pattern::Variable(name.clone(), path.clone()))
-                    .as_ref(),
+                    .as_mut(),
                 value.as_ref().map(|value| &value.r#type),
                 &mut InferContext::from_resolve_context(context),
             );
@@ -4506,11 +4533,12 @@ fn finalize_expression<D: Driver>(
         ExpressionKind::Block {
             statements,
             top_level,
+            captures,
         } => {
             let statement_count = statements.len();
 
-            crate::TypedExpressionKind::Block(
-                statements
+            crate::TypedExpressionKind::Block {
+                statements: statements
                     .into_iter()
                     .enumerate()
                     .map(|(index, statement)| {
@@ -4539,14 +4567,20 @@ fn finalize_expression<D: Driver>(
                         statement
                     })
                     .collect(),
-            )
+                captures,
+            }
         }
         ExpressionKind::Do(block) => {
             crate::TypedExpressionKind::Do(finalize_expression(block.unboxed(), context).boxed())
         }
-        ExpressionKind::Function { inputs, body } => crate::TypedExpressionKind::Function {
+        ExpressionKind::Function {
+            inputs,
+            body,
+            captures,
+        } => crate::TypedExpressionKind::Function {
             inputs,
             body: finalize_expression(body.unboxed(), context).boxed(),
+            captures,
         },
         ExpressionKind::Call { function, inputs } => {
             let inputs = inputs
@@ -4605,6 +4639,20 @@ fn finalize_expression<D: Driver>(
             crate::TypedExpressionKind::Unknown(None)
         }
         ExpressionKind::ResolvedStructure { structure, fields } => {
+            let field_indices = match context
+                .driver
+                .get_type_declaration(&structure)
+                .item
+                .representation
+                .item
+            {
+                crate::TypeRepresentation::Structure(fields) => fields
+                    .into_iter()
+                    .map(|(name, field)| (name, field.item.index))
+                    .collect::<HashMap<_, _>>(),
+                _ => HashMap::new(),
+            };
+
             crate::TypedExpressionKind::Structure {
                 structure,
                 fields: fields
@@ -4612,6 +4660,7 @@ fn finalize_expression<D: Driver>(
                     .map(|field_value| {
                         field_value.map(|field_value| crate::TypedStructureFieldValue {
                             name: field_value.name.clone(),
+                            index: field_indices.get(&field_value.name).copied(),
                             value: finalize_expression(field_value.value, context),
                         })
                     })

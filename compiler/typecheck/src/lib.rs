@@ -559,6 +559,9 @@ pub enum TypeRepresentation<D: Driver> {
 #[serde(bound(serialize = "", deserialize = ""))]
 #[ts(export, rename = "typecheck_StructureField", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct StructureField<D: Driver> {
+    /// The index of the field.
+    pub index: u32,
+
     /// The type of the field's value.
     pub r#type: WithInfo<D::Info, Type<D>>,
 }
@@ -570,6 +573,9 @@ pub struct StructureField<D: Driver> {
 #[serde(bound(serialize = "", deserialize = ""))]
 #[ts(export, rename = "typecheck_EnumerationVariant", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct EnumerationVariant<D: Driver> {
+    /// The index of the variant.
+    pub index: u32,
+
     /// The types of the variant's associated values.
     pub value_types: Vec<WithInfo<D::Info, Type<D>>>,
 }
@@ -645,7 +651,13 @@ pub enum UntypedExpression<D: Driver> {
     Text(String),
 
     /// A block.
-    Block(Vec<WithInfo<D::Info, UntypedExpression<D>>>),
+    Block {
+        /// The block's statements.
+        statements: Vec<WithInfo<D::Info, UntypedExpression<D>>>,
+
+        /// The list of variables the block captures.
+        captures: Vec<D::Path>,
+    },
 
     /// Evaluate a block.
     Do(WithInfo<D::Info, Box<UntypedExpression<D>>>),
@@ -658,6 +670,9 @@ pub enum UntypedExpression<D: Driver> {
 
         /// The function's output.
         body: WithInfo<D::Info, Box<UntypedExpression<D>>>,
+
+        /// The list of variables the function captures.
+        captures: Vec<D::Path>,
     },
 
     /// A function call.
@@ -840,7 +855,13 @@ pub enum TypedExpressionKind<D: Driver> {
     Text(String),
 
     /// A block.
-    Block(Vec<WithInfo<D::Info, TypedExpression<D>>>),
+    Block {
+        /// The block's statements.
+        statements: Vec<WithInfo<D::Info, TypedExpression<D>>>,
+
+        /// The list of variables the block captures.
+        captures: Vec<D::Path>,
+    },
 
     /// Evaluate a block.
     Do(WithInfo<D::Info, Box<TypedExpression<D>>>),
@@ -853,6 +874,9 @@ pub enum TypedExpressionKind<D: Driver> {
 
         /// The function's output.
         body: WithInfo<D::Info, Box<TypedExpression<D>>>,
+
+        /// The list of variables the function captures.
+        captures: Vec<D::Path>,
     },
 
     /// A function call.
@@ -970,6 +994,9 @@ pub struct TypedStructureFieldValue<D: Driver> {
     /// The name of the field.
     pub name: String,
 
+    /// The index of the field.
+    pub index: Option<u32>,
+
     /// The field's value.
     pub value: WithInfo<D::Info, TypedExpression<D>>,
 }
@@ -1017,7 +1044,14 @@ pub enum Pattern<D: Driver> {
     Variable(String, D::Path),
 
     /// A destructuring pattern.
-    Destructure(Vec<WithInfo<D::Info, FieldPattern<D>>>),
+    Destructure {
+        /// The structure this pattern matches, or `None` if the structure is
+        /// not known.
+        structure: Option<WithInfo<D::Info, D::Path>>,
+
+        /// The patterns matching each of the structure's fields.
+        field_patterns: Vec<WithInfo<D::Info, FieldPattern<D>>>,
+    },
 
     /// A variant pattern.
     #[serde(rename_all = "camelCase")]
@@ -1120,7 +1154,7 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a TypedExpress
         f(self.clone());
 
         match &self.item.kind {
-            TypedExpressionKind::Block(statements) => {
+            TypedExpressionKind::Block { statements, .. } => {
                 for statement in statements {
                     statement.as_ref().traverse(f);
                 }
@@ -1197,8 +1231,8 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a Pattern<D>> 
         f(self.clone());
 
         match &self.item {
-            Pattern::Destructure(fields) => {
-                for field in fields {
+            Pattern::Destructure { field_patterns, .. } => {
+                for field in field_patterns {
                     field.item.pattern.as_ref().traverse(f);
                 }
             }

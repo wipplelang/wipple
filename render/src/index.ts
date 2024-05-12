@@ -485,10 +485,12 @@ export class Render {
     renderDiagnostic(
         diagnostic: compiler.WithInfo<compiler.Info, compiler.Diagnostic>,
     ): RenderedDiagnostic | null {
-        const renderedSourceLocation = this.renderSourceLocation(diagnostic);
-        if (!renderedSourceLocation) {
-            return null;
-        }
+        const renderedSourceLocation = this.renderSourceLocation(diagnostic) ?? {
+            path: diagnostic.info.location.path,
+            visiblePath: diagnostic.info.location.visiblePath,
+            start: { line: 0, column: 0, index: 0 },
+            end: { line: 0, column: 0, index: 0 },
+        };
 
         let severity: "warning" | "error";
         let message: string;
@@ -875,6 +877,11 @@ export class Render {
                         return null;
                 }
 
+                break;
+            }
+            case "ir": {
+                severity = "error";
+                message = "failed to produce IR for this code";
                 break;
             }
             default:
@@ -1378,10 +1385,7 @@ export class Render {
         path: string,
         index: number,
     ): compiler.WithInfo<compiler.Info, compiler.typecheck_TypedExpression>[] | null {
-        for (const item of this.libraries.flatMap((library) => [
-            ...Object.values(library.items),
-            ...library.code,
-        ])) {
+        for (const item of this.libraries.flatMap((library) => Object.values(library.items))) {
             // HACK: The top level has a span of 0..0
             const isTopLevel =
                 item.expression.info.location.span.start === 0 &&
@@ -1451,7 +1455,7 @@ export class Render {
                     traverse(expression.item.kind.value.body);
                     break;
                 case "block":
-                    for (const statement of expression.item.kind.value) {
+                    for (const statement of expression.item.kind.value.statements) {
                         traverse(statement);
                     }
 
