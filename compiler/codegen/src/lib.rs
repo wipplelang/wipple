@@ -204,7 +204,12 @@ impl<'a, D: Driver> Codegen<'a, D> {
         });
 
         let function_type = self.compile_function_type(r#type);
-        body.push(wasm::Instruction::CallRef(function_type));
+
+        if tail {
+            body.push(wasm::Instruction::ReturnCallRef(function_type));
+        } else {
+            body.push(wasm::Instruction::CallRef(function_type));
+        }
     }
 
     // TODO: In the future, detect variables that are never mutated and avoid
