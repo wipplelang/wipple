@@ -29,7 +29,7 @@ tasks:
         deps:
             - base:compile
         cmds:
-            - wipple compile test.wipple --entrypoint --dependency .wipple/base.wippleinterface --interface .wipple/test.wippleinterface --library .wipple/test.wipplelibrary
+            - wipple compile test.wipple --dependency .wipple/base.wippleinterface --interface .wipple/test.wippleinterface --library .wipple/test.wipplelibrary
             - wipple link .wipple/*.wipplelibrary --output .wipple/out
 
     vscode:install:

@@ -93,7 +93,6 @@ export interface Context {
                   value?: TypedValue;
               },
     ) => Error;
-    onceCache: [TypedValue, () => Promise<void>][];
     taskLocals: Map<any, TypedValue[]>;
 }
 
@@ -235,28 +234,25 @@ export const evaluate = async (
                 );
             }
         },
-        onceCache: [],
         taskLocals: new Map(),
     };
 
-    const entrypoint = executable.items[executable.entrypoint];
+    for (const path of executable.entrypoints) {
+        const entrypoint = executable.items[path];
 
-    const task = () => {}; // marker
+        const task = () => {}; // marker
 
-    if (context.debug) {
-        console.error("## evaluating entrypoint block");
-    }
+        if (context.debug) {
+            console.error("## evaluating entrypoint block");
+        }
 
-    const block = (await evaluateItem("top-level", entrypoint.ir, [], [], {}, task, context))!;
+        const block = (await evaluateItem("top-level", entrypoint.ir, [], [], {}, task, context))!;
 
-    if (context.debug) {
-        console.error("## executing entrypoint block");
-    }
+        if (context.debug) {
+            console.error("## executing entrypoint block");
+        }
 
-    await context.do(block, task);
-
-    for (const [_value, cleanup] of context.onceCache) {
-        await cleanup();
+        await context.do(block, task);
     }
 };
 

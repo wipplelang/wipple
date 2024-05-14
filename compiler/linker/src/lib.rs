@@ -30,8 +30,8 @@ pub struct UnlinkedLibrary<D: Driver> {
     /// The default instance for each trait.
     pub default_instances: HashMap<D::Path, Vec<D::Path>>,
 
-    /// The item to run when the program starts.
-    pub entrypoint: Option<D::Path>,
+    /// The items to run when the program starts.
+    pub entrypoints: Vec<D::Path>,
 
     /// Items exported by the executable.
     pub exports: HashMap<String, D::Path>,
@@ -74,8 +74,8 @@ pub struct Executable<D: Driver> {
     /// The default instance for each trait.
     pub default_instances: HashMap<D::Path, Vec<D::Path>>,
 
-    /// The item to run when the program starts.
-    pub entrypoint: Option<D::Path>,
+    /// The items to run when the program starts.
+    pub entrypoints: Vec<D::Path>,
 
     /// Items exported by the executable.
     pub exports: HashMap<String, D::Path>,
@@ -112,9 +112,6 @@ pub enum Error {
 
     /// Failed to produce IR for the item.
     Ir,
-
-    /// Multiple libraries contained an entrypoint.
-    MultipleEntrypoints,
 }
 
 /// Link multiple [`UnlinkedLibrary`]s into a single [`Executable`].
@@ -124,32 +121,11 @@ pub fn link<D: Driver>(
     libraries
         .into_iter()
         .try_fold(Executable::default(), |mut executable, library| {
-            if let Some(entrypoint) = library.entrypoint {
-                if executable.entrypoint.is_some() {
-                    let info = library
-                        .items
-                        .get(&entrypoint)
-                        .unwrap()
-                        .expression
-                        .info
-                        .clone();
-
-                    return Err(WithInfo {
-                        info,
-                        item: Error::MultipleEntrypoints,
-                    });
-                }
-
-                executable.entrypoint = Some(entrypoint);
-            }
-
             for (path, item) in library.items {
                 executable.items.insert(path, convert_item(item)?);
             }
 
             executable.layouts.extend(library.layouts);
-
-            executable.exports.extend(library.exports);
 
             for (r#trait, instances) in library.instances {
                 executable
@@ -167,6 +143,10 @@ pub fn link<D: Driver>(
                     .extend(instances);
             }
 
+            executable.entrypoints.extend(library.entrypoints);
+
+            executable.exports.extend(library.exports);
+
             Ok(executable)
         })
 }
@@ -174,12 +154,8 @@ pub fn link<D: Driver>(
 fn convert_item<D: Driver>(item: UnlinkedItem<D>) -> Result<LinkedItem<D>, D> {
     Ok(LinkedItem {
         parameters: item.parameters,
-        type_descriptor: wipple_ir::type_descriptor(&item.expression.item.r#type).ok_or_else(
-            || WithInfo {
-                info: item.expression.info.clone(),
-                item: Error::TypeDescriptor,
-            },
-        )?,
+        type_descriptor: wipple_ir::type_descriptor(&item.expression.item.r#type)
+            .unwrap_or_else(|| panic!("{:#?}", item.expression)),
         ir: item.ir,
     })
 }

@@ -41,14 +41,14 @@ fn deserialize<'de, T: serde::Deserialize<'de>>(value: &'de str) -> T {
 
 /// JavaScript entrypoint to the compiler.
 #[wasm_bindgen]
-pub fn compile(files: &str, dependencies: &str, entrypoint: bool) -> String {
+pub fn compile(files: &str, dependencies: &str) -> String {
     initialize();
 
     let files: Vec<File> = deserialize(files);
     let dependencies: Option<Interface> = deserialize(dependencies);
 
     let driver = Driver::new();
-    let result = driver.compile(files, dependencies, entrypoint);
+    let result = driver.compile(files, dependencies);
 
     serialize(&result)
 }
@@ -251,12 +251,7 @@ pub enum Diagnostic {
 
 impl Driver {
     /// Compile a set of source files into a [`Library`] and [`Interface`].
-    pub fn compile(
-        mut self,
-        files: Vec<File>,
-        dependencies: Option<Interface>,
-        entrypoint: bool,
-    ) -> Result {
+    pub fn compile(mut self, files: Vec<File>, dependencies: Option<Interface>) -> Result {
         let mut diagnostics = Vec::new();
 
         if let Some(dependencies) = &dependencies {
@@ -312,7 +307,7 @@ impl Driver {
                     .map(|diagnostic| diagnostic.map(Diagnostic::Syntax)),
             );
 
-            convert::lower::convert(syntax_result.top_level)
+            convert::lower::convert(file.visible_path, syntax_result.top_level)
         });
 
         let lower_result = wipple_lower::resolve(
@@ -408,25 +403,82 @@ impl Driver {
                 .insert(path.clone(), declaration);
         }
 
-        for (path, item) in lower_result.interface.constant_declarations {
-            let body = match lower_result
+        for (path, declaration) in lower_result.interface.constant_declarations {
+            let item = match lower_result
                 .library
                 .items
                 .get(&path)
                 // Constants always have values; skip ones that somehow don't...
                 .and_then(|item| item.as_ref())
             {
-                Some(body) => body.clone(),
+                Some(item) => item.clone(),
                 None => continue, // ...here
             };
 
-            let declaration = convert::typecheck::convert_constant_declaration(item);
+            let declaration = convert::typecheck::convert_constant_declaration(declaration);
+
+            let typecheck_result = wipple_typecheck::resolve(
+                &self,
+                (declaration.clone(), convert::typecheck::convert_item(item)),
+            );
+
+            let item = match typecheck_result.item {
+                Some(item) => item,
+                None => continue,
+            };
+
+            diagnostics.extend(
+                typecheck_result
+                    .diagnostics
+                    .into_iter()
+                    .map(|error| error.map(Diagnostic::Typecheck)),
+            );
+
+            let exhaustiveness_diagnostics =
+                wipple_typecheck::check_exhaustiveness(&self, item.as_ref());
+
+            diagnostics.extend(
+                exhaustiveness_diagnostics
+                    .into_iter()
+                    .map(|error| error.map(Diagnostic::Typecheck)),
+            );
+
+            if let Some(ir_result) = ir::compile(
+                &self,
+                path.clone(),
+                item.as_ref(),
+                &typecheck_result.captures,
+            ) {
+                for (path, item) in ir_result.items {
+                    self.library.items.insert(
+                        path,
+                        Item {
+                            parameters: declaration.item.parameters.clone(),
+                            expression: item.expression,
+                            ir: item.instructions,
+                        },
+                    );
+                }
+            }
+        }
+
+        for (path, declaration) in lower_result.interface.instance_declarations {
+            let item = match lower_result.library.items.get(&path) {
+                Some(item) => item.clone(),
+                None => {
+                    // `None` here means that the implementation is in a
+                    // different library; skip it
+                    continue;
+                }
+            };
+
+            let declaration = convert::typecheck::convert_instance_declaration(declaration);
 
             let typecheck_result = wipple_typecheck::resolve(
                 &self,
                 (
                     declaration.clone(),
-                    convert::typecheck::convert_expression(body),
+                    item.map(convert::typecheck::convert_item),
                 ),
             );
 
@@ -451,7 +503,12 @@ impl Driver {
                     .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            if let Some(ir_result) = ir::compile(&self, path.clone(), item.as_ref()) {
+            if let Some(ir_result) = ir::compile(
+                &self,
+                path.clone(),
+                item.as_ref(),
+                &typecheck_result.captures,
+            ) {
                 for (path, item) in ir_result.items {
                     self.library.items.insert(
                         path,
@@ -465,67 +522,10 @@ impl Driver {
             }
         }
 
-        for (path, item) in lower_result.interface.instance_declarations {
-            let body = match lower_result.library.items.get(&path) {
-                Some(body) => body.clone().map(convert::typecheck::convert_expression),
-                None => {
-                    // `None` here means that the implementation is in a
-                    // different library; skip it
-                    continue;
-                }
-            };
-
-            let declaration = convert::typecheck::convert_instance_declaration(item);
-
-            let typecheck_result = wipple_typecheck::resolve(&self, (declaration.clone(), body));
-
-            let item = match typecheck_result.item {
-                Some(item) => item,
-                None => continue,
-            };
-
-            diagnostics.extend(
-                typecheck_result
-                    .diagnostics
-                    .into_iter()
-                    .map(|error| error.map(Diagnostic::Typecheck)),
-            );
-
-            let exhaustiveness_diagnostics =
-                wipple_typecheck::check_exhaustiveness(&self, item.as_ref());
-
-            diagnostics.extend(
-                exhaustiveness_diagnostics
-                    .into_iter()
-                    .map(|error| error.map(Diagnostic::Typecheck)),
-            );
-
-            if let Some(ir_result) = ir::compile(&self, path.clone(), item.as_ref()) {
-                for (path, item) in ir_result.items {
-                    self.library.items.insert(
-                        path,
-                        Item {
-                            parameters: declaration.item.parameters.clone(),
-                            expression: item.expression,
-                            ir: item.instructions,
-                        },
-                    );
-                }
-            }
-        }
-
-        {
+        for (path, top_level_code) in lower_result.library.code {
             let typecheck_result = wipple_typecheck::resolve(
                 &self,
-                wipple_util::WithInfo {
-                    info: <Self as wipple_typecheck::Driver>::top_level_info(&self),
-                    item: lower_result
-                        .library
-                        .code
-                        .into_iter()
-                        .map(convert::typecheck::convert_expression)
-                        .collect(),
-                },
+                convert::typecheck::convert_top_level_code(top_level_code),
             );
 
             if let Some(item) = typecheck_result.item {
@@ -545,9 +545,12 @@ impl Driver {
                         .map(|error| error.map(Diagnostic::Typecheck)),
                 );
 
-                let path = lower::Path::top_level();
-
-                if let Some(ir_result) = ir::compile(&self, path.clone(), item.as_ref()) {
+                if let Some(ir_result) = ir::compile(
+                    &self,
+                    path.clone(),
+                    item.as_ref(),
+                    &typecheck_result.captures,
+                ) {
                     for (path, item) in ir_result.items {
                         self.library.items.insert(
                             path,
@@ -559,9 +562,7 @@ impl Driver {
                         );
                     }
 
-                    if entrypoint {
-                        self.library.entrypoint = Some(path);
-                    }
+                    self.library.entrypoints.push(path);
                 }
             }
         }

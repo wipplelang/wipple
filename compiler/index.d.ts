@@ -3,7 +3,6 @@ import type * as compiler from "./generated/wipple-compiler.d.ts";
 export const compile: (
     sources: compiler.File[],
     dependencies: compiler.Interface | null,
-    entrypoint: boolean,
 ) => compiler.Result;
 
 export const link: (libraries: compiler.UnlinkedLibrary[]) => compiler.linker_Executable;

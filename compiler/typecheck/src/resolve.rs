@@ -11,13 +11,14 @@ pub struct ItemDeclarationInner<D: Driver> {
     bounds: Vec<WithInfo<D::Info, crate::Instance<D>>>,
     r#type: WithInfo<D::Info, crate::Type<D>>,
     body: WithInfo<D::Info, crate::UntypedExpression<D>>,
+    captures: Vec<D::Path>,
     top_level: bool,
 }
 
 impl<D: Driver> crate::IntoItemDeclaration<D>
     for (
         WithInfo<D::Info, crate::ConstantDeclaration<D>>,
-        WithInfo<D::Info, crate::UntypedExpression<D>>,
+        crate::UntypedItem<D>,
     )
 {
     fn into_item_declaration(
@@ -25,13 +26,14 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
         _driver: &D,
         _errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
     ) -> WithInfo<D::Info, Option<crate::ItemDeclaration<D>>> {
-        let (declaration, body) = self;
+        let (declaration, item) = self;
 
         declaration.map(|declaration| {
             Some(crate::ItemDeclaration(ItemDeclarationInner {
                 bounds: declaration.bounds,
                 r#type: declaration.r#type,
-                body,
+                body: item.body,
+                captures: item.captures,
                 top_level: false,
             }))
         })
@@ -41,7 +43,7 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
 impl<D: Driver> crate::IntoItemDeclaration<D>
     for (
         WithInfo<D::Info, crate::InstanceDeclaration<D>>,
-        Option<WithInfo<D::Info, crate::UntypedExpression<D>>>,
+        Option<crate::UntypedItem<D>>,
     )
 {
     fn into_item_declaration(
@@ -49,7 +51,7 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
         driver: &D,
         errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
     ) -> WithInfo<D::Info, Option<crate::ItemDeclaration<D>>> {
-        let (declaration, body) = self;
+        let (declaration, item) = self;
 
         let info = declaration.info.clone();
 
@@ -57,11 +59,12 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
 
         WithInfo {
             info: info.clone(),
-            item: match (r#type, body) {
-                (Some(r#type), Some(body)) => Some(crate::ItemDeclaration(ItemDeclarationInner {
+            item: match (r#type, item) {
+                (Some(r#type), Some(item)) => Some(crate::ItemDeclaration(ItemDeclarationInner {
                     bounds: declaration.item.bounds,
                     r#type,
-                    body,
+                    body: item.body,
+                    captures: item.captures,
                     top_level: false,
                 })),
                 (Some(r#type), None) => {
@@ -77,6 +80,7 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
                             info: declaration.info,
                             item: crate::UntypedExpression::Unknown,
                         },
+                        captures: Vec::new(),
                         top_level: false,
                     }))
                 }
@@ -94,33 +98,31 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
     }
 }
 
-impl<D: Driver> crate::IntoItemDeclaration<D>
-    for WithInfo<D::Info, Vec<WithInfo<D::Info, crate::UntypedExpression<D>>>>
-{
+impl<D: Driver> crate::IntoItemDeclaration<D> for crate::UntypedTopLevelCode<D> {
     fn into_item_declaration(
         self,
-        _driver: &D,
+        driver: &D,
         _errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
     ) -> WithInfo<D::Info, Option<crate::ItemDeclaration<D>>> {
-        let info = self.info.clone();
-
-        self.map(|statements| {
-            Some(crate::ItemDeclaration(ItemDeclarationInner {
+        WithInfo {
+            info: driver.top_level_info(),
+            item: Some(crate::ItemDeclaration(ItemDeclarationInner {
                 bounds: Vec::new(),
                 r#type: WithInfo {
-                    info: info.clone(),
+                    info: driver.top_level_info(),
                     item: crate::Type::Unknown, // the top level can be any type
                 },
                 body: WithInfo {
-                    info,
+                    info: driver.top_level_info(),
                     item: crate::UntypedExpression::Block {
-                        statements,
+                        statements: self.statements,
                         captures: Vec::new(),
                     },
                 },
+                captures: Vec::new(),
                 top_level: true,
-            }))
-        })
+            })),
+        }
     }
 }
 
@@ -162,6 +164,7 @@ pub fn resolve<D: Driver>(
         None => {
             return crate::Result {
                 item: None,
+                captures: Vec::new(),
                 diagnostics: errors,
             }
         }
@@ -318,6 +321,7 @@ pub fn resolve<D: Driver>(
 
     crate::Result {
         item: Some(item),
+        captures: item_declaration.item.captures,
         diagnostics: errors,
     }
 }

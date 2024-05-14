@@ -50,10 +50,36 @@ pub struct Interface<D: Driver> {
 pub struct Library<D: Driver> {
     /// The implementations of constants and instances. A `None` value indicates
     /// that the implementation was omitted (eg. an instance with no value).
-    pub items: HashMap<Path, Option<WithInfo<D::Info, crate::Expression<D>>>>,
+    pub items: HashMap<Path, Option<Item<D>>>,
 
     /// Any code to be run when the program starts.
-    pub code: Vec<WithInfo<D::Info, Expression<D>>>,
+    pub code: HashMap<Path, TopLevelCode<D>>,
+}
+
+/// Top-level code.
+#[derive(Serialize, Deserialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+pub struct TopLevelCode<D: Driver> {
+    /// The code to run.
+    pub statements: Vec<WithInfo<D::Info, crate::Expression<D>>>,
+}
+
+/// An implementation of a constant or instance.
+#[derive(Serialize, Deserialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+pub struct Item<D: Driver> {
+    /// The item's body.
+    pub body: WithInfo<D::Info, crate::Expression<D>>,
+
+    /// The list of variables the item captures.
+    pub captures: Vec<Path>,
+
+    /// The top level relative to this item.
+    pub top_level: Path,
 }
 
 /// Resolve a list of files into a module.
@@ -154,6 +180,9 @@ pub enum Diagnostic {
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub struct UnresolvedFile<D: Driver> {
+    /// The name of the file.
+    pub name: String,
+
     /// The top-level statements in the program.
     pub statements: Vec<WithInfo<D::Info, UnresolvedStatement<D>>>,
 }
@@ -754,6 +783,9 @@ impl<'de> Deserialize<'de> for Path {
 #[serde(bound(serialize = "", deserialize = ""))]
 #[ts(export, rename = "lower_PathComponent")]
 pub enum PathComponent {
+    /// A file.
+    File(String),
+
     /// A type declaration.
     Type(String),
 
@@ -795,11 +827,17 @@ impl PathComponent {
         )
     }
 
+    /// Returns `true` if the path component refers to a variable.
+    pub fn is_variable(&self) -> bool {
+        matches!(self, PathComponent::Variable(_))
+    }
+
     /// Returns the name of the declaration the path component refers to, or
     /// `None` if the declaration has no name.
     pub fn name(&self) -> Option<&str> {
         match self {
-            PathComponent::Type(name)
+            PathComponent::File(name)
+            | PathComponent::Type(name)
             | PathComponent::Trait(name)
             | PathComponent::Constant(name)
             | PathComponent::Constructor(name)
@@ -816,6 +854,7 @@ impl PathComponent {
 impl std::fmt::Display for PathComponent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            PathComponent::File(name) => write!(f, "file {}", name),
             PathComponent::Type(name) => write!(f, "type {}", name),
             PathComponent::Trait(name) => write!(f, "trait {}", name),
             PathComponent::Constant(name) => write!(f, "constant {}", name),
@@ -837,6 +876,7 @@ impl std::str::FromStr for PathComponent {
         let (prefix, name) = s.split_once(' ').ok_or(())?;
 
         match prefix {
+            "file" => Ok(PathComponent::File(name.to_string())),
             "type" => Ok(PathComponent::Type(name.to_string())),
             "trait" => Ok(PathComponent::Trait(name.to_string())),
             "constant" => Ok(PathComponent::Constant(name.to_string())),

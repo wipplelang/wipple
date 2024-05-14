@@ -191,9 +191,11 @@ pub mod lower {
     pub type Info = <crate::Driver as wipple_lower::Driver>::Info;
 
     pub fn convert(
+        name: String,
         top_level: wipple_util::WithInfo<crate::Info, wipple_syntax::TopLevel<crate::SyntaxDriver>>,
     ) -> wipple_util::WithInfo<Info, wipple_lower::UnresolvedFile<crate::Driver>> {
         top_level.map(|top_level| wipple_lower::UnresolvedFile {
+            name,
             statements: top_level
                 .statements
                 .into_iter()
@@ -784,6 +786,27 @@ pub mod typecheck {
             r#trait: instance.r#trait.item,
             parameters: instance.parameters.into_iter().map(convert_type).collect(),
         })
+    }
+
+    pub fn convert_item(
+        item: wipple_lower::Item<crate::Driver>,
+    ) -> wipple_typecheck::UntypedItem<crate::Driver> {
+        wipple_typecheck::UntypedItem {
+            body: convert_expression(item.body),
+            captures: item.captures,
+        }
+    }
+
+    pub fn convert_top_level_code(
+        top_level_code: wipple_lower::TopLevelCode<crate::Driver>,
+    ) -> wipple_typecheck::UntypedTopLevelCode<crate::Driver> {
+        wipple_typecheck::UntypedTopLevelCode {
+            statements: top_level_code
+                .statements
+                .into_iter()
+                .map(convert_expression)
+                .collect(),
+        }
     }
 
     pub fn convert_expression(

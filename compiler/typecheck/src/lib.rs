@@ -185,6 +185,9 @@ pub struct Result<D: Driver> {
     /// The resolved item.
     pub item: Option<WithInfo<D::Info, TypedExpression<D>>>,
 
+    /// The list of variables the item captures.
+    pub captures: Vec<D::Path>,
+
     /// Any errors encountered while resolving the item.
     pub diagnostics: Vec<WithInfo<D::Info, Diagnostic<D>>>,
 }
@@ -615,6 +618,29 @@ pub struct InstanceDeclaration<D: Driver> {
 
     /// Whether the instance is the default instance.
     pub default: bool,
+}
+
+/// An untyped item.
+#[derive(Serialize, Deserialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+pub struct UntypedItem<D: Driver> {
+    /// The item's body.
+    pub body: WithInfo<D::Info, UntypedExpression<D>>,
+
+    /// The list of variables the item captures.
+    pub captures: Vec<D::Path>,
+}
+
+/// Untyped top-level code.
+#[derive(Serialize, Deserialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+pub struct UntypedTopLevelCode<D: Driver> {
+    /// The code to run.
+    pub statements: Vec<WithInfo<D::Info, UntypedExpression<D>>>,
 }
 
 /// An untyped expression.

@@ -7,15 +7,16 @@ pub fn compile<D: crate::Driver>(
     driver: &D,
     path: D::Path,
     expression: WithInfo<D::Info, &wipple_typecheck::TypedExpression<D>>,
+    captures: &[D::Path],
 ) -> Option<HashMap<D::Path, crate::Item<D>>> {
     let mut info = Info {
         driver,
         path: path.clone(),
         items: Default::default(),
-        context: Default::default(),
+        context: Context::default(),
     };
 
-    compile_item_with_captures(path, &[], expression, &mut info, |expression, info| {
+    compile_item_with_captures(path, captures, expression, &mut info, |expression, info| {
         compile_expression(expression, info)
     })?;
 

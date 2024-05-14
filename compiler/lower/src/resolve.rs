@@ -12,7 +12,6 @@ pub fn resolve<D: Driver>(
     dependencies: crate::Interface<D>,
 ) -> crate::Result<D> {
     let mut info = Info::default();
-    info.captures.push(Captures::default());
     info.scopes.push_block_scope();
 
     macro_rules! add {
@@ -48,15 +47,80 @@ pub fn resolve<D: Driver>(
         }
     }
 
-    let statements = files
+    let statements_by_file = files
         .into_iter()
-        .flat_map(|file| file.item.statements)
+        .map(|file| {
+            info.path
+                .push(crate::PathComponent::File(file.item.name.clone()));
+
+            info.scopes.push_block_scope();
+
+            let (declaration_statements, executable_statements) =
+                split_executable_statements(file.item.statements, &mut info);
+
+            let path_component = info.path.pop().unwrap();
+            assert!(info.path.is_empty());
+
+            let scope = info.scopes.pop_scope();
+            info.scopes.merge(&scope);
+
+            (
+                path_component,
+                declaration_statements,
+                executable_statements,
+            )
+        })
         .collect::<Vec<_>>();
 
-    let statements = resolve_statements(statements, &mut info);
-    info.library.code.extend(statements);
+    let executable_statements_by_file = statements_by_file
+        .into_iter()
+        .map(
+            |(file_path_component, declaration_statements, executable_statements)| {
+                info.path.push(file_path_component);
+
+                for statements in declaration_statements {
+                    resolve_statements(statements, &mut info);
+                }
+
+                let file_path_component = info.path.pop().unwrap();
+                assert!(info.path.is_empty());
+
+                (file_path_component, executable_statements)
+            },
+        )
+        .collect::<Vec<_>>();
 
     let mut interface = crate::Interface::default();
+    for (file_path_component, executable_statements) in executable_statements_by_file {
+        info.path.push(file_path_component);
+        info.scopes.push_block_scope();
+
+        let statements = resolve_statements(executable_statements, &mut info);
+
+        info.scopes.pop_scope();
+        assert!(info.scopes.0.len() == 1);
+
+        let path = crate::Path(vec![info.path.pop().unwrap()]);
+        assert!(info.path.is_empty());
+
+        info.library
+            .code
+            .insert(path, crate::TopLevelCode { statements });
+    }
+
+    for (name, paths) in info.scopes.pop_scope().into_paths() {
+        for path in paths {
+            if !path.item.last().unwrap().is_local() {
+                interface
+                    .top_level
+                    .entry(name.clone())
+                    .or_default()
+                    .push(path);
+            }
+        }
+    }
+
+    assert!(info.scopes.0.is_empty());
 
     macro_rules! unwrap {
         ($declarations:ident) => {
@@ -82,17 +146,6 @@ pub fn resolve<D: Driver>(
             .into_iter()
             .filter_map(|(name, path)| Some((name, path?))),
     );
-
-    assert!(info.scopes.0.len() == 1);
-    for (name, paths) in info.scopes.pop_scope().into_paths() {
-        for path in paths {
-            interface
-                .top_level
-                .entry(name.clone())
-                .or_default()
-                .push(path);
-        }
-    }
 
     crate::Result {
         interface,
@@ -131,6 +184,10 @@ impl<D: Driver> Info<D> {
         let mut path = self.path.clone();
         path.push(component);
         path
+    }
+
+    fn top_level_path(&self) -> crate::Path {
+        crate::Path(vec![self.path.first().unwrap().clone()])
     }
 }
 
@@ -192,6 +249,16 @@ impl<D: Driver> Scopes<D> {
 
         paths.push(path);
     }
+
+    pub fn merge(&mut self, scope: &Scope<D>) {
+        for (name, paths) in &scope.paths {
+            for path in paths {
+                if !path.item.last().unwrap().is_local() {
+                    self.define(name.clone(), path.clone());
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -202,11 +269,9 @@ struct Captures {
 
 impl<D: Driver> Info<D> {
     fn declare_variable(&mut self, path: &crate::Path) {
-        self.captures
-            .last_mut()
-            .unwrap()
-            .declared
-            .insert(path.clone());
+        if let Some(captures) = self.captures.last_mut() {
+            captures.declared.insert(path.clone());
+        }
     }
 
     fn capture_if_variable(&mut self, path: &crate::Path) {
@@ -224,11 +289,14 @@ impl<D: Driver> Info<D> {
     }
 }
 
-fn resolve_statements<D: Driver>(
+fn split_executable_statements<D: Driver>(
     statements: Vec<WithInfo<D::Info, crate::UnresolvedStatement<D>>>,
     info: &mut Info<D>,
-) -> Vec<WithInfo<D::Info, crate::Expression<D>>> {
-    let mut statements =
+) -> (
+    Vec<Vec<WithInfo<D::Info, crate::UnresolvedStatement<D>>>>,
+    Vec<WithInfo<D::Info, crate::UnresolvedStatement<D>>>,
+) {
+    let (declaration_statements, executable_statements): (Vec<_>, Vec<_>) =
         statements
             .into_iter()
             .filter_map(|statement| {
@@ -290,20 +358,35 @@ fn resolve_statements<D: Driver>(
                     | crate::UnresolvedStatement::Expression(_) => Some(statement),
                 }
             })
-            .collect::<Vec<_>>();
+            .partition(|statement| {
+                matches!(
+                    statement.item,
+                    crate::UnresolvedStatement::Type { .. }
+                        | crate::UnresolvedStatement::Trait { .. }
+                        | crate::UnresolvedStatement::Language { .. }
+                )
+            });
 
-    // Ensure that executable code is resolved after type and trait definitions,
-    // so that references to types and traits can use the resolved definition
-    statements.sort_by_key(|statement| match statement.item {
-        crate::UnresolvedStatement::Type { .. } | crate::UnresolvedStatement::Trait { .. } => 0,
-        crate::UnresolvedStatement::Constant { .. } => 1,
-        crate::UnresolvedStatement::Language { .. } => 2,
-        crate::UnresolvedStatement::Instance { .. }
-        | crate::UnresolvedStatement::Assignment { .. }
-        | crate::UnresolvedStatement::Expression(_) => 3,
-    });
+    let (type_statements, language_statements): (Vec<_>, Vec<_>) =
+        declaration_statements.into_iter().partition(|statement| {
+            matches!(
+                statement.item,
+                crate::UnresolvedStatement::Type { .. } | crate::UnresolvedStatement::Trait { .. }
+            )
+        });
 
+    (
+        vec![type_statements, language_statements],
+        executable_statements,
+    )
+}
+
+fn resolve_statements<D: Driver>(
+    statements: Vec<WithInfo<D::Info, crate::UnresolvedStatement<D>>>,
+    info: &mut Info<D>,
+) -> Vec<WithInfo<D::Info, crate::Expression<D>>> {
     let mut queued_constants = Vec::new();
+
     let statements = statements
         .into_iter()
         .filter_map(|statement| match statement.item {
@@ -485,7 +568,10 @@ fn resolve_statements<D: Driver>(
 
                 queued_constants.push((info.path.clone(), scope, body));
 
-                let declaration = info.constant_declarations.get_mut(&info.path).unwrap();
+                let declaration = info
+                    .constant_declarations
+                    .get_mut(&info.path)
+                    .unwrap_or_else(|| panic!("{:?}", info.path));
 
                 declaration.item = Some(crate::ConstantDeclaration {
                     parameters,
@@ -510,6 +596,7 @@ fn resolve_statements<D: Driver>(
 
                 info.scopes.push_constant_scope();
                 let prev_next_variable = info.reset_next_variable();
+                info.captures.push(Captures::default());
 
                 let parameters = parameters
                     .into_iter()
@@ -524,7 +611,10 @@ fn resolve_statements<D: Driver>(
                 let instance = match resolve_instance(instance, info) {
                     Some(instance) => instance,
                     None => {
+                        info.captures.pop().unwrap();
+                        info.next_variable = prev_next_variable;
                         info.scopes.pop_scope();
+                        info.path.pop().unwrap();
 
                         return None;
                     }
@@ -532,6 +622,7 @@ fn resolve_statements<D: Driver>(
 
                 let body = body.map(|body| resolve_expression(body, info));
 
+                let captures = info.captures.pop().unwrap();
                 info.next_variable = prev_next_variable;
                 info.scopes.pop_scope();
 
@@ -548,7 +639,14 @@ fn resolve_statements<D: Driver>(
                     },
                 );
 
-                info.library.items.insert(info.path.clone(), body);
+                info.library.items.insert(
+                    info.path.clone(),
+                    body.map(|body| crate::Item {
+                        body,
+                        captures: Vec::from_iter(captures.used),
+                        top_level: info.top_level_path(),
+                    }),
+                );
 
                 info.path.pop().unwrap();
 
@@ -649,14 +747,23 @@ fn resolve_statements<D: Driver>(
         let prev_next_variable = info.reset_next_variable();
         let prev_path = mem::replace(&mut info.path, path);
         info.scopes.0.push(scope);
+        info.captures.push(Captures::default());
 
         let body = resolve_expression(body, info);
 
+        let captures = info.captures.pop().unwrap();
         info.scopes.pop_scope();
         let path = mem::replace(&mut info.path, prev_path);
         info.next_variable = prev_next_variable;
 
-        info.library.items.insert(path, Some(body));
+        info.library.items.insert(
+            path,
+            Some(crate::Item {
+                body,
+                captures: Vec::from_iter(captures.used),
+                top_level: info.top_level_path(),
+            }),
+        );
     }
 
     statements
@@ -703,9 +810,14 @@ fn generate_marker_constructor<D: Driver>(
         },
     );
 
-    info.library
-        .items
-        .insert(constructor_path.clone(), Some(constructor_body));
+    info.library.items.insert(
+        constructor_path.clone(),
+        Some(crate::Item {
+            body: constructor_body,
+            captures: Vec::new(),
+            top_level: info.top_level_path(),
+        }),
+    );
 
     (
         name.item,
@@ -797,9 +909,14 @@ fn generate_structure_constructor<D: Driver>(
         },
     );
 
-    info.library
-        .items
-        .insert(constructor_path.clone(), Some(constructor_body));
+    info.library.items.insert(
+        constructor_path.clone(),
+        Some(crate::Item {
+            body: constructor_body,
+            captures: Vec::new(),
+            top_level: info.top_level_path(),
+        }),
+    );
 
     (
         name.item,
@@ -910,9 +1027,14 @@ fn generate_variant_constructor<D: Driver>(
         },
     );
 
-    info.library
-        .items
-        .insert(constructor_path.clone(), Some(constructor_body));
+    info.library.items.insert(
+        constructor_path.clone(),
+        Some(crate::Item {
+            body: constructor_body,
+            captures: Vec::new(),
+            top_level: info.top_level_path(),
+        }),
+    );
 
     (
         name.item,
@@ -996,9 +1118,14 @@ fn generate_wrapper_constructor<D: Driver>(
         },
     );
 
-    info.library
-        .items
-        .insert(constructor_path.clone(), Some(constructor_body));
+    info.library.items.insert(
+        constructor_path.clone(),
+        Some(crate::Item {
+            body: constructor_body,
+            captures: Vec::new(),
+            top_level: info.top_level_path(),
+        }),
+    );
 
     (
         name.item,
@@ -1042,9 +1169,14 @@ fn generate_trait_constructor<D: Driver>(
         },
     );
 
-    info.library
-        .items
-        .insert(constructor_path.clone(), Some(constructor_body));
+    info.library.items.insert(
+        constructor_path.clone(),
+        Some(crate::Item {
+            body: constructor_body,
+            captures: Vec::new(),
+            top_level: info.top_level_path(),
+        }),
+    );
 
     (
         name.item,
@@ -1120,7 +1252,14 @@ fn resolve_expression<D: Driver>(
             info.scopes.push_block_scope();
             info.captures.push(Captures::default());
 
-            let statements = resolve_statements(statements, info);
+            let (declaration_statements, executable_statements) =
+                split_executable_statements(statements, info);
+
+            for statements in declaration_statements {
+                resolve_statements(statements, info);
+            }
+
+            let statements = resolve_statements(executable_statements, info);
 
             let captures = info.captures.pop().unwrap();
             info.scopes.pop_scope();
@@ -1695,7 +1834,7 @@ fn try_resolve_name<D: Driver, T>(
                     info.errors
                         .push(name.replace(crate::Diagnostic::AmbiguousName {
                             name: name.item.clone(),
-                            candidates: paths.into_iter().map(|path| path.item).collect(),
+                            candidates: paths.iter().map(|path| path.item.clone()).collect(),
                         }));
 
                     // Try the last candidate defined
