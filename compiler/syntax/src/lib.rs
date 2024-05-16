@@ -206,6 +206,47 @@ pub enum BinaryOperator {
     By,
 }
 
+/// An attribute.
+#[derive(Serialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+pub enum Attribute<D: Driver> {
+    /// An invalid attribute.
+    Error,
+
+    /// A name.
+    Name(WithInfo<D::Info, String>),
+
+    /// A value associated with a name.
+    Valued {
+        /// The name.
+        name: WithInfo<D::Info, String>,
+
+        /// The value.
+        value: WithInfo<D::Info, AttributeValue<D>>,
+    },
+}
+
+/// An attribute value.
+#[derive(Serialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+pub enum AttributeValue<D: Driver> {
+    /// An invalid attribute value.
+    Error,
+
+    /// A name.
+    Name(WithInfo<D::Info, String>),
+
+    /// A number.
+    Number(WithInfo<D::Info, String>),
+
+    /// A piece of text.
+    Text(WithInfo<D::Info, String>),
+}
+
 /// The parsed top-level program.
 #[derive(Serialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
@@ -225,6 +266,9 @@ pub enum Statement<D: Driver> {
     /// A type declaration.
     #[serde(rename_all = "camelCase")]
     Type {
+        /// The type's attributes.
+        attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+
         /// The name of the type.
         name: WithInfo<D::Info, String>,
 
@@ -238,6 +282,9 @@ pub enum Statement<D: Driver> {
     /// A trait declaration.
     #[serde(rename_all = "camelCase")]
     Trait {
+        /// The trait's attributes.
+        attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+
         /// The name of the trait.
         name: WithInfo<D::Info, String>,
 
@@ -251,6 +298,9 @@ pub enum Statement<D: Driver> {
     /// A constant declaration.
     #[serde(rename_all = "camelCase")]
     Constant {
+        /// The constant's attributes.
+        attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+
         /// The name of the constant.
         name: WithInfo<D::Info, String>,
 

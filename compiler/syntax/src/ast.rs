@@ -25,6 +25,7 @@ pub fn top_level<D: Driver>(
 #[derivative(Debug(bound = ""))]
 struct PartialConstant<D: Driver> {
     info: D::Info,
+    attributes: Vec<WithInfo<D::Info, crate::Attribute<D>>>,
     name: WithInfo<D::Info, String>,
     parameters: Vec<WithInfo<D::Info, crate::TypeParameter<D>>>,
     bounds: Vec<WithInfo<D::Info, crate::Instance<D>>>,
@@ -43,6 +44,30 @@ impl<D: Driver> Default for Info<D> {
             current_constant: Default::default(),
         }
     }
+}
+
+fn attribute<D: Driver>(
+    attribute_syntax: WithInfo<D::Info, parse::Attribute<D>>,
+) -> WithInfo<D::Info, crate::Attribute<D>> {
+    attribute_syntax.map(|attribute_syntax| match attribute_syntax {
+        parse::Attribute::Error => crate::Attribute::Error,
+        parse::Attribute::Name(name) => crate::Attribute::Name(name),
+        parse::Attribute::Valued { name, value } => crate::Attribute::Valued {
+            name,
+            value: attribute_value(value),
+        },
+    })
+}
+
+fn attribute_value<D: Driver>(
+    attribute_value_syntax: WithInfo<D::Info, parse::AttributeValue<D>>,
+) -> WithInfo<D::Info, crate::AttributeValue<D>> {
+    attribute_value_syntax.map(|attribute_value_syntax| match attribute_value_syntax {
+        parse::AttributeValue::Error => crate::AttributeValue::Error,
+        parse::AttributeValue::Name(name) => crate::AttributeValue::Name(name),
+        parse::AttributeValue::Text(text) => crate::AttributeValue::Text(text),
+        parse::AttributeValue::Number(number) => crate::AttributeValue::Number(number),
+    })
 }
 
 fn expression<D: Driver>(
@@ -237,10 +262,16 @@ fn statements<D: Driver>(
                             .filter_map(|statement_syntax| match statement_syntax {
                                 parse::Statement::Error => None,
                                 parse::Statement::TypeDeclaration {
+                                    attributes: attributes_syntaxes,
                                     name,
                                     parameters: type_function_syntax,
                                     representation: representation_syntax,
                                 } => {
+                                    let attributes = attributes_syntaxes
+                                        .into_iter()
+                                        .map(attribute)
+                                        .collect();
+
                                     let name = name.try_unwrap()?;
 
                                     expected_constant_value!(Some(statement_info.clone()));
@@ -391,16 +422,23 @@ fn statements<D: Driver>(
                                         });
 
                                     representation.map(|representation| crate::Statement::Type {
+                                        attributes,
                                         name,
                                         parameters,
                                         representation,
                                     })
                                 }
                                 parse::Statement::TraitDeclaration {
+                                    attributes: attributes_syntaxes,
                                     name,
                                     parameters: type_function_syntax,
                                     r#type: type_syntax,
                                 } => {
+                                    let attributes = attributes_syntaxes
+                                        .into_iter()
+                                        .map(attribute)
+                                        .collect();
+
                                     let name = name.try_unwrap()?;
 
                                     expected_constant_value!(Some(statement_info.clone()));
@@ -413,6 +451,7 @@ fn statements<D: Driver>(
                                     let r#type = type_syntax.map(|type_syntax| r#type(type_syntax, info));
 
                                     Some(crate::Statement::Trait {
+                                        attributes,
                                         name,
                                         parameters,
                                         r#type,
@@ -467,10 +506,16 @@ fn statements<D: Driver>(
                                     })
                                 }
                                 parse::Statement::ConstantDeclaration {
+                                    attributes: attributes_syntaxes,
                                     name,
                                     parameters: type_function_syntax,
                                     r#type: type_syntax,
                                 } => {
+                                    let attributes = attributes_syntaxes
+                                        .into_iter()
+                                        .map(attribute)
+                                        .collect();
+
                                     let name = name.try_unwrap()?;
 
                                     expected_constant_value!(Some(statement_info.clone()));
@@ -482,6 +527,7 @@ fn statements<D: Driver>(
 
                                     info.current_constant = Some(PartialConstant {
                                         info: statement_info.clone(),
+                                        attributes,
                                         name,
                                         parameters,
                                         bounds,
@@ -524,6 +570,7 @@ fn statements<D: Driver>(
                                                 statement_info = constant.info;
 
                                                 return Some(crate::Statement::Constant {
+                                                    attributes: constant.attributes,
                                                     name: constant.name,
                                                     parameters: constant.parameters,
                                                     bounds: constant.bounds,

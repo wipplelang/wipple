@@ -1495,7 +1495,9 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                     });
                 }
                 Token::LineBreak => match stack.last_mut() {
-                    Some((_, TokenTree::List(_, _) | TokenTree::Attribute(_, _))) => continue,
+                    Some((_, TokenTree::List(_, _) | TokenTree::UnresolvedAttribute(_))) => {
+                        continue
+                    }
                     Some((begin_info, TokenTree::Block(statements))) => {
                         if let Some(tree) = statements.last_mut() {
                             let (delimiter, expressions) = match &mut tree.item {

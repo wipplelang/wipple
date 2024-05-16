@@ -212,6 +212,7 @@ pub mod lower {
     ) -> wipple_util::WithInfo<Info, wipple_lower::UnresolvedStatement<crate::Driver>> {
         statement.map(|statement| match statement {
             wipple_syntax::Statement::Type {
+                attributes,
                 name,
                 parameters,
                 representation,
@@ -221,6 +222,7 @@ pub mod lower {
                 representation: convert_type_representation(representation),
             },
             wipple_syntax::Statement::Trait {
+                attributes,
                 name,
                 parameters,
                 r#type,
@@ -230,6 +232,7 @@ pub mod lower {
                 r#type: r#type.map(convert_type),
             },
             wipple_syntax::Statement::Constant {
+                attributes,
                 name,
                 parameters,
                 bounds,

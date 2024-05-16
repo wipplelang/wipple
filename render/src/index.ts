@@ -998,12 +998,16 @@ export class Render {
         switch (kind) {
             case "number":
                 return "number";
-            case "topLevel":
-                return "top level";
             case "name":
                 return "name";
             case "text":
                 return "text";
+            case "topLevel":
+                return "top level";
+            case "attribute":
+                return "attribute";
+            case "attributeValue":
+                return "attribute value";
             case "statement":
                 return "statement";
             case "keyword":
