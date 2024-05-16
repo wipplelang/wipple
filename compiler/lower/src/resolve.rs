@@ -391,6 +391,7 @@ fn resolve_statements<D: Driver>(
         .into_iter()
         .filter_map(|statement| match statement.item {
             crate::UnresolvedStatement::Type {
+                attributes,
                 name,
                 parameters,
                 representation,
@@ -492,6 +493,7 @@ fn resolve_statements<D: Driver>(
                 let declaration = info.type_declarations.get_mut(&info.path).unwrap();
 
                 declaration.item = Some(crate::TypeDeclaration {
+                    attributes,
                     parameters,
                     representation,
                 });
@@ -505,6 +507,7 @@ fn resolve_statements<D: Driver>(
                 None
             }
             crate::UnresolvedStatement::Trait {
+                attributes,
                 name,
                 parameters,
                 r#type,
@@ -526,6 +529,7 @@ fn resolve_statements<D: Driver>(
                 let declaration = info.trait_declarations.get_mut(&info.path).unwrap();
 
                 declaration.item = Some(crate::TraitDeclaration {
+                    attributes,
                     parameters: parameters.clone(),
                     r#type: r#type.clone(),
                 });
@@ -542,6 +546,7 @@ fn resolve_statements<D: Driver>(
                 None
             }
             crate::UnresolvedStatement::Constant {
+                attributes,
                 name,
                 parameters,
                 bounds,
@@ -574,6 +579,7 @@ fn resolve_statements<D: Driver>(
                     .unwrap_or_else(|| panic!("{:?}", info.path));
 
                 declaration.item = Some(crate::ConstantDeclaration {
+                    attributes,
                     parameters,
                     bounds,
                     r#type,
@@ -777,6 +783,7 @@ fn generate_marker_constructor<D: Driver>(
     let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
 
     let constructor_declaration = crate::ConstantDeclaration {
+        attributes: Vec::new(),
         parameters: parameters.clone(),
         bounds: Vec::new(),
         r#type: WithInfo {
@@ -836,6 +843,7 @@ fn generate_structure_constructor<D: Driver>(
     let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
 
     let constructor_declaration = crate::ConstantDeclaration {
+        attributes: Vec::new(),
         parameters: parameters.clone(),
         bounds: Vec::new(),
         r#type: WithInfo {
@@ -956,6 +964,7 @@ fn generate_variant_constructor<D: Driver>(
         };
 
         crate::ConstantDeclaration {
+            attributes: Vec::new(),
             parameters,
             bounds: Vec::new(),
             r#type: if value_types.is_empty() {
@@ -1054,6 +1063,7 @@ fn generate_wrapper_constructor<D: Driver>(
     let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
 
     let constructor_declaration = crate::ConstantDeclaration {
+        attributes: Vec::new(),
         parameters: parameters.clone(),
         bounds: Vec::new(),
         r#type: WithInfo {
@@ -1145,6 +1155,7 @@ fn generate_trait_constructor<D: Driver>(
     let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
 
     let constructor_declaration = crate::ConstantDeclaration {
+        attributes: Vec::new(),
         parameters: parameters.clone(),
         bounds: vec![name.replace(crate::Instance {
             r#trait: name.replace(info.path.clone()),

@@ -196,6 +196,9 @@ pub enum UnresolvedStatement<D: Driver> {
     /// A type declaration.
     #[serde(rename_all = "camelCase")]
     Type {
+        /// The type's attributes.
+        attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+
         /// The name of the type.
         name: WithInfo<D::Info, String>,
 
@@ -209,6 +212,9 @@ pub enum UnresolvedStatement<D: Driver> {
     /// A trait declaration.
     #[serde(rename_all = "camelCase")]
     Trait {
+        /// The trait's attributes.
+        attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+
         /// The name of the trait.
         name: WithInfo<D::Info, String>,
 
@@ -222,6 +228,9 @@ pub enum UnresolvedStatement<D: Driver> {
     /// A constant declaration.
     #[serde(rename_all = "camelCase")]
     Constant {
+        /// The constant's attributes.
+        attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+
         /// The name of the constant.
         name: WithInfo<D::Info, String>,
 
@@ -892,12 +901,56 @@ impl std::str::FromStr for PathComponent {
     }
 }
 
+/// An attribute.
+#[derive(Serialize, Deserialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+pub enum Attribute<D: Driver> {
+    /// An invalid attribute.
+    Error,
+
+    /// A name.
+    Name(WithInfo<D::Info, String>),
+
+    /// A value associated with a name.
+    Valued {
+        /// The name.
+        name: WithInfo<D::Info, String>,
+
+        /// The value.
+        value: WithInfo<D::Info, AttributeValue<D>>,
+    },
+}
+
+/// An attribute value.
+#[derive(Serialize, Deserialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+pub enum AttributeValue<D: Driver> {
+    /// An invalid attribute value.
+    Error,
+
+    /// A name.
+    Name(WithInfo<D::Info, String>),
+
+    /// A number.
+    Number(WithInfo<D::Info, String>),
+
+    /// A piece of text.
+    Text(WithInfo<D::Info, String>),
+}
+
 /// A resolved type declaration.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub struct TypeDeclaration<D: Driver> {
+    /// The trait's attributes.
+    pub attributes: Vec<WithInfo<D::Info, crate::Attribute<D>>>,
+
     /// The type's parameters.
     pub parameters: Vec<crate::Path>,
 
@@ -911,6 +964,9 @@ pub struct TypeDeclaration<D: Driver> {
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub struct TraitDeclaration<D: Driver> {
+    /// The trait's attributes.
+    pub attributes: Vec<WithInfo<D::Info, crate::Attribute<D>>>,
+
     /// The trait's parameters.
     pub parameters: Vec<crate::Path>,
 
@@ -924,6 +980,9 @@ pub struct TraitDeclaration<D: Driver> {
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub struct ConstantDeclaration<D: Driver> {
+    /// The constant's attributes.
+    pub attributes: Vec<WithInfo<D::Info, crate::Attribute<D>>>,
+
     /// The constant's parameters.
     pub parameters: Vec<crate::Path>,
 

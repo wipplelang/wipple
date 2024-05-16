@@ -493,6 +493,49 @@ pub struct Instance<D: Driver> {
     pub parameters: Vec<WithInfo<D::Info, Type<D>>>,
 }
 
+/// An attribute.
+#[derive(Serialize, Deserialize, Derivative, TS)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+#[ts(export, rename = "typecheck_Attribute", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
+pub enum Attribute<D: Driver> {
+    /// An invalid attribute.
+    Error,
+
+    /// A name.
+    Name(WithInfo<D::Info, String>),
+
+    /// A value associated with a name.
+    Valued {
+        /// The name.
+        name: WithInfo<D::Info, String>,
+
+        /// The value.
+        value: WithInfo<D::Info, AttributeValue<D>>,
+    },
+}
+
+/// An attribute value.
+#[derive(Serialize, Deserialize, Derivative, TS)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+#[ts(export, rename = "typecheck_AttributeValue", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
+pub enum AttributeValue<D: Driver> {
+    /// An invalid attribute value.
+    Error,
+
+    /// A name.
+    Name(WithInfo<D::Info, String>),
+
+    /// A number.
+    Number(WithInfo<D::Info, String>),
+
+    /// A piece of text.
+    Text(WithInfo<D::Info, String>),
+}
+
 /// A type declaration.
 #[derive(Serialize, Deserialize, Derivative, TS)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
@@ -500,6 +543,9 @@ pub struct Instance<D: Driver> {
 #[serde(bound(serialize = "", deserialize = ""))]
 #[ts(export, rename = "typecheck_TypeDeclaration", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct TypeDeclaration<D: Driver> {
+    /// The type's attributes.
+    pub attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+
     /// The type's parameters.
     pub parameters: Vec<D::Path>,
 
@@ -514,6 +560,9 @@ pub struct TypeDeclaration<D: Driver> {
 #[serde(bound(serialize = "", deserialize = ""))]
 #[ts(export, rename = "typecheck_TraitDeclaration", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct TraitDeclaration<D: Driver> {
+    /// The trait's attributes.
+    pub attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+
     /// The trait's parameters.
     pub parameters: Vec<D::Path>,
 
@@ -590,6 +639,9 @@ pub struct EnumerationVariant<D: Driver> {
 #[serde(bound(serialize = "", deserialize = ""))]
 #[ts(export, rename = "typecheck_ConstantDeclaration", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct ConstantDeclaration<D: Driver> {
+    /// The constant's attributes.
+    pub attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+
     /// The constant's parameters.
     pub parameters: Vec<D::Path>,
 
