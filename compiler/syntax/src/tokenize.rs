@@ -81,6 +81,9 @@ pub enum Keyword {
     #[strum(serialize = "do")]
     Do,
 
+    #[strum(serialize = "@")]
+    Attribute,
+
     #[strum(serialize = "!")]
     Mutate,
 
@@ -107,6 +110,10 @@ pub enum Keyword {
 }
 
 impl Keyword {
+    fn is_prefix(&self) -> bool {
+        matches!(self, Keyword::Attribute)
+    }
+
     fn is_suffix(&self) -> bool {
         matches!(self, Keyword::Mutate)
     }
@@ -389,6 +396,9 @@ enum RawToken<'src> {
     #[token("default")]
     Default,
 
+    #[token("@")]
+    Attribute,
+
     #[token("!")]
     Mutate,
 
@@ -522,6 +532,7 @@ where
                     RawToken::LeftBrace => Token::LeftBrace,
                     RawToken::RightBrace => Token::RightBrace,
                     RawToken::Underscore => Token::Keyword(Keyword::Underscore),
+                    RawToken::Attribute => Token::Keyword(Keyword::Attribute),
                     RawToken::Mutate => Token::Keyword(Keyword::Mutate),
                     RawToken::Do => Token::Keyword(Keyword::Do),
                     RawToken::Default => Token::Keyword(Keyword::Default),
@@ -724,7 +735,7 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
 
                 s.push_str(&keyword.to_string());
                 decrement!(operator_indent);
-                pad = true;
+                pad = !keyword.is_prefix();
                 first_in_group = false;
             }
             Token::Operator(operator) => {
@@ -918,6 +929,12 @@ pub enum TokenTree<'src, D: Driver> {
     UnresolvedVariadicOperator(VariadicOperator),
     #[doc(hidden)]
     UnresolvedNonAssociativeOperator(NonAssociativeOperator),
+    #[doc(hidden)]
+    UnresolvedAttribute(Option<WithInfo<D::Info, Box<TokenTree<'src, D>>>>),
+    Attribute(
+        WithInfo<D::Info, Box<TokenTree<'src, D>>>,
+        WithInfo<D::Info, Box<TokenTree<'src, D>>>,
+    ),
     Mutate(WithInfo<D::Info, Box<TokenTree<'src, D>>>),
     Keyword(Keyword),
     Name(Cow<'src, str>),
@@ -1277,39 +1294,80 @@ impl<'src, D: Driver> TokenTree<'src, D> {
         for token in [first_token].into_iter().chain(tokens.by_ref()) {
             info = token.info;
 
-            macro_rules! push {
-                ($item:expr) => {{
-                    let group = match stack.last_mut() {
-                        Some((_, TokenTree::List(_, expressions))) => expressions,
-                        Some((begin_info, TokenTree::Block(statements))) => {
-                            if statements.is_empty() {
-                                statements.push(WithInfo {
-                                    info: begin_info.clone(),
-                                    item: TokenTree::List(ListDelimiter::Parentheses, Vec::new()),
-                                });
-                            }
-
-                            match &mut statements.last_mut().unwrap().item {
-                                TokenTree::List(_, expressions) => expressions,
-                                _ => unreachable!(),
-                            }
-                        }
-                        _ => {
-                            diagnostics.push(WithInfo {
-                                info,
-                                item: Diagnostic::Mismatch {
-                                    expected: None,
-                                    found: Some(token.item.into_owned()),
-                                    matching: None,
-                                },
+            fn push<'src, D: Driver>(
+                info: D::Info,
+                token: &Token<'src>,
+                stack: &mut Vec<(D::Info, TokenTree<'src, D>)>,
+                item: WithInfo<<D as Driver>::Info, TokenTree<'src, D>>,
+                diagnostics: &mut Vec<WithInfo<<D as Driver>::Info, Diagnostic<D>>>,
+            ) -> bool {
+                match stack.last_mut() {
+                    Some((_, TokenTree::List(_, expressions))) => {
+                        expressions.push(item);
+                    }
+                    Some((begin_info, TokenTree::Block(statements))) => {
+                        if statements.is_empty() {
+                            statements.push(WithInfo {
+                                info: begin_info.clone(),
+                                item: TokenTree::List(ListDelimiter::Parentheses, Vec::new()),
                             });
-
-                            continue;
                         }
-                    };
 
-                    group.push($item);
-                }};
+                        match &mut statements.last_mut().unwrap().item {
+                            TokenTree::List(_, expressions) => expressions.push(item),
+                            _ => unreachable!(),
+                        }
+                    }
+                    Some((_, TokenTree::UnresolvedAttribute(contents))) => {
+                        if contents.is_some() {
+                            let (begin_info, attribute) = match stack.pop().unwrap() {
+                                (begin_info, TokenTree::UnresolvedAttribute(attribute)) => {
+                                    (begin_info, attribute.unwrap())
+                                }
+                                _ => unreachable!(),
+                            };
+
+                            let item = WithInfo {
+                                info: D::merge_info(begin_info, info),
+                                item: TokenTree::Attribute(attribute, item.boxed()),
+                            };
+
+                            if !push(item.info.clone(), token, stack, item, diagnostics) {
+                                return false;
+                            }
+                        } else {
+                            contents.replace(item.boxed());
+                        }
+                    }
+                    _ => {
+                        diagnostics.push(WithInfo {
+                            info,
+                            item: Diagnostic::Mismatch {
+                                expected: None,
+                                found: Some(token.clone().into_owned()),
+                                matching: None,
+                            },
+                        });
+
+                        return false;
+                    }
+                }
+
+                true
+            }
+
+            macro_rules! push {
+                ($item:expr) => {
+                    if !push(
+                        info.clone(),
+                        &token.item,
+                        &mut stack,
+                        $item,
+                        &mut diagnostics,
+                    ) {
+                        continue;
+                    }
+                };
             }
 
             match token.item {
@@ -1437,7 +1495,7 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                     });
                 }
                 Token::LineBreak => match stack.last_mut() {
-                    Some((_, TokenTree::List(_, _))) => continue,
+                    Some((_, TokenTree::List(_, _) | TokenTree::Attribute(_, _))) => continue,
                     Some((begin_info, TokenTree::Block(statements))) => {
                         if let Some(tree) = statements.last_mut() {
                             let (delimiter, expressions) = match &mut tree.item {
@@ -1474,6 +1532,9 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                 },
                 Token::Comment(_) => continue,
                 Token::Keyword(keyword) => match keyword {
+                    Keyword::Attribute => {
+                        stack.push((info, TokenTree::UnresolvedAttribute(None)));
+                    }
                     Keyword::Mutate => match stack.last_mut() {
                         Some((begin_info, TokenTree::Block(statements))) => {
                             let elements = match &mut statements.last_mut().unwrap().item {
@@ -1549,6 +1610,10 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                     let end_token = match tree {
                         TokenTree::List(delimiter, _) => delimiter.end(),
                         TokenTree::Block(_) => Token::RightBrace,
+                        TokenTree::Attribute(_, _) => {
+                            // FIXME: Technically any token is allowed after a `@`
+                            Token::LeftParenthesis
+                        }
                         _ => unreachable!(),
                     };
 
