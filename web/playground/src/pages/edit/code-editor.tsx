@@ -19,7 +19,7 @@ import { useWindowSize } from "usehooks-ts";
 import { HelpAlert } from "./help-alert";
 import { ColorPicker } from "./color-picker";
 import { AssetClickHandler } from "./codemirror/assets";
-import { animalAsset, colorAsset, dropdownAsset, noteAsset } from "./assets";
+import { animalAsset, colorAsset, dropdownAsset, instrumentAsset, noteAsset } from "./assets";
 import { Render, RenderedDiagnostic, RenderedFix, RenderedHighlight } from "wipple-render";
 import { defaultPaletteItems, runtimes } from "../../runtimes";
 import { SetupIcon } from "./setup-icon";
@@ -29,6 +29,7 @@ import formatIcon from "./assets/format.png";
 import lookupIcon from "./assets/lookup.svg";
 import { NotePicker } from "./note-picker";
 import { AnimalPicker } from "./animal-picker";
+import { InstrumentPicker } from "./instrument-picker";
 
 export function CodeEditor<Settings>(props: {
     children: string;
@@ -219,6 +220,26 @@ export function CodeEditor<Settings>(props: {
                         onDismiss={(note) => {
                             codeMirrorRef.current?.editorView.dispatch({
                                 changes: { from: start, to: end, insert: noteAsset(note) },
+                            });
+
+                            dismiss();
+                        }}
+                    />
+                ));
+
+                break;
+            }
+            case "instrument": {
+                displayAlert(({ dismiss }) => (
+                    <InstrumentPicker
+                        selection={asset.instrument}
+                        onDismiss={(instrument) => {
+                            codeMirrorRef.current?.editorView.dispatch({
+                                changes: {
+                                    from: start,
+                                    to: end,
+                                    insert: instrumentAsset(instrument),
+                                },
                             });
 
                             dismiss();

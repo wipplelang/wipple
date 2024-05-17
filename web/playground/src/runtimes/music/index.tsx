@@ -138,6 +138,10 @@ export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
 
 export const paletteItems: PaletteItem[] = [
     {
+        title: "instrument",
+        code: 'instrument [Instrument-Name "acoustic_grand_piano"] {\n  _\n}',
+    },
+    {
         title: "note",
         code: 'note [Note "C4"] ([Dropdown (1 / 8 , 1 / 4 , 1 / 2 , 1 , 2 , 3 , 4) 1] beats)',
     },

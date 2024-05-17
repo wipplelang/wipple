@@ -1,6 +1,7 @@
 import { AnimalAsset } from "./animal";
 import { ColorAsset } from "./color";
 import { DropdownAsset } from "./dropdown";
+import { InstrumentAsset } from "./instrument";
 import { NoteAsset } from "./note";
 
 export const isAsset = (value: string) =>
@@ -12,7 +13,8 @@ export type Asset =
     | { type: "color"; color: string }
     | { type: "animal"; animal: string }
     | { type: "dropdown"; selection: string; options: string[] }
-    | { type: "note"; note: string };
+    | { type: "note"; note: string }
+    | { type: "instrument"; instrument: string };
 
 export const getAsset = (code: string): Asset | undefined => {
     const split = code.split(" ");
@@ -47,6 +49,10 @@ export const getAsset = (code: string): Asset | undefined => {
             value = value.slice(1, value.length - 1); // remove quotes
             return { type: "note", note: value };
         }
+        case "Instrument-Name": {
+            value = value.slice(1, value.length - 1); // remove quotes
+            return { type: "instrument", instrument: value };
+        }
         default: {
             return undefined;
         }
@@ -61,6 +67,8 @@ export const dropdownAsset = (selection: string, options: string[]) =>
     `[Dropdown (${options.join(" , ")}) ${selection}]`;
 
 export const noteAsset = (note: string) => `[Note "${note}"]`;
+
+export const instrumentAsset = (instrument: string) => `[Instrument-Name "${instrument}"]`;
 
 export const Asset = (props: {
     children: Asset;
@@ -108,6 +116,16 @@ export const Asset = (props: {
                 <NoteAsset
                     disabled={props.disabled}
                     note={asset.note}
+                    onClick={() => props.onClick?.(asset)}
+                />
+            );
+            break;
+        }
+        case "instrument": {
+            content = (
+                <InstrumentAsset
+                    disabled={props.disabled}
+                    instrument={asset.instrument}
                     onClick={() => props.onClick?.(asset)}
                 />
             );
