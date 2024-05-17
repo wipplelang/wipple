@@ -1184,71 +1184,35 @@ export class Render {
             return null;
         }
 
-        const constantReferenceType: compiler.WithInfo<compiler.Info, compiler.typecheck_Type> = {
-            info: value.info,
-            item: {
-                type: "constant",
-                value: declaration.item.path,
-            },
-        };
+        const options: RenderedHighlight = {};
+        if ("attributes" in declaration.item.declaration) {
+            for (const attribute of declaration.item.declaration.attributes) {
+                if (
+                    attribute.item.type === "valued" &&
+                    attribute.item.value.value.item.type === "text"
+                ) {
+                    switch (attribute.item.value.name.item) {
+                        case "highlight-category": {
+                            options.category = attribute.item.value.value.item.value.item;
+                            break;
+                        }
+                        case "highlight-icon": {
+                            options.icon = attribute.item.value.value.item.value.item;
+                            break;
+                        }
+                        default: {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
 
-        const result = compiler.resolveAttributeLikeTrait(
-            "highlight",
-            constantReferenceType,
-            1,
-            this.interface,
-        );
-
-        if (!result) {
+        if (!options.category && !options.icon) {
             return null;
         }
 
-        const [highlightOptions] = result;
-
-        const getOption = (
-            name: string,
-            type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
-        ) =>
-            type.item.type === "declared" &&
-            type.item.value.path === this.interface!.languageDeclarations[name] &&
-            type.item.value.parameters[0]?.item.type === "message"
-                ? this.renderTypeLevelText(type.item.value.parameters[0].item.value, false)
-                : null;
-
-        switch (highlightOptions.item.type) {
-            case "declared": {
-                const category = getOption("highlight-category", highlightOptions);
-                if (category) {
-                    return { category };
-                }
-
-                const icon = getOption("highlight-icon", highlightOptions);
-                if (icon) {
-                    return { icon };
-                }
-
-                return null;
-            }
-            case "tuple": {
-                const options: RenderedHighlight = {};
-
-                for (const parameter of highlightOptions.item.value) {
-                    const category = getOption("highlight-category", parameter);
-                    if (category) {
-                        options.category = category;
-                    }
-
-                    const icon = getOption("highlight-icon", parameter);
-                    if (icon) {
-                        options.icon = icon;
-                    }
-                }
-
-                return options;
-            }
-            default:
-                return null;
-        }
+        return options;
     }
 
     renderSuggestionsAtCursor(path: string, index: number): RenderedSuggestion[] {

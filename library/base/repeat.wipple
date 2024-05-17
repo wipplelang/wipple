@@ -83,10 +83,10 @@ Body where (Error ("missing `repeat` here" ; Error-Fix "add `repeat`" ("`repeat 
 --   show "Hello, world!"
 -- }
 -- ```
+@(highlight-category : "control-flow")
+@(highlight-icon : "repeat")
 repeat :: State (infer Body) (infer Result) where (Repeat-Predicate State Body Result) => State {Body} -> Result
 repeat : state body -> when (Repeat-Predicate state) {
     Continue next -> repeat (next (do body)) body
     Stop result -> result
 }
-
-instance (Highlight repeat (Highlight-Category "control-flow" ; Highlight-Icon "repeat"))

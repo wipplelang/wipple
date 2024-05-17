@@ -209,7 +209,7 @@ pub enum BinaryOperator {
 /// An attribute.
 #[derive(Serialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub enum Attribute<D: Driver> {
     /// An invalid attribute.
@@ -231,7 +231,7 @@ pub enum Attribute<D: Driver> {
 /// An attribute value.
 #[derive(Serialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub enum AttributeValue<D: Driver> {
     /// An invalid attribute value.

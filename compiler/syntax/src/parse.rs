@@ -46,7 +46,7 @@ where
     PartialEq(bound = "D::Info: PartialEq"),
     Eq(bound = "D::Info: Eq")
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub(crate) enum Attribute<D: Driver> {
     Error,
@@ -73,7 +73,7 @@ impl<D: Driver> DefaultFromInfo<D::Info> for Attribute<D> {
     PartialEq(bound = "D::Info: PartialEq"),
     Eq(bound = "D::Info: Eq")
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub(crate) enum AttributeValue<D: Driver> {
     Error,

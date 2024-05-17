@@ -496,7 +496,7 @@ pub struct Instance<D: Driver> {
 /// An attribute.
 #[derive(Serialize, Deserialize, Derivative, TS)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound(serialize = "", deserialize = ""))]
 #[ts(export, rename = "typecheck_Attribute", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Attribute<D: Driver> {
@@ -519,7 +519,7 @@ pub enum Attribute<D: Driver> {
 /// An attribute value.
 #[derive(Serialize, Deserialize, Derivative, TS)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound(serialize = "", deserialize = ""))]
 #[ts(export, rename = "typecheck_AttributeValue", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum AttributeValue<D: Driver> {
