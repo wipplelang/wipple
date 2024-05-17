@@ -67,6 +67,10 @@ type Value =
           value: TaskGroup;
       }
     | {
+          type: "taskLocalKey";
+          value: symbol;
+      }
+    | {
           type: "hasher";
       };
 
@@ -75,13 +79,13 @@ export interface Context {
     debug: boolean;
     gc: () => void;
     io: (request: IoRequest) => void;
-    call: (func: TypedValue, inputs: TypedValue[], task: any) => Promise<TypedValue>;
-    do: (block: TypedValue, task: any) => Promise<TypedValue>;
+    call: (func: TypedValue, inputs: TypedValue[], task: TaskLocals) => Promise<TypedValue>;
+    do: (block: TypedValue, task: TaskLocals) => Promise<TypedValue>;
     getItem: (
         path: string,
         substitutions: TypeDescriptor[] | Record<string, TypeDescriptor>,
         typeDescriptor: TypeDescriptor,
-        task: any,
+        task: TaskLocals,
     ) => Promise<TypedValue>;
     error: (
         options:
@@ -124,6 +128,8 @@ export type IoRequest =
           ms: number;
           completion: () => void;
       };
+
+export type TaskLocals = Record<symbol, TypedValue>;
 
 export type TaskGroup = (() => Promise<void>)[];
 
@@ -240,7 +246,7 @@ export const evaluate = async (
     for (const path of executable.entrypoints) {
         const entrypoint = executable.items[path];
 
-        const task = () => {}; // marker
+        const task: TaskLocals = {};
 
         if (context.debug) {
             console.error("## evaluating entrypoint block");
@@ -262,7 +268,7 @@ const evaluateItem = async (
     stack: TypedValue[],
     scope: { current: TypedValue }[],
     substitutions: Record<string, TypeDescriptor>,
-    task: any,
+    task: TaskLocals,
     context: Context,
 ) => {
     let instruction: Instruction | undefined;
