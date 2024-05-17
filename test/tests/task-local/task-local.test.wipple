@@ -1,0 +1,23 @@
+-- [should compile]
+
+@once
+my-key :: Task-Local-Key Number
+my-key : task-local-key
+
+set-my-value :: Number -> ()
+set-my-value : set-task-local my-key
+
+my-value :: Maybe Number
+my-value : task-local my-key
+
+with-task-group (task-group -> do {
+    task-group . task {
+        set-my-value 1
+        show (my-value or unreachable)
+    }
+
+    task-group . task {
+        set-my-value 2
+        show (my-value or unreachable)
+    }
+})

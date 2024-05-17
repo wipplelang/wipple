@@ -2,6 +2,7 @@ import { Decimal } from "decimal.js";
 import { intrinsics, callFunction } from "./intrinsics.js";
 import { produce } from "immer";
 import type * as compiler from "wipple-compiler";
+import { Mutex } from "async-mutex";
 
 export { callFunction };
 
@@ -81,7 +82,7 @@ export interface Context {
     io: (request: IoRequest) => void;
     call: (func: TypedValue, inputs: TypedValue[], task: TaskLocals) => Promise<TypedValue>;
     do: (block: TypedValue, task: TaskLocals) => Promise<TypedValue>;
-    itemCache: Record<string, TypedValue>;
+    itemCache: Record<string, [Mutex, TypedValue | undefined]>;
     getItem: (
         path: string,
         substitutions: TypeDescriptor[] | Record<string, TypeDescriptor>,
@@ -197,9 +198,25 @@ export const evaluate = async (
                 throw new InterpreterError(`missing item: ${path}`);
             }
 
-            if (item.evaluateOnce && context.itemCache[path]) {
-                return context.itemCache[path];
+            let mutex: Mutex | undefined;
+            if (item.evaluateOnce) {
+                if (context.itemCache[path]) {
+                    const [mutex] = context.itemCache[path];
+                    return await mutex.runExclusive(() => {
+                        const value = context.itemCache[path][1];
+                        if (!value) {
+                            throw new InterpreterError(`missing cached value for ${path}`);
+                        }
+
+                        return value;
+                    });
+                } else {
+                    mutex = new Mutex();
+                    context.itemCache[path] = [mutex, undefined];
+                }
             }
+
+            await mutex?.acquire();
 
             const substitutions = Array.isArray(parametersOrSubstitutions)
                 ? Object.fromEntries(
@@ -231,8 +248,10 @@ export const evaluate = async (
 
             context.gc();
 
+            mutex?.release();
+
             if (item.evaluateOnce) {
-                context.itemCache[path] = result;
+                context.itemCache[path][1] = result;
             }
 
             return result;

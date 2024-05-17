@@ -146,7 +146,7 @@ export const intrinsics: Record<string, Intrinsic> = {
     },
     "task-local": async ([keyValue], context, task) => {
         const key = taskLocalKeyToJs(keyValue, context);
-        return task[key];
+        return key in task ? jsToSome(task[key], context) : jsToNone(context);
     },
     "in-background": async ([callback], context) => {
         const taskLocals: TaskLocals = {};

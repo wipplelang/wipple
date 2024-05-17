@@ -34,8 +34,8 @@ task-local-key :: Value => Task-Local-Key Value
 task-local-key : intrinsic "task-local-key"
 
 -- Set a value for the current task.
-set-task-local :: Value => Value -> (Task-Local-Key Value) -> ()
-set-task-local : value -> key -> intrinsic "set-task-local" key value
+set-task-local :: Value => (Task-Local-Key Value) -> Value -> ()
+set-task-local : key -> value -> intrinsic "set-task-local" key value
 
 -- Retrieve a value for the current task.
 task-local :: Value => (Task-Local-Key Value) -> Maybe Value
