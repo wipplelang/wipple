@@ -154,7 +154,7 @@ export const intrinsics: Record<string, Intrinsic> = {
             await context.do(callback, taskLocals);
         };
 
-        task();
+        context.backgroundTasks.push(task());
 
         return unit;
     },

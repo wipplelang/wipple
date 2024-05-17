@@ -99,6 +99,7 @@ export interface Context {
                   value?: TypedValue;
               },
     ) => Error;
+    backgroundTasks: Promise<void>[];
     taskLocals: Map<any, TypedValue[]>;
 }
 
@@ -269,6 +270,7 @@ export const evaluate = async (
                 );
             }
         },
+        backgroundTasks: [],
         taskLocals: new Map(),
     };
 
@@ -289,6 +291,8 @@ export const evaluate = async (
 
         await context.do(block, task);
     }
+
+    await Promise.all(context.backgroundTasks);
 };
 
 const evaluateItem = async (
