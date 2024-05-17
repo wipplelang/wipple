@@ -1,5 +1,5 @@
+@(language : "task-group")
 Task-Group : type intrinsic
-intrinsic "type" "task-group" : Task-Group
 
 -- Wait for the provided function to be called before continuing.
 with-continuation :: Result => ((Result -> ()) -> ()) -> Result

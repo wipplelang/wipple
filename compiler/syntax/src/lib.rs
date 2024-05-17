@@ -336,19 +336,6 @@ pub enum Statement<D: Driver> {
         default: bool,
     },
 
-    /// A language declaration.
-    #[serde(rename_all = "camelCase")]
-    Language {
-        /// The name of the language feature.
-        name: WithInfo<D::Info, String>,
-
-        /// The kind of value this language feature refers to.
-        kind: WithInfo<D::Info, LanguageDeclarationKind>,
-
-        /// The item this language declaration corresponds to.
-        item: WithInfo<D::Info, String>,
-    },
-
     /// A variable assignment.
     #[serde(rename_all = "camelCase")]
     Assignment {
@@ -361,21 +348,6 @@ pub enum Statement<D: Driver> {
 
     /// An expression.
     Expression(WithInfo<D::Info, Expression<D>>),
-}
-
-/// The kind of value a [`LanguageDeclaration`] refers to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[serde(bound(serialize = "", deserialize = ""))]
-pub enum LanguageDeclarationKind {
-    /// A type.
-    Type,
-
-    /// A trait.
-    Trait,
-
-    /// A constant.
-    Constant,
 }
 
 /// A parsed expression.
@@ -554,6 +526,9 @@ pub enum TypeRepresentation<D: Driver> {
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub struct Field<D: Driver> {
+    /// The field's attributes.
+    pub attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+
     /// The name of the field.
     pub name: WithInfo<D::Info, String>,
 
@@ -567,6 +542,9 @@ pub struct Field<D: Driver> {
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub struct Variant<D: Driver> {
+    /// The variant's attributes.
+    pub attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+
     /// The name of the variant.
     pub name: WithInfo<D::Info, String>,
 

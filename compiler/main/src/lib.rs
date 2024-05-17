@@ -199,7 +199,7 @@ pub struct Interface {
         HashMap<lower::Path, util::WithInfo<Info, typecheck::TypeParameterDeclaration<Driver>>>,
 
     /// The language declarations in the program.
-    pub language_declarations: HashMap<String, lower::Path>,
+    pub language_declarations: HashMap<String, Vec<lower::Path>>,
 
     /// The constant declarations in the program.
     pub constant_declarations:
@@ -667,6 +667,18 @@ impl wipple_lower::Driver for Driver {
     type Info = Info;
 }
 
+macro_rules! path_for_language {
+    ($kind:ident, $self:expr, $language_item:expr) => {
+        $self
+            .interface
+            .language_declarations
+            .get($language_item)?
+            .into_iter()
+            .find(|path| matches!(path.last().unwrap(), lower::PathComponent::$kind(_)))
+            .cloned()
+    };
+}
+
 impl wipple_typecheck::Driver for Driver {
     type Info = Info;
     type Path = wipple_lower::Path;
@@ -685,39 +697,19 @@ impl wipple_typecheck::Driver for Driver {
     }
 
     fn path_for_language_type(&self, language_item: &str) -> Option<Self::Path> {
-        Some(
-            self.interface
-                .language_declarations
-                .get(language_item)?
-                .clone(),
-        )
+        path_for_language!(Type, self, language_item)
     }
 
     fn path_for_language_trait(&self, language_item: &str) -> Option<Self::Path> {
-        Some(
-            self.interface
-                .language_declarations
-                .get(language_item)?
-                .clone(),
-        )
+        path_for_language!(Trait, self, language_item)
     }
 
     fn path_for_language_constructor(&self, language_item: &str) -> Option<Self::Path> {
-        Some(
-            self.interface
-                .language_declarations
-                .get(language_item)?
-                .clone(),
-        )
+        path_for_language!(Constructor, self, language_item)
     }
 
     fn path_for_language_constant(&self, language_item: &str) -> Option<Self::Path> {
-        Some(
-            self.interface
-                .language_declarations
-                .get(language_item)?
-                .clone(),
-        )
+        path_for_language!(Constant, self, language_item)
     }
 
     fn paths_are_equal(&self, left: &Self::Path, right: &Self::Path) -> bool {
@@ -796,21 +788,38 @@ impl wipple_typecheck::Driver for Driver {
 
 impl wipple_ir::Driver for Driver {
     fn number_type(&self) -> Option<Self::Path> {
-        self.interface.language_declarations.get("number").cloned()
+        self.interface
+            .language_declarations
+            .get("number")?
+            .iter()
+            .find(|path| matches!(path.last().unwrap(), lower::PathComponent::Type(_)))
+            .cloned()
     }
 
     fn text_type(&self) -> Option<Self::Path> {
-        self.interface.language_declarations.get("text").cloned()
+        self.interface
+            .language_declarations
+            .get("text")?
+            .iter()
+            .find(|path| matches!(path.last().unwrap(), lower::PathComponent::Type(_)))
+            .cloned()
     }
 
     fn boolean_type(&self) -> Option<Self::Path> {
-        self.interface.language_declarations.get("boolean").cloned()
+        self.interface
+            .language_declarations
+            .get("boolean")?
+            .iter()
+            .find(|path| matches!(path.last().unwrap(), lower::PathComponent::Type(_)))
+            .cloned()
     }
 
     fn true_variant(&self) -> Option<Self::Path> {
         self.interface
             .language_declarations
-            .get("true")
+            .get("true")?
+            .iter()
+            .find(|path| matches!(path.last().unwrap(), lower::PathComponent::Constructor(_)))
             .cloned()
             .map(variant_from_constructor)
     }

@@ -161,12 +161,6 @@ pub(crate) enum Statement<D: Driver> {
         r#type: WithInfo<D::Info, Type<D>>,
     },
     #[serde(rename_all = "camelCase")]
-    LanguageDeclaration {
-        name: WithInfo<D::Info, Option<String>>,
-        kind: WithInfo<D::Info, Option<LanguageDeclarationKind>>,
-        item: WithInfo<D::Info, Option<String>>,
-    },
-    #[serde(rename_all = "camelCase")]
     Assignment {
         pattern: WithInfo<D::Info, Pattern<D>>,
         value: WithInfo<D::Info, Expression<D>>,
@@ -307,6 +301,7 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TypeRepresentation<D> {
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub(crate) struct TypeMember<D: Driver> {
+    pub(crate) attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
     pub(crate) name: WithInfo<D::Info, Option<String>>,
     pub(crate) kind: TypeMemberKind<D>,
 }
@@ -316,6 +311,7 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TypeMember<D> {
         WithInfo {
             info: info.clone(),
             item: TypeMember {
+                attributes: Vec::new(),
                 name: Option::default_from_info(info),
                 kind: TypeMemberKind::Error,
             },
@@ -913,7 +909,6 @@ mod rules {
             default_instance_declaration::<D>().render(),
             instance_declaration::<D>().render(),
             constant_declaration::<D>().render(),
-            language_declaration::<D>().render(),
             assignment::<D>().render(),
             r#type::<D>().render(),
             placeholder_type::<D>().render(),
@@ -1034,7 +1029,6 @@ mod rules {
                 default_instance_declaration,
                 instance_declaration,
                 constant_declaration,
-                language_declaration,
                 assignment,
                 || expression().map(SyntaxKind::Statement, Statement::Expression),
             ],
@@ -1530,53 +1524,6 @@ mod rules {
         .named("A constant declaration.")
     }
 
-    pub fn language_declaration<D: Driver>() -> Rule<D, Statement<D>> {
-        Rule::non_associative_operator(
-            SyntaxKind::LanguageDeclaration,
-            NonAssociativeOperator::Assign,
-            || {
-                Rule::keyword2(
-                    SyntaxKind::LanguageDeclaration,
-                    Keyword::Intrinsic,
-                    || {
-                        text().wrapped().try_map(
-                            |text| Some(text.item?.parse::<LanguageDeclarationKind>().ok()),
-                            |parser, text, stack| {
-                                let kind = text.item?.parse::<LanguageDeclarationKind>().ok();
-                                if kind.is_none() {
-                                    parser.add_diagnostic(stack.error_expected(
-                                        WithInfo {
-                                            info: text.info,
-                                            item: SyntaxKind::LanguageDeclaration,
-                                        },
-                                        None,
-                                    ));
-                                }
-
-                                kind
-                            },
-                        )
-                    },
-                    || text().wrapped(),
-                    |_, info, kind, item, _| WithInfo {
-                        info,
-                        item: (kind, item),
-                    },
-                )
-            },
-            || name().wrapped().in_list(),
-            |_, info, declaration, item, _| {
-                let (kind, name) = declaration.item;
-
-                WithInfo {
-                    info,
-                    item: Statement::LanguageDeclaration { name, kind, item },
-                }
-            },
-        )
-        .named("A language declaration.")
-    }
-
     pub fn assignment<D: Driver>() -> Rule<D, Statement<D>> {
         Rule::non_associative_operator(
             SyntaxKind::Assignment,
@@ -1974,12 +1921,19 @@ mod rules {
                                         Rule::non_associative_operator(
                                             SyntaxKind::FieldDeclaration,
                                             NonAssociativeOperator::Annotate,
-                                            || name().wrapped().in_list().no_backtrack(),
+                                            || {
+                                                name()
+                                                    .wrapped()
+                                                    .attributed_with(attribute())
+                                                    .in_list()
+                                                    .no_backtrack()
+                                            },
                                             r#type,
                                             |_, info, name, r#type, _| WithInfo {
                                                 info,
                                                 item: TypeMember {
-                                                    name,
+                                                    attributes: name.item.attributes,
+                                                    name: name.item.value,
                                                     kind: TypeMemberKind::Field(r#type),
                                                 },
                                             },
@@ -1988,12 +1942,18 @@ mod rules {
                                     || {
                                         Rule::list_prefix(
                                             SyntaxKind::VariantDeclaration,
-                                            || name().wrapped().no_backtrack(),
+                                            || {
+                                                name()
+                                                    .wrapped()
+                                                    .attributed_with(attribute())
+                                                    .no_backtrack()
+                                            },
                                             r#type,
                                             |_, info, name, types, _| WithInfo {
                                                 info,
                                                 item: TypeMember {
-                                                    name,
+                                                    attributes: name.item.attributes,
+                                                    name: name.item.value,
                                                     kind: TypeMemberKind::Variant(types),
                                                 },
                                             },
@@ -2947,47 +2907,6 @@ mod base {
                         Some(WithInfo {
                             info: output.info.clone(),
                             item: f(output),
-                        })
-                    },
-                ),
-            }
-        }
-
-        pub fn try_map<T>(
-            self,
-            try_parse: impl Fn(WithInfo<D::Info, Output>) -> Option<T> + 'static,
-            parse: impl Fn(&mut Parser<'_, D>, WithInfo<D::Info, Output>, &Rc<ParseStack<D>>) -> T
-                + 'static,
-        ) -> Rule<D, T>
-        where
-            Output: DefaultFromInfo<D::Info>,
-        {
-            Rule {
-                doc: self.doc,
-                syntax_kind: self.syntax_kind,
-                rendered: self.rendered.clone(),
-                backtracks: self.backtracks.clone(),
-                parse: ParseFn::new(
-                    {
-                        let rule = self.clone();
-
-                        move |parser, tree, stack| {
-                            let output = rule.try_parse(parser, tree, stack)?;
-
-                            Some(output.and_then(|output| {
-                                Ok(WithInfo {
-                                    info: output.info.clone(),
-                                    item: try_parse(output).ok_or_else(|| stack.len())?,
-                                })
-                            }))
-                        }
-                    },
-                    move |parser, tree, stack| {
-                        let output = self.parse(parser, tree, stack);
-
-                        Some(WithInfo {
-                            info: output.info.clone(),
-                            item: parse(parser, output, stack),
                         })
                     },
                 ),

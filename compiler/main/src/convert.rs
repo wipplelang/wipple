@@ -197,6 +197,12 @@ pub mod interface {
                             info: field.info.clone(),
                             item: wipple_lower::Field {
                                 index: field.item.index,
+                                attributes: field
+                                    .item
+                                    .attributes
+                                    .into_iter()
+                                    .map(convert_attribute)
+                                    .collect(),
                                 name: wipple_util::WithInfo {
                                     info: field.info,
                                     item: name,
@@ -215,6 +221,12 @@ pub mod interface {
                             info: variant.info.clone(),
                             item: wipple_lower::Variant {
                                 index: variant.item.index,
+                                attributes: variant
+                                    .item
+                                    .attributes
+                                    .into_iter()
+                                    .map(convert_attribute)
+                                    .collect(),
                                 name: wipple_util::WithInfo {
                                     info: variant.info,
                                     item: name,
@@ -343,21 +355,6 @@ pub mod lower {
                 body: body.map(convert_expression),
                 default,
             },
-            wipple_syntax::Statement::Language { name, kind, item } => {
-                let kind = kind.map(|kind| match kind {
-                    wipple_syntax::LanguageDeclarationKind::Type => {
-                        wipple_lower::LanguageDeclarationKind::Type
-                    }
-                    wipple_syntax::LanguageDeclarationKind::Trait => {
-                        wipple_lower::LanguageDeclarationKind::Trait
-                    }
-                    wipple_syntax::LanguageDeclarationKind::Constant => {
-                        wipple_lower::LanguageDeclarationKind::Constant
-                    }
-                });
-
-                wipple_lower::UnresolvedStatement::Language { name, kind, item }
-            }
             wipple_syntax::Statement::Assignment { pattern, value } => {
                 wipple_lower::UnresolvedStatement::Assignment {
                     pattern: convert_pattern(pattern),
@@ -402,6 +399,11 @@ pub mod lower {
                         .map(|(index, field)| {
                             field.map(|field| wipple_lower::UnresolvedField {
                                 index: index as u32,
+                                attributes: field
+                                    .attributes
+                                    .into_iter()
+                                    .map(convert_attribute)
+                                    .collect(),
                                 name: field.name,
                                 r#type: convert_type(field.r#type),
                             })
@@ -417,6 +419,11 @@ pub mod lower {
                         .map(|(index, variant)| {
                             variant.map(|variant| wipple_lower::UnresolvedVariant {
                                 index: index as u32,
+                                attributes: variant
+                                    .attributes
+                                    .into_iter()
+                                    .map(convert_attribute)
+                                    .collect(),
                                 name: variant.name,
                                 types: variant.types.into_iter().map(convert_type).collect(),
                             })
@@ -761,6 +768,12 @@ pub mod typecheck {
                                             info: field.info,
                                             item: wipple_typecheck::StructureField {
                                                 index: field.item.index,
+                                                attributes: field
+                                                    .item
+                                                    .attributes
+                                                    .into_iter()
+                                                    .map(convert_attribute)
+                                                    .collect(),
                                                 r#type: convert_type(field.item.r#type),
                                             },
                                         },
@@ -780,6 +793,12 @@ pub mod typecheck {
                                             info: variant.info,
                                             item: wipple_typecheck::EnumerationVariant {
                                                 index: variant.item.index,
+                                                attributes: variant
+                                                    .item
+                                                    .attributes
+                                                    .into_iter()
+                                                    .map(convert_attribute)
+                                                    .collect(),
                                                 value_types: variant
                                                     .item
                                                     .types

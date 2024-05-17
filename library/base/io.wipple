@@ -1,10 +1,9 @@
 -- Produce a piece of `Text` describing the value.
+@(language : "describe")
 Describe : (Value : Text) => trait (Value -> Text)
 
 Value where (Error ("cannot describe a _ value" Value)) =>
     default instance (Describe Value) : ...
-
-intrinsic "constant" "show" : Describe -- FIXME: Rename intrinsic to 'describe'
 
 -- Produce a piece of `Text` describing the value.
 describe :: (Value : Text) where (Describe Value) => Value -> Text

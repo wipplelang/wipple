@@ -292,6 +292,13 @@ fn statements<D: Driver>(
 
                                                     let mut type_representation = match member_syntaxes.next() {
                                                         Some(member_syntax) => {
+                                                            let attributes = member_syntax
+                                                                .item
+                                                                .attributes
+                                                                .into_iter()
+                                                                .map(attribute)
+                                                                .collect::<Vec<_>>();
+
                                                             let name = match member_syntax.item.name.item {
                                                                 Some(name) => WithInfo {
                                                                     info: member_syntax.item.name.info,
@@ -307,6 +314,7 @@ fn statements<D: Driver>(
                                                                         WithInfo {
                                                                             info: member_syntax.info,
                                                                             item: crate::Field {
+                                                                                attributes,
                                                                                 name,
                                                                                 r#type: r#type(type_syntax, info),
                                                                             },
@@ -318,6 +326,7 @@ fn statements<D: Driver>(
                                                                         WithInfo {
                                                                             info: member_syntax.info,
                                                                             item: crate::Variant {
+                                                                                attributes,
                                                                                 name,
                                                                                 types: type_syntaxes
                                                                                     .into_iter()
@@ -342,6 +351,13 @@ fn statements<D: Driver>(
                                                     };
 
                                                     for member_syntax in member_syntaxes {
+                                                        let attributes = member_syntax
+                                                                .item
+                                                                .attributes
+                                                                .into_iter()
+                                                                .map(attribute)
+                                                                .collect::<Vec<_>>();
+
                                                         let name = match member_syntax.item.name.item {
                                                             Some(name) => WithInfo {
                                                                 info: member_syntax.item.name.info,
@@ -373,6 +389,7 @@ fn statements<D: Driver>(
                                                                 fields.push(WithInfo {
                                                                     info: member_syntax.info,
                                                                     item: crate::Field {
+                                                                        attributes,
                                                                         name,
                                                                         r#type: r#type(type_syntax, info),
                                                                     },
@@ -397,6 +414,7 @@ fn statements<D: Driver>(
                                                                 variants.push(WithInfo {
                                                                     info: member_syntax.info,
                                                                     item: crate::Variant {
+                                                                        attributes,
                                                                         name,
                                                                         types: type_syntaxes
                                                                             .into_iter()
@@ -535,26 +553,6 @@ fn statements<D: Driver>(
                                     });
 
                                     None
-                                }
-                                parse::Statement::LanguageDeclaration { item, kind, name } => {
-                                    let item = item.try_unwrap()?;
-                                    let name = name.try_unwrap()?;
-
-                                    expected_constant_value!(Some(statement_info.clone()));
-
-                                    let kind = kind.try_unwrap()?.map(|kind| match kind {
-                                        parse::LanguageDeclarationKind::Type => {
-                                            crate::LanguageDeclarationKind::Type
-                                        }
-                                        parse::LanguageDeclarationKind::Trait => {
-                                            crate::LanguageDeclarationKind::Trait
-                                        }
-                                        parse::LanguageDeclarationKind::Constant => {
-                                            crate::LanguageDeclarationKind::Constant
-                                        }
-                                    });
-
-                                    Some(crate::Statement::Language { item, kind, name })
                                 }
                                 parse::Statement::Assignment {
                                     pattern: pattern_syntax,

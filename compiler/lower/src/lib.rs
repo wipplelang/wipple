@@ -30,7 +30,7 @@ pub struct Interface<D: Driver> {
     pub type_parameter_declarations: HashMap<Path, WithInfo<D::Info, TypeParameterDeclaration<D>>>,
 
     /// The language declarations in the module.
-    pub language_declarations: HashMap<String, Path>,
+    pub language_declarations: HashMap<String, Vec<Path>>,
 
     /// The constant declarations in the module.
     pub constant_declarations: HashMap<Path, WithInfo<D::Info, ConstantDeclaration<D>>>,
@@ -264,19 +264,6 @@ pub enum UnresolvedStatement<D: Driver> {
 
         /// Whether the instance is the default instance.
         default: bool,
-    },
-
-    /// A language declaration.
-    #[serde(rename_all = "camelCase")]
-    Language {
-        /// The name of the language feature.
-        name: WithInfo<D::Info, String>,
-
-        /// The kind of value this language feature refers to.
-        kind: WithInfo<D::Info, LanguageDeclarationKind>,
-
-        /// The item this language declaration corresponds to.
-        item: WithInfo<D::Info, String>,
     },
 
     /// A variable assignment.
@@ -519,6 +506,9 @@ pub struct UnresolvedField<D: Driver> {
     /// The index of the field.
     pub index: u32,
 
+    /// The field's attributes.
+    pub attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+
     /// The name of the field.
     pub name: WithInfo<D::Info, String>,
 
@@ -534,6 +524,9 @@ pub struct UnresolvedField<D: Driver> {
 pub struct UnresolvedVariant<D: Driver> {
     /// The index of the variant.
     pub index: u32,
+
+    /// The variant's attributes.
+    pub attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
 
     /// The name of the variant.
     pub name: WithInfo<D::Info, String>,
@@ -1203,6 +1196,9 @@ pub struct Field<D: Driver> {
     /// The index of the field.
     pub index: u32,
 
+    /// The field's attributes.
+    pub attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+
     /// The name of the field.
     pub name: WithInfo<D::Info, String>,
 
@@ -1218,6 +1214,9 @@ pub struct Field<D: Driver> {
 pub struct Variant<D: Driver> {
     /// The index of the variant.
     pub index: u32,
+
+    /// The variant's attributes.
+    pub attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
 
     /// The name of the variant.
     pub name: WithInfo<D::Info, Path>,

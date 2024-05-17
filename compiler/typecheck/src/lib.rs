@@ -614,6 +614,9 @@ pub struct StructureField<D: Driver> {
     /// The index of the field.
     pub index: u32,
 
+    /// The field's attributes.
+    pub attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+
     /// The type of the field's value.
     pub r#type: WithInfo<D::Info, Type<D>>,
 }
@@ -627,6 +630,9 @@ pub struct StructureField<D: Driver> {
 pub struct EnumerationVariant<D: Driver> {
     /// The index of the variant.
     pub index: u32,
+
+    /// The variant's attributes.
+    pub attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
 
     /// The types of the variant's associated values.
     pub value_types: Vec<WithInfo<D::Info, Type<D>>>,

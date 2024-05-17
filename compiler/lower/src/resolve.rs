@@ -34,12 +34,12 @@ pub fn resolve<D: Driver>(
         instance_declarations,
     );
 
-    info.language_declarations.extend(
-        dependencies
-            .language_declarations
-            .into_iter()
-            .map(|(item, path)| (item, Some(path))),
-    );
+    for (name, paths) in dependencies.language_declarations {
+        info.language_declarations
+            .entry(name)
+            .or_default()
+            .extend(paths);
+    }
 
     for (name, paths) in dependencies.top_level {
         for path in paths {
@@ -141,11 +141,13 @@ pub fn resolve<D: Driver>(
         instance_declarations,
     );
 
-    interface.language_declarations.extend(
-        info.language_declarations
-            .into_iter()
-            .filter_map(|(name, path)| Some((name, path?))),
-    );
+    for (name, paths) in info.language_declarations {
+        interface
+            .language_declarations
+            .entry(name)
+            .or_default()
+            .extend(paths);
+    }
 
     crate::Result {
         interface,
@@ -165,7 +167,7 @@ struct Info<D: Driver> {
         HashMap<crate::Path, WithInfo<D::Info, Option<crate::ConstantDeclaration<D>>>>,
     type_parameter_declarations:
         HashMap<crate::Path, WithInfo<D::Info, Option<crate::TypeParameterDeclaration<D>>>>,
-    language_declarations: HashMap<String, Option<crate::Path>>,
+    language_declarations: HashMap<String, Vec<crate::Path>>,
     instance_declarations:
         HashMap<crate::Path, WithInfo<D::Info, Option<crate::InstanceDeclaration<D>>>>,
     library: crate::Library<D>,
@@ -296,76 +298,61 @@ fn split_executable_statements<D: Driver>(
     Vec<Vec<WithInfo<D::Info, crate::UnresolvedStatement<D>>>>,
     Vec<WithInfo<D::Info, crate::UnresolvedStatement<D>>>,
 ) {
-    let (declaration_statements, executable_statements): (Vec<_>, Vec<_>) =
-        statements
-            .into_iter()
-            .filter_map(|statement| {
-                macro_rules! insert_declaration {
-                    ($declarations:ident, $name:expr, $path:expr $(,)?) => {{
-                        use std::collections::hash_map::Entry;
+    let (declaration_statements, executable_statements): (Vec<_>, Vec<_>) = statements
+        .into_iter()
+        .filter_map(|statement| {
+            macro_rules! insert_declaration {
+                ($declarations:ident, $name:expr, $path:expr $(,)?) => {{
+                    use std::collections::hash_map::Entry;
 
-                        let path = $path;
+                    let path = $path;
 
-                        match info.$declarations.entry(path.clone()) {
-                            Entry::Occupied(entry) => {
-                                info.errors.push(statement.replace(
-                                    crate::Diagnostic::AlreadyDefined(entry.key().clone()),
-                                ));
+                    match info.$declarations.entry(path.clone()) {
+                        Entry::Occupied(entry) => {
+                            info.errors.push(
+                                statement.replace(crate::Diagnostic::AlreadyDefined(
+                                    entry.key().clone(),
+                                )),
+                            );
 
-                                None
-                            }
-                            Entry::Vacant(entry) => {
-                                entry.insert(statement.replace(None));
-                                info.scopes.define($name.clone(), statement.replace(path));
-                                Some(statement)
-                            }
+                            None
                         }
-                    }};
-                }
-
-                match &statement.item {
-                    crate::UnresolvedStatement::Type { name, .. } => insert_declaration!(
-                        type_declarations,
-                        &name.item,
-                        info.make_path(crate::PathComponent::Type(name.item.clone())),
-                    ),
-                    crate::UnresolvedStatement::Trait { name, .. } => insert_declaration!(
-                        trait_declarations,
-                        &name.item,
-                        info.make_path(crate::PathComponent::Trait(name.item.clone())),
-                    ),
-                    crate::UnresolvedStatement::Constant { name, .. } => insert_declaration!(
-                        constant_declarations,
-                        &name.item,
-                        info.make_path(crate::PathComponent::Constant(name.item.clone())),
-                    ),
-                    crate::UnresolvedStatement::Language { name, .. } => {
-                        if info.path.len() > 1 {
-                            info.errors.push(WithInfo {
-                                info: statement.info,
-                                item: crate::Diagnostic::NestedLanguageDeclaration,
-                            });
-
-                            return None;
+                        Entry::Vacant(entry) => {
+                            entry.insert(statement.replace(None));
+                            info.scopes.define($name.clone(), statement.replace(path));
+                            Some(statement)
                         }
-
-                        info.language_declarations.insert(name.item.clone(), None);
-
-                        Some(statement)
                     }
-                    crate::UnresolvedStatement::Instance { .. }
-                    | crate::UnresolvedStatement::Assignment { .. }
-                    | crate::UnresolvedStatement::Expression(_) => Some(statement),
-                }
-            })
-            .partition(|statement| {
-                matches!(
-                    statement.item,
-                    crate::UnresolvedStatement::Type { .. }
-                        | crate::UnresolvedStatement::Trait { .. }
-                        | crate::UnresolvedStatement::Language { .. }
-                )
-            });
+                }};
+            }
+
+            match &statement.item {
+                crate::UnresolvedStatement::Type { name, .. } => insert_declaration!(
+                    type_declarations,
+                    &name.item,
+                    info.make_path(crate::PathComponent::Type(name.item.clone())),
+                ),
+                crate::UnresolvedStatement::Trait { name, .. } => insert_declaration!(
+                    trait_declarations,
+                    &name.item,
+                    info.make_path(crate::PathComponent::Trait(name.item.clone())),
+                ),
+                crate::UnresolvedStatement::Constant { name, .. } => insert_declaration!(
+                    constant_declarations,
+                    &name.item,
+                    info.make_path(crate::PathComponent::Constant(name.item.clone())),
+                ),
+                crate::UnresolvedStatement::Instance { .. }
+                | crate::UnresolvedStatement::Assignment { .. }
+                | crate::UnresolvedStatement::Expression(_) => Some(statement),
+            }
+        })
+        .partition(|statement| {
+            matches!(
+                statement.item,
+                crate::UnresolvedStatement::Type { .. } | crate::UnresolvedStatement::Trait { .. }
+            )
+        });
 
     let (type_statements, language_statements): (Vec<_>, Vec<_>) =
         declaration_statements.into_iter().partition(|statement| {
@@ -410,6 +397,7 @@ fn resolve_statements<D: Driver>(
                 let representation = representation.map(|representation| match representation {
                     crate::UnresolvedTypeRepresentation::Marker => {
                         constructors.push(generate_marker_constructor(
+                            attributes.clone(),
                             name.clone(),
                             parameters.clone(),
                             info,
@@ -419,6 +407,7 @@ fn resolve_statements<D: Driver>(
                     }
                     crate::UnresolvedTypeRepresentation::Structure(fields) => {
                         constructors.push(generate_structure_constructor(
+                            attributes.clone(),
                             name,
                             parameters.clone(),
                             info,
@@ -430,6 +419,7 @@ fn resolve_statements<D: Driver>(
                                 .map(|field| {
                                     field.map(|field| crate::Field {
                                         index: field.index,
+                                        attributes: field.attributes,
                                         name: field.name,
                                         r#type: resolve_type(field.r#type, info),
                                     })
@@ -454,6 +444,7 @@ fn resolve_statements<D: Driver>(
                                             .collect::<Vec<_>>();
 
                                         constructors.push(generate_variant_constructor(
+                                            variant.attributes.clone(),
                                             variant.name.clone(),
                                             parameters.clone(),
                                             variant_path.clone(),
@@ -466,6 +457,7 @@ fn resolve_statements<D: Driver>(
 
                                         crate::Variant {
                                             index: variant.index,
+                                            attributes: variant.attributes,
                                             name: variant_path,
                                             types: value_types,
                                         }
@@ -478,6 +470,7 @@ fn resolve_statements<D: Driver>(
                         let value_type = resolve_type(r#type, info);
 
                         constructors.push(generate_wrapper_constructor(
+                            attributes.clone(),
                             name.clone(),
                             value_type.clone(),
                             parameters.clone(),
@@ -487,6 +480,8 @@ fn resolve_statements<D: Driver>(
                         crate::TypeRepresentation::Wrapper(value_type)
                     }
                 });
+
+                resolve_attributes(&attributes, info);
 
                 info.scopes.pop_scope();
 
@@ -524,19 +519,21 @@ fn resolve_statements<D: Driver>(
 
                 let r#type = r#type.map(|r#type| resolve_type(r#type, info));
 
+                resolve_attributes(&attributes, info);
+
                 info.scopes.pop_scope();
 
                 let declaration = info.trait_declarations.get_mut(&info.path).unwrap();
 
                 declaration.item = Some(crate::TraitDeclaration {
-                    attributes,
+                    attributes: attributes.clone(),
                     parameters: parameters.clone(),
                     r#type: r#type.clone(),
                 });
 
                 if let Some(r#type) = r#type {
                     let (name, constructor) =
-                        generate_trait_constructor(name, parameters, r#type, info);
+                        generate_trait_constructor(attributes, name, parameters, r#type, info);
 
                     info.scopes.define(name, constructor);
                 }
@@ -568,6 +565,8 @@ fn resolve_statements<D: Driver>(
                     .collect::<Vec<_>>();
 
                 let r#type = resolve_type(r#type, info);
+
+                resolve_attributes(&attributes, info);
 
                 let scope = info.scopes.pop_scope();
 
@@ -655,32 +654,6 @@ fn resolve_statements<D: Driver>(
                 );
 
                 info.path.pop().unwrap();
-
-                None
-            }
-            crate::UnresolvedStatement::Language { name, kind, item } => {
-                let path = resolve_name(item, info, |candidates| {
-                    candidates
-                        .iter()
-                        .filter(|path| match path.item.last().unwrap() {
-                            crate::PathComponent::Type(_) => {
-                                matches!(kind.item, crate::LanguageDeclarationKind::Type)
-                            }
-                            crate::PathComponent::Trait(_) => {
-                                matches!(kind.item, crate::LanguageDeclarationKind::Trait)
-                            }
-                            crate::PathComponent::Constant(_)
-                            | crate::PathComponent::Constructor(_) => {
-                                matches!(kind.item, crate::LanguageDeclarationKind::Constant)
-                            }
-                            _ => false,
-                        })
-                        .map(|path| (path.item.clone(), path.clone()))
-                        .collect()
-                })?;
-
-                let declaration = info.language_declarations.get_mut(&name.item).unwrap();
-                *declaration = Some(path.item);
 
                 None
             }
@@ -775,15 +748,40 @@ fn resolve_statements<D: Driver>(
     statements
 }
 
+fn resolve_attributes<D: Driver>(
+    attributes: &[WithInfo<D::Info, crate::Attribute<D>>],
+    info: &mut Info<D>,
+) {
+    for attribute in attributes {
+        if let crate::Attribute::Valued { name, value } = &attribute.item {
+            if name.item.as_str() == "language" {
+                if let crate::AttributeValue::Text(language_item) = &value.item {
+                    info.language_declarations
+                        .entry(language_item.item.clone())
+                        .or_default()
+                        .push(info.path.clone());
+                }
+            }
+        }
+    }
+}
+
 fn generate_marker_constructor<D: Driver>(
+    attributes: Vec<WithInfo<D::Info, crate::Attribute<D>>>,
     name: WithInfo<D::Info, String>,
     parameters: Vec<crate::Path>,
     info: &mut Info<D>,
 ) -> (String, WithInfo<D::Info, crate::Path>) {
-    let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
+    info.path
+        .push(crate::PathComponent::Constructor(name.item.clone()));
+
+    resolve_attributes(&attributes, info);
+
+    let constructor_path = info.path.clone();
+    info.path.pop().unwrap();
 
     let constructor_declaration = crate::ConstantDeclaration {
-        attributes: Vec::new(),
+        attributes,
         parameters: parameters.clone(),
         bounds: Vec::new(),
         r#type: WithInfo {
@@ -836,14 +834,21 @@ fn generate_marker_constructor<D: Driver>(
 }
 
 fn generate_structure_constructor<D: Driver>(
+    attributes: Vec<WithInfo<D::Info, crate::Attribute<D>>>,
     name: WithInfo<D::Info, String>,
     parameters: Vec<crate::Path>,
     info: &mut Info<D>,
 ) -> (String, WithInfo<D::Info, crate::Path>) {
-    let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
+    info.path
+        .push(crate::PathComponent::Constructor(name.item.clone()));
+
+    resolve_attributes(&attributes, info);
+
+    let constructor_path = info.path.clone();
+    info.path.pop().unwrap();
 
     let constructor_declaration = crate::ConstantDeclaration {
-        attributes: Vec::new(),
+        attributes,
         parameters: parameters.clone(),
         bounds: Vec::new(),
         r#type: WithInfo {
@@ -936,13 +941,20 @@ fn generate_structure_constructor<D: Driver>(
 }
 
 fn generate_variant_constructor<D: Driver>(
+    attributes: Vec<WithInfo<D::Info, crate::Attribute<D>>>,
     name: WithInfo<D::Info, String>,
     parameters: Vec<crate::Path>,
     variant_path: WithInfo<D::Info, crate::Path>,
     value_types: Vec<WithInfo<D::Info, crate::Type<D>>>,
     info: &mut Info<D>,
 ) -> (String, WithInfo<D::Info, crate::Path>) {
-    let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
+    info.path
+        .push(crate::PathComponent::Constructor(name.item.clone()));
+
+    resolve_attributes(&attributes, info);
+
+    let constructor_path = info.path.clone();
+    info.path.pop().unwrap();
 
     let constructor_declaration = {
         let output_type = WithInfo {
@@ -964,7 +976,7 @@ fn generate_variant_constructor<D: Driver>(
         };
 
         crate::ConstantDeclaration {
-            attributes: Vec::new(),
+            attributes,
             parameters,
             bounds: Vec::new(),
             r#type: if value_types.is_empty() {
@@ -1055,15 +1067,22 @@ fn generate_variant_constructor<D: Driver>(
 }
 
 fn generate_wrapper_constructor<D: Driver>(
+    attributes: Vec<WithInfo<D::Info, crate::Attribute<D>>>,
     name: WithInfo<D::Info, String>,
     value_type: WithInfo<D::Info, crate::Type<D>>,
     parameters: Vec<crate::Path>,
     info: &mut Info<D>,
 ) -> (String, WithInfo<D::Info, crate::Path>) {
-    let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
+    info.path
+        .push(crate::PathComponent::Constructor(name.item.clone()));
+
+    resolve_attributes(&attributes, info);
+
+    let constructor_path = info.path.clone();
+    info.path.pop().unwrap();
 
     let constructor_declaration = crate::ConstantDeclaration {
-        attributes: Vec::new(),
+        attributes,
         parameters: parameters.clone(),
         bounds: Vec::new(),
         r#type: WithInfo {
@@ -1147,15 +1166,22 @@ fn generate_wrapper_constructor<D: Driver>(
 }
 
 fn generate_trait_constructor<D: Driver>(
+    attributes: Vec<WithInfo<D::Info, crate::Attribute<D>>>,
     name: WithInfo<D::Info, String>,
     parameters: Vec<crate::Path>,
     r#type: WithInfo<D::Info, crate::Type<D>>,
     info: &mut Info<D>,
 ) -> (String, WithInfo<D::Info, crate::Path>) {
-    let constructor_path = info.make_path(crate::PathComponent::Constructor(name.item.clone()));
+    info.path
+        .push(crate::PathComponent::Constructor(name.item.clone()));
+
+    resolve_attributes(&attributes, info);
+
+    let constructor_path = info.path.clone();
+    info.path.pop().unwrap();
 
     let constructor_declaration = crate::ConstantDeclaration {
-        attributes: Vec::new(),
+        attributes,
         parameters: parameters.clone(),
         bounds: vec![name.replace(crate::Instance {
             r#trait: name.replace(info.path.clone()),
@@ -1325,11 +1351,15 @@ fn resolve_expression<D: Driver>(
                 item: String::from("as"),
             };
 
-            let operator_trait =
-                operator.replace(match resolve_language_item(operator.clone(), info) {
+            let operator_trait = operator.replace(
+                match resolve_language_item(operator.clone(), info)
+                    .into_iter()
+                    .find(|path| matches!(path.last().unwrap(), crate::PathComponent::Trait(_)))
+                {
                     Some(path) => crate::Expression::Trait(path),
                     None => crate::Expression::Error,
-                });
+                },
+            );
 
             let r#type = resolve_type(r#type, info);
 
@@ -1349,20 +1379,32 @@ fn resolve_expression<D: Driver>(
                 item: String::from("true"),
             };
 
-            let true_value = r#true.replace(match resolve_language_item(r#true.clone(), info) {
-                Some(path) => crate::Expression::Constant(path),
-                None => crate::Expression::Error,
-            });
+            let true_value = r#true.replace(
+                match resolve_language_item(r#true.clone(), info)
+                    .into_iter()
+                    .find(|path| {
+                        matches!(path.last().unwrap(), crate::PathComponent::Constructor(_))
+                    }) {
+                    Some(path) => crate::Expression::Constant(path),
+                    None => crate::Expression::Error,
+                },
+            );
 
             let r#false = WithInfo {
                 info: expression_info.clone(),
                 item: String::from("false"),
             };
 
-            let false_value = r#false.replace(match resolve_language_item(r#false.clone(), info) {
-                Some(path) => crate::Expression::Constant(path),
-                None => crate::Expression::Error,
-            });
+            let false_value = r#false.replace(
+                match resolve_language_item(r#false.clone(), info)
+                    .into_iter()
+                    .find(|path| {
+                        matches!(path.last().unwrap(), crate::PathComponent::Constructor(_))
+                    }) {
+                    Some(path) => crate::Expression::Constant(path),
+                    None => crate::Expression::Error,
+                },
+            );
 
             let when_expression = |value: WithInfo<D::Info, crate::Expression<D>>,
                                    info: &mut Info<D>| {
@@ -1870,11 +1912,14 @@ fn resolve_binary_operator<D: Driver>(
     info: &mut Info<D>,
 ) -> crate::Expression<D> {
     let operator_trait = operator.replace(
-        match resolve_language_item(operator.as_ref().map(ToString::to_string), info) {
+        match resolve_language_item(operator.as_ref().map(ToString::to_string), info)
+            .into_iter()
+            .find(|path| matches!(path.last().unwrap(), crate::PathComponent::Trait(_)))
+        {
             Some(mut path) => {
                 let name = match path.last().unwrap() {
                     crate::PathComponent::Trait(name) => name.clone(),
-                    _ => panic!("expected a trait for language item {}", operator.item),
+                    _ => unreachable!(),
                 };
 
                 path.push(crate::PathComponent::Constructor(name));
@@ -1914,31 +1959,18 @@ fn resolve_binary_operator<D: Driver>(
 fn resolve_language_item<D: Driver>(
     name: WithInfo<D::Info, String>,
     info: &mut Info<D>,
-) -> Option<crate::Path> {
+) -> Vec<crate::Path> {
     match info
         .language_declarations
         .get(&name.item)
-        .map(|declaration| declaration.as_ref())
-        .or_else(|| {
-            info.dependencies
-                .language_declarations
-                .get(&name.item)
-                .map(Some)
-        }) {
-        Some(item) => Some(
-            item.unwrap_or_else(|| {
-                panic!(
-                    "language items are resolved before everything else: {:?}",
-                    name.item
-                )
-            })
-            .clone(),
-        ),
+        .or_else(|| info.dependencies.language_declarations.get(&name.item))
+    {
+        Some(paths) => paths.clone(),
         None => {
             info.errors
                 .push(name.map(crate::Diagnostic::UnresolvedLanguageItem));
 
-            None
+            Vec::new()
         }
     }
 }
