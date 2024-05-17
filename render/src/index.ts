@@ -107,9 +107,10 @@ export class Render {
 
     getDeclarationFromInfo(
         info: compiler.Info,
+        between: boolean
     ): compiler.WithInfo<compiler.Info, AnyDeclaration> | null {
         for (const declaration of this.declarations) {
-            if (this.compareInfo(declaration.info, info)) {
+            if (this.compareInfo(declaration.info, info, between)) {
                 return declaration;
             }
         }
@@ -1178,7 +1179,7 @@ export class Render {
             return null;
         }
 
-        const declaration = this.getDeclarationFromInfo(value.info);
+        const declaration = this.getDeclarationFromInfo(value.info, false);
 
         if (!declaration) {
             return null;
@@ -1295,7 +1296,7 @@ export class Render {
 
         const info = expressionTree[0].info;
         if (info) {
-            const declaration = this.getDeclarationFromInfo(info);
+            const declaration = this.getDeclarationFromInfo(info, true);
             if (declaration?.item.type === "constant" || declaration?.item.type === "instance") {
                 for (const typeParameter of declaration.item.declaration.parameters) {
                     const typeParameterDeclaration = this.getDeclarationFromPath(typeParameter);
@@ -1515,11 +1516,15 @@ export class Render {
         return null;
     }
 
-    private compareInfo(left: compiler.Info, right: compiler.Info): boolean {
+    private compareInfo(left: compiler.Info, right: compiler.Info, between: boolean): boolean {
         return (
             left.location.visiblePath === right.location.visiblePath &&
-            left.location.span.start >= right.location.span.start &&
-            left.location.span.end <= right.location.span.end
+            (between
+                ? left.location.span.start >= right.location.span.start
+                : left.location.span.start === right.location.span.start) &&
+            (between
+                ? left.location.span.end <= right.location.span.end
+                : left.location.span.end === right.location.span.end)
         );
     }
 
