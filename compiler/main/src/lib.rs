@@ -446,6 +446,7 @@ impl Driver {
             if let Some(ir_result) = ir::compile(
                 &self,
                 path.clone(),
+                &declaration.item.attributes,
                 item.as_ref(),
                 &typecheck_result.captures,
             ) {
@@ -456,6 +457,7 @@ impl Driver {
                             parameters: declaration.item.parameters.clone(),
                             expression: item.expression,
                             ir: item.instructions,
+                            evaluate_once: item.evaluate_once,
                         },
                     );
                 }
@@ -506,6 +508,7 @@ impl Driver {
             if let Some(ir_result) = ir::compile(
                 &self,
                 path.clone(),
+                &[],
                 item.as_ref(),
                 &typecheck_result.captures,
             ) {
@@ -516,6 +519,7 @@ impl Driver {
                             parameters: declaration.item.parameters.clone(),
                             expression: item.expression,
                             ir: item.instructions,
+                            evaluate_once: item.evaluate_once,
                         },
                     );
                 }
@@ -548,6 +552,7 @@ impl Driver {
                 if let Some(ir_result) = ir::compile(
                     &self,
                     path.clone(),
+                    &[],
                     item.as_ref(),
                     &typecheck_result.captures,
                 ) {
@@ -558,6 +563,7 @@ impl Driver {
                                 parameters: Vec::new(),
                                 expression: item.expression,
                                 ir: item.instructions,
+                                evaluate_once: item.evaluate_once,
                             },
                         );
                     }

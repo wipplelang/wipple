@@ -3,10 +3,11 @@ use itertools::Itertools;
 use std::{collections::HashMap, mem};
 use wipple_util::WithInfo;
 
-pub fn compile<D: crate::Driver>(
+pub fn compile<'a, D: crate::Driver>(
     driver: &D,
     path: D::Path,
-    expression: WithInfo<D::Info, &wipple_typecheck::TypedExpression<D>>,
+    attributes: &'a [WithInfo<D::Info, wipple_typecheck::Attribute<D>>],
+    expression: WithInfo<D::Info, &'a wipple_typecheck::TypedExpression<D>>,
     captures: &[D::Path],
 ) -> Option<HashMap<D::Path, crate::Item<D>>> {
     let mut info = Info {
@@ -16,9 +17,14 @@ pub fn compile<D: crate::Driver>(
         context: Context::default(),
     };
 
-    compile_item_with_captures(path, captures, expression, &mut info, |expression, info| {
-        compile_expression(expression, info)
-    })?;
+    compile_item_with_captures(
+        path,
+        captures,
+        attributes,
+        expression,
+        &mut info,
+        |expression, info| compile_expression(expression, info),
+    )?;
 
     Some(info.items)
 }
@@ -123,6 +129,7 @@ impl<D: crate::Driver> Info<'_, D> {
 fn compile_item_with_captures<'a, D: crate::Driver>(
     path: D::Path,
     captures_paths: &[D::Path],
+    attributes: &'a [WithInfo<D::Info, wipple_typecheck::Attribute<D>>],
     expression: WithInfo<D::Info, &'a wipple_typecheck::TypedExpression<D>>,
     info: &mut Info<'_, D>,
     body: impl FnOnce(
@@ -143,12 +150,18 @@ fn compile_item_with_captures<'a, D: crate::Driver>(
         })
         .collect::<Option<Vec<_>>>()?;
 
+    let evaluate_once = attributes.iter().any(|attribute| match &attribute.item {
+        wipple_typecheck::Attribute::Name(attribute) => attribute.item == "once",
+        _ => false,
+    });
+
     info.items.insert(
         path.clone(),
         crate::Item {
             captures: captures.len() as u32,
             expression: expression.as_deref().map(Clone::clone),
             instructions: Vec::new(),
+            evaluate_once,
         },
     );
 
@@ -222,6 +235,7 @@ fn compile_expression<D: crate::Driver>(
             let captures = compile_item_with_captures(
                 block_path.clone(),
                 captures,
+                &[],
                 expression.clone(),
                 info,
                 |_, info| {
@@ -262,6 +276,7 @@ fn compile_expression<D: crate::Driver>(
             let captures = compile_item_with_captures(
                 function_path.clone(),
                 captures,
+                &[],
                 expression.clone(),
                 info,
                 |_, info| {

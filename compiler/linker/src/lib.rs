@@ -52,6 +52,9 @@ pub struct UnlinkedItem<D: Driver> {
 
     /// The compiled IR.
     pub ir: Vec<wipple_ir::Instruction<D>>,
+
+    /// Whether to evaluate this item every time it is referenced, or just once.
+    pub evaluate_once: bool,
 }
 
 /// A linked executable.
@@ -97,6 +100,9 @@ pub struct LinkedItem<D: Driver> {
 
     /// The compiled IR.
     pub ir: Vec<wipple_ir::Instruction<D>>,
+
+    /// Whether to evaluate this item every time it is referenced, or just once.
+    pub evaluate_once: bool,
 }
 
 /// The linked executable, or the linking error.
@@ -157,5 +163,6 @@ fn convert_item<D: Driver>(item: UnlinkedItem<D>) -> Result<LinkedItem<D>, D> {
         type_descriptor: wipple_ir::type_descriptor(&item.expression.item.r#type)
             .unwrap_or_else(|| panic!("{:#?}", item.expression)),
         ir: item.ir,
+        evaluate_once: item.evaluate_once,
     })
 }

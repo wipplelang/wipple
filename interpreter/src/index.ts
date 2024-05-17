@@ -81,6 +81,7 @@ export interface Context {
     io: (request: IoRequest) => void;
     call: (func: TypedValue, inputs: TypedValue[], task: TaskLocals) => Promise<TypedValue>;
     do: (block: TypedValue, task: TaskLocals) => Promise<TypedValue>;
+    itemCache: Record<string, TypedValue>;
     getItem: (
         path: string,
         substitutions: TypeDescriptor[] | Record<string, TypeDescriptor>,
@@ -189,10 +190,15 @@ export const evaluate = async (
 
             return result;
         },
+        itemCache: {},
         getItem: async (path, parametersOrSubstitutions, typeDescriptor, task) => {
             const item = context.executable.items[path];
             if (!item) {
                 throw new InterpreterError(`missing item: ${path}`);
+            }
+
+            if (item.evaluateOnce && context.itemCache[path]) {
+                return context.itemCache[path];
             }
 
             const substitutions = Array.isArray(parametersOrSubstitutions)
@@ -224,6 +230,10 @@ export const evaluate = async (
             ))!;
 
             context.gc();
+
+            if (item.evaluateOnce) {
+                context.itemCache[path] = result;
+            }
 
             return result;
         },

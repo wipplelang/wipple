@@ -65,13 +65,14 @@ impl Driver for wipple_util::TsAny {
 
 /// Generate IR from an expression. This function must only be called if
 /// typechecking the item produced no errors.
-pub fn compile<D: Driver>(
+pub fn compile<'a, D: Driver>(
     driver: &D,
     path: D::Path,
-    expression: WithInfo<D::Info, &wipple_typecheck::TypedExpression<D>>,
+    attributes: &'a [WithInfo<D::Info, wipple_typecheck::Attribute<D>>],
+    expression: WithInfo<D::Info, &'a wipple_typecheck::TypedExpression<D>>,
     captures: &[D::Path],
 ) -> Option<Result<D>> {
-    let mut items = compile::compile(driver, path, expression, captures)?;
+    let mut items = compile::compile(driver, path, attributes, expression, captures)?;
 
     for item in items.values_mut() {
         tail_call::apply(&mut item.instructions);
@@ -114,6 +115,9 @@ pub struct Item<D: Driver> {
 
     /// The compiled instructions.
     pub instructions: Vec<crate::Instruction<D>>,
+
+    /// Whether to evaluate this item every time it is referenced, or just once.
+    pub evaluate_once: bool,
 }
 
 /// An instruction.
