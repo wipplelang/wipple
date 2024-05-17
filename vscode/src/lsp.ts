@@ -304,7 +304,7 @@ const compileAll = async (
     // TODO: Support dependencies
     const dependencies = null;
 
-    const result = compiler.compile(sources, dependencies, true);
+    const result = compiler.compile(sources, dependencies);
     render.update(result.interface, [result.library]); // TODO: Dependencies
 
     return result.diagnostics;

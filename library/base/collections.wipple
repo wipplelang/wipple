@@ -1,14 +1,12 @@
+@(language : "build-collection")
 Build-Collection : (infer Element) (Collection : List Element) => trait (Element -> Collection -> Collection)
 
 Element Collection where (Error ("cannot create a _ collection out of _ items" Collection Element)) =>
     default instance (Build-Collection Element Collection) : ...
 
-intrinsic "constant" "build-collection" : Build-Collection
-
+@(language : "initial-collection")
 initial-collection :: (infer Element) (Collection : List Element) where (Empty Collection) (Build-Collection Element Collection) => Collection
 initial-collection : Empty
-
-intrinsic "constant" "initial-collection" : initial-collection
 
 (infer Element) => instance (Build-Collection Element (List Element)) : append
 Key Value where (Equal Key) (Hash Key) => instance (Build-Collection (Key ; Value) (Dictionary Key Value)) : (key ; value) -> insert-entry key value

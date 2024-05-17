@@ -11,16 +11,16 @@ pixels : Distance
     instance (Mismatch Number Distance)
 
 -- Move the turtle forward by the specified distance.
+@(highlight-category : "turtle-motion")
+@(highlight-icon : "arrow-upward")
 forward :: Distance -> ()
 forward : (Distance pixels) -> runtime-message "forward" pixels
 
-instance (Highlight forward (Highlight-Category "turtle-motion" ; Highlight-Icon "arrow-upward"))
-
 -- Move the turtle backward by the specified distance.
+@(highlight-category : "turtle-motion")
+@(highlight-icon : "arrow-downward")
 backward :: Distance -> ()
 backward : (Distance pixels) -> runtime-message "backward" pixels
-
-instance (Highlight backward (Highlight-Category "turtle-motion" ; Highlight-Icon "arrow-downward"))
 
 -- An arc.
 Arc : type {
@@ -29,33 +29,35 @@ Arc : type {
 }
 
 -- Move the turtle along an arc.
+@(highlight-category : "turtle-motion")
+@(highlight-icon : "progress-activity")
 arc :: Arc -> ()
 arc : {
     radius : (Distance radius)
     angle : (Angle angle)
 } -> runtime-message "arc" (radius ; angle)
 
-instance (Highlight arc (Highlight-Category "turtle-motion" ; Highlight-Icon "progress-activity"))
-
 -- Rotate the turtle counterclockwise by the specified angle.
+@(highlight-category : "turtle-turn")
+@(highlight-icon : "rotate-left")
 left :: Angle -> ()
 left : (Angle degrees) -> runtime-message "left" degrees
 
-instance (Highlight left (Highlight-Category "turtle-turn" ; Highlight-Icon "rotate-left"))
-
 -- Rotate the turtle clockwise by the specified angle.
+@(highlight-category : "turtle-turn")
+@(highlight-icon : "rotate-right")
 right :: Angle -> ()
 right : (Angle degrees) -> runtime-message "right" degrees
 
-instance (Highlight right (Highlight-Category "turtle-turn" ; Highlight-Icon "rotate-right"))
-
 -- Set the pen color.
+@(highlight-category : "turtle-pen")
+@(highlight-icon : "edit")
 color :: Color -> ()
 color : (Color color) -> runtime-message "color" color
 
-instance (Highlight color (Highlight-Category "turtle-pen" ; Highlight-Icon "edit"))
-
 -- Draw a path and fill it with the specified color.
+@(highlight-category : "turtle-pen")
+@(highlight-icon : "colors")
 fill :: Result => Color {Result} -> Result
 fill : (Color color) body -> do {
     runtime-message "begin-path" ()
@@ -63,8 +65,6 @@ fill : (Color color) body -> do {
     runtime-message "end-path" color
     result
 }
-
-instance (Highlight fill (Highlight-Category "turtle-pen" ; Highlight-Icon "colors"))
 
 -- The speed of the turtle, from `very-slow` to `very-fast`.
 Speed : type Number
@@ -90,17 +90,17 @@ very-fast :: Speed
 very-fast : Speed 1
 
 -- Set the speed of the turtle.
+@(highlight-category : "control-flow")
+@(highlight-icon : "speed")
 speed :: Speed -> ()
 speed : (Speed value) -> runtime-message "speed" value
-
-instance (Highlight speed (Highlight-Category "control-flow" ; Highlight-Icon "speed"))
 
 -- An animal to use instead of the turtle.
 Animal : type Text
 instance (Describe-Type Animal "an animal")
 
 -- Change the animal being displayed.
+@(highlight-category : "turtle-pen")
+@(highlight-icon : "mood")
 animal :: Animal -> ()
 animal : (Animal name) -> runtime-message "animal" name
-
-instance (Highlight animal (Highlight-Category "turtle-pen" ; Highlight-Icon "mood"))

@@ -1,0 +1,11 @@
+-- [should compile]
+
+@once
+temp :: Number
+temp : do {
+    show "Hello, world!"
+    42
+}
+
+show temp
+show temp

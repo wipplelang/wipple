@@ -2,6 +2,7 @@ import { Decimal } from "decimal.js";
 import { intrinsics, callFunction } from "./intrinsics.js";
 import { produce } from "immer";
 import type * as compiler from "wipple-compiler";
+import { Mutex } from "async-mutex";
 
 export { callFunction };
 
@@ -67,6 +68,10 @@ type Value =
           value: TaskGroup;
       }
     | {
+          type: "taskLocalKey";
+          value: symbol;
+      }
+    | {
           type: "hasher";
       };
 
@@ -75,13 +80,14 @@ export interface Context {
     debug: boolean;
     gc: () => void;
     io: (request: IoRequest) => void;
-    call: (func: TypedValue, inputs: TypedValue[], task: any) => Promise<TypedValue>;
-    do: (block: TypedValue, task: any) => Promise<TypedValue>;
+    call: (func: TypedValue, inputs: TypedValue[], task: TaskLocals) => Promise<TypedValue>;
+    do: (block: TypedValue, task: TaskLocals) => Promise<TypedValue>;
+    itemCache: Record<string, [Mutex, TypedValue | undefined]>;
     getItem: (
         path: string,
         substitutions: TypeDescriptor[] | Record<string, TypeDescriptor>,
         typeDescriptor: TypeDescriptor,
-        task: any,
+        task: TaskLocals,
     ) => Promise<TypedValue>;
     error: (
         options:
@@ -93,6 +99,7 @@ export interface Context {
                   value?: TypedValue;
               },
     ) => Error;
+    backgroundTasks: Promise<void>[];
     taskLocals: Map<any, TypedValue[]>;
 }
 
@@ -124,6 +131,8 @@ export type IoRequest =
           ms: number;
           completion: () => void;
       };
+
+export type TaskLocals = Record<symbol, TypedValue>;
 
 export type TaskGroup = (() => Promise<void>)[];
 
@@ -183,11 +192,32 @@ export const evaluate = async (
 
             return result;
         },
+        itemCache: {},
         getItem: async (path, parametersOrSubstitutions, typeDescriptor, task) => {
             const item = context.executable.items[path];
             if (!item) {
                 throw new InterpreterError(`missing item: ${path}`);
             }
+
+            let mutex: Mutex | undefined;
+            if (item.evaluateOnce) {
+                if (context.itemCache[path]) {
+                    const [mutex] = context.itemCache[path];
+                    return await mutex.runExclusive(() => {
+                        const value = context.itemCache[path][1];
+                        if (!value) {
+                            throw new InterpreterError(`missing cached value for ${path}`);
+                        }
+
+                        return value;
+                    });
+                } else {
+                    mutex = new Mutex();
+                    context.itemCache[path] = [mutex, undefined];
+                }
+            }
+
+            await mutex?.acquire();
 
             const substitutions = Array.isArray(parametersOrSubstitutions)
                 ? Object.fromEntries(
@@ -219,6 +249,12 @@ export const evaluate = async (
 
             context.gc();
 
+            mutex?.release();
+
+            if (item.evaluateOnce) {
+                context.itemCache[path][1] = result;
+            }
+
             return result;
         },
         error: (options) => {
@@ -234,13 +270,14 @@ export const evaluate = async (
                 );
             }
         },
+        backgroundTasks: [],
         taskLocals: new Map(),
     };
 
     for (const path of executable.entrypoints) {
         const entrypoint = executable.items[path];
 
-        const task = () => {}; // marker
+        const task: TaskLocals = {};
 
         if (context.debug) {
             console.error("## evaluating entrypoint block");
@@ -254,6 +291,8 @@ export const evaluate = async (
 
         await context.do(block, task);
     }
+
+    await Promise.all(context.backgroundTasks);
 };
 
 const evaluateItem = async (
@@ -262,7 +301,7 @@ const evaluateItem = async (
     stack: TypedValue[],
     scope: { current: TypedValue }[],
     substitutions: Record<string, TypeDescriptor>,
-    task: any,
+    task: TaskLocals,
     context: Context,
 ) => {
     let instruction: Instruction | undefined;

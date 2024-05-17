@@ -2677,8 +2677,8 @@ fn infer_expression<D: Driver>(
                     .map(|segment| {
                         let value = infer_expression(segment.value, Some(expression_id), context);
 
-                        let show_trait = instantiated_language_trait(
-                            "show",
+                        let describe_trait = instantiated_language_trait(
+                            "describe",
                             &info,
                             Some(expression_id),
                             context,
@@ -2695,7 +2695,7 @@ fn infer_expression<D: Driver>(
                                         Vec::new(),
                                     ),
                                     kind: ExpressionKind::Call {
-                                        function: show_trait.boxed(),
+                                        function: describe_trait.boxed(),
                                         inputs: vec![value],
                                     },
                                 },

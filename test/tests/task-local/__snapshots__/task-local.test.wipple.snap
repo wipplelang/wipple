@@ -1,0 +1,11 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`task-local.test.wipple 1`] = `[]`;
+
+exports[`task-local.test.wipple 2`] = `
+{
+  "output": "1
+2
+",
+}
+`;

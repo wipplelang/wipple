@@ -1,5 +1,5 @@
+@(language : "hasher")
 Hasher : type intrinsic
-intrinsic "type" "hasher" : Hasher
 
 -- Convert the components of a value into a number used by `Dictionary` and
 -- `Set` to organize their elements.

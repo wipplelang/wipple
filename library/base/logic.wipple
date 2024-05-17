@@ -1,12 +1,12 @@
 -- Represents either `True` or `False`.
+@(language : "boolean")
 Boolean : type {
+    @(language : "false")
     False
+
+    @(language : "true")
     True
 }
-
-intrinsic "type" "boolean" : Boolean
-intrinsic "constant" "false" : False
-intrinsic "constant" "true" : True
 
 -- Make a choice based on whether the input is `True` or `False`.
 if :: A => Boolean {A} {A} -> A
@@ -25,13 +25,13 @@ not :: (Value : Boolean) where (Not Value) => Value -> Value
 not : Not
 
 -- Returns `True` if both sides are `True`.
+@(language : "and")
 And : Left Right (infer Output) => trait (Left {Right} -> Output)
-intrinsic "trait" "and" : And
 instance (And Boolean Boolean Boolean) : a b -> if a b {False}
 
 -- Returns `True` if either side is `True`.
+@(language : "or")
 Or : Left Right (infer Output) => trait (Left {Right} -> Output)
-intrinsic "trait" "or" : Or
 instance (Or Boolean Boolean Boolean) : a b -> if a {True} b
 Value => instance (Or (Maybe Value) Value Value) : maybe other -> when maybe {
     Some value -> value
@@ -39,16 +39,17 @@ Value => instance (Or (Maybe Value) Value Value) : maybe other -> when maybe {
 }
 
 -- The result of a comparison between two values.
+@(language : "ordering")
 Ordering : type {
+    @(language : "is-less-than")
     Is-Less-Than
+
+    @(language : "is-equal-to")
     Is-Equal-To
+
+    @(language : "is-greater-than")
     Is-Greater-Than
 }
-
-intrinsic "type" "ordering" : Ordering
-intrinsic "constant" "is-less-than" : Is-Less-Than
-intrinsic "constant" "is-equal-to" : Is-Equal-To
-intrinsic "constant" "is-greater-than" : Is-Greater-Than
 
 -- Implement this trait to enable comparisons between two values of your type.
 -- on-unimplemented : "cannot compare _ values" Value
@@ -56,36 +57,36 @@ Order : Value => trait (Value Value -> Ordering)
 instance (Order Number) : a b -> intrinsic "number-ordering" a b
 
 -- Returns `True` if the left side is less than the right side.
+@(language : "less-than")
 Less-Than : Value => trait (Value Value -> Boolean)
-intrinsic "trait" "less-than" : Less-Than
 Value where (Order Value) => instance (Less-Than Value) : a b -> (Order a b) is Is-Less-Than
 
 -- Returns `True` if the left side is less than or equal to the right side.
+@(language : "less-than-or-equal")
 Less-Than-Or-Equal : Value => trait (Value Value -> Boolean)
-intrinsic "trait" "less-than-or-equal" : Less-Than-Or-Equal
 Value where (Order Value) => instance (Less-Than-Or-Equal Value) : a b -> (Order a b) is (Is-Less-Than or Is-Equal-To)
 
 -- Returns `True` if the left side is greater than the right side.
+@(language : "greater-than")
 Greater-Than : Value => trait (Value Value -> Boolean)
-intrinsic "trait" "greater-than" : Greater-Than
 Value where (Order Value) => instance (Greater-Than Value) : a b -> (Order a b) is Is-Greater-Than
 
 -- Returns `True` if the left side is greater than or equal to the right side.
+@(language : "greater-than-or-equal")
 Greater-Than-Or-Equal : Value => trait (Value Value -> Boolean)
-intrinsic "trait" "greater-than-or-equal" : Greater-Than-Or-Equal
 Value where (Order Value) => instance (Greater-Than-Or-Equal Value) : a b -> (Order a b) is (Is-Greater-Than or Is-Equal-To)
 
 -- Returns `True` if two values are equal.
+@(language : "equal")
 Equal : Value => trait (Value Value -> Boolean)
-intrinsic "trait" "equal" : Equal
 instance (Equal Text) : a b -> intrinsic "text-equality" a b
 instance (Equal Number) : a b -> intrinsic "number-equality" a b
 instance (Equal ()) : () () -> True
 instance (Equal Boolean) : a b -> if a {b} {not b}
 
 -- Returns `True` if two values are not equal.
+@(language : "not-equal")
 Not-Equal : Value => trait (Value Value -> Boolean)
-intrinsic "trait" "not-equal" : Not-Equal
 Value where (Equal Value) => instance (Not-Equal Value) : a b -> not (Equal a b)
 
 -- Returns the larger of the two inputs.

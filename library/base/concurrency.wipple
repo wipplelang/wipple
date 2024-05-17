@@ -1,5 +1,5 @@
+@(language : "task-group")
 Task-Group : type intrinsic
-intrinsic "type" "task-group" : Task-Group
 
 -- Wait for the provided function to be called before continuing.
 with-continuation :: Result => ((Result -> ()) -> ()) -> Result
@@ -27,12 +27,18 @@ task : body -> group -> intrinsic "task" group body
 in-background :: {} -> ()
 in-background : body -> intrinsic "in-background" body
 
+Task-Local-Key : Value => type intrinsic
+
+-- Create a key to store and retrieve a task-local value.
+task-local-key :: Value => Task-Local-Key Value
+task-local-key : intrinsic "task-local-key"
+
 -- Set a value for the current task.
-set-task-local :: Value => Value -> ()
-set-task-local : value -> intrinsic "set-task-local" value
+set-task-local :: Value => (Task-Local-Key Value) -> Value -> ()
+set-task-local : key -> value -> intrinsic "set-task-local" key value
 
 -- Retrieve a value for the current task.
-task-local :: Value => Maybe Value
-task-local : intrinsic "task-local"
+task-local :: Value => (Task-Local-Key Value) -> Maybe Value
+task-local : key -> intrinsic "task-local" key
 
 -- TODO: Delay and duration units

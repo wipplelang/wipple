@@ -120,7 +120,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 },
             ];
 
-            const compileResult = compiler.compile(sources, dependencies?.interface ?? null, true);
+            const compileResult = compiler.compile(sources, dependencies?.interface ?? null);
 
             if (!cachedHighlightItems) {
                 const highlightItems = getHighlightItems(compileResult.interface, props.render);

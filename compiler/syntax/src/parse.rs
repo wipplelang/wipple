@@ -10,6 +10,87 @@ use std::{fmt::Debug, hash::Hash, rc::Rc};
 use ts_rs::TS;
 use wipple_util::{DefaultFromInfo, WithInfo};
 
+#[derive(Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = "D::Info: Debug, T: Debug"),
+    Clone(bound = "T: Clone"),
+    PartialEq(bound = "D::Info: PartialEq, T: PartialEq"),
+    Eq(bound = "D::Info: Eq, T: Eq")
+)]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "T: Serialize", deserialize = "T: Deserialize<'de>"))]
+pub(crate) struct Attributed<D: Driver, T> {
+    pub(crate) attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+    pub(crate) value: WithInfo<D::Info, T>,
+}
+
+impl<D: Driver, T> DefaultFromInfo<D::Info> for Attributed<D, T>
+where
+    T: DefaultFromInfo<D::Info>,
+{
+    fn default_from_info(info: D::Info) -> WithInfo<D::Info, Self> {
+        WithInfo {
+            info: info.clone(),
+            item: Attributed {
+                attributes: Vec::new(),
+                value: T::default_from_info(info),
+            },
+        }
+    }
+}
+
+#[derive(Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = "D::Info: Debug"),
+    Clone(bound = ""),
+    PartialEq(bound = "D::Info: PartialEq"),
+    Eq(bound = "D::Info: Eq")
+)]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
+#[serde(bound(serialize = "", deserialize = ""))]
+pub(crate) enum Attribute<D: Driver> {
+    Error,
+    Name(WithInfo<D::Info, String>),
+    Valued {
+        name: WithInfo<D::Info, String>,
+        value: WithInfo<D::Info, AttributeValue<D>>,
+    },
+}
+
+impl<D: Driver> DefaultFromInfo<D::Info> for Attribute<D> {
+    fn default_from_info(info: D::Info) -> WithInfo<D::Info, Self> {
+        WithInfo {
+            info,
+            item: Attribute::Error,
+        }
+    }
+}
+
+#[derive(Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = "D::Info: Debug"),
+    Clone(bound = ""),
+    PartialEq(bound = "D::Info: PartialEq"),
+    Eq(bound = "D::Info: Eq")
+)]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
+#[serde(bound(serialize = "", deserialize = ""))]
+pub(crate) enum AttributeValue<D: Driver> {
+    Error,
+    Name(WithInfo<D::Info, String>),
+    Number(WithInfo<D::Info, String>),
+    Text(WithInfo<D::Info, String>),
+}
+
+impl<D: Driver> DefaultFromInfo<D::Info> for AttributeValue<D> {
+    fn default_from_info(info: D::Info) -> WithInfo<D::Info, Self> {
+        WithInfo {
+            info,
+            item: AttributeValue::Error,
+        }
+    }
+}
+
 #[allow(missing_docs)]
 #[derive(Deserialize, Derivative)]
 #[derivative(
@@ -48,12 +129,14 @@ pub(crate) enum Statement<D: Driver> {
     Error,
     #[serde(rename_all = "camelCase")]
     TypeDeclaration {
+        attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
         name: WithInfo<D::Info, Option<String>>,
         parameters: WithInfo<D::Info, TypeFunction<D>>,
         representation: WithInfo<D::Info, TypeRepresentation<D>>,
     },
     #[serde(rename_all = "camelCase")]
     TraitDeclaration {
+        attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
         name: WithInfo<D::Info, Option<String>>,
         parameters: WithInfo<D::Info, TypeFunction<D>>,
         r#type: Option<WithInfo<D::Info, Type<D>>>,
@@ -72,15 +155,10 @@ pub(crate) enum Statement<D: Driver> {
     },
     #[serde(rename_all = "camelCase")]
     ConstantDeclaration {
+        attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
         name: WithInfo<D::Info, Option<String>>,
         parameters: WithInfo<D::Info, TypeFunction<D>>,
         r#type: WithInfo<D::Info, Type<D>>,
-    },
-    #[serde(rename_all = "camelCase")]
-    LanguageDeclaration {
-        name: WithInfo<D::Info, Option<String>>,
-        kind: WithInfo<D::Info, Option<LanguageDeclarationKind>>,
-        item: WithInfo<D::Info, Option<String>>,
     },
     #[serde(rename_all = "camelCase")]
     Assignment {
@@ -223,6 +301,7 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TypeRepresentation<D> {
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub(crate) struct TypeMember<D: Driver> {
+    pub(crate) attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
     pub(crate) name: WithInfo<D::Info, Option<String>>,
     pub(crate) kind: TypeMemberKind<D>,
 }
@@ -232,6 +311,7 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TypeMember<D> {
         WithInfo {
             info: info.clone(),
             item: TypeMember {
+                attributes: Vec::new(),
                 name: Option::default_from_info(info),
                 kind: TypeMemberKind::Error,
             },
@@ -542,6 +622,8 @@ pub enum Direction {
 #[ts(export, rename = "syntax_SyntaxKind")]
 pub enum SyntaxKind {
     TopLevel,
+    Attribute,
+    AttributeValue,
     Name,
     Number,
     Text,
@@ -818,6 +900,8 @@ mod rules {
 
     pub fn render<D: Driver>() -> Vec<(&'static str, SyntaxKind, RuleToRender)> {
         vec![
+            attribute::<D>().render(),
+            attribute_value::<D>().render(),
             top_level::<D>().render(),
             statement::<D>().render(),
             type_declaration::<D>().render(),
@@ -825,7 +909,6 @@ mod rules {
             default_instance_declaration::<D>().render(),
             instance_declaration::<D>().render(),
             constant_declaration::<D>().render(),
-            language_declaration::<D>().render(),
             assignment::<D>().render(),
             r#type::<D>().render(),
             placeholder_type::<D>().render(),
@@ -869,6 +952,64 @@ mod rules {
         ]
     }
 
+    pub fn attribute<D: Driver>() -> Rule<D, Attribute<D>> {
+        Rule::switch(
+            SyntaxKind::Attribute,
+            [
+                || {
+                    name()
+                        .wrapped()
+                        .map(SyntaxKind::Attribute, |name| {
+                            Attribute::Name(name.map(Option::unwrap))
+                        })
+                        .named("A name.")
+                },
+                || {
+                    Rule::non_associative_operator(
+                        SyntaxKind::Attribute,
+                        NonAssociativeOperator::Assign,
+                        || name().wrapped().in_list(),
+                        || attribute_value().in_list(),
+                        |_, info, name, value, _| WithInfo {
+                            info,
+                            item: Attribute::Valued {
+                                name: name.map(Option::unwrap),
+                                value,
+                            },
+                        },
+                    )
+                },
+            ],
+        )
+        .named("An attribute.")
+    }
+
+    pub fn attribute_value<D: Driver>() -> Rule<D, AttributeValue<D>> {
+        Rule::switch(
+            SyntaxKind::AttributeValue,
+            [
+                || {
+                    name().wrapped().map(SyntaxKind::AttributeValue, |name| {
+                        AttributeValue::Name(name.map(Option::unwrap))
+                    })
+                },
+                || {
+                    number()
+                        .wrapped()
+                        .map(SyntaxKind::AttributeValue, |number| {
+                            AttributeValue::Number(number.map(Option::unwrap))
+                        })
+                },
+                || {
+                    text().wrapped().map(SyntaxKind::AttributeValue, |text| {
+                        AttributeValue::Text(text.map(Option::unwrap))
+                    })
+                },
+            ],
+        )
+        .named("An attribute value.")
+    }
+
     pub fn top_level<D: Driver>() -> Rule<D, TopLevel<D>> {
         Rule::block(SyntaxKind::TopLevel, statement, |_, info, statements, _| {
             WithInfo {
@@ -888,7 +1029,6 @@ mod rules {
                 default_instance_declaration,
                 instance_declaration,
                 constant_declaration,
-                language_declaration,
                 assignment,
                 || expression().map(SyntaxKind::Statement, Statement::Expression),
             ],
@@ -901,7 +1041,7 @@ mod rules {
         Rule::non_associative_operator(
             SyntaxKind::TypeDeclaration,
             NonAssociativeOperator::Assign,
-            || name().wrapped().in_list(),
+            || name().wrapped().attributed_with(attribute()).in_list(),
             || {
                 Rule::switch(
                     SyntaxKind::TypeDeclaration,
@@ -970,7 +1110,8 @@ mod rules {
                 WithInfo {
                     info,
                     item: Statement::TypeDeclaration {
-                        name,
+                        attributes: name.item.attributes,
+                        name: name.item.value,
                         parameters,
                         representation,
                     },
@@ -984,7 +1125,7 @@ mod rules {
         Rule::non_associative_operator(
             SyntaxKind::TraitDeclaration,
             NonAssociativeOperator::Assign,
-            || name().wrapped().in_list(),
+            || name().wrapped().attributed_with(attribute()).in_list(),
             || {
                 Rule::switch(
                     SyntaxKind::TraitDeclaration,
@@ -1057,7 +1198,8 @@ mod rules {
                 WithInfo {
                     info,
                     item: Statement::TraitDeclaration {
-                        name,
+                        attributes: name.item.attributes,
+                        name: name.item.value,
                         parameters,
                         r#type: r#type.try_unwrap(),
                     },
@@ -1331,7 +1473,13 @@ mod rules {
         Rule::non_associative_operator(
             SyntaxKind::ConstantDeclaration,
             NonAssociativeOperator::Annotate,
-            || name().wrapped().in_list().no_backtrack(),
+            || {
+                name()
+                    .wrapped()
+                    .attributed_with(attribute())
+                    .in_list()
+                    .no_backtrack()
+            },
             || {
                 Rule::switch(
                     SyntaxKind::ConstantDeclaration,
@@ -1365,7 +1513,8 @@ mod rules {
                 WithInfo {
                     info,
                     item: Statement::ConstantDeclaration {
-                        name,
+                        attributes: name.item.attributes,
+                        name: name.item.value,
                         parameters,
                         r#type,
                     },
@@ -1373,53 +1522,6 @@ mod rules {
             },
         )
         .named("A constant declaration.")
-    }
-
-    pub fn language_declaration<D: Driver>() -> Rule<D, Statement<D>> {
-        Rule::non_associative_operator(
-            SyntaxKind::LanguageDeclaration,
-            NonAssociativeOperator::Assign,
-            || {
-                Rule::keyword2(
-                    SyntaxKind::LanguageDeclaration,
-                    Keyword::Intrinsic,
-                    || {
-                        text().wrapped().try_map(
-                            |text| Some(text.item?.parse::<LanguageDeclarationKind>().ok()),
-                            |parser, text, stack| {
-                                let kind = text.item?.parse::<LanguageDeclarationKind>().ok();
-                                if kind.is_none() {
-                                    parser.add_diagnostic(stack.error_expected(
-                                        WithInfo {
-                                            info: text.info,
-                                            item: SyntaxKind::LanguageDeclaration,
-                                        },
-                                        None,
-                                    ));
-                                }
-
-                                kind
-                            },
-                        )
-                    },
-                    || text().wrapped(),
-                    |_, info, kind, item, _| WithInfo {
-                        info,
-                        item: (kind, item),
-                    },
-                )
-            },
-            || name().wrapped().in_list(),
-            |_, info, declaration, item, _| {
-                let (kind, name) = declaration.item;
-
-                WithInfo {
-                    info,
-                    item: Statement::LanguageDeclaration { name, kind, item },
-                }
-            },
-        )
-        .named("A language declaration.")
     }
 
     pub fn assignment<D: Driver>() -> Rule<D, Statement<D>> {
@@ -1819,12 +1921,19 @@ mod rules {
                                         Rule::non_associative_operator(
                                             SyntaxKind::FieldDeclaration,
                                             NonAssociativeOperator::Annotate,
-                                            || name().wrapped().in_list().no_backtrack(),
+                                            || {
+                                                name()
+                                                    .wrapped()
+                                                    .attributed_with(attribute())
+                                                    .in_list()
+                                                    .no_backtrack()
+                                            },
                                             r#type,
                                             |_, info, name, r#type, _| WithInfo {
                                                 info,
                                                 item: TypeMember {
-                                                    name,
+                                                    attributes: name.item.attributes,
+                                                    name: name.item.value,
                                                     kind: TypeMemberKind::Field(r#type),
                                                 },
                                             },
@@ -1833,12 +1942,18 @@ mod rules {
                                     || {
                                         Rule::list_prefix(
                                             SyntaxKind::VariantDeclaration,
-                                            || name().wrapped().no_backtrack(),
+                                            || {
+                                                name()
+                                                    .wrapped()
+                                                    .attributed_with(attribute())
+                                                    .no_backtrack()
+                                            },
                                             r#type,
                                             |_, info, name, types, _| WithInfo {
                                                 info,
                                                 item: TypeMember {
-                                                    name,
+                                                    attributes: name.item.attributes,
+                                                    name: name.item.value,
                                                     kind: TypeMemberKind::Variant(types),
                                                 },
                                             },
@@ -2792,47 +2907,6 @@ mod base {
                         Some(WithInfo {
                             info: output.info.clone(),
                             item: f(output),
-                        })
-                    },
-                ),
-            }
-        }
-
-        pub fn try_map<T>(
-            self,
-            try_parse: impl Fn(WithInfo<D::Info, Output>) -> Option<T> + 'static,
-            parse: impl Fn(&mut Parser<'_, D>, WithInfo<D::Info, Output>, &Rc<ParseStack<D>>) -> T
-                + 'static,
-        ) -> Rule<D, T>
-        where
-            Output: DefaultFromInfo<D::Info>,
-        {
-            Rule {
-                doc: self.doc,
-                syntax_kind: self.syntax_kind,
-                rendered: self.rendered.clone(),
-                backtracks: self.backtracks.clone(),
-                parse: ParseFn::new(
-                    {
-                        let rule = self.clone();
-
-                        move |parser, tree, stack| {
-                            let output = rule.try_parse(parser, tree, stack)?;
-
-                            Some(output.and_then(|output| {
-                                Ok(WithInfo {
-                                    info: output.info.clone(),
-                                    item: try_parse(output).ok_or_else(|| stack.len())?,
-                                })
-                            }))
-                        }
-                    },
-                    move |parser, tree, stack| {
-                        let output = self.parse(parser, tree, stack);
-
-                        Some(WithInfo {
-                            info: output.info.clone(),
-                            item: parse(parser, output, stack),
                         })
                     },
                 ),
@@ -3924,6 +3998,87 @@ mod base {
                     },
                 ),
             )
+        }
+    }
+
+    impl<D: Driver, Output: 'static> Rule<D, Output>
+    where
+        Output: DefaultFromInfo<D::Info> + 'static,
+    {
+        pub fn attributed_with(
+            self,
+            parse_attribute: Rule<D, Attribute<D>>,
+        ) -> Rule<D, Attributed<D, Output>> {
+            Rule {
+                doc: None,
+                syntax_kind: self.syntax_kind,
+                rendered: self.rendered.clone(),
+                backtracks: self.backtracks.clone(),
+                parse: ParseFn::new(
+                    {
+                        let parse_attribute = parse_attribute.clone();
+                        let parse_value = self.clone();
+
+                        move |parser, mut tree, stack| {
+                            let mut attributes = Vec::new();
+                            while let TokenTree::Attribute(attribute, contents) = tree.item {
+                                let attribute =
+                                    parse_attribute.parse(parser, attribute.as_deref(), stack);
+
+                                attributes.push(attribute);
+
+                                tree = contents.as_deref();
+                            }
+
+                            let output = match parse_value.try_parse(parser, tree, stack)? {
+                                Ok(prefix) => prefix,
+                                Err(progress) => return Some(Err(progress)),
+                            };
+
+                            let info = attributes.first().map_or_else(
+                                || output.info.clone(),
+                                |attribute| {
+                                    D::merge_info(attribute.info.clone(), output.info.clone())
+                                },
+                            );
+
+                            Some(Ok(WithInfo {
+                                info,
+                                item: Attributed {
+                                    attributes,
+                                    value: output,
+                                },
+                            }))
+                        }
+                    },
+                    move |parser, mut tree, stack| {
+                        let mut attributes = Vec::new();
+                        while let TokenTree::Attribute(attribute, contents) = tree.item {
+                            let attribute =
+                                parse_attribute.parse(parser, attribute.as_deref(), stack);
+
+                            attributes.push(attribute);
+
+                            tree = contents.as_deref();
+                        }
+
+                        let output = self.parse(parser, tree, stack);
+
+                        let info = attributes.first().map_or_else(
+                            || output.info.clone(),
+                            |attribute| D::merge_info(attribute.info.clone(), output.info.clone()),
+                        );
+
+                        Some(WithInfo {
+                            info,
+                            item: Attributed {
+                                attributes,
+                                value: output,
+                            },
+                        })
+                    },
+                ),
+            }
         }
     }
 }

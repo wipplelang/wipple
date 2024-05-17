@@ -1,7 +1,11 @@
 import { Decimal } from "decimal.js";
-import { type Context, type TaskGroup, type TypedValue } from "./index.js";
+import type { TaskLocals, Context, TaskGroup, TypedValue } from "./index.js";
 
-export type Intrinsic = (inputs: TypedValue[], context: Context, task: any) => Promise<TypedValue>;
+export type Intrinsic = (
+    inputs: TypedValue[],
+    context: Context,
+    task: TaskLocals,
+) => Promise<TypedValue>;
 
 export const intrinsics: Record<string, Intrinsic> = {
     debug: async ([value]) => {
@@ -81,6 +85,8 @@ export const intrinsics: Record<string, Intrinsic> = {
         });
     },
     "with-continuation": async ([callback], context) => {
+        const taskLocals: TaskLocals = {};
+
         const task = async (resolve: (value: TypedValue) => void) => {
             await context.call(
                 callback,
@@ -90,7 +96,7 @@ export const intrinsics: Record<string, Intrinsic> = {
                         return unit;
                     }),
                 ],
-                task,
+                taskLocals,
             );
         };
 
@@ -121,20 +127,34 @@ export const intrinsics: Record<string, Intrinsic> = {
             throw context.error("expected task group");
         }
 
+        const taskLocals: TaskLocals = {};
         const task = async () => {
-            await context.do(callback, task);
+            await context.do(callback, taskLocals);
         };
 
         taskGroup.value.push(task);
 
         return unit;
     },
+    "task-local-key": async ([], context) => {
+        return jsToTaskLocalKey(Symbol(), context);
+    },
+    "set-task-local": async ([keyValue, value], context, task) => {
+        const key = taskLocalKeyToJs(keyValue, context);
+        task[key] = value;
+        return unit;
+    },
+    "task-local": async ([keyValue], context, task) => {
+        const key = taskLocalKeyToJs(keyValue, context);
+        return key in task ? jsToSome(task[key], context) : jsToNone(context);
+    },
     "in-background": async ([callback], context) => {
+        const taskLocals: TaskLocals = {};
         const task = async () => {
-            await context.do(callback, task);
+            await context.do(callback, taskLocals);
         };
 
-        task();
+        context.backgroundTasks.push(task());
 
         return unit;
     },
@@ -551,6 +571,19 @@ const jsToTaskGroup = (taskGroup: TaskGroup, _context: Context): TypedValue => (
     type: "taskGroup",
     value: taskGroup,
 });
+
+const jsToTaskLocalKey = (key: symbol, _context: Context): TypedValue => ({
+    type: "taskLocalKey",
+    value: key,
+});
+
+const taskLocalKeyToJs = (value: TypedValue, context: Context): symbol => {
+    if (value.type !== "taskLocalKey") {
+        throw context.error("expected task local key");
+    }
+
+    return value.value;
+};
 
 const jsToReference = (value: TypedValue, _context: Context): TypedValue => ({
     type: "reference",

@@ -13,11 +13,11 @@
         },
         {
             "name": "keyword",
-            "match": "\\b(_|!|when|where|type|trait|instance|intrinsic|infer|do|default)\\b"
+            "match": "\\b(_|when|where|type|trait|instance|intrinsic|infer|do|default)\\b"
         },
         {
             "name": "keyword.operator",
-            "match": "as|to|by|\\^|\\*|\\/|%|\\+|-|<|<=|>|>=|=|\\/=|is|and|or|\\.|->|:|::|=>"
+            "match": "@|!|as|to|by|\\^|\\*|\\/|%|\\+|-|<|<=|>|>=|=|\\/=|is|and|or|\\.|->|:|::|=>"
         },
         {
             "name": "entity.name",

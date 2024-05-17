@@ -1,4 +1,39 @@
 pub mod interface {
+    pub fn convert_attribute(
+        attribute: wipple_util::WithInfo<crate::Info, wipple_typecheck::Attribute<crate::Driver>>,
+    ) -> wipple_util::WithInfo<crate::Info, wipple_lower::Attribute<crate::Driver>> {
+        attribute.map(|attribute| match attribute {
+            wipple_typecheck::Attribute::Error => wipple_lower::Attribute::Error,
+            wipple_typecheck::Attribute::Name(name) => wipple_lower::Attribute::Name(name),
+            wipple_typecheck::Attribute::Valued { name, value } => {
+                wipple_lower::Attribute::Valued {
+                    name,
+                    value: convert_attribute_value(value),
+                }
+            }
+        })
+    }
+
+    pub fn convert_attribute_value(
+        attribute_value: wipple_util::WithInfo<
+            crate::Info,
+            wipple_typecheck::AttributeValue<crate::Driver>,
+        >,
+    ) -> wipple_util::WithInfo<crate::Info, wipple_lower::AttributeValue<crate::Driver>> {
+        attribute_value.map(|attribute_value| match attribute_value {
+            wipple_typecheck::AttributeValue::Error => wipple_lower::AttributeValue::Error,
+            wipple_typecheck::AttributeValue::Name(name) => {
+                wipple_lower::AttributeValue::Name(name)
+            }
+            wipple_typecheck::AttributeValue::Number(number) => {
+                wipple_lower::AttributeValue::Number(number)
+            }
+            wipple_typecheck::AttributeValue::Text(text) => {
+                wipple_lower::AttributeValue::Text(text)
+            }
+        })
+    }
+
     pub fn convert_type_declaration(
         type_declaration: wipple_util::WithInfo<
             crate::Info,
@@ -6,6 +41,11 @@ pub mod interface {
         >,
     ) -> wipple_util::WithInfo<crate::Info, wipple_lower::TypeDeclaration<crate::Driver>> {
         type_declaration.map(|type_declaration| wipple_lower::TypeDeclaration {
+            attributes: type_declaration
+                .attributes
+                .into_iter()
+                .map(convert_attribute)
+                .collect(),
             parameters: type_declaration.parameters,
             representation: convert_type_representation(type_declaration.representation),
         })
@@ -18,6 +58,11 @@ pub mod interface {
         >,
     ) -> wipple_util::WithInfo<crate::Info, wipple_lower::TraitDeclaration<crate::Driver>> {
         trait_declaration.map(|trait_declaration| wipple_lower::TraitDeclaration {
+            attributes: trait_declaration
+                .attributes
+                .into_iter()
+                .map(convert_attribute)
+                .collect(),
             parameters: trait_declaration.parameters,
             r#type: trait_declaration.r#type.map(convert_type),
         })
@@ -45,6 +90,11 @@ pub mod interface {
         >,
     ) -> wipple_util::WithInfo<crate::Info, wipple_lower::ConstantDeclaration<crate::Driver>> {
         constant_declaration.map(|constant_declaration| wipple_lower::ConstantDeclaration {
+            attributes: constant_declaration
+                .attributes
+                .into_iter()
+                .map(convert_attribute)
+                .collect(),
             parameters: constant_declaration.parameters,
             bounds: constant_declaration
                 .bounds
@@ -147,6 +197,12 @@ pub mod interface {
                             info: field.info.clone(),
                             item: wipple_lower::Field {
                                 index: field.item.index,
+                                attributes: field
+                                    .item
+                                    .attributes
+                                    .into_iter()
+                                    .map(convert_attribute)
+                                    .collect(),
                                 name: wipple_util::WithInfo {
                                     info: field.info,
                                     item: name,
@@ -165,6 +221,12 @@ pub mod interface {
                             info: variant.info.clone(),
                             item: wipple_lower::Variant {
                                 index: variant.item.index,
+                                attributes: variant
+                                    .item
+                                    .attributes
+                                    .into_iter()
+                                    .map(convert_attribute)
+                                    .collect(),
                                 name: wipple_util::WithInfo {
                                     info: variant.info,
                                     item: name,
@@ -204,6 +266,38 @@ pub mod lower {
         })
     }
 
+    fn convert_attribute(
+        attribute: wipple_util::WithInfo<
+            crate::Info,
+            wipple_syntax::Attribute<crate::SyntaxDriver>,
+        >,
+    ) -> wipple_util::WithInfo<Info, wipple_lower::Attribute<crate::Driver>> {
+        attribute.map(|attribute| match attribute {
+            wipple_syntax::Attribute::Error => wipple_lower::Attribute::Error,
+            wipple_syntax::Attribute::Name(name) => wipple_lower::Attribute::Name(name),
+            wipple_syntax::Attribute::Valued { name, value } => wipple_lower::Attribute::Valued {
+                name,
+                value: convert_attribute_value(value),
+            },
+        })
+    }
+
+    fn convert_attribute_value(
+        attribute_value: wipple_util::WithInfo<
+            crate::Info,
+            wipple_syntax::AttributeValue<crate::SyntaxDriver>,
+        >,
+    ) -> wipple_util::WithInfo<Info, wipple_lower::AttributeValue<crate::Driver>> {
+        attribute_value.map(|attribute_value| match attribute_value {
+            wipple_syntax::AttributeValue::Error => wipple_lower::AttributeValue::Error,
+            wipple_syntax::AttributeValue::Name(name) => wipple_lower::AttributeValue::Name(name),
+            wipple_syntax::AttributeValue::Number(number) => {
+                wipple_lower::AttributeValue::Number(number)
+            }
+            wipple_syntax::AttributeValue::Text(text) => wipple_lower::AttributeValue::Text(text),
+        })
+    }
+
     fn convert_statement(
         statement: wipple_util::WithInfo<
             crate::Info,
@@ -212,30 +306,36 @@ pub mod lower {
     ) -> wipple_util::WithInfo<Info, wipple_lower::UnresolvedStatement<crate::Driver>> {
         statement.map(|statement| match statement {
             wipple_syntax::Statement::Type {
+                attributes,
                 name,
                 parameters,
                 representation,
             } => wipple_lower::UnresolvedStatement::Type {
+                attributes: attributes.into_iter().map(convert_attribute).collect(),
                 name: name.map_info(crate::Info::from),
                 parameters: parameters.into_iter().map(convert_type_parameter).collect(),
                 representation: convert_type_representation(representation),
             },
             wipple_syntax::Statement::Trait {
+                attributes,
                 name,
                 parameters,
                 r#type,
             } => wipple_lower::UnresolvedStatement::Trait {
+                attributes: attributes.into_iter().map(convert_attribute).collect(),
                 name,
                 parameters: parameters.into_iter().map(convert_type_parameter).collect(),
                 r#type: r#type.map(convert_type),
             },
             wipple_syntax::Statement::Constant {
+                attributes,
                 name,
                 parameters,
                 bounds,
                 r#type,
                 body,
             } => wipple_lower::UnresolvedStatement::Constant {
+                attributes: attributes.into_iter().map(convert_attribute).collect(),
                 name,
                 parameters: parameters.into_iter().map(convert_type_parameter).collect(),
                 bounds: bounds.into_iter().map(convert_instance).collect(),
@@ -255,21 +355,6 @@ pub mod lower {
                 body: body.map(convert_expression),
                 default,
             },
-            wipple_syntax::Statement::Language { name, kind, item } => {
-                let kind = kind.map(|kind| match kind {
-                    wipple_syntax::LanguageDeclarationKind::Type => {
-                        wipple_lower::LanguageDeclarationKind::Type
-                    }
-                    wipple_syntax::LanguageDeclarationKind::Trait => {
-                        wipple_lower::LanguageDeclarationKind::Trait
-                    }
-                    wipple_syntax::LanguageDeclarationKind::Constant => {
-                        wipple_lower::LanguageDeclarationKind::Constant
-                    }
-                });
-
-                wipple_lower::UnresolvedStatement::Language { name, kind, item }
-            }
             wipple_syntax::Statement::Assignment { pattern, value } => {
                 wipple_lower::UnresolvedStatement::Assignment {
                     pattern: convert_pattern(pattern),
@@ -314,6 +399,11 @@ pub mod lower {
                         .map(|(index, field)| {
                             field.map(|field| wipple_lower::UnresolvedField {
                                 index: index as u32,
+                                attributes: field
+                                    .attributes
+                                    .into_iter()
+                                    .map(convert_attribute)
+                                    .collect(),
                                 name: field.name,
                                 r#type: convert_type(field.r#type),
                             })
@@ -329,6 +419,11 @@ pub mod lower {
                         .map(|(index, variant)| {
                             variant.map(|variant| wipple_lower::UnresolvedVariant {
                                 index: index as u32,
+                                attributes: variant
+                                    .attributes
+                                    .into_iter()
+                                    .map(convert_attribute)
+                                    .collect(),
                                 name: variant.name,
                                 types: variant.types.into_iter().map(convert_type).collect(),
                             })
@@ -609,6 +704,41 @@ pub mod lower {
 pub mod typecheck {
     pub type Info = <crate::Driver as wipple_typecheck::Driver>::Info;
 
+    pub fn convert_attribute(
+        attribute: wipple_util::WithInfo<crate::Info, wipple_lower::Attribute<crate::Driver>>,
+    ) -> wipple_util::WithInfo<Info, wipple_typecheck::Attribute<crate::Driver>> {
+        attribute.map(|attribute| match attribute {
+            wipple_lower::Attribute::Error => wipple_typecheck::Attribute::Error,
+            wipple_lower::Attribute::Name(name) => wipple_typecheck::Attribute::Name(name),
+            wipple_lower::Attribute::Valued { name, value } => {
+                wipple_typecheck::Attribute::Valued {
+                    name,
+                    value: convert_attribute_value(value),
+                }
+            }
+        })
+    }
+
+    pub fn convert_attribute_value(
+        attribute_value: wipple_util::WithInfo<
+            crate::Info,
+            wipple_lower::AttributeValue<crate::Driver>,
+        >,
+    ) -> wipple_util::WithInfo<Info, wipple_typecheck::AttributeValue<crate::Driver>> {
+        attribute_value.map(|attribute_value| match attribute_value {
+            wipple_lower::AttributeValue::Error => wipple_typecheck::AttributeValue::Error,
+            wipple_lower::AttributeValue::Name(name) => {
+                wipple_typecheck::AttributeValue::Name(name)
+            }
+            wipple_lower::AttributeValue::Number(number) => {
+                wipple_typecheck::AttributeValue::Number(number)
+            }
+            wipple_lower::AttributeValue::Text(text) => {
+                wipple_typecheck::AttributeValue::Text(text)
+            }
+        })
+    }
+
     pub fn convert_type_declaration(
         type_declaration: wipple_util::WithInfo<
             crate::Info,
@@ -616,6 +746,11 @@ pub mod typecheck {
         >,
     ) -> wipple_util::WithInfo<Info, wipple_typecheck::TypeDeclaration<crate::Driver>> {
         type_declaration.map(|type_declaration| wipple_typecheck::TypeDeclaration {
+            attributes: type_declaration
+                .attributes
+                .into_iter()
+                .map(convert_attribute)
+                .collect(),
             parameters: type_declaration.parameters,
             representation: type_declaration.representation.map(|type_representation| {
                 match type_representation {
@@ -633,6 +768,12 @@ pub mod typecheck {
                                             info: field.info,
                                             item: wipple_typecheck::StructureField {
                                                 index: field.item.index,
+                                                attributes: field
+                                                    .item
+                                                    .attributes
+                                                    .into_iter()
+                                                    .map(convert_attribute)
+                                                    .collect(),
                                                 r#type: convert_type(field.item.r#type),
                                             },
                                         },
@@ -652,6 +793,12 @@ pub mod typecheck {
                                             info: variant.info,
                                             item: wipple_typecheck::EnumerationVariant {
                                                 index: variant.item.index,
+                                                attributes: variant
+                                                    .item
+                                                    .attributes
+                                                    .into_iter()
+                                                    .map(convert_attribute)
+                                                    .collect(),
                                                 value_types: variant
                                                     .item
                                                     .types
@@ -680,6 +827,11 @@ pub mod typecheck {
         >,
     ) -> wipple_util::WithInfo<Info, wipple_typecheck::TraitDeclaration<crate::Driver>> {
         trait_declaration.map(|trait_declaration| wipple_typecheck::TraitDeclaration {
+            attributes: trait_declaration
+                .attributes
+                .into_iter()
+                .map(convert_attribute)
+                .collect(),
             parameters: trait_declaration.parameters,
             r#type: trait_declaration.r#type.map(convert_type),
         })
@@ -710,6 +862,11 @@ pub mod typecheck {
             let r#type = convert_type(constant_declaration.r#type);
 
             wipple_typecheck::ConstantDeclaration {
+                attributes: constant_declaration
+                    .attributes
+                    .into_iter()
+                    .map(convert_attribute)
+                    .collect(),
                 parameters: constant_declaration.parameters,
                 bounds: constant_declaration
                     .bounds
