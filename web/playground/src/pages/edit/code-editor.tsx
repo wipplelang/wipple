@@ -634,7 +634,7 @@ const PaletteButton = (props: { setup?: string; assets: PaletteItem[]; items: Pa
             <MenuContainer>
                 <button className="group flex flex-row items-center justify-center transition-colors rounded-md pl-2 pr-1 gap-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
                     {props.setup ? <SetupIcon setup={props.setup} size="sm" /> : null}
-                    <p className="text-xs">Commands</p>
+                    <p className="text-xs ml-1">Add</p>
                     <MaterialSymbol icon="expand_more" className="text-lg" />
                 </button>
             </MenuContainer>
