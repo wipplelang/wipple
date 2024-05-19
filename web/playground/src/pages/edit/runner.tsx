@@ -357,7 +357,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         format: async (code) => {
             const formatterWorker = new RunnerWorker({ name: `runner-${id}-format` });
 
-            return new Promise<string>((resolve) => {
+            const formatted = await new Promise<string>((resolve) => {
                 formatterWorker.onmessage = async (event) => {
                     const { type } = event.data;
                     switch (type) {
@@ -372,6 +372,10 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
                 formatterWorker.postMessage({ type: "format", code });
             });
+
+            formatterWorker.terminate();
+
+            return formatted;
         },
     }));
 

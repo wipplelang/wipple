@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { EditorView, minimalSetup } from "codemirror";
 import { placeholder, keymap, dropCursor } from "@codemirror/view";
 import { Compartment, EditorSelection, EditorState, Extension } from "@codemirror/state";
@@ -42,10 +42,14 @@ const editableFromConfig = (config: { readOnly: boolean; onDrop?: () => void }):
 ];
 
 export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref) => {
-    const editorView = useMemo(() => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const editorView = useRef<EditorView | null>(null);
+
+    useEffect(() => {
         type EditorViewConfig = ConstructorParameters<typeof EditorView>[0] & {};
 
         const config: EditorViewConfig = {
+            parent: containerRef.current!,
             state: EditorState.create({
                 doc: props.children,
                 extensions: [
@@ -116,39 +120,31 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
             }),
         };
 
-        return new EditorView(config);
-    }, []);
-
-    useImperativeHandle(ref, () => ({ editorView }), [editorView]);
-
-    const containerRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if (!containerRef.current) {
-            return;
-        }
-
-        containerRef.current.appendChild(editorView.dom);
+        editorView.current = new EditorView(config);
 
         return () => {
-            containerRef.current?.removeChild(editorView.dom);
+            editorView.current?.destroy();
         };
-    }, [containerRef.current]);
+    }, []);
+
+    useImperativeHandle(ref, () => ({
+        editorView: editorView.current!,
+    }));
 
     useEffect(() => {
-        if (editorView.state.doc.toString() !== props.children) {
-            editorView.dispatch({
+        if (editorView.current!.state.doc.toString() !== props.children) {
+            editorView.current!.dispatch({
                 changes: {
                     from: 0,
-                    to: editorView.state.doc.length,
+                    to: editorView.current!.state.doc.length,
                     insert: props.children,
                 },
             });
         }
-    }, [editorView, props.children]);
+    }, [props.children]);
 
     useEffect(() => {
-        editorView.dispatch({
+        editorView.current!.dispatch({
             effects: editable.reconfigure(
                 editableFromConfig({
                     readOnly: props.readOnly,
@@ -156,16 +152,16 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                 }),
             ),
         });
-    }, [editorView, props.readOnly, props.onDrop]);
+    }, [props.readOnly, props.onDrop]);
 
     useEffect(() => {
-        editorView.dispatch({
+        editorView.current!.dispatch({
             effects: theme.reconfigure(themeFromConfig(props.theme)),
         });
-    }, [editorView, props.theme]);
+    }, [props.theme]);
 
     useEffect(() => {
-        editorView.dispatch({
+        editorView.current!.dispatch({
             effects: displayHelp.reconfigure(
                 displayHelpFromEnabled(
                     props.lookUpEnabled,
@@ -176,25 +172,18 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                 ),
             ),
         });
-    }, [
-        editorView,
-        props.lookUpEnabled,
-        props.theme,
-        props.help,
-        props.highlightItems,
-        props.onClickLookUp,
-    ]);
+    }, [props.lookUpEnabled, props.theme, props.help, props.highlightItems, props.onClickLookUp]);
 
     useEffect(() => {
-        editorView.dispatch({
+        editorView.current!.dispatch({
             effects: diagnostics.reconfigure(
                 diagnosticsFromConfig({ diagnostics: props.diagnostics }),
             ),
         });
-    }, [editorView, props.diagnostics]);
+    }, [props.diagnostics]);
 
     useEffect(() => {
-        editorView.dispatch({
+        editorView.current!.dispatch({
             effects: assets.reconfigure(
                 assetsFromConfig({
                     disabled: props.lookUpEnabled,
@@ -204,15 +193,15 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                 }),
             ),
         });
-    }, [editorView, props.lookUpEnabled, props.onClickAsset, props.highlightItems, props.theme]);
+    }, [props.lookUpEnabled, props.onClickAsset, props.highlightItems, props.theme]);
 
     useEffect(() => {
         if (props.autoFocus) {
             requestAnimationFrame(() => {
-                editorView.focus();
+                editorView.current!.focus();
             });
         }
-    }, [editorView, props.autoFocus]);
+    }, [props.autoFocus]);
 
     return <div ref={containerRef} />;
 });
