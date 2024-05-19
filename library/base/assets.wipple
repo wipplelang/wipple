@@ -3,6 +3,13 @@
 -- directly.
 Color : type Text
 
+instance (Random () Color) : () -> do {
+    red : random (0 to 256)
+    green : random (0 to 256)
+    blue : random (0 to 256)
+    Color ("rgb(_, _, _)" red green blue)
+}
+
 -- Create an image from a URL. In the Wipple Playground, you can drag an image
 -- from the palette into the editor instead of calling this function directly.
 Image : type Text
