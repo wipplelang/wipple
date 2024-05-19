@@ -481,7 +481,7 @@ const PlaygroundPageList = (props: {
     onDeletePage: (pageIndex: number) => void;
 }) => (
     <TutorialItem id="playgroundPageList" className="w-full max-w-4xl lg:w-fit lg:max-w-none">
-        <ul className="flex flex-shrink-0 flex-row gap-1 lg:flex-col max-w-4xl lg:max-w-none w-full lg:w-[240px] lg:max-h-[calc(100vh-140px)] overflow-scroll px-4 pb-8 lg:pb-4">
+        <ul className="flex flex-shrink-0 flex-row gap-1 lg:flex-col max-w-4xl lg:max-w-none w-full lg:w-[240px] lg:max-h-[calc(100vh-140px)] overflow-scroll no-scrollbar px-4 pb-8 lg:pb-4">
             {props.playground ? (
                 <>
                     {props.playground.pages.map((page, pageIndex) => {

@@ -53,6 +53,15 @@ code,
     @apply my-4 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg overflow-x-scroll;
 }
 
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
 /* Animations */
 
 @keyframes bouncing-loader {

@@ -605,7 +605,7 @@ const DiagnosticBubble = (props: {
                 style={{ height: props.height }}
             >
                 <button
-                    className={`flex flex-row items-center gap-1.5 px-2 rounded-lg overflow-x-scroll whitespace-nowrap transition-colors ${
+                    className={`flex flex-row items-center gap-1.5 px-2 rounded-lg overflow-x-scroll no-scrollbar whitespace-nowrap transition-colors ${
                         props.diagnostic.severity === "error"
                             ? " text-red-600 dark:text-red-500"
                             : " text-yellow-600 dark:text-yellow-400"
