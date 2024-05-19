@@ -8,8 +8,8 @@ import {
     useState,
 } from "react";
 import { useDebounceValue } from "usehooks-ts";
-import * as compiler from "wipple-compiler";
-import { RunnerWorker } from "../../helpers";
+import type * as compiler from "wipple-compiler";
+import { CompilerWorker, RunnerWorker } from "../../helpers";
 import { InterpreterError } from "wipple-interpreter";
 import { Render, RenderedDiagnostic, RenderedHighlight } from "wipple-render";
 import { Runtime, RuntimeComponent } from "../../runtimes";
@@ -112,15 +112,28 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 ? await fetchDependencies(props.options.dependenciesPath)
                 : null;
 
-            const sources = [
-                {
-                    path: "playground",
-                    visiblePath: "playground",
-                    code,
-                },
-            ];
+            const compilerWorker = new CompilerWorker({ name: `compiler-${id}` });
 
-            const compileResult = compiler.compile(sources, dependencies?.interface ?? null);
+            const { compileResult, executable } = await new Promise<{
+                compileResult: compiler.Result;
+                executable: compiler.linker_Executable;
+            }>((resolve) => {
+                compilerWorker.onmessage = (event) => {
+                    switch (event.data.type) {
+                        case "completion": {
+                            resolve(event.data);
+                            break;
+                        }
+                        default: {
+                            throw new Error(`unsupported message: ${event.data.type}`);
+                        }
+                    }
+                };
+
+                compilerWorker.postMessage({ type: "compile", code, dependencies });
+            });
+
+            compilerWorker.terminate();
 
             if (!cachedHighlightItems) {
                 const highlightItems = getHighlightItems(compileResult.interface, props.render);
@@ -149,14 +162,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 }
             } else {
                 props.onChangeDiagnostics([]);
-            }
-
-            const executable = compiler.link([
-                ...(dependencies?.libraries ?? []),
-                compileResult.library,
-            ]);
-            if (!executable) {
-                throw new Error("linker error");
             }
 
             const runnerWorker = resetRunnerWorker();
@@ -355,10 +360,10 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
             };
         },
         format: async (code) => {
-            const formatterWorker = new RunnerWorker({ name: `runner-${id}-format` });
+            const compilerWorker = new CompilerWorker({ name: `compiler-${id}-format` });
 
             const formatted = await new Promise<string>((resolve) => {
-                formatterWorker.onmessage = async (event) => {
+                compilerWorker.onmessage = async (event) => {
                     const { type } = event.data;
                     switch (type) {
                         case "completion": {
@@ -366,14 +371,14 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                             break;
                         }
                         default:
-                            throw new Error("unsupported message from runner");
+                            throw new Error(`unsupported message: ${type}`);
                     }
                 };
 
-                formatterWorker.postMessage({ type: "format", code });
+                compilerWorker.postMessage({ type: "format", code });
             });
 
-            formatterWorker.terminate();
+            compilerWorker.terminate();
 
             return formatted;
         },

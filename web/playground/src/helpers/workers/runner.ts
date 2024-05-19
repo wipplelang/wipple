@@ -1,4 +1,3 @@
-import { format } from "wipple-compiler";
 import { callFunction, evaluate, InterpreterError, IoRequest } from "wipple-interpreter";
 
 const withCallFunction =
@@ -138,12 +137,6 @@ onmessage = async (event) => {
                 }
             }
 
-            break;
-        }
-        case "format": {
-            const code = event.data.code;
-            const formatted = format(code);
-            postMessage({ type: "completion", code: formatted });
             break;
         }
         default:
