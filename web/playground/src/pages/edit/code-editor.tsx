@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
     Animated,
     ContextMenuButton,
+    ContextMenuItem,
     Markdown,
     Tooltip,
     Transition,
@@ -127,7 +128,7 @@ export function CodeEditor<Settings>(props: {
 
         let replacement = editorView.state.sliceDoc(start, end);
         if (fix.replacement) {
-            replacement = fix.replacement.replace("_", replacement);
+            replacement = fix.replacement.replace(/\b_\b/, replacement);
         }
 
         replacement = (fix.before ?? "") + replacement + (fix.after ?? "");
@@ -324,6 +325,13 @@ export function CodeEditor<Settings>(props: {
                                 <TutorialItem id="commandsButton">
                                     <PaletteButton
                                         setup={props.runtime?.name}
+                                        assets={
+                                            props.runtime
+                                                ? runtimes[
+                                                      props.runtime.name as keyof typeof runtimes
+                                                  ].assetItems
+                                                : []
+                                        }
                                         items={
                                             props.runtime
                                                 ? runtimes[
@@ -560,33 +568,79 @@ const EditButton = (props: { onSelectAll: () => void; onUndo: () => void; onRedo
     </ContextMenuButton>
 );
 
-const PaletteButton = (props: { setup?: string; items: PaletteItem[] }) => (
-    <ContextMenuButton
-        items={props.items.map((item) => ({
+const PaletteButton = (props: { setup?: string; assets: PaletteItem[]; items: PaletteItem[] }) => {
+    const items = props.items.map(
+        (item, index): ContextMenuItem => ({
             title: ({ onDismiss }) => (
                 <div
-                    key={item.title}
+                    key={index}
                     draggable
                     className="flex flex-col items-start w-full pointer-events-[bounding-box]"
                     onDragStart={(event) => {
-                        event.dataTransfer.setData("wipple/snippet", item.code);
+                        event.dataTransfer.setData(
+                            "wipple/snippet",
+                            JSON.stringify({
+                                code: item.code,
+                                insertLine: true,
+                            }),
+                        );
+
                         onDismiss();
                     }}
                 >
                     <code className="whitespace-nowrap">{item.title}</code>
                 </div>
             ),
-        }))}
-    >
-        <MenuContainer>
-            <button className="group flex flex-row items-center justify-center transition-colors rounded-md pl-2 pr-1 gap-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
-                {props.setup ? <SetupIcon setup={props.setup} size="sm" /> : null}
-                <p className="text-xs">Commands</p>
-                <MaterialSymbol icon="expand_more" className="text-lg" />
-            </button>
-        </MenuContainer>
-    </ContextMenuButton>
-);
+        }),
+    );
+
+    return (
+        <ContextMenuButton
+            items={
+                props.assets.length > 0
+                    ? [
+                          {
+                              title: ({ onDismiss }) => (
+                                  <div className="flex flex-row items-center gap-1 py-1">
+                                      {props.assets.map((asset, index) => (
+                                          <div
+                                              key={index}
+                                              draggable
+                                              onDragStart={(event) => {
+                                                  event.dataTransfer.setData(
+                                                      "wipple/snippet",
+                                                      JSON.stringify({
+                                                          code: asset.code,
+                                                          insertLine: false,
+                                                      }),
+                                                  );
+
+                                                  onDismiss();
+                                              }}
+                                          >
+                                              {asset.title}
+                                          </div>
+                                      ))}
+                                  </div>
+                              ),
+                              divider: true,
+                              highlight: false,
+                          },
+                          ...items,
+                      ]
+                    : items
+            }
+        >
+            <MenuContainer>
+                <button className="group flex flex-row items-center justify-center transition-colors rounded-md pl-2 pr-1 gap-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
+                    {props.setup ? <SetupIcon setup={props.setup} size="sm" /> : null}
+                    <p className="text-xs">Commands</p>
+                    <MaterialSymbol icon="expand_more" className="text-lg" />
+                </button>
+            </MenuContainer>
+        </ContextMenuButton>
+    );
+};
 
 const DiagnosticBubble = (props: {
     top: number;

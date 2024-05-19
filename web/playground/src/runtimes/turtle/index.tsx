@@ -10,7 +10,8 @@ import { Resizable } from "react-resizable";
 
 // @ts-ignore
 import RealTurtle from "real-turtle";
-import { animalImageUrl } from "../../pages/edit/assets/animal";
+import { AnimalAsset, animalImageUrl } from "../../pages/edit/assets/animal";
+import { ColorAsset } from "../../pages/edit/assets/color";
 
 export interface Settings {
     canvasWidth: number;
@@ -289,6 +290,17 @@ function rescaleCanvas(canvas: any) {
 }
 
 export { turtleImage };
+
+export const assetItems: PaletteItem[] = [
+    {
+        title: <ColorAsset color="#3b82f6" tooltip={false} />,
+        code: `[Color "#3b82f6"]`,
+    },
+    {
+        title: <AnimalAsset animal="frog" tooltip={false} />,
+        code: `[Animal "frog"]`,
+    },
+];
 
 export const paletteItems: PaletteItem[] = [
     {

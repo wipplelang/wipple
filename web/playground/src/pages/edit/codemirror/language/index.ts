@@ -41,9 +41,9 @@ export const drop = ({
     selection: { from: number; to: number };
 }) => {
     if (selection.from !== selection.to && position >= selection.from && position <= selection.to) {
-        return snippet.replace("_", doc.sliceString(selection.from, selection.to));
+        return snippet.replace(/\b_\b/, doc.sliceString(selection.from, selection.to));
     } else {
-        snippet = snippet.replace("_", "...");
+        snippet = snippet.replace(/\b_\b/, "...");
 
         const padding = (s: string) => (s === "" || /\s/.test(s) ? "" : " ");
         const leftPadding = padding(doc.sliceString(position - 1, position));

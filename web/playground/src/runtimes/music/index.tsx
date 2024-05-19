@@ -5,6 +5,8 @@ import recordImage from "./record.svg";
 import { Tooltip } from "../../components";
 import { MaterialSymbol } from "react-material-symbols";
 import { Player, instrument } from "soundfont-player";
+import { NoteAsset } from "../../pages/edit/assets/note";
+import { InstrumentAsset } from "../../pages/edit/assets/instrument";
 
 export interface Settings {}
 
@@ -135,6 +137,17 @@ export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
         </div>
     );
 });
+
+export const assetItems: PaletteItem[] = [
+    {
+        title: <NoteAsset note="C4" tooltip={false} />,
+        code: `[Note "C4"]`,
+    },
+    {
+        title: <InstrumentAsset instrument="acoustic_grand_piano" tooltip={false} />,
+        code: `[Instrument "acoustic_grand_piano"]`,
+    },
+];
 
 export const paletteItems: PaletteItem[] = [
     {

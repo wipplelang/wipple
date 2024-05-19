@@ -2,10 +2,21 @@ import { PaletteItem } from "../models";
 import {
     Turtle,
     paletteItems as turtlePaletteItems,
+    assetItems as turtleAssetItems,
     type Settings as TurtleSettings,
 } from "./turtle";
-import { Music, paletteItems as musicPaletteItems, type Settings as MusicSettings } from "./music";
-import { Math, paletteItems as mathPaletteItems, type Settings as MathSettings } from "./math";
+import {
+    Music,
+    paletteItems as musicPaletteItems,
+    assetItems as musicAssetItems,
+    type Settings as MusicSettings,
+} from "./music";
+import {
+    Math,
+    paletteItems as mathPaletteItems,
+    assetItems as mathAssetItems,
+    type Settings as MathSettings,
+} from "./math";
 
 export interface Runtime {
     initialize: () => Promise<void>;
@@ -26,14 +37,17 @@ export type RuntimeComponent<Settings> = React.ForwardRefExoticComponent<
 export const runtimes = {
     turtle: {
         Component: Turtle,
+        assetItems: turtleAssetItems,
         paletteItems: turtlePaletteItems,
     },
     music: {
         Component: Music,
+        assetItems: musicAssetItems,
         paletteItems: musicPaletteItems,
     },
     math: {
         Component: Math,
+        assetItems: mathAssetItems,
         paletteItems: mathPaletteItems,
     },
 };

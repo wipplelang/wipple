@@ -218,10 +218,12 @@ const dragAndDrop = (readOnly: boolean) => [
                 return;
             }
 
-            let snippet = event.dataTransfer.getData("wipple/snippet");
-            if (!snippet) {
+            let snippetJson = event.dataTransfer.getData("wipple/snippet");
+            if (!snippetJson) {
                 return;
             }
+
+            let { code, insertLine } = JSON.parse(snippetJson);
 
             const position = view.posAtCoords({ x: event.clientX, y: event.clientY }, false);
 
@@ -230,7 +232,7 @@ const dragAndDrop = (readOnly: boolean) => [
                 position >= view.state.selection.main.from &&
                 position <= view.state.selection.main.to
             ) {
-                snippet = snippet.replace(
+                code = code.replace(
                     "_",
                     view.state.sliceDoc(
                         view.state.selection.main.from,
@@ -242,39 +244,50 @@ const dragAndDrop = (readOnly: boolean) => [
                     changes: {
                         from: view.state.selection.main.from,
                         to: view.state.selection.main.to,
-                        insert: snippet,
+                        insert: code,
                     },
                     userEvent: "wipple.drop",
                     selection: EditorSelection.cursor(view.state.selection.main.to),
                 });
             } else {
-                const replace = snippet.includes("_");
-                snippet = snippet.replace("_", view.state.sliceDoc());
+                const replace = /\b_\b/.test(code);
+                code = code.replace(/\b_\b/, view.state.sliceDoc());
 
                 if (replace) {
                     view.dispatch({
                         changes: {
                             from: 0,
                             to: view.state.doc.length,
-                            insert: snippet,
+                            insert: code,
                         },
                         userEvent: "wipple.drop",
                     });
                 } else {
-                    let leftPadding = "";
-                    const rightPadding = "\n";
-                    let endOfLine = view.state.doc.lineAt(position).to;
-                    if (endOfLine === view.state.doc.length) {
-                        leftPadding = "\n";
+                    let leftPadding: string;
+                    let rightPadding: string;
+                    let insertPosition: number;
+                    if (insertLine) {
+                        leftPadding = "";
+                        rightPadding = "\n";
+                        let endOfLine = view.state.doc.lineAt(position).to;
+                        if (endOfLine === view.state.doc.length) {
+                            leftPadding = "\n";
+                        } else {
+                            endOfLine += 1;
+                        }
+
+                        insertPosition = endOfLine;
                     } else {
-                        endOfLine += 1;
+                        leftPadding = " ";
+                        rightPadding = " ";
+                        insertPosition = position;
                     }
 
                     view.dispatch({
                         changes: {
-                            from: endOfLine,
-                            to: endOfLine,
-                            insert: leftPadding + snippet + rightPadding,
+                            from: insertPosition,
+                            to: insertPosition,
+                            insert: leftPadding + code + rightPadding,
                         },
                         userEvent: "wipple.drop",
                     });

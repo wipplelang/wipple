@@ -51,18 +51,33 @@ export const colors = {
     rose: rose,
 };
 
-export const ColorAsset = (props: { color: string; disabled?: boolean; onClick: () => void }) => {
+export const ColorAsset = (props: {
+    color: string;
+    tooltip?: boolean;
+    disabled?: boolean;
+    onClick?: () => void;
+}) => {
     const description = useMemo(() => colorName(props.color), [props.color]);
 
+    const color = <div className="w-4 h-4" style={{ backgroundColor: props.color }} />;
+
     return (
-        <div className="inline-block align-text-bottom rounded-md border-2 border-gray-100 dark:border-gray-800 overflow-clip hover:scale-110 transition-transform">
-            <Tooltip
-                disabled={props.disabled}
-                description={<span className="capitalize">{description}</span>}
-                onClick={props.onClick}
-            >
-                <div className="w-4 h-4" style={{ backgroundColor: props.color }} />
-            </Tooltip>
+        <div
+            className={`inline-block align-text-bottom rounded-md border-2 border-gray-100 dark:border-gray-800 overflow-clip ${
+                props.tooltip ?? true ? "hover:scale-110 transition-transform" : ""
+            }`}
+        >
+            {props.tooltip ?? true ? (
+                <Tooltip
+                    disabled={props.disabled}
+                    description={<span className="capitalize">{description}</span>}
+                    onClick={props.onClick}
+                >
+                    {color}
+                </Tooltip>
+            ) : (
+                color
+            )}
         </div>
     );
 };

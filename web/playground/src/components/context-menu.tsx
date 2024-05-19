@@ -14,6 +14,8 @@ export interface ContextMenuItem {
     title: string | ((props: { onDismiss: () => void }) => React.ReactNode);
     shortcut?: { win: string; mac: string };
     icon?: MaterialSymbolProps["icon"];
+    divider?: boolean;
+    highlight?: boolean;
     role?: "destructive";
     disabled?: boolean;
     tutorialItemId?: string;
@@ -93,42 +95,56 @@ const ContextMenu = (props: { items: ContextMenuItem[]; onDismiss: () => void })
     <ul className="flex flex-col items-stretch gap-0.5 bg-white dark:bg-gray-800 p-1 rounded-lg shadow-lg">
         {props.items.map((item, index) => (
             <TutorialItem id={item.tutorialItemId} key={index}>
-                <button
-                    disabled={item.disabled}
-                    onClick={(e) => {
-                        e.preventDefault();
-
-                        if (item.onClick) {
-                            item.onClick();
-                            props.onDismiss();
-                        } else {
-                            alert("Click and hold to drag out of the menu.");
-                        }
-                    }}
-                    className={`flex flex-row items-center gap-1.5 text-sm disabled:opacity-50 rounded-md px-2 py-0.5 transition-colors w-full ${
-                        item.role === "destructive"
-                            ? "text-red-500 enabled:hover:bg-red-50 enabled:dark:hover:bg-red-950 enabled:dark:hover:bg-opacity-50"
-                            : "text-gray-900 dark:text-gray-50 enabled:hover:bg-gray-100 enabled:dark:hover:bg-gray-700"
-                    }`}
+                <div
+                    className={
+                        item.divider ? "border-b-2 border-b-gray-100 dark:border-b-gray-900" : ""
+                    }
                 >
-                    {item.icon ? <MaterialSymbol icon={item.icon} className="text-lg" /> : null}
+                    <button
+                        disabled={item.disabled}
+                        onClick={(e) => {
+                            e.preventDefault();
 
-                    {typeof item.title === "string" ? (
-                        <p>{item.title}</p>
-                    ) : (
-                        <item.title onDismiss={props.onDismiss} />
-                    )}
+                            if (item.onClick) {
+                                item.onClick();
+                                props.onDismiss();
+                            } else {
+                                alert("Click and hold to drag out of the menu.");
+                            }
+                        }}
+                        className={`flex flex-row items-center gap-1.5 text-sm disabled:opacity-50 rounded-md px-2 py-0.5 transition-colors w-full ${
+                            item.role === "destructive"
+                                ? `text-red-500 ${
+                                      item.highlight ?? true
+                                          ? "enabled:hover:bg-red-50 enabled:dark:hover:bg-red-950 enabled:dark:hover:bg-opacity-50"
+                                          : ""
+                                  }`
+                                : `text-gray-900 ${
+                                      item.highlight ?? true
+                                          ? "dark:text-gray-50 enabled:hover:bg-gray-100 enabled:dark:hover:bg-gray-700"
+                                          : ""
+                                  }`
+                        }`}
+                    >
+                        {item.icon ? <MaterialSymbol icon={item.icon} className="text-lg" /> : null}
 
-                    <div className="flex-1" />
+                        {typeof item.title === "string" ? (
+                            <p>{item.title}</p>
+                        ) : (
+                            <item.title onDismiss={props.onDismiss} />
+                        )}
 
-                    {item.shortcut ? (
-                        <p className="text-sm opacity-50">
-                            {/mac/.test(navigator.userAgent.toLowerCase())
-                                ? item.shortcut.mac
-                                : item.shortcut.win}
-                        </p>
-                    ) : null}
-                </button>
+                        <div className="flex-1" />
+
+                        {item.shortcut ? (
+                            <p className="text-sm opacity-50">
+                                {/mac/.test(navigator.userAgent.toLowerCase())
+                                    ? item.shortcut.mac
+                                    : item.shortcut.win}
+                            </p>
+                        ) : null}
+                    </button>
+                </div>
             </TutorialItem>
         ))}
     </ul>

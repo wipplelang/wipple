@@ -103,19 +103,34 @@ export const animals = [
 
 export const animalImageUrl = (animal: string) => `/playground/images/animals/${animal}.svg`;
 
-export const AnimalAsset = (props: { animal: string; disabled?: boolean; onClick: () => void }) => {
-    const description = useMemo(() => props.animal.replace("_", "_"), [props.animal]);
+export const AnimalAsset = (props: {
+    animal: string;
+    tooltip?: boolean;
+    disabled?: boolean;
+    onClick?: () => void;
+}) => {
+    const description = useMemo(() => props.animal.replace("_", " "), [props.animal]);
     const imageUrl = useMemo(() => animalImageUrl(props.animal), [props.animal]);
 
+    const animal = <img className="w-4 h-4" src={imageUrl} />;
+
     return (
-        <div className="inline-block align-text-bottom rounded-md border-2 border-gray-100 dark:border-gray-800 overflow-clip hover:scale-110 transition-transform">
-            <Tooltip
-                disabled={props.disabled}
-                description={<span className="capitalize">{description}</span>}
-                onClick={props.onClick}
-            >
-                <img className="w-4 h-4" src={imageUrl} />
-            </Tooltip>
+        <div
+            className={`inline-block align-text-bottom rounded-md border-2 border-gray-100 dark:border-gray-800 overflow-clip ${
+                props.tooltip ?? true ? "hover:scale-110 transition-transform" : ""
+            }`}
+        >
+            {props.tooltip ?? true ? (
+                <Tooltip
+                    disabled={props.disabled}
+                    description={<span className="capitalize">{description}</span>}
+                    onClick={props.onClick}
+                >
+                    {animal}
+                </Tooltip>
+            ) : (
+                animal
+            )}
         </div>
     );
 };

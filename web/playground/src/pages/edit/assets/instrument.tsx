@@ -135,20 +135,31 @@ export const instruments = [
 
 export const InstrumentAsset = (props: {
     instrument: string;
+    tooltip?: boolean;
     disabled?: boolean;
-    onClick: () => void;
+    onClick?: () => void;
 }) => {
     const description = useMemo(() => instrumentName(props.instrument), [props.instrument]);
 
+    const instrument = <p className="capitalize ui-font">{description}</p>;
+
     return (
-        <div className="inline-block align-bottom rounded-md px-1.5 bg-white dark:bg-black border-2 border-gray-100 dark:border-gray-800 overflow-clip hover:scale-110 transition-transform">
-            <Tooltip
-                disabled={props.disabled}
-                description="Change Instrument"
-                onClick={props.onClick}
-            >
-                <p className="capitalize ui-font">{description}</p>
-            </Tooltip>
+        <div
+            className={`inline-block align-bottom rounded-md px-1.5 bg-white dark:bg-black border-2 border-gray-100 dark:border-gray-800 overflow-clip ${
+                props.tooltip ?? true ? "hover:scale-105 transition-transform" : ""
+            }`}
+        >
+            {props.tooltip ?? true ? (
+                <Tooltip
+                    disabled={props.disabled}
+                    description="Change Instrument"
+                    onClick={props.onClick}
+                >
+                    {instrument}
+                </Tooltip>
+            ) : (
+                instrument
+            )}
         </div>
     );
 };

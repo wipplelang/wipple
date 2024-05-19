@@ -4,6 +4,7 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } fro
 import { PaletteItem } from "../../models";
 import { Resizable } from "react-resizable";
 import { produce } from "immer";
+import { ColorAsset } from "../../pages/edit/assets/color";
 
 export interface Settings {
     canvasWidth: number;
@@ -177,6 +178,13 @@ export const Math: RuntimeComponent<Settings> = forwardRef((props, ref) => {
         </Resizable>
     );
 });
+
+export const assetItems: PaletteItem[] = [
+    {
+        title: <ColorAsset color="#3b82f6" tooltip={false} />,
+        code: `[Color "#3b82f6"]`,
+    },
+];
 
 export const paletteItems: PaletteItem[] = [
     {
