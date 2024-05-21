@@ -31,6 +31,8 @@ import lookupIcon from "./assets/lookup.svg";
 import { NotePicker } from "./note-picker";
 import { AnimalPicker } from "./animal-picker";
 import { InstrumentPicker } from "./instrument-picker";
+import { LinesEditor } from "../../components/lines-editor";
+import { arrayMoveMutable } from "array-move";
 
 export function CodeEditor<Settings>(props: {
     children: string;
@@ -371,27 +373,37 @@ export function CodeEditor<Settings>(props: {
                 />
 
                 <div className="relative pb-[3px]">
-                    <CodeMirror
-                        ref={codeMirrorRef}
-                        autoFocus
-                        onChange={(value) => {
-                            setDiagnostics([]);
-                            props.onChange(value);
+                    <LinesEditor
+                        numberOfLines={props.children.split("\n").length}
+                        lineHeight={props.theme.fontSize * props.theme.lineHeight}
+                        onReorderLine={(from, to) => {
+                            const lines = props.children.split("\n");
+                            arrayMoveMutable(lines, from, to);
+                            props.onChange(lines.join("\n"));
                         }}
-                        onDrop={() => {
-                            format();
-                        }}
-                        readOnly={lookUpEnabled}
-                        lookUpEnabled={lookUpEnabled}
-                        onClickLookUp={onClickLookUp}
-                        help={getHelpForCode}
-                        onClickAsset={onClickAsset}
-                        theme={props.theme}
-                        diagnostics={diagnostics}
-                        highlightItems={highlightItems}
                     >
-                        {props.children}
-                    </CodeMirror>
+                        <CodeMirror
+                            ref={codeMirrorRef}
+                            autoFocus
+                            onChange={(value) => {
+                                setDiagnostics([]);
+                                props.onChange(value);
+                            }}
+                            onDrop={() => {
+                                format();
+                            }}
+                            readOnly={lookUpEnabled}
+                            lookUpEnabled={lookUpEnabled}
+                            onClickLookUp={onClickLookUp}
+                            help={getHelpForCode}
+                            onClickAsset={onClickAsset}
+                            theme={props.theme}
+                            diagnostics={diagnostics}
+                            highlightItems={highlightItems}
+                        >
+                            {props.children}
+                        </CodeMirror>
+                    </LinesEditor>
 
                     {!animationsSettled
                         ? null

@@ -31,7 +31,7 @@ export const themeFromConfig = (config: ThemeConfig): Extension => [
             lineHeight: config.lineHeight,
         },
         ".cm-content": {
-            padding: "1px 1rem",
+            padding: 0,
         },
         ".cm-line": {
             padding: 0,
