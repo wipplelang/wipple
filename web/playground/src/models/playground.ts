@@ -12,6 +12,7 @@ import { pureConverter } from "../helpers/database";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { nanoid } from "nanoid";
 import { MusicSettings, TurtleSettings } from "../runtimes";
+import { Lesson } from "../lessons";
 
 export interface PlaygroundListItem {
     id: string;
@@ -159,6 +160,26 @@ export const duplicatePlayground = async (id: string) => {
     };
 
     const result = await addDoc(collection(firestore, "playgrounds"), newPlayground);
+    return result.id;
+};
+
+export const createLesson = async (lesson: Lesson) => {
+    const user = await getUser();
+    if (!user) {
+        throw new Error("must be logged in to duplicate a playground");
+    }
+
+    const firestore = getFirestore();
+
+    const playground: Omit<Playground, "id"> = {
+        owner: user.uid,
+        collaborators: [],
+        name: lesson.name,
+        lastModified: new Date().toISOString(),
+        pages: lesson.pages,
+    };
+
+    const result = await addDoc(collection(firestore, "playgrounds"), playground);
     return result.id;
 };
 

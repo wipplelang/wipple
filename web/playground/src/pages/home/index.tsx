@@ -13,6 +13,7 @@ import {
     ListPlaygroundsFilter,
     PlaygroundListItem,
     TutorialStep,
+    createLesson,
     createPlayground,
     deletePlayground,
     duplicatePlayground,
@@ -24,6 +25,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { useStore } from "../../store";
 import { produce } from "immer";
+import { Lesson, lessons } from "../../lessons";
 
 export const HomePage = () => {
     const { setPrimaryActions } = useNavbar();
@@ -52,6 +54,7 @@ export const HomePage = () => {
     }, [loadPlaygrounds]);
 
     const navigate = useNavigate();
+    const { displayAlert } = useAlert();
 
     const handleNewPlayground = async () => {
         const id = await createPlayground();
@@ -107,8 +110,19 @@ export const HomePage = () => {
                         </TutorialItem>
 
                         <PrimaryCard
-                            title="Browse Lessons"
-                            onClick={() => alert("Lessons aren't available yet.")}
+                            title="Lessons"
+                            onClick={() =>
+                                displayAlert(({ dismiss }) => (
+                                    <LessonsAlert
+                                        onSelectLesson={async (lesson) => {
+                                            const id = await createLesson(lesson);
+                                            dismiss();
+                                            navigate(`edit/${id}`);
+                                        }}
+                                        onCancel={dismiss}
+                                    />
+                                ))
+                            }
                         >
                             <img src="/playground/images/lesson-bg.png" />
                         </PrimaryCard>
@@ -255,4 +269,37 @@ const PlaygroundCard = (props: {
             </ContextMenuButton>
         </div>
     </Link>
+);
+
+const LessonsAlert = (props: {
+    onSelectLesson: (lesson: Lesson) => void;
+    onCancel: () => void;
+}) => (
+    <div className="flex flex-col gap-4 w-[512px]">
+        <div className="flex flex-col gap-2">
+            <h1 className="text-2xl font-semibold">Lessons</h1>
+
+            {lessons.map((lesson, index) => (
+                <button
+                    key={index}
+                    className="flex flex-row items-center bg-sky-50 dark:bg-sky-950 hover:bg-sky-100 dark:hover:bg-sky-900 transition-colors p-4 rounded-md"
+                    onClick={() => props.onSelectLesson(lesson)}
+                >
+                    <div className="flex flex-col items-start flex-1">
+                        <h2 className="text-xl font-semibold text-sky-500">{lesson.name}</h2>
+                        <p className="text-sky-400 dark:text-sky-600">{lesson.description}</p>
+                    </div>
+
+                    <MaterialSymbol
+                        icon="chevron_right"
+                        className="text-2xl text-sky-400 dark:text-sky-600"
+                    />
+                </button>
+            ))}
+        </div>
+
+        <Button role="secondary" fill onClick={props.onCancel}>
+            Cancel
+        </Button>
+    </div>
 );

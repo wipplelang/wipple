@@ -1,0 +1,154 @@
+import { Lesson } from "./index";
+
+export const learnToCodeLesson: Lesson = {
+    name: "Learn to Code",
+    description: "Learn coding with Wipple by making drawings.",
+    pages: [
+        {
+            items: [
+                {
+                    type: "text",
+                    text: "## Welcome!\n\nWelcome to Wipple! Wipple is a programming language designed for learning. With Wipple, you can make drawings, play music, explore math, and more. Let's get started!\n\n### Code boxes\n\nThe box below contains Wipple code. You can edit the code in the box at any time. When you're going through the lessons, be sure to change the code and see what happens. Try adding your name to the greeting in the code box below!",
+                    locked: true,
+                },
+                {
+                    code: 'show "Hello!"',
+                    type: "code",
+                },
+                {
+                    locked: true,
+                    text: "This course is organized into lessons, listed on the left side of your screen (or at the top if you’re on a mobile device). When you’re ready to move on, click the next lesson!",
+                    type: "text",
+                },
+            ],
+            id: "ao2Y_k_r7TsK1xQDR4YJ",
+            name: "Welcome!",
+        },
+        {
+            name: "Making a calculator",
+            items: [
+                {
+                    text: "## Making a calculator\n\nLet's get started with Wipple by writing a simple calculator!",
+                    locked: true,
+                    type: "text",
+                },
+                {
+                    code: "2 + 2",
+                    type: "code",
+                },
+                {
+                    locked: true,
+                    text: "...wait, nothing happened. Why not?\n\n### Computers do exactly what you tell them to do\n\nThe problem is that you told the computer to add 2 and 2 together, but you didn't tell it what to do with the result! So the answer (`4`) is just discarded. Remember that computers always do exactly what you tell them to do, and never anything you don't. To fix this, we can add `show` to the front of our calculation, which instructs the computer to display it on the screen:",
+                    type: "text",
+                },
+                {
+                    type: "code",
+                    code: "show (2 + 2)",
+                },
+                {
+                    locked: true,
+                    type: "text",
+                    text: "Hooray, now `4` appears on the screen! Try changing the numbers and experiment with other symbols in the box below.",
+                },
+                {
+                    code: "",
+                    type: "code",
+                },
+            ],
+            id: "s73jyzC0wSI6pioqe9OX",
+        },
+        {
+            items: [
+                {
+                    locked: true,
+                    type: "text",
+                    text: "## Drawing a square\n\nLet's learn some more Wipple commands by drawing some shapes! In the box below, you'll see a **turtle**. The turtle moves around based on your code.\n\nThe `forward` command lets us move the turtle forward by a number of `pixels`:",
+                },
+                {
+                    code: "forward (50 pixels)",
+                    setup: "turtle",
+                    type: "code",
+                },
+                {
+                    locked: true,
+                    type: "text",
+                    text: "And the `left` command lets us rotate the turtle by a number of `degrees`:",
+                },
+                {
+                    code: "forward (50 pixels)\nleft (90 degrees)",
+                    setup: "turtle",
+                    type: "code",
+                },
+                {
+                    locked: true,
+                    type: "text",
+                    text: "Here’s the same code again — can you figure out how to change it to make a square? (Hint: you will need to do some copying and pasting!)",
+                },
+                {
+                    setup: "turtle",
+                    code: "forward (50 pixels)\nleft (90 degrees)",
+                    type: "code",
+                },
+            ],
+            id: "V1LDetNvgqbB0-z4yTJ8",
+            name: "Drawing a square",
+        },
+        {
+            name: "Loops",
+            id: "U7KPIwvwsiAZLOFV6QMU",
+            items: [
+                {
+                    text: "## Loops\n\nIn the last lesson, you changed the code to make the turtle draw a square. If you couldn’t figure it out, here’s the solution!",
+                    locked: true,
+                    type: "text",
+                },
+                {
+                    code: "forward (50 pixels)\nleft (90 degrees)\nforward (50 pixels)\nleft (90 degrees)\nforward (50 pixels)\nleft (90 degrees)\nforward (50 pixels)\nleft (90 degrees)",
+                    setup: "turtle",
+                    type: "code",
+                },
+                {
+                    locked: true,
+                    text: "Now let’s draw a bigger square! Update the code below to make the square twice the size.",
+                    type: "text",
+                },
+                {
+                    type: "code",
+                    code: "forward (50 pixels)\nleft (90 degrees)\nforward (50 pixels)\nleft (90 degrees)\nforward (50 pixels)\nleft (90 degrees)\nforward (50 pixels)\nleft (90 degrees)",
+                    setup: "turtle",
+                },
+                {
+                    locked: true,
+                    text: "Hmm, that was kind of annoying. We had to change the `pixels` in four places! Luckily, there's a better way to do this.\n\nWipple has a special command called `repeat` that will run your code _multiple times_ in a loop. Here's how you can use it!\n\n1. Click on the **Add** button in the code box below.\n2. Click on `repeat` and drag it on top of your code.\n3. Change the dropdown to `4` times.\n\nGo ahead and try it below!",
+                    type: "text",
+                },
+                {
+                    setup: "turtle",
+                    type: "code",
+                    code: "forward (50 pixels)\nleft (90 degrees)",
+                },
+                {
+                    type: "text",
+                    locked: true,
+                    text: "Woo-hoo, now we have a square!",
+                },
+            ],
+        },
+        {
+            name: "Activity: Your own drawing",
+            id: "GpJ8tx5CALIlgm9Hyxvc",
+            items: [
+                {
+                    type: "text",
+                    text: "## Activity: Your own drawing\n\nNow it’s your turn to make your own drawing! Play around with the icon, color, speed, and other commands. To see all the commands you can use, click the **Add** button and drag one of the items into your code.",
+                    locked: true,
+                },
+                {
+                    type: "code",
+                    setup: "turtle",
+                    code: "",
+                },
+            ],
+        },
+    ],
+};
