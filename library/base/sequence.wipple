@@ -137,11 +137,11 @@ sum : reduce Empty (next -> result -> result + next)
 
 From-Sequence : Element Container => trait ((Sequence Element) -> Container)
 
-Element Container where (Error ("cannot create a _ from a sequence of _" Container Element)) =>
+Element Container where (Error ("cannot create _ from a sequence of _" Container Element)) =>
     default instance (From-Sequence Element Container) : ...
 
 -- Collect a sequence into a single container, like a list.
-collect :: Input (infer Element) Output where (As-Sequence Input Element) (From-Sequence Element Output) => Input -> Output
+collect :: Input (infer Element) (Output : List Element) where (As-Sequence Input Element) (From-Sequence Element Output) => Input -> Output
 collect : collection -> From-Sequence (As-Sequence collection)
 
 Element => instance (From-Sequence Element (List Element)) : sequence -> do {
