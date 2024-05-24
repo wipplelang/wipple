@@ -182,8 +182,33 @@ export class Render {
                 return declaration.item.name;
             }
             case "constant": {
-                const type = this.renderType(declaration.item.declaration.type, true, false, false);
-                return `${declaration.item.name} :: ${type}`;
+                if (
+                    declaration.item.declaration.parameters.length > 0 ||
+                    declaration.item.declaration.bounds.length > 0
+                ) {
+                    const typeFunction = this.renderTypeFunction(
+                        declaration.item.declaration.parameters,
+                        declaration.item.declaration.bounds,
+                        { kind: "arrow" },
+                    );
+
+                    const type = this.renderType(
+                        declaration.item.declaration.type,
+                        true,
+                        false,
+                        false,
+                    );
+
+                    return `${declaration.item.name} :: ${typeFunction}${type}`;
+                } else {
+                    const type = this.renderType(
+                        declaration.item.declaration.type,
+                        true,
+                        false,
+                        false,
+                    );
+                    return `${declaration.item.name} :: ${type}`;
+                }
             }
             case "instance": {
                 const typeFunction = this.renderTypeFunction(
