@@ -24,6 +24,7 @@ export const NoteAsset = (props: {
                 }}
                 activeNotes={[(MidiNumbers.fromNote(props.note) % 12) + 12]}
                 width={60}
+                keyWidthToHeight={0.4}
                 playNote={() => {}}
                 stopNote={() => {}}
             />
