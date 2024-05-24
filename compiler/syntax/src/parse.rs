@@ -1227,9 +1227,9 @@ mod rules {
                                             NonAssociativeOperator::TypeFunction,
                                             type_function,
                                             || {
-                                                Rule::keyword2(
+                                                Rule::contextual_keyword2(
                                                     SyntaxKind::InstanceDeclaration,
-                                                    Keyword::Default,
+                                                    "default",
                                                     || {
                                                         Rule::match_terminal(
                                                             SyntaxKind::InstanceDeclaration,
@@ -1250,9 +1250,9 @@ mod rules {
                                         )
                                     },
                                     || {
-                                        Rule::keyword2(
+                                        Rule::contextual_keyword2(
                                             SyntaxKind::InstanceDeclaration,
-                                            Keyword::Default,
+                                            "default",
                                             || {
                                                 Rule::match_terminal(
                                                     SyntaxKind::InstanceDeclaration,
@@ -1300,9 +1300,9 @@ mod rules {
                                     NonAssociativeOperator::TypeFunction,
                                     type_function,
                                     || {
-                                        Rule::keyword2(
+                                        Rule::contextual_keyword2(
                                             SyntaxKind::InstanceDeclaration,
-                                            Keyword::Default,
+                                            "default",
                                             || {
                                                 Rule::match_terminal(
                                                     SyntaxKind::InstanceDeclaration,
@@ -1327,9 +1327,9 @@ mod rules {
                                 )
                             },
                             || {
-                                Rule::keyword2(
+                                Rule::contextual_keyword2(
                                     SyntaxKind::InstanceDeclaration,
-                                    Keyword::Default,
+                                    "default",
                                     || {
                                         Rule::match_terminal(
                                             SyntaxKind::InstanceDeclaration,
@@ -1829,9 +1829,9 @@ mod rules {
                         })
                 },
                 || {
-                    Rule::keyword1(
+                    Rule::contextual_keyword1(
                         SyntaxKind::TypeParameter,
-                        Keyword::Infer,
+                        "infer",
                         || name().wrapped(),
                         |_, info, name, _| WithInfo {
                             info: D::Info::clone(&info),
@@ -1866,9 +1866,9 @@ mod rules {
                                         )
                                     },
                                     || {
-                                        Rule::keyword1(
+                                        Rule::contextual_keyword1(
                                             SyntaxKind::TypeParameter,
-                                            Keyword::Infer,
+                                            "infer",
                                             || name().wrapped(),
                                             |_, info, name, _| WithInfo {
                                                 info: D::Info::clone(&info),
@@ -3781,12 +3781,12 @@ mod base {
     }
 
     macro_rules! impl_keyword_rule {
-        ($name:ident($($n:ident),*)) => {
+        ($pattern:ident($ty:ty), $name:ident($($n:ident),*)) => {
             impl<_D: Driver, Output: 'static> Rule<_D, Output> {
                 #[allow(unused, non_snake_case, clippy::redundant_clone, clippy::too_many_arguments)]
                 pub fn $name<$($n),*>(
                     syntax_kind: SyntaxKind,
-                    expected: tokenize::Keyword,
+                    expected: $ty,
                     $($n: fn() -> Rule<_D, $n>,)*
                     output: impl Fn(&mut Parser<'_, _D>, _D::Info, $(WithInfo<_D::Info, $n>, )* &Rc<ParseStack<_D>>) -> WithInfo<_D::Info, Output> + Clone + 'static,
                 ) -> Rule<_D, Output>
@@ -3812,7 +3812,7 @@ mod base {
 
                                     let info = match elements.next()? {
                                         WithInfo {
-                                            item: TokenTree::Keyword(found),
+                                            item: TokenTree::$pattern(found),
                                             info,
                                         } if *found == expected => info,
                                         _ => return None,
@@ -3840,7 +3840,7 @@ mod base {
 
                                 let info = match elements.next()? {
                                     WithInfo {
-                                        item: TokenTree::Keyword(found),
+                                        item: TokenTree::$pattern(found),
                                         info,
                                     } if *found == expected => info,
                                     _ => return None,
@@ -3886,13 +3886,15 @@ mod base {
         };
     }
 
-    impl_keyword_rule!(keyword0());
-    impl_keyword_rule!(keyword1(A));
-    impl_keyword_rule!(keyword2(A, B));
-    impl_keyword_rule!(keyword3(A, B, C));
-    impl_keyword_rule!(keyword4(A, B, C, D));
-    impl_keyword_rule!(keyword5(A, B, C, D, E));
-    impl_keyword_rule!(keyword6(A, B, C, D, E, F));
+    impl_keyword_rule!(Keyword(tokenize::Keyword), keyword0());
+    impl_keyword_rule!(Keyword(tokenize::Keyword), keyword1(A));
+    impl_keyword_rule!(Keyword(tokenize::Keyword), keyword2(A, B));
+    impl_keyword_rule!(Keyword(tokenize::Keyword), keyword3(A, B, C));
+
+    impl_keyword_rule!(Name(&'static str), contextual_keyword0());
+    impl_keyword_rule!(Name(&'static str), contextual_keyword1(A));
+    impl_keyword_rule!(Name(&'static str), contextual_keyword2(A, B));
+    impl_keyword_rule!(Name(&'static str), contextual_keyword3(A, B, C));
 
     impl<D: Driver, Output: 'static> Rule<D, Output> {
         pub fn keyword_prefixn<P, E>(
