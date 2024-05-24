@@ -12,16 +12,16 @@ describe : Describe
 -- Display a value on the screen.
 @(highlight-category : "io")
 @(highlight-icon : "article")
-show :: (Value : Text) where (Describe Value) => Value -> ()
+show :: (Value : Text) where (Describe Value) => Value -> Unit
 show : value -> intrinsic "display" (describe value)
 
-print :: (Value : Text) where (Error "use `show` to display on the screen") => Value -> ()
+print :: (Value : Text) where (Error "use `show` to display on the screen") => Value -> Unit
 print : ...
 
-println :: (Value : Text) where (Error "use `show` to display on the screen") => Value -> ()
+println :: (Value : Text) where (Error "use `show` to display on the screen") => Value -> Unit
 println : ...
 
-display :: (Value : Text) where (Error "use `show` to display on the screen") => Value -> ()
+display :: (Value : Text) where (Error "use `show` to display on the screen") => Value -> Unit
 display : ...
 
 instance (Describe Text) : text -> text

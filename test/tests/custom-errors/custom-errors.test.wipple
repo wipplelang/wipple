@@ -9,7 +9,7 @@ instance (Distance? Distance) : ()
 pixels :: Number -> Distance
 pixels : pixels -> {pixels : pixels}
 
-forward :: D where (Distance? D) => D -> ()
+forward :: D where (Distance? D) => D -> Unit
 forward : ...
 
 forward 42

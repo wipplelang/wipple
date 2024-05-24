@@ -11,7 +11,7 @@ Repeat-Predicate : State Body Result => trait (State -> Control-Flow (Body -> St
 with-control-flow :: Result => With-Control-Flow Result
 with-control-flow : {current : Continue ()}
 
-With-Control-Flow : Result => type {current :: Control-Flow () Result}
+With-Control-Flow : Result => type {current :: Control-Flow Unit Result}
 
 Result => instance (Repeat-Predicate (With-Control-Flow Result) (Control-Flow () Result) Result) :
     {current : current} -> when current {
@@ -32,7 +32,7 @@ While : type {condition :: {Boolean}}
     if (do condition) {Continue (_ -> while condition)} {Stop ()}
 
 (Body : ()) where (Error ("missing `repeat` here" ; Error-Fix "add `repeat`" ("`repeat _`" Source))) =>
-  instance (Mismatch While ({Body} -> ()))
+  instance (Mismatch While ({Body} -> Unit))
 
 -- Repeat forever.
 forever :: Forever
@@ -71,7 +71,7 @@ times : count -> {
 }
 
 Body where (Error ("missing `repeat` here" ; Error-Fix "add `repeat`" ("`repeat _`" Source))) =>
-  instance (Mismatch Times ({Body} -> ()))
+  instance (Mismatch Times ({Body} -> Unit))
 
 -- Execute a block of code repeatedly.
 --

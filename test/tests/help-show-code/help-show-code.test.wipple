@@ -1,6 +1,6 @@
 -- [should error]
 
-Compatible : Left Right => trait (Left Right -> ())
+Compatible : Left Right => trait (Left Right -> Unit)
 
 Left Right where (Error ("`_` is not compatible with `_`" Left Right)) =>
     default instance (Compatible Left Right) : ...

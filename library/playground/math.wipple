@@ -1,42 +1,42 @@
 -- Set the color of the graph.
 @(highlight-category : "math-color")
 @(highlight-icon : "palette")
-color :: Color -> ()
+color :: Color -> Unit
 color : (Color color) -> runtime-message "color" color
 
 -- Set the minimum x-value displayed by the graph.
 @(highlight-category : "control-flow")
 @(highlight-icon : "function")
-min-x :: Number -> ()
+min-x :: Number -> Unit
 min-x : n -> runtime-message "min-x" n
 
 -- Set the minimum y-value displayed by the graph.
 @(highlight-category : "control-flow")
 @(highlight-icon : "function")
-min-y :: Number -> ()
+min-y :: Number -> Unit
 min-y : n -> runtime-message "min-y" n
 
 -- Set the maximum x-value displayed by the graph.
 @(highlight-category : "control-flow")
 @(highlight-icon : "function")
-max-x :: Number -> ()
+max-x :: Number -> Unit
 max-x : n -> runtime-message "max-x" n
 
 -- Set the maximum y-value displayed by the graph.
 @(highlight-category : "control-flow")
 @(highlight-icon : "function")
-max-y :: Number -> ()
+max-y :: Number -> Unit
 max-y : n -> runtime-message "max-y" n
 
 -- Set the space between individual points on the graph. A higher resolution
 -- will be more accurate, but will take longer to compute.
 @(highlight-category : "control-flow")
 @(highlight-icon : "query-stats")
-resolution :: Number -> ()
+resolution :: Number -> Unit
 resolution : n -> runtime-message "resolution" n
 
 -- Add a function to the graph.
 @(highlight-category : "math-plot")
 @(highlight-icon : "show-chart")
-plot :: (Number -> Number) -> ()
+plot :: (Number -> Number) -> Unit
 plot : f -> runtime-message "function" f

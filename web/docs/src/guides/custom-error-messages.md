@@ -22,7 +22,7 @@ Value where (Error ("_ has no description" Value)) =>
     default instance (Describe Value) : unreachable
 
 my-value : ()
-Describe my-value -- error: `()` has no description
+Describe my-value -- error: unit has no description
 ```
 
 If you want to display the source code of the input rather than its type, surround the placeholder with backticks (`` `_` ``):

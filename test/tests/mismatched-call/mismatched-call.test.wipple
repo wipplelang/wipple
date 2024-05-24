@@ -1,6 +1,6 @@
 -- [should error]
 
-accepts-text :: Text -> ()
+accepts-text :: Text -> Unit
 accepts-text : ...
 
 -- should display 'expected `Text`, found `Number`' rather than

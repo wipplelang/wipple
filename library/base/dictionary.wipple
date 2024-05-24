@@ -155,7 +155,7 @@ Key Value where (Equal Key) (Hash Key) => instance (Container (Dictionary Key Va
     target -> dictionary -> (dictionary . entry target) is Some _
 
 -- An unordered collection of unique elements.
-Set : Element => type {dictionary :: Dictionary Element ()}
+Set : Element => type {dictionary :: Dictionary Element Unit}
 
 Element => instance (Empty (Set Element)) : {dictionary : Empty}
 

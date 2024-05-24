@@ -275,7 +275,7 @@ pub fn resolve<D: Driver>(
 
             if !substituted_defaults {
                 if item_declaration.item.top_level {
-                    // The top level has type `()` by default, but any other type is also OK
+                    // The top level has type `Unit` by default, but any other type is also OK
                     let _ = unify(
                         driver,
                         &queued.body.item.r#type,
@@ -2135,7 +2135,7 @@ fn infer_expression<D: Driver>(
                         let statement = infer_expression(expression, Some(expression_id), context);
 
                         if index + 1 < statement_count {
-                            // Statements have type `()` by default, but any other type is also OK
+                            // Statements have type `Unit` by default, but any other type is also OK
                             let _ = unify(
                                 context.driver,
                                 &statement.item.r#type,

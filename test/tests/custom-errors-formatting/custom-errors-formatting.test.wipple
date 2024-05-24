@@ -11,7 +11,7 @@ Animal Food where (Error ("_s do not eat _" Animal Food)) => default instance (E
 instance (Eats? Carnivore Meat) : ()
 instance (Eats? Herbivore Plants) : ()
 
-test :: Animal Food where (Eats? Animal Food) => Animal Food -> ()
+test :: Animal Food where (Eats? Animal Food) => Animal Food -> Unit
 test : ...
 
 test Carnivore Meat

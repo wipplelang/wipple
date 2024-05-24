@@ -182,7 +182,7 @@ instance (From-Sequence () ()) : sequence -> repeat with-control-flow {
 }
 
 -- Perform an action for each item in a sequence.
-each :: Container (infer Element) where (As-Sequence Container Element) => (Element -> ()) -> Container -> ()
+each :: Container (infer Element) where (As-Sequence Container Element) => (Element -> Unit) -> Container -> Unit
 each : action -> container -> container . transform action . collect
 
 

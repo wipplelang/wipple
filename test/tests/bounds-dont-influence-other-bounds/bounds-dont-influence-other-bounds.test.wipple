@@ -1,6 +1,6 @@
 -- [should error]
 
-T : A => trait (A -> ())
+T : A => trait (A -> Unit)
 
 instance (T Number) : _ -> ()
 instance (T Text) : _ -> ()

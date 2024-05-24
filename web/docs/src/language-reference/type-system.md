@@ -43,13 +43,13 @@ Tuple types are written `A ; B ; C`. Each element type may be different.
 
 A tuple with a single element is written with a trailing semicolon (`A ;`). A single-element tuple is not equal to the element type on its own (ie. `A ;` is not equivalent to `A`).
 
-A tuple with no elements is written `()`.
+A tuple with no elements is written `()` (aka. `Unit`).
 
 ### Blocks
 
 Block types are written `{A}`, where `A` is the type of the last statement in the block.
 
-The empty block produces a value of type `()`, and so it has type `{()}`. As a shorthand, `{()}` is syntactically equivalent to `{}`.
+The empty block produces a value of type `Unit`, and so it has type `{Unit}`.
 
 ### Intrinsics
 

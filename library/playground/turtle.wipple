@@ -13,13 +13,13 @@ pixels : Distance
 -- Move the turtle forward by the specified distance.
 @(highlight-category : "turtle-motion")
 @(highlight-icon : "arrow-upward")
-forward :: Distance -> ()
+forward :: Distance -> Unit
 forward : (Distance pixels) -> runtime-message "forward" pixels
 
 -- Move the turtle backward by the specified distance.
 @(highlight-category : "turtle-motion")
 @(highlight-icon : "arrow-downward")
-backward :: Distance -> ()
+backward :: Distance -> Unit
 backward : (Distance pixels) -> runtime-message "backward" pixels
 
 -- An arc.
@@ -31,7 +31,7 @@ Arc : type {
 -- Move the turtle along an arc.
 @(highlight-category : "turtle-motion")
 @(highlight-icon : "progress-activity")
-arc :: Arc -> ()
+arc :: Arc -> Unit
 arc : {
     radius : (Distance radius)
     angle : (Angle angle)
@@ -40,19 +40,19 @@ arc : {
 -- Rotate the turtle counterclockwise by the specified angle.
 @(highlight-category : "turtle-turn")
 @(highlight-icon : "rotate-left")
-left :: Angle -> ()
+left :: Angle -> Unit
 left : (Angle degrees) -> runtime-message "left" degrees
 
 -- Rotate the turtle clockwise by the specified angle.
 @(highlight-category : "turtle-turn")
 @(highlight-icon : "rotate-right")
-right :: Angle -> ()
+right :: Angle -> Unit
 right : (Angle degrees) -> runtime-message "right" degrees
 
 -- Set the pen color.
 @(highlight-category : "turtle-pen")
 @(highlight-icon : "edit")
-color :: Color -> ()
+color :: Color -> Unit
 color : (Color color) -> runtime-message "color" color
 
 -- Draw a path and fill it with the specified color.
@@ -92,7 +92,7 @@ very-fast : Speed 1
 -- Set the speed of the turtle.
 @(highlight-category : "control-flow")
 @(highlight-icon : "speed")
-speed :: Speed -> ()
+speed :: Speed -> Unit
 speed : (Speed value) -> runtime-message "speed" value
 
 -- An animal to use instead of the turtle.
@@ -102,5 +102,5 @@ instance (Describe-Type Animal "an animal")
 -- Change the animal being displayed.
 @(highlight-category : "turtle-pen")
 @(highlight-icon : "mood")
-animal :: Animal -> ()
+animal :: Animal -> Unit
 animal : (Animal name) -> runtime-message "animal" name

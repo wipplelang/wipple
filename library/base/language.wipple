@@ -4,6 +4,8 @@ Number : type intrinsic
 @(language : "text")
 Text : type intrinsic
 
+Unit : type alias ()
+
 @(language : "maybe")
 Maybe : Value => type {
     @(language : "none")
@@ -21,13 +23,13 @@ Input Output where (Error ("cannot convert a _ into _" Input Output)) =>
 
 Value => instance (As Value Value) : value -> value
 
-error :: (Value : ()) => Text -> Value
+error :: (Value : Unit) => Text -> Value
 error : message -> intrinsic "crash" message
 
 ... :: Value => Value
 ... : error "not implemented"
 
-assert :: Text -> Boolean -> ()
+assert :: Text -> Boolean -> Unit
 assert : message -> condition -> if condition {} {error message}
 
 unreachable :: Value => Value
@@ -45,7 +47,7 @@ instance (Empty Boolean) : False
 Value => instance (Empty (Maybe Value)) : None
 
 -- Send a message to the runtime.
-runtime-message :: Input (Output : ()) => Text Input -> Output
+runtime-message :: Input (Output : Unit) => Text Input -> Output
 runtime-message : message data -> intrinsic "runtime-message" message data
 
 -- Generate a compile-time error with the provided information. You may provide
@@ -102,6 +104,7 @@ Mismatch : Actual Expected => trait
 @(language : "describe-type")
 Describe-Type : Type (infer Description) => trait
 
+instance (Describe-Type Unit "unit")
 instance (Describe-Type Number "a number")
 instance (Describe-Type Text "a piece of text")
 Input Output => default instance (Describe-Type (Input -> Output) "a function")
