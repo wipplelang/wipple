@@ -4,6 +4,6 @@ exports[`type-span.test.wipple 1`] = `
 [
   "type-span/type-span.test.wipple:3:1: error: cannot add a function and a number",
   "type-span/type-span.test.wipple:4:1: error: can't find \`Show\`",
-  "type-span/type-span.test.wipple:4:1: error: expected \`()\` here, but found a number",
+  "type-span/type-span.test.wipple:4:1: error: expected unit here, but found a number",
 ]
 `;
