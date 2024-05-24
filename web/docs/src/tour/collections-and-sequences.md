@@ -65,7 +65,7 @@ numbers
 8
 ```
 
-Instead of `each`, you can use `collect` to store the final items back into a list, or another collection like `Set` or `Dictionary`. Because `collect` can produce any one of these, you'll usually need a type annotation to specify which one you want.
+Instead of `each`, you can use `collect` to store the final items back into a list, or another collection like `Set` or `Dictionary` if you provide a type annotation.
 
 ```wipple
 #numbers : 1 , 2 , 3 , 4
@@ -75,20 +75,7 @@ doubled-evens :
   numbers
     . filter even?
     . transform double
-    . collect :: List Number
-```
-
-Usually, the type of each item is known, just not the container. So for brevity, you can replace `Number` in the above example with the type placeholder `_`, which Wipple will infer as `Number` automatically:
-
-```wipple
-#numbers : 1 , 2 , 3 , 4
-#even? : divisible-by? 2
-#double : n -> n * 2
-doubled-evens :
-  numbers
-    . filter even?
-    . transform double
-    . collect :: List _
+    . collect
 ```
 
 Wipple's sequencing functions are "lazy", meaning they work on one element at a time, and only once elements are requested. You can use `next` to request the next element in a sequence as a `Maybe` — if the sequence is finished, you'll get `None` back.
