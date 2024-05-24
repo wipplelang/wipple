@@ -79,17 +79,6 @@ pub fn format(code: &str) -> String {
     }
 }
 
-/// List the type parameters referenced by the type.
-#[wasm_bindgen]
-pub fn list_type_parameters(type_: &str) -> String {
-    initialize();
-
-    let r#type: util::WithInfo<Info, typecheck::Type<Driver>> = deserialize(type_);
-
-    let parameters = typecheck::parameters_in(r#type.as_ref());
-    serialize(&parameters)
-}
-
 /// Resolve an attribute-like trait, where the first parameter is the provided
 /// type and the remaining parameters are returned.
 #[wasm_bindgen]
@@ -189,6 +178,10 @@ pub struct Interface {
     /// The type declarations in the program.
     pub type_declarations:
         HashMap<lower::Path, util::WithInfo<Info, typecheck::TypeDeclaration<Driver>>>,
+
+    /// The type alias declarations in the program.
+    pub type_alias_declarations:
+        HashMap<lower::Path, util::WithInfo<Info, typecheck::TypeAliasDeclaration<Driver>>>,
 
     /// The trait declarations in the program.
     pub trait_declarations:
@@ -323,6 +316,16 @@ impl Driver {
                             (path, convert::interface::convert_type_declaration(item))
                         })
                         .collect(),
+                    type_alias_declarations: interface
+                        .type_alias_declarations
+                        .into_iter()
+                        .map(|(path, item)| {
+                            (
+                                path,
+                                convert::interface::convert_type_alias_declaration(item),
+                            )
+                        })
+                        .collect(),
                     trait_declarations: interface
                         .trait_declarations
                         .into_iter()
@@ -371,6 +374,13 @@ impl Driver {
         for (path, item) in lower_result.interface.type_declarations {
             let declaration = convert::typecheck::convert_type_declaration(item);
             self.interface.type_declarations.insert(path, declaration);
+        }
+
+        for (path, item) in lower_result.interface.type_alias_declarations {
+            let declaration = convert::typecheck::convert_type_alias_declaration(item);
+            self.interface
+                .type_alias_declarations
+                .insert(path, declaration);
         }
 
         for (path, item) in lower_result.interface.trait_declarations {
@@ -730,6 +740,17 @@ impl wipple_typecheck::Driver for Driver {
             .type_declarations
             .get(path)
             .unwrap_or_else(|| panic!("missing type declaration {:?}", path))
+            .clone()
+    }
+
+    fn get_type_alias_declaration(
+        &self,
+        path: &Self::Path,
+    ) -> util::WithInfo<Self::Info, wipple_typecheck::TypeAliasDeclaration<Self>> {
+        self.interface
+            .type_alias_declarations
+            .get(path)
+            .unwrap_or_else(|| panic!("missing type alias declaration {:?}", path))
             .clone()
     }
 

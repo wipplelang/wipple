@@ -9,10 +9,6 @@ export const link: (libraries: compiler.UnlinkedLibrary[]) => compiler.linker_Ex
 
 export const format: (code: string) => string;
 
-export const listTypeParameters: (
-    type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
-) => compiler.lower_Path[];
-
 export const resolveAttributeLikeTrait: (
     name: string,
     type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,

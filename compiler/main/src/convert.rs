@@ -51,6 +51,25 @@ pub mod interface {
         })
     }
 
+    pub fn convert_type_alias_declaration(
+        type_alias_declaration: wipple_util::WithInfo<
+            crate::Info,
+            wipple_typecheck::TypeAliasDeclaration<crate::Driver>,
+        >,
+    ) -> wipple_util::WithInfo<crate::Info, wipple_lower::TypeAliasDeclaration<crate::Driver>> {
+        type_alias_declaration.map(
+            |type_alias_declaration| wipple_lower::TypeAliasDeclaration {
+                attributes: type_alias_declaration
+                    .attributes
+                    .into_iter()
+                    .map(convert_attribute)
+                    .collect(),
+                parameters: type_alias_declaration.parameters,
+                r#type: convert_type(type_alias_declaration.r#type),
+            },
+        )
+    }
+
     pub fn convert_trait_declaration(
         trait_declaration: wipple_util::WithInfo<
             crate::Info,
@@ -134,6 +153,13 @@ pub mod interface {
                 wipple_lower::Type::Parameter(parameter)
             }
             wipple_typecheck::Type::Declared { path, parameters } => wipple_lower::Type::Declared {
+                path: wipple_util::WithInfo {
+                    info: type_info.clone(),
+                    item: path,
+                },
+                parameters: parameters.into_iter().map(convert_type).collect(),
+            },
+            wipple_typecheck::Type::Alias { path, parameters } => wipple_lower::Type::Alias {
                 path: wipple_util::WithInfo {
                     info: type_info.clone(),
                     item: path,
@@ -315,6 +341,17 @@ pub mod lower {
                 name: name.map_info(crate::Info::from),
                 parameters: parameters.into_iter().map(convert_type_parameter).collect(),
                 representation: convert_type_representation(representation),
+            },
+            wipple_syntax::Statement::TypeAlias {
+                attributes,
+                name,
+                parameters,
+                r#type,
+            } => wipple_lower::UnresolvedStatement::TypeAlias {
+                attributes: attributes.into_iter().map(convert_attribute).collect(),
+                name: name.map_info(crate::Info::from),
+                parameters: parameters.into_iter().map(convert_type_parameter).collect(),
+                r#type: convert_type(r#type),
             },
             wipple_syntax::Statement::Trait {
                 attributes,
@@ -820,6 +857,25 @@ pub mod typecheck {
         })
     }
 
+    pub fn convert_type_alias_declaration(
+        type_alias_declaration: wipple_util::WithInfo<
+            crate::Info,
+            wipple_lower::TypeAliasDeclaration<crate::Driver>,
+        >,
+    ) -> wipple_util::WithInfo<Info, wipple_typecheck::TypeAliasDeclaration<crate::Driver>> {
+        type_alias_declaration.map(|type_alias_declaration| {
+            wipple_typecheck::TypeAliasDeclaration {
+                attributes: type_alias_declaration
+                    .attributes
+                    .into_iter()
+                    .map(convert_attribute)
+                    .collect(),
+                parameters: type_alias_declaration.parameters,
+                r#type: convert_type(type_alias_declaration.r#type),
+            }
+        })
+    }
+
     pub fn convert_trait_declaration(
         trait_declaration: wipple_util::WithInfo<
             crate::Info,
@@ -905,6 +961,10 @@ pub mod typecheck {
             wipple_lower::Type::Error => wipple_typecheck::Type::Unknown,
             wipple_lower::Type::Placeholder => wipple_typecheck::Type::Unknown,
             wipple_lower::Type::Declared { path, parameters } => wipple_typecheck::Type::Declared {
+                path: path.item,
+                parameters: parameters.into_iter().map(convert_type).collect(),
+            },
+            wipple_lower::Type::Alias { path, parameters } => wipple_typecheck::Type::Alias {
                 path: path.item,
                 parameters: parameters.into_iter().map(convert_type).collect(),
             },

@@ -16,9 +16,6 @@ export const link = (libraries) => {
 
 export const format = (code) => wasm.format(code);
 
-export const listTypeParameters = (type) =>
-    JSON.parse(wasm.list_type_parameters(JSON.stringify(type)));
-
 export const resolveAttributeLikeTrait = (name, type, numberOfParameters, interface_) => {
     const result = wasm.resolve_attribute_like_trait(
         name,

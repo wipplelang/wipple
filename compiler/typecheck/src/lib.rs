@@ -45,6 +45,12 @@ pub trait Driver: Sized + 'static {
         path: &Self::Path,
     ) -> WithInfo<Self::Info, TypeDeclaration<Self>>;
 
+    /// Retrieve the type alias declaration at the given path.
+    fn get_type_alias_declaration(
+        &self,
+        path: &Self::Path,
+    ) -> WithInfo<Self::Info, TypeAliasDeclaration<Self>>;
+
     /// Retrieve the trait declaration at the given path.
     fn get_trait_declaration(
         &self,
@@ -113,6 +119,13 @@ impl Driver for wipple_util::TsAny {
         &self,
         _path: &Self::Path,
     ) -> WithInfo<Self::Info, TypeDeclaration<Self>> {
+        unimplemented!()
+    }
+
+    fn get_type_alias_declaration(
+        &self,
+        _path: &Self::Path,
+    ) -> WithInfo<Self::Info, TypeAliasDeclaration<Self>> {
         unimplemented!()
     }
 
@@ -233,11 +246,6 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
 /// Substitute the default types for type parameters mentioned in `r#type`.
 pub fn substitute_defaults<D: Driver>(driver: &D, r#type: WithInfo<D::Info, &mut crate::Type<D>>) {
     resolve::substitute_defaults_in_parameters(driver, r#type)
-}
-
-/// List the type parameters mentioned in `r#type`.
-pub fn parameters_in<D: Driver>(r#type: WithInfo<D::Info, &crate::Type<D>>) -> Vec<D::Path> {
-    resolve::parameters_in(r#type)
 }
 
 /// Resolve an attribute-like trait, where the first parameter is the provided
@@ -415,6 +423,16 @@ pub enum Type<D: Driver> {
         parameters: Vec<WithInfo<D::Info, Type<D>>>,
     },
 
+    /// An aliased type.
+    #[serde(rename_all = "camelCase")]
+    Alias {
+        /// The path to the type alias.
+        path: D::Path,
+
+        /// The type alias's parameters.
+        parameters: Vec<WithInfo<D::Info, Type<D>>>,
+    },
+
     /// A function type.
     #[serde(rename_all = "camelCase")]
     Function {
@@ -551,6 +569,23 @@ pub struct TypeDeclaration<D: Driver> {
 
     /// The type's representation (opaque, structure or enumeration).
     pub representation: WithInfo<D::Info, TypeRepresentation<D>>,
+}
+
+/// A type alias declaration.
+#[derive(Serialize, Deserialize, Derivative, TS)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+#[ts(export, rename = "typecheck_TypeAliasDeclaration", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
+pub struct TypeAliasDeclaration<D: Driver> {
+    /// The type's attributes.
+    pub attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+
+    /// The type's parameters.
+    pub parameters: Vec<D::Path>,
+
+    /// The aliased type.
+    pub r#type: WithInfo<D::Info, Type<D>>,
 }
 
 /// A trait declaration.

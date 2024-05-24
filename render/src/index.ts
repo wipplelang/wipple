@@ -107,7 +107,7 @@ export class Render {
 
     getDeclarationFromInfo(
         info: compiler.Info,
-        between: boolean
+        between: boolean,
     ): compiler.WithInfo<compiler.Info, AnyDeclaration> | null {
         for (const declaration of this.declarations) {
             if (this.compareInfo(declaration.info, info, between)) {
@@ -182,43 +182,8 @@ export class Render {
                 return declaration.item.name;
             }
             case "constant": {
-                const usedParameters = compiler.listTypeParameters(
-                    declaration.item.declaration.type,
-                );
-
-                const usedBounds = declaration.item.declaration.bounds.filter((bound) =>
-                    bound.item.parameters.some((type) =>
-                        compiler
-                            .listTypeParameters(type)
-                            .some((parameter) => usedParameters.includes(parameter)),
-                    ),
-                );
-
-                if (usedParameters.length > 0 || usedBounds.length > 0) {
-                    const typeFunction = this.renderTypeFunction(
-                        declaration.item.declaration.parameters,
-                        declaration.item.declaration.bounds,
-                        { kind: "arrow" },
-                    );
-
-                    const type = this.renderType(
-                        declaration.item.declaration.type,
-                        true,
-                        false,
-                        false,
-                    );
-
-                    return `${declaration.item.name} :: ${typeFunction}${type}`;
-                } else {
-                    const type = this.renderType(
-                        declaration.item.declaration.type,
-                        true,
-                        false,
-                        false,
-                    );
-
-                    return `${declaration.item.name} :: ${type}`;
-                }
+                const type = this.renderType(declaration.item.declaration.type, true, false, false);
+                return `${declaration.item.name} :: ${type}`;
             }
             case "instance": {
                 const typeFunction = this.renderTypeFunction(
@@ -341,7 +306,8 @@ export class Render {
                 case "parameter": {
                     return this.nameForPath(type.item.value);
                 }
-                case "declared": {
+                case "declared":
+                case "alias": {
                     const name = this.nameForPath(type.item.value.path);
                     if (!name) {
                         return "_";
@@ -1071,6 +1037,8 @@ export class Render {
                 return "type representation";
             case "typeDeclaration":
                 return "type declaration";
+            case "typeAliasDeclaration":
+                return "type alias declaration";
             case "traitDeclaration":
                 return "trait declaration";
             case "instanceDeclaration":

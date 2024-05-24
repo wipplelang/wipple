@@ -171,9 +171,10 @@ pub fn resolve<D: Driver>(
     };
 
     let declared_type = infer_type(
+        driver,
         item_declaration.item.r#type.as_ref(),
         item_declaration.replace(Role::Annotation),
-        Some(&mut infer_context.type_context),
+        infer_context.type_context,
     );
 
     let body = infer_context.with_tracked_expression(None, |infer_context, expression_id| {
@@ -188,7 +189,7 @@ pub fn resolve<D: Driver>(
         .item
         .bounds
         .into_iter()
-        .map(infer_instance)
+        .map(|bound| infer_instance(driver, bound, infer_context.type_context))
         .collect()];
 
     let mut queued = Queued {
@@ -355,7 +356,11 @@ pub fn instances_overlap<D: Driver>(
                 path,
                 declaration.info,
                 declaration.item.parameters,
-                infer_instance(declaration.item.instance),
+                infer_instance(
+                    driver,
+                    declaration.item.instance,
+                    &mut TypeContext::default(),
+                ),
             );
 
             if declaration.item.default {
@@ -474,12 +479,17 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
         assert!(unify(
             driver,
             &r#type,
-            &infer_type(instance_parameter.as_ref(), role.clone(), None),
+            &infer_type(
+                driver,
+                instance_parameter.as_ref(),
+                role.clone(),
+                instantiation_context.type_context,
+            ),
             instantiation_context.type_context,
         ));
     }
 
-    let r#type = infer_type(r#type, role, Some(instantiation_context.type_context))
+    let r#type = infer_type(driver, r#type, role, instantiation_context.type_context)
         .instantiate(driver, &mut instantiation_context);
 
     assert!(errors.is_empty());
@@ -513,6 +523,11 @@ pub fn substitute_defaults_in_parameters<D: Driver>(
                 substitute_defaults_in_parameters(driver, parameter.as_mut());
             }
         }
+        crate::Type::Alias { parameters, .. } => {
+            for parameter in parameters {
+                substitute_defaults_in_parameters(driver, parameter.as_mut());
+            }
+        }
         crate::Type::Function { inputs, output } => {
             for input in inputs {
                 substitute_defaults_in_parameters(driver, input.as_mut());
@@ -537,24 +552,17 @@ pub fn substitute_defaults_in_parameters<D: Driver>(
     }
 }
 
-pub fn parameters_in<D: Driver>(r#type: WithInfo<D::Info, &crate::Type<D>>) -> Vec<D::Path> {
-    let r#type = infer_type(r#type, None, None);
-    let mut parameters = Vec::new();
-    r#type.list_type_parameters(&mut parameters);
-    parameters
-}
-
 pub fn resolve_attribute_like_trait<D: Driver>(
     driver: &D,
     language_item: &str,
     r#type: WithInfo<D::Info, &crate::Type<D>>,
     number_of_parameters: u32,
 ) -> Option<Vec<WithInfo<D::Info, crate::Type<D>>>> {
-    let r#type = infer_type(r#type, None, None);
+    let mut type_context = TypeContext::default();
+
+    let r#type = infer_type(driver, r#type, None, &mut type_context);
 
     if let Some(describe_type_trait_path) = driver.path_for_language_trait(language_item) {
-        let mut type_context = TypeContext::default();
-
         let mut temp_error_queue = Vec::new();
         let mut temp_errors = Vec::new();
         let mut resolve_context = ResolveContext {
@@ -999,47 +1007,6 @@ impl<D: Driver> Type<D> {
             | TypeKind::Constant(_) => {}
         }
     }
-
-    fn list_type_parameters(&self, parameters: &mut Vec<D::Path>) {
-        match &self.kind {
-            TypeKind::Parameter(parameter) => {
-                parameters.push(parameter.clone());
-            }
-            TypeKind::Declared {
-                parameters: type_parameters,
-                ..
-            } => {
-                for r#type in type_parameters {
-                    r#type.list_type_parameters(parameters);
-                }
-            }
-            TypeKind::Function { inputs, output } => {
-                for r#type in inputs {
-                    r#type.list_type_parameters(parameters);
-                }
-
-                output.list_type_parameters(parameters);
-            }
-            TypeKind::Tuple(elements) => {
-                for r#type in elements {
-                    r#type.list_type_parameters(parameters);
-                }
-            }
-            TypeKind::Block(r#type) => {
-                r#type.list_type_parameters(parameters);
-            }
-            TypeKind::Message { segments, .. } => {
-                for segment in segments {
-                    segment.value.list_type_parameters(parameters);
-                }
-            }
-            TypeKind::Variable(_)
-            | TypeKind::Opaque(_)
-            | TypeKind::Unknown
-            | TypeKind::Intrinsic
-            | TypeKind::Constant(_) => {}
-        }
-    }
 }
 
 #[derive(Derivative)]
@@ -1227,9 +1194,10 @@ impl<'a, D: Driver> InstantiationContext<'a, D> {
                 .as_ref()
                 .map(|r#type| {
                     infer_type(
+                        driver,
                         r#type.as_ref(),
                         parameter_declaration.replace(Role::TypeParameter),
-                        Some(context.type_context),
+                        context.type_context,
                     )
                     .instantiate(driver, &mut context)
                 });
@@ -1890,9 +1858,10 @@ impl<'a, 'b: 'a, D: Driver> InferContext<'a, D> {
 }
 
 fn infer_type<D: Driver>(
+    driver: &D,
     r#type: WithInfo<D::Info, &crate::Type<D>>,
     role: impl Into<Option<WithInfo<D::Info, Role>>>,
-    mut type_context: Option<&mut TypeContext<D>>,
+    type_context: &mut TypeContext<D>,
 ) -> Type<D> {
     Type::new(
         match r#type.item {
@@ -1901,35 +1870,70 @@ fn infer_type<D: Driver>(
                 path: path.clone(),
                 parameters: parameters
                     .iter()
-                    .map(|r#type| infer_type(r#type.as_ref(), None, type_context.as_deref_mut()))
+                    .map(|r#type| infer_type(driver, r#type.as_ref(), None, type_context))
                     .collect(),
             },
+            crate::Type::Alias { path, parameters } => {
+                let type_alias_declaration = driver.get_type_alias_declaration(path);
+
+                let mut errors = Vec::new();
+                let mut instantiation_context = InstantiationContext::from_parameters(
+                    driver,
+                    type_alias_declaration.item.parameters,
+                    type_context,
+                    r#type.info.clone(),
+                    &mut errors,
+                );
+
+                let r#type = infer_type(
+                    driver,
+                    type_alias_declaration.item.r#type.as_ref(),
+                    None,
+                    instantiation_context.type_context,
+                )
+                .instantiate(driver, &mut instantiation_context);
+
+                for (r#type, parameter) in instantiation_context
+                    .into_types_for_parameters()
+                    .into_iter()
+                    .zip(parameters)
+                {
+                    let parameter = WithInfo {
+                        info: parameter.info.clone(),
+                        item: infer_type(driver, parameter.as_ref(), None, type_context),
+                    };
+
+                    try_unify(
+                        driver,
+                        parameter.as_ref(),
+                        &r#type,
+                        type_context,
+                        &mut Vec::new(),
+                    );
+                }
+
+                r#type.kind
+            }
             crate::Type::Function { inputs, output } => TypeKind::Function {
                 inputs: inputs
                     .iter()
-                    .map(|r#type| infer_type(r#type.as_ref(), None, type_context.as_deref_mut()))
+                    .map(|r#type| infer_type(driver, r#type.as_ref(), None, type_context))
                     .collect(),
-                output: Box::new(infer_type(
-                    output.as_deref(),
-                    None,
-                    type_context.as_deref_mut(),
-                )),
+                output: Box::new(infer_type(driver, output.as_deref(), None, type_context)),
             },
             crate::Type::Tuple(elements) => TypeKind::Tuple(
                 elements
                     .iter()
-                    .map(|r#type| infer_type(r#type.as_ref(), None, type_context.as_deref_mut()))
+                    .map(|r#type| infer_type(driver, r#type.as_ref(), None, type_context))
                     .collect(),
             ),
             crate::Type::Block(r#type) => TypeKind::Block(Box::new(infer_type(
+                driver,
                 r#type.as_deref(),
                 None,
-                type_context.as_deref_mut(),
+                type_context,
             ))),
-            crate::Type::Unknown => match type_context {
-                Some(type_context) => TypeKind::Variable(type_context.variable()),
-                None => TypeKind::Unknown,
-            },
+            crate::Type::Unknown => TypeKind::Variable(type_context.variable()),
             crate::Type::Intrinsic => TypeKind::Intrinsic,
             crate::Type::Message { segments, trailing } => TypeKind::Message {
                 segments: segments
@@ -1937,10 +1941,11 @@ fn infer_type<D: Driver>(
                     .map(|segment| FormatSegment {
                         text: segment.text.clone(),
                         value: infer_type(
+                            driver,
                             segment.r#type.as_ref(),
                             None,
                             #[allow(clippy::needless_option_as_deref)]
-                            type_context.as_deref_mut(),
+                            type_context,
                         ),
                     })
                     .collect(),
@@ -1954,14 +1959,16 @@ fn infer_type<D: Driver>(
 }
 
 fn infer_instance<D: Driver>(
+    driver: &D,
     instance: WithInfo<D::Info, crate::Instance<D>>,
+    type_context: &mut TypeContext<D>,
 ) -> WithInfo<D::Info, Instance<D>> {
     instance.map(|instance| Instance {
         r#trait: instance.r#trait,
         parameters: instance
             .parameters
             .into_iter()
-            .map(|r#type| infer_type(r#type.as_ref(), None, None))
+            .map(|r#type| infer_type(driver, r#type.as_ref(), None, type_context))
             .collect(),
     })
 }
@@ -1983,9 +1990,10 @@ fn infer_expression<D: Driver>(
                 let mut value = infer_expression(value.unboxed(), Some(expression_id), context);
 
                 let r#type = infer_type(
+                    context.driver,
                     r#type.as_ref(),
                     value.replace(Role::Annotation),
-                    Some(context.type_context),
+                    context.type_context,
                 );
 
                 try_unify_expression(
@@ -2022,9 +2030,10 @@ fn infer_expression<D: Driver>(
                 );
 
                 let r#type = infer_type(
+                    context.driver,
                     constant_declaration.item.r#type.as_ref(),
                     constant_declaration.replace(Role::Annotation),
-                    Some(instantiation_context.type_context),
+                    instantiation_context.type_context,
                 )
                 .instantiate(context.driver, &mut instantiation_context);
 
@@ -2046,9 +2055,10 @@ fn infer_expression<D: Driver>(
 
                 let r#type = match trait_declaration.item.r#type.as_ref() {
                     Some(r#type) => infer_type(
+                        context.driver,
                         r#type.as_ref(),
                         trait_declaration.replace(Role::Trait),
-                        Some(instantiation_context.type_context),
+                        instantiation_context.type_context,
                     )
                     .instantiate(context.driver, &mut instantiation_context),
                     None => {
@@ -2441,9 +2451,10 @@ fn infer_expression<D: Driver>(
                                 .zip(&declared_variant.item.value_types)
                                 .map(|(value, declared_type)| {
                                     let declared_type = infer_type(
+                                        context.driver,
                                         declared_type.as_ref(),
                                         declared_variant.replace(Role::VariantElement),
-                                        Some(instantiation_context.type_context),
+                                        instantiation_context.type_context,
                                     )
                                     .instantiate(context.driver, &mut instantiation_context);
 
@@ -2528,9 +2539,10 @@ fn infer_expression<D: Driver>(
                 let value = match type_declaration.item.representation.item {
                     crate::TypeRepresentation::Wrapper(declared_type) => {
                         let declared_type = infer_type(
+                            context.driver,
                             declared_type.as_ref(),
                             declared_type.replace(Role::WrappedType),
-                            Some(instantiation_context.type_context),
+                            instantiation_context.type_context,
                         )
                         .instantiate(context.driver, &mut instantiation_context);
 
@@ -2833,6 +2845,7 @@ fn resolve_pattern<D: Driver>(
                                 .iter()
                                 .map(|field| {
                                     infer_type(
+                                        context.driver,
                                         field_types
                                             .get(&field.item.name)
                                             .unwrap()
@@ -2840,7 +2853,7 @@ fn resolve_pattern<D: Driver>(
                                             .r#type
                                             .as_ref(),
                                         field.replace(Role::StructureField),
-                                        Some(instantiation_context.type_context),
+                                        instantiation_context.type_context,
                                     )
                                     .instantiate(context.driver, &mut instantiation_context)
                                 })
@@ -2902,9 +2915,10 @@ fn resolve_pattern<D: Driver>(
                                 .into_iter()
                                 .map(|r#type| {
                                     infer_type(
+                                        context.driver,
                                         r#type.as_ref(),
                                         variant.replace(Role::VariantElement),
-                                        Some(instantiation_context.type_context),
+                                        instantiation_context.type_context,
                                     )
                                     .instantiate(context.driver, &mut instantiation_context)
                                 })
@@ -2935,9 +2949,10 @@ fn resolve_pattern<D: Driver>(
                                 .iter()
                                 .map(|r#type| {
                                     infer_type(
+                                        context.driver,
                                         r#type.as_ref(),
                                         r#type.replace(Role::VariantElement),
-                                        Some(instantiation_context.type_context),
+                                        instantiation_context.type_context,
                                     )
                                     .instantiate(context.driver, &mut instantiation_context)
                                 })
@@ -2999,9 +3014,10 @@ fn resolve_pattern<D: Driver>(
 
                     match &type_declaration.item.representation.item {
                         crate::TypeRepresentation::Wrapper(wrapped) => infer_type(
+                            context.driver,
                             wrapped.as_ref(),
                             wrapped.replace(Role::WrappedType),
-                            Some(instantiation_context.type_context),
+                            instantiation_context.type_context,
                         )
                         .instantiate(context.driver, &mut instantiation_context),
                         _ => return,
@@ -3020,9 +3036,10 @@ fn resolve_pattern<D: Driver>(
 
                     let value_type = match type_declaration.item.representation.item {
                         crate::TypeRepresentation::Wrapper(wrapped) => infer_type(
+                            context.driver,
                             wrapped.as_ref(),
                             wrapped.replace(Role::VariantElement),
-                            Some(instantiation_context.type_context),
+                            instantiation_context.type_context,
                         )
                         .instantiate(context.driver, &mut instantiation_context),
                         _ => return,
@@ -3097,9 +3114,10 @@ fn resolve_pattern<D: Driver>(
             r#type: annotated_type,
         } => {
             let annotated_type = infer_type(
+                context.driver,
                 annotated_type.as_ref(),
                 r#type.replace(Role::Annotation),
-                Some(context.type_context),
+                context.type_context,
             );
 
             try_unify(
@@ -3657,9 +3675,10 @@ fn resolve_expression<D: Driver>(
                                 let declared_type = match field_types.remove(&field_value.item.name)
                                 {
                                     Some(field) => infer_type(
+                                        context.driver,
                                         field.item.r#type.as_ref(),
                                         field.replace(Role::StructureField),
-                                        Some(instantiation_context.type_context),
+                                        instantiation_context.type_context,
                                     )
                                     .instantiate(context.driver, &mut instantiation_context),
                                     None => {
@@ -3827,12 +3846,13 @@ fn resolve_item<D: Driver>(
     );
 
     let instantiated_declared_type = infer_type(
+        context.driver,
         WithInfo {
             info: use_info.clone(),
             item: &item_declaration.item.r#type.item,
         },
         instantiated_declared_role,
-        Some(instantiation_context.type_context),
+        instantiation_context.type_context,
     )
     .instantiate(context.driver, &mut instantiation_context);
 
@@ -3841,7 +3861,7 @@ fn resolve_item<D: Driver>(
         .bounds
         .into_iter()
         .map(|bound| {
-            infer_instance(bound)
+            infer_instance(context.driver, bound, instantiation_context.type_context)
                 .map(|bound| bound.instantiate(context.driver, &mut instantiation_context))
         })
         .collect::<Vec<_>>();
@@ -3978,9 +3998,10 @@ fn resolve_trait_parameters_from_type<D: Driver>(
     );
 
     let trait_type = infer_type(
+        context.driver,
         trait_declaration.item.r#type.as_ref()?.as_ref(),
         role,
-        Some(instantiation_context.type_context),
+        instantiation_context.type_context,
     )
     .instantiate(context.driver, &mut instantiation_context);
 
@@ -4105,8 +4126,13 @@ fn resolve_trait<D: Driver>(
                     .parameters
                     .iter()
                     .map(|parameter| {
-                        infer_type(parameter.as_ref(), None, None)
-                            .instantiate(context.driver, &mut instantiation_context)
+                        infer_type(
+                            context.driver,
+                            parameter.as_ref(),
+                            None,
+                            instantiation_context.type_context,
+                        )
+                        .instantiate(context.driver, &mut instantiation_context)
                     })
                     .collect::<Vec<_>>();
 
@@ -4115,9 +4141,10 @@ fn resolve_trait<D: Driver>(
                     .bounds
                     .into_iter()
                     .map(|bound| {
-                        infer_instance(bound).map(|bound| {
-                            bound.instantiate(context.driver, &mut instantiation_context)
-                        })
+                        infer_instance(context.driver, bound, instantiation_context.type_context)
+                            .map(|bound| {
+                                bound.instantiate(context.driver, &mut instantiation_context)
+                            })
                     })
                     .collect::<Vec<_>>();
 

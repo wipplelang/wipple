@@ -446,6 +446,35 @@ fn statements<D: Driver>(
                                         representation,
                                     })
                                 }
+                                parse::Statement::TypeAliasDeclaration {
+                                    attributes: attributes_syntaxes,
+                                    name,
+                                    parameters: type_function_syntax,
+                                    r#type: type_syntax,
+                                } => {
+                                    let attributes = attributes_syntaxes
+                                        .into_iter()
+                                        .map(attribute)
+                                        .collect();
+
+                                    let name = name.try_unwrap()?;
+
+                                    expected_constant_value!(Some(statement_info.clone()));
+
+                                    let (parameters, bounds) =
+                                        type_function(type_function_syntax, info);
+
+                                    disallow_bounds(bounds, info);
+
+                                    let r#type = r#type(type_syntax, info);
+
+                                    Some(crate::Statement::TypeAlias {
+                                        attributes,
+                                        name,
+                                        parameters,
+                                        r#type,
+                                    })
+                                }
                                 parse::Statement::TraitDeclaration {
                                     attributes: attributes_syntaxes,
                                     name,
