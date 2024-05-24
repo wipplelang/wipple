@@ -114,7 +114,7 @@ export function CodeEditor<Settings>(props: {
             return [
                 {
                     top: top - editorRect.top,
-                    width: editorRect.width - width,
+                    width: Math.max(editorRect.width - width - 48, 32),
                     height,
                     diagnostic,
                 },
