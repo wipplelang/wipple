@@ -9,9 +9,12 @@
         "preview": "vite preview"
     },
     "dependencies": {
+        "@emotion/react": "^11.11.4",
+        "@emotion/styled": "^11.11.5",
         "@floating-ui/react": "^0.26.9",
         "@lezer/common": "^1.2.1",
         "@lezer/generator": "^1.6.0",
+        "@mui/material": "^5.15.18",
         "@react-spring/web": "^9.7.3",
         "@uiw/codemirror-theme-github": "^4.21.21",
         "array-move": "^4.0.0",

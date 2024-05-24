@@ -36,6 +36,10 @@ body {
     @apply bg-white dark:bg-gray-950 text-black dark:text-white font-medium;
 }
 
+.markdown {
+    @apply prose-code:before:hidden prose-code:after:hidden;
+}
+
 code,
 .markdown code {
     font-family: "JetBrains Mono", monospace;
@@ -50,6 +54,10 @@ code,
 
 :not(.help) .markdown :not(pre) code {
     @apply inline-block align-middle mb-0.5 text-gray-700 dark:text-gray-300 text-xs bg-gray-50 dark:bg-gray-800 px-1.5 rounded-md;
+}
+
+:not(.help) .markdown pre {
+    @apply bg-gray-50 dark:bg-gray-800;
 }
 
 .help .markdown code {

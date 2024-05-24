@@ -65,6 +65,7 @@ type PlaygroundPageEnergyItem = RuntimeItem<"energy", {}>;
 interface PlaygroundPageTextItem {
     type: "text";
     text: string;
+    locked: boolean;
 }
 
 const playgroundConverter = pureConverter<Playground>();

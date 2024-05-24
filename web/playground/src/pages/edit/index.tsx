@@ -28,6 +28,7 @@ import { useDebounceCallback } from "usehooks-ts";
 import { flushSync } from "react-dom";
 import { SetupIcon } from "./setup-icon";
 import QRCode from "react-qr-code";
+import { TextEditor } from "./text-editor";
 
 export const EditPage = () => {
     const params = useParams();
@@ -465,7 +466,38 @@ const PlaygroundPageItemEditor = (props: {
                 </CodeEditor>
             );
         case "text":
-            break;
+            return (
+                <TextEditor
+                    onChange={(text) =>
+                        props.onChange(
+                            produce(props.item, (item) => {
+                                if (item.type !== "text") {
+                                    return;
+                                }
+
+                                item.text = text;
+                            }),
+                        )
+                    }
+                    locked={props.item.locked}
+                    onToggleLock={() =>
+                        props.onChange(
+                            produce(props.item, (item) => {
+                                if (item.type !== "text") {
+                                    return;
+                                }
+
+                                item.locked = !item.locked;
+                            }),
+                        )
+                    }
+                    onMoveUp={props.onMoveUp}
+                    onMoveDown={props.onMoveDown}
+                    onDelete={props.onDelete}
+                >
+                    {props.item.text}
+                </TextEditor>
+            );
         default:
             return null;
     }
@@ -672,7 +704,6 @@ const AddPlaygroundPageItemAlert = (props: {
                 />
 
                 <AddPlaygroundPageItemAlertButton
-                    disabled // TODO
                     setup="text"
                     name="Text"
                     description="Write text alongside your code."
@@ -680,6 +711,7 @@ const AddPlaygroundPageItemAlert = (props: {
                         props.onAddItem({
                             type: "text",
                             text: "",
+                            locked: false,
                         });
 
                         props.dismiss?.();

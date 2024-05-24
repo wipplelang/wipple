@@ -37,9 +37,9 @@ const languages: Record<string, import("lowlight").LanguageFn> = {
     }),
 };
 
-export const Markdown = (props: { children: string }) => (
+export const Markdown = (props: { children: string; className?: string }) => (
     <ReactMarkdown
-        className="markdown"
+        className={`markdown ${props.className ?? ""}`}
         rehypePlugins={[[rehypeHighlight, { languages, prefix: "tok-" }]]}
     >
         {props.children}
