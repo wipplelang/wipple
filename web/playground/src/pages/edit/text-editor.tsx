@@ -33,7 +33,11 @@ export const TextEditor = (props: {
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
         >
-            <div className="flex flex-col">
+            <div
+                className={`flex flex-col overflow-clip ${
+                    !props.locked ? "border-2 border-gray-100 dark:border-gray-800 rounded-md" : ""
+                }`}
+            >
                 <div className="flex flex-row items-center justify-between w-full p-1">
                     <ContextMenuButton
                         items={[
@@ -69,7 +73,7 @@ export const TextEditor = (props: {
                     </Tooltip>
                 </div>
 
-                <div className="px-3 py-1 pb-4">
+                <div className="px-3 py-1 pb-2">
                     {props.locked ? (
                         <Markdown className="prose dark:prose-invert prose-blue prose-code:text-gray-900 dark:prose-code:text-gray-100 max-w-full first:prose-headings:mt-0">
                             {props.children}
