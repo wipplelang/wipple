@@ -121,6 +121,16 @@ export const EditPage = () => {
         ));
     }, [playground]);
 
+    const exportAsJson = useCallback(() => {
+        if (!playground) return;
+
+        (async () => {
+            const json = JSON.stringify(playground, null, 4);
+            await navigator.clipboard.writeText(json);
+            alert("JSON copied to clipboard.");
+        })();
+    }, [playground]);
+
     useEffect(() => {
         setPrimaryActions(
             playground?.name ? (
@@ -136,6 +146,11 @@ export const EditPage = () => {
                             title: "Make Public",
                             icon: "public",
                             onClick: makePublic,
+                        },
+                        {
+                            title: "Export as JSON",
+                            icon: "data_object",
+                            onClick: exportAsJson,
                         },
                     ]}
                 >
