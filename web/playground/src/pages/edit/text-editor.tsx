@@ -77,7 +77,7 @@ export const TextEditor = (props: {
 
                 <div className="px-3 py-1 pb-2">
                     {props.locked ? (
-                        <Markdown className="mb-2 prose dark:prose-invert prose-blue prose-code:text-gray-900 dark:prose-code:text-gray-100 max-w-full first:prose-headings:mt-0">
+                        <Markdown className="prose dark:prose-invert prose-blue prose-code:text-gray-900 dark:prose-code:text-gray-100 max-w-full first:prose-headings:mt-0">
                             {props.children}
                         </Markdown>
                     ) : (
