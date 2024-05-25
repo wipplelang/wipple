@@ -38,6 +38,7 @@ export function CodeEditor<Settings>(props: {
     children: string;
     onChange: (value: string) => void;
     theme: ThemeConfig;
+    locked?: boolean;
     runtime?: {
         name: string;
         settings: Settings | undefined;
@@ -295,34 +296,39 @@ export function CodeEditor<Settings>(props: {
                     <div className="flex flex-row items-center">
                         {!lookUpEnabled ? (
                             <>
-                                <ContextMenuButton
-                                    items={[
-                                        {
-                                            title: "Move Up",
-                                            icon: "arrow_upward",
-                                            disabled: props.onMoveUp == null,
-                                            onClick: () => props.onMoveUp!(),
-                                        },
-                                        {
-                                            title: "Move Down",
-                                            icon: "arrow_downward",
-                                            disabled: props.onMoveDown == null,
-                                            onClick: () => props.onMoveDown!(),
-                                        },
-                                        {
-                                            title: "Delete",
-                                            icon: "delete",
-                                            role: "destructive",
-                                            onClick: props.onDelete,
-                                        },
-                                    ]}
-                                >
-                                    <MenuContainer>
-                                        <button className="group transition-colors rounded-md px-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
-                                            <MaterialSymbol icon="more_vert" className="text-lg" />
-                                        </button>
-                                    </MenuContainer>
-                                </ContextMenuButton>
+                                {!props.locked ? (
+                                    <ContextMenuButton
+                                        items={[
+                                            {
+                                                title: "Move Up",
+                                                icon: "arrow_upward",
+                                                disabled: props.onMoveUp == null,
+                                                onClick: () => props.onMoveUp!(),
+                                            },
+                                            {
+                                                title: "Move Down",
+                                                icon: "arrow_downward",
+                                                disabled: props.onMoveDown == null,
+                                                onClick: () => props.onMoveDown!(),
+                                            },
+                                            {
+                                                title: "Delete",
+                                                icon: "delete",
+                                                role: "destructive",
+                                                onClick: props.onDelete,
+                                            },
+                                        ]}
+                                    >
+                                        <MenuContainer>
+                                            <button className="group transition-colors rounded-md px-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                                <MaterialSymbol
+                                                    icon="more_vert"
+                                                    className="text-lg"
+                                                />
+                                            </button>
+                                        </MenuContainer>
+                                    </ContextMenuButton>
+                                ) : null}
 
                                 <TutorialItem id="commandsButton">
                                     <PaletteButton

@@ -27,6 +27,7 @@ export interface Playground {
     collaborators: string[];
     name: string;
     lastModified: string;
+    locked?: boolean;
     pages: PlaygroundPage[];
 }
 
@@ -177,6 +178,7 @@ export const createLesson = async (lesson: Lesson) => {
         name: lesson.name,
         lastModified: new Date().toISOString(),
         pages: lesson.pages,
+        locked: true,
     };
 
     const result = await addDoc(collection(firestore, "playgrounds"), playground);

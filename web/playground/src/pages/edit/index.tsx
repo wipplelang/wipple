@@ -6,6 +6,7 @@ import {
     Button,
     ContextMenuButton,
     Skeleton,
+    Tooltip,
     TutorialItem,
     TutorialSection,
     useAlert,
@@ -131,6 +132,16 @@ export const EditPage = () => {
         })();
     }, [playground]);
 
+    const toggleLock = useCallback(() => {
+        setPlayground(
+            produce((playground) => {
+                if (!playground) return;
+
+                playground.locked = !playground.locked;
+            }),
+        );
+    }, []);
+
     useEffect(() => {
         setPrimaryActions(
             playground?.name ? (
@@ -141,6 +152,11 @@ export const EditPage = () => {
                             title: "Rename",
                             icon: "edit",
                             onClick: rename,
+                        },
+                        {
+                            title: playground.locked ? "Unlock Editing" : "Lock Editing",
+                            icon: playground.locked ? "lock_open" : "lock",
+                            onClick: toggleLock,
                         },
                         {
                             title: "Make Public",
@@ -162,7 +178,7 @@ export const EditPage = () => {
         return () => {
             setPrimaryActions(null);
         };
-    }, [playground?.name]);
+    }, [playground?.name, playground?.locked]);
 
     const playgroundPageIndex = (() => {
         if (!playground) {
@@ -281,6 +297,7 @@ export const EditPage = () => {
                                 ? playground!.pages[playgroundPageIndex].items
                                 : undefined
                         }
+                        locked={playground?.locked}
                         onAddItem={(item) => {
                             setPlayground(
                                 produce((playground) => {
@@ -330,6 +347,7 @@ export const EditPage = () => {
 const PlaygroundPageEditor = (props: {
     id?: string;
     items?: PlaygroundPageItem[];
+    locked?: boolean;
     onAddItem: (item: PlaygroundPageItem) => void;
     onChangeItem: (index: number, item: PlaygroundPageItem) => void;
     onMoveItemDown: (index: number) => void;
@@ -363,6 +381,7 @@ const PlaygroundPageEditor = (props: {
                                     <PlaygroundPageItemEditor
                                         item={item}
                                         onChange={(item) => props.onChangeItem(index, item)}
+                                        locked={props.locked}
                                         onMoveUp={
                                             index > 0 ? () => props.onMoveItemUp(index) : undefined
                                         }
@@ -377,7 +396,9 @@ const PlaygroundPageEditor = (props: {
                             ) : null,
                         )}
 
-                        <AddPlaygroundPageItemButton onAddItem={props.onAddItem} />
+                        {!props.locked ? (
+                            <AddPlaygroundPageItemButton onAddItem={props.onAddItem} />
+                        ) : null}
                     </>
                 ) : (
                     <div className="p-4 rounded-lg border-2 border-gray-100 dark:border-gray-800">
@@ -436,6 +457,7 @@ const AddPlaygroundPageItemButton = (props: { onAddItem: (item: PlaygroundPageIt
 const PlaygroundPageItemEditor = (props: {
     item: PlaygroundPageItem;
     onChange: (item: PlaygroundPageItem) => void;
+    locked?: boolean;
     onMoveUp?: () => void;
     onMoveDown?: () => void;
     onDelete: () => void;
@@ -457,6 +479,7 @@ const PlaygroundPageItemEditor = (props: {
                             }),
                         )
                     }
+                    locked={props.locked}
                     onMoveUp={props.onMoveUp}
                     onMoveDown={props.onMoveDown}
                     onDelete={props.onDelete}
@@ -494,17 +517,20 @@ const PlaygroundPageItemEditor = (props: {
                             }),
                         )
                     }
-                    locked={props.item.locked}
-                    onToggleLock={() =>
-                        props.onChange(
-                            produce(props.item, (item) => {
-                                if (item.type !== "text") {
-                                    return;
-                                }
+                    locked={props.locked || props.item.locked}
+                    onToggleLock={
+                        !props.locked
+                            ? () =>
+                                  props.onChange(
+                                      produce(props.item, (item) => {
+                                          if (item.type !== "text") {
+                                              return;
+                                          }
 
-                                item.locked = !item.locked;
-                            }),
-                        )
+                                          item.locked = !item.locked;
+                                      }),
+                                  )
+                            : undefined
                     }
                     onMoveUp={props.onMoveUp}
                     onMoveDown={props.onMoveDown}
@@ -545,7 +571,7 @@ const PlaygroundPageList = (props: {
                                 >
                                     <p className="text-nowrap lg:text-wrap">{page.name}</p>
 
-                                    {isActive ? (
+                                    {isActive && !props.playground!.locked ? (
                                         <ContextMenuButton
                                             className="flex items-center justify-center"
                                             items={[
@@ -594,17 +620,19 @@ const PlaygroundPageList = (props: {
                         );
                     })}
 
-                    <button
-                        className="flex flex-row items-center gap-1 lg:w-full px-1.5 py-1.5 rounded-lg hover:bg-gray-100 active:bg-gray-200 dark:hover:bg-gray-900 dark:active:bg-gray-800 transition-colors text-blue-500 text-nowrap lg:text-wrap"
-                        onClick={() => {
-                            const name = prompt("Enter page name:");
-                            if (name) {
-                                props.onAddPage(name);
-                            }
-                        }}
-                    >
-                        <MaterialSymbol icon="add" size={22} /> Add Page
-                    </button>
+                    {!props.playground!.locked ? (
+                        <button
+                            className="flex flex-row items-center gap-1 lg:w-full px-1.5 py-1.5 rounded-lg hover:bg-gray-100 active:bg-gray-200 dark:hover:bg-gray-900 dark:active:bg-gray-800 transition-colors text-blue-500 text-nowrap lg:text-wrap"
+                            onClick={() => {
+                                const name = prompt("Enter page name:");
+                                if (name) {
+                                    props.onAddPage(name);
+                                }
+                            }}
+                        >
+                            <MaterialSymbol icon="add" size={22} /> Add Page
+                        </button>
+                    ) : null}
                 </>
             ) : (
                 new Array(4)
