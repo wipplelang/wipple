@@ -11,7 +11,7 @@ import { getUser } from "../helpers";
 import { pureConverter } from "../helpers/database";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { nanoid } from "nanoid";
-import { MusicSettings, TurtleSettings } from "../runtimes";
+import { MathSettings, MusicSettings, TurtleSettings, GameSettings } from "../runtimes";
 import { Lesson } from "../lessons";
 
 export interface PlaygroundListItem {
@@ -59,8 +59,8 @@ type RuntimeItem<Name extends string, Settings> = PlaygroundPageCodeItem & {
 
 type PlaygroundPageTurtleItem = RuntimeItem<"turtle", TurtleSettings>;
 type PlaygroundPageMusicItem = RuntimeItem<"music", MusicSettings>;
-type PlaygroundPageMathItem = RuntimeItem<"math", {}>;
-type PlaygroundPageGameItem = RuntimeItem<"game", {}>;
+type PlaygroundPageMathItem = RuntimeItem<"math", MathSettings>;
+type PlaygroundPageGameItem = RuntimeItem<"game", GameSettings>;
 type PlaygroundPagePhysicsItem = RuntimeItem<"physics", {}>;
 type PlaygroundPageEnergyItem = RuntimeItem<"energy", {}>;
 

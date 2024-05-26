@@ -715,7 +715,6 @@ const AddPlaygroundPageItemAlert = (props: {
                 />
 
                 <AddPlaygroundPageItemAlertButton
-                    disabled // TODO
                     setup="game"
                     name="Game"
                     description="Create a video game."

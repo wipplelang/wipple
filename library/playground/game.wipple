@@ -1,0 +1,149 @@
+-- The width of the game window.
+width :: Number
+width : 32
+
+-- The height of the game window.
+height :: Number
+height : 24
+
+-- Move the cursor to a particular x-y location.
+locate :: (Number ; Number) -> Unit
+locate : (x ; y) -> runtime-message "locate" (x ; y)
+
+-- Set the foreground color.
+fg :: Color -> Unit
+fg : (Color c) -> runtime-message "fg" c
+
+-- Set the background color.
+bg :: Color -> Unit
+bg : (Color c) -> runtime-message "bg" c
+
+Glyph : type {
+  Character-Glyph Text
+  Numeric-Glyph Number
+}
+
+instance (As Text Glyph) : Character-Glyph
+instance (As Number Glyph) : Numeric-Glyph
+
+-- Render a single glyph at the cursor's current position.
+render-glyph :: A where (As A Glyph) => A -> Unit
+render-glyph : glyph -> do {
+  -- This works because JavaScript is dynamically typed
+  when (glyph as Glyph) {
+    Character-Glyph c -> runtime-message "render-glyph" c
+    Numeric-Glyph n -> runtime-message "render-glyph" n
+  }
+}
+
+Glyph-Sequence : type {
+  Text-Glyph-Sequence Text
+  Numeric-Glyph-Sequence (List Number)
+}
+
+instance (As Text Glyph-Sequence) : Text-Glyph-Sequence
+instance (As (List Number) Glyph-Sequence) : Numeric-Glyph-Sequence
+
+-- Render a line of glpyhs and advance to the next line.
+render-line :: A where (As A Glyph-Sequence) => A -> Unit
+render-line : glyphs -> do {
+  -- This works because JavaScript is dynamically typed
+  when (glyphs as Glyph-Sequence) {
+    Text-Glyph-Sequence c -> runtime-message "render-line" c
+    Numeric-Glyph-Sequence n -> runtime-message "render-line" n
+  }
+}
+
+-- Render a line of glpyhs without advancing to the next line.
+render :: A where (As A Glyph-Sequence) => A -> ()
+render : glyphs -> do {
+  -- This works because JavaScript is dynamically typed
+  when (glyphs as Glyph-Sequence) {
+    Text-Glyph-Sequence c -> runtime-message "render" c
+    Numeric-Glyph-Sequence n -> runtime-message "render" n
+  }
+}
+
+-- Render a line of characters, replacing all non-whitespace characters with the specified glyph, and advance to the next line.
+render-line-fill :: A where (As A Glyph) => Text A -> Unit
+render-line-fill : text replacement -> do {
+  -- This works because JavaScript is dynamically typed
+  when (replacement as Glyph) {
+    Character-Glyph c -> runtime-message "render-line-fill" (text ; c)
+    Numeric-Glyph n -> runtime-message "render-line-fill" (text ; n)
+  }
+}
+
+-- Render a line of characters, replacing all non-whitespace characters with the specified glyph, without advancing to the next line.
+render-fill :: A where (As A Glyph) => Text A -> ()
+render-fill : text replacement -> do {
+  -- This works because JavaScript is dynamically typed
+  when (replacement as Glyph) {
+    Character-Glyph c -> runtime-message "render-fill" (text ; c)
+    Numeric-Glyph n -> runtime-message "render-fill" (text ; n)
+  }
+}
+
+-- Information about the music being played by the game.
+Game-Music : type {
+  song :: Text
+  loop :: Boolean
+}
+
+-- Play some music.
+play :: Game-Music -> Unit
+play : {
+  song : song
+  loop : loop
+} -> do {
+  -- HACK: Can't send booleans to JavaScript
+  loop : when loop {
+    True -> 1
+    False -> 0
+  }
+
+  runtime-message "play" (song ; loop)
+}
+
+-- Pause the music being played.
+pause :: Unit
+pause : runtime-message "pause" ()
+
+Button : type {
+  B
+  A
+  Y
+  X
+  L
+  R
+  Start
+  Up
+  Down
+  Left
+  Right
+}
+
+-- Get the button being pressed.
+button :: Maybe Button
+button : when (runtime-message "button" ()) {
+  32 -> Some B
+  16 -> Some A
+  128 -> Some Y
+  64 -> Some X
+  256 -> Some L
+  512 -> Some R
+  1024 -> Some Start
+  1 -> Some Up
+  2 -> Some Down
+  4 -> Some Left
+  8 -> Some Right
+  _ -> None
+}
+
+-- Render a frame of the game.
+frame :: Result => {Result} -> Result
+frame : block -> do {
+  result : do block
+  runtime-message "commit" ()
+  result
+}
