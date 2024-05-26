@@ -390,9 +390,6 @@ export class Render {
 
                     return message;
                 }
-                case "constant": {
-                    return this.nameForPath(type.item.value);
-                }
             }
         };
 

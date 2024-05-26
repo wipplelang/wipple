@@ -461,9 +461,6 @@ pub enum Type<D: Driver> {
         /// Any trailing text after the segments.
         trailing: String,
     },
-
-    /// A type-level reference to a constant.
-    Constant(D::Path),
 }
 
 /// A segment in a message type.

@@ -1783,9 +1783,6 @@ fn resolve_type<D: Driver>(
                             // FIXME: disallow parameters passed to type parameters
                             crate::Type::Parameter(path.item)
                         }
-                        crate::PathComponent::Constant(_) => {
-                            crate::Type::Constant(path.item.clone())
-                        }
                         _ => crate::Type::Error,
                     }
                 }

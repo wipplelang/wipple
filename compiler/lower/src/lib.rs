@@ -1329,9 +1329,6 @@ pub enum Type<D: Driver> {
         /// Any trailing text after the segments.
         trailing: String,
     },
-
-    /// A type-level reference to a constant.
-    Constant(Path),
 }
 
 /// A resolved instance.

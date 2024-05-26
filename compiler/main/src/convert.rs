@@ -187,7 +187,6 @@ pub mod interface {
                     .collect(),
                 trailing,
             },
-            wipple_typecheck::Type::Constant(path) => wipple_lower::Type::Constant(path),
         })
     }
 
@@ -992,7 +991,6 @@ pub mod typecheck {
                     .collect(),
                 trailing,
             },
-            wipple_lower::Type::Constant(path) => wipple_typecheck::Type::Constant(path),
         })
     }
 

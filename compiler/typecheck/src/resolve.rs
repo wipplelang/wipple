@@ -548,7 +548,7 @@ pub fn substitute_defaults_in_parameters<D: Driver>(
                 substitute_defaults_in_parameters(driver, segment.r#type.as_mut());
             }
         }
-        crate::Type::Unknown | crate::Type::Intrinsic | crate::Type::Constant(_) => {}
+        crate::Type::Unknown | crate::Type::Intrinsic => {}
     }
 }
 
@@ -897,8 +897,7 @@ impl<D: Driver> Type<D> {
             TypeKind::Opaque(_)
             | TypeKind::Parameter(_)
             | TypeKind::Unknown
-            | TypeKind::Intrinsic
-            | TypeKind::Constant(_) => false,
+            | TypeKind::Intrinsic => false,
         }
     }
 
@@ -958,7 +957,7 @@ impl<D: Driver> Type<D> {
                     segment.value.apply_in_context_mut(context);
                 }
             }
-            TypeKind::Unknown | TypeKind::Intrinsic | TypeKind::Constant(_) => {}
+            TypeKind::Unknown | TypeKind::Intrinsic => {}
         }
     }
 
@@ -1003,8 +1002,7 @@ impl<D: Driver> Type<D> {
             | TypeKind::Opaque(_)
             | TypeKind::Parameter(_)
             | TypeKind::Unknown
-            | TypeKind::Intrinsic
-            | TypeKind::Constant(_) => {}
+            | TypeKind::Intrinsic => {}
         }
     }
 }
@@ -1030,7 +1028,6 @@ enum TypeKind<D: Driver> {
         segments: Vec<FormatSegment<Type<D>>>,
         trailing: String,
     },
-    Constant(D::Path),
     Unknown,
 }
 
@@ -1299,7 +1296,7 @@ impl<D: Driver> Type<D> {
                     segment.value.instantiate_mut(driver, instantiation_context);
                 }
             }
-            TypeKind::Unknown | TypeKind::Intrinsic | TypeKind::Constant(_) => {}
+            TypeKind::Unknown | TypeKind::Intrinsic => {}
         }
     }
 
@@ -1344,7 +1341,7 @@ impl<D: Driver> Type<D> {
                     segment.value.instantiate_opaque_in_context_mut(context);
                 }
             }
-            TypeKind::Unknown | TypeKind::Intrinsic | TypeKind::Constant(_) => {}
+            TypeKind::Unknown | TypeKind::Intrinsic => {}
         }
     }
 }
@@ -1559,11 +1556,6 @@ fn unify_with_options<D: Driver>(
             // supposed to be wrapped in another type)
             (TypeKind::Intrinsic, TypeKind::Intrinsic) => true,
 
-            // Constant references unify if the paths are equal
-            (TypeKind::Constant(path), TypeKind::Constant(expected_path)) => {
-                driver.paths_are_equal(path, expected_path)
-            }
-
             // Unknown types unify with everything
             (TypeKind::Unknown, _) | (_, TypeKind::Unknown) => true,
 
@@ -1728,11 +1720,9 @@ fn substitute_defaults<D: Driver>(
 
             false
         }
-        TypeKind::Opaque(_)
-        | TypeKind::Parameter(_)
-        | TypeKind::Unknown
-        | TypeKind::Intrinsic
-        | TypeKind::Constant(_) => false,
+        TypeKind::Opaque(_) | TypeKind::Parameter(_) | TypeKind::Unknown | TypeKind::Intrinsic => {
+            false
+        }
     }
 }
 
@@ -1951,7 +1941,6 @@ fn infer_type<D: Driver>(
                     .collect(),
                 trailing: trailing.clone(),
             },
-            crate::Type::Constant(path) => TypeKind::Constant(path.clone()),
         },
         r#type.info,
         Vec::from_iter(role.into()),
@@ -4458,7 +4447,6 @@ fn finalize_type<D: Driver>(
                         .collect(),
                     trailing,
                 },
-                TypeKind::Constant(path) => crate::Type::Constant(path),
             },
         }
     }
@@ -4896,7 +4884,6 @@ fn debug_type<D: Driver>(r#type: &Type<D>, context: &mut TypeContext<D>) -> Stri
 
             message
         }
-        TypeKind::Constant(path) => format!("({})", debug_path(&path)),
     }
 }
 
