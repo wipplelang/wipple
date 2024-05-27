@@ -1,3 +1,4 @@
 {
-    "wipple.link": ["library/base"]
+    "wipple.interface": ".wipple/base.wippleinterface",
+    "wipple.libraries": [".wipple/base.wipplelibrary"]
 }

@@ -39,10 +39,14 @@
         "configuration": {
             "title": "Wipple",
             "properties": {
-                "wipple.link": {
+                "wipple.interface": {
+                    "type": "string",
+                    "description": "Path to .wippleinterface file to read when compiling"
+                },
+                "wipple.libraries": {
                     "type": "array",
                     "default": [],
-                    "description": "List of directories to link to the active folder."
+                    "description": "Paths to .wipplelibrary files to read when compiling"
                 }
             }
         }

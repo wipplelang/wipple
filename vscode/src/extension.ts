@@ -16,7 +16,8 @@ export const activate = (context: vscode.ExtensionContext) => {
             fileEvents: vscode.workspace.createFileSystemWatcher("**/*.wipple"),
         },
         initializationOptions: {
-            linkDirs: config.get<string[]>("link") ?? [],
+            interface: config.get<string>("interface"),
+            libraries: config.get<string[]>("libraries"),
         },
     };
 

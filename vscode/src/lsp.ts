@@ -24,17 +24,29 @@ let diagnostics: RenderedDiagnostic[] = [];
 const connection = createConnection(ProposedFeatures.all);
 
 let rootDir = ".";
-let linkDirs: string[] = [];
+let dependencies: compiler.Interface | null = null;
+let libraries: compiler.linker_UnlinkedLibrary[] = [];
 
-connection.onInitialize((params) => {
+connection.onInitialize(async (params) => {
     const rootUri = params.workspaceFolders?.[0]?.uri;
     if (rootUri) {
         rootDir = URI.parse(rootUri).fsPath;
     }
 
-    if (params.initializationOptions?.linkDirs) {
-        linkDirs = params.initializationOptions.linkDirs.map((dir: string) =>
-            path.resolve(rootDir, dir),
+    if (params.initializationOptions?.interface) {
+        dependencies = JSON.parse(
+            await fs.readFile(
+                path.resolve(rootDir, params.initializationOptions.interface),
+                "utf8",
+            ),
+        );
+    }
+
+    if (params.initializationOptions?.libraries) {
+        libraries = await Promise.all(
+            params.initializationOptions.libraries.map(async (libraryPath: string) =>
+                JSON.parse(await fs.readFile(path.resolve(rootDir, libraryPath), "utf8")),
+            ),
         );
     }
 
@@ -274,18 +286,8 @@ const compileAll = async (
 ): Promise<compiler.WithInfo<compiler.Info, compiler.Diagnostic>[]> => {
     const activeDir = path.normalize(path.dirname(activeFile));
 
-    const dirs = [
-        activeDir,
-        // TODO: Link against library, not source files
-        ...linkDirs.filter((dir) => path.normalize(dir) !== activeDir),
-    ];
-
-    const sourcePaths = (
-        await Promise.all(
-            dirs.map(async (dir) => (await fs.readdir(dir)).map((file) => path.join(dir, file))),
-        )
-    )
-        .flatMap((files) => files)
+    const sourcePaths = (await fs.readdir(activeDir))
+        .map((file) => path.join(activeDir, file))
         .filter((file) => path.extname(file) === ".wipple");
 
     const sources = await Promise.all(
@@ -301,11 +303,8 @@ const compileAll = async (
         ),
     );
 
-    // TODO: Support dependencies
-    const dependencies = null;
-
     const result = compiler.compile(sources, dependencies);
-    render.update(result.interface, [result.library]); // TODO: Dependencies
+    render.update(result.interface, [result.library, ...libraries]);
 
     return result.diagnostics;
 };
