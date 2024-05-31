@@ -701,20 +701,14 @@ impl<'a, D: Driver> MatchCompiler<'a, D> {
                         };
 
                         let mut columns = row.columns;
-                        for (variable, pattern) in
-                            cases.get(&variant).unwrap().1.iter().zip(arguments)
-                        {
+                        for (variable, pattern) in cases.get(&variant)?.1.iter().zip(arguments) {
                             columns.push(Column {
                                 variable: variable.clone(),
                                 pattern,
                             });
                         }
 
-                        cases
-                            .get_mut(&variant)
-                            .unwrap()
-                            .2
-                            .push(Row { columns, ..row });
+                        cases.get_mut(&variant)?.2.push(Row { columns, ..row });
                     }
                 }
             } else {

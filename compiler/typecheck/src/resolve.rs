@@ -2872,104 +2872,55 @@ fn resolve_pattern<D: Driver>(
             variant,
             value_patterns,
         } => {
-            let value_types = match &r#type.item.kind {
-                TypeKind::Declared { path, parameters } => {
-                    let type_declaration = context.driver.get_type_declaration(path);
+            let enumeration = context.driver.get_enumeration_for_variant(&variant.item);
+            let type_declaration = context.driver.get_type_declaration(&enumeration);
 
-                    let mut instantiation_context = InstantiationContext::from_parameters(
-                        context.driver,
-                        type_declaration.item.parameters.clone(),
-                        context.type_context,
-                        pattern.info,
-                        context.errors,
-                    );
+            let mut instantiation_context = InstantiationContext::from_parameters(
+                context.driver,
+                type_declaration.item.parameters.clone(),
+                context.type_context,
+                pattern.info.clone(),
+                context.errors,
+            );
 
-                    for (path, r#type) in type_declaration.item.parameters.iter().zip(parameters) {
-                        assert!(unify(
-                            context.driver,
-                            &instantiation_context.type_for_parameter(context.driver, path),
-                            r#type,
-                            instantiation_context.type_context,
-                        ));
-                    }
+            let value_types = match type_declaration.item.representation.item {
+                crate::TypeRepresentation::Enumeration(variants) => {
+                    let variant = variants.get(&variant.item).unwrap();
 
-                    match &type_declaration.item.representation.item {
-                        crate::TypeRepresentation::Enumeration(variants) => {
-                            let variant = variants.get(&variant.item).unwrap();
-
-                            variant
-                                .item
-                                .value_types
-                                .clone()
-                                .into_iter()
-                                .map(|r#type| {
-                                    infer_type(
-                                        context.driver,
-                                        r#type.as_ref(),
-                                        variant.replace(Role::VariantElement),
-                                        instantiation_context.type_context,
-                                    )
-                                    .instantiate(context.driver, &mut instantiation_context)
-                                })
-                                .collect::<Vec<_>>()
-                        }
-                        _ => return,
-                    }
+                    variant
+                        .item
+                        .value_types
+                        .iter()
+                        .map(|r#type| {
+                            infer_type(
+                                context.driver,
+                                r#type.as_ref(),
+                                r#type.replace(Role::VariantElement),
+                                instantiation_context.type_context,
+                            )
+                            .instantiate(context.driver, &mut instantiation_context)
+                        })
+                        .collect::<Vec<_>>()
                 }
-                _ => {
-                    let enumeration = context.driver.get_enumeration_for_variant(&variant.item);
-                    let type_declaration = context.driver.get_type_declaration(&enumeration);
-
-                    let mut instantiation_context = InstantiationContext::from_parameters(
-                        context.driver,
-                        type_declaration.item.parameters.clone(),
-                        context.type_context,
-                        pattern.info.clone(),
-                        context.errors,
-                    );
-
-                    let value_types = match type_declaration.item.representation.item {
-                        crate::TypeRepresentation::Enumeration(variants) => {
-                            let variant = variants.get(&variant.item).unwrap();
-
-                            variant
-                                .item
-                                .value_types
-                                .iter()
-                                .map(|r#type| {
-                                    infer_type(
-                                        context.driver,
-                                        r#type.as_ref(),
-                                        r#type.replace(Role::VariantElement),
-                                        instantiation_context.type_context,
-                                    )
-                                    .instantiate(context.driver, &mut instantiation_context)
-                                })
-                                .collect::<Vec<_>>()
-                        }
-                        _ => return,
-                    };
-
-                    let enumeration_type = Type::new(
-                        TypeKind::Declared {
-                            path: enumeration,
-                            parameters: instantiation_context.into_types_for_parameters(),
-                        },
-                        pattern.info,
-                        Vec::new(),
-                    );
-
-                    try_unify(
-                        context.driver,
-                        r#type.as_ref(),
-                        &enumeration_type,
-                        context.type_context,
-                        context.error_queue,
-                    );
-
-                    value_types
-                }
+                _ => return,
             };
+
+            let enumeration_type = Type::new(
+                TypeKind::Declared {
+                    path: enumeration,
+                    parameters: instantiation_context.into_types_for_parameters(),
+                },
+                pattern.info,
+                Vec::new(),
+            );
+
+            try_unify(
+                context.driver,
+                r#type.as_ref(),
+                &enumeration_type,
+                context.type_context,
+                context.error_queue,
+            );
 
             for (pattern, r#type) in value_patterns.iter_mut().zip(value_types) {
                 let r#type = pattern.replace(&r#type);
@@ -2980,80 +2931,43 @@ fn resolve_pattern<D: Driver>(
             path,
             value_pattern,
         } => {
-            let value_type = match &r#type.item.kind {
-                TypeKind::Declared { path, parameters } => {
-                    let type_declaration = context.driver.get_type_declaration(path);
+            let type_declaration = context.driver.get_type_declaration(&path.item);
 
-                    let mut instantiation_context = InstantiationContext::from_parameters(
-                        context.driver,
-                        type_declaration.item.parameters.clone(),
-                        context.type_context,
-                        pattern.info,
-                        context.errors,
-                    );
+            let mut instantiation_context = InstantiationContext::from_parameters(
+                context.driver,
+                type_declaration.item.parameters.clone(),
+                context.type_context,
+                pattern.info.clone(),
+                context.errors,
+            );
 
-                    for (path, r#type) in type_declaration.item.parameters.iter().zip(parameters) {
-                        assert!(unify(
-                            context.driver,
-                            &instantiation_context.type_for_parameter(context.driver, path),
-                            r#type,
-                            instantiation_context.type_context,
-                        ));
-                    }
-
-                    match &type_declaration.item.representation.item {
-                        crate::TypeRepresentation::Wrapper(wrapped) => infer_type(
-                            context.driver,
-                            wrapped.as_ref(),
-                            wrapped.replace(Role::WrappedType),
-                            instantiation_context.type_context,
-                        )
-                        .instantiate(context.driver, &mut instantiation_context),
-                        _ => return,
-                    }
-                }
-                _ => {
-                    let type_declaration = context.driver.get_type_declaration(&path.item);
-
-                    let mut instantiation_context = InstantiationContext::from_parameters(
-                        context.driver,
-                        type_declaration.item.parameters.clone(),
-                        context.type_context,
-                        pattern.info.clone(),
-                        context.errors,
-                    );
-
-                    let value_type = match type_declaration.item.representation.item {
-                        crate::TypeRepresentation::Wrapper(wrapped) => infer_type(
-                            context.driver,
-                            wrapped.as_ref(),
-                            wrapped.replace(Role::VariantElement),
-                            instantiation_context.type_context,
-                        )
-                        .instantiate(context.driver, &mut instantiation_context),
-                        _ => return,
-                    };
-
-                    let wrapper_type = Type::new(
-                        TypeKind::Declared {
-                            path: path.item.clone(),
-                            parameters: instantiation_context.into_types_for_parameters(),
-                        },
-                        pattern.info,
-                        Vec::new(),
-                    );
-
-                    try_unify(
-                        context.driver,
-                        r#type.as_ref(),
-                        &wrapper_type,
-                        context.type_context,
-                        context.error_queue,
-                    );
-
-                    value_type
-                }
+            let value_type = match type_declaration.item.representation.item {
+                crate::TypeRepresentation::Wrapper(wrapped) => infer_type(
+                    context.driver,
+                    wrapped.as_ref(),
+                    wrapped.replace(Role::VariantElement),
+                    instantiation_context.type_context,
+                )
+                .instantiate(context.driver, &mut instantiation_context),
+                _ => return,
             };
+
+            let wrapper_type = Type::new(
+                TypeKind::Declared {
+                    path: path.item.clone(),
+                    parameters: instantiation_context.into_types_for_parameters(),
+                },
+                pattern.info,
+                Vec::new(),
+            );
+
+            try_unify(
+                context.driver,
+                r#type.as_ref(),
+                &wrapper_type,
+                context.type_context,
+                context.error_queue,
+            );
 
             let value_type = value_pattern.replace(&value_type);
             resolve_pattern(value_pattern.as_deref_mut(), value_type, context);
