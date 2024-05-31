@@ -11,7 +11,6 @@ import {
     positional,
     multioption,
     array,
-    flag,
 } from "cmd-ts";
 import { File } from "cmd-ts/batteries/fs";
 import * as compiler from "wipple-compiler";
@@ -68,6 +67,7 @@ const app = subcommands({
 
                 if (result.diagnostics.length > 0) {
                     console.error(renderDiagnostics(result.diagnostics, result.interface));
+                    process.exit(1);
                 }
 
                 if (outputInterfacePath) {
