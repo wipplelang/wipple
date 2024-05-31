@@ -1,6 +1,5 @@
 import { Decimal } from "decimal.js";
 import { intrinsics, callFunction } from "./intrinsics.js";
-import { produce } from "immer";
 import type * as compiler from "wipple-compiler";
 import { Mutex } from "async-mutex";
 
@@ -454,9 +453,7 @@ const evaluateItem = async (
                 case "typed": {
                     const typedInstruction = instruction;
                     const getTypeDescriptor = () =>
-                        produce(typedInstruction.value[0], (typeDescriptor) =>
-                            substituteTypeDescriptor(typeDescriptor, substitutions),
-                        );
+                        substituteTypeDescriptor(typedInstruction.value[0], substitutions);
 
                     switch (instruction.value[1].type) {
                         case "intrinsic": {
