@@ -1,0 +1,11 @@
+-- [should compile]
+
+E : type {
+  A
+  B
+}
+
+show (when (A ; B) {
+  (A ; A) -> 1
+  (x ; y) -> 2
+})

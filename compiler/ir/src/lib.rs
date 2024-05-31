@@ -353,9 +353,9 @@ where
 
                 write!(f, "{}end", "  ".repeat(indent))
             }
-            Instruction::Break(label) => write!(f, "jump {label}"),
+            Instruction::Break(label) => write!(f, "break {label}"),
             Instruction::BreakIfNot(variant, label) => {
-                write!(f, "jump if not {variant} {label}")
+                write!(f, "break if not {variant} {label}")
             }
             Instruction::Return => write!(f, "return"),
             Instruction::TailCall(inputs) => write!(f, "tail call {inputs}"),

@@ -552,12 +552,26 @@ fn compile_pattern<D: crate::Driver>(
                 _ => return None,
             };
 
+            let entry_block = info.current_block();
+
+            let continue_block_id = info.begin_block();
+            let break_block_id = info.begin_block();
+
             for field in field_patterns {
                 let field_index = field_indices.get(&field.item.name).copied()?;
                 info.push_instruction(crate::Instruction::Field(field_index));
-                compile_pattern(field.item.pattern.as_ref(), else_block_id, info)?;
+                compile_pattern(field.item.pattern.as_ref(), break_block_id, info)?;
                 info.push_instruction(crate::Instruction::Drop);
             }
+
+            info.break_out_of_block(continue_block_id);
+            info.end_block();
+
+            info.push_instruction(crate::Instruction::Drop);
+            info.break_out_of_block(else_block_id);
+            info.end_block();
+
+            assert_eq!(info.current_block(), entry_block);
         }
         wipple_typecheck::Pattern::Variant {
             variant,
@@ -580,23 +594,65 @@ fn compile_pattern<D: crate::Driver>(
 
             info.break_out_of_block_if_not(variant_index, else_block_id);
 
+            let entry_block = info.current_block();
+
+            let continue_block_id = info.begin_block();
+            let break_block_id = info.begin_block();
+
             for (index, pattern) in value_patterns.iter().enumerate() {
                 info.push_instruction(crate::Instruction::VariantElement(index as u32));
-                compile_pattern(pattern.as_ref(), else_block_id, info)?;
+                compile_pattern(pattern.as_ref(), break_block_id, info)?;
                 info.push_instruction(crate::Instruction::Drop);
             }
+
+            info.break_out_of_block(continue_block_id);
+            info.end_block();
+
+            info.push_instruction(crate::Instruction::Drop);
+            info.break_out_of_block(else_block_id);
+            info.end_block();
+
+            assert_eq!(info.current_block(), entry_block);
         }
         wipple_typecheck::Pattern::Wrapper { value_pattern, .. } => {
+            let entry_block = info.current_block();
+
+            let continue_block_id = info.begin_block();
+            let break_block_id = info.begin_block();
+
             info.push_instruction(crate::Instruction::Unwrap);
-            compile_pattern(value_pattern.as_deref(), else_block_id, info)?;
+            compile_pattern(value_pattern.as_deref(), break_block_id, info)?;
             info.push_instruction(crate::Instruction::Drop);
+
+            info.break_out_of_block(continue_block_id);
+            info.end_block();
+
+            info.push_instruction(crate::Instruction::Drop);
+            info.break_out_of_block(else_block_id);
+            info.end_block();
+
+            assert_eq!(info.current_block(), entry_block);
         }
         wipple_typecheck::Pattern::Tuple(elements) => {
+            let entry_block = info.current_block();
+
+            let continue_block_id = info.begin_block();
+            let break_block_id = info.begin_block();
+
             for (index, pattern) in elements.iter().enumerate() {
                 info.push_instruction(crate::Instruction::TupleElement(index as u32));
-                compile_pattern(pattern.as_ref(), else_block_id, info)?;
+                compile_pattern(pattern.as_ref(), break_block_id, info)?;
                 info.push_instruction(crate::Instruction::Drop);
             }
+
+            info.break_out_of_block(continue_block_id);
+            info.end_block();
+
+            info.push_instruction(crate::Instruction::Drop);
+            info.break_out_of_block(else_block_id);
+            info.end_block();
+
+            assert_eq!(info.current_block(), entry_block);
         }
         wipple_typecheck::Pattern::Or { left, right } => {
             let continue_block_id = info.begin_block();
