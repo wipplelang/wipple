@@ -285,7 +285,7 @@ const LessonsAlert = (props: {
                     className="flex flex-row items-center bg-sky-50 dark:bg-sky-950 hover:bg-sky-100 dark:hover:bg-sky-900 transition-colors p-4 rounded-md"
                     onClick={() => props.onSelectLesson(lesson)}
                 >
-                    <div className="flex flex-col items-start flex-1">
+                    <div className="flex flex-col items-start flex-1 text-left">
                         <h2 className="text-xl font-semibold text-sky-500">{lesson.name}</h2>
                         <p className="text-sky-400 dark:text-sky-600">{lesson.description}</p>
                     </div>
