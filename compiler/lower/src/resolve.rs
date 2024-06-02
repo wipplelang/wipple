@@ -1858,16 +1858,17 @@ fn resolve_type<D: Driver>(
                 }
             };
 
+            let name_info = name.info.clone();
+
             match resolve_name(name, info, filter) {
                 Some(path) => {
                     match path.item.last().unwrap() {
                         crate::PathComponent::Type(_) => {
-                            let type_declaration = info.type_declarations.get(&path.item).unwrap();
-
-                            let (type_declaration_info, _) = &type_declaration.item;
+                            let (type_declaration_info, _) =
+                                &info.type_declarations.get(&path.item).unwrap().item;
 
                             check_parameter_count(
-                                type_declaration.info.clone(),
+                                name_info,
                                 type_declaration_info.parameters,
                                 &parameters,
                                 info,
@@ -1882,16 +1883,15 @@ fn resolve_type<D: Driver>(
                             }
                         }
                         crate::PathComponent::TypeAlias(_) => {
-                            let type_alias_declaration = info
+                            let (type_alias_declaration_info, _) = &info
                                 .type_alias_declarations
                                 .get(&path.item)
                                 .unwrap()
-                                .clone();
-
-                            let (type_alias_declaration_info, _) = &type_alias_declaration.item;
+                                .clone()
+                                .item;
 
                             check_parameter_count(
-                                type_alias_declaration.info.clone(),
+                                name_info,
                                 type_alias_declaration_info.parameters,
                                 &parameters,
                                 info,
@@ -1989,7 +1989,10 @@ fn resolve_instance<D: Driver>(
     info: &mut Info<D>,
 ) -> Option<WithInfo<D::Info, crate::Instance<D>>> {
     instance.filter_map(|instance| {
-        let r#trait = match resolve_name(instance.r#trait.try_unwrap()?, info, |candidates| {
+        let r#trait = instance.r#trait.try_unwrap()?;
+        let trait_info = r#trait.info.clone();
+
+        let r#trait = match resolve_name(r#trait, info, |candidates| {
             candidates
                 .iter()
                 .filter_map(|path| match path.item.last().unwrap() {
@@ -2002,12 +2005,10 @@ fn resolve_instance<D: Driver>(
             None => return None,
         };
 
-        let trait_declaration = info.trait_declarations.get(&r#trait.item).unwrap();
-
-        let (trait_declaration_info, _) = &trait_declaration.item;
+        let (trait_declaration_info, _) = &info.trait_declarations.get(&r#trait.item).unwrap().item;
 
         check_parameter_count(
-            trait_declaration.info.clone(),
+            trait_info,
             trait_declaration_info.parameters,
             &instance.parameters,
             info,
