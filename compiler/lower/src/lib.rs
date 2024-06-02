@@ -175,6 +175,12 @@ pub enum Diagnostic {
 
     /// Mutate patterns can only occur on the left-hand side of an assignment.
     InvalidMutatePattern,
+
+    /// Missing types for a type or trait.
+    MissingTypes(u32),
+
+    /// Extra type provided to a type or trait.
+    ExtraType,
 }
 
 /// An unresolved file.

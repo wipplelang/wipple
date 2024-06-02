@@ -665,6 +665,16 @@ export class Render {
                         message = "`!` only works when assigning to a variable using `:`";
                         break;
                     }
+                    case "missingTypes": {
+                        severity = "error";
+                        message = `missing ${diagnostic.item.value.value} types here`;
+                        break;
+                    }
+                    case "extraType": {
+                        severity = "error";
+                        message = "extra type provided here";
+                        break;
+                    }
                     default:
                         diagnostic.item.value satisfies never;
                         return null;
