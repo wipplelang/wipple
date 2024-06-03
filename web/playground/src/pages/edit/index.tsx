@@ -729,7 +729,6 @@ const AddPlaygroundPageItemAlert = (props: {
                 />
 
                 <AddPlaygroundPageItemAlertButton
-                    disabled // TODO
                     setup="physics"
                     name="Physics"
                     description="Experiment with physics."

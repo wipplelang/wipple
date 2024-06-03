@@ -23,6 +23,12 @@ import {
     assetItems as gameAssetItems,
     type Settings as GameSettings,
 } from "./game";
+import {
+    Physics,
+    paletteItems as physicsPaletteItems,
+    assetItems as physicsAssetItems,
+    type Settings as PhysicsSettings,
+} from "./physics";
 
 export interface Runtime {
     initialize: () => Promise<void>;
@@ -61,6 +67,11 @@ export const runtimes = {
         assetItems: gameAssetItems,
         paletteItems: gamePaletteItems,
     },
+    physics: {
+        Component: Physics,
+        assetItems: physicsAssetItems,
+        paletteItems: physicsPaletteItems,
+    },
 };
 
 export const defaultPaletteItems: PaletteItem[] = [
@@ -68,4 +79,4 @@ export const defaultPaletteItems: PaletteItem[] = [
     { title: "repeat", code: `repeat (1 times) {\n  _\n}` },
 ];
 
-export type { TurtleSettings, MusicSettings, MathSettings, GameSettings };
+export type { TurtleSettings, MusicSettings, MathSettings, GameSettings, PhysicsSettings };
