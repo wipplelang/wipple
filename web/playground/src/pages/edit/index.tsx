@@ -196,7 +196,6 @@ export const EditPage = () => {
                 produce((playground) => {
                     const items = playground?.pages[0]?.items;
                     if (items) {
-                        console.log("adding newPlaygroundTutorialItem");
                         items.push(newPlaygroundTutorialItem);
                     }
                 }),

@@ -78,7 +78,10 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     const runnerWorker = useRef<Worker>();
 
     const resetRunnerWorker = useCallback(() => {
-        runnerWorker.current?.terminate();
+        if (runnerWorker.current) {
+            runnerWorker.current.onerror?.(new ErrorEvent("terminate"));
+            runnerWorker.current.terminate();
+        }
 
         const newWorker = new RunnerWorker({ name: `runner-${id}` });
         runnerWorker.current = newWorker;
@@ -93,10 +96,14 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     const [cachedHighlightItems, setCachedHighlightItems] =
         useState<Record<string, RenderedHighlight>>();
 
+    const isRunning = useRef(false);
+
     const run = useCallback(async () => {
-        if (!hasWaitedForLayout) {
+        if (isRunning.current || !hasWaitedForLayout) {
             return;
         }
+
+        isRunning.current = true;
 
         props.onBlur();
         setShowRunAgain(false);
@@ -181,7 +188,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 });
             }
 
-            await new Promise<void>((resolve) => {
+            await new Promise<void>((resolve, reject) => {
                 runnerWorker.onmessage = async (event) => {
                     const { type } = event.data;
 
@@ -282,8 +289,20 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
                             break;
                         }
+                        case "runnerError": {
+                            reject(event.data.error);
+                            break;
+                        }
                         default:
                             throw new Error("unsupported message from runner");
+                    }
+                };
+
+                runnerWorker.onerror = (event) => {
+                    if (event.type === "terminate") {
+                        resolve();
+                    } else {
+                        reject(event.error);
                     }
                 };
 
@@ -302,6 +321,8 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                     await runtime.cleanup();
                 });
             }
+
+            isRunning.current = false;
         }
     }, [
         hasWaitedForLayout,

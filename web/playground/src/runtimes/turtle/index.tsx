@@ -1,17 +1,17 @@
 import type { RuntimeComponent } from "..";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-import turtleImage from "./turtle.png";
+import turtleImage from "./assets/turtle.png";
 import { MaterialSymbol } from "react-material-symbols";
 import { Tooltip } from "../../components";
 import { format } from "date-fns";
 import { PaletteItem } from "../../models";
 import { flushSync } from "react-dom";
 import { Resizable } from "react-resizable";
+import { AnimalAsset, animalImageUrl } from "../../pages/edit/assets/animal";
+import { ColorAsset } from "../../pages/edit/assets/color";
 
 // @ts-ignore
 import RealTurtle from "real-turtle";
-import { AnimalAsset, animalImageUrl } from "../../pages/edit/assets/animal";
-import { ColorAsset } from "../../pages/edit/assets/color";
 
 export interface Settings {
     canvasWidth: number;
