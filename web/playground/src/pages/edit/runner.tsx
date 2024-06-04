@@ -77,10 +77,19 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
     const runnerWorker = useRef<Worker>();
 
-    const resetRunnerWorker = useCallback(() => {
+    const resetRunnerWorker = useCallback(async () => {
         if (runnerWorker.current) {
             runnerWorker.current.onerror?.(new ErrorEvent("terminate"));
             runnerWorker.current.terminate();
+        }
+
+        if (runtimeRef.current) {
+            const mutex = runtimeMutexRef.current;
+            const runtime = runtimeRef.current;
+
+            await mutex.runExclusive(async () => {
+                await runtime.cleanup();
+            });
         }
 
         const newWorker = new RunnerWorker({ name: `runner-${id}` });
@@ -92,18 +101,17 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     const [showOutput, setShowOutput] = useState(false);
     const [showRunAgain, setShowRunAgain] = useState(false);
 
-    const [cachedBuiltinsHelp, setCachedBuiltinsHelp] = useState<Record<string, any>>();
-    const [cachedHighlightItems, setCachedHighlightItems] =
-        useState<Record<string, RenderedHighlight>>();
+    const cachedBuiltinsHelp = useRef<Record<string, any>>();
+    const cachedHighlightItems = useRef<Record<string, RenderedHighlight>>();
 
-    const isRunning = useRef(false);
+    const isCompiling = useRef(false);
 
     const run = useCallback(async () => {
-        if (isRunning.current || !hasWaitedForLayout) {
+        if (isCompiling.current || !hasWaitedForLayout) {
             return;
         }
 
-        isRunning.current = true;
+        isCompiling.current = true;
 
         props.onBlur();
         setShowRunAgain(false);
@@ -111,13 +119,20 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         try {
             let showRunAgain = false;
 
-            if (!cachedBuiltinsHelp) {
-                setCachedBuiltinsHelp(await fetchBuiltinsHelp());
+            if (!cachedBuiltinsHelp.current) {
+                cachedBuiltinsHelp.current = await fetchBuiltinsHelp();
             }
 
             const dependencies = props.options.dependenciesPath
                 ? await fetchDependencies(props.options.dependenciesPath)
                 : null;
+
+            if (!cachedHighlightItems.current && dependencies) {
+                props.render.update(dependencies.interface, dependencies.libraries);
+                const highlightItems = getHighlightItems(dependencies.interface, props.render);
+                cachedHighlightItems.current = highlightItems;
+                props.onChangeHighlightItems(highlightItems);
+            }
 
             const compilerWorker = new CompilerWorker({ name: `compiler-${id}` });
 
@@ -142,15 +157,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
             compilerWorker.terminate();
 
-            if (!cachedHighlightItems) {
-                const highlightItems = getHighlightItems(compileResult.interface, props.render);
-                setCachedHighlightItems(highlightItems);
-
-                // FIXME: Only calling this once prevents user-defined highlight
-                // items from being recognized
-                props.onChangeHighlightItems(highlightItems);
-            }
-
             props.render.update(compileResult.interface, [
                 compileResult.library,
                 ...(dependencies?.libraries ?? []),
@@ -171,7 +177,9 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 props.onChangeDiagnostics([]);
             }
 
-            const runnerWorker = resetRunnerWorker();
+            isCompiling.current = false;
+
+            const runnerWorker = await resetRunnerWorker();
             clearOutput();
 
             // flushSync is required to initialize runtimeRef
@@ -313,6 +321,8 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         } catch (error) {
             console.error(error);
         } finally {
+            isCompiling.current = false;
+
             if (runtimeRef.current) {
                 const mutex = runtimeMutexRef.current;
                 const runtime = runtimeRef.current;
@@ -321,8 +331,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                     await runtime.cleanup();
                 });
             }
-
-            isRunning.current = false;
         }
     }, [
         hasWaitedForLayout,
@@ -331,8 +339,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         props.runtime?.settings,
         props.options,
         resetRunnerWorker,
-        cachedBuiltinsHelp,
-        cachedHighlightItems,
     ]);
 
     useEffect(() => {
@@ -341,11 +347,11 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
     useImperativeHandle(ref, () => ({
         help: (position: number, code: string): Help | undefined => {
-            if (cachedBuiltinsHelp != null && cachedBuiltinsHelp[code] != null) {
+            if (cachedBuiltinsHelp.current != null && cachedBuiltinsHelp.current[code] != null) {
                 return {
                     name: code,
-                    summary: cachedBuiltinsHelp[code].summary,
-                    doc: cachedBuiltinsHelp[code].doc,
+                    summary: cachedBuiltinsHelp.current[code].summary,
+                    doc: cachedBuiltinsHelp.current[code].doc,
                 };
             }
 
@@ -436,16 +442,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                         })
                     }
                     stopRunning={async () => {
-                        if (runtimeRef.current) {
-                            const mutex = runtimeMutexRef.current;
-                            const runtime = runtimeRef.current;
-
-                            await mutex.runExclusive(async () => {
-                                await runtime.cleanup();
-                            });
-                        }
-
-                        resetRunnerWorker();
+                        await resetRunnerWorker();
                         setShowRunAgain(true);
                     }}
                     ref={runtimeRef}
