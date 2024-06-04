@@ -199,7 +199,7 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
             if (engineRef.current !== engine) return;
 
             matter.Engine.update(engine, delta);
-            console.log(engine.world.bodies);
+            console.log(engine.timing.timestamp / ms, engine.world.bodies);
             requestAnimationFrame(update);
         };
 
