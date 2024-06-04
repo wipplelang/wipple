@@ -145,7 +145,7 @@ export const assetItems: PaletteItem[] = [
     },
     {
         title: <InstrumentAsset instrument="acoustic_grand_piano" tooltip={false} />,
-        code: `[Instrument "acoustic_grand_piano"]`,
+        code: `[Instrument-Name "acoustic_grand_piano"]`,
     },
 ];
 
