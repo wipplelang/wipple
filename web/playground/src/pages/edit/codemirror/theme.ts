@@ -35,6 +35,7 @@ export const themeFromConfig = (config: ThemeConfig): Extension => [
         },
         ".cm-line": {
             padding: 0,
+            height: "1lh",
         },
         ".cm-placeholder": {
             fontStyle: "italic",

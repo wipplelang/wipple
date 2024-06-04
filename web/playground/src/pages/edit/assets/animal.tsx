@@ -112,11 +112,11 @@ export const AnimalAsset = (props: {
     const description = useMemo(() => props.animal.replace("_", " "), [props.animal]);
     const imageUrl = useMemo(() => animalImageUrl(props.animal), [props.animal]);
 
-    const animal = <img className="w-4 h-4" src={imageUrl} />;
+    const animal = <img className="block w-4 h-4" src={imageUrl} />;
 
     return (
         <div
-            className={`inline-block align-text-bottom rounded-md border-2 border-gray-100 dark:border-gray-800 overflow-clip ${
+            className={`inline-block items-center justify-center align-text-bottom rounded-md border-2 border-gray-100 dark:border-gray-800 overflow-clip ${
                 props.tooltip ?? true ? "hover:scale-110 transition-transform" : ""
             }`}
         >

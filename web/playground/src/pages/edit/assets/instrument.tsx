@@ -141,7 +141,11 @@ export const InstrumentAsset = (props: {
 }) => {
     const description = useMemo(() => instrumentName(props.instrument), [props.instrument]);
 
-    const instrument = <p className="capitalize ui-font">{description}</p>;
+    const instrument = (
+        <div className="flex items-center justify-center h-5">
+            <p className="capitalize ui-font">{description}</p>
+        </div>
+    );
 
     return (
         <div

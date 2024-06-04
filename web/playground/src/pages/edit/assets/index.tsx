@@ -138,7 +138,11 @@ export const Asset = (props: {
     }
 
     return (
-        <button className={`inline-block w-fit ${props.disabled ? "opacity-50" : ""}`}>
+        <button
+            className={`inline-flex w-fit items-center align-middle h-[calc(1lh-2pt)] ${
+                props.disabled ? "opacity-50" : ""
+            }`}
+        >
             {content}
         </button>
     );
