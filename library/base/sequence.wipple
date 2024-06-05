@@ -1,6 +1,26 @@
 -- A container for a sequence that produces the next value on demand.
 Sequence : Element => type ({Maybe Element})
 
+-- Produce an infinite sequence.
+sequence :: Element => {Element} -> Sequence Element
+sequence : next -> Sequence {Some (do next)}
+
+-- Build a sequence from an initial item and a transform function.
+build-sequence :: Element => (Maybe Element) (Element -> Maybe Element) -> Sequence Element
+build-sequence : initial transform -> do {
+    next : initial
+
+    Sequence {
+        when next {
+            Some current -> do {
+                next! : transform current
+                Some current
+            }
+            None -> None
+        }
+    }
+}
+
 -- Retrieve the next item in a sequence.
 next :: Element => (Sequence Element) -> Maybe Element
 next : (Sequence next) -> do next
