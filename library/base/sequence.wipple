@@ -335,6 +335,12 @@ zip : left right -> do {
     }
 }
 
+-- Create a sequence that maintains a counter indicating the number of elements
+-- produced already seen. For example, `enumerate ("a" , "b" , "c")` produces
+-- `(0 ; "a")`, `(1 ; "b")`, and `(2 ; "c")`.
+enumerate :: Collection (infer Element) where (As-Sequence Collection Element) => Collection -> Sequence (Number ; Element)
+enumerate : collection -> zip (0 to undefined by 1) collection
+
 Extend : Container (infer Element) => trait ((Sequence Element) -> Container -> Container)
 Element => instance (Extend (List Element) Element) : sequence -> list -> sequence . reduce list append
 
