@@ -60,7 +60,7 @@ insert-entry : key value -> {
         resized : Dictionary {
             hasher : hasher
             size : 0
-            entries : sequence {Some None} . take (count entries * 2) . collect
+            entries : Sequence {Some None} . take (count entries * 2) . collect
         }
 
         -- Populate the new dictionary with the entries from the old dictionary

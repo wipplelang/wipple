@@ -37,7 +37,7 @@ instance (As-Sequence (Stride Number) Number) : {
 } -> when (min /= undefined ; max /= undefined) {
     (True ; True) -> do {
         current : min
-        sequence {
+        Sequence {
             if (current < max) {
                 n : current
                 current! : current + step
@@ -49,11 +49,11 @@ instance (As-Sequence (Stride Number) Number) : {
     }
     (True ; False) -> do {
         current : min
-        sequence {
+        Sequence {
             n : current
             current! : current + step
             Some n
         }
     }
-    _ -> sequence {None}
+    _ -> Sequence {None}
 }

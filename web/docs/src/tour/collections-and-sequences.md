@@ -107,7 +107,7 @@ The laziness of sequences simplifies a lot of things — you only need to worry 
 
 ```wipple
 count : 0
-counter : sequence {
+counter : Sequence {
   n : count
   count! : count + 1
   Some n
@@ -131,14 +131,14 @@ counter
 9
 ```
 
-The `sequence` function accepts a block that's evaluated each time `next` is called. We start by initializing `count` to zero, and then incrementing it by one for each item. Remember that the block isn't evaluated until `next` is called, so we don't run into an infinite loop by continually incrementing `count`. There could be a long delay between each call to `next`, or we could take a million elements all at once! In the example above, we take just 10 elements, and then we're done.
+The `Sequence` function accepts a block that's evaluated each time `next` is called. We start by initializing `count` to zero, and then incrementing it by one for each item. Remember that the block isn't evaluated until `next` is called, so we don't run into an infinite loop by continually incrementing `count`. There could be a long delay between each call to `next`, or we could take a million elements all at once! In the example above, we take just 10 elements, and then we're done.
 
 > **Tip:** It's good practice to hide the `count` variable in a `do` block so it can't be changed accidentally outside the sequence:
 >
 > ```wipple
 > counter : do {
 >   count : 0
->   sequence {
+>   Sequence {
 >     n : count
 >     count! : count + 1
 >     Some n
@@ -164,4 +164,4 @@ Let's look at `Stride`:
 
 Whereas a range (`min to max`) is continuous, a _stride_ (`min to max by step`) counts up in discrete steps. So it implements `As-Sequence`, and we can use it with all our sequence functions!
 
-`Sequence` (the type returned by `sequence {...}`) implements `As-Sequence`, too — it just returns itself. That way, you can chain calls to functions like `transform` and `filter` without needing to `collect` into a list after every step.
+`Sequence` implements `As-Sequence`, too — it just returns itself. That way, you can chain calls to functions like `transform` and `filter` without needing to `collect` into a list after every step.
