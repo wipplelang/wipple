@@ -76,7 +76,7 @@ type Value =
 
 export interface Context {
     executable: Executable;
-    debug: boolean;
+    debug?: typeof console.log;
     gc: () => void;
     io: (request: IoRequest) => void;
     call: (func: TypedValue, inputs: TypedValue[], task: TaskLocals) => Promise<TypedValue>;
@@ -140,7 +140,7 @@ export class InterpreterError extends Error {}
 export const evaluate = async (
     executable: Executable,
     options: {
-        debug: boolean;
+        debug?: typeof console.log;
         gc: () => void;
         io: (request: IoRequest) => Promise<void>;
     },
@@ -227,14 +227,12 @@ export const evaluate = async (
                   )
                 : parametersOrSubstitutions;
 
-            if (context.debug) {
-                console.error("## initializing constant:", {
-                    path,
-                    typeDescriptor,
-                    substitutions,
-                    item,
-                });
-            }
+            context.debug?.("## initializing constant:", {
+                path,
+                typeDescriptor,
+                substitutions,
+                item,
+            });
 
             const result = (await evaluateItem(
                 path,
@@ -278,15 +276,11 @@ export const evaluate = async (
 
         const task: TaskLocals = {};
 
-        if (context.debug) {
-            console.error("## evaluating entrypoint block");
-        }
+        context.debug?.("## evaluating entrypoint block");
 
         const block = (await evaluateItem("top-level", entrypoint.ir, [], [], {}, task, context))!;
 
-        if (context.debug) {
-            console.error("## executing entrypoint block");
-        }
+        context.debug?.("## executing entrypoint block");
 
         await context.do(block, task);
     }
@@ -336,12 +330,10 @@ const evaluateItem = async (
                 }
             };
 
-            if (context.debug) {
-                console.error(
-                    "## evaluating:",
-                    JSON.stringify({ path, instruction, stack, scope, substitutions }, null, 4),
-                );
-            }
+            context.debug?.(
+                "## evaluating:",
+                JSON.stringify({ path, instruction, stack, scope, substitutions }, null, 4),
+            );
 
             switch (instruction.type) {
                 case "copy": {

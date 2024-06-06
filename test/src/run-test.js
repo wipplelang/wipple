@@ -118,7 +118,7 @@ test(path.basename(file), async () => {
 
     try {
         await evaluate(executable, {
-            debug: process.env.WIPPLE_DEBUG_INTERPRETER != null,
+            debug: process.env.WIPPLE_DEBUG_INTERPRETER != null ? console.error : undefined,
             io: handleIo,
             gc: () => {},
         });

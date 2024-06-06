@@ -6,7 +6,7 @@ export interface Demonstration {
 }
 
 // https://kdesign.co/blog/pastel-color-palette-examples/
-const colors = ["#F7D9C4", "#C9E4DE", "#C6DEF1", "#F2C6DE", "#DBCDFO", "#FAEDCB"];
+const colors = ["#C9E4DE", "#F7D9C4", "#C6DEF1", "#F2C6DE", "#DBCDFO", "#FAEDCB"];
 
 const createBlock = (props: {
     x: number;

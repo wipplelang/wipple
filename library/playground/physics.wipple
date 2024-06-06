@@ -1,5 +1,6 @@
 -- A duration in seconds.
 Time : type Number
+instance (Describe-Type Time "time")
 
 instance (Equal Time) : (Time a) (Time b) -> a = b
 instance (Order Time) : (Time a) (Time b) -> Order a b
@@ -14,6 +15,7 @@ seconds : Time
 
 -- A distance in meters.
 Distance : type Number
+instance (Describe-Type Distance "distance")
 
 instance (Equal Distance) : (Distance a) (Distance b) -> a = b
 instance (Order Distance) : (Distance a) (Distance b) -> Order a b
@@ -28,6 +30,7 @@ meters : Distance
 
 -- A velocity in meters per second.
 Velocity : type Number
+instance (Describe-Type Velocity "velocity")
 
 instance (Equal Velocity) : (Velocity a) (Velocity b) -> a = b
 instance (Order Velocity) : (Velocity a) (Velocity b) -> Order a b
@@ -40,6 +43,7 @@ instance (Divide (Number -> Distance) (Number -> Time) (Number -> Velocity)) : _
 
 -- An acceleration in meters per second, per second.
 Acceleration : type Number
+instance (Describe-Type Acceleration "acceleration")
 
 instance (Equal Acceleration) : (Acceleration a) (Acceleration b) -> a = b
 instance (Order Acceleration) : (Acceleration a) (Acceleration b) -> Order a b
@@ -52,6 +56,7 @@ instance (Divide (Number -> Velocity) (Number -> Time) (Number -> Acceleration))
 
 -- A mass in kilograms.
 Mass : type Number
+instance (Describe-Type Mass "mass")
 
 instance (Equal Mass) : (Mass a) (Mass b) -> a = b
 instance (Order Mass) : (Mass a) (Mass b) -> Order a b
@@ -71,6 +76,7 @@ static : undefined kilograms
 
 -- A force in kilograms per unit of acceleration.
 Force : type Number
+instance (Describe-Type Force "force")
 
 instance (Equal Force) : (Force a) (Force b) -> a = b
 instance (Order Force) : (Force a) (Force b) -> Order a b
@@ -88,6 +94,7 @@ newtons : kilograms * (meters / seconds / seconds)
 instance (Add Time Time Time) : (Time a) (Time b) -> Time (a + b)
 instance (Subtract Time Time Time) : (Time a) (Time b) -> Time (a - b)
 instance (Multiply Time Number Time) : (Time a) b -> Time (a * b)
+instance (Multiply Number Time Time) : a (Time b) -> Time (a * b)
 instance (Divide Number Time Time) : a (Time b) -> Time (a / b)
 
 instance (Add Distance Distance Distance) : (Distance a) (Distance b) -> Distance (a + b)
@@ -98,6 +105,7 @@ instance (Divide Number Distance Distance) : a (Distance b) -> Distance (a / b)
 instance (Add Velocity Velocity Velocity) : (Velocity a) (Velocity b) -> Velocity (a + b)
 instance (Subtract Velocity Velocity Velocity) : (Velocity a) (Velocity b) -> Velocity (a - b)
 instance (Multiply Velocity Number Velocity) : (Velocity a) b -> Velocity (a * b)
+instance (Multiply Number Velocity Velocity) : a (Velocity b) -> Velocity (a * b)
 instance (Divide Number Velocity Velocity) : a (Velocity b) -> Velocity (a / b)
 instance (Multiply Velocity Time Distance) : (Velocity v) (Time t) -> Distance (v * t)
 instance (Multiply Time Velocity Distance) : (Time t) (Velocity v) -> Distance (t * v)
@@ -106,6 +114,7 @@ instance (Divide Distance Time Velocity) : (Distance x) (Time t) -> Velocity (x 
 instance (Add Acceleration Acceleration Acceleration) : (Acceleration a) (Acceleration b) -> Acceleration (a + b)
 instance (Subtract Acceleration Acceleration Acceleration) : (Acceleration a) (Acceleration b) -> Acceleration (a - b)
 instance (Multiply Acceleration Number Acceleration) : (Acceleration a) b -> Acceleration (a * b)
+instance (Multiply Number Acceleration Acceleration) : a (Acceleration b) -> Acceleration (a * b)
 instance (Divide Number Acceleration Acceleration) : a (Acceleration b) -> Acceleration (a / b)
 instance (Multiply Acceleration Time Velocity) : (Acceleration a) (Time t) -> Velocity (a * t)
 instance (Multiply Time Acceleration Velocity) : (Time t) (Acceleration a) -> Velocity (t * a)
@@ -114,6 +123,7 @@ instance (Divide Velocity Time Acceleration) : (Velocity v) (Time t) -> Accelera
 instance (Add Force Force Force) : (Force a) (Force b) -> Force (a + b)
 instance (Subtract Force Force Force) : (Force a) (Force b) -> Force (a - b)
 instance (Multiply Force Number Force) : (Force a) b -> Force (a * b)
+instance (Multiply Number Force Force) : a (Force b) -> Force (a * b)
 instance (Divide Number Force Force) : a (Force b) -> Force (a / b)
 instance (Multiply Mass Acceleration Force) : (Mass m) (Acceleration a) -> Force (m * a)
 instance (Multiply Acceleration Mass Force) : (Acceleration a) (Mass m) -> Force (a * m)
@@ -195,12 +205,23 @@ Object : type Text
 object :: Text -> Object
 object : Object
 
--- Specify how the $x$-position of an object changes over time.
-x :: (Time -> Distance) -> Object -> Unit
-x : f -> (Object o) -> runtime-message "x" (o ; f)
+@once
+initialize-tick :: Unit
+initialize-tick : in-background {
+    repeat (while {runtime-message "tick" ()}) {}
+}
 
--- Specify how the $y$-position of an object changes over time.
-y :: (Time -> Distance) -> Object -> Unit
-y : f -> (Object o) -> runtime-message "y" (o ; f)
+-- Specify how the $x$- and $y$-position of an object changes over time.
+position :: Object (Time -> Distance) (Time -> Distance) -> Unit
+position : (Object o) x y -> do {
+    initialize-tick
 
--- TODO: `force-x`, `force-y`
+    wrap : f -> t -> do {
+        (Distance d) : f (Time t)
+        d
+    }
+
+    runtime-message "position" (o ; wrap x ; wrap y)
+}
+
+-- TODO: `force`
