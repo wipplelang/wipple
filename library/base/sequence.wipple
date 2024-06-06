@@ -26,8 +26,9 @@ next :: Element => (Sequence Element) -> Maybe Element
 next : (Sequence next) -> do next
 
 -- Convert a collection into a sequence.
--- on-unimplemented : "cannot create a sequence from a _" Container
 As-Sequence : Container (infer Element) => trait (Container -> Sequence Element)
+Container (infer Element) where (Error ("cannot create a sequence from _" Container)) =>
+    default instance (As-Sequence Container Element) : ...
 
 Element => instance (As-Sequence (Sequence Element) Element) : sequence -> sequence
 
@@ -351,8 +352,8 @@ zip : left right -> do {
 }
 
 -- Create a sequence that maintains a counter indicating the number of elements
--- produced already seen. For example, `enumerate ("a" , "b" , "c")` produces
--- `(0 ; "a")`, `(1 ; "b")`, and `(2 ; "c")`.
+-- produced. For example, `enumerate ("a" , "b" , "c")` produces `(0 ; "a")`,
+-- `(1 ; "b")`, and `(2 ; "c")`.
 enumerate :: Collection (infer Element) where (As-Sequence Collection Element) => Collection -> Sequence (Number ; Element)
 enumerate : collection -> zip (0 to undefined by 1) collection
 

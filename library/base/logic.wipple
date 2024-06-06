@@ -52,9 +52,10 @@ Ordering : type {
 }
 
 -- Implement this trait to enable comparisons between two values of your type.
--- on-unimplemented : "cannot compare _ values" Value
 Order : Value => trait (Value Value -> Ordering)
+Value where (Error ("cannot order _" Value)) => default instance (Order Number) : ...
 instance (Order Number) : a b -> intrinsic "number-ordering" a b
+
 
 -- Returns `True` if the left side is less than the right side.
 @(language : "less-than")
