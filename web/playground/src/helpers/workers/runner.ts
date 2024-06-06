@@ -1,3 +1,4 @@
+import { Mutex } from "async-mutex";
 import { callFunction, evaluate, InterpreterError, IoRequest } from "wipple-interpreter";
 
 const withCallFunction =
@@ -33,12 +34,16 @@ onmessage = async (event) => {
                         throw new Error(`unsupported message: ${event.data.type}`);
                     });
 
+                    const ioMutex = new Mutex();
+
                     await evaluate(event.data.executable, {
-                        debug: false,
+                        debug: undefined,
                         gc: () => {
                             // The browser GCs automatically
                         },
                         io: async (request: IoRequest) => {
+                            await ioMutex.acquire();
+
                             switch (request.type) {
                                 case "display": {
                                     const prevonmessage = onmessage;
@@ -49,6 +54,7 @@ onmessage = async (event) => {
                                         }
 
                                         onmessage = prevonmessage;
+                                        ioMutex.release();
                                         request.completion();
                                     };
 
@@ -68,6 +74,7 @@ onmessage = async (event) => {
 
                                         if (valid) {
                                             onmessage = prevonmessage;
+                                            ioMutex.release();
                                         }
 
                                         postMessage({ type: "validate", valid });
@@ -86,6 +93,7 @@ onmessage = async (event) => {
                                         }
 
                                         onmessage = prevonmessage;
+                                        ioMutex.release();
                                         request.completion(index);
                                     };
 
@@ -106,6 +114,7 @@ onmessage = async (event) => {
                                         }
 
                                         onmessage = prevonmessage;
+                                        ioMutex.release();
                                         request.completion(value);
                                     });
 
@@ -118,7 +127,10 @@ onmessage = async (event) => {
                                     break;
                                 }
                                 case "sleep": {
-                                    setTimeout(request.completion, request.ms);
+                                    setTimeout(() => {
+                                        ioMutex.release();
+                                        request.completion();
+                                    }, request.ms);
                                     break;
                                 }
                                 default: {

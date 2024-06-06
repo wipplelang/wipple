@@ -1,0 +1,227 @@
+-- A duration in seconds.
+Time : type Number
+instance (Describe-Type Time "time")
+
+instance (Equal Time) : (Time a) (Time b) -> a = b
+instance (Order Time) : (Time a) (Time b) -> Order a b
+instance (Describe Time) : (Time s) -> "_ s" s
+
+-- Specify a duration in seconds.
+seconds :: Number -> Time
+seconds : Time
+
+() where (Error ("missing unit for time" ; Error-Fix "add `seconds`" ("`(_ seconds)`" Source))) =>
+    instance (Mismatch Number Time)
+
+-- A distance in meters.
+Distance : type Number
+instance (Describe-Type Distance "distance")
+
+instance (Equal Distance) : (Distance a) (Distance b) -> a = b
+instance (Order Distance) : (Distance a) (Distance b) -> Order a b
+instance (Describe Distance) : (Distance m) -> "_ m" m
+
+-- Specify a distance in meters.
+meters :: Number -> Distance
+meters : Distance
+
+() where (Error ("missing unit for distance" ; Error-Fix "add `meters`" ("`(_ meters)`" Source))) =>
+    instance (Mismatch Number Distance)
+
+-- A velocity in meters per second.
+Velocity : type Number
+instance (Describe-Type Velocity "velocity")
+
+instance (Equal Velocity) : (Velocity a) (Velocity b) -> a = b
+instance (Order Velocity) : (Velocity a) (Velocity b) -> Order a b
+instance (Describe Velocity) : (Velocity mps) -> "_ m/s" mps
+
+instance (Divide (Number -> Distance) (Number -> Time) (Number -> Velocity)) : _ _ -> Velocity
+
+() where (Error ("missing unit for velocity" ; Error-Fix "add `(meters / second)`" ("`(_ (meters / second))`" Source))) =>
+    instance (Mismatch Number Velocity)
+
+-- An acceleration in meters per second, per second.
+Acceleration : type Number
+instance (Describe-Type Acceleration "acceleration")
+
+instance (Equal Acceleration) : (Acceleration a) (Acceleration b) -> a = b
+instance (Order Acceleration) : (Acceleration a) (Acceleration b) -> Order a b
+instance (Describe Acceleration) : (Acceleration mpsps) -> "_ m/s/s" mpsps
+
+instance (Divide (Number -> Velocity) (Number -> Time) (Number -> Acceleration)) : _ _ -> Acceleration
+
+() where (Error ("missing unit for acceleration" ; Error-Fix "add `(meters / second / second)`" ("`(_ (meters / second / second))`" Source))) =>
+    instance (Mismatch Number Acceleration)
+
+-- A mass in kilograms.
+Mass : type Number
+instance (Describe-Type Mass "mass")
+
+instance (Equal Mass) : (Mass a) (Mass b) -> a = b
+instance (Order Mass) : (Mass a) (Mass b) -> Order a b
+instance (Describe Mass) : (Mass kg) -> "_ kg" kg
+
+-- Specify a mass in kilograms.
+kilograms :: Number -> Mass
+kilograms : Mass
+
+() where (Error ("missing unit for mass" ; Error-Fix "add `kilograms`" ("`(_ kilograms)`" Source))) =>
+    instance (Mismatch Number Mass)
+
+-- A very large mass, making the object immovable. Use this instead of setting a
+-- large mass yourself to prevent glitches in the demonstration.
+static :: Mass
+static : undefined kilograms
+
+-- A force in kilograms per unit of acceleration.
+Force : type Number
+instance (Describe-Type Force "force")
+
+instance (Equal Force) : (Force a) (Force b) -> a = b
+instance (Order Force) : (Force a) (Force b) -> Order a b
+instance (Describe Force) : (Force kgmpsps) -> "_ kg*m/s/s" kgmpsps
+
+() where (Error ("missing unit for force" ; Error-Fix "add `newtons`" ("`(_ newtons)`" Source))) =>
+    instance (Mismatch Number Force)
+
+instance (Multiply (Number -> Mass) (Number -> Acceleration) (Number -> Force)) : _ _ -> Force
+
+-- Specify a force in Newtons.
+newtons :: Number -> Force
+newtons : kilograms * (meters / seconds / seconds)
+
+instance (Add Time Time Time) : (Time a) (Time b) -> Time (a + b)
+instance (Subtract Time Time Time) : (Time a) (Time b) -> Time (a - b)
+instance (Multiply Time Number Time) : (Time a) b -> Time (a * b)
+instance (Multiply Number Time Time) : a (Time b) -> Time (a * b)
+instance (Divide Number Time Time) : a (Time b) -> Time (a / b)
+
+instance (Add Distance Distance Distance) : (Distance a) (Distance b) -> Distance (a + b)
+instance (Subtract Distance Distance Distance) : (Distance a) (Distance b) -> Distance (a - b)
+instance (Multiply Distance Number Distance) : (Distance a) b -> Distance (a * b)
+instance (Divide Number Distance Distance) : a (Distance b) -> Distance (a / b)
+
+instance (Add Velocity Velocity Velocity) : (Velocity a) (Velocity b) -> Velocity (a + b)
+instance (Subtract Velocity Velocity Velocity) : (Velocity a) (Velocity b) -> Velocity (a - b)
+instance (Multiply Velocity Number Velocity) : (Velocity a) b -> Velocity (a * b)
+instance (Multiply Number Velocity Velocity) : a (Velocity b) -> Velocity (a * b)
+instance (Divide Number Velocity Velocity) : a (Velocity b) -> Velocity (a / b)
+instance (Multiply Velocity Time Distance) : (Velocity v) (Time t) -> Distance (v * t)
+instance (Multiply Time Velocity Distance) : (Time t) (Velocity v) -> Distance (t * v)
+instance (Divide Distance Time Velocity) : (Distance x) (Time t) -> Velocity (x / t)
+
+instance (Add Acceleration Acceleration Acceleration) : (Acceleration a) (Acceleration b) -> Acceleration (a + b)
+instance (Subtract Acceleration Acceleration Acceleration) : (Acceleration a) (Acceleration b) -> Acceleration (a - b)
+instance (Multiply Acceleration Number Acceleration) : (Acceleration a) b -> Acceleration (a * b)
+instance (Multiply Number Acceleration Acceleration) : a (Acceleration b) -> Acceleration (a * b)
+instance (Divide Number Acceleration Acceleration) : a (Acceleration b) -> Acceleration (a / b)
+instance (Multiply Acceleration Time Velocity) : (Acceleration a) (Time t) -> Velocity (a * t)
+instance (Multiply Time Acceleration Velocity) : (Time t) (Acceleration a) -> Velocity (t * a)
+instance (Divide Velocity Time Acceleration) : (Velocity v) (Time t) -> Acceleration (v / t)
+
+instance (Add Force Force Force) : (Force a) (Force b) -> Force (a + b)
+instance (Subtract Force Force Force) : (Force a) (Force b) -> Force (a - b)
+instance (Multiply Force Number Force) : (Force a) b -> Force (a * b)
+instance (Multiply Number Force Force) : a (Force b) -> Force (a * b)
+instance (Divide Number Force Force) : a (Force b) -> Force (a / b)
+instance (Multiply Mass Acceleration Force) : (Mass m) (Acceleration a) -> Force (m * a)
+instance (Multiply Acceleration Mass Force) : (Acceleration a) (Mass m) -> Force (a * m)
+instance (Divide Force Mass Acceleration) : (Force f) (Mass m) -> Acceleration (f / m)
+
+-- A direction represented as $x$ and $y$ components between 0 and 1. In
+-- addition to the preset directions like `top` and `center`, you can create a
+-- direction from an angle with `(x degrees) as Direction`.
+Direction : type {
+    x :: Number
+    y :: Number
+}
+
+instance (As (Number ; Number) Direction) : (x ; y) -> {
+    x : x
+    y : y
+}
+
+instance (As Angle Direction) : angle -> {
+    x : cos angle
+    y : sin angle
+}
+
+-- A direction facing toward the top of the screen.
+top :: Direction
+top : (0 ; 1) as Direction
+
+-- A direction facing toward the top left of the screen.
+top-left :: Direction
+top-left : (-1 ; 1) as Direction
+
+-- A direction facing toward the top right of the screen.
+top-right :: Direction
+top-right : (1 ; 1) as Direction
+
+-- Alias for `top`.
+up :: Direction
+up : top
+
+-- No particular direction.
+center :: Direction
+center : (0 ; 0) as Direction
+
+-- A direction facing toward the left of the screen.
+left :: Direction
+left : (-1 ; 0) as Direction
+
+-- A direction facing toward the right of the screen.
+right :: Direction
+right : (1 ; 0) as Direction
+
+-- A direction facing toward the bottom of the screen.
+bottom :: Direction
+bottom : (0 ; -1) as Direction
+
+-- A direction facing toward the bottom left of the screen.
+bottom-left :: Direction
+bottom-left : (-1 ; -1) as Direction
+
+-- A direction facing toward the bottom right of the screen.
+bottom-right :: Direction
+bottom-right : (1 ; -1) as Direction
+
+-- Alias for `bottom`.
+down :: Direction
+down : bottom
+
+instance (Empty Direction) : center
+
+-- Utility that returns the provided distance at `0 seconds`, but `undefined`
+-- otherwise. Useful for setting the initial position of an object and then
+-- allowing its position to be controlled by `force`.
+initially :: Distance -> Time -> Distance
+initially : x -> t -> if (t = 0 seconds) {x} {undefined meters}
+
+Object : type Text
+
+-- Refer to an object on the screen by its name.
+object :: Text -> Object
+object : Object
+
+@once
+initialize-tick :: Unit
+initialize-tick : in-background {
+    repeat (while {runtime-message "tick" ()}) {}
+}
+
+-- Specify how the $x$- and $y$-position of an object changes over time.
+position :: Object (Time -> Distance) (Time -> Distance) -> Unit
+position : (Object o) x y -> do {
+    initialize-tick
+
+    wrap : f -> t -> do {
+        (Distance d) : f (Time t)
+        d
+    }
+
+    runtime-message "position" (o ; wrap x ; wrap y)
+}
+
+-- TODO: `force`

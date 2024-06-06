@@ -1,5 +1,6 @@
 import { MaterialSymbol } from "react-material-symbols";
 import { turtleImage } from "../../runtimes/turtle";
+import { atomImage } from "../../runtimes/physics";
 
 export const SetupIcon = (props: { setup: string | undefined; size: "sm" | "lg" }) => {
     const size = props.size === "lg" ? 31 : 20;
@@ -50,10 +51,7 @@ export const SetupIcon = (props: { setup: string | undefined; size: "sm" | "lg" 
             );
         case "physics":
             return (
-                <img
-                    // src={atomIcon} // TODO: Physics runtime
-                    className={`${sizeClass} p-[2px] aspect-square ${margin}`}
-                />
+                <img src={atomImage} className={`${sizeClass} p-[2px] aspect-square ${margin}`} />
             );
         case "text":
             return (
