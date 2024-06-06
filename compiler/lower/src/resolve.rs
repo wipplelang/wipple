@@ -163,6 +163,7 @@ pub fn resolve<D: Driver>(
     crate::Result {
         interface,
         library: info.library,
+        ide: info.ide,
         diagnostics: info.errors,
     }
 }
@@ -242,6 +243,7 @@ struct Info<D: Driver> {
     language_declarations: HashMap<String, Vec<crate::Path>>,
     instance_declarations:
         HashMap<crate::Path, WithInfo<D::Info, Option<crate::InstanceDeclaration<D>>>>,
+    ide: crate::Ide<D>,
     library: crate::Library<D>,
     path: crate::Path,
     scopes: Scopes<D>,
@@ -2067,6 +2069,7 @@ fn try_resolve_name<D: Driver, T>(
                 1 => {
                     let (path, candidate) = candidates.pop().unwrap();
                     info.capture_if_variable(&path);
+                    info.ide.symbols.push(name.replace(path.clone()));
 
                     return Some(candidate);
                 }

@@ -65,8 +65,13 @@ export class Render {
     private declarations: compiler.WithInfo<compiler.Info, AnyDeclaration>[] = [];
     private interface: compiler.Interface | null = null;
     private libraries: compiler.linker_UnlinkedLibrary[] = [];
+    private ide: compiler.Ide | null = null;
 
-    update(interface_: compiler.Interface, libraries: compiler.linker_UnlinkedLibrary[]) {
+    update(
+        interface_: compiler.Interface,
+        libraries: compiler.linker_UnlinkedLibrary[],
+        ide: compiler.Ide | null,
+    ): void {
         this.files = {};
         for (const file of interface_.files) {
             this.files[file.path] = { ...file, linesAndColumns: new LinesAndColumns(file.code) };
@@ -91,6 +96,7 @@ export class Render {
 
         this.interface = interface_;
         this.libraries = libraries;
+        this.ide = ide;
     }
 
     getDeclarationFromPath(
@@ -1323,28 +1329,18 @@ export class Render {
         return locals;
     }
 
-    getExpressionAtCursor(
+    getPathAtCursor(
         path: string,
         index: number,
-    ): compiler.WithInfo<compiler.Info, compiler.typecheck_TypedExpression> | null {
-        const expressionTree = this.getExpressionTreeAtCursor(path, index);
-        if (!expressionTree) {
+    ): compiler.WithInfo<compiler.Info, compiler.lower_Path> | null {
+        if (!this.ide) {
             return null;
         }
 
-        return expressionTree[0];
-    }
-
-    getDeclarationPathFromExpression(
-        expression: compiler.WithInfo<compiler.Info, compiler.typecheck_TypedExpression>,
-    ): compiler.lower_Path | null {
-        switch (expression.item.kind.type) {
-            case "constant":
-                return expression.item.kind.value.path;
-            case "trait":
-                return expression.item.kind.value;
-            case "variable":
-                return expression.item.kind.value[1];
+        for (const symbol of this.ide.symbols) {
+            if (this.compareCursorWithInfo(path, index, symbol.info)) {
+                return symbol;
+            }
         }
 
         return null;
@@ -1355,17 +1351,7 @@ export class Render {
         index: number,
     ): compiler.WithInfo<compiler.Info, compiler.typecheck_TypedExpression>[] | null {
         for (const item of this.libraries.flatMap((library) => Object.values(library.items))) {
-            // HACK: The top level has a span of 0..0
-            const isTopLevel =
-                item.expression.info.location.span.start === 0 &&
-                item.expression.info.location.span.end === 0;
-
-            if (
-                !isTopLevel &&
-                (path !== item.expression.info.location.visiblePath ||
-                    index < item.expression.info.location.span.start ||
-                    index >= item.expression.info.location.span.end)
-            ) {
+            if (!this.compareCursorWithInfo(path, index, item.expression.info)) {
                 continue;
             }
 
@@ -1525,6 +1511,18 @@ export class Render {
             (between
                 ? left.location.span.end <= right.location.span.end
                 : left.location.span.end === right.location.span.end)
+        );
+    }
+
+    private compareCursorWithInfo(path: string, index: number, info: compiler.Info): boolean {
+        // HACK: The top level has a span of 0..0
+        const isTopLevel = info.location.span.start === 0 && info.location.span.end === 0;
+
+        return (
+            isTopLevel ||
+            (path === info.location.visiblePath &&
+                index >= info.location.span.start &&
+                index < info.location.span.end)
         );
     }
 

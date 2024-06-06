@@ -128,7 +128,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 : null;
 
             if (!cachedHighlightItems.current && dependencies) {
-                props.render.update(dependencies.interface, dependencies.libraries);
+                props.render.update(dependencies.interface, dependencies.libraries, null);
                 const highlightItems = getHighlightItems(dependencies.interface, props.render);
                 cachedHighlightItems.current = highlightItems;
                 props.onChangeHighlightItems(highlightItems);
@@ -157,10 +157,11 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
             compilerWorker.terminate();
 
-            props.render.update(compileResult.interface, [
-                compileResult.library,
-                ...(dependencies?.libraries ?? []),
-            ]);
+            props.render.update(
+                compileResult.interface,
+                [compileResult.library, ...(dependencies?.libraries ?? [])],
+                compileResult.ide,
+            );
 
             if (compileResult.diagnostics.length > 0) {
                 const renderedDiagnostics = compileResult.diagnostics.flatMap((diagnostic) => {
@@ -355,17 +356,12 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 };
             }
 
-            const expression = props.render.getExpressionAtCursor("top-level", position);
-            if (!expression) {
-                return undefined;
-            }
-
-            const declarationPath = props.render.getDeclarationPathFromExpression(expression);
+            const declarationPath = props.render.getPathAtCursor("playground", position);
             if (!declarationPath) {
                 return undefined;
             }
 
-            const declaration = props.render.getDeclarationFromPath(declarationPath);
+            const declaration = props.render.getDeclarationFromPath(declarationPath.item);
             if (!declaration) {
                 return undefined;
             }

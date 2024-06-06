@@ -85,6 +85,29 @@ pub struct Item<D: Driver> {
     pub top_level: Path,
 }
 
+/// Information collected for IDEs.
+#[derive(Serialize, Deserialize, Derivative, TS)]
+#[derivative(Debug(bound = ""), Clone(bound = ""), Default(bound = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+#[ts(
+    export,
+    rename = "Ide",
+    concrete(D = wipple_util::TsAny),
+    bound = "D::Info: TS"
+)]
+pub struct Ide<D: Driver> {
+    /// The list of resolved symbols in the module.
+    pub symbols: Vec<WithInfo<D::Info, Path>>,
+}
+
+impl<D: Driver> Ide<D> {
+    /// Merge two sets of IDE information.
+    pub fn merge(&mut self, other: Self) {
+        self.symbols.extend(other.symbols);
+    }
+}
+
 /// Resolve a list of files into a module.
 pub fn resolve<D: Driver>(
     _driver: &D,
@@ -99,6 +122,7 @@ pub fn resolve<D: Driver>(
     Result {
         interface: result.interface,
         library: result.library,
+        ide: result.ide,
         diagnostics: errors,
     }
 }
@@ -114,6 +138,9 @@ pub struct Result<D: Driver> {
 
     /// The resolved [`Library`].
     pub library: Library<D>,
+
+    /// Information collected for IDEs.
+    pub ide: Ide<D>,
 
     /// Any errors encountered while resolving the files.
     pub diagnostics: Vec<WithInfo<D::Info, Diagnostic>>,
@@ -1463,4 +1490,8 @@ pub struct FieldValue<D: Driver> {
 
     /// The field's value.
     pub value: WithInfo<D::Info, Expression<D>>,
+}
+
+impl Driver for wipple_util::TsAny {
+    type Info = wipple_util::TsAny;
 }

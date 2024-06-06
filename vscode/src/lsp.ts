@@ -146,17 +146,12 @@ connection.onHover(async (params) => {
 
     const position = document.offsetAt(params.position);
 
-    const expression = render.getExpressionAtCursor(getVisiblePath(uri.fsPath), position);
-    if (!expression) {
-        return null;
-    }
-
-    const declarationPath = render.getDeclarationPathFromExpression(expression);
+    const declarationPath = render.getPathAtCursor(getVisiblePath(uri.fsPath), position);
     if (!declarationPath) {
         return null;
     }
 
-    const declaration = render.getDeclarationFromPath(declarationPath);
+    const declaration = render.getDeclarationFromPath(declarationPath.item);
 
     const content: string[] = [];
     if (declaration) {
@@ -246,17 +241,12 @@ connection.onDefinition(async (params) => {
 
     const position = document.offsetAt(params.position);
 
-    const expression = render.getExpressionAtCursor(getVisiblePath(uri.fsPath), position);
-    if (!expression) {
-        return null;
-    }
-
-    const declarationPath = render.getDeclarationPathFromExpression(expression);
+    const declarationPath = render.getPathAtCursor(getVisiblePath(uri.fsPath), position);
     if (!declarationPath) {
         return null;
     }
 
-    const declaration = render.getDeclarationFromPath(declarationPath);
+    const declaration = render.getDeclarationFromPath(declarationPath.item);
     if (!declaration) {
         return null;
     }
@@ -304,7 +294,7 @@ const compileAll = async (
     );
 
     const result = compiler.compile(sources, dependencies);
-    render.update(result.interface, [result.library, ...libraries]);
+    render.update(result.interface, [result.library, ...libraries], result.ide);
 
     return result.diagnostics;
 };

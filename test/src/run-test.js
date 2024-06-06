@@ -60,7 +60,7 @@ test(path.basename(file), async () => {
     );
 
     const render = new Render();
-    render.update(compileResult.interface, [baseLibrary, compileResult.library]);
+    render.update(compileResult.interface, [baseLibrary, compileResult.library], null);
 
     let compiled = true;
     let compiledWithWarnings = false;

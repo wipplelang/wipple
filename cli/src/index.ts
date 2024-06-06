@@ -333,7 +333,7 @@ const renderDiagnostics = (
     interface_: compiler.Interface,
 ) => {
     const render = new Render();
-    render.update(interface_, []);
+    render.update(interface_, [], null);
 
     return diagnostics
         .flatMap((diagnostic) => {
