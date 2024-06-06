@@ -1346,6 +1346,18 @@ export class Render {
         return null;
     }
 
+    getExpressionAtCursor(
+        path: string,
+        index: number,
+    ): compiler.WithInfo<compiler.Info, compiler.typecheck_TypedExpression> | null {
+        const expressionTree = this.getExpressionTreeAtCursor(path, index);
+        if (!expressionTree) {
+            return null;
+        }
+
+        return expressionTree[0];
+    }
+
     private getExpressionTreeAtCursor(
         path: string,
         index: number,

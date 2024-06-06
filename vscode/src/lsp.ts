@@ -9,6 +9,7 @@ import {
     createConnection,
     CompletionItem,
     CompletionItemKind,
+    Range,
 } from "vscode-languageserver/node";
 import { URI } from "vscode-uri";
 import * as fs from "fs/promises";
@@ -146,23 +147,40 @@ connection.onHover(async (params) => {
 
     const position = document.offsetAt(params.position);
 
-    const declarationPath = render.getPathAtCursor(getVisiblePath(uri.fsPath), position);
-    if (!declarationPath) {
-        return null;
-    }
-
-    const declaration = render.getDeclarationFromPath(declarationPath.item);
-
+    let range: Range | undefined = undefined;
     const content: string[] = [];
-    if (declaration) {
-        const code = render.renderDeclaration(declaration);
-        if (code) {
-            content.push("```wipple\n" + code + "\n```");
-        }
+    const declarationPath = render.getPathAtCursor(getVisiblePath(uri.fsPath), position);
+    if (declarationPath) {
+        const declaration = render.getDeclarationFromPath(declarationPath.item);
 
-        const renderedDocumentation = render.renderDocumentation(declaration);
-        if (renderedDocumentation) {
-            content.push(renderedDocumentation.docs);
+        if (declaration) {
+            range = rangeFromInfo(declarationPath.info, document);
+
+            const code = render.renderDeclaration(declaration);
+            if (code) {
+                content.push("```wipple\n" + code + "\n```");
+            }
+
+            const renderedDocumentation = render.renderDocumentation(declaration);
+            if (renderedDocumentation) {
+                content.push(renderedDocumentation.docs);
+            }
+        }
+    } else {
+        const expression = render.getExpressionAtCursor(getVisiblePath(uri.fsPath), position);
+
+        if (expression) {
+            range = rangeFromInfo(expression.info, document);
+
+            const type = {
+                info: expression.info,
+                item: expression.item.type,
+            };
+
+            const code = render.renderType(type, true, false, false);
+            if (code) {
+                content.push("```wipple\n" + code + "\n```");
+            }
         }
     }
 
@@ -171,6 +189,7 @@ connection.onHover(async (params) => {
     }
 
     return {
+        range,
         contents: {
             kind: "markdown",
             value: content.join("\n\n"),
@@ -298,3 +317,8 @@ const compileAll = async (
 
     return result.diagnostics;
 };
+
+const rangeFromInfo = (info: compiler.Info, document: TextDocument): Range => ({
+    start: document.positionAt(info.location.span.start),
+    end: document.positionAt(info.location.span.end),
+});
