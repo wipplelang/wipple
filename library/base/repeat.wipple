@@ -64,6 +64,7 @@ Times : type {
 }
 
 -- Repeat a certain number of times.
+@(highlight-category : "unit")
 times :: Number -> Times
 times : count -> {
     count : count

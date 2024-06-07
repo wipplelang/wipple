@@ -4,6 +4,7 @@ Distance : type Number
 instance (Describe-Type Distance "a distance")
 
 -- Specify a distance in pixels.
+@(highlight-category : "unit")
 pixels :: Number -> Distance
 pixels : Distance
 
@@ -101,6 +102,6 @@ instance (Describe-Type Animal "an animal")
 
 -- Change the animal being displayed.
 @(highlight-category : "turtle-pen")
-@(highlight-icon : "mood")
+@(highlight-icon : "pets")
 animal :: Animal -> Unit
 animal : (Animal name) -> runtime-message "animal" name

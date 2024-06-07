@@ -247,10 +247,10 @@ const HelpWidgetComponent = (props: {
     let className = props.help == null ? (isAnimating ? "" : "opacity-25") : "cursor-pointer";
     if (props.highlight?.category && highlightCategories[props.highlight.category]) {
         className += ` ${highlightCategories[props.highlight.category]} ${
-            props.highlight.icon ? "pr-1 rounded-r-[4px]" : "p-1 rounded-[4px]"
+            props.highlight.icon ? "pr-1 rounded-r-[4px]" : "px-1 rounded-[4px]"
         }`;
     } else {
-        className += "p-1 rounded-[4px]";
+        className += "px-1 rounded-[4px]";
     }
 
     return (

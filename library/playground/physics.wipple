@@ -7,6 +7,7 @@ instance (Order Time) : (Time a) (Time b) -> Order a b
 instance (Describe Time) : (Time s) -> "_ s" s
 
 -- Specify a duration in seconds.
+@(highlight-category : "unit")
 seconds :: Number -> Time
 seconds : Time
 
@@ -23,6 +24,7 @@ instance (Order Distance) : (Distance a) (Distance b) -> Order a b
 instance (Describe Distance) : (Distance m) -> "_ m" m
 
 -- Specify a distance in meters.
+@(highlight-category : "unit")
 meters :: Number -> Distance
 meters : Distance
 
@@ -66,6 +68,7 @@ instance (Order Mass) : (Mass a) (Mass b) -> Order a b
 instance (Describe Mass) : (Mass kg) -> "_ kg" kg
 
 -- Specify a mass in kilograms.
+@(highlight-category : "unit")
 kilograms :: Number -> Mass
 kilograms : Mass
 
@@ -87,6 +90,7 @@ instance (Describe Force) : (Force kgmpsps) -> "_ kg*m/s/s" kgmpsps
 instance (Multiply (Number -> Mass) (Number -> Acceleration) (Number -> Force)) : _ _ -> Force
 
 -- Specify a force in Newtons.
+@(highlight-category : "unit")
 newtons :: Number -> Force
 newtons : kilograms * (meters / seconds / seconds)
 
@@ -179,12 +183,16 @@ down : bottom
 instance (Empty Direction) : center
 
 -- Utility that always returns the provided value for any time.
+@(highlight-category : "physics-utility")
+@(highlight-icon : "function")
 constant :: (Value : Distance) => Value -> Time -> Value
 constant : x -> _ -> x
 
 -- Utility that returns the provided value between the provided times, but
 -- `undefined` otherwise. Useful for applying a force to an object during a time
 -- interval.
+@(highlight-category : "physics-utility")
+@(highlight-icon : "function")
 between :: (Value : Distance) where (Empty Value) => (Range Time) Value -> Time -> Value
 between : {
     min : min
@@ -193,6 +201,8 @@ between : {
 
 -- Utility that returns the provided value at the provided time, but `undefined`
 -- otherwise. Useful for applying a force to an object at a particular time.
+@(highlight-category : "physics-utility")
+@(highlight-icon : "function")
 at :: (Value : Distance) where (Empty Value) => Time Value -> Time -> Value
 at : time x -> do {
     seen : False
@@ -208,11 +218,14 @@ at : time x -> do {
 -- Utility that returns the provided value at `0 seconds`, but `undefined`
 -- otherwise. Useful for setting the initial position of an object and then
 -- allowing its position to be controlled by `force`.
+@(highlight-category : "physics-utility")
+@(highlight-icon : "function")
 initially :: (Value : Distance) where (Empty Value) => Value -> Time -> Value
 initially : x -> at (0 seconds) x
 
 -- Refer to an object on the screen by its name.
 Object : type Text
+instance (Describe-Type Object "an object")
 
 @once
 initialize-tick :: Unit
@@ -221,6 +234,8 @@ initialize-tick : in-background {
 }
 
 -- Specify how the `x`- and `y`-position of an object changes over time.
+@(highlight-category : "physics-motion")
+@(highlight-icon : "animation")
 position :: Object (Time -> Distance) (Time -> Distance) -> Unit
 position : (Object o) x y -> do {
     initialize-tick
@@ -235,6 +250,8 @@ position : (Object o) x y -> do {
 
 -- Specify how the force applied to an object in the `x`- and `y`-directions
 -- changes over time.
+@(highlight-category : "physics-motion")
+@(highlight-icon : "arrow-forward")
 force :: Object (Time -> Force) (Time -> Force) -> Unit
 force : (Object o) fx fy -> do {
     initialize-tick

@@ -38,6 +38,7 @@ Note-Length : type {
 instance (Describe-Type Note-Length "a note length in `beats`")
 
 -- Specify how many beats a note or rest should last.
+@(highlight-category : "unit")
 beats :: Number -> Note-Length
 beats : beats -> Note-Length {
     ms-from-tempo : tempo -> 60000 / tempo * beats

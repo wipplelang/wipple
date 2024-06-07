@@ -69,6 +69,7 @@ Angle : type Number
 instance (Describe-Type Angle "an angle")
 
 -- An angle in degrees.
+@(highlight-category : "unit")
 degrees :: Number -> Angle
 degrees : Angle
 
