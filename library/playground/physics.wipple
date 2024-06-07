@@ -17,6 +17,7 @@ seconds : Time
 Distance : type Number
 instance (Describe-Type Distance "distance")
 
+instance (Empty Distance) : undefined meters
 instance (Equal Distance) : (Distance a) (Distance b) -> a = b
 instance (Order Distance) : (Distance a) (Distance b) -> Order a b
 instance (Describe Distance) : (Distance m) -> "_ m" m
@@ -32,6 +33,7 @@ meters : Distance
 Velocity : type Number
 instance (Describe-Type Velocity "velocity")
 
+instance (Empty Velocity) : undefined (meters / seconds)
 instance (Equal Velocity) : (Velocity a) (Velocity b) -> a = b
 instance (Order Velocity) : (Velocity a) (Velocity b) -> Order a b
 instance (Describe Velocity) : (Velocity mps) -> "_ m/s" mps
@@ -45,6 +47,7 @@ instance (Divide (Number -> Distance) (Number -> Time) (Number -> Velocity)) : _
 Acceleration : type Number
 instance (Describe-Type Acceleration "acceleration")
 
+instance (Empty Acceleration) : undefined (meters / seconds / seconds)
 instance (Equal Acceleration) : (Acceleration a) (Acceleration b) -> a = b
 instance (Order Acceleration) : (Acceleration a) (Acceleration b) -> Order a b
 instance (Describe Acceleration) : (Acceleration mpsps) -> "_ m/s/s" mpsps
@@ -78,6 +81,7 @@ static : undefined kilograms
 Force : type Number
 instance (Describe-Type Force "force")
 
+instance (Empty Force) : undefined newtons
 instance (Equal Force) : (Force a) (Force b) -> a = b
 instance (Order Force) : (Force a) (Force b) -> Order a b
 instance (Describe Force) : (Force kgmpsps) -> "_ kg*m/s/s" kgmpsps
@@ -179,17 +183,28 @@ down : bottom
 
 instance (Empty Direction) : center
 
--- Utility that returns the provided distance at `0 seconds`, but `undefined`
+-- Utility that returns the provided value at the provided time, but `undefined`
+-- otherwise. Useful for applying a force to an object at a particular time.
+at :: (Value : Distance) where (Empty Value) => Time Value -> Time -> Value
+at : time x -> do {
+    seen : False
+
+    t -> if (not seen and t >= time) {
+        seen! : True
+        x
+    } {
+        Empty
+    }
+}
+
+-- Utility that returns the provided value at `0 seconds`, but `undefined`
 -- otherwise. Useful for setting the initial position of an object and then
 -- allowing its position to be controlled by `force`.
-initially :: Distance -> Time -> Distance
-initially : x -> t -> if (t = 0 seconds) {x} {undefined meters}
-
-Object : type Text
+initially :: (Value : Distance) where (Empty Value) => Value -> Time -> Value
+initially : x -> at (0 seconds) x
 
 -- Refer to an object on the screen by its name.
-object :: Text -> Object
-object : Object
+Object : type Text
 
 @once
 initialize-tick :: Unit
