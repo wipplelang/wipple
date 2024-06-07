@@ -114,7 +114,7 @@ instance (Multiply Mass Acceleration Force) : (Mass m) (Acceleration a) -> Force
 instance (Multiply Acceleration Mass Force) : (Acceleration a) (Mass m) -> Force (a * m)
 instance (Divide Force Mass Acceleration) : (Force f) (Mass m) -> Acceleration (f / m)
 
--- A direction represented as $x$ and $y$ components between 0 and 1. In
+-- A direction represented as `x` and `y` components between 0 and 1. In
 -- addition to the preset directions like `top` and `center`, you can create a
 -- direction from an angle with `(x degrees) as Direction`.
 Direction : type {
@@ -220,7 +220,7 @@ initialize-tick : in-background {
     repeat (while {runtime-message "tick" ()}) {}
 }
 
--- Specify how the $x$- and $y$-position of an object changes over time.
+-- Specify how the `x`- and `y`-position of an object changes over time.
 position :: Object (Time -> Distance) (Time -> Distance) -> Unit
 position : (Object o) x y -> do {
     initialize-tick
@@ -233,7 +233,7 @@ position : (Object o) x y -> do {
     runtime-message "position" (o ; wrap x ; wrap y)
 }
 
--- Specify how the force applied to an object in the $x$- and $y$-directions
+-- Specify how the force applied to an object in the `x`- and `y`-directions
 -- changes over time.
 force :: Object (Time -> Force) (Time -> Force) -> Unit
 force : (Object o) fx fy -> do {
