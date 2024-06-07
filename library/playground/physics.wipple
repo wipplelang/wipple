@@ -72,16 +72,11 @@ kilograms : Mass
 () where (Error ("missing unit for mass" ; Error-Fix "add `kilograms`" ("`(_ kilograms)`" Source))) =>
     instance (Mismatch Number Mass)
 
--- A very large mass, making the object immovable. Use this instead of setting a
--- large mass yourself to prevent glitches in the demonstration.
-static :: Mass
-static : undefined kilograms
-
 -- A force in kilograms per unit of acceleration.
 Force : type Number
 instance (Describe-Type Force "force")
 
-instance (Empty Force) : undefined newtons
+instance (Empty Force) : 0 newtons
 instance (Equal Force) : (Force a) (Force b) -> a = b
 instance (Order Force) : (Force a) (Force b) -> Order a b
 instance (Describe Force) : (Force kgmpsps) -> "_ kg*m/s/s" kgmpsps
@@ -183,6 +178,19 @@ down : bottom
 
 instance (Empty Direction) : center
 
+-- Utility that always returns the provided value for any time.
+constant :: (Value : Distance) => Value -> Time -> Value
+constant : x -> _ -> x
+
+-- Utility that returns the provided value between the provided times, but
+-- `undefined` otherwise. Useful for applying a force to an object during a time
+-- interval.
+between :: (Value : Distance) where (Empty Value) => (Range Time) Value -> Time -> Value
+between : {
+    min : min
+    max : max
+} x -> t -> if (t >= min and t <= max) {x} {Empty}
+
 -- Utility that returns the provided value at the provided time, but `undefined`
 -- otherwise. Useful for applying a force to an object at a particular time.
 at :: (Value : Distance) where (Empty Value) => Time Value -> Time -> Value
@@ -225,4 +233,29 @@ position : (Object o) x y -> do {
     runtime-message "position" (o ; wrap x ; wrap y)
 }
 
--- TODO: `force`
+-- Specify how the force applied to an object in the $x$- and $y$-directions
+-- changes over time.
+force :: Object (Time -> Force) (Time -> Force) -> Unit
+force : (Object o) fx fy -> do {
+    initialize-tick
+
+    wrap : f -> t -> do {
+        (Force d) : f (Time t)
+        d
+    }
+
+    runtime-message "force" (o ; wrap fx ; wrap fy)
+}
+
+Value where (Equal Value) (Empty Value) (Add Value Value Value) =>
+    instance (Add (Time -> Value) (Time -> Value) (Time -> Value)) :
+        left right -> t -> do {
+            a : left t
+            b : right t
+            when (a /= Empty ; b /= Empty) {
+                (True ; True) -> a + b
+                (True ; False) -> a
+                (False ; True) -> b
+                (False ; False) -> Empty
+            }
+        }

@@ -170,7 +170,7 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                     lastUpdateTimeRef.current = now;
 
                     if (
-                        Object.values(bodiesRef.current).some(
+                        Object.values(bodiesRef.current).every(
                             ({ matterBody: body }) =>
                                 body.position.x < -outOfBoundsThreshold ||
                                 body.position.x > worldWidth + outOfBoundsThreshold ||
@@ -186,6 +186,20 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                     if (engine) {
                         await new Promise(requestAnimationFrame);
                         matter.Engine.update(engine, delta);
+
+                        for (const { matterBody, trail } of Object.values(bodiesRef.current)) {
+                            if (
+                                trail[trail.length - 1]?.x !== matterBody.position.x ||
+                                trail[trail.length - 1]?.y !== matterBody.position.y
+                            ) {
+                                trail.push({ ...matterBody.position });
+                            }
+
+                            if (trail.length > 100) {
+                                trail.shift();
+                            }
+                        }
+
                         updateTrail();
                     }
 
@@ -207,49 +221,35 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                         const x = await props.call(fx, t);
                         const y = await props.call(fy, t);
 
-                        const position = {
+                        matter.Body.setPosition(body.matterBody, {
                             x: isNaN(x) ? body.matterBody.position.x : x + worldWidth / 2,
                             y: isNaN(y) ? body.matterBody.position.y : worldHeight / 2 - y,
-                        };
-
-                        matter.Body.setPosition(body.matterBody, position);
-
-                        body.trail.push(position);
-                        if (body.trail.length > 100) {
-                            body.trail.shift();
-                        }
+                        });
                     });
 
                     break;
                 }
-                case "apply-force": {
+                case "force": {
                     const engine = engineRef.current;
                     if (!engine) return;
 
                     const bodies = bodiesRef.current;
 
-                    const [bodyName, x, y] = value;
+                    const [bodyName, fx, fy] = value;
 
                     const body = bodies[bodyName];
                     if (!body) return;
 
-                    matter.Body.applyForce(body.matterBody, body.matterBody.position, {
-                        x: x / (ms * ms),
-                        y: -y / (ms * ms),
+                    matter.Events.on(engine, "beforeUpdate", async () => {
+                        const t = engine.timing.timestamp / ms;
+                        const x = await props.call(fx, t);
+                        const y = await props.call(fy, t);
+
+                        matter.Body.applyForce(body.matterBody, body.matterBody.position, {
+                            x: x / (ms * ms),
+                            y: -y / (ms * ms),
+                        });
                     });
-
-                    break;
-                }
-                case "set-gravity": {
-                    const engine = engineRef.current;
-                    if (!engine) return;
-
-                    const [x, y] = value;
-                    engine.gravity = {
-                        scale: 1,
-                        x: x / (ms * ms),
-                        y: -y / (ms * ms),
-                    };
 
                     break;
                 }

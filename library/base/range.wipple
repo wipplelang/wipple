@@ -7,7 +7,7 @@ Range : (Index : Number) => type {
 
 @(language : "to")
 To : Index => trait (Index Index -> Range Index)
-instance (To Number) : min max -> {
+(Index : Number) => instance (To Index) : min max -> {
     min : min
     max : max
 }
