@@ -188,16 +188,16 @@ instance (Empty Direction) : center
 constant :: (Value : Distance) => Value -> Time -> Value
 constant : x -> _ -> x
 
--- Utility that returns the provided value between the provided times, but
--- `undefined` otherwise. Useful for applying a force to an object during a time
--- interval.
+-- Utility that calls the provided function between the provided times, but
+-- produces `undefined` otherwise. Useful for applying a force to an object
+-- during a time interval.
 @(highlight-category : "physics-utility")
 @(highlight-icon : "function")
-between :: (Value : Distance) where (Empty Value) => (Range Time) Value -> Time -> Value
+between :: (Value : Distance) where (Empty Value) => (Range Time) (Time -> Value) -> Time -> Value
 between : {
     min : min
     max : max
-} x -> t -> if (t >= min and t <= max) {x} {Empty}
+} f -> t -> if (t >= min and t <= max) {f t} {Empty}
 
 -- Utility that returns the provided value at the provided time, but `undefined`
 -- otherwise. Useful for applying a force to an object at a particular time.
