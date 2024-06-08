@@ -144,6 +144,8 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
     }, [demonstrationName]);
 
     useEffect(() => {
+        if (!demonstrationName) return;
+
         (async () => {
             await reset();
             setDemonstration();

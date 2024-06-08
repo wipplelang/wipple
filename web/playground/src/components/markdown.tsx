@@ -1,5 +1,7 @@
 import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
 import rehypeHighlight from "rehype-highlight";
+import rehypeKatex from "rehype-katex";
 
 const languages: Record<string, import("lowlight").LanguageFn> = {
     wipple: (hljs) => ({
@@ -37,10 +39,14 @@ const languages: Record<string, import("lowlight").LanguageFn> = {
     }),
 };
 
-export const Markdown = (props: { children: string; className?: string }) => (
+export const Markdown = (props: { children: string; enableMath?: boolean; className?: string }) => (
     <ReactMarkdown
         className={`markdown ${props.className ?? ""}`}
-        rehypePlugins={[[rehypeHighlight, { languages, prefix: "tok-" }]]}
+        remarkPlugins={[...(props.enableMath ? [remarkMath] : [])]}
+        rehypePlugins={[
+            [rehypeHighlight, { languages, prefix: "tok-" }],
+            ...(props.enableMath ? [rehypeKatex] : []),
+        ]}
     >
         {props.children}
     </ReactMarkdown>

@@ -100,7 +100,7 @@ export const demonstrations: Record<string, () => Demonstration> = {
                 width: 1,
                 height: 1,
                 color: colors[1],
-                mass: 1,
+                mass: 2,
                 elastic: false,
                 rotates: true,
                 solid: true,
