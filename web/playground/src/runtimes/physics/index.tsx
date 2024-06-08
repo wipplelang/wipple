@@ -80,6 +80,7 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
             {
                 matterBody: matter.Body;
                 trail: matter.Vector[];
+                hasUpdated: { current: boolean };
             }
         >
     >({});
@@ -131,6 +132,7 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                 {
                     matterBody,
                     trail: [],
+                    hasUpdated: { current: false },
                 },
             ]),
         );
@@ -206,10 +208,13 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                         await new Promise(requestAnimationFrame);
                         matter.Engine.update(engine, delta);
 
-                        for (const { matterBody, trail } of Object.values(bodiesRef.current)) {
+                        for (const { matterBody, trail, hasUpdated } of Object.values(
+                            bodiesRef.current,
+                        )) {
                             if (
-                                trail[trail.length - 1]?.x !== matterBody.position.x ||
-                                trail[trail.length - 1]?.y !== matterBody.position.y
+                                hasUpdated.current &&
+                                (trail[trail.length - 1]?.x !== matterBody.position.x ||
+                                    trail[trail.length - 1]?.y !== matterBody.position.y)
                             ) {
                                 trail.push({ ...matterBody.position });
                             }
@@ -217,6 +222,8 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                             if (trail.length > 100) {
                                 trail.shift();
                             }
+
+                            hasUpdated.current = true;
                         }
 
                         updateTrail();
