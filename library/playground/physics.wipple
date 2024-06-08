@@ -276,3 +276,16 @@ Value where (Equal Value) (Empty Value) (Add Value Value Value) =>
                 (False ; False) -> Empty
             }
         }
+
+@(highlight-category : "physics-motion")
+@(highlight-icon : "timer")
+observe :: Result => Time {Result} -> Unit
+observe : (Time t) block -> do {
+    initialize-tick
+    runtime-message "observe" (t ; () -> do block)
+}
+
+instance (Describe Object) : (Object o) -> do {
+    (x ; y ; vx ; vy ; fx ; fy) : runtime-message "measure" o
+    "```\n_\nx: _\ny: _\nvx: _\nvy: _\nfx: _\nfy: _\n```" o (x meters) (y meters) (vx meters) (vy meters) (fx newtons) (fy newtons)
+}

@@ -5,6 +5,8 @@ import { PaletteItem } from "../../models";
 import { ColorAsset } from "../../pages/edit/assets/color";
 import atomImage from "./assets/atom.png";
 import { demonstrations } from "./demonstrations";
+import { ContextMenuButton } from "../../components";
+import { Mutex } from "async-mutex";
 
 export const worldWidth = 8;
 export const worldHeight = 6;
@@ -81,16 +83,25 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
             }
         >
     >({});
+    const observersRef = useRef<[number, () => void][]>([]);
+    const mutexRef = useRef<Mutex>();
 
     const reset = async () => {
         for (const canvas of [backgroundRef.current, canvasRef.current]) {
-            resizeCanvas(canvas!);
-            const ctx = canvas!.getContext("2d")!;
+            if (!canvas) continue;
+
+            resizeCanvas(canvas);
+            const ctx = canvas.getContext("2d")!;
             ctx.fillStyle = "transparent";
             ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         }
 
-        engineRef.current = await initializePhysics(canvasRef.current!);
+        if (canvasRef.current) {
+            engineRef.current = await initializePhysics(canvasRef.current);
+        }
+
+        observersRef.current = [];
+        mutexRef.current = new Mutex();
     };
 
     const [demonstrationName, setDemonstrationName] = useState(
@@ -128,14 +139,11 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
     }, [demonstrationName]);
 
     useEffect(() => {
-        setDemonstration();
+        (async () => {
+            await reset();
+            setDemonstration();
+        })();
     }, [demonstrationName]);
-
-    useEffect(() => {
-        if (!props.settings?.demonstration) {
-            setDemonstrationName("Single Block");
-        }
-    }, []);
 
     const updateTrail = useCallback(() => {
         const ctx = backgroundRef.current!.getContext("2d")!;
@@ -184,6 +192,17 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                     const engine = engineRef.current;
 
                     if (engine) {
+                        const t = engine.timing.timestamp / ms;
+
+                        observersRef.current = observersRef.current.filter(([time, callback]) => {
+                            if (t >= time) {
+                                callback();
+                                return false;
+                            }
+
+                            return true;
+                        });
+
                         await new Promise(requestAnimationFrame);
                         matter.Engine.update(engine, delta);
 
@@ -217,13 +236,15 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                     if (!body) return;
 
                     matter.Events.on(engine, "beforeUpdate", async () => {
-                        const t = engine.timing.timestamp / ms;
-                        const x = await props.call(fx, t);
-                        const y = await props.call(fy, t);
+                        await mutexRef.current?.runExclusive(async () => {
+                            const t = engine.timing.timestamp / ms;
+                            const x = await props.call(fx, t);
+                            const y = await props.call(fy, t);
 
-                        matter.Body.setPosition(body.matterBody, {
-                            x: isNaN(x) ? body.matterBody.position.x : x + worldWidth / 2,
-                            y: isNaN(y) ? body.matterBody.position.y : worldHeight / 2 - y,
+                            matter.Body.setPosition(body.matterBody, {
+                                x: isNaN(x) ? body.matterBody.position.x : x + worldWidth / 2,
+                                y: isNaN(y) ? body.matterBody.position.y : worldHeight / 2 - y,
+                            });
                         });
                     });
 
@@ -241,17 +262,50 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                     if (!body) return;
 
                     matter.Events.on(engine, "beforeUpdate", async () => {
-                        const t = engine.timing.timestamp / ms;
-                        const x = await props.call(fx, t);
-                        const y = await props.call(fy, t);
+                        await mutexRef.current?.runExclusive(async () => {
+                            const t = engine.timing.timestamp / ms;
+                            const x = await props.call(fx, t);
+                            const y = await props.call(fy, t);
 
-                        matter.Body.applyForce(body.matterBody, body.matterBody.position, {
-                            x: x / (ms * ms),
-                            y: -y / (ms * ms),
+                            matter.Body.applyForce(body.matterBody, body.matterBody.position, {
+                                x: x / (ms * ms),
+                                y: -y / (ms * ms),
+                            });
                         });
                     });
 
                     break;
+                }
+                case "observe": {
+                    const observers = observersRef.current;
+
+                    const [time, block] = value;
+
+                    const callback = () =>
+                        mutexRef.current?.runExclusive(async () => {
+                            await props.call(block, null);
+                        });
+
+                    observers.push([time, callback]);
+
+                    break;
+                }
+                case "measure": {
+                    const bodies = bodiesRef.current;
+
+                    const bodyName = value;
+
+                    const body = bodies[bodyName];
+                    if (!body) return [0, 0, 0, 0, 0, 0];
+
+                    const x = body.matterBody.position.x - worldWidth / 2;
+                    const y = worldHeight / 2 - body.matterBody.position.y;
+                    const vx = body.matterBody.velocity.x * ms;
+                    const vy = -body.matterBody.velocity.y * ms;
+                    const fx = body.matterBody.force.x * ms * ms;
+                    const fy = -body.matterBody.force.y * ms * ms;
+
+                    return [x, y, vx, vy, fx, fy];
                 }
                 default: {
                     throw new Error(`unsupported message: ${message}`);
@@ -265,6 +319,8 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
 
             engineRef.current = undefined;
             lastUpdateTimeRef.current = undefined;
+            observersRef.current = [];
+            mutexRef.current = undefined;
         },
     }));
 
@@ -274,8 +330,31 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
             className={`relative rounded-md overflow-hidden border-2 border-gray-100 dark:border-gray-800`}
             style={{ width: worldWidth * pixelRatio, height: worldHeight * pixelRatio }}
         >
-            <canvas ref={backgroundRef} className="absolute inset-0 w-full h-full" />
-            <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+            {demonstrationName ? (
+                <>
+                    <canvas ref={backgroundRef} className="absolute inset-0 w-full h-full" />
+                    <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+                </>
+            ) : (
+                <div className="absolute inset-0 flex items-center justify-center w-full h-full">
+                    <ContextMenuButton
+                        items={Object.keys(demonstrations).map((demonstrationName) => ({
+                            title: demonstrationName,
+                            onClick: () => {
+                                props.onChangeSettings({
+                                    demonstration: demonstrationName,
+                                });
+
+                                setDemonstrationName(demonstrationName);
+                            },
+                        }))}
+                    >
+                        <div className="text-gray-500 dark:text-gray-400">
+                            Choose a Demonstration
+                        </div>
+                    </ContextMenuButton>
+                </div>
+            )}
         </div>
     );
 });

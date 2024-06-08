@@ -16,7 +16,7 @@ import { Runtime, RuntimeComponent } from "../../runtimes";
 import { MaterialSymbol } from "react-material-symbols";
 import { Help, Output } from "../../models";
 import { Mutex } from "async-mutex";
-import { defaultAnimationDuration } from "../../components";
+import { Markdown, defaultAnimationDuration } from "../../components";
 import { flushSync } from "react-dom";
 
 export interface RunOptions {
@@ -451,7 +451,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                     case "text":
                         content = (
                             <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
-                                {item.text}
+                                <Markdown>{item.text}</Markdown>
                             </div>
                         );
                         break;

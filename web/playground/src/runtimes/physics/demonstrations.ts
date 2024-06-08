@@ -60,9 +60,9 @@ const createBlock = (props: {
 };
 
 export const demonstrations: Record<string, () => Demonstration> = {
-    "Single Block": () => ({
+    "One Block": () => ({
         bodies: {
-            Block: createBlock({
+            "Block 1": createBlock({
                 x: 0,
                 y: 0,
                 centerX: 0,
@@ -72,8 +72,38 @@ export const demonstrations: Record<string, () => Demonstration> = {
                 color: colors[0],
                 mass: 1,
                 elastic: false,
-                rotates: false,
-                solid: false,
+                rotates: true,
+                solid: true,
+            }),
+        },
+    }),
+    "Two Blocks": () => ({
+        bodies: {
+            "Block 1": createBlock({
+                x: -1,
+                y: 0,
+                centerX: 0,
+                centerY: 0,
+                width: 1,
+                height: 1,
+                color: colors[0],
+                mass: 1,
+                elastic: false,
+                rotates: true,
+                solid: true,
+            }),
+            "Block 2": createBlock({
+                x: 1,
+                y: 0,
+                centerX: 0,
+                centerY: 0,
+                width: 1,
+                height: 1,
+                color: colors[1],
+                mass: 1,
+                elastic: false,
+                rotates: true,
+                solid: true,
             }),
         },
     }),
