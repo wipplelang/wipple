@@ -2,7 +2,6 @@ import matter from "matter-js";
 import { RuntimeComponent } from "..";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { PaletteItem } from "../../models";
-import { ColorAsset } from "../../pages/edit/assets/color";
 import atomImage from "./assets/atom.png";
 import { demonstrations } from "./demonstrations";
 import { ContextMenuButton } from "../../components";
@@ -13,6 +12,7 @@ export const worldWidth = 8;
 export const worldHeight = 6;
 const pixelRatio = 50;
 const outOfBoundsThreshold = 1;
+const delta = 16.666666666666667;
 
 // https://github.com/liabru/matter-js/issues/666#issuecomment-615939507
 const ms = 1000;
@@ -80,6 +80,7 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
             string,
             {
                 matterBody: matter.Body;
+                prevVelocity: matter.Vector;
                 trail: matter.Vector[];
                 hasUpdated: { current: boolean };
             }
@@ -132,6 +133,7 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                 name,
                 {
                     matterBody,
+                    prevVelocity: { x: 0, y: 0 },
                     trail: [],
                     hasUpdated: { current: false },
                 },
@@ -176,10 +178,6 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
         onMessage: async (message, value) => {
             switch (message) {
                 case "tick": {
-                    const now = performance.now();
-                    const delta = lastUpdateTimeRef.current ? now - lastUpdateTimeRef.current : 0;
-                    lastUpdateTimeRef.current = now;
-
                     if (
                         Object.values(bodiesRef.current).every(
                             ({ matterBody: body }) =>
@@ -275,6 +273,8 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                             const x = await props.call(fx, t);
                             const y = await props.call(fy, t);
 
+                            body.prevVelocity = { ...body.matterBody.velocity };
+
                             matter.Body.applyForce(body.matterBody, body.matterBody.position, {
                                 x: x / (ms * ms),
                                 y: -y / (ms * ms),
@@ -312,13 +312,20 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                     const body = bodies[bodyName];
                     if (!body) return [0, 0, 0, 0, 0, 0, 0];
 
-                    const m = body.matterBody.mass;
-                    const x = body.matterBody.position.x - worldWidth / 2;
-                    const y = worldHeight / 2 - body.matterBody.position.y;
-                    const vx = body.matterBody.velocity.x * ms;
-                    const vy = -body.matterBody.velocity.y * ms;
-                    const fx = body.matterBody.force.x * ms * ms;
-                    const fy = -body.matterBody.force.y * ms * ms;
+                    const m = round(body.matterBody.mass);
+
+                    const x = round(body.matterBody.position.x - worldWidth / 2);
+                    const y = round(worldHeight / 2 - body.matterBody.position.y);
+
+                    const vx = round(body.matterBody.velocity.x * ms);
+                    const vy = round(-body.matterBody.velocity.y * ms);
+
+                    const fx = round(
+                        ((body.matterBody.velocity.x - body.prevVelocity.x) / delta) * ms * ms * m,
+                    );
+                    const fy = round(
+                        (-(body.matterBody.velocity.y - body.prevVelocity.y) / delta) * ms * ms * m,
+                    );
 
                     return [m, x, y, vx, vy, fx, fy];
                 }
@@ -413,6 +420,8 @@ function rescaleCanvas(canvas: any) {
         ctx.scale(ratio, ratio);
     }
 }
+
+const round = (n: number) => parseFloat(n.toFixed(4));
 
 export { atomImage };
 
