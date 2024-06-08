@@ -116,9 +116,8 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         props.onBlur();
         setShowRunAgain(false);
 
+        let showRunAgain = false;
         try {
-            let showRunAgain = false;
-
             if (!cachedBuiltinsHelp.current) {
                 cachedBuiltinsHelp.current = await fetchBuiltinsHelp();
             }
@@ -317,11 +316,10 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
                 runnerWorker.postMessage({ type: "run", executable });
             });
-
-            setShowRunAgain(showRunAgain);
         } catch (error) {
             console.error(error);
         } finally {
+            setShowRunAgain(showRunAgain);
             isCompiling.current = false;
 
             if (runtimeRef.current) {
