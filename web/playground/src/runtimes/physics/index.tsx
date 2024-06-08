@@ -7,6 +7,7 @@ import atomImage from "./assets/atom.png";
 import { demonstrations } from "./demonstrations";
 import { ContextMenuButton } from "../../components";
 import { Mutex } from "async-mutex";
+import { ObjectAsset } from "../../pages/edit/assets/object";
 
 export const worldWidth = 8;
 export const worldHeight = 6;
@@ -410,8 +411,8 @@ export { atomImage };
 
 export const assetItems: PaletteItem[] = [
     {
-        title: <ColorAsset color="#3b82f6" tooltip={false} />,
-        code: `[Color "#3b82f6"]`,
+        title: <ObjectAsset object="Block 1" tooltip={false} />,
+        code: `[Object "Block 1"]`,
     },
 ];
 

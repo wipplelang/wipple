@@ -20,7 +20,14 @@ import { useWindowSize } from "usehooks-ts";
 import { HelpAlert } from "./help-alert";
 import { ColorPicker } from "./color-picker";
 import { AssetClickHandler } from "./codemirror/assets";
-import { animalAsset, colorAsset, dropdownAsset, instrumentAsset, noteAsset } from "./assets";
+import {
+    animalAsset,
+    colorAsset,
+    dropdownAsset,
+    instrumentAsset,
+    noteAsset,
+    objectAsset,
+} from "./assets";
 import { Render, RenderedDiagnostic, RenderedFix, RenderedHighlight } from "wipple-render";
 import { defaultPaletteItems, runtimes } from "../../runtimes";
 import { SetupIcon } from "./setup-icon";
@@ -33,6 +40,7 @@ import { AnimalPicker } from "./animal-picker";
 import { InstrumentPicker } from "./instrument-picker";
 import { LinesEditor } from "../../components/lines-editor";
 import { arrayMoveMutable } from "array-move";
+import { ObjectPicker } from "./object-picker";
 
 export function CodeEditor<Settings>(props: {
     children: string;
@@ -244,6 +252,22 @@ export function CodeEditor<Settings>(props: {
                                     to: end,
                                     insert: instrumentAsset(instrument),
                                 },
+                            });
+
+                            dismiss();
+                        }}
+                    />
+                ));
+
+                break;
+            }
+            case "object": {
+                displayAlert(({ dismiss }) => (
+                    <ObjectPicker
+                        selection={asset.object}
+                        onDismiss={(object) => {
+                            codeMirrorRef.current?.editorView.dispatch({
+                                changes: { from: start, to: end, insert: objectAsset(object) },
                             });
 
                             dismiss();

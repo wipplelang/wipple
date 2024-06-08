@@ -3,6 +3,7 @@ import { ColorAsset } from "./color";
 import { DropdownAsset } from "./dropdown";
 import { InstrumentAsset } from "./instrument";
 import { NoteAsset } from "./note";
+import { ObjectAsset } from "./object";
 
 export const isAsset = (value: string) =>
     value.startsWith("[") &&
@@ -14,7 +15,8 @@ export type Asset =
     | { type: "animal"; animal: string }
     | { type: "dropdown"; selection: string; options: string[] }
     | { type: "note"; note: string }
-    | { type: "instrument"; instrument: string };
+    | { type: "instrument"; instrument: string }
+    | { type: "object"; object: string };
 
 export const getAsset = (code: string): Asset | undefined => {
     const split = code.split(" ");
@@ -53,6 +55,10 @@ export const getAsset = (code: string): Asset | undefined => {
             value = value.slice(1, value.length - 1); // remove quotes
             return { type: "instrument", instrument: value };
         }
+        case "Object": {
+            value = value.slice(1, value.length - 1); // remove quotes
+            return { type: "object", object: value };
+        }
         default: {
             return undefined;
         }
@@ -69,6 +75,8 @@ export const dropdownAsset = (selection: string, options: string[]) =>
 export const noteAsset = (note: string) => `[Note "${note}"]`;
 
 export const instrumentAsset = (instrument: string) => `[Instrument-Name "${instrument}"]`;
+
+export const objectAsset = (object: string) => `[Object "${object}"]`;
 
 export const Asset = (props: {
     children: Asset;
@@ -126,6 +134,16 @@ export const Asset = (props: {
                 <InstrumentAsset
                     disabled={props.disabled}
                     instrument={asset.instrument}
+                    onClick={() => props.onClick?.(asset)}
+                />
+            );
+            break;
+        }
+        case "object": {
+            content = (
+                <ObjectAsset
+                    disabled={props.disabled}
+                    object={asset.object}
                     onClick={() => props.onClick?.(asset)}
                 />
             );
