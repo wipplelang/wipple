@@ -4,6 +4,41 @@ on:
             - main
 
 jobs:
-    build:
-        uses: ./.github/workflows/build.yml
-        secrets: inherit
+    test:
+        name: Test
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+
+            - uses: arduino/setup-task@v1
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 21
+
+            - uses: Swatinem/rust-cache@v2.2.0
+              with:
+                  workspaces: |
+                      compiler
+                  cache-on-failure: true
+
+            - run: |
+                  rustup toolchain install stable --profile minimal
+                  rustup target add wasm32-unknown-unknown
+                  cargo install wasm-pack --no-default-features
+                  cargo install wasm-bindgen-cli
+
+            - run: task install-dependencies
+
+            - run: task cli:build
+
+            - run: task test
+
+            - run: task doctest
+
+            - uses: mikepenz/action-junit-report@v4
+              if: success() || failure() # always run even if the previous step fails
+              with:
+                  check_name: "Doctests"
+                  include_passed: true
+                  report_paths: ".wipple/doctest/*.xml"
