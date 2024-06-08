@@ -11,7 +11,13 @@ import { getUser } from "../helpers";
 import { pureConverter } from "../helpers/database";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { nanoid } from "nanoid";
-import { MathSettings, MusicSettings, TurtleSettings, GameSettings } from "../runtimes";
+import {
+    MathSettings,
+    MusicSettings,
+    TurtleSettings,
+    GameSettings,
+    PhysicsSettings,
+} from "../runtimes";
 import { Lesson } from "../lessons";
 
 export interface PlaygroundListItem {
@@ -44,7 +50,6 @@ export type PlaygroundPageItem =
     | PlaygroundPageMathItem
     | PlaygroundPageGameItem
     | PlaygroundPagePhysicsItem
-    | PlaygroundPageEnergyItem
     | PlaygroundPageTextItem;
 
 interface PlaygroundPageCodeItem {
@@ -61,8 +66,7 @@ type PlaygroundPageTurtleItem = RuntimeItem<"turtle", TurtleSettings>;
 type PlaygroundPageMusicItem = RuntimeItem<"music", MusicSettings>;
 type PlaygroundPageMathItem = RuntimeItem<"math", MathSettings>;
 type PlaygroundPageGameItem = RuntimeItem<"game", GameSettings>;
-type PlaygroundPagePhysicsItem = RuntimeItem<"physics", {}>;
-type PlaygroundPageEnergyItem = RuntimeItem<"energy", {}>;
+type PlaygroundPagePhysicsItem = RuntimeItem<"physics", PhysicsSettings>;
 
 interface PlaygroundPageTextItem {
     type: "text";
