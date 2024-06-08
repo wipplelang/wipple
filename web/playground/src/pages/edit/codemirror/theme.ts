@@ -62,4 +62,5 @@ export const highlightCategories: Record<string, string> = {
     "math-color": "bg-opacity-30 bg-purple-300 text-purple-500",
     "physics-motion": "bg-opacity-30 bg-green-300 text-green-500",
     "physics-utility": "bg-opacity-30 bg-orange-300 text-orange-500",
+    "physics-measure": "bg-opacity-30 bg-yellow-300 text-yellow-500",
 };

@@ -277,15 +277,86 @@ Value where (Equal Value) (Empty Value) (Add Value Value Value) =>
             }
         }
 
+-- Run some code when the simulation reaches the specified time.
 @(highlight-category : "physics-motion")
 @(highlight-icon : "timer")
 observe :: Result => Time {Result} -> Unit
 observe : (Time t) block -> do {
     initialize-tick
-    runtime-message "observe" (t ; () -> do block)
+    runtime-message "observe" (t ; block)
 }
 
-instance (Describe Object) : (Object o) -> do {
-    (x ; y ; vx ; vy ; fx ; fy) : runtime-message "measure" o
-    "```\n_\nx: _\ny: _\nvx: _\nvy: _\nfx: _\nfy: _\n```" o (x meters) (y meters) (vx meters) (vy meters) (fx newtons) (fy newtons)
+measure :: Object -> (Mass ; (Distance ; Distance) ; (Velocity ; Velocity) ; (Force ; Force))
+measure : (Object o) -> do {
+    (m ; x ; y ; vx ; vy ; fx ; fy) : runtime-message "measure" o
+    (Mass m) ; ((Distance x) ; (Distance y)) ; ((Velocity vx) ; (Velocity vy)) ; ((Force fx) ; (Force fy))
+}
+
+-- Get the current time.
+@(highlight-category : "physics-measure")
+@(highlight-icon : "timer")
+time :: Time
+time : runtime-message "time" ()
+
+-- Get the mass of an object.
+@(highlight-category : "physics-measure")
+@(highlight-icon : "square-foot")
+mass-of :: Object -> Mass
+mass-of : object -> do {
+    (m ; _ ; _ ; _) : measure object
+    m
+}
+
+-- Get the x-component of an object's current position.
+@(highlight-category : "physics-measure")
+@(highlight-icon : "square-foot")
+x-position-of :: Object -> Distance
+x-position-of : object -> do {
+    (_ ; (x ; _) ; _ ; _) : measure object
+    x
+}
+
+-- Get the y-component of an object's current position.
+@(highlight-category : "physics-measure")
+@(highlight-icon : "square-foot")
+y-position-of :: Object -> Distance
+y-position-of : object -> do {
+    (_ ; (_ ; y) ; _ ; _) : measure object
+    y
+}
+
+-- Get the x-component of an object's current velocity.
+@(highlight-category : "physics-measure")
+@(highlight-icon : "square-foot")
+x-velocity-of :: Object -> Velocity
+x-velocity-of : object -> do {
+    (_ ; _ ; (vx ; _) ; _) : measure object
+    vx
+}
+
+-- Get the y-component of an object's current velocity.
+@(highlight-category : "physics-measure")
+@(highlight-icon : "square-foot")
+y-velocity-of :: Object -> Velocity
+y-velocity-of : object -> do {
+    (_ ; _ ; (_ ; vy) ; _) : measure object
+    vy
+}
+
+-- Get the x-component of the force an object is currently experiencing.
+@(highlight-category : "physics-measure")
+@(highlight-icon : "square-foot")
+x-force-of :: Object -> Force
+x-force-of : object -> do {
+    (_ ; _ ; _ ; (fx ; _)) : measure object
+    fx
+}
+
+-- Get the y-component of the force an object is currently experiencing.
+@(highlight-category : "physics-measure")
+@(highlight-icon : "square-foot")
+y-force-of :: Object -> Force
+y-force-of : object -> do {
+    (_ ; _ ; _ ; (_ ; fy)) : measure object
+    fy
 }

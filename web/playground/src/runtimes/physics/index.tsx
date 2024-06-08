@@ -291,12 +291,18 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
 
                     const callback = () =>
                         mutexRef.current?.runExclusive(async () => {
-                            await props.call(block, null);
+                            await props.call(block);
                         });
 
                     observers.push([time, callback]);
 
                     break;
+                }
+                case "time": {
+                    const engine = engineRef.current;
+                    if (!engine) return 0;
+
+                    return engine.timing.timestamp / ms;
                 }
                 case "measure": {
                     const bodies = bodiesRef.current;
@@ -304,8 +310,9 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                     const bodyName = value;
 
                     const body = bodies[bodyName];
-                    if (!body) return [0, 0, 0, 0, 0, 0];
+                    if (!body) return [0, 0, 0, 0, 0, 0, 0];
 
+                    const m = body.matterBody.mass;
                     const x = body.matterBody.position.x - worldWidth / 2;
                     const y = worldHeight / 2 - body.matterBody.position.y;
                     const vx = body.matterBody.velocity.x * ms;
@@ -313,7 +320,7 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                     const fx = body.matterBody.force.x * ms * ms;
                     const fy = -body.matterBody.force.y * ms * ms;
 
-                    return [x, y, vx, vy, fx, fy];
+                    return [m, x, y, vx, vy, fx, fy];
                 }
                 default: {
                     throw new Error(`unsupported message: ${message}`);
