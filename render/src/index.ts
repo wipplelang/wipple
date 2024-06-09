@@ -642,7 +642,7 @@ export class Render {
                     }
                     case "ambiguousName": {
                         severity = "error";
-                        message = `\`${diagnostic.item.value.value}\` has multiple definitions`;
+                        message = `\`${diagnostic.item.value.value.name}\` has multiple definitions`;
                         break;
                     }
                     case "alreadyDefined": {
