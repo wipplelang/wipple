@@ -1,6 +1,7 @@
 import { Lesson } from "./index";
 
 export const learnToCodeLesson: Lesson = {
+    id: "learn-to-code",
     name: "Learn to Code",
     description: "Learn coding with Wipple by making drawings.",
     pages: [

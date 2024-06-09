@@ -1,6 +1,7 @@
 import { Lesson } from "./index";
 
 export const learnPhysicsLesson: Lesson = {
+    id: "learn-physics",
     name: "Learn Physics",
     description: "Explore physics by building your own demonstrations.",
     pages: [

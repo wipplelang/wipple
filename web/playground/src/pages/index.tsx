@@ -1,5 +1,6 @@
-export * from "./home";
 export * from "./edit";
+export * from "./home";
+export * from "./lesson";
 
 import { useEffect, useState } from "react";
 import { Outlet, ScrollRestoration } from "react-router-dom";
@@ -7,7 +8,6 @@ import { produce } from "immer";
 import { Button, Navbar, useAlert as useAlert } from "../components";
 import { useStore } from "../store";
 import { getUser, signInAsGuest, signInWithGoogle } from "../helpers";
-import { startTutorial } from "../models";
 
 export const RootPage = () => {
     const [store, setStore] = useStore();

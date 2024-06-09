@@ -1,6 +1,7 @@
 import { Lesson } from "./index";
 
 export const intermediateWippleLesson: Lesson = {
+    id: "intermediate-wipple",
     name: "Intermediate Wipple",
     description:
         "Explore how to use functions, patterns, and types to write more complex programs.",

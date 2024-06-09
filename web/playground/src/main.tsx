@@ -6,7 +6,7 @@ import {
     createRoutesFromElements,
 } from "react-router-dom";
 import { initializeApp } from "firebase/app";
-import { HomePage, EditPage, RootPage } from "./pages";
+import { HomePage, EditPage, RootPage, LessonPage } from "./pages";
 import { NavbarProvider, AlertProvider } from "./components";
 import { StoreProvider } from "./store";
 import "react-material-symbols/rounded";
@@ -31,6 +31,7 @@ const router = createBrowserRouter(
         <Route path={import.meta.env.BASE_URL} element={<RootPage />}>
             <Route index element={<HomePage />} />
             <Route path="edit/:id/:page?" element={<EditPage />} />
+            <Route path="lesson/:id/:page?" element={<LessonPage />} />
         </Route>,
     ),
 );
