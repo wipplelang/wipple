@@ -4,6 +4,7 @@
         "lib": ["ES2020"],
         "moduleResolution": "node",
         "module": "esnext",
+        "resolveJsonModule": true,
         "skipLibCheck": true,
         "strict": true,
         "isolatedModules": true,

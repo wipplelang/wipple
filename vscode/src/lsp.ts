@@ -16,6 +16,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import * as compiler from "wipple-compiler";
 import { Render, RenderedDiagnostic } from "wipple-render";
+import builtinsHelp from "../../library/help/builtins.json";
 
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
@@ -145,41 +146,57 @@ connection.onHover(async (params) => {
         return null;
     }
 
+    const text = document.getText();
     const position = document.offsetAt(params.position);
 
     let range: Range | undefined = undefined;
     const content: string[] = [];
-    const declarationPath = render.getPathAtCursor(getVisiblePath(uri.fsPath), position);
-    if (declarationPath) {
-        const declaration = render.getDeclarationFromPath(declarationPath.item);
 
-        if (declaration) {
-            range = rangeFromInfo(declarationPath.info, document);
+    const symbolRange = findWordBoundary(text, position);
+    const symbol = text.slice(symbolRange.start, symbolRange.end);
+    if (symbol in builtinsHelp) {
+        const help = builtinsHelp[symbol as keyof typeof builtinsHelp];
 
-            const code = render.renderDeclaration(declaration);
-            if (code) {
-                content.push("```wipple\n" + code + "\n```");
-            }
+        range = {
+            start: document.positionAt(symbolRange.start),
+            end: document.positionAt(symbolRange.end),
+        };
 
-            const renderedDocumentation = render.renderDocumentation(declaration);
-            if (renderedDocumentation) {
-                content.push(renderedDocumentation.docs);
-            }
-        }
+        content.push("```wipple\n" + symbol + "\n```");
+        content.push(help.docs);
     } else {
-        const expression = render.getExpressionAtCursor(getVisiblePath(uri.fsPath), position);
+        const declarationPath = render.getPathAtCursor(getVisiblePath(uri.fsPath), position);
+        if (declarationPath) {
+            const declaration = render.getDeclarationFromPath(declarationPath.item);
 
-        if (expression) {
-            range = rangeFromInfo(expression.info, document);
+            if (declaration) {
+                range = rangeFromInfo(declarationPath.info, document);
 
-            const type = {
-                info: expression.info,
-                item: expression.item.type,
-            };
+                const code = render.renderDeclaration(declaration);
+                if (code) {
+                    content.push("```wipple\n" + code + "\n```");
+                }
 
-            const code = render.renderType(type, true, false, false);
-            if (code) {
-                content.push("```wipple\n" + code + "\n```");
+                const renderedDocumentation = render.renderDocumentation(declaration);
+                if (renderedDocumentation) {
+                    content.push(renderedDocumentation.docs);
+                }
+            }
+        } else {
+            const expression = render.getExpressionAtCursor(getVisiblePath(uri.fsPath), position);
+
+            if (expression) {
+                range = rangeFromInfo(expression.info, document);
+
+                const type = {
+                    info: expression.info,
+                    item: expression.item.type,
+                };
+
+                const code = render.renderType(type, true, false, false);
+                if (code) {
+                    content.push("```wipple\n" + code + "\n```");
+                }
             }
         }
     }
@@ -322,3 +339,28 @@ const rangeFromInfo = (info: compiler.Info, document: TextDocument): Range => ({
     start: document.positionAt(info.location.span.start),
     end: document.positionAt(info.location.span.end),
 });
+
+// Adapted from https://github.com/pfrazee/pauls-word-boundary/blob/master/index.js
+// (MIT License)
+const findWordBoundary = (str: string, index: number) => {
+    const wordBoundaryRegex = /\s/;
+
+    // corner cases
+    if (index < 0 || index >= str.length) return { start: index, end: index };
+
+    // find end
+    // fairly simple: slice the string from our index and run search
+    var end = str.slice(index).search(wordBoundaryRegex) + index;
+    if (end === index - 1) end = str.length;
+
+    // find start
+    // slightly more complex: iterate our search, slicing along, until we pass the index
+    var start = 0;
+    while (start < index) {
+        let i = str.slice(start).search(wordBoundaryRegex) + start;
+        if (i > index || i === start - 1) break;
+        start = i + 1;
+    }
+
+    return { start, end };
+};

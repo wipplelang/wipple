@@ -346,12 +346,27 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
     useImperativeHandle(ref, () => ({
         help: (position: number, code: string): Help | undefined => {
-            if (cachedBuiltinsHelp.current != null && cachedBuiltinsHelp.current[code] != null) {
+            const helpFromDocumentation = (documentation: {
+                name: string;
+                declaration: string | undefined;
+                docs: string;
+            }) => {
+                const docString = documentation.docs.split("\n\n");
+
                 return {
-                    name: code,
-                    summary: cachedBuiltinsHelp.current[code].summary,
-                    doc: cachedBuiltinsHelp.current[code].doc,
+                    name: documentation.name,
+                    summary: docString[0],
+                    declaration: documentation.declaration,
+                    doc: docString.slice(1).join("\n\n"),
                 };
+            };
+
+            if (cachedBuiltinsHelp.current != null && cachedBuiltinsHelp.current[code] != null) {
+                return helpFromDocumentation({
+                    name: code,
+                    declaration: undefined,
+                    docs: cachedBuiltinsHelp.current[code].docs,
+                });
             }
 
             const declarationPath = props.render.getPathAtCursor("playground", position);
@@ -369,16 +384,13 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 return undefined;
             }
 
-            const docString = documentation.docs.split("\n\n");
-
             const declarationString = props.render.renderDeclaration(declaration) ?? undefined;
 
-            return {
+            return helpFromDocumentation({
                 name: declaration.item.name ?? code,
-                summary: docString[0],
-                doc: docString.slice(1).join("\n\n"),
                 declaration: declarationString,
-            };
+                docs: documentation.docs,
+            });
         },
         format: async (code) => {
             const compilerWorker = new CompilerWorker({ name: `compiler-${id}-format` });
