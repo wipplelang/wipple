@@ -80,7 +80,16 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
             string,
             {
                 matterBody: matter.Body;
-                prevVelocity: matter.Vector;
+                measurements?: {
+                    t: number;
+                    m: number;
+                    x: number;
+                    y: number;
+                    vx?: number;
+                    vy?: number;
+                    fx?: number;
+                    fy?: number;
+                };
                 trail: matter.Vector[];
                 hasUpdated: { current: boolean };
             }
@@ -88,6 +97,27 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
     >({});
     const observersRef = useRef<[number, () => void][]>([]);
     const mutexRef = useRef<Mutex>();
+
+    const measure = (t: number, body: (typeof bodiesRef.current)[string]) => {
+        const m = body.matterBody.mass;
+
+        const x = body.matterBody.position.x - worldWidth / 2;
+        const y = worldHeight / 2 - body.matterBody.position.y;
+
+        if (!body.measurements) {
+            return { t, m, x, y };
+        }
+
+        const dt = (t - body.measurements.t) * ms;
+
+        const vx = ((x - body.measurements.x) / dt) * ms;
+        const vy = (-(y - body.measurements.y) / dt) * ms;
+
+        const fx = body.measurements?.vx && ((vx - body.measurements.vx) / dt) * ms * m;
+        const fy = body.measurements?.vy && ((vy - body.measurements.vy) / dt) * ms * m;
+
+        return { t, m, x, y, vx, vy, fx, fy };
+    };
 
     const reset = async () => {
         for (const canvas of [backgroundRef.current, canvasRef.current]) {
@@ -133,7 +163,17 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                 name,
                 {
                     matterBody,
-                    prevVelocity: { x: 0, y: 0 },
+                    prevMeasurements: {
+                        t: 0,
+                        m: matterBody.mass,
+                        x: matterBody.position.x - worldWidth / 2,
+                        y: worldHeight / 2 - matterBody.position.y,
+                        vx: 0,
+                        vy: 0,
+                        fx: 0,
+                        fy: 0,
+                    },
+                    measurements: undefined,
                     trail: [],
                     hasUpdated: { current: false },
                 },
@@ -195,7 +235,7 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                     const engine = engineRef.current;
 
                     if (engine) {
-                        const t = engine.timing.timestamp / ms;
+                        let t = engine.timing.timestamp / ms;
 
                         observersRef.current = observersRef.current.filter(([time, callback]) => {
                             if (t >= time) {
@@ -207,24 +247,28 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                         });
 
                         await new Promise(requestAnimationFrame);
-                        matter.Engine.update(engine, delta);
+                        matter.Engine.update(engine, delta, 0);
 
-                        for (const { matterBody, trail, hasUpdated } of Object.values(
-                            bodiesRef.current,
-                        )) {
+                        t = engine.timing.timestamp / ms;
+
+                        for (const body of Object.values(bodiesRef.current)) {
                             if (
-                                hasUpdated.current &&
-                                (trail[trail.length - 1]?.x !== matterBody.position.x ||
-                                    trail[trail.length - 1]?.y !== matterBody.position.y)
+                                body.hasUpdated.current &&
+                                (body.trail[body.trail.length - 1]?.x !==
+                                    body.matterBody.position.x ||
+                                    body.trail[body.trail.length - 1]?.y !==
+                                        body.matterBody.position.y)
                             ) {
-                                trail.push({ ...matterBody.position });
+                                body.trail.push({ ...body.matterBody.position });
                             }
 
-                            if (trail.length > 100) {
-                                trail.shift();
+                            if (body.trail.length > 100) {
+                                body.trail.shift();
                             }
 
-                            hasUpdated.current = true;
+                            body.hasUpdated.current = true;
+
+                            body.measurements = measure(t, body);
                         }
 
                         updateTrail();
@@ -275,8 +319,6 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                             const x = await props.call(fx, t);
                             const y = await props.call(fy, t);
 
-                            body.prevVelocity = { ...body.matterBody.velocity };
-
                             matter.Body.applyForce(body.matterBody, body.matterBody.position, {
                                 x: x / (ms * ms),
                                 y: -y / (ms * ms),
@@ -307,29 +349,27 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                     return engine.timing.timestamp / ms;
                 }
                 case "measure": {
+                    const engine = engineRef.current;
+                    if (!engine) return [0, 0, 0, 0, 0, 0, 0];
+
                     const bodies = bodiesRef.current;
 
                     const bodyName = value;
 
                     const body = bodies[bodyName];
-                    if (!body) return [0, 0, 0, 0, 0, 0, 0];
+                    if (!body?.measurements) return [0, 0, 0, 0, 0, 0, 0];
 
-                    const m = round(body.matterBody.mass);
+                    const { m, x, y, vx, vy, fx, fy } = body.measurements;
 
-                    const x = round(body.matterBody.position.x - worldWidth / 2);
-                    const y = round(worldHeight / 2 - body.matterBody.position.y);
-
-                    const vx = round(body.matterBody.velocity.x * ms);
-                    const vy = round(-body.matterBody.velocity.y * ms);
-
-                    const fx = round(
-                        ((body.matterBody.velocity.x - body.prevVelocity.x) / delta) * ms * ms * m,
-                    );
-                    const fy = round(
-                        (-(body.matterBody.velocity.y - body.prevVelocity.y) / delta) * ms * ms * m,
-                    );
-
-                    return [m, x, y, vx, vy, fx, fy];
+                    return [
+                        round(m),
+                        round(x),
+                        round(y),
+                        round(vx ?? 0),
+                        round(vy ?? 0),
+                        round(fx ?? 0),
+                        round(fy ?? 0),
+                    ];
                 }
                 default: {
                     throw new Error(`unsupported message: ${message}`);
