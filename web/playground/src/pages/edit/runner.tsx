@@ -350,7 +350,8 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 name: string;
                 declaration: string | undefined;
                 docs: string;
-            }) => {
+                example: string | null;
+            }): Help => {
                 const docString = documentation.docs.split("\n\n");
 
                 return {
@@ -358,6 +359,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                     summary: docString[0],
                     declaration: documentation.declaration,
                     doc: docString.slice(1).join("\n\n"),
+                    example: documentation.example ?? undefined,
                 };
             };
 
@@ -365,7 +367,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 return helpFromDocumentation({
                     name: code,
                     declaration: undefined,
-                    docs: cachedBuiltinsHelp.current[code].docs,
+                    ...cachedBuiltinsHelp.current[code],
                 });
             }
 
@@ -390,6 +392,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 name: declaration.item.name ?? code,
                 declaration: declarationString,
                 docs: documentation.docs,
+                example: documentation.example,
             });
         },
         format: async (code) => {

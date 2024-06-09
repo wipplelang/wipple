@@ -32,6 +32,7 @@ export interface RenderedFix {
 
 export interface RenderedDocumentation {
     docs: string;
+    example: string | null;
 }
 
 export interface RenderedDocumentationAttribute {
@@ -1142,9 +1143,9 @@ export class Render {
     }
 
     renderDocumentation(
-        value: compiler.WithInfo<compiler.Info, unknown>,
+        declaration: compiler.WithInfo<compiler.Info, AnyDeclaration>,
     ): RenderedDocumentation | null {
-        const renderedSourceLocation = this.renderSourceLocation(value);
+        const renderedSourceLocation = this.renderSourceLocation(declaration);
         if (!renderedSourceLocation) {
             return null;
         }
@@ -1177,7 +1178,23 @@ export class Render {
 
         docLines.reverse();
 
-        return { docs: docLines.join("\n") };
+        const docs = docLines.join("\n");
+
+        let example: string | null = null;
+        if ("attributes" in declaration.item.declaration) {
+            for (const attribute of declaration.item.declaration.attributes) {
+                if (
+                    attribute.item.type === "valued" &&
+                    attribute.item.value.value.item.type === "text" &&
+                    attribute.item.value.name.item === "example"
+                ) {
+                    example = attribute.item.value.value.item.value.item;
+                    break;
+                }
+            }
+        }
+
+        return { docs, example };
     }
 
     renderHighlight(value: compiler.WithInfo<compiler.Info, unknown>): RenderedHighlight | null {

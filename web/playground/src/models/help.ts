@@ -3,4 +3,5 @@ export interface Help {
     summary: string;
     doc: string;
     declaration?: string;
+    example?: string;
 }

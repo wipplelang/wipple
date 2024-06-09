@@ -164,6 +164,10 @@ connection.onHover(async (params) => {
 
         content.push("```wipple\n" + symbol + "\n```");
         content.push(help.docs);
+
+        if (help.example) {
+            content.push(`[Example](${help.example})`);
+        }
     } else {
         const declarationPath = render.getPathAtCursor(getVisiblePath(uri.fsPath), position);
         if (declarationPath) {
@@ -180,6 +184,10 @@ connection.onHover(async (params) => {
                 const renderedDocumentation = render.renderDocumentation(declaration);
                 if (renderedDocumentation) {
                     content.push(renderedDocumentation.docs);
+
+                    if (renderedDocumentation.example) {
+                        content.push(`[Example](${renderedDocumentation.example})`);
+                    }
                 }
             }
         } else {

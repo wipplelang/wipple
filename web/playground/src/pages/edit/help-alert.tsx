@@ -34,6 +34,18 @@ export const HelpAlert = (props: { help: Help; dismiss: () => void }) => {
                         <Markdown>{props.help.summary}</Markdown>
                     </h2>
 
+                    {props.help.example ? (
+                        <div className="mt-2">
+                            <a
+                                href={props.help.example}
+                                target="_blank"
+                                className="bg-blue-500 bg-opacity-10 text-blue-500 dark:text-blue-400 hover:bg-opacity-100 hover:text-white rounded-md px-2 py-1 transition-colors"
+                            >
+                                Example &rarr;
+                            </a>
+                        </div>
+                    ) : null}
+
                     {props.help.declaration && showDeclaration ? (
                         <div className="max-w-full text-sm">
                             <Markdown>{"```wipple\n" + props.help.declaration + "\n```"}</Markdown>
