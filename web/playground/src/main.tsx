@@ -6,6 +6,11 @@ import {
     createRoutesFromElements,
 } from "react-router-dom";
 import { initializeApp } from "firebase/app";
+import {
+    initializeFirestore,
+    persistentLocalCache,
+    persistentMultipleTabManager,
+} from "firebase/firestore";
 import { HomePage, EditPage, RootPage, LessonPage } from "./pages";
 import { NavbarProvider, AlertProvider } from "./components";
 import { StoreProvider } from "./store";
@@ -16,7 +21,7 @@ import "react-resizable/css/styles.css";
 import "katex/dist/katex.min.css";
 import "./index.css";
 
-initializeApp({
+const app = initializeApp({
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
     projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
@@ -24,6 +29,10 @@ initializeApp({
     messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
     appId: import.meta.env.VITE_FIREBASE_APP_ID,
     measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+});
+
+initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 });
 
 const router = createBrowserRouter(

@@ -3,6 +3,7 @@ import { createContext, useContext, useState } from "react";
 import { TutorialStep } from "./models";
 
 export interface Store {
+    offline?: boolean;
     user?: User;
     activeTutorialStep?: TutorialStep;
 }

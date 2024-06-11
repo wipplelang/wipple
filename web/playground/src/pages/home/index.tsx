@@ -17,6 +17,7 @@ import {
     createPlayground,
     deletePlayground,
     duplicatePlayground,
+    listCachedPlaygrounds,
     listPlaygrounds,
     newPlaygroundTutorialItem,
     startTutorial,
@@ -45,8 +46,15 @@ export const HomePage = () => {
     const [playgrounds, setPlaygrounds] = useState<PlaygroundListItem[]>();
 
     const loadPlaygrounds = useCallback(async () => {
-        const playgrounds = await listPlaygrounds({ filter });
-        setPlaygrounds(playgrounds);
+        const cachedPlaygrounds = await listCachedPlaygrounds({ filter });
+        setPlaygrounds(cachedPlaygrounds);
+
+        try {
+            const playgrounds = await listPlaygrounds({ filter });
+            setPlaygrounds(playgrounds);
+        } catch (error) {
+            console.error(error);
+        }
     }, [store.user?.uid, filter]);
 
     useEffect(() => {
@@ -101,7 +109,11 @@ export const HomePage = () => {
                 <div className="w-full max-w-screen-lg">
                     <div className="flex flex-row gap-4 p-4">
                         <TutorialItem id="newPlayground" className="flex-1">
-                            <PrimaryCard title="New Playground" onClick={handleNewPlayground}>
+                            <PrimaryCard
+                                title="New Playground"
+                                disabled={store.offline}
+                                onClick={handleNewPlayground}
+                            >
                                 <MaterialSymbol
                                     icon="add"
                                     className="text-blue-500 font-semibold text-6xl"
@@ -111,6 +123,7 @@ export const HomePage = () => {
 
                         <PrimaryCard
                             title="Lessons"
+                            disabled={store.offline}
                             onClick={() =>
                                 displayAlert(({ dismiss }) => (
                                     <LessonsAlert
@@ -127,7 +140,11 @@ export const HomePage = () => {
                             <img src="/playground/images/lesson-bg.png" />
                         </PrimaryCard>
 
-                        <PrimaryCard title="Tutorial" onClick={handleStartTutorial}>
+                        <PrimaryCard
+                            title="Tutorial"
+                            disabled={store.offline}
+                            onClick={handleStartTutorial}
+                        >
                             <MaterialSymbol
                                 icon="school"
                                 className="text-blue-500 font-semibold text-6xl"
@@ -184,11 +201,24 @@ export const HomePage = () => {
     );
 };
 
-const PrimaryCard = (props: React.PropsWithChildren<{ title: string; onClick: () => void }>) => (
-    <div className="flex flex-col items-center gap-2.5 flex-1">
+const PrimaryCard = (
+    props: React.PropsWithChildren<{
+        title: string;
+        disabled?: boolean;
+        onClick: () => void;
+    }>,
+) => (
+    <div
+        className={`flex flex-col items-center gap-2.5 flex-1 ${
+            props.disabled ? "opacity-50" : ""
+        }`}
+    >
         <button
             onClick={props.onClick}
-            className="w-full h-[100px] md:h-[200px] bg-white dark:bg-gray-800 rounded-lg border-[1px] border-gray-100 dark:border-gray-900 shadow-sm p-1 transition-scale ease-in-out duration-100 hover:scale-105"
+            disabled={props.disabled}
+            className={`w-full h-[100px] md:h-[200px] bg-white dark:bg-gray-800 rounded-lg border-[1px] border-gray-100 dark:border-gray-900 shadow-sm p-1 transition-scale ease-in-out duration-100 ${
+                props.disabled ? "" : "hover:scale-105"
+            }`}
         >
             <div className="flex items-center justify-center w-full h-full rounded-[4px] overflow-clip">
                 {props.children}

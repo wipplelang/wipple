@@ -19,6 +19,7 @@ import {
     PhysicsSettings,
 } from "../runtimes";
 import { Lesson } from "../lessons";
+import Dexie from "dexie";
 
 export interface PlaygroundListItem {
     id: string;
@@ -76,7 +77,39 @@ interface PlaygroundPageTextItem {
 
 const playgroundConverter = pureConverter<Playground>();
 
+const cache = new Dexie("wipple-playground-cache");
+cache.version(1).stores({
+    "all-playgrounds": "&id",
+    "owned-playgrounds": "&id",
+    "shared-playgrounds": "&id",
+});
+
 export type ListPlaygroundsFilter = "all" | "owned" | "shared";
+
+export const listCachedPlaygrounds = async (options: { filter: ListPlaygroundsFilter }) => {
+    const user = await getUser();
+    if (!user) {
+        return [];
+    }
+
+    try {
+        await cache.open();
+
+        const playgrounds = await cache
+            .table<PlaygroundListItem>(`${options.filter}-playgrounds`)
+            .toArray();
+
+        playgrounds.sort(
+            (a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime(),
+        );
+
+        return playgrounds;
+    } catch (error) {
+        console.error(error);
+
+        return [];
+    }
+};
 
 export const listPlaygrounds = async (options: { filter: ListPlaygroundsFilter }) => {
     const user = await getUser();
@@ -91,7 +124,16 @@ export const listPlaygrounds = async (options: { filter: ListPlaygroundsFilter }
     >(functions, "listPlaygrounds");
 
     const result = await listPlaygrounds({ filter: options.filter });
-    return result.data.playgrounds;
+    const playgrounds = result.data.playgrounds;
+
+    await cache.open();
+    const table = cache.table<PlaygroundListItem>(`${options.filter}-playgrounds`);
+    await cache.transaction("rw!", table, async () => {
+        table.clear();
+        table.bulkAdd(playgrounds);
+    });
+
+    return playgrounds;
 };
 
 export const getPlayground = async (id: string) => {

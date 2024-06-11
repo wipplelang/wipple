@@ -7,7 +7,7 @@ import { Outlet, ScrollRestoration } from "react-router-dom";
 import { produce } from "immer";
 import { Button, Navbar, useAlert as useAlert } from "../components";
 import { useStore } from "../store";
-import { getUser, signInAsGuest, signInWithGoogle } from "../helpers";
+import { getUser, signInAsGuest, signInWithGoogle, useIsOffline } from "../helpers";
 
 export const RootPage = () => {
     const [store, setStore] = useStore();
@@ -32,6 +32,15 @@ export const RootPage = () => {
             }
         })();
     }, [store.user]);
+
+    const offline = useIsOffline();
+    useEffect(() => {
+        setStore(
+            produce((store) => {
+                store.offline = offline;
+            }),
+        );
+    }, [offline]);
 
     return (
         <div className="w-screen flex flex-col items-stretch">

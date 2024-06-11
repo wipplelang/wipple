@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useStore } from "../store";
-import { Button, Skeleton, useAlert } from ".";
+import { Button, Skeleton, Tooltip, useAlert } from ".";
 import { signInWithGoogle, signOut } from "../helpers";
 import { produce } from "immer";
 import { MaterialSymbol } from "react-material-symbols";
@@ -40,7 +40,7 @@ export const useNavbar = () => useContext(NavbarContext);
 
 export const Navbar = () => {
     const location = useLocation();
-    const isHome = location.pathname === "/playground/";
+    const isHome = /^\/playground\/?$/.test(location.pathname);
 
     const { primaryActions, secondaryActions } = useNavbar();
     const { displayAlert } = useAlert();
@@ -83,6 +83,15 @@ export const Navbar = () => {
 
             <div className="flex flex-row items-center gap-4">
                 {secondaryActions}
+
+                {store.offline ?? true ? (
+                    <Tooltip description="You're offline.">
+                        <MaterialSymbol
+                            icon="cloud_off"
+                            className="text-3xl text-gray-400 dark:text-gray-600"
+                        />
+                    </Tooltip>
+                ) : null}
 
                 {store.user?.isAnonymous ?? false ? (
                     <Button role="primary" onClick={handleSignIn}>
