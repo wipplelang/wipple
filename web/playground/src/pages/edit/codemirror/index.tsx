@@ -22,7 +22,7 @@ export interface CodeMirrorProps {
     onDrop?: () => void;
     lookUpEnabled: boolean;
     onClickLookUp: (help: Help) => void;
-    help: (position: number, code: string) => Help | undefined;
+    help: (position: number, code: string) => Promise<Help | undefined>;
     onClickAsset: AssetClickHandler;
     readOnly: boolean;
     diagnostics: RenderedDiagnostic[];

@@ -24,8 +24,12 @@ export interface RunOptions {
 }
 
 export interface RunnerRef {
-    help: (position: number, code: string) => Help | undefined;
+    help: (position: number, code: string) => Promise<Help | undefined>;
     format: (code: string) => Promise<string>;
+    describeType: (
+        render: Render,
+        type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
+    ) => Promise<compiler.typecheck_MessageType | null>;
 }
 
 export interface RunnerProps {
@@ -128,7 +132,11 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
             if (!cachedHighlightItems.current && dependencies) {
                 props.render.update(dependencies.interface, dependencies.libraries, null);
-                const highlightItems = getHighlightItems(dependencies.interface, props.render);
+
+                const highlightItems = await getHighlightItems(
+                    dependencies.interface,
+                    props.render,
+                );
                 cachedHighlightItems.current = highlightItems;
                 props.onChangeHighlightItems(highlightItems);
             }
@@ -163,10 +171,14 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
             );
 
             if (compileResult.diagnostics.length > 0) {
-                const renderedDiagnostics = compileResult.diagnostics.flatMap((diagnostic) => {
-                    const rendered = props.render.renderDiagnostic(diagnostic);
-                    return rendered ? [rendered] : [];
-                });
+                const renderedDiagnostics = (
+                    await Promise.all(
+                        compileResult.diagnostics.map(async (diagnostic) => {
+                            const rendered = await props.render.renderDiagnostic(diagnostic);
+                            return rendered ? [rendered] : [];
+                        }),
+                    )
+                ).flatMap((diagnostics) => diagnostics);
 
                 props.onChangeDiagnostics(renderedDiagnostics);
 
@@ -345,7 +357,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     }, [run]);
 
     useImperativeHandle(ref, () => ({
-        help: (position: number, code: string): Help | undefined => {
+        help: async (position: number, code: string): Promise<Help | undefined> => {
             const helpFromDocumentation = (documentation: {
                 name: string;
                 declaration: string | undefined;
@@ -371,22 +383,23 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 });
             }
 
-            const declarationPath = props.render.getPathAtCursor("playground", position);
+            const declarationPath = await props.render.getPathAtCursor("playground", position);
             if (!declarationPath) {
                 return undefined;
             }
 
-            const declaration = props.render.getDeclarationFromPath(declarationPath.item);
+            const declaration = await props.render.getDeclarationFromPath(declarationPath.item);
             if (!declaration) {
                 return undefined;
             }
 
-            const documentation = props.render.renderDocumentation(declaration);
+            const documentation = await props.render.renderDocumentation(declaration);
             if (!documentation) {
                 return undefined;
             }
 
-            const declarationString = props.render.renderDeclaration(declaration) ?? undefined;
+            const declarationString =
+                (await props.render.renderDeclaration(declaration)) ?? undefined;
 
             return helpFromDocumentation({
                 name: declaration.item.name ?? code,
@@ -417,6 +430,33 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
             compilerWorker.terminate();
 
             return formatted;
+        },
+        describeType: async (render, type) => {
+            const compilerWorker = new CompilerWorker({ name: `compiler-${id}-describeType` });
+
+            const message = await new Promise<compiler.typecheck_MessageType>((resolve) => {
+                compilerWorker.onmessage = async (event) => {
+                    const { type } = event.data;
+                    switch (type) {
+                        case "completion": {
+                            resolve(event.data.message);
+                            break;
+                        }
+                        default:
+                            throw new Error(`unsupported message: ${type}`);
+                    }
+                };
+
+                compilerWorker.postMessage({
+                    type: "describeType",
+                    item: type,
+                    interface: render.interface,
+                });
+            });
+
+            compilerWorker.terminate();
+
+            return message;
         },
     }));
 
@@ -596,10 +636,10 @@ const fetchBuiltinsHelp = async (): Promise<Record<string, any>> =>
         (response) => response.json(),
     );
 
-const getHighlightItems = (
+const getHighlightItems = async (
     interface_: compiler.Interface,
     render: Render,
-): Record<string, RenderedHighlight> => {
+): Promise<Record<string, RenderedHighlight>> => {
     const highlightItems: Record<string, RenderedHighlight> = {};
     for (const [name, declarationPaths] of Object.entries(interface_.topLevel)) {
         if (declarationPaths.length > 1) {
@@ -607,12 +647,12 @@ const getHighlightItems = (
         }
 
         for (const declarationPath of declarationPaths) {
-            const declaration = render.getDeclarationFromPath(declarationPath.item);
+            const declaration = await render.getDeclarationFromPath(declarationPath.item);
             if (!declaration) {
                 continue;
             }
 
-            const highlight = render.renderHighlight(declaration);
+            const highlight = await render.renderHighlight(declaration);
             if (highlight) {
                 highlightItems[name] = highlight;
                 break;

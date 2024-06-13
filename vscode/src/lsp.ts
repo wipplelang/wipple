@@ -20,7 +20,26 @@ import builtinsHelp from "../../library/help/builtins.json";
 
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
-const render = new Render();
+const render = new Render({
+    describeType: async (render, type) => {
+        const result = compiler.resolveAttributeLikeTrait(
+            "describe-type",
+            type,
+            1,
+            render.interface!,
+        );
+
+        if (result) {
+            const [description] = result;
+            if (description.item.type === "message") {
+                return description.item.value;
+            }
+        }
+
+        return null;
+    },
+});
+
 let diagnostics: RenderedDiagnostic[] = [];
 
 const connection = createConnection(ProposedFeatures.all);

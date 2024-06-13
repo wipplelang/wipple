@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import _ from "lodash";
-import { compile, link } from "wipple-compiler";
+import { compile, link, resolveAttributeLikeTrait } from "wipple-compiler";
 import { evaluate, InterpreterError } from "wipple-interpreter";
 import { Render } from "wipple-render";
 
@@ -59,31 +59,47 @@ test(path.basename(file), async () => {
         true,
     );
 
-    const render = new Render();
-    render.update(compileResult.interface, [baseLibrary, compileResult.library], null);
+    const render = new Render({
+        describeType: async (render, type) => {
+            const result = resolveAttributeLikeTrait("describe-type", type, 1, render.interface);
+
+            if (result) {
+                const [description] = result;
+                if (description.item.type === "message") {
+                    return description.item.value;
+                }
+            }
+
+            return null;
+        },
+    });
+
+    await render.update(compileResult.interface, [baseLibrary, compileResult.library], null);
 
     let compiled = true;
     let compiledWithWarnings = false;
     const renderedDiagnostics = _.uniq(
-        compileResult.diagnostics.map((diagnostic) => {
-            const renderedDiagnostic = render.renderDiagnostic(diagnostic);
-            if (!renderedDiagnostic) {
-                throw new Error(`could not render diagnostic: ${diagnostic}`);
-            }
+        await Promise.all(
+            compileResult.diagnostics.map(async (diagnostic) => {
+                const renderedDiagnostic = await render.renderDiagnostic(diagnostic);
+                if (!renderedDiagnostic) {
+                    throw new Error(`could not render diagnostic: ${diagnostic}`);
+                }
 
-            switch (renderedDiagnostic.severity) {
-                case "error":
-                    compiled = false;
-                    break;
-                case "warning":
-                    compiledWithWarnings = true;
-                    break;
-                default:
-                    break;
-            }
+                switch (renderedDiagnostic.severity) {
+                    case "error":
+                        compiled = false;
+                        break;
+                    case "warning":
+                        compiledWithWarnings = true;
+                        break;
+                    default:
+                        break;
+                }
 
-            return render.renderDiagnosticToDebugString(renderedDiagnostic);
-        }),
+                return render.renderDiagnosticToDebugString(renderedDiagnostic);
+            }),
+        ),
     );
 
     renderedDiagnostics.sort();

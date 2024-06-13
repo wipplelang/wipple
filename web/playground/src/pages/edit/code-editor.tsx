@@ -82,7 +82,19 @@ export function CodeEditor<Settings>(props: {
 
     const codeMirrorRef = useRef<CodeMirrorRef>(null);
     const runnerRef = useRef<RunnerRef>(null);
-    const render = useMemo(() => new Render(), []);
+    const render = useMemo(
+        () =>
+            new Render({
+                describeType: async (render, type) => {
+                    if (!runnerRef.current) {
+                        return null;
+                    }
+
+                    return runnerRef.current.describeType(render, type);
+                },
+            }),
+        [],
+    );
 
     const windowSize = useWindowSize();
 

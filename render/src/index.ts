@@ -1,4 +1,4 @@
-import * as compiler from "wipple-compiler";
+import type * as compiler from "wipple-compiler";
 import { LinesAndColumns, SourceLocation } from "lines-and-columns";
 
 export type AnyDeclaration = { name: string | null; path: compiler.lower_Path } & (
@@ -61,18 +61,27 @@ export interface RenderedSuggestion {
 const keywords = ["do", "when", "type", "trait", "instance", "intrinsic", "infer", "default"];
 const operators = ["as", "to", "by", "is", "and", "or"];
 
+export interface RenderConfiguration {
+    describeType: (
+        render: Render,
+        type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
+    ) => Promise<compiler.typecheck_MessageType | null>;
+}
+
 export class Render {
     private files: Record<string, compiler.File & { linesAndColumns: LinesAndColumns }> = {};
     private declarations: compiler.WithInfo<compiler.Info, AnyDeclaration>[] = [];
-    private interface: compiler.Interface | null = null;
-    private libraries: compiler.linker_UnlinkedLibrary[] = [];
-    private ide: compiler.Ide | null = null;
+    public interface: compiler.Interface | null = null;
+    public libraries: compiler.linker_UnlinkedLibrary[] = [];
+    public ide: compiler.Ide | null = null;
 
-    update(
+    constructor(public configuration: RenderConfiguration) {}
+
+    async update(
         interface_: compiler.Interface,
         libraries: compiler.linker_UnlinkedLibrary[],
         ide: compiler.Ide | null,
-    ): void {
+    ): Promise<void> {
         this.files = {};
         for (const file of interface_.files) {
             this.files[file.path] = { ...file, linesAndColumns: new LinesAndColumns(file.code) };
@@ -100,9 +109,9 @@ export class Render {
         this.ide = ide;
     }
 
-    getDeclarationFromPath(
+    async getDeclarationFromPath(
         path: compiler.lower_Path,
-    ): compiler.WithInfo<compiler.Info, AnyDeclaration> | null {
+    ): Promise<compiler.WithInfo<compiler.Info, AnyDeclaration> | null> {
         for (const declaration of this.declarations) {
             if (declaration.item.path === path) {
                 return declaration;
@@ -112,10 +121,10 @@ export class Render {
         return null;
     }
 
-    getDeclarationFromInfo(
+    async getDeclarationFromInfo(
         info: compiler.Info,
         between: boolean,
-    ): compiler.WithInfo<compiler.Info, AnyDeclaration> | null {
+    ): Promise<compiler.WithInfo<compiler.Info, AnyDeclaration> | null> {
         for (const declaration of this.declarations) {
             if (this.compareInfo(declaration.info, info, between)) {
                 return declaration;
@@ -125,9 +134,9 @@ export class Render {
         return null;
     }
 
-    renderSourceLocation(
+    async renderSourceLocation(
         value: compiler.WithInfo<compiler.Info, unknown>,
-    ): RenderedSourceLocation | null {
+    ): Promise<RenderedSourceLocation | null> {
         const file = this.files[value.info.location.path];
         if (!file) {
             return null;
@@ -151,8 +160,8 @@ export class Render {
         };
     }
 
-    renderCode(value: compiler.WithInfo<compiler.Info, unknown>): string | null {
-        const renderedSourceLocation = this.renderSourceLocation(value);
+    async renderCode(value: compiler.WithInfo<compiler.Info, unknown>): Promise<string | null> {
+        const renderedSourceLocation = await this.renderSourceLocation(value);
         if (!renderedSourceLocation) {
             return null;
         }
@@ -163,12 +172,12 @@ export class Render {
         );
     }
 
-    renderDeclaration(
+    async renderDeclaration(
         declaration: compiler.WithInfo<compiler.Info, AnyDeclaration>,
-    ): string | null {
+    ): Promise<string | null> {
         switch (declaration.item.type) {
             case "type": {
-                const typeFunction = this.renderTypeFunction(
+                const typeFunction = await this.renderTypeFunction(
                     declaration.item.declaration.parameters,
                     [],
                     { kind: "arrow" },
@@ -177,7 +186,7 @@ export class Render {
                 return `${declaration.item.name} : ${typeFunction}type`;
             }
             case "trait": {
-                const typeFunction = this.renderTypeFunction(
+                const typeFunction = await this.renderTypeFunction(
                     declaration.item.declaration.parameters,
                     [],
                     { kind: "arrow" },
@@ -193,13 +202,13 @@ export class Render {
                     declaration.item.declaration.parameters.length > 0 ||
                     declaration.item.declaration.bounds.length > 0
                 ) {
-                    const typeFunction = this.renderTypeFunction(
+                    const typeFunction = await this.renderTypeFunction(
                         declaration.item.declaration.parameters,
                         declaration.item.declaration.bounds,
                         { kind: "arrow" },
                     );
 
-                    const type = this.renderType(
+                    const type = await this.renderType(
                         declaration.item.declaration.type,
                         true,
                         false,
@@ -208,7 +217,7 @@ export class Render {
 
                     return `${declaration.item.name} :: ${typeFunction}${type}`;
                 } else {
-                    const type = this.renderType(
+                    const type = await this.renderType(
                         declaration.item.declaration.type,
                         true,
                         false,
@@ -218,13 +227,13 @@ export class Render {
                 }
             }
             case "instance": {
-                const typeFunction = this.renderTypeFunction(
+                const typeFunction = await this.renderTypeFunction(
                     declaration.item.declaration.parameters,
                     declaration.item.declaration.bounds,
                     { kind: "arrow" },
                 );
 
-                const instance = this.renderInstance(declaration.item.declaration.instance);
+                const instance = await this.renderInstance(declaration.item.declaration.instance);
 
                 return `${typeFunction}instance ${instance}`;
             }
@@ -234,13 +243,16 @@ export class Render {
         }
     }
 
-    renderPattern(pattern: compiler.exhaustiveness_Pattern, isTopLevel: boolean): string {
+    async renderPattern(
+        pattern: compiler.exhaustiveness_Pattern,
+        isTopLevel: boolean,
+    ): Promise<string> {
         switch (pattern.type) {
             case "constructor": {
                 const [constructor, values] = pattern.value;
                 switch (constructor.type) {
                     case "variant": {
-                        const declaration = this.getDeclarationFromPath(constructor.value);
+                        const declaration = await this.getDeclarationFromPath(constructor.value);
                         if (!declaration) {
                             return "<unknown>";
                         }
@@ -250,9 +262,13 @@ export class Render {
                         const rendered =
                             values.length === 0
                                 ? name
-                                : `${name} ${values
-                                      .map((pattern) => this.renderPattern(pattern, false))
-                                      .join(" ")}`;
+                                : `${name} ${(
+                                      await Promise.all(
+                                          values.map((pattern) =>
+                                              this.renderPattern(pattern, false),
+                                          ),
+                                      )
+                                  ).join(" ")}`;
 
                         return isTopLevel || values.length === 0 ? rendered : `(${rendered})`;
                     }
@@ -261,10 +277,12 @@ export class Render {
                             values.length === 0
                                 ? "()"
                                 : values.length === 1
-                                ? `${this.renderPattern(values[0], isTopLevel)} ;`
-                                : `${values
-                                      .map((value) => this.renderPattern(value, false))
-                                      .join(" ; ")}`;
+                                ? `${await this.renderPattern(values[0], isTopLevel)} ;`
+                                : `${(
+                                      await Promise.all(
+                                          values.map((value) => this.renderPattern(value, false)),
+                                      )
+                                  ).join(" ; ")}`;
 
                         return isTopLevel || values.length === 0 ? rendered : `(${rendered})`;
                     }
@@ -272,12 +290,12 @@ export class Render {
                         return "{ ... }";
                     }
                     case "wrapper": {
-                        const declaration = this.getDeclarationFromPath(constructor.value);
+                        const declaration = await this.getDeclarationFromPath(constructor.value);
                         if (!declaration) {
                             return "<unknown>";
                         }
 
-                        const rendered = `${declaration.item.name} ${this.renderPattern(
+                        const rendered = `${declaration.item.name} ${await this.renderPattern(
                             values[0],
                             false,
                         )}`;
@@ -304,25 +322,17 @@ export class Render {
         }
     }
 
-    renderType(
+    async renderType(
         type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>,
         isTopLevel: boolean,
         describe: boolean,
         renderAsCode: boolean,
-    ): string {
+    ): Promise<string> {
         if (isTopLevel && describe && this.interface) {
-            const result = compiler.resolveAttributeLikeTrait(
-                "describe-type",
-                type,
-                1,
-                this.interface,
-            );
+            const message = await this.configuration.describeType(this, type);
 
-            if (result) {
-                const [description] = result;
-                if (description.item.type === "message") {
-                    return this.renderTypeLevelText(description.item.value, false);
-                }
+            if (message) {
+                return await this.renderTypeLevelText(message, false);
             }
         }
 
@@ -404,7 +414,7 @@ export class Render {
         return renderAsCode ? `\`${rendered}\`` : rendered;
     }
 
-    renderTypeFunction(
+    async renderTypeFunction(
         parameters: compiler.lower_Path[],
         bounds: compiler.WithInfo<compiler.Info, compiler.typecheck_Instance>[],
         format:
@@ -413,7 +423,7 @@ export class Render {
                   kind: "description";
                   type: compiler.WithInfo<compiler.Info, compiler.typecheck_Type>;
               },
-    ): string {
+    ): Promise<string> {
         switch (format.kind) {
             case "arrow": {
                 if (parameters.length === 0) {
@@ -424,9 +434,11 @@ export class Render {
                     .map((parameter) => this.nameForPath(parameter))
                     .join(" ");
 
-                let renderedBounds = bounds
-                    .map((bound) => `${this.renderInstance(bound)}`)
-                    .join(" ");
+                let renderedBounds = (
+                    await Promise.all(
+                        bounds.map(async (bound) => `${await this.renderInstance(bound)}`),
+                    )
+                ).join(" ");
 
                 if (renderedBounds) {
                     renderedBounds = ` where ${renderedBounds}`;
@@ -435,7 +447,7 @@ export class Render {
                 return `${renderedParameters}${renderedBounds} => `;
             }
             case "description": {
-                const renderedType = this.renderType(format.type, true, false, true);
+                const renderedType = await this.renderType(format.type, true, false, true);
 
                 switch (parameters.length) {
                     case 0: {
@@ -449,7 +461,7 @@ export class Render {
                     default: {
                         const last = parameters.pop()!;
 
-                        return `${this.renderType(
+                        return `${await this.renderType(
                             format.type,
                             true,
                             false,
@@ -466,22 +478,24 @@ export class Render {
         }
     }
 
-    renderInstance(
+    async renderInstance(
         instance: compiler.WithInfo<compiler.Info, compiler.typecheck_Instance>,
-    ): string {
+    ): Promise<string> {
         const trait = this.nameForPath(instance.item.trait);
 
-        const parameters = instance.item.parameters
-            .map((type) => this.renderType(type, false, false, false))
-            .join(" ");
+        const parameters = (
+            await Promise.all(
+                instance.item.parameters.map((type) => this.renderType(type, false, false, false)),
+            )
+        ).join(" ");
 
         return parameters.length === 0 ? trait : `(${trait} ${parameters})`;
     }
 
-    renderDiagnostic(
+    async renderDiagnostic(
         diagnostic: compiler.WithInfo<compiler.Info, compiler.Diagnostic>,
-    ): RenderedDiagnostic | null {
-        const renderedSourceLocation = this.renderSourceLocation(diagnostic) ?? {
+    ): Promise<RenderedDiagnostic | null> {
+        const renderedSourceLocation = (await this.renderSourceLocation(diagnostic)) ?? {
             path: diagnostic.info.location.path,
             visiblePath: diagnostic.info.location.visiblePath,
             start: { line: 0, column: 0, index: 0 },
@@ -508,16 +522,16 @@ export class Render {
 
                         const { expected, found } = diagnostic.item.value.value;
                         if (expected && found) {
-                            message = `expected ${this.renderToken(
+                            message = `expected ${await this.renderToken(
                                 expected,
                                 "a",
-                            )} here, but found ${this.renderToken(found, "a")}`;
+                            )} here, but found ${await this.renderToken(found, "a")}`;
                         } else if (expected && !found) {
-                            message = `expected ${this.renderToken(expected, "a")} here`;
+                            message = `expected ${await this.renderToken(expected, "a")} here`;
                         } else if (!expected && found) {
-                            message = `unexpected ${this.renderToken(found, "a")} here`;
+                            message = `unexpected ${await this.renderToken(found, "a")} here`;
                             fix = {
-                                message: `remove ${this.renderToken(found, "this")}`,
+                                message: `remove ${await this.renderToken(found, "this")}`,
                                 replacement: "",
                             };
                         } else {
@@ -537,7 +551,7 @@ export class Render {
                 const { expected, stack, direction } = diagnostic.item.value;
                 const context =
                     stack.length > 1
-                        ? ` while reading this ${this.renderSyntaxKind(
+                        ? ` while reading this ${await this.renderSyntaxKind(
                               stack[stack.length - 2].item,
                           )}`
                         : "";
@@ -545,21 +559,23 @@ export class Render {
                 switch (direction) {
                     case "before": {
                         severity = "error";
-                        message = `expected ${this.renderSyntaxKind(
+                        message = `expected ${await this.renderSyntaxKind(
                             expected,
                         )} before this${context}`;
                         break;
                     }
                     case "after": {
                         severity = "error";
-                        message = `expected ${this.renderSyntaxKind(
+                        message = `expected ${await this.renderSyntaxKind(
                             expected,
                         )} after this${context}`;
                         break;
                     }
                     case null: {
                         severity = "error";
-                        message = `expected ${this.renderSyntaxKind(expected)} here${context}`;
+                        message = `expected ${await this.renderSyntaxKind(
+                            expected,
+                        )} here${context}`;
                         break;
                     }
                     default:
@@ -704,7 +720,7 @@ export class Render {
                     case "unknownType": {
                         severity = "error";
 
-                        const renderedType = this.renderType(
+                        const renderedType = await this.renderType(
                             { info: diagnostic.info, item: diagnostic.item.value.value },
                             true,
                             false,
@@ -729,14 +745,14 @@ export class Render {
 
                         severity = "error";
 
-                        let expectedMessage = this.renderType(expected, true, true, true);
-                        let actualMessage = this.renderType(actual, true, true, true);
+                        let expectedMessage = await this.renderType(expected, true, true, true);
+                        let actualMessage = await this.renderType(actual, true, true, true);
 
                         // If the type descriptions are equal, try rendering the
                         // actual type by setting `describe` to false
                         if (expectedMessage === actualMessage) {
-                            expectedMessage = this.renderType(expected, true, false, true);
-                            actualMessage = this.renderType(actual, true, false, true);
+                            expectedMessage = await this.renderType(expected, true, false, true);
+                            actualMessage = await this.renderType(actual, true, false, true);
                         }
 
                         message = `expected ${expectedMessage} here, but found ${actualMessage}`;
@@ -744,10 +760,12 @@ export class Render {
                         break;
                     }
                     case "missingInputs": {
-                        const code = this.renderCode(diagnostic);
+                        const code = await this.renderCode(diagnostic);
 
-                        const inputs = diagnostic.item.value.value.map((type) =>
-                            this.renderType(type, true, true, true),
+                        const inputs = await Promise.all(
+                            diagnostic.item.value.value.map((type) =>
+                                this.renderType(type, true, true, true),
+                            ),
                         );
 
                         severity = "error";
@@ -770,14 +788,14 @@ export class Render {
                         break;
                     }
                     case "extraInput": {
-                        const code = this.renderCode(diagnostic);
+                        const code = await this.renderCode(diagnostic);
                         severity = "error";
                         message = `extra input provided to \`${code}\``;
                         break;
                     }
                     case "unresolvedInstance": {
-                        const code = this.renderCode(diagnostic);
-                        const renderedInstance = this.renderInstance({
+                        const code = await this.renderCode(diagnostic);
+                        const renderedInstance = await this.renderInstance({
                             info: diagnostic.info,
                             item: diagnostic.item.value.value.instance,
                         });
@@ -786,7 +804,7 @@ export class Render {
                         break;
                     }
                     case "traitHasNoValue": {
-                        const code = this.renderCode(diagnostic);
+                        const code = await this.renderCode(diagnostic);
                         severity = "error";
                         message = `\`${code}\` can't be used as a value`;
                         break;
@@ -802,7 +820,7 @@ export class Render {
                         break;
                     }
                     case "notAStructure": {
-                        const renderedType = this.renderType(
+                        const renderedType = await this.renderType(
                             diagnostic.item.value.value,
                             true,
                             true,
@@ -840,10 +858,17 @@ export class Render {
                             patterns.length === 0
                                 ? last.type === "binding"
                                     ? "missing variable to handle remaining patterns"
-                                    : `this code doesn't handle ${this.renderPattern(last, true)}`
-                                : `this code doesn't handle ${patterns
-                                      .map((pattern) => this.renderPattern(pattern, true))
-                                      .join(", ")} or ${this.renderPattern(last, true)}`;
+                                    : `this code doesn't handle ${await this.renderPattern(
+                                          last,
+                                          true,
+                                      )}`
+                                : `this code doesn't handle ${(
+                                      await Promise.all(
+                                          patterns.map((pattern) =>
+                                              this.renderPattern(pattern, true),
+                                          ),
+                                      )
+                                  ).join(", ")} or ${await this.renderPattern(last, true)}`;
                         break;
                     }
                     case "extraPattern": {
@@ -858,18 +883,18 @@ export class Render {
                     case "custom": {
                         severity = "error";
 
-                        message = this.renderTypeLevelText(
+                        message = await this.renderTypeLevelText(
                             diagnostic.item.value.value.message,
                             true,
                         );
 
                         if (diagnostic.item.value.value.fix) {
                             fix = {
-                                message: this.renderTypeLevelText(
+                                message: await this.renderTypeLevelText(
                                     diagnostic.item.value.value.fix[0],
                                     true,
                                 ),
-                                replacement: this.renderTypeLevelText(
+                                replacement: await this.renderTypeLevelText(
                                     diagnostic.item.value.value.fix[1],
                                     false,
                                 ),
@@ -903,7 +928,10 @@ export class Render {
         };
     }
 
-    renderTypeLevelText(text: compiler.typecheck_MessageType, renderAsCode: boolean): string {
+    async renderTypeLevelText(
+        text: compiler.typecheck_MessageType,
+        renderAsCode: boolean,
+    ): Promise<string> {
         const renderSegmentsAsCode =
             (text.segments.length === 0
                 ? text.trailing.startsWith("`")
@@ -913,9 +941,10 @@ export class Render {
         for (const segment of text.segments) {
             const code =
                 renderSegmentsAsCode || segment.text.slice(segment.text.length - 1) === "`"
-                    ? this.renderCode(segment.type)
+                    ? await this.renderCode(segment.type)
                     : null;
-            message += segment.text + (code ?? this.renderType(segment.type, true, true, true));
+            message +=
+                segment.text + (code ?? (await this.renderType(segment.type, true, true, true)));
         }
         message += text.trailing;
 
@@ -926,7 +955,7 @@ export class Render {
         return message;
     }
 
-    renderTypeRole(role: compiler.typecheck_Role): string {
+    async renderTypeRole(role: compiler.typecheck_Role): Promise<string> {
         switch (role) {
             case "pattern":
                 return "pattern";
@@ -963,7 +992,7 @@ export class Render {
         }
     }
 
-    renderToken(token: compiler.Token, prefix: "a" | "this"): string {
+    async renderToken(token: compiler.Token, prefix: "a" | "this"): Promise<string> {
         const altPrefix = prefix === "a" ? "the" : "this";
 
         switch (token.type) {
@@ -1000,7 +1029,7 @@ export class Render {
         }
     }
 
-    renderSyntaxKind(kind: compiler.syntax_SyntaxKind): string {
+    async renderSyntaxKind(kind: compiler.syntax_SyntaxKind): Promise<string> {
         switch (kind) {
             case "number":
                 return "number";
@@ -1135,17 +1164,17 @@ export class Render {
         }
     }
 
-    renderDiagnosticToDebugString(diagnostic: RenderedDiagnostic): string {
+    async renderDiagnosticToDebugString(diagnostic: RenderedDiagnostic): Promise<string> {
         const line = diagnostic.location.start.line + 1;
         const column = diagnostic.location.start.column + 1;
 
         return `${diagnostic.location.visiblePath}:${line}:${column}: ${diagnostic.severity}: ${diagnostic.message}`;
     }
 
-    renderDocumentation(
+    async renderDocumentation(
         declaration: compiler.WithInfo<compiler.Info, AnyDeclaration>,
-    ): RenderedDocumentation | null {
-        const renderedSourceLocation = this.renderSourceLocation(declaration);
+    ): Promise<RenderedDocumentation | null> {
+        const renderedSourceLocation = await this.renderSourceLocation(declaration);
         if (!renderedSourceLocation) {
             return null;
         }
@@ -1197,12 +1226,14 @@ export class Render {
         return { docs, example };
     }
 
-    renderHighlight(value: compiler.WithInfo<compiler.Info, unknown>): RenderedHighlight | null {
+    async renderHighlight(
+        value: compiler.WithInfo<compiler.Info, unknown>,
+    ): Promise<RenderedHighlight | null> {
         if (!this.interface) {
             return null;
         }
 
-        const declaration = this.getDeclarationFromInfo(value.info, false);
+        const declaration = await this.getDeclarationFromInfo(value.info, false);
 
         if (!declaration) {
             return null;
@@ -1239,7 +1270,7 @@ export class Render {
         return options;
     }
 
-    renderSuggestionsAtCursor(path: string, index: number): RenderedSuggestion[] {
+    async renderSuggestionsAtCursor(path: string, index: number): Promise<RenderedSuggestion[]> {
         const keywordSuggestions = keywords.map(
             (keyword): RenderedSuggestion => ({
                 kind: "keyword",
@@ -1278,25 +1309,31 @@ export class Render {
             );
 
         const getSuggestions = (kind: Exclude<AnyDeclaration["type"], "instance">) =>
-            getDeclarations(kind).map(
-                ([path, declaration]): RenderedSuggestion => ({
-                    kind,
-                    name: this.nameForPath(path),
-                    code: this.renderDeclaration(declaration),
-                    docs: this.renderDocumentation(declaration),
-                }),
+            Promise.all(
+                getDeclarations(kind).map(
+                    async ([path, declaration]): Promise<RenderedSuggestion> => ({
+                        kind,
+                        name: this.nameForPath(path),
+                        code: await this.renderDeclaration(declaration),
+                        docs: await this.renderDocumentation(declaration),
+                    }),
+                ),
             );
 
-        const typeSuggestions = getSuggestions("type");
-        const traitSuggestions = getSuggestions("trait");
-        const constantSuggestions = getSuggestions("constant");
-        const localSuggestions = this.getLocalsAtCursor(path, index).map(
-            (declaration): RenderedSuggestion => ({
-                kind: declaration.item.type as "variable" | "typeParameter",
-                name: declaration.item.name!,
-                code: this.renderDeclaration(declaration),
-                docs: null, // locals cannot have documentation
-            }),
+        const typeSuggestions = await getSuggestions("type");
+        const traitSuggestions = await getSuggestions("trait");
+        const constantSuggestions = await getSuggestions("constant");
+        const localSuggestions = await Promise.all(
+            (
+                await this.getLocalsAtCursor(path, index)
+            ).map(
+                async (declaration): Promise<RenderedSuggestion> => ({
+                    kind: declaration.item.type as "variable" | "typeParameter",
+                    name: declaration.item.name!,
+                    code: await this.renderDeclaration(declaration),
+                    docs: null, // locals cannot have documentation
+                }),
+            ),
         );
 
         return [
@@ -1309,7 +1346,7 @@ export class Render {
         ];
     }
 
-    private getLocalsAtCursor(path: string, index: number) {
+    private async getLocalsAtCursor(path: string, index: number) {
         const expressionTree = this.getExpressionTreeAtCursor(path, index);
         if (!expressionTree) {
             return [];
@@ -1319,10 +1356,12 @@ export class Render {
 
         const info = expressionTree[0].info;
         if (info) {
-            const declaration = this.getDeclarationFromInfo(info, true);
+            const declaration = await this.getDeclarationFromInfo(info, true);
             if (declaration?.item.type === "constant" || declaration?.item.type === "instance") {
                 for (const typeParameter of declaration.item.declaration.parameters) {
-                    const typeParameterDeclaration = this.getDeclarationFromPath(typeParameter);
+                    const typeParameterDeclaration = await this.getDeclarationFromPath(
+                        typeParameter,
+                    );
                     if (typeParameterDeclaration?.item.name) {
                         locals.push(typeParameterDeclaration);
                     }
@@ -1334,7 +1373,7 @@ export class Render {
             if (expression.item.kind.type === "variable") {
                 const [_name, path] = expression.item.kind.value;
 
-                const declaration = this.getDeclarationFromPath(path);
+                const declaration = await this.getDeclarationFromPath(path);
                 if (!declaration) {
                     continue;
                 }
@@ -1346,10 +1385,10 @@ export class Render {
         return locals;
     }
 
-    getPathAtCursor(
+    async getPathAtCursor(
         path: string,
         index: number,
-    ): compiler.WithInfo<compiler.Info, compiler.lower_Path> | null {
+    ): Promise<compiler.WithInfo<compiler.Info, compiler.lower_Path> | null> {
         if (!this.ide) {
             return null;
         }
@@ -1363,10 +1402,10 @@ export class Render {
         return null;
     }
 
-    getExpressionAtCursor(
+    async getExpressionAtCursor(
         path: string,
         index: number,
-    ): compiler.WithInfo<compiler.Info, compiler.typecheck_TypedExpression> | null {
+    ): Promise<compiler.WithInfo<compiler.Info, compiler.typecheck_TypedExpression> | null> {
         const expressionTree = this.getExpressionTreeAtCursor(path, index);
         if (!expressionTree) {
             return null;

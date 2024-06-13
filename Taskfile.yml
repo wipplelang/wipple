@@ -10,7 +10,9 @@ tasks:
     test:
         run: once
         deps:
-            - compiler:build
+            - task: compiler:build
+              vars:
+                  WIPPLE_COMPILER_WASM_OPTIMIZE: "1"
             - interpreter:build
             - render:build
             - base:compile
@@ -127,7 +129,12 @@ tasks:
         run: once
         dir: web/playground
         cmds:
-            - WIPPLE_COMPILER_WASM_OPTIMIZE=1 task cli:build
+            - |
+                if ! [[ -z $CI ]]; then
+                    WIPPLE_COMPILER_WASM_OPTIMIZE=1
+                fi
+
+                task cli:build
             - task base:compile
             - wipple compile ../../library/base/*.wipple --interface ../../.wipple/base.wippleinterface --library ../../.wipple/base.wipplelibrary
             - wipple bundle-for-playground ../../library/base/*.wipple --output ./public/library/base.wipplebundle
@@ -205,6 +212,8 @@ tasks:
         dir: compiler
         cmds:
             - npm run build
+        env:
+            WIPPLE_COMPILER_WASM_OPTIMIZE: "{{.WIPPLE_COMPILER_WASM_OPTIMIZE}}"
 
     interpreter:install-dependencies:
         run: once

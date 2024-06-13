@@ -10,7 +10,7 @@ import {
     StateEffect,
     StateField,
 } from "@codemirror/state";
-import { SyntaxNode, Tree } from "@lezer/common";
+import { SyntaxNode, SyntaxNodeRef, Tree } from "@lezer/common";
 import { classHighlighter } from "@lezer/highlight";
 import { Markdown, Tooltip } from "../../../components";
 import { wippleTags } from "./language";
@@ -25,7 +25,7 @@ export const displayHelp = new Compartment();
 export const displayHelpFromEnabled = (
     enabled: boolean,
     theme: ThemeConfig,
-    help: (position: number, code: string) => Help | undefined,
+    help: (position: number, code: string) => Promise<Help | undefined>,
     highlightItems: Record<string, RenderedHighlight>,
     onClick: (help: Help) => void,
 ): Extension =>
@@ -42,7 +42,7 @@ export const displayHelpFromEnabled = (
 
 interface Config {
     theme: ThemeConfig;
-    help: (position: number, code: string) => Help | undefined;
+    help: (position: number, code: string) => Promise<Help | undefined>;
     onClick: (help: Help) => void;
     highlightItems: Record<string, RenderedHighlight>;
 }
@@ -56,7 +56,7 @@ const helpDecorationsFacet = Facet.define<DecorationSet, DecorationSet>({
 });
 
 const helpDecorations = StateField.define<DecorationSet>({
-    create: (state) => computeHelpDecorations(syntaxTree(state), state),
+    create: () => Decoration.none,
     update: (value, update) => {
         let newValue = value.map(update.changes);
         for (const effect of update.effects) {
@@ -82,15 +82,21 @@ const helpDecorationsListener = EditorView.updateListener.of((update) => {
         return;
     }
 
-    update.view.dispatch({
-        effects: updateHelpDecorations.of(computeHelpDecorations(tree, update.state)),
-    });
+    async () => {
+        const helpDecorations = await computeHelpDecorations(tree, update.state);
+
+        update.view.dispatch({
+            effects: updateHelpDecorations.of(helpDecorations),
+        });
+    };
 });
 
-const computeHelpDecorations = (syntaxTree: Tree, state: EditorState) => {
+const computeHelpDecorations = async (syntaxTree: Tree, state: EditorState) => {
     const { theme, help, onClick, highlightItems } = state.facet(configFacet);
 
     const decorations: Range<Decoration>[] = [];
+
+    const queue: SyntaxNodeRef[] = [];
     syntaxTree.iterate({
         enter: (node) => {
             const { from, to } = node;
@@ -122,21 +128,28 @@ const computeHelpDecorations = (syntaxTree: Tree, state: EditorState) => {
                 return;
             }
 
-            const highlight = node.type.name === "Name" ? highlightItems[code] : undefined;
-
-            const widget = new HelpWidget(
-                from,
-                to,
-                code,
-                node.node,
-                theme,
-                help(from, code),
-                highlight,
-                onClick,
-            );
-            decorations.push(Decoration.replace({ widget }).range(from, to));
+            queue.push(node);
         },
     });
+
+    for (const { from, to, type, node } of queue) {
+        const code = state.sliceDoc(from, to);
+
+        const highlight = type.name === "Name" ? highlightItems[code] : undefined;
+
+        const widget = new HelpWidget(
+            from,
+            to,
+            code,
+            node,
+            theme,
+            await help(from, code),
+            highlight,
+            onClick,
+        );
+
+        decorations.push(Decoration.replace({ widget }).range(from, to));
+    }
 
     return Decoration.set(decorations, true);
 };

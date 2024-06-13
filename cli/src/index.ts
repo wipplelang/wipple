@@ -328,23 +328,44 @@ const app = subcommands({
 
 run(app, process.argv.slice(2));
 
-const renderDiagnostics = (
+const renderDiagnostics = async (
     diagnostics: compiler.WithInfo<compiler.Info, compiler.Diagnostic>[],
     interface_: compiler.Interface,
 ) => {
-    const render = new Render();
-    render.update(interface_, [], null);
+    const render = new Render({
+        describeType: async (render, type) => {
+            const result = compiler.resolveAttributeLikeTrait(
+                "describe-type",
+                type,
+                1,
+                render.interface!,
+            );
 
-    return diagnostics
-        .flatMap((diagnostic) => {
-            const renderedDiagnostic = render.renderDiagnostic(diagnostic);
-            if (!renderedDiagnostic) {
-                return [];
+            if (result) {
+                const [description] = result;
+                if (description.item.type === "message") {
+                    return description.item.value;
+                }
             }
 
-            return [render.renderDiagnosticToDebugString(renderedDiagnostic)];
-        })
-        .join("\n");
+            return null;
+        },
+    });
+
+    render.update(interface_, [], null);
+
+    return (
+        await Promise.all(
+            diagnostics.flatMap(async (diagnostic) => {
+                const renderedDiagnostic = await render.renderDiagnostic(diagnostic);
+                if (!renderedDiagnostic) {
+                    return [];
+                }
+
+                return [render.renderDiagnosticToDebugString(renderedDiagnostic)];
+            }),
+        )
+    ).join("\n");
 };
 
 const runExecutable = async (
