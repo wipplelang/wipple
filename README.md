@@ -13,6 +13,9 @@
   <a href="https://codecov.io/gh/wipplelang/wipple" >
     <img src="https://codecov.io/gh/wipplelang/wipple/branch/main/graph/badge.svg?token=45CTMYY78V"/>
   </a>
+  <a href="https://app.netlify.com/sites/wipple/deploys">
+    <img src="https://api.netlify.com/api/v1/badges/e72cbb94-f8a4-4e15-8769-11d51bbae200/deploy-status" alt="Netlify Status">
+  </a>
 <p>
 
 Wipple is an educational programming language designed by [Wilson Gramer](https://gramer.dev). With Wipple, you can make art and music, explore math and science, design video games, and more.
