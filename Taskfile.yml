@@ -92,7 +92,8 @@ tasks:
         run: once
         dir: web/docs
         cmds:
-            - cargo install --force mdbook mdbook-template
+            - if ! command -v mdbook; then cargo install --force mdbook; fi
+            - if ! command -v mdbook-template; then cargo install --force mdbook-template; fi
 
     web:docs:prepare:
         run: once
@@ -165,7 +166,7 @@ tasks:
         deps:
             - web:install-dependencies
         cmds:
-            - cargo install --force wasm-pack
+            - if ! command -v wasm-pack; then cargo install --force wasm-pack; fi
 
     cli:build:
         run: once
