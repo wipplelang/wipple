@@ -14,8 +14,6 @@ jobs:
 
             - uses: Swatinem/rust-cache@v2.2.0
               with:
-                  workspaces: |
-                      compiler
                   cache-on-failure: true
 
             - run: task test
