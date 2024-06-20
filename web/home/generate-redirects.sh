@@ -1,5 +1,5 @@
 #!/bin/bash -e
 
-if ! [ -z "$WIPPLE_FIREBASE_AUTH_REDIRECT_URL" ]; then
-    echo "/__/auth/* $WIPPLE_FIREBASE_AUTH_REDIRECT_URL/:splat 200" >> _site/_redirects
+if ! [ -z "$VITE_FIREBASE_AUTH_INIT_JSON" ]; then
+    echo "$VITE_FIREBASE_AUTH_INIT_JSON" > _site/__/firebase/init.json
 fi
