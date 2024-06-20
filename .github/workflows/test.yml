@@ -10,6 +10,11 @@ jobs:
 
             - uses: arduino/setup-task@v1
 
+            - uses: actions/setup-node@v2
+              with:
+                  cache: "npm"
+                  cache-dependency-path: "**/package-lock.json"
+
             - uses: Swatinem/rust-cache@v2.2.0
               with:
                   cache-on-failure: true
