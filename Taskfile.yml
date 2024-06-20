@@ -12,6 +12,12 @@ tasks:
         cmds:
             - cargo test --package=wipple-test -- {{.CLI_ARGS}}
 
+    test-with-coverage:
+        run: once
+        cmds:
+            - RUSTFLAGS="-Cinstrument-coverage -Clink-dead-code" LLVM_PROFILE_FILE="./target/debug/coverage-%p-%m.profraw" cargo test --package=wipple-test -- --test-threads=1 {{.CLI_ARGS}}
+            - task: coverage
+
     coverage:
         run: once
         cmds:
@@ -21,7 +27,7 @@ tasks:
                     cargo install grcov --force
                 fi
             - rm -rf coverage && mkdir -p coverage
-            - grcov . --binary-path target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore \"/*\" -o coverage/lcov.info
+            - grcov . --binary-path target/debug/ -s . -t cobertura --branch --ignore-not-existing --ignore \"/*\" -o coverage/coverage.xml
 
     # doctest:
     #     run: once
