@@ -1,21 +1,18 @@
-import { getDatabase, ref, onValue } from "firebase/database";
 import { useEffect, useState } from "react";
 
 export const useIsOffline = () => {
-    const [offline, setOffline] = useState<boolean>();
+    const [offline, setOffline] = useState(!navigator.onLine);
 
     useEffect(() => {
-        const db = getDatabase();
-        const connectedRef = ref(db, ".info/connected");
+        const handleOffline = () => setOffline(true);
+        const handleOnline = () => setOffline(false);
 
-        const unsubscribe = onValue(connectedRef, (snapshot) => {
-            const connected = snapshot.val() === true;
-            console.log("Connected:", connected);
-            setOffline(!connected);
-        });
+        window.addEventListener("offline", handleOffline);
+        window.addEventListener("online", handleOnline);
 
         return () => {
-            unsubscribe();
+            window.removeEventListener("offline", handleOffline);
+            window.removeEventListener("online", handleOnline);
         };
     }, []);
 
