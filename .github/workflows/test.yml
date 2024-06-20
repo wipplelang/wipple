@@ -16,4 +16,6 @@ jobs:
               with:
                   cache-on-failure: true
 
+            - run: task cli:build
+            - run: task base:compile
             - run: task test
