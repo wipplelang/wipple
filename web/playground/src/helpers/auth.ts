@@ -1,19 +1,14 @@
 import {
     GoogleAuthProvider,
     getAuth,
-    getRedirectResult,
     signInAnonymously,
+    signInWithPopup,
     signInWithRedirect,
 } from "firebase/auth";
 
 export const getUser = async () => {
     const auth = getAuth();
     await auth.authStateReady();
-
-    const redirectResult = await getRedirectResult(auth);
-    if (redirectResult) {
-        auth.updateCurrentUser(redirectResult.user);
-    }
 
     return auth.currentUser;
 };
@@ -31,7 +26,8 @@ export const signInWithGoogle = async () => {
     const auth = getAuth();
 
     try {
-        await signInWithRedirect(auth, provider);
+        const result = await signInWithPopup(auth, provider);
+        auth.updateCurrentUser(result.user);
     } catch (error) {
         console.error(error);
         return undefined;
