@@ -12,6 +12,12 @@ tasks:
         cmds:
             - cargo test --package=wipple-test -- {{.CLI_ARGS}}
 
+    coverage:
+        run: once
+        cmds:
+            - rm -rf coverage && mkdir -p coverage
+            - grcov . --binary-path target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore \"/*\" -o coverage/lcov.info
+
     # doctest:
     #     run: once
     #     cmds:
@@ -145,6 +151,7 @@ tasks:
             - web:playground:bundle
         dir: web/playground
         cmds:
+            - ./web/playground/wasm/build.sh
             - npm run build
 
     base:compile:
@@ -172,4 +179,3 @@ tasks:
         run: once
         cmds:
             - cargo build
-            - ./web/playground/wasm/build.sh

@@ -17,4 +17,11 @@ jobs:
             - run: task install-dependencies
             - run: task cli:build
             - run: task base:compile
+
             - run: task test
+
+            - run: task coverage
+            - uses: codecov/codecov-action@v4.0.1
+              with:
+                  token: ${{ secrets.CODECOV_TOKEN }}
+                  files: ./coverage/lcov.info

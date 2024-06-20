@@ -3,7 +3,7 @@
     "tasks": [
         {
             "label": "Coverage Report",
-            "command": "rm -rf coverage && mkdir -p coverage && grcov . --binary-path target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore \"/*\" -o coverage/lcov.info",
+            "command": "task coverage",
             "type": "shell"
         }
     ]
