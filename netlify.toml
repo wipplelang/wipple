@@ -1,6 +1,6 @@
 [build]
 publish = "web/dist"
-command = "task web:build"
+command = "task install-dependencies && task cli:build && task base:compile && task web:build"
 
 [[headers]]
 for = "/playground/*"
