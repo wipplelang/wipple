@@ -6,6 +6,15 @@
   The Wipple Programming Language
 </h1>
 
+<p align="center">
+  <a href="https://github.com/wipplelang/wipple/actions/workflows/test.yml">
+    <img src="https://github.com/wipplelang/wipple/actions/workflows/test.yml/badge.svg?branch=main" alt=".github/workflows/test.yml">
+  </a>
+  <a href="https://codecov.io/gh/wipplelang/wipple" >
+    <img src="https://codecov.io/gh/wipplelang/wipple/branch/main/graph/badge.svg?token=45CTMYY78V"/>
+  </a>
+<p>
+
 Wipple is an educational programming language designed by [Wilson Gramer](https://gramer.dev). With Wipple, you can make art and music, explore math and science, design video games, and more.
 
 You write Wipple code in the [Wipple Playground](https://wipple.dev/playground), an interactive, collaborative, online coding platform. The playground works on any device with no setup required. With 80+ lessons and guides, there’s something for everyone.
