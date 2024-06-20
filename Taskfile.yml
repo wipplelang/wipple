@@ -166,7 +166,7 @@ tasks:
             - compiler:build
         dir: cli
         cmds:
-            - cargo install --bin wipple --path .
+            - cargo install --bin wipple --path . --force
 
     compiler:build:
         run: once
