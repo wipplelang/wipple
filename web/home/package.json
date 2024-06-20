@@ -2,7 +2,7 @@
     "private": true,
     "scripts": {
         "dev": "concurrently 'npx @11ty/eleventy --serve' 'watch \"npm run tailwind:process\" .'",
-        "build": "eleventy && npm run tailwind:process",
+        "build": "eleventy && npm run tailwind:process && ./generate-redirects.sh",
         "tailwind:process": "npx postcss ./styles/global.css -o ./_site/styles/global.css"
     },
     "devDependencies": {
