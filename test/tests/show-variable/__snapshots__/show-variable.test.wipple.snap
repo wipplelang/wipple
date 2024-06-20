@@ -1,7 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`show-variable.test.wipple 1`] = `
-[
-  "show-variable/show-variable.test.wipple:6:1: error: cannot describe a \`Cannot-Be-Shown\` value",
-]
-`;

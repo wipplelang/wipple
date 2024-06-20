@@ -1,0 +1,8 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics: []
+output:
+  - "Hello, Bob!"
+  - "Hello, world!"

@@ -1,0 +1,7 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics:
+  - "tests/show-variable.test.wipple:6:1: error: cannot describe a `Cannot-Be-Shown` value"
+output: []

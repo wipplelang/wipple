@@ -1,0 +1,9 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics:
+  - "tests/type-span.test.wipple:3:1: error: cannot add a function and a number"
+  - "tests/type-span.test.wipple:4:1: error: can't find `Show`"
+  - "tests/type-span.test.wipple:4:1: error: expected unit here, but found a number"
+output: []

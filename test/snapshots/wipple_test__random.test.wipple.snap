@@ -1,0 +1,10 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics: []
+output:
+  - "0"
+  - "1"
+  - Some 1
+  - None

@@ -76,13 +76,13 @@ export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
 
                     const delta = new Date().valueOf() - startDate;
 
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         if (!audioContext.current) {
-                            props.call(callback, -1);
+                            await callback([-1]);
                             return;
                         }
 
-                        props.call(callback, audioContext.current.currentTime - now);
+                        await callback([audioContext.current.currentTime - now]);
                     }, ms - delta);
 
                     break;

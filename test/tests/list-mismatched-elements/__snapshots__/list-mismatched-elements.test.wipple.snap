@@ -1,8 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`list-mismatched-elements.test.wipple 1`] = `
-[
-  "list-mismatched-elements/list-mismatched-elements.test.wipple:3:15: error: expected a number here, but found a piece of text",
-  "list-mismatched-elements/list-mismatched-elements.test.wipple:3:22: error: expected a number here, but found unit",
-]
-`;

@@ -6,19 +6,5 @@
             "ignore": ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
             "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
         }
-    ],
-    "hosting": {
-        "public": "public",
-        "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-        "rewrites": [
-            {
-                "source": "/playground/library/:file*",
-                "destination": "/playground/library/:file"
-            },
-            {
-                "source": "/playground/**",
-                "destination": "/playground/index.html"
-            }
-        ]
-    }
+    ]
 }

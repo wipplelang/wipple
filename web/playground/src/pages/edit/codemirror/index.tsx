@@ -11,7 +11,6 @@ import { displayHelp, displayHelpFromEnabled } from "./help";
 import { Help } from "../../../models";
 import { diagnostics, diagnosticsFromConfig } from "./diagnostics";
 import { AssetClickHandler, assets, assetsFromConfig } from "./assets";
-import { RenderedDiagnostic, RenderedHighlight } from "wipple-render";
 
 export interface CodeMirrorProps {
     children: string;
@@ -22,11 +21,11 @@ export interface CodeMirrorProps {
     onDrop?: () => void;
     lookUpEnabled: boolean;
     onClickLookUp: (help: Help) => void;
-    help: (position: number, code: string) => Help | undefined;
+    help: (position: number, code: string) => Promise<Help | undefined>;
     onClickAsset: AssetClickHandler;
     readOnly: boolean;
-    diagnostics: RenderedDiagnostic[];
-    highlightItems: Record<string, RenderedHighlight>;
+    diagnostics: any[];
+    highlightItems: Record<string, any>;
     theme: ThemeConfig;
 }
 
@@ -64,8 +63,8 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                             props.theme,
                             props.help,
                             props.highlightItems,
-                            props.onClickLookUp,
-                        ),
+                            props.onClickLookUp
+                        )
                     ),
 
                     diagnostics.of(diagnosticsFromConfig({ diagnostics: props.diagnostics })),
@@ -76,7 +75,7 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                             onClick: props.onClickAsset,
                             highlightItems: props.highlightItems,
                             theme: props.theme,
-                        }),
+                        })
                     ),
 
                     EditorView.lineWrapping,
@@ -92,7 +91,7 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                         editableFromConfig({
                             readOnly: props.readOnly,
                             onDrop: props.onDrop,
-                        }),
+                        })
                     ),
 
                     EditorView.updateListener.of((update) => {
@@ -102,7 +101,7 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
                         if (
                             update.transactions.some((transaction) =>
-                                transaction.isUserEvent("wipple.drop"),
+                                transaction.isUserEvent("wipple.drop")
                             )
                         ) {
                             props.onDrop?.();
@@ -149,7 +148,7 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                 editableFromConfig({
                     readOnly: props.readOnly,
                     onDrop: props.onDrop,
-                }),
+                })
             ),
         });
     }, [props.readOnly, props.onDrop]);
@@ -168,8 +167,8 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                     props.theme,
                     props.help,
                     props.highlightItems,
-                    props.onClickLookUp,
-                ),
+                    props.onClickLookUp
+                )
             ),
         });
     }, [props.lookUpEnabled, props.theme, props.help, props.highlightItems, props.onClickLookUp]);
@@ -177,7 +176,7 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
     useEffect(() => {
         editorView.current!.dispatch({
             effects: diagnostics.reconfigure(
-                diagnosticsFromConfig({ diagnostics: props.diagnostics }),
+                diagnosticsFromConfig({ diagnostics: props.diagnostics })
             ),
         });
     }, [props.diagnostics]);
@@ -190,7 +189,7 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                     onClick: props.onClickAsset,
                     highlightItems: props.highlightItems,
                     theme: props.theme,
-                }),
+                })
             ),
         });
     }, [props.lookUpEnabled, props.onClickAsset, props.highlightItems, props.theme]);
@@ -236,8 +235,8 @@ const dragAndDrop = (readOnly: boolean) => [
                     "_",
                     view.state.sliceDoc(
                         view.state.selection.main.from,
-                        view.state.selection.main.to,
-                    ),
+                        view.state.selection.main.to
+                    )
                 );
 
                 view.dispatch({

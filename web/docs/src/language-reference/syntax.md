@@ -2,4 +2,4 @@
 
 ## Grammar
 
-{{#template ../../../../compiler/target/debug/grammar.html}}
+{{#template ../../../../target/debug/grammar.html}}

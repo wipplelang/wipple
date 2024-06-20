@@ -1,7 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`type-arithmetic.test.wipple 1`] = `
-[
-  "type-arithmetic/type-arithmetic.test.wipple:13:5: error: this code produces \`_ -> S (S (S (S (S Z))))\`, but the \`_\`s are unknown",
-]
-`;

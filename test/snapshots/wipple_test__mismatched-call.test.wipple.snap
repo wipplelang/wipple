@@ -1,0 +1,7 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics:
+  - "tests/mismatched-call.test.wipple:8:14: error: expected a piece of text here, but found a number"
+output: []

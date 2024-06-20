@@ -10,7 +10,6 @@ import {
 import { Compartment, Range, RangeSet } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { Asset, getAsset } from "../assets";
-import { RenderedHighlight } from "wipple-render";
 import { ThemeConfig, highlightCategories } from "./theme";
 import { MaterialSymbol } from "react-material-symbols";
 
@@ -21,7 +20,7 @@ export type AssetClickHandler = (config: { start: number; end: number; asset: As
 export const assetsFromConfig = (config: {
     disabled: boolean;
     onClick: AssetClickHandler;
-    highlightItems: Record<string, RenderedHighlight>;
+    highlightItems: Record<string, any>;
     theme: ThemeConfig;
 }) =>
     ViewPlugin.fromClass(
@@ -42,7 +41,7 @@ export const assetsFromConfig = (config: {
                 ) {
                     const [nonatomicDecorations, atomicDecorations] = getDecorations(
                         update.view,
-                        config,
+                        config
                     );
 
                     this.nonatomicDecorations = nonatomicDecorations;
@@ -54,9 +53,9 @@ export const assetsFromConfig = (config: {
             decorations: (v) => RangeSet.join([v.nonatomicDecorations, v.atomicDecorations]),
             provide: (v) =>
                 EditorView.atomicRanges.of(
-                    (view) => view.plugin(v)?.atomicDecorations ?? Decoration.none,
+                    (view) => view.plugin(v)?.atomicDecorations ?? Decoration.none
                 ),
-        },
+        }
     );
 
 const getDecorations = (
@@ -64,9 +63,9 @@ const getDecorations = (
     config: {
         disabled: boolean;
         onClick: AssetClickHandler;
-        highlightItems: Record<string, RenderedHighlight>;
+        highlightItems: Record<string, any>;
         theme: ThemeConfig;
-    },
+    }
 ): [DecorationSet, DecorationSet] => {
     const nonatomicDecorations: Range<Decoration>[] = [];
     const atomicDecorations: Range<Decoration>[] = [];
@@ -87,7 +86,7 @@ const getDecorations = (
                                 class: `${className} ${
                                     highlight.icon ? "pr-1 rounded-r-[4px]" : "px-1 rounded-[4px]"
                                 }`,
-                            }).range(from, to),
+                            }).range(from, to)
                         );
 
                         if (highlight.icon) {
@@ -97,10 +96,10 @@ const getDecorations = (
                                         from,
                                         highlight.icon,
                                         className,
-                                        config.theme.fontSize,
+                                        config.theme.fontSize
                                     ),
                                     side: -1,
-                                }).range(from),
+                                }).range(from)
                             );
                         }
                     }
@@ -119,7 +118,7 @@ const getDecorations = (
                         atomicDecorations.push(
                             Decoration.replace({
                                 widget: new AssetWidget(from, to, asset, config),
-                            }).range(from, to),
+                            }).range(from, to)
                         );
                     }
 
@@ -141,7 +140,7 @@ class HighlightIconWidget extends WidgetType {
         public index: number,
         public icon: string,
         public className: string,
-        public fontSize: number,
+        public fontSize: number
     ) {
         super();
     }
@@ -164,7 +163,7 @@ class HighlightIconWidget extends WidgetType {
                 icon={this.icon}
                 className={this.className}
                 fontSize={this.fontSize}
-            />,
+            />
         );
 
         return container;
@@ -199,7 +198,7 @@ class AssetWidget extends WidgetType {
         public from: number,
         public to: number,
         public asset: Asset,
-        public config: { disabled: boolean; onClick: AssetClickHandler },
+        public config: { disabled: boolean; onClick: AssetClickHandler }
     ) {
         super();
     }
@@ -228,7 +227,7 @@ class AssetWidget extends WidgetType {
                         asset,
                     })
                 }
-            />,
+            />
         );
 
         return container;

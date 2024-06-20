@@ -1,0 +1,10 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics:
+  - "tests/repeat-errors.test.wipple:3:1: error: missing `repeat` here"
+  - "tests/repeat-errors.test.wipple:4:1: error: missing `repeat` here"
+  - "tests/repeat-errors.test.wipple:5:1: error: missing `repeat` here"
+  - "tests/repeat-errors.test.wipple:6:1: error: missing `repeat` here"
+output: []

@@ -1,0 +1,10 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics:
+  - "tests/did-you-mean.test.wipple:3:1: error: use `show` to display on the screen"
+  - "tests/did-you-mean.test.wipple:4:6: error: can't find `hello`"
+  - "tests/did-you-mean.test.wipple:5:13: error: expected expression here"
+  - "tests/did-you-mean.test.wipple:5:16: error: can't find `comment`"
+output: []

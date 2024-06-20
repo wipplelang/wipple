@@ -1,0 +1,33 @@
+[package]
+name = "wipple-wasm"
+version = "0.0.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[lints]
+workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+async-channel = "2"
+async-lock = { version = "3", default-features = false }
+async-std = { version = "1", features = ["gloo-timers"] }
+console_error_panic_hook = "0.1"
+futures = "0.3"
+getrandom = { version = "0.2", features = ["js"] }
+rayon = "1"
+send_wrapper = { version = "0.6", features = ["futures"] }
+serde = { version = "1", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+wasm_main_executor = "0.1"
+wasm_thread = { git = "https://github.com/WilsonGramer/wasm_thread", branch = "main", features = ["es_modules"] }
+web-sys = { version = "0.3", features = ["console", "Window", "Worker"] }
+wipple-driver = { path = "../../../compiler/driver" }
+wipple-interpreter = { path = "../../../interpreter" }
+wipple-render = { path = "../../../render"}
+
+[package.metadata.wasm-pack.profile.dev.wasm-bindgen]
+dwarf-debug-info = true

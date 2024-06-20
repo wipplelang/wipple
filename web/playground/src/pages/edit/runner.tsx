@@ -8,23 +8,20 @@ import {
     useState,
 } from "react";
 import { useDebounceValue } from "usehooks-ts";
-import type * as compiler from "wipple-compiler";
-import { CompilerWorker, RunnerWorker } from "../../helpers";
-import { InterpreterError } from "wipple-interpreter";
-import { Render, RenderedDiagnostic, RenderedHighlight } from "wipple-render";
 import { Runtime, RuntimeComponent } from "../../runtimes";
 import { MaterialSymbol } from "react-material-symbols";
 import { Help, Output } from "../../models";
 import { Mutex } from "async-mutex";
 import { Markdown, defaultAnimationDuration } from "../../components";
 import { flushSync } from "react-dom";
+import * as wipple from "wipple-wasm";
 
 export interface RunOptions {
     dependenciesPath: string;
 }
 
 export interface RunnerRef {
-    help: (position: number, code: string) => Help | undefined;
+    help: (position: number, code: string) => Promise<Help | undefined>;
     format: (code: string) => Promise<string>;
 }
 
@@ -35,13 +32,12 @@ export interface RunnerProps {
         settings: any | undefined;
         onChangeSettings: (settings: any) => void;
     };
-    render: Render;
     hasFocus: boolean;
     onFocus: () => void;
     onBlur: () => void;
     options: RunOptions;
-    onChangeDiagnostics: (diagnostics: RenderedDiagnostic[]) => void;
-    onChangeHighlightItems: (highlightItems: Record<string, RenderedHighlight>) => void;
+    onChangeDiagnostics: (diagnostics: any[]) => void;
+    onChangeHighlightItems: (highlightItems: Record<string, any>) => void;
 }
 
 export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
@@ -75,36 +71,16 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         setShowOutput(false);
     };
 
-    const runnerWorker = useRef<Worker>();
-
-    const resetRunnerWorker = useCallback(async () => {
-        if (runnerWorker.current) {
-            runnerWorker.current.onerror?.(new ErrorEvent("terminate"));
-            runnerWorker.current.terminate();
-        }
-
-        if (runtimeRef.current) {
-            const mutex = runtimeMutexRef.current;
-            const runtime = runtimeRef.current;
-
-            await mutex.runExclusive(async () => {
-                await runtime.cleanup();
-            });
-        }
-
-        const newWorker = new RunnerWorker({ name: `runner-${id}` });
-        runnerWorker.current = newWorker;
-
-        return newWorker;
-    }, [id]);
-
     const [showOutput, setShowOutput] = useState(false);
     const [showRunAgain, setShowRunAgain] = useState(false);
 
     const cachedBuiltinsHelp = useRef<Record<string, any>>();
-    const cachedHighlightItems = useRef<Record<string, RenderedHighlight>>();
+    const cachedHighlightItems = useRef<Record<string, any>>();
+    const cachedHelp = useRef<Record<string, Help>>({});
 
     const isCompiling = useRef(false);
+
+    const runMutex = useRef(new Mutex());
 
     const run = useCallback(async () => {
         if (isCompiling.current || !hasWaitedForLayout) {
@@ -127,195 +103,119 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 : null;
 
             if (!cachedHighlightItems.current && dependencies) {
-                props.render.update(dependencies.interface, dependencies.libraries, null);
-                const highlightItems = getHighlightItems(dependencies.interface, props.render);
-                cachedHighlightItems.current = highlightItems;
-                props.onChangeHighlightItems(highlightItems);
-            }
-
-            const compilerWorker = new CompilerWorker({ name: `compiler-${id}` });
-
-            const { compileResult, executable } = await new Promise<{
-                compileResult: compiler.Result;
-                executable: compiler.linker_Executable;
-            }>((resolve) => {
-                compilerWorker.onmessage = (event) => {
-                    switch (event.data.type) {
-                        case "completion": {
-                            resolve(event.data);
-                            break;
-                        }
-                        default: {
-                            throw new Error(`unsupported message: ${event.data.type}`);
-                        }
-                    }
-                };
-
-                compilerWorker.postMessage({ type: "compile", code, dependencies });
-            });
-
-            compilerWorker.terminate();
-
-            props.render.update(
-                compileResult.interface,
-                [compileResult.library, ...(dependencies?.libraries ?? [])],
-                compileResult.ide,
-            );
-
-            if (compileResult.diagnostics.length > 0) {
-                const renderedDiagnostics = compileResult.diagnostics.flatMap((diagnostic) => {
-                    const rendered = props.render.renderDiagnostic(diagnostic);
-                    return rendered ? [rendered] : [];
+                const highlightsResult = await wipple.highlights({
+                    interface: dependencies.interface,
                 });
 
-                props.onChangeDiagnostics(renderedDiagnostics);
+                if (highlightsResult) {
+                    const { highlights } = highlightsResult;
 
-                if (renderedDiagnostics.some((diagnostic) => diagnostic.severity === "error")) {
-                    return;
+                    cachedHighlightItems.current = highlights;
+                    props.onChangeHighlightItems(highlights);
                 }
-            } else {
-                props.onChangeDiagnostics([]);
             }
+
+            const compileResult = await wipple.compile({
+                id,
+                path: "playground",
+                code,
+                interface: dependencies?.interface,
+                libraries: dependencies?.libraries ?? [],
+            });
 
             isCompiling.current = false;
 
-            const runnerWorker = await resetRunnerWorker();
-            clearOutput();
+            if (!compileResult) return;
 
-            // flushSync is required to initialize runtimeRef
-            flushSync(() => {
-                setShowOutput(props.runtime != null);
-            });
+            const { executable, diagnostics } = compileResult;
+            props.onChangeDiagnostics(diagnostics);
 
-            if (runtimeRef.current) {
-                const mutex = runtimeMutexRef.current;
-                const runtime = runtimeRef.current;
+            if (!executable) return;
 
-                await mutex.runExclusive(async () => {
-                    await runtime.initialize();
+            await wipple.stop({ id });
+
+            const runResult = await runMutex.current.runExclusive(async () => {
+                clearOutput();
+
+                // flushSync is required to initialize runtimeRef
+                flushSync(() => {
+                    setShowOutput(props.runtime != null);
                 });
-            }
 
-            await new Promise<void>((resolve, reject) => {
-                runnerWorker.onmessage = async (event) => {
-                    const { type } = event.data;
+                if (runtimeRef.current) {
+                    const mutex = runtimeMutexRef.current;
+                    const runtime = runtimeRef.current;
 
-                    switch (type) {
-                        case "completion": {
-                            resolve();
-                            break;
-                        }
-                        case "display": {
-                            const { text } = event.data;
+                    await mutex.runExclusive(async () => {
+                        await runtime.initialize();
+                    });
+                }
 
+                return await wipple.run({
+                    id,
+                    executable,
+                    handlers: {
+                        display: async (text: string) => {
                             appendToOutput({ type: "text", text });
-
-                            runnerWorker.postMessage({
-                                type: "completion",
-                            });
-
-                            break;
-                        }
-                        case "prompt": {
-                            const { prompt } = event.data;
-
+                            await new Promise(requestAnimationFrame);
+                        },
+                        prompt: async (
+                            prompt: string,
+                            validate: (input: string) => Promise<boolean>,
+                        ) => {
                             appendToOutput({
                                 type: "prompt",
                                 prompt,
-                                onSubmit: (input) =>
-                                    new Promise((resolve) => {
-                                        const prevonmessage = runnerWorker.onmessage;
-                                        runnerWorker.onmessage = async (event) => {
-                                            const { type, valid } = event.data;
-                                            if (type !== "validate") {
-                                                throw new Error("expected 'validate' event");
-                                            }
-
-                                            runnerWorker.onmessage = prevonmessage;
-                                            resolve(valid);
-                                        };
-
-                                        runnerWorker.postMessage({
-                                            type: "validate",
-                                            input,
-                                        });
-                                    }),
+                                onSubmit: validate,
                             });
 
                             showRunAgain = true;
 
-                            break;
-                        }
-                        case "choice": {
-                            const { prompt, choices } = event.data;
+                            await new Promise(requestAnimationFrame);
+                        },
+                        choice: (prompt: string, choices: string[]) =>
+                            new Promise<number>((resolve) => {
+                                appendToOutput({
+                                    type: "choice",
+                                    prompt,
+                                    choices,
+                                    onSubmit: resolve,
+                                });
 
-                            appendToOutput({
-                                type: "choice",
-                                prompt,
-                                choices,
-                                onSubmit: async (index) => {
-                                    runnerWorker.postMessage({
-                                        type: "completion",
-                                        index,
-                                    });
-                                },
-                            });
+                                showRunAgain = true;
+                            }),
+                        ui: async (message: string, value: any) => {
+                            try {
+                                if (!runtimeRef.current) {
+                                    throw new Error("cannot send a UI message without a runtime");
+                                }
 
-                            showRunAgain = true;
+                                const mutex = runtimeMutexRef.current;
+                                const runtime = runtimeRef.current;
 
-                            break;
-                        }
-                        case "ui": {
-                            const { message, value } = event.data;
+                                const result = await mutex.runExclusive(async () => {
+                                    return await runtime.onMessage(message, value);
+                                });
 
-                            if (!runtimeRef.current) {
-                                throw new InterpreterError(
-                                    "cannot send a UI message without a runtime",
-                                );
+                                showRunAgain = true;
+
+                                return result;
+                            } catch (error) {
+                                console.warn(error);
+                                throw error;
                             }
-
-                            const mutex = runtimeMutexRef.current;
-                            const runtime = runtimeRef.current;
-
-                            const result = await mutex.runExclusive(async () => {
-                                return await runtime.onMessage(message, value);
-                            });
-
-                            runnerWorker.postMessage({
-                                type: "response",
-                                value: result,
-                            });
-
-                            showRunAgain = true;
-
-                            break;
-                        }
-                        case "error": {
-                            const { message } = event.data;
-
-                            appendToOutput({ type: "error", message });
-
-                            break;
-                        }
-                        case "runnerError": {
-                            reject(event.data.error);
-                            break;
-                        }
-                        default:
-                            throw new Error("unsupported message from runner");
-                    }
-                };
-
-                runnerWorker.onerror = (event) => {
-                    if (event.type === "terminate") {
-                        resolve();
-                    } else {
-                        reject(event.error);
-                    }
-                };
-
-                runnerWorker.postMessage({ type: "run", executable });
+                        },
+                    },
+                });
             });
+
+            if (!runResult) return;
+
+            const { error } = runResult;
+
+            if (error) {
+                appendToOutput({ type: "error", message: error });
+            }
         } catch (error) {
             console.error(error);
         } finally {
@@ -331,21 +231,14 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 });
             }
         }
-    }, [
-        hasWaitedForLayout,
-        code,
-        props.runtime != null,
-        props.runtime?.settings,
-        props.options,
-        resetRunnerWorker,
-    ]);
+    }, [hasWaitedForLayout, code, props.runtime != null, props.runtime?.settings, props.options]);
 
     useEffect(() => {
         run();
     }, [run]);
 
     useImperativeHandle(ref, () => ({
-        help: (position: number, code: string): Help | undefined => {
+        help: async (position: number, code: string): Promise<Help | undefined> => {
             const helpFromDocumentation = (documentation: {
                 name: string;
                 declaration: string | undefined;
@@ -371,50 +264,44 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 });
             }
 
-            const declarationPath = props.render.getPathAtCursor("playground", position);
-            if (!declarationPath) {
-                return undefined;
+            if (cachedHelp.current[code] != null) {
+                return cachedHelp.current[code];
             }
 
-            const declaration = props.render.getDeclarationFromPath(declarationPath.item);
-            if (!declaration) {
-                return undefined;
-            }
-
-            const documentation = props.render.renderDocumentation(declaration);
-            if (!documentation) {
-                return undefined;
-            }
-
-            const declarationString = props.render.renderDeclaration(declaration) ?? undefined;
-
-            return helpFromDocumentation({
-                name: declaration.item.name ?? code,
-                declaration: declarationString,
-                docs: documentation.docs,
-                example: documentation.example,
+            const helpResult = await wipple.help({
+                id,
+                path: "playground",
+                position,
             });
+
+            if (!helpResult) {
+                return undefined;
+            }
+
+            const { help } = helpResult;
+            if (!help) {
+                return undefined;
+            }
+
+            const resolvedHelp = helpFromDocumentation({
+                name: help.name ?? code,
+                declaration: help.declaration,
+                docs: help.docs,
+                example: help.example,
+            });
+
+            cachedHelp.current[code] = resolvedHelp;
+
+            return resolvedHelp;
         },
         format: async (code) => {
-            const compilerWorker = new CompilerWorker({ name: `compiler-${id}-format` });
+            const formatResult = await wipple.format({ code });
 
-            const formatted = await new Promise<string>((resolve) => {
-                compilerWorker.onmessage = async (event) => {
-                    const { type } = event.data;
-                    switch (type) {
-                        case "completion": {
-                            resolve(event.data.code);
-                            break;
-                        }
-                        default:
-                            throw new Error(`unsupported message: ${type}`);
-                    }
-                };
+            if (!formatResult) {
+                return code;
+            }
 
-                compilerWorker.postMessage({ type: "format", code });
-            });
-
-            compilerWorker.terminate();
+            const { code: formatted } = formatResult;
 
             return formatted;
         },
@@ -427,31 +314,8 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                     id={id}
                     settings={props.runtime.settings}
                     onChangeSettings={props.runtime.onChangeSettings}
-                    call={(func, ...inputs) =>
-                        new Promise((resolve) => {
-                            if (!runnerWorker.current) {
-                                throw new Error("runner not initialized");
-                            }
-
-                            const prevonmessage = runnerWorker.current.onmessage;
-                            runnerWorker.current.onmessage = async (event) => {
-                                if (event.data.type !== "completion") {
-                                    return prevonmessage?.call(runnerWorker.current!, event);
-                                }
-
-                                runnerWorker.current!.onmessage = prevonmessage;
-                                resolve(event.data.output);
-                            };
-
-                            runnerWorker.current.postMessage({
-                                type: "callFunction",
-                                func,
-                                inputs,
-                            });
-                        })
-                    }
                     stopRunning={async () => {
-                        await resetRunnerWorker();
+                        await wipple.stop({ id });
                         setShowRunAgain(true);
                     }}
                     ref={runtimeRef}
@@ -582,8 +446,8 @@ const Prompt = (props: {
 };
 
 interface FetchDependenciesResult {
-    interface: compiler.Interface;
-    libraries: compiler.linker_UnlinkedLibrary[];
+    interface: any;
+    libraries: any[];
 }
 
 const fetchDependencies = async (name: string): Promise<FetchDependenciesResult> =>
@@ -595,30 +459,3 @@ const fetchBuiltinsHelp = async (): Promise<Record<string, any>> =>
     fetch(new URL("/playground/library/help/builtins.json", window.location.origin)).then(
         (response) => response.json(),
     );
-
-const getHighlightItems = (
-    interface_: compiler.Interface,
-    render: Render,
-): Record<string, RenderedHighlight> => {
-    const highlightItems: Record<string, RenderedHighlight> = {};
-    for (const [name, declarationPaths] of Object.entries(interface_.topLevel)) {
-        if (declarationPaths.length > 1) {
-            continue;
-        }
-
-        for (const declarationPath of declarationPaths) {
-            const declaration = render.getDeclarationFromPath(declarationPath.item);
-            if (!declaration) {
-                continue;
-            }
-
-            const highlight = render.renderHighlight(declaration);
-            if (highlight) {
-                highlightItems[name] = highlight;
-                break;
-            }
-        }
-    }
-
-    return highlightItems;
-};

@@ -8,20 +8,19 @@ mod text;
 
 use derivative::Derivative;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::{fmt::Debug, hash::Hash, ops::Range, rc::Rc};
-use ts_rs::TS;
+use std::{fmt::Debug, hash::Hash, ops::Range, sync::Arc};
 use wipple_util::WithInfo;
 
 /// Provides the parser with information about the program.
 pub trait Driver: Sized + 'static {
     /// Additional information attached to every item.
-    type Info: Debug + Clone + Serialize + DeserializeOwned + TS + 'static;
+    type Info: Debug + Clone + Serialize + DeserializeOwned + 'static;
 
     /// Retrieve the path of the file being parsed.
-    fn file_path(&self) -> Rc<str>;
+    fn file_path(&self) -> Arc<str>;
 
     /// Retrieve the path to be rendered in diagnostics.
-    fn visible_path(&self) -> Rc<str>;
+    fn visible_path(&self) -> Arc<str>;
 
     /// Retrieve the size of the file being parsed in bytes.
     fn file_size(&self) -> u32;
@@ -30,36 +29,15 @@ pub trait Driver: Sized + 'static {
     fn merge_info(left: Self::Info, right: Self::Info) -> Self::Info;
 }
 
-impl Driver for wipple_util::TsAny {
-    type Info = wipple_util::TsAny;
-
-    fn file_path(&self) -> Rc<str> {
-        unimplemented!()
-    }
-
-    fn visible_path(&self) -> Rc<str> {
-        unimplemented!()
-    }
-
-    fn file_size(&self) -> u32 {
-        unimplemented!()
-    }
-
-    fn merge_info(_left: Self::Info, _right: Self::Info) -> Self::Info {
-        unimplemented!()
-    }
-}
-
 /// Location information about a parsed item.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
-#[ts(export, rename = "syntax_Location")]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Location {
     /// The path of the file this item belongs to.
-    pub path: Rc<str>,
+    pub path: Arc<str>,
 
     /// The path to be displayed to the user.
-    pub visible_path: Rc<str>,
+    pub visible_path: Arc<str>,
 
     /// The location of the item in the source code.
     pub span: Range<u32>,
@@ -148,10 +126,9 @@ pub enum ErrorContext {
 }
 
 /// An error occuring during parsing.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, rename = "syntax_Diagnostic")]
 pub enum Diagnostic {
     /// The parser found a bound, but bounds aren't allowed here.
     UnexpectedBound,
@@ -569,11 +546,10 @@ pub struct Variant<D: Driver> {
 }
 
 /// A parsed type.
-#[derive(Serialize, Deserialize, Derivative, TS)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, rename = "syntax_Type", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Type<D: Driver> {
     /// A type that could not be parsed.
     Error,
@@ -635,9 +611,8 @@ pub struct Instance<D: Driver> {
 }
 
 /// A parsed format segment.
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, rename = "syntax_FormatSegment")]
 pub struct FormatSegment<T> {
     /// The text preceding the interpolated value.
     pub text: String,

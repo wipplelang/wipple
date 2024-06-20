@@ -1,0 +1,29 @@
+[workspace]
+resolver = "2"
+members = [
+    "cli",
+    "compiler/*",
+    "interpreter",
+    "web/playground/wasm",
+    "render",
+    "test",
+]
+
+[workspace.lints.rust]
+elided_lifetimes_in_paths = "deny"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+new_without_default = "allow"
+print_stderr = "warn"
+redundant_clone = "warn"
+type_complexity = "allow"
+
+[profile.dev.package]
+insta.opt-level = 3
+similar.opt-level = 3
+
+[profile.release]
+opt-level = "s"
+lto = true

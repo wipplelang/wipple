@@ -41,7 +41,6 @@ export type RuntimeComponent<Settings> = React.ForwardRefExoticComponent<
         id: string;
         settings: Settings | undefined;
         onChangeSettings: (settings: Settings) => void;
-        call: (func: any, ...inputs: any[]) => Promise<any>;
         stopRunning: () => void;
     } & React.RefAttributes<Runtime>
 >;

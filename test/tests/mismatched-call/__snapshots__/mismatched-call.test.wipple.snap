@@ -1,7 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`mismatched-call.test.wipple 1`] = `
-[
-  "mismatched-call/mismatched-call.test.wipple:8:14: error: expected a piece of text here, but found a number",
-]
-`;

@@ -1,0 +1,7 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics:
+  - "tests/missing-instance.test.wipple:4:1: error: cannot describe a `Foo` value"
+output: []

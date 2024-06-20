@@ -1,7 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`undefined-name.test.wipple 1`] = `
-[
-  "undefined-name/undefined-name.test.wipple:3:1: error: can't find \`foo\`",
-]
-`;

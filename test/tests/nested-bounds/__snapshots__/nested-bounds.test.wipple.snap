@@ -1,7 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`nested-bounds.test.wipple 1`] = `
-[
-  "nested-bounds/nested-bounds.test.wipple:12:1: error: \`T\` requires \`(W _)\`",
-]
-`;

@@ -1,0 +1,14 @@
+[package]
+name = "wipple-render"
+version = "0.0.0"
+edition = "2021"
+
+[lints]
+workspace = true
+
+[dependencies]
+async-lock = { version = "3", default-features = false }
+line-index = "0.1"
+futures = "0.3"
+serde = { version = "1", features = ["derive"] }
+wipple-driver = { path = "../compiler/driver" }

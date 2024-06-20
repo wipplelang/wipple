@@ -1,9 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`operator-without-parentheses.test.wipple 1`] = `
-[
-  "operator-without-parentheses/operator-without-parentheses.test.wipple:3:1: error: cannot add unit and a number",
-  "operator-without-parentheses/operator-without-parentheses.test.wipple:4:1: error: \`show True or False\` requires \`(Or () Boolean _)\`",
-  "operator-without-parentheses/operator-without-parentheses.test.wipple:5:6: error: cannot add a number and a piece of text",
-]
-`;

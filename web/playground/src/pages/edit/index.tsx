@@ -562,7 +562,7 @@ const PlaygroundPageList = (props: {
                         return (
                             <Link key={page.id} to={`../${page.id}`} relative="path">
                                 <li
-                                    className={`flex flex-row items-center justify-between lg:w-full px-3 py-1.5 rounded-lg transition-colors ${
+                                    className={`flex flex-row items-center justify-between gap-2 lg:w-full px-3 py-1.5 rounded-lg transition-colors ${
                                         isActive
                                             ? "bg-blue-500 hover:bg-blue-600 dark:hover:bg-blue-400 shadow-md shadow-blue-200 dark:shadow-blue-950 text-white font-semibold"
                                             : "hover:bg-gray-100 active:bg-gray-200 dark:hover:bg-gray-900 dark:active:bg-gray-800"

@@ -106,7 +106,11 @@ export const Math: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                         setResolution(value);
                         break;
                     case "function":
-                        setFunc(() => (x: number) => props.call(value, x));
+                        setFunc(
+                            () =>
+                                (...inputs: any[]) =>
+                                    value(inputs),
+                        );
                         break;
                     case "color":
                         setColors((colors) => [...colors, value]);

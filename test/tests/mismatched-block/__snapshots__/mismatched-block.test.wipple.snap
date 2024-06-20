@@ -1,7 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`mismatched-block.test.wipple 1`] = `
-[
-  "mismatched-block/mismatched-block.test.wipple:6:5: error: expected a number here, but found a piece of text",
-]
-`;
