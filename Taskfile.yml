@@ -9,20 +9,14 @@ tasks:
 
     test:
         run: once
-        deps:
-            - compiler:build
-            - interpreter:build
-            - render:build
-            - base:compile
-        dir: test
         cmds:
-            - npm test -- {{.CLI_ARGS}}
+            - cargo test --package=wipple-test -- {{.CLI_ARGS}}
 
-    doctest:
-        run: once
-        cmds:
-            - rm -rf .wipple/doctest && mkdir -p .wipple/doctest
-            - for f in web/docs/src/tour/*.md; do echo -e "testing $(basename $f)" && wipple doctest $f --dependency .wipple/base.wippleinterface --link .wipple/base.wipplelibrary > .wipple/doctest/$(basename $f).xml; done
+    # doctest:
+    #     run: once
+    #     cmds:
+    #         - rm -rf .wipple/doctest && mkdir -p .wipple/doctest
+    #         - for f in web/docs/src/tour/*.md; do echo -e "testing $(basename $f)" && wipple doctest $f --dependency .wipple/base.wippleinterface --link .wipple/base.wipplelibrary > .wipple/doctest/$(basename $f).xml; done
 
     compile:
         run: once
@@ -32,16 +26,16 @@ tasks:
             - wipple compile test.wipple --dependency .wipple/base.wippleinterface --interface .wipple/test.wippleinterface --library .wipple/test.wipplelibrary
             - wipple link .wipple/*.wipplelibrary --output .wipple/out
 
-    vscode:install:
-        run: once
-        deps:
-            - compiler:build
-            - render:build
-        dir: vscode
-        cmds:
-            - npx @vscode/vsce package --no-dependencies --skip-license --allow-missing-repository
-            - code --install-extension wipple-vscode-0.0.0.vsix
-            - rm wipple-vscode-0.0.0.vsix
+    # vscode:install:
+    #     run: once
+    #     deps:
+    #         - compiler:build
+    #         - render:build
+    #     dir: vscode
+    #     cmds:
+    #         - npx @vscode/vsce package --no-dependencies --skip-license --allow-missing-repository
+    #         - code --install-extension wipple-vscode-0.0.0.vsix
+    #         - rm wipple-vscode-0.0.0.vsix
 
     web:install-dependencies:
         run: once
@@ -54,9 +48,8 @@ tasks:
         run: once
         deps:
             - web:build
-        dir: web/dist
         cmds:
-            - npx http-server -p 8080 -c-1 --cors .
+            - netlify dev
 
     web:build:
         run: once
@@ -127,7 +120,7 @@ tasks:
         run: once
         dir: web/playground
         cmds:
-            - WIPPLE_COMPILER_WASM_OPTIMIZE=1 task cli:build
+            - task cli:build
             - task base:compile
             - wipple compile ../../library/base/*.wipple --interface ../../.wipple/base.wippleinterface --library ../../.wipple/base.wipplelibrary
             - wipple bundle-for-playground ../../library/base/*.wipple --output ./public/library/base.wipplebundle
@@ -163,74 +156,20 @@ tasks:
     install-dependencies:
         run: once
         deps:
-            - test:install-dependencies
-            - cli:install-dependencies
-            - compiler:install-dependencies
-            - interpreter:install-dependencies
-            - render:install-dependencies
             - web:install-dependencies
-
-    test:install-dependencies:
-        run: once
-        dir: test
         cmds:
-            - npm install
-
-    cli:install-dependencies:
-        run: once
-        dir: cli
-        cmds:
-            - npm install
+            - cargo install wasm-pack
 
     cli:build:
         run: once
         deps:
             - compiler:build
-            - interpreter:build
-            - render:build
         dir: cli
         cmds:
-            - npm run build
-            - npm run package
-            - cp dist/wipple /usr/local/bin/wipple
-
-    compiler:install-dependencies:
-        run: once
-        dir: compiler
-        cmds:
-            - npm install
+            - cargo install --bin wipple --path .
 
     compiler:build:
         run: once
-        dir: compiler
         cmds:
-            - npm run build
-
-    interpreter:install-dependencies:
-        run: once
-        dir: interpreter
-        cmds:
-            - npm install
-
-    interpreter:build:
-        run: once
-        deps:
-            - compiler:build
-        dir: interpreter
-        cmds:
-            - npm run build
-
-    render:install-dependencies:
-        run: once
-        dir: render
-        cmds:
-            - npm install
-
-    render:build:
-        run: once
-        deps:
-            - compiler:build
-            - interpreter:build
-        dir: render
-        cmds:
-            - npm run build
+            - cargo build
+            - ./web/playground/wasm/build.sh

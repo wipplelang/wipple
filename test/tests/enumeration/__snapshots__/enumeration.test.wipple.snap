@@ -1,9 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`enumeration.test.wipple 1`] = `[]`;
-
-exports[`enumeration.test.wipple 2`] = `
-{
-  "output": "",
-}
-`;

@@ -1,0 +1,207 @@
+#![allow(missing_docs)]
+
+use rstest::rstest;
+
+#[rstest]
+#[timeout(std::time::Duration::from_secs(10))]
+#[async_std::test]
+async fn tests(#[files("tests/**/*.test.wipple")] file: std::path::PathBuf) {
+    use futures::{future, FutureExt};
+    use serde::Serialize;
+    use std::{
+        fs,
+        sync::{Arc, Mutex},
+    };
+
+    let test = async move {
+        let file_name = file.file_name().unwrap().to_string_lossy().into_owned();
+
+        let code = fs::read_to_string(&file).expect("failed to read file");
+
+        let (should_compile, should_warn) = if code.starts_with("-- [should compile]") {
+            (true, Some(false))
+        } else if code.starts_with("-- [should warn]") {
+            (true, Some(true))
+        } else if code.starts_with("-- [should error]") {
+            (false, None)
+        } else {
+            panic!(
+                "expected test to begin with [should compile], [should warn], or [should error]"
+            );
+        };
+
+        let file = wipple_driver::File {
+            path: file.to_string_lossy().into_owned(),
+            visible_path: wipple_driver::util::get_visible_path(&file),
+            code,
+        };
+
+        let base_interface = serde_json::from_str::<wipple_driver::Interface>(
+            &fs::read_to_string("../.wipple/base.wippleinterface").expect("base not compiled"),
+        )
+        .expect("failed to load base interface");
+
+        let base_library = serde_json::from_str::<wipple_driver::Library>(
+            &fs::read_to_string("../.wipple/base.wipplelibrary").expect("base not compiled"),
+        )
+        .expect("failed to load base library");
+
+        let result = wipple_driver::compile(vec![file], Some(base_interface));
+
+        let mut render = wipple_render::Render::new(wipple_render::RenderConfiguration {
+            describe_type: Arc::new(|render, r#type| {
+                async move {
+                    let result = wipple_driver::resolve_attribute_like_trait(
+                        "describe-type",
+                        r#type,
+                        1,
+                        render.get_interface().await?,
+                    )?;
+
+                    match result.into_iter().next()?.item {
+                        wipple_driver::typecheck::Type::Message { segments, trailing } => {
+                            Some(wipple_driver::typecheck::CustomMessage { segments, trailing })
+                        }
+                        _ => None,
+                    }
+                }
+                .boxed()
+            }),
+        });
+
+        render
+            .update(
+                result.interface,
+                vec![base_library.clone(), result.library.clone()],
+                None,
+            )
+            .await;
+
+        let compiled = Mutex::new(true);
+        let compiled_with_warnings = Mutex::new(false);
+        let mut rendered_diagnostics =
+            future::join_all(result.diagnostics.into_iter().map(|diagnostic| {
+                let render = &render;
+                let compiled = &compiled;
+                let compiled_with_warnings = &compiled_with_warnings;
+
+                async move {
+                    let rendered_diagnostic = render
+                        .render_diagnostic(&diagnostic)
+                        .await
+                        .unwrap_or_else(|| panic!("could not render diagnostic: {diagnostic:#?}"));
+
+                    match rendered_diagnostic.severity {
+                        wipple_render::RenderedDiagnosticSeverity::Error => {
+                            *compiled.lock().unwrap() = false;
+                        }
+                        wipple_render::RenderedDiagnosticSeverity::Warning => {
+                            *compiled_with_warnings.lock().unwrap() = true;
+                        }
+                    }
+
+                    render
+                        .render_diagnostic_to_debug_string(&rendered_diagnostic)
+                        .await
+                }
+            }))
+            .await;
+
+        rendered_diagnostics.sort();
+        rendered_diagnostics.dedup();
+
+        let compiled = compiled.into_inner().unwrap();
+        let compiled_with_warnings = compiled_with_warnings.into_inner().unwrap();
+
+        assert_eq!(should_compile, compiled);
+
+        if let Some(should_warn) = should_warn {
+            assert_eq!(should_warn, compiled_with_warnings);
+        }
+
+        let output = if compiled {
+            let executable =
+                wipple_driver::link(vec![base_library, result.library]).expect("linking failed");
+
+            #[derive(Clone)]
+            struct Value;
+
+            struct Runtime;
+
+            impl wipple_interpreter::Runtime for Runtime {
+                type Value = Value;
+                type JoinHandle = async_std::task::JoinHandle<()>;
+
+                fn run(
+                    future: impl future::Future<Output = ()> + Send + 'static,
+                ) -> Self::JoinHandle {
+                    async_std::task::spawn(future)
+                }
+
+                async fn from_value(
+                    _value: wipple_interpreter::Value<Self>,
+                    _task: &wipple_interpreter::TaskLocals<Self>,
+                    _context: &wipple_interpreter::Context<Self>,
+                ) -> Self::Value {
+                    unimplemented!()
+                }
+
+                async fn to_value(_value: Self::Value) -> wipple_interpreter::Value<Self> {
+                    unimplemented!()
+                }
+
+                async fn with_functions<T>(
+                    _f: impl FnOnce(&mut Vec<wipple_interpreter::StoredFunction<Self>>) -> T + Send,
+                ) -> T {
+                    unimplemented!()
+                }
+            }
+
+            let output: Arc<Mutex<Vec<String>>> = Default::default();
+
+            let options = wipple_interpreter::Options::<Runtime>::with_io(wipple_interpreter::Io {
+                display: Arc::new({
+                    let output = output.clone();
+                    move |message| {
+                        let output = output.clone();
+                        async move {
+                            output.lock().unwrap().push(message);
+                            Ok(())
+                        }
+                        .boxed()
+                    }
+                }),
+                prompt: Arc::new(|_, _| unimplemented!()),
+                choice: Arc::new(|_, _| unimplemented!()),
+                ui: Arc::new(|_, _| unimplemented!()),
+                sleep: Arc::new(|_| unimplemented!()),
+            });
+
+            if let Err(error) = wipple_interpreter::evaluate(executable, options).await {
+                output.lock().unwrap().push(format!("error: {}\n", error.0));
+            }
+
+            let output = output.lock().unwrap();
+            output.clone()
+        } else {
+            Vec::new()
+        };
+
+        #[derive(Default, Serialize)]
+        struct Snapshot {
+            diagnostics: Vec<String>,
+            output: Vec<String>,
+        }
+
+        let snapshot = Snapshot {
+            diagnostics: rendered_diagnostics,
+            output,
+        };
+
+        insta::assert_yaml_snapshot!(file_name, snapshot);
+    };
+
+    let mut settings = insta::Settings::clone_current();
+    settings.set_snapshot_path("../snapshots");
+    settings.bind_async(test).await;
+}

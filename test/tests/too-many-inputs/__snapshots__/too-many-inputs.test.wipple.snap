@@ -1,7 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`too-many-inputs.test.wipple 1`] = `
-[
-  "too-many-inputs/too-many-inputs.test.wipple:3:1: error: extra input provided to \`show 1 2 3\`",
-]
-`;

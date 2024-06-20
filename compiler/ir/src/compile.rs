@@ -23,7 +23,7 @@ pub fn compile<'a, D: crate::Driver>(
         attributes,
         expression,
         &mut info,
-        |expression, info| compile_expression(expression, info),
+        |expression, info| compile_expression(expression, true, info),
     )?;
 
     Some(info.items)
@@ -186,6 +186,7 @@ fn compile_item_with_captures<'a, D: crate::Driver>(
 #[must_use]
 fn compile_expression<D: crate::Driver>(
     expression: WithInfo<D::Info, &wipple_typecheck::TypedExpression<D>>,
+    tail: bool,
     info: &mut Info<'_, D>,
 ) -> Option<()> {
     match &expression.item.kind {
@@ -243,9 +244,11 @@ fn compile_expression<D: crate::Driver>(
                         info.push_instruction(crate::Instruction::Tuple(0));
                     } else {
                         for (index, statement) in statements.iter().enumerate() {
-                            compile_expression(statement.as_ref(), info)?;
+                            let last_statement = index + 1 == statements.len();
 
-                            if index + 1 != statements.len() {
+                            compile_expression(statement.as_ref(), tail && last_statement, info)?;
+
+                            if !last_statement {
                                 info.push_instruction(crate::Instruction::Drop);
                             }
                         }
@@ -261,8 +264,13 @@ fn compile_expression<D: crate::Driver>(
             ));
         }
         wipple_typecheck::TypedExpressionKind::Do(block) => {
-            compile_expression(block.as_deref(), info)?;
-            info.push_instruction(crate::Instruction::Do);
+            compile_expression(block.as_deref(), false, info)?;
+
+            info.push_instruction(if tail {
+                crate::Instruction::TailDo
+            } else {
+                crate::Instruction::Do
+            });
         }
         wipple_typecheck::TypedExpressionKind::Function {
             inputs,
@@ -284,7 +292,7 @@ fn compile_expression<D: crate::Driver>(
                         compile_exhaustive_pattern(pattern.as_ref(), info)?;
                     }
 
-                    compile_expression(body.as_deref(), info)?;
+                    compile_expression(body.as_deref(), true, info)?;
 
                     Some(())
                 },
@@ -296,21 +304,25 @@ fn compile_expression<D: crate::Driver>(
             ));
         }
         wipple_typecheck::TypedExpressionKind::Call { function, inputs } => {
-            compile_expression(function.as_deref(), info)?;
+            compile_expression(function.as_deref(), false, info)?;
 
             for input in inputs {
-                compile_expression(input.as_ref(), info)?;
+                compile_expression(input.as_ref(), false, info)?;
             }
 
-            info.push_instruction(crate::Instruction::Call(inputs.len() as u32));
+            info.push_instruction(if tail {
+                crate::Instruction::TailCall(inputs.len() as u32)
+            } else {
+                crate::Instruction::Call(inputs.len() as u32)
+            });
         }
         wipple_typecheck::TypedExpressionKind::When { input, arms } => {
-            compile_expression(input.as_deref(), info)?;
-            compile_exhaustive_arms(arms.iter().map(|arm| arm.as_ref()), info)?;
+            compile_expression(input.as_deref(), false, info)?;
+            compile_exhaustive_arms(arms.iter().map(|arm| arm.as_ref()), tail, info)?;
         }
         wipple_typecheck::TypedExpressionKind::Intrinsic { name, inputs } => {
             for input in inputs {
-                compile_expression(input.as_ref(), info)?;
+                compile_expression(input.as_ref(), false, info)?;
             }
 
             info.push_instruction(crate::Instruction::Typed(
@@ -319,7 +331,7 @@ fn compile_expression<D: crate::Driver>(
             ));
         }
         wipple_typecheck::TypedExpressionKind::Initialize { pattern, value } => {
-            compile_expression(value.as_deref(), info)?;
+            compile_expression(value.as_deref(), false, info)?;
             compile_exhaustive_pattern(pattern.as_ref(), info)?;
             info.push_instruction(crate::Instruction::Tuple(0));
         }
@@ -330,7 +342,7 @@ fn compile_expression<D: crate::Driver>(
                 .iter()
                 .position(|p| *p == path.item)? as u32;
 
-            compile_expression(value.as_deref(), info)?;
+            compile_expression(value.as_deref(), false, info)?;
 
             info.push_instruction(crate::Instruction::Mutate(variable));
             info.push_instruction(crate::Instruction::Tuple(0));
@@ -345,7 +357,7 @@ fn compile_expression<D: crate::Driver>(
             let fields = fields
                 .iter()
                 .map(|field| {
-                    compile_expression(field.item.value.as_ref(), info)?;
+                    compile_expression(field.item.value.as_ref(), false, info)?;
                     field.item.index
                 })
                 .collect::<Option<_>>()?;
@@ -357,7 +369,7 @@ fn compile_expression<D: crate::Driver>(
         }
         wipple_typecheck::TypedExpressionKind::Variant { variant, values } => {
             for value in values {
-                compile_expression(value.as_ref(), info)?;
+                compile_expression(value.as_ref(), false, info)?;
             }
 
             // TODO: Get variant index
@@ -380,7 +392,7 @@ fn compile_expression<D: crate::Driver>(
             ));
         }
         wipple_typecheck::TypedExpressionKind::Wrapper(value) => {
-            compile_expression(value.as_deref(), info)?;
+            compile_expression(value.as_deref(), false, info)?;
 
             info.push_instruction(crate::Instruction::Typed(
                 type_descriptor(&expression.item.r#type)?,
@@ -389,7 +401,7 @@ fn compile_expression<D: crate::Driver>(
         }
         wipple_typecheck::TypedExpressionKind::Tuple(elements) => {
             for element in elements {
-                compile_expression(element.as_ref(), info)?;
+                compile_expression(element.as_ref(), false, info)?;
             }
 
             info.push_instruction(crate::Instruction::Tuple(elements.len() as u32));
@@ -398,7 +410,7 @@ fn compile_expression<D: crate::Driver>(
             let segments = segments
                 .iter()
                 .map(|segment| {
-                    compile_expression(segment.value.as_ref(), info)?;
+                    compile_expression(segment.value.as_ref(), false, info)?;
                     Some(segment.text.clone())
                 })
                 .collect::<Option<_>>()?;
@@ -441,6 +453,7 @@ fn compile_exhaustive_pattern<'a, D: crate::Driver + 'a>(
 #[must_use]
 fn compile_exhaustive_arms<'a, D: crate::Driver + 'a>(
     mut arms: impl ExactSizeIterator<Item = WithInfo<D::Info, &'a wipple_typecheck::TypedArm<D>>>,
+    tail: bool,
     info: &mut Info<'_, D>,
 ) -> Option<()> {
     let entry_block = info.current_block();
@@ -454,7 +467,7 @@ fn compile_exhaustive_arms<'a, D: crate::Driver + 'a>(
         compile_pattern(arm.item.pattern.as_ref(), else_block_id, info)?;
         info.push_instruction(crate::Instruction::Drop);
 
-        compile_expression(arm.item.body.as_ref(), info)?;
+        compile_expression(arm.item.body.as_ref(), tail, info)?;
         info.break_out_of_block(continue_block);
 
         info.end_block();

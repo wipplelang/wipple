@@ -10,6 +10,5 @@ workspace = true
 derivative = "2"
 itertools = "0.12"
 serde = { version = "1", features = ["derive"] }
-ts-rs = { git = "https://github.com/WilsonGramer/ts-rs", branch = "bound-attribute", features = ["no-serde-warnings"] }
 wipple-util = { path = "../util" }
 wipple-typecheck = { path = "../typecheck" }

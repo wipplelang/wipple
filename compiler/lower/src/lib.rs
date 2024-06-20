@@ -5,7 +5,6 @@ mod resolve;
 use derivative::Derivative;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug};
-use ts_rs::TS;
 use wipple_util::WithInfo;
 
 /// Provides the lowerer with information about the program.
@@ -86,16 +85,10 @@ pub struct Item<D: Driver> {
 }
 
 /// Information collected for IDEs.
-#[derive(Serialize, Deserialize, Derivative, TS)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""), Default(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(
-    export,
-    rename = "Ide",
-    concrete(D = wipple_util::TsAny),
-    bound = "D::Info: TS"
-)]
 pub struct Ide<D: Driver> {
     /// The list of resolved symbols in the module.
     pub symbols: Vec<WithInfo<D::Info, Path>>,
@@ -147,7 +140,7 @@ pub struct Result<D: Driver> {
 }
 
 /// An error occurring during lowering.
-#[derive(Serialize, Deserialize, Derivative, TS)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(
     Debug(bound = ""),
     Clone(bound = ""),
@@ -157,7 +150,6 @@ pub struct Result<D: Driver> {
 )]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, rename = "lower_Diagnostic")]
 pub enum Diagnostic {
     /// The expression refers to a name that is not defined in the current
     /// scope.
@@ -754,9 +746,8 @@ pub struct UnresolvedFieldValue<D: Driver> {
 }
 
 /// A path that uniquely identifies a declaration.
-#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, TS)]
-#[ts(export, rename = "lower_Path")]
-pub struct Path(#[ts(as = "String")] pub Vec<PathComponent>);
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Path(pub Vec<PathComponent>);
 
 impl Path {
     /// The path of the top level (ie. the empty path).
@@ -832,10 +823,9 @@ impl<'de> Deserialize<'de> for Path {
 }
 
 /// A component of a [`Path`].
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, rename = "lower_PathComponent")]
 pub enum PathComponent {
     /// A file.
     File(String),
@@ -1490,8 +1480,4 @@ pub struct FieldValue<D: Driver> {
 
     /// The field's value.
     pub value: WithInfo<D::Info, Expression<D>>,
-}
-
-impl Driver for wipple_util::TsAny {
-    type Info = wipple_util::TsAny;
 }

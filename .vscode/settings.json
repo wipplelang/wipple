@@ -1,4 +1,11 @@
 {
+    "files.exclude": {
+        "coverage": true
+    },
+    "coverage-gutters.coverageFileNames": ["coverage/lcov.info"],
     "wipple.interface": ".wipple/base.wippleinterface",
     "wipple.libraries": [".wipple/base.wipplelibrary"]
+
+    // Uncomment this for IDE support in `js`
+    // "rust-analyzer.cargo.target": "wasm32-unknown-unknown"
 }

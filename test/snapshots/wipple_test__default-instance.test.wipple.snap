@@ -1,0 +1,8 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics: []
+output:
+  - using default instance
+  - "using specific instance: Hello, world!"

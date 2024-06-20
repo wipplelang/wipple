@@ -10,7 +10,7 @@ export const useIsOffline = () => {
 
         const unsubscribe = onValue(connectedRef, (snapshot) => {
             const connected = snapshot.val() === true;
-            console.warn("Connected:", connected);
+            console.log("Connected:", connected);
             setOffline(!connected);
         });
 

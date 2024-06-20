@@ -28,7 +28,6 @@ import {
     noteAsset,
     objectAsset,
 } from "./assets";
-import { Render, RenderedDiagnostic, RenderedFix, RenderedHighlight } from "wipple-render";
 import { defaultPaletteItems, runtimes } from "../../runtimes";
 import { SetupIcon } from "./setup-icon";
 import { StateCommand } from "@codemirror/state";
@@ -75,14 +74,13 @@ export function CodeEditor<Settings>(props: {
 
     const [runnerHasFocus, setRunnerHasFocus] = useState(false);
 
-    const [diagnostics, setDiagnostics] = useState<RenderedDiagnostic[]>([]);
-    const [highlightItems, setHighlightItems] = useState<Record<string, RenderedHighlight>>({});
+    const [diagnostics, setDiagnostics] = useState<any[]>([]);
+    const [highlightItems, setHighlightItems] = useState<Record<string, any>>({});
 
     const [lookUpEnabled, setLookUpEnabled] = useState(false);
 
     const codeMirrorRef = useRef<CodeMirrorRef>(null);
     const runnerRef = useRef<RunnerRef>(null);
-    const render = useMemo(() => new Render(), []);
 
     const windowSize = useWindowSize();
 
@@ -131,7 +129,7 @@ export function CodeEditor<Settings>(props: {
         });
     }, [diagnostics, windowSize]);
 
-    const applyFix = (fix: RenderedFix, start: number, end: number) => {
+    const applyFix = (fix: any, start: number, end: number) => {
         const editorView = codeMirrorRef.current?.editorView;
         if (!editorView) {
             return;
@@ -151,7 +149,7 @@ export function CodeEditor<Settings>(props: {
 
     const getHelpForCode = useCallback(
         (position: number, code: string) => runnerRef.current!.help(position, code),
-        [],
+        []
     );
 
     const format = useCallback(async () => {
@@ -160,7 +158,7 @@ export function CodeEditor<Settings>(props: {
         }
 
         const formatted = await runnerRef.current.format(
-            codeMirrorRef.current!.editorView.state.sliceDoc(),
+            codeMirrorRef.current!.editorView.state.sliceDoc()
         );
 
         props.onChange(formatted);
@@ -487,7 +485,6 @@ export function CodeEditor<Settings>(props: {
                                       }
                                     : undefined
                             }
-                            render={render}
                             hasFocus={runnerHasFocus}
                             onFocus={() => setRunnerHasFocus(true)}
                             onBlur={() => setRunnerHasFocus(false)}
@@ -624,7 +621,7 @@ const PaletteButton = (props: { setup?: string; assets: PaletteItem[]; items: Pa
                             JSON.stringify({
                                 code: item.code,
                                 insertLine: true,
-                            }),
+                            })
                         );
 
                         onDismiss();
@@ -633,7 +630,7 @@ const PaletteButton = (props: { setup?: string; assets: PaletteItem[]; items: Pa
                     <code className="whitespace-nowrap">{item.title}</code>
                 </div>
             ),
-        }),
+        })
     );
 
     return (
@@ -654,7 +651,7 @@ const PaletteButton = (props: { setup?: string; assets: PaletteItem[]; items: Pa
                                                       JSON.stringify({
                                                           code: asset.code,
                                                           insertLine: false,
-                                                      }),
+                                                      })
                                                   );
 
                                                   onDismiss();
@@ -689,8 +686,8 @@ const DiagnosticBubble = (props: {
     width: number;
     height: number;
     theme: ThemeConfig;
-    diagnostic: RenderedDiagnostic;
-    onApplyFix: (fix: RenderedFix, start: number, end: number) => void;
+    diagnostic: any;
+    onApplyFix: (fix: any, start: number, end: number) => void;
 }) => {
     const [isExpanded, setExpanded] = useState(false);
 
@@ -759,7 +756,7 @@ const DiagnosticBubble = (props: {
                                                     props.onApplyFix(
                                                         props.diagnostic.fix!,
                                                         props.diagnostic.location.start.index,
-                                                        props.diagnostic.location.end.index,
+                                                        props.diagnostic.location.end.index
                                                     );
                                                 }}
                                             >

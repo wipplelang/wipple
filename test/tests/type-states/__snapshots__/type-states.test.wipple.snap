@@ -1,7 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`type-states.test.wipple 1`] = `
-[
-  "type-states/type-states.test.wipple:24:5: error: expected a hovering drone here, but found a idle drone",
-]
-`;

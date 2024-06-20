@@ -4,7 +4,7 @@ layout: page
 
 {% import "blog.html" as blog %}
 
-<main style="max-width: 844px;" class="flex flex-col w-full gap-5">
+<main style="max-width: 844px" class="flex flex-col w-full gap-5">
     <section
         class="flex flex-col items-center w-full gap-8 py-10"
         style="
@@ -14,21 +14,38 @@ layout: page
         "
     >
         <div class="flex flex-col items-center w-full">
-            <div class="border-4 md:border-[6px] border-gray-900 dark:border-gray-700 rounded-t-lg bg-white">
-                <img id="hero-image" src="/images/laptop-screen-wipple.png" class="w-[224px] md:w-[360px] rounded-md transition-opacity duration-500">
+            <div
+                class="border-4 md:border-[6px] border-gray-900 dark:border-gray-700 rounded-t-lg bg-white"
+            >
+                <div class="relative w-[224px] h-[150px] md:w-[360px] md:h-[240px]">
+                    <img
+                        id="hero-image"
+                        src="/images/laptop-screen-wipple.png"
+                        class="absolute inset-0 rounded-md transition-opacity duration-500"
+                    />
+                </div>
             </div>
 
-            <div class="w-[272px] h-[7px] md:w-[438px] md:h-[11px] bg-gradient-to-b from-gray-200 to-gray-300 dark:from-gray-500 dark:to-gray-600 rounded-md shadow-md" />
+            <div
+                class="w-[272px] h-[7px] md:w-[438px] md:h-[11px] bg-gradient-to-b from-gray-200 to-gray-300 dark:from-gray-500 dark:to-gray-600 rounded-md shadow-md"
+            />
         </div>
 
-        <h1 id="hero-text" class="text-center text-3xl md:text-5xl leading-tight md:leading-tight font-semibold transition-opacity duration-500">
-            <span class="bg-gradient-to-br from-sky-400 to-blue-500 inline-block text-transparent bg-clip-text">
+        <h1
+            id="hero-text"
+            class="text-center text-3xl md:text-5xl leading-tight md:leading-tight font-semibold transition-opacity duration-500"
+        >
+            <span
+                class="bg-gradient-to-br from-sky-400 to-blue-500 inline-block text-transparent bg-clip-text"
+            >
                 <span id="hero-text-left">Learn to code</span>
             </span>
 
             <br class="md:hidden" />
 
-            <span class="bg-gradient-to-br from-yellow-500 to-orange-400 inline-block text-transparent bg-clip-text">
+            <span
+                class="bg-gradient-to-br from-yellow-500 to-orange-400 inline-block text-transparent bg-clip-text"
+            >
                 <span id="hero-text-right">with Wipple</span>
             </span>
         </h1>
@@ -60,26 +77,26 @@ layout: page
         <h2 class="text-2xl font-semibold">Featured news</h2>
 
         {% for post in collections.featuredPosts | reverse %}
-            <a href="{{ post.url }}" class="block w-full no-underline">
-                <div class="flex flex-col w-full gap-6 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-6">
-                    <div>
-                        <h3 class="text-xl font-semibold">{{ post.data.title }}</h3>
-                        <p class="text-lg opacity-60">{{ post.data.date | postDate }}</p>
-                    </div>
-
-                    <div class="flex flex-col-reverse md:flex-row gap-4 flex-1">
-                        <div class="flex-1">
-                            {{ post.data.blurb | safe }}
-                        </div>
-
-                        {% if post.data.image %}
-                        <div class="flex-1">
-                            <img src="{{ post.data.image }}" class="rounded-lg">
-                        </div>
-                        {% endif %}
-                    </div>
+        <a href="{{ post.url }}" class="block w-full no-underline">
+            <div
+                class="flex flex-col w-full gap-6 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-6"
+            >
+                <div>
+                    <h3 class="text-xl font-semibold">{{ post.data.title }}</h3>
+                    <p class="text-lg opacity-60">{{ post.data.date | postDate }}</p>
                 </div>
-            </a>
+
+                <div class="flex flex-col-reverse md:flex-row gap-4 flex-1">
+                    <div class="flex-1">{{ post.data.blurb | safe }}</div>
+
+                    {% if post.data.image %}
+                    <div class="flex-1">
+                        <img src="{{ post.data.image }}" class="rounded-lg" />
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </a>
         {% endfor %}
 
         <p><a href="/blog">Read more -></a></p>
@@ -89,10 +106,10 @@ layout: page
 <script>
     (() => {
         const content = [
-            {image: "/images/laptop-screen-wipple.png", text: "Learn to code" },
-            {image: "/images/laptop-screen-art.png", text: "Make art" },
-            {image: "/images/laptop-screen-music.png", text: "Make music" },
-            {image: "/images/laptop-screen-math.png", text: "Explore math" },
+            { image: "/images/laptop-screen-wipple.png", text: "Learn to code" },
+            { image: "/images/laptop-screen-art.png", text: "Make art" },
+            { image: "/images/laptop-screen-music.png", text: "Make music" },
+            { image: "/images/laptop-screen-math.png", text: "Explore math" },
         ];
 
         let n = 0;
@@ -101,16 +118,16 @@ layout: page
             n = (n + 1) % 4;
             const { image, text } = content[n];
 
-            document.getElementById("hero-text").classList.toggle('opacity-0');
-            document.getElementById("hero-image").classList.toggle('opacity-0');
+            document.getElementById("hero-text").classList.toggle("opacity-0");
+            document.getElementById("hero-image").classList.toggle("opacity-0");
 
             setTimeout(() => {
                 document.getElementById("hero-text-left").innerText = text;
                 document.getElementById("hero-image").src = image;
 
                 setTimeout(() => {
-                    document.getElementById("hero-text").classList.toggle('opacity-0');
-                    document.getElementById("hero-image").classList.toggle('opacity-0');
+                    document.getElementById("hero-text").classList.toggle("opacity-0");
+                    document.getElementById("hero-image").classList.toggle("opacity-0");
                 }, 250);
             }, 500);
 

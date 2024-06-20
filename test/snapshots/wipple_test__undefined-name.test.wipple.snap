@@ -1,0 +1,7 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics:
+  - "tests/undefined-name.test.wipple:3:1: error: can't find `foo`"
+output: []

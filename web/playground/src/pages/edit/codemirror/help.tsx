@@ -10,7 +10,7 @@ import {
     StateEffect,
     StateField,
 } from "@codemirror/state";
-import { SyntaxNode, Tree } from "@lezer/common";
+import { NodeType, SyntaxNode, Tree } from "@lezer/common";
 import { classHighlighter } from "@lezer/highlight";
 import { Markdown, Tooltip } from "../../../components";
 import { wippleTags } from "./language";
@@ -18,15 +18,14 @@ import { ThemeConfig, defaultThemeConfig, highlightCategories } from "./theme";
 import { Help } from "../../../models";
 import { useEffect, useState } from "react";
 import { isAsset } from "../assets";
-import { RenderedHighlight } from "wipple-render";
 
 export const displayHelp = new Compartment();
 
 export const displayHelpFromEnabled = (
     enabled: boolean,
     theme: ThemeConfig,
-    help: (position: number, code: string) => Help | undefined,
-    highlightItems: Record<string, RenderedHighlight>,
+    help: (position: number, code: string) => Promise<Help | undefined>,
+    highlightItems: Record<string, any>,
     onClick: (help: Help) => void,
 ): Extension =>
     enabled
@@ -34,17 +33,18 @@ export const displayHelpFromEnabled = (
               configFacet.of({ theme, help, onClick, highlightItems }),
               helpDecorations,
               helpDecorationsListener,
-              EditorView.decorations.compute([helpDecorations], (state) =>
-                  state.field(helpDecorations),
+              EditorView.decorations.compute(
+                  [helpDecorations],
+                  (state) => state.field(helpDecorations) ?? Decoration.none,
               ),
           ]
         : [];
 
 interface Config {
     theme: ThemeConfig;
-    help: (position: number, code: string) => Help | undefined;
+    help: (position: number, code: string) => Promise<Help | undefined>;
     onClick: (help: Help) => void;
-    highlightItems: Record<string, RenderedHighlight>;
+    highlightItems: Record<string, any>;
 }
 
 const configFacet = Facet.define<Config, Config>({
@@ -55,10 +55,10 @@ const helpDecorationsFacet = Facet.define<DecorationSet, DecorationSet>({
     combine: (values) => values[values.length - 1] ?? Decoration.none,
 });
 
-const helpDecorations = StateField.define<DecorationSet>({
-    create: (state) => computeHelpDecorations(syntaxTree(state), state),
+const helpDecorations = StateField.define<DecorationSet | undefined>({
+    create: () => undefined,
     update: (value, update) => {
-        let newValue = value.map(update.changes);
+        let newValue = value?.map(update.changes);
         for (const effect of update.effects) {
             if (effect.is(updateHelpDecorations)) {
                 newValue = effect.value;
@@ -73,24 +73,33 @@ const helpDecorations = StateField.define<DecorationSet>({
 const updateHelpDecorations = StateEffect.define<DecorationSet>();
 
 const helpDecorationsListener = EditorView.updateListener.of((update) => {
-    if (!update.docChanged && !update.viewportChanged) {
-        return;
-    }
-
     const tree = syntaxTree(update.state);
-    if (syntaxTree(update.startState) === tree) {
+    if (syntaxTree(update.startState) === tree && update.state.field(helpDecorations) != null) {
         return;
     }
 
-    update.view.dispatch({
-        effects: updateHelpDecorations.of(computeHelpDecorations(tree, update.state)),
-    });
+    (async () => {
+        const helpDecorations = await computeHelpDecorations(tree, update.state);
+
+        update.view.dispatch({
+            effects: updateHelpDecorations.of(helpDecorations),
+        });
+    })();
 });
 
-const computeHelpDecorations = (syntaxTree: Tree, state: EditorState) => {
+const computeHelpDecorations = async (syntaxTree: Tree, state: EditorState) => {
+    const terminals = ["Keyword", "Operator", "Type", "Name"];
+
     const { theme, help, onClick, highlightItems } = state.facet(configFacet);
 
     const decorations: Range<Decoration>[] = [];
+
+    const queue: {
+        from: number;
+        to: number;
+        type: NodeType;
+        node: SyntaxNode;
+    }[] = [];
     syntaxTree.iterate({
         enter: (node) => {
             const { from, to } = node;
@@ -102,41 +111,35 @@ const computeHelpDecorations = (syntaxTree: Tree, state: EditorState) => {
 
             const code = state.sliceDoc(from, to);
 
-            const terminals = [
-                "Comment",
-                "Text",
-                "Number",
-                "Asset",
-                "Keyword",
-                "Operator",
-                "Type",
-                "Name",
-            ];
-
-            const brackets = ["{", "}", "(", ")"];
-
             if (
                 isAsset(code) || // assets are handled separately
-                (!terminals.includes(node.type.name) && !brackets.includes(code))
+                !terminals.includes(node.type.name)
             ) {
                 return;
             }
 
-            const highlight = node.type.name === "Name" ? highlightItems[code] : undefined;
-
-            const widget = new HelpWidget(
-                from,
-                to,
-                code,
-                node.node,
-                theme,
-                help(from, code),
-                highlight,
-                onClick,
-            );
-            decorations.push(Decoration.replace({ widget }).range(from, to));
+            queue.push({ from: from, to: to, type: node.type, node: { ...node.node } });
         },
     });
+
+    for (const { from, to, type, node } of queue) {
+        const code = state.sliceDoc(from, to);
+
+        const highlight = type.name === "Name" ? highlightItems[code] : undefined;
+
+        const widget = new HelpWidget(
+            from,
+            to,
+            code,
+            { ...node },
+            theme,
+            await help(from, code),
+            highlight,
+            onClick,
+        );
+
+        decorations.push(Decoration.replace({ widget }).range(from, to));
+    }
 
     return Decoration.set(decorations, true);
 };
@@ -151,7 +154,7 @@ class HelpWidget extends WidgetType {
         public node: SyntaxNode,
         public theme: ThemeConfig,
         public help: Help | undefined,
-        public highlight: RenderedHighlight | undefined,
+        public highlight: any | undefined,
         public onClick: (help: Help) => void,
     ) {
         super();
@@ -225,7 +228,7 @@ const HelpWidgetComponent = (props: {
     node: SyntaxNode;
     theme: ThemeConfig;
     help: Help | undefined;
-    highlight: RenderedHighlight | undefined;
+    highlight: any | undefined;
     onClick: (help: Help) => void;
 }) => {
     const [codeClassName, codeStyle] = codeStyles(props.node, props.theme);

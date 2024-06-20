@@ -1,12 +1,10 @@
 //! Compile a typechecked item to IR/bytecode.
 
 mod compile;
-mod tail_call;
 
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use ts_rs::TS;
 use wipple_util::WithInfo;
 
 /// Provides the code generation with information about the program.
@@ -33,36 +31,6 @@ pub trait Driver: wipple_typecheck::Driver {
     fn item_path_in(&self, path: &Self::Path, index: u32) -> Self::Path;
 }
 
-impl Driver for wipple_util::TsAny {
-    fn number_type(&self) -> Option<Self::Path> {
-        unimplemented!()
-    }
-
-    fn text_type(&self) -> Option<Self::Path> {
-        unimplemented!()
-    }
-
-    fn boolean_type(&self) -> Option<Self::Path> {
-        unimplemented!()
-    }
-
-    fn true_variant(&self) -> Option<Self::Path> {
-        unimplemented!()
-    }
-
-    fn number_equality_intrinsic(&self) -> Option<String> {
-        unimplemented!()
-    }
-
-    fn text_equality_intrinsic(&self) -> Option<String> {
-        unimplemented!()
-    }
-
-    fn item_path_in(&self, _path: &Self::Path, _index: u32) -> Self::Path {
-        unimplemented!()
-    }
-}
-
 /// Generate IR from an expression. This function must only be called if
 /// typechecking the item produced no errors.
 pub fn compile<'a, D: Driver>(
@@ -72,12 +40,7 @@ pub fn compile<'a, D: Driver>(
     expression: WithInfo<D::Info, &'a wipple_typecheck::TypedExpression<D>>,
     captures: &[D::Path],
 ) -> Option<Result<D>> {
-    let mut items = compile::compile(driver, path, attributes, expression, captures)?;
-
-    for item in items.values_mut() {
-        tail_call::apply(&mut item.instructions);
-    }
-
+    let items = compile::compile(driver, path, attributes, expression, captures)?;
     Some(Result { items })
 }
 
@@ -121,7 +84,7 @@ pub struct Item<D: Driver> {
 }
 
 /// An instruction.
-#[derive(Serialize, Deserialize, Derivative, TS)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(
     Debug(bound = ""),
     Clone(bound = ""),
@@ -131,7 +94,6 @@ pub struct Item<D: Driver> {
 )]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound = "")]
-#[ts(export, rename = "ir_Instruction", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Instruction<D: Driver> {
     /// (Stack management) Duplicate the top of the stack.
     Copy,
@@ -205,7 +167,7 @@ pub enum Instruction<D: Driver> {
 }
 
 /// An instruction that produces a value with a runtime type.
-#[derive(Serialize, Deserialize, Derivative, TS)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(
     Debug(bound = ""),
     Clone(bound = ""),
@@ -215,7 +177,6 @@ pub enum Instruction<D: Driver> {
 )]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound = "")]
-#[ts(export, rename = "ir_TypedInstruction", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum TypedInstruction<D: Driver> {
     /// (Consuming) An intrinsic provided by the runtime with _n_ inputs.
     Intrinsic(String, u32),
@@ -252,7 +213,7 @@ pub enum TypedInstruction<D: Driver> {
 }
 
 /// Used when finding a suitable instance for a trait at runtime.
-#[derive(Serialize, Deserialize, Derivative, TS)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(
     Debug(bound = ""),
     Clone(bound = ""),
@@ -262,7 +223,6 @@ pub enum TypedInstruction<D: Driver> {
 )]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound = "")]
-#[ts(export, rename = "ir_TypeDescriptor", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum TypeDescriptor<D: Driver> {
     /// A type parameter. This will only occur in the type descriptor for a
     /// generic item, never in a value.
@@ -285,7 +245,7 @@ pub enum TypeDescriptor<D: Driver> {
 }
 
 /// Contains layout information for a named type.
-#[derive(Serialize, Deserialize, Derivative, TS)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(
     Debug(bound = ""),
     Clone(bound = ""),
@@ -295,7 +255,6 @@ pub enum TypeDescriptor<D: Driver> {
 )]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound = "")]
-#[ts(export, rename = "ir_LayoutDescriptor", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum LayoutDescriptor<D: Driver> {
     /// A marker.
     Marker,

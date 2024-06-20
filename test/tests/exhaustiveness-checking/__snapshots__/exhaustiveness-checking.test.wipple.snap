@@ -1,7 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`exhaustiveness-checking.test.wipple 1`] = `
-[
-  "exhaustiveness-checking/exhaustiveness-checking.test.wipple:12:24: error: this code doesn't handle <unknown> or <unknown>",
-]
-`;

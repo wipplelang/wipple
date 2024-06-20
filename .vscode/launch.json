@@ -1,0 +1,44 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Compiler (test.wipple)",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": ["build", "--bin=wipple"],
+                "filter": {
+                    "name": "wipple",
+                    "kind": "bin"
+                }
+            },
+            "args": ["compile", "test.wipple", "--dependency", ".wipple/base.wippleinterface"],
+            "cwd": "${workspaceFolder}",
+            "terminal": "console"
+        },
+        {
+            "name": "Test (With Coverage)",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": ["test", "--no-run", "--package=wipple-test"],
+                "filter": {
+                    "name": "wipple-test",
+                    "kind": "lib"
+                },
+                "env": {
+                    "RUSTFLAGS": "-Cinstrument-coverage -Clink-dead-code",
+                    "LLVM_PROFILE_FILE": "${workspaceFolder}/target/debug/coverage-%p-%m.profraw"
+                }
+            },
+            "cwd": "${workspaceFolder}/test",
+            "terminal": "console",
+            "postDebugTask": "Coverage Report",
+            "args": ["--test-threads=1"],
+            "env": {
+                "LLVM_PROFILE_FILE": "${workspaceFolder}/target/debug/coverage-%p-%m.profraw",
+                "INSTA_UPDATE": "no"
+            }
+        }
+    ]
+}

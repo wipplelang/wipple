@@ -5,6 +5,6 @@ export type Output =
           type: "choice";
           prompt: string;
           choices: string[];
-          onSubmit: (choice: number) => Promise<void>;
+          onSubmit: (choice: number) => void;
       }
     | { type: "error"; message: string };

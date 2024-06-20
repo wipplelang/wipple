@@ -1,7 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`constant-captured-variables.test.wipple 1`] = `
-[
-  "constant-captured-variables/constant-captured-variables.test.wipple:7:13: error: can't find \`n\`",
-]
-`;

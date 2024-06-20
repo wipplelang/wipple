@@ -1,7 +1,6 @@
 use crate::{Driver, WithInfo};
 use rustc_lexer::unescape::EscapeError;
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
 use wipple_util::DefaultFromInfo;
 
 pub struct ParseFormatExpressionResult<D: Driver, T> {
@@ -76,8 +75,7 @@ pub(crate) fn parse_format_expression<D: Driver, T: DefaultFromInfo<D::Info>>(
     ParseFormatExpressionResult { segments, trailing }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
-#[ts(export, rename = "syntax_TextLiteralError")]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TextLiteralError {
     pub start: u32,
     pub end: u32,

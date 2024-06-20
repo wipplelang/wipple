@@ -1,7 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`missing-instance.test.wipple 1`] = `
-[
-  "missing-instance/missing-instance.test.wipple:4:1: error: cannot describe a \`Foo\` value",
-]
-`;

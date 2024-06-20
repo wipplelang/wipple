@@ -125,6 +125,7 @@ const UserPhoto = (props: { user: User }) =>
         <img
             src={props.user.photoURL}
             alt={props.user.displayName ?? ""}
+            crossOrigin="anonymous"
             className="w-full h-full"
         />
     ) : (

@@ -8,12 +8,11 @@ use itertools::Itertools;
 use logos::Logos;
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, hash::Hash, mem};
-use ts_rs::TS;
 use wipple_util::WithInfo;
 
 /// A token in the source code.
 #[allow(missing_docs)]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 pub enum Token<'src> {
     LeftParenthesis,
@@ -69,11 +68,9 @@ impl<'src> Token<'src> {
     strum::Display,
     Serialize,
     Deserialize,
-    TS,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "kebab-case")]
-#[ts(export, rename = "syntax_Keyword")]
 pub enum Keyword {
     #[strum(serialize = "_")]
     Underscore,
@@ -128,11 +125,9 @@ impl Keyword {
     strum::EnumDiscriminants,
     Serialize,
     Deserialize,
-    TS,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "kebab-case")]
-#[ts(export, rename = "syntax_Operator")]
 pub enum Operator {
     #[strum(serialize = "as")]
     As,
@@ -251,11 +246,9 @@ impl Operator {
     strum::EnumDiscriminants,
     Serialize,
     Deserialize,
-    TS,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "kebab-case")]
-#[ts(export, rename = "syntax_VariadicOperator")]
 pub enum VariadicOperator {
     #[strum(serialize = ";")]
     Tuple,
@@ -280,11 +273,9 @@ pub enum VariadicOperator {
     strum::EnumDiscriminants,
     Serialize,
     Deserialize,
-    TS,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "kebab-case")]
-#[ts(export, rename = "syntax_NonAssociativeOperator")]
 pub enum NonAssociativeOperator {
     #[strum(serialize = "where")]
     Where,
@@ -333,7 +324,7 @@ impl Operator {
 }
 
 /// An error occurring during [`tokenize`] or [`read`].
-#[derive(Derivative, Serialize, Deserialize, TS)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Debug(bound = ""),
     Clone(bound = ""),
@@ -342,7 +333,6 @@ impl Operator {
     Hash(bound = "D::Info: Hash")
 )]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
-#[ts(export, rename = "tokenize_Diagnostic", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub enum Diagnostic<D: Driver> {
     /// The tokenizer encountered an invalid token.
     InvalidToken,

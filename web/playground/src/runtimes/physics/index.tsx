@@ -12,7 +12,9 @@ export const worldWidth = 8;
 export const worldHeight = 6;
 const pixelRatio = 50;
 const outOfBoundsThreshold = 1;
-const delta = 16.666666666666667;
+
+const defaultDelta = 1000 / 60;
+let delta = defaultDelta; // default; will be updated to device's FPS in initializePhysics
 
 // https://github.com/liabru/matter-js/issues/666#issuecomment-615939507
 const ms = 1000;
@@ -43,6 +45,17 @@ const resizeCanvas = (canvas: HTMLCanvasElement) => {
 };
 
 const initializePhysics = async (canvas: HTMLCanvasElement) => {
+    // Calculate device FPS
+    const frameTimes: number[] = [];
+    for (let i = 0; i < 10; i++) {
+        const start = performance.now();
+        await new Promise(requestAnimationFrame);
+        frameTimes.push(performance.now() - start);
+    }
+
+    const averageFrameTime = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
+    delta = defaultDelta ** 2 / averageFrameTime;
+
     const engine = matter.Engine.create({
         gravity: { y: 0 }, // let the user define gravity!
     });
@@ -247,6 +260,7 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                         });
 
                         await new Promise(requestAnimationFrame);
+
                         matter.Engine.update(engine, delta, 0);
 
                         t = engine.timing.timestamp / ms;
@@ -290,8 +304,8 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                     matter.Events.on(engine, "beforeUpdate", async () => {
                         await mutexRef.current?.runExclusive(async () => {
                             const t = engine.timing.timestamp / ms;
-                            const x = await props.call(fx, t);
-                            const y = await props.call(fy, t);
+                            const x = await fx([t]);
+                            const y = await fy([t]);
 
                             matter.Body.setPosition(body.matterBody, {
                                 x: isNaN(x) ? body.matterBody.position.x : x + worldWidth / 2,
@@ -316,8 +330,8 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                     matter.Events.on(engine, "beforeUpdate", async () => {
                         await mutexRef.current?.runExclusive(async () => {
                             const t = engine.timing.timestamp / ms;
-                            const x = await props.call(fx, t);
-                            const y = await props.call(fy, t);
+                            const x = await fx([t]);
+                            const y = await fy([t]);
 
                             matter.Body.applyForce(body.matterBody, body.matterBody.position, {
                                 x: x / (ms * ms),
@@ -335,7 +349,7 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
 
                     const callback = () =>
                         mutexRef.current?.runExclusive(async () => {
-                            await props.call(block);
+                            await block([]);
                         });
 
                     observers.push([time, callback]);
@@ -357,7 +371,7 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                     const bodyName = value;
 
                     const body = bodies[bodyName];
-                    if (!body?.measurements) return [0, 0, 0, 0, 0, 0, 0];
+                    if (!body?.measurements) return [body.matterBody.mass, 0, 0, 0, 0, 0, 0];
 
                     const { m, x, y, vx, vy, fx, fy } = body.measurements;
 

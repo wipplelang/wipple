@@ -1,7 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`mismatched-inferred-params.test.wipple 1`] = `
-[
-  "mismatched-inferred-params/mismatched-inferred-params.test.wipple:3:15: error: expected \`(Number -> Text) -> (List Number) -> Sequence Text\` here, but found \`(Text -> Text) -> (List Number) -> Sequence Text\`",
-]
-`;

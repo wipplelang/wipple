@@ -1,7 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`bounds-dont-influence-other-bounds.test.wipple 1`] = `
-[
-  "bounds-dont-influence-other-bounds/bounds-dont-influence-other-bounds.test.wipple:12:1: error: \`(f :: (Number ; _))\` requires \`(T _)\`",
-]
-`;

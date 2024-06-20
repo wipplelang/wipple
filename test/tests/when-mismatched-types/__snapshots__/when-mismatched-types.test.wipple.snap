@@ -1,7 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`when-mismatched-types.test.wipple 1`] = `
-[
-  "when-mismatched-types/when-mismatched-types.test.wipple:5:12: error: expected a number here, but found a piece of text",
-]
-`;

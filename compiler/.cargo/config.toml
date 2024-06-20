@@ -1,2 +1,0 @@
-[target.'cfg(target_arch = "wasm32")']
-rustflags = ["-C", "link-arg=-zstack-size=0x400000"] # https://github.com/rustwasm/wasm-bindgen/issues/3368

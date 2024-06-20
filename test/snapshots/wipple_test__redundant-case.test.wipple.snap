@@ -1,0 +1,9 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics:
+  - "tests/redundant-case.test.wipple:5:3: warning: this pattern is unnecessary because it is already handled above"
+  - "tests/redundant-case.test.wipple:7:3: warning: this pattern is unnecessary because it is already handled above"
+output:
+  - a

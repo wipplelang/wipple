@@ -1,7 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`constant-mismatched-types.test.wipple 1`] = `
-[
-  "constant-mismatched-types/constant-mismatched-types.test.wipple:4:5: error: expected a number here, but found a piece of text",
-]
-`;

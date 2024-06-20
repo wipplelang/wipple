@@ -3,20 +3,16 @@
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use ts_rs::TS;
 use wipple_util::WithInfo;
 
 /// Provides the linker with information about the program.
 pub trait Driver: wipple_ir::Driver {}
 
-impl Driver for wipple_util::TsAny {}
-
 /// A standalone, unlinked library.
-#[derive(Serialize, Deserialize, Derivative, TS)]
-#[derivative(Debug(bound = ""), Default(bound = ""))]
+#[derive(Serialize, Deserialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""), Default(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, rename = "linker_UnlinkedLibrary", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct UnlinkedLibrary<D: Driver> {
     /// The implementations of constants and instances.
     pub items: HashMap<D::Path, UnlinkedItem<D>>,
@@ -38,11 +34,10 @@ pub struct UnlinkedLibrary<D: Driver> {
 }
 
 /// An analyzed expression along with its compiled IR.
-#[derive(Serialize, Deserialize, Derivative, TS)]
-#[derivative(Debug(bound = ""))]
+#[derive(Serialize, Deserialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, rename = "linker_UnlinkedItem", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct UnlinkedItem<D: Driver> {
     /// The list of type parameters declared by the item.
     pub parameters: Vec<D::Path>,
@@ -59,11 +54,10 @@ pub struct UnlinkedItem<D: Driver> {
 
 /// A linked executable.
 #[non_exhaustive]
-#[derive(Serialize, Deserialize, Derivative, TS)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Default(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, rename = "linker_Executable", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct Executable<D: Driver> {
     /// The implementations of constants and instances.
     pub items: HashMap<D::Path, LinkedItem<D>>,
@@ -86,11 +80,10 @@ pub struct Executable<D: Driver> {
 
 /// An item in an [`Executable`].
 #[non_exhaustive]
-#[derive(Serialize, Deserialize, Derivative, TS)]
+#[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
-#[ts(export, rename = "linker_LinkedItem", concrete(D = wipple_util::TsAny), bound = "D::Info: TS")]
 pub struct LinkedItem<D: Driver> {
     /// The list of type parameters declared by the item.
     pub parameters: Vec<D::Path>,

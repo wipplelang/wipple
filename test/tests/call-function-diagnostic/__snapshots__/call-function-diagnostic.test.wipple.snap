@@ -1,7 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`call-function-diagnostic.test.wipple 1`] = `
-[
-  "call-function-diagnostic/call-function-diagnostic.test.wipple:6:15: error: expected a piece of text here, but found a function",
-]
-`;

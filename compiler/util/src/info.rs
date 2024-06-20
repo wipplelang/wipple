@@ -3,12 +3,10 @@ use std::{
     fmt::Debug,
     ops::{Deref, DerefMut},
 };
-use ts_rs::TS;
 
 /// An item with information from the driver attached.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, rename = "WithInfo")]
 pub struct WithInfo<I, T> {
     /// Additional information about the item provided by the driver.
     pub info: I,

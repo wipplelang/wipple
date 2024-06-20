@@ -131,7 +131,8 @@ export const Turtle: RuntimeComponent<Settings> = forwardRef((props, ref) => {
             });
         },
         onMessage: async (message, value) => {
-            const turtle = turtleRef.current!;
+            const turtle = turtleRef.current;
+            if (!turtle) return;
 
             switch (message) {
                 case "forward": {

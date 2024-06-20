@@ -228,7 +228,7 @@ export const intermediateWippleLesson: Lesson = {
                 },
                 {
                     type: "code",
-                    code: 'key : prompt "Enter the secret key"\nshow (when key {\n    "Wipple" -> "✅ access granted!!!"\n    _ -> "❌ access denied!!!"\n})',
+                    code: 'key : prompt "Enter the secret key"\nshow (when key {\n    "Wipple" -> "Access granted!"\n    _ -> "Access denied!"\n})',
                 },
                 {
                     locked: true,

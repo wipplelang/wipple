@@ -11,5 +11,4 @@ derivative = "2"
 lazy_static = "1"
 serde = { version = "1", features = ["derive"] }
 strum = { version = "0.25", features = ["derive"] }
-ts-rs = { git = "https://github.com/WilsonGramer/ts-rs", branch = "bound-attribute", features = ["no-serde-warnings"] }
 wipple-util = { path = "../util" }
