@@ -1,5 +1,9 @@
 #!/bin/bash -e
 
-if ! [ -z "$VITE_FIREBASE_PROJECT_ID" ]; then
-    echo "/__/auth/* https://$VITE_FIREBASE_PROJECT_ID.firebaseapp.com/__/auth/:splat 200" >> _site/_redirects
+if ! [ -z "$WIPPLE_FIREBASE_AUTH_REDIRECT_URL" ]; then
+    echo "/__/auth/* $WIPPLE_FIREBASE_AUTH_REDIRECT_URL/:splat 200" >> _site/_redirects
+fi
+
+if ! [ -z "$WIPPLE_FIREBASE_DATABASE_REDIRECT_URL" ]; then
+    echo "/rtdb/* $WIPPLE_FIREBASE_DATABASE_REDIRECT_URL/:splat 200" >> _site/_redirects
 fi
