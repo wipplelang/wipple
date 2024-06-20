@@ -1,6 +1,6 @@
 [build]
 publish = "web/dist"
-command = "task install-dependencies && task cli:build && task base:compile && task web:build"
+command = "brew install go-task/tap/go-task && task install-dependencies && task cli:build && task base:compile && task web:build"
 
 [[headers]]
 for = "/playground/*"
