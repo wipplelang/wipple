@@ -187,11 +187,11 @@ pub fn intrinsics<R: Runtime>() -> HashMap<&'static str, Intrinsic<R>> {
         let callback = inputs.next().unwrap();
 
         task_group
-            .add(async move {
+            .add(R::run(async move {
                 if let Err(_error) = context.call(callback, vec![], TaskLocals::default()).await {
                     // TODO: Handle errors
                 }
-            })
+            }))
             .await;
 
         Ok(Value::unit())

@@ -6,6 +6,7 @@ use clap::Parser;
 use futures::{future, FutureExt};
 use serde::Serialize;
 use std::{fs, os::unix::fs::PermissionsExt, path::PathBuf, process, sync::Arc};
+use wipple_driver::util::lazy_static::lazy_static;
 
 #[derive(Parser)]
 #[command(name = "Wipple", bin_name = "wipple")]
@@ -47,7 +48,7 @@ enum Args {
 
 const SHEBANG: &str = "#!/usr/bin/env wipple run\n";
 
-#[async_std::main]
+#[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
@@ -262,12 +263,20 @@ async fn run_executable(executable: wipple_driver::Executable) {
 
     struct Runtime;
 
+    lazy_static! {
+        static ref RUNTIME: tokio::runtime::Runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
+            .enable_all()
+            .build()
+            .unwrap();
+    }
+
     impl wipple_interpreter::Runtime for Runtime {
         type Value = Value;
-        type JoinHandle = async_std::task::JoinHandle<()>;
+        type JoinHandle = tokio::task::JoinHandle<()>;
 
         fn run(future: impl future::Future<Output = ()> + Send + 'static) -> Self::JoinHandle {
-            async_std::task::spawn(future)
+            RUNTIME.spawn(future)
         }
 
         async fn from_value(

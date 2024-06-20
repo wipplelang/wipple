@@ -9,7 +9,6 @@ workspace = true
 [dependencies]
 async-channel = "2"
 async-lock = { version = "3", default-features = false }
-async-std = "1"
 derivative = "2"
 futures = "0.3"
 rand = "0.8"

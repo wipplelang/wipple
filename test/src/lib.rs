@@ -4,7 +4,7 @@ use rstest::rstest;
 
 #[rstest]
 #[timeout(std::time::Duration::from_secs(10))]
-#[async_std::test]
+#[tokio::test]
 async fn tests(#[files("tests/**/*.test.wipple")] file: std::path::PathBuf) {
     use futures::{future, FutureExt};
     use serde::Serialize;
@@ -12,6 +12,7 @@ async fn tests(#[files("tests/**/*.test.wipple")] file: std::path::PathBuf) {
         fs,
         sync::{Arc, Mutex},
     };
+    use wipple_driver::util::lazy_static::lazy_static;
 
     let test = async move {
         let file_name = file.file_name().unwrap().to_string_lossy().into_owned();
@@ -128,14 +129,23 @@ async fn tests(#[files("tests/**/*.test.wipple")] file: std::path::PathBuf) {
 
             struct Runtime;
 
+            lazy_static! {
+                static ref RUNTIME: tokio::runtime::Runtime =
+                    tokio::runtime::Builder::new_multi_thread()
+                        .worker_threads(1)
+                        .enable_all()
+                        .build()
+                        .unwrap();
+            }
+
             impl wipple_interpreter::Runtime for Runtime {
                 type Value = Value;
-                type JoinHandle = async_std::task::JoinHandle<()>;
+                type JoinHandle = tokio::task::JoinHandle<()>;
 
                 fn run(
                     future: impl future::Future<Output = ()> + Send + 'static,
                 ) -> Self::JoinHandle {
-                    async_std::task::spawn(future)
+                    RUNTIME.spawn(future)
                 }
 
                 async fn from_value(

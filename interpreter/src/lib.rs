@@ -98,8 +98,10 @@ pub struct TaskGroup<R: Runtime + ?Sized>(
 );
 
 impl<R: Runtime + ?Sized> TaskGroup<R> {
-    pub async fn add(&self, task: impl Future<Output = ()> + Send + 'static) {
-        self.0.lock_arc().await.push(R::run(task));
+    pub async fn add(&self, task: impl Future + Send + 'static) {
+        self.0.lock_arc().await.push(R::run(async move {
+            task.await;
+        }));
     }
 }
 
@@ -248,7 +250,7 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
                     .get(&path)
                     .unwrap_or_else(|| panic!("cannot find item {path:?}"));
 
-                let mut mutex = None;
+                let mut cached = None;
                 if item.evaluate_once {
                     let mut item_cache = context.item_cache.lock_arc().await;
 
@@ -256,15 +258,10 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
                         return Ok(mutex.lock_arc().await.clone().unwrap());
                     } else {
                         let item_mutex = Arc::new(Mutex::new(None));
-                        mutex = Some(item_mutex.clone());
+                        cached = Some(item_mutex.lock_arc().await);
                         item_cache.insert(path.clone(), item_mutex);
                     }
                 }
-
-                let cached = match mutex.as_ref() {
-                    Some(mutex) => Some(mutex.lock_arc().await),
-                    None => None,
-                };
 
                 let substitutions = substitutions.unwrap_or_else(|parameters| {
                     item.parameters
