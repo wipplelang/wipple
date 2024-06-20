@@ -107,7 +107,7 @@ export const learnPhysicsLesson: Lesson = {
                     setup: "physics",
                     code: 'show ("Green block: _" (mass-of [Object "Block 1"]))\nshow ("Orange block: _" (mass-of [Object "Block 2"]))',
                     settings: {
-                        demonstration: "One Block",
+                        demonstration: "Two Blocks",
                     },
                 },
                 {
