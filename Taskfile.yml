@@ -158,6 +158,8 @@ tasks:
         deps:
             - js:install-dependencies
             - web:install-dependencies
+        cmds:
+            - cargo install wasm-pack
 
     js:install-dependencies:
         run: once
