@@ -3,7 +3,6 @@ layout: blog
 title: Try the new Wipple Playground!
 date: 2024-03-23
 image: /blog/2024-03-23/images/banner.png
-tags: [posts, featuredPosts]
 blurb: I'm excited to announce that the all-new Wipple Playground is available for testing at preview.wipple.dev — try it out and let me know what you think! The new Wipple Playground is the result of student feedback and features a huge list of improvements. And it's powered by a new Wipple compiler that's built for speed. Here are some of the most notable changes...
 ---
 

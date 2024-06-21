@@ -1,11 +1,10 @@
 module.exports = {
     string: /"(?:[^"\\]|\\.)*"/,
     comment: /--.*/,
-    keyword: /_|!|when|where|type|trait|instance|intrinsic|infer|do|default/,
-    operator: /as|to|by|\^|\*|\/|%|\+|-|<|<=|>|>=|=|\/=|is|and|or|\.|->|:|::|=>/,
-    "class-name": /\b[A-Z][^\r\n\t \(\)\[\]\{\}'"/]*\b/,
-    number: /\b-?[0-9]+(\.[0-9]+)?\b/,
-    whitespace: /\s+/,
-    name: /\b.+\b/,
-    error: /.*/,
+    number: /-?[0-9]+(?:\.[0-9]+)?/,
+    keyword: /\b(?:_|when|where|type|trait|instance|intrinsic|infer|do|default)\b/,
+    operator:
+        /@|!|\bas\b|\bto\b|\bby\b|\^|\*|\/|%|\+|-|<|<=|>|>=|=|\/=|\bis\b|\band\b|\bor\b|\.|->|:|::|=>/,
+    "class-name": /\b(?:[A-Z][A-Za-z0-9\-_]*[?]?)\b/,
+    name: /\b(?:[A-Za-z0-9\-_]+[?]?)\b/,
 };
