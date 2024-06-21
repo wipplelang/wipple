@@ -1,5 +1,7 @@
 <p align="center">
-  <img src="web/home/images/logo.svg">
+  <a href="https://wipple.org">
+    <img src="web/home/images/logo.svg">
+  </a>
 </p>
 
 <h1 align="center">
@@ -7,6 +9,9 @@
 </h1>
 
 <p align="center">
+  <a href="https://wipple.org/docs">
+    <img src="https://img.shields.io/badge/docs-wipple.org%2Fdocs-blue">
+  </a>
   <a href="https://github.com/wipplelang/wipple/actions/workflows/test.yml">
     <img src="https://github.com/wipplelang/wipple/actions/workflows/test.yml/badge.svg?branch=main" alt=".github/workflows/test.yml">
   </a>
@@ -26,33 +31,24 @@ Wipple code is natural to read and write, and the language is designed to grow w
 
 ## Build Wipple
 
-The Wipple project is split across several folders. The compiler is written in [Rust](https://rust-lang.org) (via [WebAssembly](https://webassembly.org)) and [TypeScript](https://www.typescriptlang.org), and the playground is written in [React](https://react.dev). The documentation is published using [mdBook](https://github.com/rust-lang/mdBook).
+The Wipple project is split across several folders. The compiler is written in [Rust](https://rust-lang.org) (via [WebAssembly](https://webassembly.org)), and the playground is written in [React](https://react.dev). The documentation is published using [mdBook](https://github.com/rust-lang/mdBook).
 
 You can use these commands to build and test Wipple locally. Make sure you have [`task`](https://taskfile.dev) installed.
 
 ```shell
-# Compile and run './test.wipple' relative to the project directory
+# Compile and run 'test.wipple' relative to the project directory
 task dev
 
 # View the compiled '.wippleinterface' and '.wipplelibrary' files
 ls .wipple
 
-# Run snapshot tests
+# Run tests
 task test
-
-# Update snapshot tests
-task test -- -u
 
 # Install 'wipple' in your PATH
 task cli:build
 
-# Serve the playground at http://localhost:8080/playground
-# (you will need a '.env' file in './web/playground'; see '.env.example')
-task web:playground:serve
-
-# Serve the documentation at http://localhost:8080/docs
-task web:docs:serve
-
-# Serve the full website at http://localhost:8080
+# Serve the website at http://localhost:8080
+# (you will need a '.env' file in 'web'; see '.env.example')
 task web:serve
 ```
