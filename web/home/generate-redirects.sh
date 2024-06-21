@@ -1,5 +1,5 @@
 #!/bin/bash -e
 
-if ! [ -z "$VITE_FIREBASE_AUTH_DOMAIN" ]; then
-    echo "/__/auth/* https://$VITE_FIREBASE_AUTH_DOMAIN/__/auth/:splat 200" >> _site/_redirects
+if ! [ -z "$WIPPLE_FIREBASE_AUTH_REDIRECT_URL" ]; then
+    echo "/__/auth/* $WIPPLE_FIREBASE_AUTH_REDIRECT_URL/:splat 200" >> _site/_redirects
 fi
