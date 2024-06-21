@@ -1,10 +1,10 @@
 {
     ":": {
         "docs": "Assign a value to a variable.",
-        "example": "https://preview.wipple.dev/playground/lesson/wipple-by-example/Tz5bnIlXjPE_8pugoMfI"
+        "example": "https://wipple.org/playground/lesson/wipple-by-example/Tz5bnIlXjPE_8pugoMfI"
     },
     "->": {
         "docs": "Define a function.",
-        "example": "https://preview.wipple.dev/playground/lesson/wipple-by-example/8YDeRYs7yM2LnLm3wQyW"
+        "example": "https://wipple.org/playground/lesson/wipple-by-example/8YDeRYs7yM2LnLm3wQyW"
     }
 }

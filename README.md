@@ -25,7 +25,7 @@
 
 Wipple is an educational programming language designed by [Wilson Gramer](https://gramer.dev). With Wipple, you can make art and music, explore math and science, design video games, and more.
 
-You write Wipple code in the [Wipple Playground](https://wipple.dev/playground), an interactive, collaborative, online coding platform. The playground works on any device with no setup required. With 80+ lessons and guides, there’s something for everyone.
+You write Wipple code in the [Wipple Playground](https://wipple.org/playground), an interactive, collaborative, online coding platform. The playground works on any device with no setup required. With 80+ lessons and guides, there’s something for everyone.
 
 Wipple code is natural to read and write, and the language is designed to grow with you. Under the hood, Wipple is a powerful functional programming language with an expressive type system, but when you're just getting started, these features work invisibly. When you make a mistake, Wipple provides helpful, customizable error messages that guide you toward the solution.
 
