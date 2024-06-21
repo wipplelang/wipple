@@ -1,10 +1,4 @@
-import {
-    GoogleAuthProvider,
-    getAuth,
-    signInAnonymously,
-    signInWithPopup,
-    signInWithRedirect,
-} from "firebase/auth";
+import { getAuth, signInAnonymously } from "firebase/auth";
 
 export const getUser = async () => {
     const auth = getAuth();
@@ -19,19 +13,10 @@ export const signInAsGuest = async () => {
     return result.user;
 };
 
-export const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    provider.addScope("https://www.googleapis.com/auth/userinfo.profile");
-
-    const auth = getAuth();
-
-    try {
-        const result = await signInWithPopup(auth, provider);
-        auth.updateCurrentUser(result.user);
-    } catch (error) {
-        console.error(error);
-        return undefined;
-    }
+export const signIn = async () => {
+    const query = new URLSearchParams();
+    query.append("redirect", window.location.href);
+    window.location.href = `${window.location.origin}/login?${query.toString()}`;
 };
 
 export const signOut = async () => {

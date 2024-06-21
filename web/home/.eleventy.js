@@ -11,7 +11,6 @@ module.exports = (eleventy) => {
         },
     });
 
-    eleventy.addPassthroughCopy({ firebase: "__" });
     eleventy.addPassthroughCopy("_headers");
     eleventy.addPassthroughCopy("_redirects");
     eleventy.addPassthroughCopy("robots.txt");

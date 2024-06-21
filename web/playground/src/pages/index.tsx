@@ -7,7 +7,7 @@ import { Outlet, ScrollRestoration } from "react-router-dom";
 import { produce } from "immer";
 import { Button, Navbar, useAlert as useAlert } from "../components";
 import { useStore } from "../store";
-import { getUser, signInAsGuest, signInWithGoogle, useIsOffline } from "../helpers";
+import { getUser, signIn, signInAsGuest, useIsOffline } from "../helpers";
 
 export const RootPage = () => {
     const [store, setStore] = useStore();
@@ -56,15 +56,7 @@ const WelcomeAlert = (props: { dismiss: () => void }) => {
     const [_store, setStore] = useStore();
 
     const handleSignIn = async () => {
-        const user = await signInWithGoogle();
-
-        setStore(
-            produce((store) => {
-                store.user = user;
-            }),
-        );
-
-        props.dismiss();
+        await signIn();
     };
 
     const handleContinueAsGuest = async () => {

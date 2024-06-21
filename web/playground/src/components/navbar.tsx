@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useStore } from "../store";
 import { Button, Skeleton, Tooltip, useAlert } from ".";
-import { signInWithGoogle, signOut } from "../helpers";
+import { signIn, signOut } from "../helpers";
 import { produce } from "immer";
 import { MaterialSymbol } from "react-material-symbols";
 import { User } from "firebase/auth";
@@ -47,20 +47,8 @@ export const Navbar = () => {
 
     const [store, setStore] = useStore();
 
-    const handleSignIn = useCallback(() => {
-        (async () => {
-            try {
-                const user = await signInWithGoogle();
-
-                setStore(
-                    produce((store) => {
-                        store.user = user;
-                    }),
-                );
-            } catch (error) {
-                console.error(error);
-            }
-        })();
+    const handleSignIn = useCallback(async () => {
+        await signIn();
     }, []);
 
     const openUserSettings = useCallback(() => {
