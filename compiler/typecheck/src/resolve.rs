@@ -1911,6 +1911,18 @@ enum ExpressionKind<D: Driver> {
     },
 }
 
+impl<D: Driver> ExpressionKind<D> {
+    fn is_reference(&self) -> bool {
+        matches!(
+            self,
+            ExpressionKind::UnresolvedConstant(_)
+                | ExpressionKind::UnresolvedTrait(_)
+                | ExpressionKind::ResolvedConstant { .. }
+                | ExpressionKind::ResolvedTrait(_)
+        )
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 struct FormattedText<T> {
     segments: Vec<FormatSegment<T>>,
@@ -4950,14 +4962,64 @@ fn refine_mismatch_error<D: Driver>(
                             .type_context
                             .tracked_expression(actual_parent_expression_id);
 
-                        if let ExpressionKind::Call { .. } = &actual_parent_expression.item.kind {
-                            let actual_output = actual_output.as_ref().clone();
-                            let expected_output = expected_output.as_ref().clone();
+                        if let ExpressionKind::Call { function, .. } =
+                            &actual_parent_expression.item.kind
+                        {
+                            if function.info == actual.info {
+                                let actual_output = actual_output.as_ref().clone();
+                                let expected_output = expected_output.as_ref().clone();
 
-                            // A function's output type is contravariant, so swap the order
-                            *info = actual_parent_expression.info.clone();
-                            *expected = actual_output;
-                            *actual = expected_output;
+                                *info = actual_parent_expression.info.clone();
+                                *expected = actual_output;
+                                *actual = expected_output;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Track down the source of a mismatched function output
+        if let TypeKind::Function {
+            inputs: actual_inputs,
+            output: actual_output,
+        } = &actual.kind
+        {
+            if let TypeKind::Function {
+                inputs: expected_inputs,
+                output: expected_output,
+            } = &expected.kind
+            {
+                if actual_inputs.len() == expected_inputs.len()
+                    && actual_inputs
+                        .iter()
+                        .zip(expected_inputs)
+                        .all(|(actual, expected)| {
+                            unify(
+                                finalize_context.driver,
+                                actual,
+                                expected,
+                                finalize_context.type_context,
+                            )
+                        })
+                    && !unify(
+                        finalize_context.driver,
+                        actual_output,
+                        expected_output,
+                        finalize_context.type_context,
+                    )
+                {
+                    if let Some(actual_expression_id) = actual.expression {
+                        let actual_expression = finalize_context
+                            .type_context
+                            .tracked_expression(actual_expression_id);
+
+                        // Don't look inside constants/traits/etc. to refine the
+                        // error message
+                        if !actual_expression.item.kind.is_reference() {
+                            *info = actual_output.info.clone();
+                            *actual = actual_output.as_ref().clone();
+                            *expected = expected_output.as_ref().clone();
                         }
                     }
                 }

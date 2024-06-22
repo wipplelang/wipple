@@ -1,7 +1,4 @@
 {
-    "files.exclude": {
-        "coverage": true
-    },
     "coverage-gutters.coverageFileNames": ["coverage/lcov.info"],
     "wipple.interface": ".wipple/base.wippleinterface",
     "wipple.libraries": [".wipple/base.wipplelibrary"]
