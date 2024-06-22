@@ -219,6 +219,12 @@ impl Render {
             .cloned()
     }
 
+    pub async fn render_source<T>(&self, value: &WithInfo<T>) -> Option<String> {
+        let inner = self.0.lock().unwrap();
+        let (file, _) = inner.files.get(value.info.location.path.as_ref())?;
+        Some(file.code.clone())
+    }
+
     pub async fn render_source_location<T>(
         &self,
         value: &WithInfo<T>,

@@ -83,11 +83,7 @@ async fn main() -> anyhow::Result<()> {
             let result = wipple_driver::compile(sources, dependencies);
 
             if !result.diagnostics.is_empty() {
-                eprintln!(
-                    "{}",
-                    render_diagnostics(&result.diagnostics, result.interface).await,
-                );
-
+                print_diagnostics(&result.diagnostics, result.interface).await;
                 process::exit(1);
             }
 
@@ -195,11 +191,7 @@ async fn main() -> anyhow::Result<()> {
             let result = wipple_driver::compile(sources, dependencies);
 
             if !result.diagnostics.is_empty() {
-                eprintln!(
-                    "{}",
-                    render_diagnostics(&result.diagnostics, result.interface).await,
-                );
-
+                print_diagnostics(&result.diagnostics, result.interface).await;
                 process::exit(1);
             }
 
@@ -225,27 +217,66 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
-async fn render_diagnostics(
+async fn print_diagnostics(
     diagnostics: &[wipple_driver::util::WithInfo<wipple_driver::Info, wipple_driver::Diagnostic>],
     interface: wipple_driver::Interface,
-) -> String {
+) {
     let render = wipple_render::Render::new();
     render.update(interface, Vec::new(), None).await;
 
-    future::join_all(diagnostics.iter().map(|diagnostic| async {
-        let rendered_diagnostic = render.render_diagnostic(diagnostic).await?;
+    let renderer = annotate_snippets::Renderer::styled();
 
-        Some(
-            render
-                .render_diagnostic_to_debug_string(&rendered_diagnostic)
-                .await,
-        )
-    }))
-    .await
-    .into_iter()
-    .flatten()
-    .collect::<Vec<_>>()
-    .join("\n")
+    for diagnostic in diagnostics {
+        if let Some(rendered_diagnostic) = render.render_diagnostic(diagnostic).await {
+            let level = match rendered_diagnostic.severity {
+                wipple_render::RenderedDiagnosticSeverity::Warning => {
+                    annotate_snippets::Level::Warning
+                }
+                wipple_render::RenderedDiagnosticSeverity::Error => annotate_snippets::Level::Error,
+            };
+
+            let mut message = level.title("");
+            let mut footer = None;
+
+            let source = render.render_source(diagnostic).await;
+            if let Some(source) = source.as_ref() {
+                message = message.snippet(
+                    annotate_snippets::Snippet::source(source)
+                        .origin(&diagnostic.info.location.visible_path)
+                        .fold(true)
+                        .annotation(
+                            level
+                                .span(
+                                    (diagnostic.info.location.span.start as usize)
+                                        ..(diagnostic.info.location.span.end as usize),
+                                )
+                                .label(&rendered_diagnostic.message),
+                        ),
+                );
+            } else {
+                message = level.title(&rendered_diagnostic.message);
+            }
+
+            if let Some(fix) = rendered_diagnostic.fix.as_ref() {
+                if let Some(replacement) = fix
+                    .replacement
+                    .as_ref()
+                    .or(fix.before.as_ref())
+                    .or(fix.after.as_ref())
+                {
+                    footer = Some(format!("{}: `{}`", fix.message, replacement));
+                } else {
+                    footer = Some(fix.message.clone());
+                }
+            }
+
+            if let Some(footer) = footer.as_ref() {
+                message = message.footer(annotate_snippets::Level::Help.title(footer));
+            }
+
+            anstream::eprintln!("{}", renderer.render(message));
+        }
+    }
 }
 
 async fn run_executable(executable: wipple_driver::Executable) {
