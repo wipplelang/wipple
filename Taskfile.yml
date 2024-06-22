@@ -30,7 +30,7 @@ tasks:
                     cargo install grcov --force
                 fi
             - rm -rf coverage && mkdir -p coverage
-            - grcov . --binary-path target/debug/ -s . -t cobertura --branch --ignore-not-existing --ignore \"/*\" -o coverage/coverage.xml
+            - grcov . --binary-path target/debug/ -s . -t cobertura,html --branch --ignore-not-existing --keep-only 'compiler/**/*' --keep-only 'interpreter/**/*' --keep-only 'render/**/*' -o coverage
 
     # doctest:
     #     run: once
