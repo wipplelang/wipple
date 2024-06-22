@@ -628,6 +628,17 @@ pub enum UnresolvedType<D: Driver> {
         /// Any trailing text after the segments.
         trailing: String,
     },
+
+    /// Use two types in the place of one. Useful for unifying a type parameter
+    /// with a conrete type while preserving the resolved location of the type
+    /// parameter.
+    Equal {
+        /// The left-hand side.
+        left: WithInfo<D::Info, Box<UnresolvedType<D>>>,
+
+        /// The right-hand side.
+        right: WithInfo<D::Info, Box<UnresolvedType<D>>>,
+    },
 }
 
 /// An unresolved instance.
@@ -1351,6 +1362,17 @@ pub enum Type<D: Driver> {
 
         /// Any trailing text after the segments.
         trailing: String,
+    },
+
+    /// Use two types in the place of one. Useful for unifying a type parameter
+    /// with a conrete type while preserving the resolved location of the type
+    /// parameter.
+    Equal {
+        /// The left-hand side.
+        left: WithInfo<D::Info, Box<Type<D>>>,
+
+        /// The right-hand side.
+        right: WithInfo<D::Info, Box<Type<D>>>,
     },
 }
 

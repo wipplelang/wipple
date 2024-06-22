@@ -571,6 +571,19 @@ impl Render {
 
                         message
                     }
+                    wipple_driver::typecheck::Type::Equal { left, right } => {
+                        let rendered = format!(
+                            "{} = {}",
+                            render_type_inner(render, left.as_deref(), false, false),
+                            render_type_inner(render, right.as_deref(), false, false),
+                        );
+
+                        if is_top_level || is_return {
+                            rendered
+                        } else {
+                            format!("({})", rendered)
+                        }
+                    }
                 }
             }
 
@@ -1173,6 +1186,7 @@ impl Render {
             SyntaxKind::BlockType => "block type",
             SyntaxKind::IntrinsicType => "intrinsic type",
             SyntaxKind::MessageType => "message type",
+            SyntaxKind::EqualType => "equal type",
             SyntaxKind::TypeMember => "type member",
             SyntaxKind::FieldDeclaration => "field declaration",
             SyntaxKind::VariantDeclaration => "variant declaration",

@@ -455,6 +455,10 @@ pub enum Type<D: Driver> {
         message: WithInfo<D::Info, String>,
         inputs: Vec<WithInfo<D::Info, Type<D>>>,
     },
+    Equal {
+        left: WithInfo<D::Info, Box<Type<D>>>,
+        right: WithInfo<D::Info, Box<Type<D>>>,
+    },
 }
 
 impl<D: Driver> DefaultFromInfo<D::Info> for Type<D> {
@@ -654,6 +658,7 @@ pub enum SyntaxKind {
     BlockType,
     IntrinsicType,
     MessageType,
+    EqualType,
     TypeMember,
     FieldDeclaration,
     VariantDeclaration,
@@ -925,6 +930,7 @@ mod rules {
             block_type::<D>().render(),
             intrinsic_type::<D>().render(),
             message_type::<D>().render(),
+            equal_type::<D>().render(),
             type_function::<D>().render(),
             type_parameter::<D>().render(),
             type_representation::<D>().render(),
@@ -937,6 +943,7 @@ mod rules {
             destructure_pattern::<D>().render(),
             tuple_pattern::<D>().render(),
             or_pattern::<D>().render(),
+            mutate_pattern::<D>().render(),
             expression::<D>().render(),
             annotate_expression::<D>().render(),
             name_expression::<D>().render(),
@@ -1645,6 +1652,7 @@ mod rules {
                 block_type,
                 intrinsic_type,
                 message_type,
+                equal_type,
                 declared_type,
             ],
         )
@@ -1844,6 +1852,23 @@ mod rules {
             ],
         )
         .named("A type-level piece of text used to generate compiler errors.")
+    }
+
+    pub fn equal_type<D: Driver>() -> Rule<D, Type<D>> {
+        Rule::operator(
+            SyntaxKind::EqualType,
+            Operator::Equal,
+            r#type,
+            r#type,
+            |_, info, left, right, _| WithInfo {
+                info,
+                item: Type::Equal {
+                    left: left.boxed(),
+                    right: right.boxed(),
+                },
+            },
+        )
+        .named("Use two types in the place of one.")
     }
 
     pub fn type_function<D: Driver>() -> Rule<D, TypeFunction<D>> {

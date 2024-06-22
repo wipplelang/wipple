@@ -753,6 +753,13 @@ fn r#type<D: Driver>(
                 trailing: result.trailing,
             }
         }
+        parse::Type::Equal {
+            left: left_syntax,
+            right: right_syntax,
+        } => crate::Type::Equal {
+            left: r#type(left_syntax.unboxed(), info).boxed(),
+            right: r#type(right_syntax.unboxed(), info).boxed(),
+        },
     })
 }
 
