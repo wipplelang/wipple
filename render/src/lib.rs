@@ -654,11 +654,10 @@ impl Render {
         message: &wipple_driver::typecheck::CustomMessage<wipple_driver::Driver>,
         render_as_code: bool,
     ) -> String {
-        let render_segments_as_code = message
-            .segments
-            .first()
-            .map_or(true, |segment| segment.text.starts_with('`'))
-            && message.trailing.starts_with('`');
+        let render_segments_as_code = message.segments.first().map_or_else(
+            || message.trailing.starts_with('`'),
+            |segment| segment.text.starts_with('`'),
+        ) && message.trailing.ends_with('`');
 
         let mut result = String::new();
         for segment in &message.segments {
