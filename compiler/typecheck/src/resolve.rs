@@ -4950,14 +4950,17 @@ fn refine_mismatch_error<D: Driver>(
                             .type_context
                             .tracked_expression(actual_parent_expression_id);
 
-                        if let ExpressionKind::Call { .. } = &actual_parent_expression.item.kind {
-                            let actual_output = actual_output.as_ref().clone();
-                            let expected_output = expected_output.as_ref().clone();
+                        if let ExpressionKind::Call { function, .. } =
+                            &actual_parent_expression.item.kind
+                        {
+                            if function.info == actual.info {
+                                let actual_output = actual_output.as_ref().clone();
+                                let expected_output = expected_output.as_ref().clone();
 
-                            // A function's output type is contravariant, so swap the order
-                            *info = actual_parent_expression.info.clone();
-                            *expected = actual_output;
-                            *actual = expected_output;
+                                *info = actual_parent_expression.info.clone();
+                                *expected = actual_output;
+                                *actual = expected_output;
+                            }
                         }
                     }
                 }
