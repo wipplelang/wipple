@@ -1,3 +1,5 @@
+-- [should error]
+
 Valid : Value => trait
 
 Valid-Number : type Number
