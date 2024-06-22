@@ -128,6 +128,7 @@ impl LanguageServer for Backend {
                         ..Default::default()
                     },
                 )),
+                code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 completion_provider: Some(CompletionOptions::default()),
                 definition_provider: Some(OneOf::Left(true)),
@@ -218,7 +219,8 @@ impl LanguageServer for Backend {
         let diagnostics = diagnostics
             .into_iter()
             .filter(|diagnostic| path.to_str() == Some(&diagnostic.location.path))
-            .map(|diagnostic| {
+            .enumerate()
+            .map(|(index, diagnostic)| {
                 let severity = match diagnostic.severity {
                     wipple_render::RenderedDiagnosticSeverity::Error => DiagnosticSeverity::ERROR,
                     wipple_render::RenderedDiagnosticSeverity::Warning => {
@@ -240,6 +242,7 @@ impl LanguageServer for Backend {
                     },
                     message: diagnostic.message,
                     source: Some(String::from("wipple")),
+                    data: Some((index as u64).into()),
                     ..Default::default()
                 }
             })
@@ -254,6 +257,87 @@ impl LanguageServer for Backend {
                 ..Default::default()
             }),
         ))
+    }
+
+    async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
+        let config = self.config.lock().unwrap();
+
+        let actions = params
+            .context
+            .diagnostics
+            .into_iter()
+            .filter_map(|diagnostic| {
+                let index = diagnostic.data.as_ref()?.as_u64()? as usize;
+                let rendered_diagnostic = config.diagnostics.get(index)?;
+                let fix = rendered_diagnostic.fix.as_ref()?.clone();
+
+                let before_edit = fix.before.map(|text| TextEdit {
+                    range: Range {
+                        start: Position {
+                            line: rendered_diagnostic.location.start.line,
+                            character: rendered_diagnostic.location.start.column,
+                        },
+                        end: Position {
+                            line: rendered_diagnostic.location.start.line,
+                            character: rendered_diagnostic.location.start.column,
+                        },
+                    },
+                    new_text: text,
+                });
+
+                let edit = fix.replacement.map(|text| TextEdit {
+                    range: Range {
+                        start: Position {
+                            line: rendered_diagnostic.location.start.line,
+                            character: rendered_diagnostic.location.start.column,
+                        },
+                        end: Position {
+                            line: rendered_diagnostic.location.end.line,
+                            character: rendered_diagnostic.location.end.column,
+                        },
+                    },
+                    new_text: text,
+                });
+
+                let after_edit = fix.after.map(|text| TextEdit {
+                    range: Range {
+                        start: Position {
+                            line: rendered_diagnostic.location.end.line,
+                            character: rendered_diagnostic.location.end.column,
+                        },
+                        end: Position {
+                            line: rendered_diagnostic.location.end.line,
+                            character: rendered_diagnostic.location.end.column,
+                        },
+                    },
+                    new_text: text,
+                });
+
+                Some(CodeActionOrCommand::CodeAction(CodeAction {
+                    title: fix.message,
+                    kind: Some(CodeActionKind::QUICKFIX),
+                    diagnostics: Some(vec![diagnostic]),
+                    edit: Some(WorkspaceEdit {
+                        changes: Some(HashMap::from([(
+                            params.text_document.uri.clone(),
+                            [before_edit, edit, after_edit]
+                                .into_iter()
+                                .flatten()
+                                .collect(),
+                        )])),
+                        document_changes: None,
+                        change_annotations: None,
+                    }),
+                    ..Default::default()
+                }))
+            })
+            .collect::<Vec<_>>();
+
+        if actions.is_empty() {
+            return Ok(None);
+        }
+
+        Ok(Some(actions))
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
