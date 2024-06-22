@@ -242,6 +242,9 @@ pub enum TypeDescriptor<D: Driver> {
 
     /// An intrinsic type provided by the runtime.
     Intrinsic,
+
+    /// Two equal types.
+    Equal(Box<TypeDescriptor<D>>, Box<TypeDescriptor<D>>),
 }
 
 /// Contains layout information for a named type.
@@ -396,6 +399,7 @@ where
             ),
             TypeDescriptor::Block(r#type) => write!(f, "{{{type}}}"),
             TypeDescriptor::Intrinsic => write!(f, "intrinsic"),
+            TypeDescriptor::Equal(left, right) => write!(f, "({} = {})", left, right),
         }
     }
 }

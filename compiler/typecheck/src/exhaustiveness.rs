@@ -171,6 +171,7 @@ fn convert_type<D: Driver>(
             elements.iter().map(|r#type| r#type.item.clone()).collect(),
         )),
         crate::Type::Intrinsic => Some(Type::Unmatchable),
+        crate::Type::Equal { right, .. } => convert_type(driver, &right.item, substitutions),
         crate::Type::Unknown
         | crate::Type::Block(_)
         | crate::Type::Function { .. }

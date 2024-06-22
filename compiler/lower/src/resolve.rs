@@ -1945,6 +1945,10 @@ fn resolve_type<D: Driver>(
                 .collect(),
             trailing,
         },
+        crate::UnresolvedType::Equal { left, right } => crate::Type::Equal {
+            left: resolve_type(left.unboxed(), info).boxed(),
+            right: resolve_type(right.unboxed(), info).boxed(),
+        },
     })
 }
 

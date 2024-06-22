@@ -12,7 +12,6 @@ pub struct ItemDeclarationInner<D: Driver> {
     r#type: WithInfo<D::Info, crate::Type<D>>,
     body: WithInfo<D::Info, crate::UntypedExpression<D>>,
     captures: Vec<D::Path>,
-    top_level: bool,
 }
 
 impl<D: Driver> crate::IntoItemDeclaration<D>
@@ -34,7 +33,6 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
                 r#type: declaration.r#type,
                 body: item.body,
                 captures: item.captures,
-                top_level: false,
             }))
         })
     }
@@ -65,7 +63,6 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
                     r#type,
                     body: item.body,
                     captures: item.captures,
-                    top_level: false,
                 })),
                 (Some(r#type), None) => {
                     errors.push(WithInfo {
@@ -81,7 +78,6 @@ impl<D: Driver> crate::IntoItemDeclaration<D>
                             item: crate::UntypedExpression::Unknown,
                         },
                         captures: Vec::new(),
-                        top_level: false,
                     }))
                 }
                 (None, Some(_)) => {
@@ -120,7 +116,6 @@ impl<D: Driver> crate::IntoItemDeclaration<D> for crate::UntypedTopLevelCode<D> 
                     },
                 },
                 captures: Vec::new(),
-                top_level: true,
             })),
         }
     }
@@ -175,6 +170,8 @@ pub fn resolve<D: Driver>(
         item_declaration.item.r#type.as_ref(),
         item_declaration.replace(Role::Annotation),
         infer_context.type_context,
+        infer_context.error_queue,
+        infer_context.errors,
     );
 
     let body = infer_context.with_tracked_expression(None, |infer_context, expression_id| {
@@ -189,7 +186,15 @@ pub fn resolve<D: Driver>(
         .item
         .bounds
         .into_iter()
-        .map(|bound| infer_instance(driver, bound, infer_context.type_context))
+        .map(|bound| {
+            infer_instance(
+                driver,
+                bound,
+                infer_context.type_context,
+                infer_context.error_queue,
+                infer_context.errors,
+            )
+        })
         .collect()];
 
     let mut queued = Queued {
@@ -274,20 +279,6 @@ pub fn resolve<D: Driver>(
             );
 
             if !substituted_defaults {
-                if item_declaration.item.top_level {
-                    // The top level has type `Unit` by default, but any other type is also OK
-                    let _ = unify(
-                        driver,
-                        &queued.body.item.r#type,
-                        &Type::new(
-                            TypeKind::Tuple(Vec::new()),
-                            queued.body.info.clone(),
-                            Vec::new(),
-                        ),
-                        &mut queued.type_context,
-                    );
-                }
-
                 let mut unresolved_variables = HashSet::new();
 
                 let mut finalize_context = FinalizeContext {
@@ -352,6 +343,9 @@ pub fn instances_overlap<D: Driver>(
         instances.into_iter().partition_map(|path| {
             let declaration = driver.get_instance_declaration(&path);
 
+            let mut type_context = TypeContext::default();
+            let mut error_queue = Vec::new();
+
             let info = (
                 path,
                 declaration.info,
@@ -359,9 +353,13 @@ pub fn instances_overlap<D: Driver>(
                 infer_instance(
                     driver,
                     declaration.item.instance,
-                    &mut TypeContext::default(),
+                    &mut type_context,
+                    &mut error_queue,
+                    &mut errors,
                 ),
             );
+
+            report_queued_errors(driver, &mut type_context, error_queue, &mut errors);
 
             if declaration.item.default {
                 itertools::Either::Right(info)
@@ -389,6 +387,7 @@ pub fn instances_overlap<D: Driver>(
                 let mut instantiate_instance =
                     |parameters: Vec<<D as Driver>::Path>,
                      instance: WithInfo<D::Info, &mut Instance<D>>| {
+                        let mut unused_error_queue = Vec::new();
                         let mut unused_errors = Vec::new();
 
                         let mut instantiation_context = InstantiationContext::from_parameters(
@@ -396,6 +395,7 @@ pub fn instances_overlap<D: Driver>(
                             parameters,
                             &mut type_context,
                             instance.info,
+                            &mut unused_error_queue,
                             &mut unused_errors,
                         );
 
@@ -458,6 +458,7 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
     let role = trait_declaration.replace(Role::Trait);
 
     let mut type_context = TypeContext::default();
+    let mut error_queue = Vec::new();
     let mut errors = Vec::new();
 
     let mut instantiation_context = InstantiationContext::from_parameters(
@@ -465,6 +466,7 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
         trait_declaration.item.parameters.clone(),
         &mut type_context,
         instance.info,
+        &mut error_queue,
         &mut errors,
     );
 
@@ -484,13 +486,22 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
                 instance_parameter.as_ref(),
                 role.clone(),
                 instantiation_context.type_context,
+                instantiation_context.error_queue,
+                instantiation_context.errors,
             ),
             instantiation_context.type_context,
         ));
     }
 
-    let r#type = infer_type(driver, r#type, role, instantiation_context.type_context)
-        .instantiate(driver, &mut instantiation_context);
+    let r#type = infer_type(
+        driver,
+        r#type,
+        role,
+        instantiation_context.type_context,
+        instantiation_context.error_queue,
+        instantiation_context.errors,
+    )
+    .instantiate(driver, &mut instantiation_context);
 
     assert!(errors.is_empty());
 
@@ -505,7 +516,11 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
         subexpression_types: None,
     };
 
-    Some(finalize_type(r#type, false, &mut finalize_context))
+    let r#type = finalize_type(r#type, false, &mut finalize_context);
+
+    report_queued_errors(driver, &mut type_context, error_queue, &mut errors);
+
+    Some(r#type)
 }
 
 pub fn substitute_defaults_in_parameters<D: Driver>(
@@ -548,6 +563,10 @@ pub fn substitute_defaults_in_parameters<D: Driver>(
                 substitute_defaults_in_parameters(driver, segment.r#type.as_mut());
             }
         }
+        crate::Type::Equal { left, right } => {
+            substitute_defaults_in_parameters(driver, left.as_deref_mut());
+            substitute_defaults_in_parameters(driver, right.as_deref_mut());
+        }
         crate::Type::Unknown | crate::Type::Intrinsic => {}
     }
 }
@@ -559,17 +578,24 @@ pub fn resolve_attribute_like_trait<D: Driver>(
     number_of_parameters: u32,
 ) -> Option<Vec<WithInfo<D::Info, crate::Type<D>>>> {
     let mut type_context = TypeContext::default();
+    let mut error_queue = Vec::new();
+    let mut errors = Vec::new();
 
-    let r#type = infer_type(driver, r#type, None, &mut type_context);
+    let r#type = infer_type(
+        driver,
+        r#type,
+        None,
+        &mut type_context,
+        &mut error_queue,
+        &mut errors,
+    );
 
     if let Some(describe_type_trait_path) = driver.path_for_language_trait(language_item) {
-        let mut temp_error_queue = Vec::new();
-        let mut temp_errors = Vec::new();
         let mut resolve_context = ResolveContext {
             driver,
             type_context: &mut type_context,
-            error_queue: &mut temp_error_queue,
-            errors: &mut temp_errors,
+            error_queue: &mut error_queue,
+            errors: &mut errors,
             variables: &mut Default::default(),
             recursion_stack: &mut Default::default(),
             bound_instances: Default::default(),
@@ -612,9 +638,15 @@ pub fn resolve_attribute_like_trait<D: Driver>(
                 .map(|r#type| finalize_type(r#type, false, &mut finalize_context))
                 .collect();
 
+            // FIXME: Return errors
+            report_queued_errors(driver, &mut type_context, error_queue, &mut errors);
+
             return Some(parameter_types);
         }
     }
+
+    // FIXME: Return errors
+    report_queued_errors(driver, &mut type_context, error_queue, &mut errors);
 
     None
 }
@@ -894,6 +926,9 @@ impl<D: Driver> Type<D> {
             TypeKind::Message { segments, .. } => segments
                 .iter()
                 .any(|segment| segment.value.contains_variable(variable)),
+            TypeKind::Equal { left, right } => {
+                left.contains_variable(variable) || right.contains_variable(variable)
+            }
             TypeKind::Opaque(_)
             | TypeKind::Parameter(_)
             | TypeKind::Unknown
@@ -957,6 +992,10 @@ impl<D: Driver> Type<D> {
                     segment.value.apply_in_context_mut(context);
                 }
             }
+            TypeKind::Equal { left, right } => {
+                left.apply_in_context_mut(context);
+                right.apply_in_context_mut(context);
+            }
             TypeKind::Unknown | TypeKind::Intrinsic => {}
         }
     }
@@ -998,6 +1037,10 @@ impl<D: Driver> Type<D> {
                     segment.value.set_source_info(context, info);
                 }
             }
+            TypeKind::Equal { left, right } => {
+                left.set_source_info(context, info);
+                right.set_source_info(context, info);
+            }
             TypeKind::Variable(_)
             | TypeKind::Opaque(_)
             | TypeKind::Parameter(_)
@@ -1027,6 +1070,10 @@ enum TypeKind<D: Driver> {
     Message {
         segments: Vec<FormatSegment<Type<D>>>,
         trailing: String,
+    },
+    Equal {
+        left: Box<Type<D>>,
+        right: Box<Type<D>>,
     },
     Unknown,
 }
@@ -1139,6 +1186,7 @@ struct InstantiationContext<'a, D: Driver> {
     type_context: &'a mut TypeContext<D>,
     types: Vec<(D::Path, Type<D>)>,
     info: D::Info,
+    error_queue: &'a mut Vec<WithInfo<D::Info, QueuedError<D>>>,
     errors: &'a mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
 }
 
@@ -1154,6 +1202,7 @@ impl<'a, D: Driver> InstantiationContext<'a, D> {
         parameters: impl IntoIterator<Item = D::Path>,
         type_context: &'a mut TypeContext<D>,
         info: D::Info,
+        error_queue: &'a mut Vec<WithInfo<D::Info, QueuedError<D>>>,
         errors: &'a mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
     ) -> Self {
         InstantiationContext::from_parameters_with_options(
@@ -1161,6 +1210,7 @@ impl<'a, D: Driver> InstantiationContext<'a, D> {
             parameters,
             type_context,
             info,
+            error_queue,
             errors,
             Default::default(),
         )
@@ -1171,6 +1221,7 @@ impl<'a, D: Driver> InstantiationContext<'a, D> {
         parameters: impl IntoIterator<Item = D::Path>,
         type_context: &'a mut TypeContext<D>,
         info: D::Info,
+        error_queue: &'a mut Vec<WithInfo<D::Info, QueuedError<D>>>,
         errors: &'a mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
         options: InstantiationOptions,
     ) -> Self {
@@ -1178,6 +1229,7 @@ impl<'a, D: Driver> InstantiationContext<'a, D> {
             type_context,
             types: Vec::new(),
             info: info.clone(),
+            error_queue,
             errors,
         };
 
@@ -1195,6 +1247,8 @@ impl<'a, D: Driver> InstantiationContext<'a, D> {
                         r#type.as_ref(),
                         parameter_declaration.replace(Role::TypeParameter),
                         context.type_context,
+                        context.error_queue,
+                        context.errors,
                     )
                     .instantiate(driver, &mut context)
                 });
@@ -1296,6 +1350,10 @@ impl<D: Driver> Type<D> {
                     segment.value.instantiate_mut(driver, instantiation_context);
                 }
             }
+            TypeKind::Equal { left, right } => {
+                left.instantiate_mut(driver, instantiation_context);
+                right.instantiate_mut(driver, instantiation_context);
+            }
             TypeKind::Unknown | TypeKind::Intrinsic => {}
         }
     }
@@ -1340,6 +1398,10 @@ impl<D: Driver> Type<D> {
                 for segment in segments {
                     segment.value.instantiate_opaque_in_context_mut(context);
                 }
+            }
+            TypeKind::Equal { left, right } => {
+                left.instantiate_opaque_in_context_mut(context);
+                right.instantiate_opaque_in_context_mut(context);
             }
             TypeKind::Unknown | TypeKind::Intrinsic => {}
         }
@@ -1472,6 +1534,7 @@ fn unify_with_options<D: Driver>(
         expected_type: &Type<D>,
         context: &mut TypeContext<D>,
         options: UnifyOptions,
+        ignore_type_parameters: bool,
     ) -> bool {
         let r#type = r#type.apply_in_context(context);
         let expected_type = expected_type.apply_in_context(context);
@@ -1491,13 +1554,24 @@ fn unify_with_options<D: Driver>(
                 true
             }
 
+            // Unify both sides of an equal type, ignoring type parameters
+            (TypeKind::Equal { left, right }, _) => {
+                unify_inner(driver, left, &expected_type, context, options, true)
+                    & unify_inner(driver, right, left, context, options, true)
+            }
+            (_, TypeKind::Equal { left, right }) => {
+                unify_inner(driver, &r#type, left, context, options, true)
+                    & unify_inner(driver, right, left, context, options, true)
+            }
+
             // Type parameters are equal to themselves, but otherwise must be
             // instantiated
             (TypeKind::Parameter(parameter), TypeKind::Parameter(expected_parameter)) => {
-                driver.paths_are_equal(parameter, expected_parameter)
+                ignore_type_parameters
+                    || driver.paths_are_equal(parameter, expected_parameter)
                     || !options.require_equal_type_parameters
             }
-            (_, TypeKind::Parameter(_)) | (TypeKind::Parameter(_), _) => false,
+            (_, TypeKind::Parameter(_)) | (TypeKind::Parameter(_), _) => ignore_type_parameters,
 
             // Unify declared types, functions, tuples, and blocks structurally
             (
@@ -1513,7 +1587,14 @@ fn unify_with_options<D: Driver>(
 
                 let mut unified = true;
                 for (r#type, expected_type) in parameters.iter().zip(expected_parameters) {
-                    unified &= unify_inner(driver, r#type, expected_type, context, options);
+                    unified &= unify_inner(
+                        driver,
+                        r#type,
+                        expected_type,
+                        context,
+                        options,
+                        ignore_type_parameters,
+                    );
                 }
 
                 unified
@@ -1531,10 +1612,25 @@ fn unify_with_options<D: Driver>(
 
                 let mut unified = true;
                 for (r#type, expected_type) in inputs.iter().zip(expected_inputs) {
-                    unified &= unify_inner(driver, r#type, expected_type, context, options);
+                    unified &= unify_inner(
+                        driver,
+                        r#type,
+                        expected_type,
+                        context,
+                        options,
+                        ignore_type_parameters,
+                    );
                 }
 
-                unified & unify_inner(driver, output, expected_output, context, options)
+                unified
+                    & unify_inner(
+                        driver,
+                        output,
+                        expected_output,
+                        context,
+                        options,
+                        ignore_type_parameters,
+                    )
             }
             (TypeKind::Tuple(elements), TypeKind::Tuple(expected_elements)) => {
                 if elements.len() != expected_elements.len() {
@@ -1543,14 +1639,26 @@ fn unify_with_options<D: Driver>(
 
                 let mut unified = true;
                 for (r#type, expected_type) in elements.iter().zip(expected_elements) {
-                    unified &= unify_inner(driver, r#type, expected_type, context, options);
+                    unified &= unify_inner(
+                        driver,
+                        r#type,
+                        expected_type,
+                        context,
+                        options,
+                        ignore_type_parameters,
+                    );
                 }
 
                 unified
             }
-            (TypeKind::Block(r#type), TypeKind::Block(expected_type)) => {
-                unify_inner(driver, r#type, expected_type, context, options)
-            }
+            (TypeKind::Block(r#type), TypeKind::Block(expected_type)) => unify_inner(
+                driver,
+                r#type,
+                expected_type,
+                context,
+                options,
+                ignore_type_parameters,
+            ),
 
             // Intrinsic types unify with other intrinsic types (they're
             // supposed to be wrapped in another type)
@@ -1564,7 +1672,7 @@ fn unify_with_options<D: Driver>(
         }
     }
 
-    unify_inner(driver, r#type, expected_type, context, options)
+    unify_inner(driver, r#type, expected_type, context, options, false)
 }
 
 #[must_use]
@@ -1720,6 +1828,10 @@ fn substitute_defaults<D: Driver>(
 
             false
         }
+        TypeKind::Equal { left, right } => {
+            substitute_defaults(driver, left, context)
+                || substitute_defaults(driver, right, context)
+        }
         TypeKind::Opaque(_) | TypeKind::Parameter(_) | TypeKind::Unknown | TypeKind::Intrinsic => {
             false
         }
@@ -1852,6 +1964,8 @@ fn infer_type<D: Driver>(
     r#type: WithInfo<D::Info, &crate::Type<D>>,
     role: impl Into<Option<WithInfo<D::Info, Role>>>,
     type_context: &mut TypeContext<D>,
+    error_queue: &mut Vec<WithInfo<D::Info, QueuedError<D>>>,
+    errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
 ) -> Type<D> {
     Type::new(
         match r#type.item {
@@ -1860,19 +1974,28 @@ fn infer_type<D: Driver>(
                 path: path.clone(),
                 parameters: parameters
                     .iter()
-                    .map(|r#type| infer_type(driver, r#type.as_ref(), None, type_context))
+                    .map(|r#type| {
+                        infer_type(
+                            driver,
+                            r#type.as_ref(),
+                            None,
+                            type_context,
+                            error_queue,
+                            errors,
+                        )
+                    })
                     .collect(),
             },
             crate::Type::Alias { path, parameters } => {
                 let type_alias_declaration = driver.get_type_alias_declaration(path);
 
-                let mut errors = Vec::new();
                 let mut instantiation_context = InstantiationContext::from_parameters(
                     driver,
                     type_alias_declaration.item.parameters,
                     type_context,
                     r#type.info.clone(),
-                    &mut errors,
+                    error_queue,
+                    errors,
                 );
 
                 let r#type = infer_type(
@@ -1880,6 +2003,8 @@ fn infer_type<D: Driver>(
                     type_alias_declaration.item.r#type.as_ref(),
                     None,
                     instantiation_context.type_context,
+                    instantiation_context.error_queue,
+                    instantiation_context.errors,
                 )
                 .instantiate(driver, &mut instantiation_context);
 
@@ -1890,7 +2015,14 @@ fn infer_type<D: Driver>(
                 {
                     let parameter = WithInfo {
                         info: parameter.info.clone(),
-                        item: infer_type(driver, parameter.as_ref(), None, type_context),
+                        item: infer_type(
+                            driver,
+                            parameter.as_ref(),
+                            None,
+                            type_context,
+                            error_queue,
+                            errors,
+                        ),
                     };
 
                     try_unify(
@@ -1907,14 +2039,39 @@ fn infer_type<D: Driver>(
             crate::Type::Function { inputs, output } => TypeKind::Function {
                 inputs: inputs
                     .iter()
-                    .map(|r#type| infer_type(driver, r#type.as_ref(), None, type_context))
+                    .map(|r#type| {
+                        infer_type(
+                            driver,
+                            r#type.as_ref(),
+                            None,
+                            type_context,
+                            error_queue,
+                            errors,
+                        )
+                    })
                     .collect(),
-                output: Box::new(infer_type(driver, output.as_deref(), None, type_context)),
+                output: Box::new(infer_type(
+                    driver,
+                    output.as_deref(),
+                    None,
+                    type_context,
+                    error_queue,
+                    errors,
+                )),
             },
             crate::Type::Tuple(elements) => TypeKind::Tuple(
                 elements
                     .iter()
-                    .map(|r#type| infer_type(driver, r#type.as_ref(), None, type_context))
+                    .map(|r#type| {
+                        infer_type(
+                            driver,
+                            r#type.as_ref(),
+                            None,
+                            type_context,
+                            error_queue,
+                            errors,
+                        )
+                    })
                     .collect(),
             ),
             crate::Type::Block(r#type) => TypeKind::Block(Box::new(infer_type(
@@ -1922,6 +2079,8 @@ fn infer_type<D: Driver>(
                 r#type.as_deref(),
                 None,
                 type_context,
+                error_queue,
+                errors,
             ))),
             crate::Type::Unknown => TypeKind::Variable(type_context.variable()),
             crate::Type::Intrinsic => TypeKind::Intrinsic,
@@ -1934,13 +2093,38 @@ fn infer_type<D: Driver>(
                             driver,
                             segment.r#type.as_ref(),
                             None,
-                            #[allow(clippy::needless_option_as_deref)]
                             type_context,
+                            error_queue,
+                            errors,
                         ),
                     })
                     .collect(),
                 trailing: trailing.clone(),
             },
+            crate::Type::Equal { left, right } => {
+                let left = infer_type(
+                    driver,
+                    left.as_deref(),
+                    None,
+                    type_context,
+                    error_queue,
+                    errors,
+                );
+
+                let right = infer_type(
+                    driver,
+                    right.as_deref(),
+                    None,
+                    type_context,
+                    error_queue,
+                    errors,
+                );
+
+                TypeKind::Equal {
+                    left: Box::new(left),
+                    right: Box::new(right),
+                }
+            }
         },
         r#type.info,
         Vec::from_iter(role.into()),
@@ -1951,13 +2135,24 @@ fn infer_instance<D: Driver>(
     driver: &D,
     instance: WithInfo<D::Info, crate::Instance<D>>,
     type_context: &mut TypeContext<D>,
+    error_queue: &mut Vec<WithInfo<D::Info, QueuedError<D>>>,
+    errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
 ) -> WithInfo<D::Info, Instance<D>> {
     instance.map(|instance| Instance {
         r#trait: instance.r#trait,
         parameters: instance
             .parameters
             .into_iter()
-            .map(|r#type| infer_type(driver, r#type.as_ref(), None, type_context))
+            .map(|r#type| {
+                infer_type(
+                    driver,
+                    r#type.as_ref(),
+                    None,
+                    type_context,
+                    error_queue,
+                    errors,
+                )
+            })
             .collect(),
     })
 }
@@ -1983,6 +2178,8 @@ fn infer_expression<D: Driver>(
                     r#type.as_ref(),
                     value.replace(Role::Annotation),
                     context.type_context,
+                    context.error_queue,
+                    context.errors,
                 );
 
                 try_unify_expression(
@@ -2015,6 +2212,7 @@ fn infer_expression<D: Driver>(
                     constant_declaration.item.parameters.clone(),
                     context.type_context,
                     info.clone(),
+                    context.error_queue,
                     context.errors,
                 );
 
@@ -2023,6 +2221,8 @@ fn infer_expression<D: Driver>(
                     constant_declaration.item.r#type.as_ref(),
                     constant_declaration.replace(Role::Annotation),
                     instantiation_context.type_context,
+                    instantiation_context.error_queue,
+                    instantiation_context.errors,
                 )
                 .instantiate(context.driver, &mut instantiation_context);
 
@@ -2039,6 +2239,7 @@ fn infer_expression<D: Driver>(
                     trait_declaration.item.parameters.clone(),
                     context.type_context,
                     info.clone(),
+                    context.error_queue,
                     context.errors,
                 );
 
@@ -2048,6 +2249,8 @@ fn infer_expression<D: Driver>(
                         r#type.as_ref(),
                         trait_declaration.replace(Role::Trait),
                         instantiation_context.type_context,
+                        instantiation_context.error_queue,
+                        instantiation_context.errors,
                     )
                     .instantiate(context.driver, &mut instantiation_context),
                     None => {
@@ -2075,6 +2278,7 @@ fn infer_expression<D: Driver>(
                     info.clone(),
                     context.driver,
                     context.type_context,
+                    context.error_queue,
                     context.errors,
                 )
                 .unwrap_or_else(|| {
@@ -2096,6 +2300,7 @@ fn infer_expression<D: Driver>(
                     info.clone(),
                     context.driver,
                     context.type_context,
+                    context.error_queue,
                     context.errors,
                 )
                 .unwrap_or_else(|| {
@@ -2115,30 +2320,9 @@ fn infer_expression<D: Driver>(
                 statements,
                 captures,
             } => {
-                let statement_count = statements.len();
-
                 let statements = statements
                     .into_iter()
-                    .enumerate()
-                    .map(|(index, expression)| {
-                        let statement = infer_expression(expression, Some(expression_id), context);
-
-                        if index + 1 < statement_count {
-                            // Statements have type `Unit` by default, but any other type is also OK
-                            let _ = unify(
-                                context.driver,
-                                &statement.item.r#type,
-                                &Type::new(
-                                    TypeKind::Tuple(Vec::new()),
-                                    statement.info.clone(),
-                                    Vec::new(),
-                                ),
-                                context.type_context,
-                            );
-                        }
-
-                        statement
-                    })
+                    .map(|expression| infer_expression(expression, Some(expression_id), context))
                     .collect::<Vec<_>>();
 
                 let r#type = statements.last().map_or_else(
@@ -2378,6 +2562,7 @@ fn infer_expression<D: Driver>(
                     type_declaration.item.parameters.clone(),
                     context.type_context,
                     info.clone(),
+                    context.error_queue,
                     context.errors,
                 );
 
@@ -2429,6 +2614,7 @@ fn infer_expression<D: Driver>(
                     type_declaration.item.parameters.clone(),
                     context.type_context,
                     info.clone(),
+                    context.error_queue,
                     context.errors,
                 );
 
@@ -2444,6 +2630,8 @@ fn infer_expression<D: Driver>(
                                         declared_type.as_ref(),
                                         declared_variant.replace(Role::VariantElement),
                                         instantiation_context.type_context,
+                                        instantiation_context.error_queue,
+                                        instantiation_context.errors,
                                     )
                                     .instantiate(context.driver, &mut instantiation_context);
 
@@ -2506,6 +2694,7 @@ fn infer_expression<D: Driver>(
                     type_declaration.item.parameters.clone(),
                     context.type_context,
                     info.clone(),
+                    context.error_queue,
                     context.errors,
                 );
 
@@ -2532,6 +2721,8 @@ fn infer_expression<D: Driver>(
                             declared_type.as_ref(),
                             declared_type.replace(Role::WrappedType),
                             instantiation_context.type_context,
+                            instantiation_context.error_queue,
+                            instantiation_context.errors,
                         )
                         .instantiate(context.driver, &mut instantiation_context);
 
@@ -2663,6 +2854,7 @@ fn infer_expression<D: Driver>(
                     info.clone(),
                     context.driver,
                     context.type_context,
+                    context.error_queue,
                     context.errors,
                 )
                 .unwrap_or_else(|| {
@@ -2735,6 +2927,7 @@ fn resolve_pattern<D: Driver>(
                 pattern.info.clone(),
                 context.driver,
                 context.type_context,
+                context.error_queue,
                 context.errors,
             )
             .map_or_else(
@@ -2762,6 +2955,7 @@ fn resolve_pattern<D: Driver>(
                 pattern.info.clone(),
                 context.driver,
                 context.type_context,
+                context.error_queue,
                 context.errors,
             )
             .map_or_else(
@@ -2814,6 +3008,7 @@ fn resolve_pattern<D: Driver>(
                         type_declaration.item.parameters.clone(),
                         context.type_context,
                         pattern.info,
+                        context.error_queue,
                         context.errors,
                     );
 
@@ -2843,6 +3038,8 @@ fn resolve_pattern<D: Driver>(
                                             .as_ref(),
                                         field.replace(Role::StructureField),
                                         instantiation_context.type_context,
+                                        instantiation_context.error_queue,
+                                        instantiation_context.errors,
                                     )
                                     .instantiate(context.driver, &mut instantiation_context)
                                 })
@@ -2880,6 +3077,7 @@ fn resolve_pattern<D: Driver>(
                 type_declaration.item.parameters.clone(),
                 context.type_context,
                 pattern.info.clone(),
+                context.error_queue,
                 context.errors,
             );
 
@@ -2897,6 +3095,8 @@ fn resolve_pattern<D: Driver>(
                                 r#type.as_ref(),
                                 r#type.replace(Role::VariantElement),
                                 instantiation_context.type_context,
+                                instantiation_context.error_queue,
+                                instantiation_context.errors,
                             )
                             .instantiate(context.driver, &mut instantiation_context)
                         })
@@ -2938,6 +3138,7 @@ fn resolve_pattern<D: Driver>(
                 type_declaration.item.parameters.clone(),
                 context.type_context,
                 pattern.info.clone(),
+                context.error_queue,
                 context.errors,
             );
 
@@ -2947,6 +3148,8 @@ fn resolve_pattern<D: Driver>(
                     wrapped.as_ref(),
                     wrapped.replace(Role::VariantElement),
                     instantiation_context.type_context,
+                    instantiation_context.error_queue,
+                    instantiation_context.errors,
                 )
                 .instantiate(context.driver, &mut instantiation_context),
                 _ => return,
@@ -3021,6 +3224,8 @@ fn resolve_pattern<D: Driver>(
                 annotated_type.as_ref(),
                 r#type.replace(Role::Annotation),
                 context.type_context,
+                context.error_queue,
+                context.errors,
             );
 
             try_unify(
@@ -3041,10 +3246,17 @@ fn instantiated_language_type<D: Driver>(
     info: D::Info,
     driver: &D,
     type_context: &mut TypeContext<D>,
+    error_queue: &mut Vec<WithInfo<D::Info, QueuedError<D>>>,
     errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
 ) -> Option<Type<D>> {
-    match try_instantiated_language_type(language_item, info.clone(), driver, type_context, errors)
-    {
+    match try_instantiated_language_type(
+        language_item,
+        info.clone(),
+        driver,
+        type_context,
+        error_queue,
+        errors,
+    ) {
         Some(path) => Some(path),
         None => {
             errors.push(WithInfo {
@@ -3062,6 +3274,7 @@ fn try_instantiated_language_type<D: Driver>(
     info: D::Info,
     driver: &D,
     type_context: &mut TypeContext<D>,
+    error_queue: &mut Vec<WithInfo<D::Info, QueuedError<D>>>,
     errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
 ) -> Option<Type<D>> {
     let path = driver.path_for_language_type(language_item)?;
@@ -3074,6 +3287,7 @@ fn try_instantiated_language_type<D: Driver>(
         type_declaration.item.parameters,
         type_context,
         info.clone(),
+        error_queue,
         errors,
     )
     .into_types_for_parameters();
@@ -3305,6 +3519,7 @@ fn resolve_expression<D: Driver>(
                     expression.info.clone(),
                     context.driver,
                     context.type_context,
+                    context.error_queue,
                     context.errors,
                 ) {
                     Some(number_type) => number_type,
@@ -3569,6 +3784,7 @@ fn resolve_expression<D: Driver>(
                             type_declaration.item.parameters.clone(),
                             context.type_context,
                             expression.info.clone(),
+                            context.error_queue,
                             context.errors,
                         );
 
@@ -3582,10 +3798,12 @@ fn resolve_expression<D: Driver>(
                                         field.item.r#type.as_ref(),
                                         field.replace(Role::StructureField),
                                         instantiation_context.type_context,
+                                        instantiation_context.error_queue,
+                                        instantiation_context.errors,
                                     )
                                     .instantiate(context.driver, &mut instantiation_context),
                                     None => {
-                                        context.error_queue.push(WithInfo {
+                                        instantiation_context.error_queue.push(WithInfo {
                                             info: field_value.info.clone(),
                                             item: QueuedError::ExtraField,
                                         });
@@ -3600,7 +3818,7 @@ fn resolve_expression<D: Driver>(
 
                         let missing_fields = field_types.into_keys().collect::<Vec<_>>();
                         if !missing_fields.is_empty() {
-                            context.error_queue.push(WithInfo {
+                            instantiation_context.error_queue.push(WithInfo {
                                 info: expression.info.clone(),
                                 item: QueuedError::MissingFields(missing_fields),
                             });
@@ -3742,6 +3960,7 @@ fn resolve_item<D: Driver>(
         item_declaration.item.parameters,
         context.type_context,
         use_info.clone(),
+        context.error_queue,
         context.errors,
         InstantiationOptions {
             instantiate_inferred_parameters_as_opaque: true,
@@ -3756,6 +3975,8 @@ fn resolve_item<D: Driver>(
         },
         instantiated_declared_role,
         instantiation_context.type_context,
+        instantiation_context.error_queue,
+        instantiation_context.errors,
     )
     .instantiate(context.driver, &mut instantiation_context);
 
@@ -3764,8 +3985,14 @@ fn resolve_item<D: Driver>(
         .bounds
         .into_iter()
         .map(|bound| {
-            infer_instance(context.driver, bound, instantiation_context.type_context)
-                .map(|bound| bound.instantiate(context.driver, &mut instantiation_context))
+            infer_instance(
+                context.driver,
+                bound,
+                instantiation_context.type_context,
+                instantiation_context.error_queue,
+                instantiation_context.errors,
+            )
+            .map(|bound| bound.instantiate(context.driver, &mut instantiation_context))
         })
         .collect::<Vec<_>>();
 
@@ -3897,6 +4124,7 @@ fn resolve_trait_parameters_from_type<D: Driver>(
         trait_declaration.item.parameters,
         context.type_context,
         use_info,
+        context.error_queue,
         context.errors,
     );
 
@@ -3905,6 +4133,8 @@ fn resolve_trait_parameters_from_type<D: Driver>(
         trait_declaration.item.r#type.as_ref()?.as_ref(),
         role,
         instantiation_context.type_context,
+        instantiation_context.error_queue,
+        instantiation_context.errors,
     )
     .instantiate(context.driver, &mut instantiation_context);
 
@@ -3913,7 +4143,7 @@ fn resolve_trait_parameters_from_type<D: Driver>(
         use_expression,
         &trait_type,
         instantiation_context.type_context,
-        context.error_queue,
+        instantiation_context.error_queue,
     );
 
     Some(instantiation_context.into_types_for_parameters())
@@ -4019,6 +4249,7 @@ fn resolve_trait<D: Driver>(
                     instance_declaration.item.parameters,
                     &mut new_type_context,
                     instance_declaration.info.clone(),
+                    context.error_queue,
                     context.errors,
                 );
 
@@ -4034,6 +4265,8 @@ fn resolve_trait<D: Driver>(
                             parameter.as_ref(),
                             None,
                             instantiation_context.type_context,
+                            instantiation_context.error_queue,
+                            instantiation_context.errors,
                         )
                         .instantiate(context.driver, &mut instantiation_context)
                     })
@@ -4044,10 +4277,14 @@ fn resolve_trait<D: Driver>(
                     .bounds
                     .into_iter()
                     .map(|bound| {
-                        infer_instance(context.driver, bound, instantiation_context.type_context)
-                            .map(|bound| {
-                                bound.instantiate(context.driver, &mut instantiation_context)
-                            })
+                        infer_instance(
+                            context.driver,
+                            bound,
+                            instantiation_context.type_context,
+                            instantiation_context.error_queue,
+                            instantiation_context.errors,
+                        )
+                        .map(|bound| bound.instantiate(context.driver, &mut instantiation_context))
                     })
                     .collect::<Vec<_>>();
 
@@ -4360,6 +4597,10 @@ fn finalize_type<D: Driver>(
                         })
                         .collect(),
                     trailing,
+                },
+                TypeKind::Equal { left, right } => crate::Type::Equal {
+                    left: finalize_type_inner(*left, context, fully_resolved).boxed(),
+                    right: finalize_type_inner(*right, context, fully_resolved).boxed(),
                 },
             },
         }
@@ -4723,6 +4964,9 @@ fn refine_mismatch_error<D: Driver>(
             }
         }
 
+        // TODO: If the error involves `A = B` on both sides, replace it with
+        // "expected `A` but found `B`"
+
         if prev_actual == *actual && prev_expected == *expected {
             break;
         }
@@ -4786,6 +5030,11 @@ fn debug_type<D: Driver>(r#type: &Type<D>, context: &mut TypeContext<D>) -> Stri
         TypeKind::Block(r#type) => format!("{{{}}}", debug_type(&r#type, context)),
         TypeKind::Unknown => String::from("_"),
         TypeKind::Intrinsic => String::from("intrinsic"),
+        TypeKind::Equal { left, right } => format!(
+            "({} = {})",
+            debug_type(&left, context),
+            debug_type(&right, context)
+        ),
         TypeKind::Message { segments, trailing } => {
             let mut message = String::new();
             for segment in segments {

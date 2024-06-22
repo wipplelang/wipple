@@ -725,6 +725,10 @@ pub fn type_descriptor<D: crate::Driver>(
             type_descriptor(&r#type.item)?,
         ))),
         wipple_typecheck::Type::Intrinsic => Some(crate::TypeDescriptor::Intrinsic),
+        wipple_typecheck::Type::Equal { left, right } => Some(crate::TypeDescriptor::Equal(
+            Box::new(type_descriptor(&left.item)?),
+            Box::new(type_descriptor(&right.item)?),
+        )),
         wipple_typecheck::Type::Alias { .. } | wipple_typecheck::Type::Message { .. } => None,
     }
 }

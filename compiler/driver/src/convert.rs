@@ -187,6 +187,10 @@ pub mod interface {
                     .collect(),
                 trailing,
             },
+            wipple_typecheck::Type::Equal { left, right } => wipple_lower::Type::Equal {
+                left: convert_type(left.unboxed()).boxed(),
+                right: convert_type(right.unboxed()).boxed(),
+            },
         })
     }
 
@@ -510,6 +514,10 @@ pub mod lower {
                     trailing,
                 }
             }
+            wipple_syntax::Type::Equal { left, right } => wipple_lower::UnresolvedType::Equal {
+                left: convert_type(left.unboxed()).boxed(),
+                right: convert_type(right.unboxed()).boxed(),
+            },
         })
     }
 
@@ -990,6 +998,10 @@ pub mod typecheck {
                     })
                     .collect(),
                 trailing,
+            },
+            wipple_lower::Type::Equal { left, right } => wipple_typecheck::Type::Equal {
+                left: convert_type(left.unboxed()).boxed(),
+                right: convert_type(right.unboxed()).boxed(),
             },
         })
     }
