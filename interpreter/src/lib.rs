@@ -695,6 +695,13 @@ fn unify(
     substitutions: &mut HashMap<Path, TypeDescriptor>,
 ) -> bool {
     match (left, right) {
+        (TypeDescriptor::Equal(a, b), right) => {
+            unify(a, right, substitutions) && unify(b, a, substitutions)
+        }
+        (left, TypeDescriptor::Equal(a, b)) => {
+            unify(left, a, substitutions) && unify(b, a, substitutions)
+        }
+
         (left, TypeDescriptor::Parameter(right)) => {
             if let Some(substitution) = substitutions.get(right).cloned() {
                 return unify(left, &substitution, substitutions);
@@ -788,6 +795,10 @@ fn substitute_type_descriptor(
             substitute_type_descriptor(value, substitutions);
         }
         wipple_driver::ir::TypeDescriptor::Intrinsic => {}
+        wipple_driver::ir::TypeDescriptor::Equal(left, right) => {
+            substitute_type_descriptor(left, substitutions);
+            substitute_type_descriptor(right, substitutions);
+        }
     }
 }
 

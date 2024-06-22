@@ -1540,16 +1540,6 @@ fn unify_with_options<D: Driver>(
         let expected_type = expected_type.apply_in_context(context);
 
         match (&r#type.kind, &expected_type.kind) {
-            // Unify both sides of an equal type, ignoring type parameters
-            (TypeKind::Equal { left, right }, _) => {
-                unify_inner(driver, left, &expected_type, context, options, true)
-                    & unify_inner(driver, right, left, context, options, true)
-            }
-            (_, TypeKind::Equal { left, right }) => {
-                unify_inner(driver, &r#type, left, context, options, true)
-                    & unify_inner(driver, right, left, context, options, true)
-            }
-
             // Opaque types don't unify with anything
             (TypeKind::Opaque(_), _) | (_, TypeKind::Opaque(_)) => true,
 
@@ -1562,6 +1552,16 @@ fn unify_with_options<D: Driver>(
             (_, TypeKind::Variable(variable)) => {
                 unify_variable(variable, &r#type, context);
                 true
+            }
+
+            // Unify both sides of an equal type, ignoring type parameters
+            (TypeKind::Equal { left, right }, _) => {
+                unify_inner(driver, left, &expected_type, context, options, true)
+                    & unify_inner(driver, right, left, context, options, true)
+            }
+            (_, TypeKind::Equal { left, right }) => {
+                unify_inner(driver, &r#type, left, context, options, true)
+                    & unify_inner(driver, right, left, context, options, true)
             }
 
             // Type parameters are equal to themselves, but otherwise must be
