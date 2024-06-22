@@ -51,6 +51,9 @@ Times : type {
     current :: Number
 }
 
+State Body Result where (Error ("expected `times` after number" ; Error-Location State ; Error-Fix "add `times`" ("`_ times`" State))) =>
+    instance (Repeat-Predicate (State = Number) Body Result) : ...
+
 (Body : ()) => instance (Repeat-Predicate Times Body ()) : {
     count : count
     current : current
