@@ -67,35 +67,12 @@ lazy_static! {
     static ref RENDERS: Mutex<HashMap<String, wipple_render::Render>> = Default::default();
 }
 
-fn init_render() -> wipple_render::Render {
-    wipple_render::Render::new(wipple_render::RenderConfiguration {
-        describe_type: Arc::new(|render, r#type| {
-            async move {
-                let result = wipple_driver::resolve_attribute_like_trait(
-                    "describe-type",
-                    r#type,
-                    1,
-                    render.get_interface().await?,
-                )?;
-
-                match result.into_iter().next()?.item {
-                    wipple_driver::typecheck::Type::Message { segments, trailing } => {
-                        Some(wipple_driver::typecheck::CustomMessage { segments, trailing })
-                    }
-                    _ => None,
-                }
-            }
-            .boxed()
-        }),
-    })
-}
-
 async fn render_for(id: String) -> wipple_render::Render {
     let render = RENDERS
         .lock()
         .await
         .entry(id)
-        .or_insert_with(init_render)
+        .or_insert_with(wipple_render::Render::new)
         .clone();
 
     render
@@ -310,7 +287,7 @@ pub async fn highlights(options: JsValue) -> JsValue {
     let options =
         from_value::<HighlightsOptions>(options).or_throw("failed to deserialize options");
 
-    let mut render = init_render();
+    let render = wipple_render::Render::new();
     render.update(*options.interface, Vec::new(), None).await;
 
     let mut highlights = HashMap::new();

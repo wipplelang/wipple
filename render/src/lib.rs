@@ -56,6 +56,7 @@ pub struct RenderedDiagnostic {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum RenderedDiagnosticSeverity {
     Warning,
     Error,
@@ -114,24 +115,10 @@ const KEYWORDS: &[&str] = &[
 const OPERATORS: &[&str] = &["as", "to", "by", "is", "and", "or"];
 
 #[derive(Clone)]
-pub struct RenderConfiguration {
-    pub describe_type: Arc<
-        dyn for<'a> Fn(
-                &'a Render,
-                WithInfo<wipple_driver::typecheck::Type<wipple_driver::Driver>>,
-            ) -> BoxFuture<
-                'a,
-                Option<wipple_driver::typecheck::CustomMessage<wipple_driver::Driver>>,
-            > + Send
-            + Sync,
-    >,
-}
-
-#[derive(Clone)]
 pub struct Render(Arc<Mutex<RenderInner>>);
 
+#[derive(Default)]
 pub struct RenderInner {
-    pub configuration: RenderConfiguration,
     pub interface: Option<wipple_driver::Interface>,
     pub libraries: Vec<wipple_driver::Library>,
     pub ide: Option<wipple_driver::Ide>,
@@ -140,15 +127,8 @@ pub struct RenderInner {
 }
 
 impl Render {
-    pub fn new(configuration: RenderConfiguration) -> Self {
-        Render(Arc::new(Mutex::new(RenderInner {
-            configuration,
-            interface: Default::default(),
-            libraries: Default::default(),
-            ide: Default::default(),
-            files: Default::default(),
-            declarations: Default::default(),
-        })))
+    pub fn new() -> Self {
+        Render(Default::default())
     }
 
     pub async fn get_interface(&self) -> Option<wipple_driver::Interface> {
@@ -156,7 +136,7 @@ impl Render {
     }
 
     pub async fn update(
-        &mut self,
+        &self,
         interface: wipple_driver::Interface,
         libraries: Vec<wipple_driver::Library>,
         ide: Option<wipple_driver::Ide>,
@@ -456,9 +436,24 @@ impl Render {
     ) -> BoxFuture<'a, String> {
         async move {
             if is_top_level && describe {
-                let describe_type = self.0.lock().unwrap().configuration.describe_type.clone();
+                let message = async {
+                    let result = wipple_driver::resolve_attribute_like_trait(
+                        "describe-type",
+                        r#type.clone(),
+                        1,
+                        self.get_interface().await?,
+                    )?;
 
-                if let Some(message) = describe_type(self, r#type.clone()).await {
+                    match result.into_iter().next()?.item {
+                        wipple_driver::typecheck::Type::Message { segments, trailing } => {
+                            Some(wipple_driver::typecheck::CustomMessage { segments, trailing })
+                        }
+                        _ => None,
+                    }
+                }
+                .await;
+
+                if let Some(message) = message {
                     return self.render_custom_message(&message, false).await;
                 }
             }

@@ -49,27 +49,7 @@ async fn tests(#[files("tests/**/*.test.wipple")] file: std::path::PathBuf) {
 
         let result = wipple_driver::compile(vec![file], Some(base_interface));
 
-        let mut render = wipple_render::Render::new(wipple_render::RenderConfiguration {
-            describe_type: Arc::new(|render, r#type| {
-                async move {
-                    let result = wipple_driver::resolve_attribute_like_trait(
-                        "describe-type",
-                        r#type,
-                        1,
-                        render.get_interface().await?,
-                    )?;
-
-                    match result.into_iter().next()?.item {
-                        wipple_driver::typecheck::Type::Message { segments, trailing } => {
-                            Some(wipple_driver::typecheck::CustomMessage { segments, trailing })
-                        }
-                        _ => None,
-                    }
-                }
-                .boxed()
-            }),
-        });
-
+        let render = wipple_render::Render::new();
         render
             .update(
                 result.interface,

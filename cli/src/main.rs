@@ -2,6 +2,8 @@
 
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
+mod lsp;
+
 use clap::Parser;
 use futures::{future, FutureExt};
 use serde::Serialize;
@@ -44,12 +46,15 @@ enum Args {
 
         source_paths: Vec<PathBuf>,
     },
+    Lsp,
 }
 
 const SHEBANG: &str = "#!/usr/bin/env wipple run\n";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    env_logger::init();
+
     let args = Args::parse();
 
     match args {
@@ -211,6 +216,12 @@ async fn main() -> anyhow::Result<()> {
 
             Ok(())
         }
+        Args::Lsp => {
+            eprintln!("Starting LSP server...");
+
+            lsp::start().await;
+            Ok(())
+        }
     }
 }
 
@@ -218,27 +229,7 @@ async fn render_diagnostics(
     diagnostics: &[wipple_driver::util::WithInfo<wipple_driver::Info, wipple_driver::Diagnostic>],
     interface: wipple_driver::Interface,
 ) -> String {
-    let mut render = wipple_render::Render::new(wipple_render::RenderConfiguration {
-        describe_type: Arc::new(|render, r#type| {
-            async move {
-                let result = wipple_driver::resolve_attribute_like_trait(
-                    "describe-type",
-                    r#type,
-                    1,
-                    render.get_interface().await?,
-                )?;
-
-                match result.into_iter().next()?.item {
-                    wipple_driver::typecheck::Type::Message { segments, trailing } => {
-                        Some(wipple_driver::typecheck::CustomMessage { segments, trailing })
-                    }
-                    _ => None,
-                }
-            }
-            .boxed()
-        }),
-    });
-
+    let render = wipple_render::Render::new();
     render.update(interface, Vec::new(), None).await;
 
     future::join_all(diagnostics.iter().map(|diagnostic| async {

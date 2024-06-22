@@ -43,16 +43,13 @@ tasks:
             - wipple compile test.wipple --dependency .wipple/base.wippleinterface --interface .wipple/test.wippleinterface --library .wipple/test.wipplelibrary
             - wipple link .wipple/*.wipplelibrary --output .wipple/out
 
-    # vscode:install:
-    #     run: once
-    #     deps:
-    #         - compiler:build
-    #         - render:build
-    #     dir: vscode
-    #     cmds:
-    #         - npx @vscode/vsce package --no-dependencies --skip-license --allow-missing-repository
-    #         - code --install-extension wipple-vscode-0.0.0.vsix
-    #         - rm wipple-vscode-0.0.0.vsix
+    vscode:install:
+        run: once
+        dir: vscode
+        cmds:
+            - npx @vscode/vsce package --no-dependencies --skip-license --allow-missing-repository
+            - code --install-extension wipple-vscode-0.0.0.vsix
+            - rm wipple-vscode-0.0.0.vsix
 
     web:install-dependencies:
         run: once
@@ -202,13 +199,13 @@ tasks:
 
     cli:build:
         run: once
-        deps:
-            - compiler:build
         dir: cli
         cmds:
-            - cargo install --bin wipple --path . --force
+            - |
+                if [ -z "$CI" ]; then
+                    PROFILE=dev
+                else
+                    PROFILE=release
+                fi
 
-    compiler:build:
-        run: once
-        cmds:
-            - cargo build
+                cargo install --bin wipple --path . --force --profile=$PROFILE
