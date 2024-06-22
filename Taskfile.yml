@@ -22,8 +22,11 @@ tasks:
         run: once
         cmds:
             - |
-                if ! command -v grcov; then
+                if ! [[ -z "$CI" ]]; then
                     rustup component add llvm-tools-preview
+                fi
+
+                if ! command -v grcov; then
                     cargo install grcov --force
                 fi
             - rm -rf coverage && mkdir -p coverage
