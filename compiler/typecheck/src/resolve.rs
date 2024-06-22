@@ -1911,6 +1911,18 @@ enum ExpressionKind<D: Driver> {
     },
 }
 
+impl<D: Driver> ExpressionKind<D> {
+    fn is_reference(&self) -> bool {
+        matches!(
+            self,
+            ExpressionKind::UnresolvedConstant(_)
+                | ExpressionKind::UnresolvedTrait(_)
+                | ExpressionKind::ResolvedConstant { .. }
+                | ExpressionKind::ResolvedTrait(_)
+        )
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 struct FormattedText<T> {
     segments: Vec<FormatSegment<T>>,
@@ -4997,9 +5009,19 @@ fn refine_mismatch_error<D: Driver>(
                         finalize_context.type_context,
                     )
                 {
-                    *info = actual_output.info.clone();
-                    *actual = actual_output.as_ref().clone();
-                    *expected = expected_output.as_ref().clone();
+                    if let Some(actual_expression_id) = actual.expression {
+                        let actual_expression = finalize_context
+                            .type_context
+                            .tracked_expression(actual_expression_id);
+
+                        // Don't look inside constants/traits/etc. to refine the
+                        // error message
+                        if !actual_expression.item.kind.is_reference() {
+                            *info = actual_output.info.clone();
+                            *actual = actual_output.as_ref().clone();
+                            *expected = expected_output.as_ref().clone();
+                        }
+                    }
                 }
             }
         }
