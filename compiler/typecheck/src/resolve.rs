@@ -4967,6 +4967,43 @@ fn refine_mismatch_error<D: Driver>(
             }
         }
 
+        // Track down the source of a mismatched function output
+        if let TypeKind::Function {
+            inputs: actual_inputs,
+            output: actual_output,
+        } = &actual.kind
+        {
+            if let TypeKind::Function {
+                inputs: expected_inputs,
+                output: expected_output,
+            } = &expected.kind
+            {
+                if actual_inputs.len() == expected_inputs.len()
+                    && actual_inputs
+                        .iter()
+                        .zip(expected_inputs)
+                        .all(|(actual, expected)| {
+                            unify(
+                                finalize_context.driver,
+                                actual,
+                                expected,
+                                finalize_context.type_context,
+                            )
+                        })
+                    && !unify(
+                        finalize_context.driver,
+                        actual_output,
+                        expected_output,
+                        finalize_context.type_context,
+                    )
+                {
+                    *info = actual_output.info.clone();
+                    *actual = actual_output.as_ref().clone();
+                    *expected = expected_output.as_ref().clone();
+                }
+            }
+        }
+
         // TODO: If the error involves `A = B` on both sides, replace it with
         // "expected `A` but found `B`"
 
