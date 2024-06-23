@@ -596,6 +596,7 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
     let mut operator_indent = 0u32;
     let mut pad = true;
     let mut first_in_group = false;
+    let mut line_break_stack = Vec::new();
 
     macro_rules! increment {
         ($indent:ident) => {
@@ -618,14 +619,21 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
                 }
 
                 s.push('(');
+
                 increment!(line_indent);
+                line_break_stack.push(tokens.peek().copied() == Some(&Token::LineBreak));
+
                 decrement!(operator_indent);
                 pad = false;
                 first_in_group = true;
             }
             Token::RightParenthesis => {
                 s.push(')');
-                decrement!(line_indent);
+
+                if line_break_stack.pop() == Some(false) {
+                    decrement!(line_indent);
+                }
+
                 decrement!(operator_indent);
                 pad = true;
                 first_in_group = false;
@@ -636,14 +644,21 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
                 }
 
                 s.push('[');
+
                 increment!(line_indent);
+                line_break_stack.push(tokens.peek().copied() == Some(&Token::LineBreak));
+
                 decrement!(operator_indent);
                 pad = false;
                 first_in_group = true;
             }
             Token::RightBracket => {
                 s.push(']');
-                decrement!(line_indent);
+
+                if line_break_stack.pop() == Some(false) {
+                    decrement!(line_indent);
+                }
+
                 decrement!(operator_indent);
                 pad = true;
                 first_in_group = false;
@@ -654,14 +669,21 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
                 }
 
                 s.push('{');
+
                 increment!(line_indent);
+                line_break_stack.push(tokens.peek().copied() == Some(&Token::LineBreak));
+
                 decrement!(operator_indent);
                 pad = false;
                 first_in_group = true;
             }
             Token::RightBrace => {
                 s.push('}');
-                decrement!(line_indent);
+
+                if line_break_stack.pop() == Some(false) {
+                    decrement!(line_indent);
+                }
+
                 decrement!(operator_indent);
                 pad = true;
                 first_in_group = false;
@@ -682,7 +704,10 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
                         increment!(operator_indent);
                     }
                     Some(Token::RightParenthesis | Token::RightBracket | Token::RightBrace) => {
-                        decrement!(line_indent);
+                        if line_break_stack.last() != Some(&false) {
+                            line_break_stack.pop();
+                            decrement!(line_indent);
+                        }
                     }
                     _ => {}
                 }
@@ -783,7 +808,12 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
         }
     }
 
-    s.trim().to_string()
+    let mut s = s.trim().to_string();
+
+    // Add a trailing newline
+    s.push('\n');
+
+    s
 }
 
 /// Get the comments associated with an offset in a source file. The offset must
