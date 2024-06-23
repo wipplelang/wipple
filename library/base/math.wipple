@@ -9,7 +9,7 @@ Add : (Left : Number) (Right : Number) (infer Sum) => trait (Left Right -> Sum)
 instance (Add Number Number Number) : left right -> intrinsic "add-number" left right
 
 Left Right Sum where (Error ("cannot add _ and _" Left Right)) =>
-    default instance (Add Left Right Sum) : ...
+  default instance (Add Left Right Sum) : ...
 
 -- Subtract the one value from another, returning the difference.
 @(language : "subtract")
@@ -17,7 +17,7 @@ Subtract : (Left : Number) (Right : Number) (infer Difference) => trait (Left Ri
 instance (Subtract Number Number Number) : left right -> intrinsic "subtract-number" left right
 
 Left Right Difference where (Error ("cannot subtract _ from _" Right Left)) =>
-    default instance (Subtract Left Right Difference) : ...
+  default instance (Subtract Left Right Difference) : ...
 
 -- Multiply two values together, returning the product.
 @(language : "multiply")
@@ -25,7 +25,7 @@ Multiply : (Left : Number) (Right : Number) (infer Product) => trait (Left Right
 instance (Multiply Number Number Number) : left right -> intrinsic "multiply-number" left right
 
 Left Right Product where (Error ("cannot multiply _ by _" Left Right)) =>
-    default instance (Multiply Left Right Product) : ...
+  default instance (Multiply Left Right Product) : ...
 
 -- Divide two numbers, returning the quotient.
 @(language : "divide")
@@ -33,7 +33,7 @@ Divide : (Left : Number) (Right : Number) (infer Quotient) => trait (Left Right 
 instance (Divide Number Number Number) : left right -> intrinsic "divide-number" left right
 
 Left Right Quotient where (Error ("cannot divide _ by _" Left Right)) =>
-    default instance (Divide Left Right Quotient) : ...
+  default instance (Divide Left Right Quotient) : ...
 
 -- Divide two numbers, returning the remainder.
 @(language : "remainder")
@@ -41,7 +41,7 @@ Remainder : (Left : Number) (Right : Number) (infer Remainder) => trait (Left Ri
 instance (Remainder Number Number Number) : left right -> intrinsic "remainder-number" left right
 
 Left Right Remainder where (Error ("cannot divide _ by _" Left Right)) =>
-    default instance (Remainder Left Right Remainder) : ...
+  default instance (Remainder Left Right Remainder) : ...
 
 -- Raise one number to the power of the other number.
 @(language : "power")
@@ -49,7 +49,7 @@ Power : (Left : Number) (Right : Number) (infer Power) => trait (Left Right -> P
 instance (Power Number Number Number) : left right -> intrinsic "power-number" left right
 
 Left Right Power where (Error ("cannot raise _ to the power of _" Left Right)) =>
-    default instance (Power Left Right Power) : ...
+  default instance (Power Left Right Power) : ...
 
 -- Round down a number to the nearest integer.
 floor :: Number -> Number
@@ -74,7 +74,7 @@ degrees :: Number -> Angle
 degrees : Angle
 
 () where (Error ("missing unit for angle" ; Error-Fix "add `degrees`" ("`(_ degrees)`" Source))) =>
-    instance (Mismatch Number Angle)
+  instance (Mismatch Number Angle)
 
 -- Calculate the sine of an angle.
 sin :: Angle -> Number

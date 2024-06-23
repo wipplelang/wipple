@@ -1,59 +1,59 @@
 -- A continuous range between two numbers. Each bound may be `undefined` to
 -- indicate that the range is unbounded in that direction.
 Range : (Index : Number) => type {
-    min :: Index
-    max :: Index
+  min :: Index
+  max :: Index
 }
 
 @(language : "to")
 To : Index => trait (Index Index -> Range Index)
 (Index : Number) => instance (To Index) : min max -> {
-    min : min
-    max : max
+  min : min
+  max : max
 }
 
 -- A range between two numbers that counts up in discrete steps.
 Stride : (Index : Number) => type {
-    min :: Index
-    max :: Index
-    step :: Index
+  min :: Index
+  max :: Index
+  step :: Index
 }
 
 @(language : "by")
 By : (Index : Number) => trait ((Range Index) Index -> Stride Index)
 (Index : Number) => instance (By Index) : {
-    min : min
-    max : max
+  min : min
+  max : max
 } step -> {
-    min : min
-    max : max
-    step : step
+  min : min
+  max : max
+  step : step
 }
 
 instance (As-Sequence (Stride Number) Number) : {
-    min : min
-    max : max
-    step : step
+  min : min
+  max : max
+  step : step
 } -> when (min /= undefined ; max /= undefined) {
-    (True ; True) -> do {
-        current : min
-        Sequence {
-            if (current < max) {
-                n : current
-                current! : current + step
-                Some n
-            } {
-                None
-            }
-        }
+  (True ; True) -> do {
+    current : min
+    Sequence {
+      if (current < max) {
+        n : current
+        current! : current + step
+        Some n
+      } {
+        None
+      }
     }
-    (True ; False) -> do {
-        current : min
-        Sequence {
-            n : current
-            current! : current + step
-            Some n
-        }
+  }
+  (True ; False) -> do {
+    current : min
+    Sequence {
+      n : current
+      current! : current + step
+      Some n
     }
-    _ -> Sequence {None}
+  }
+  _ -> Sequence {None}
 }

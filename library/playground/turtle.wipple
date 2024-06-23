@@ -9,7 +9,7 @@ pixels :: Number -> Distance
 pixels : Distance
 
 () where (Error ("missing unit for distance" ; Error-Fix "add `pixels`" ("`(_ pixels)`" Source))) =>
-    instance (Mismatch Number Distance)
+  instance (Mismatch Number Distance)
 
 -- Move the turtle forward by the specified distance.
 @(highlight-category : "turtle-motion")
@@ -25,8 +25,8 @@ backward : (Distance pixels) -> runtime-message "backward" pixels
 
 -- An arc.
 Arc : type {
-    radius :: Distance
-    angle :: Angle
+  radius :: Distance
+  angle :: Angle
 }
 
 -- Move the turtle along an arc.
@@ -34,8 +34,8 @@ Arc : type {
 @(highlight-icon : "progress-activity")
 arc :: Arc -> Unit
 arc : {
-    radius : (Distance radius)
-    angle : (Angle angle)
+  radius : (Distance radius)
+  angle : (Angle angle)
 } -> runtime-message "arc" (radius ; angle)
 
 -- Rotate the turtle counterclockwise by the specified angle.
@@ -61,10 +61,10 @@ color : (Color color) -> runtime-message "color" color
 @(highlight-icon : "colors")
 fill :: Result => Color {Result} -> Result
 fill : (Color color) body -> do {
-    runtime-message "begin-path" ()
-    result : do body
-    runtime-message "end-path" color
-    result
+  runtime-message "begin-path" ()
+  result : do body
+  runtime-message "end-path" color
+  result
 }
 
 -- The speed of the turtle, from `very-slow` to `very-fast`.
