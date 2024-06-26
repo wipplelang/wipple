@@ -176,6 +176,7 @@ tasks:
             - web:playground:bundle
         dir: web/playground
         cmds:
+            - ./wasm/build.sh
             - npm run dev
 
     web:playground:build:

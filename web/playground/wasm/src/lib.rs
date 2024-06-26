@@ -17,7 +17,7 @@ use std::{
     mem,
     sync::{Arc, Once},
 };
-use util::{SendWrapper, VariadicFunction};
+use util::{is_dev, OrThrowExt, SendWrapper, VariadicFunction};
 use wasm_bindgen::prelude::*;
 use web_sys::js_sys;
 use wipple_driver::util::lazy_static::lazy_static;
@@ -32,35 +32,6 @@ fn from_value<T: for<'de> Deserialize<'de>>(
     value: JsValue,
 ) -> Result<T, serde_wasm_bindgen::Error> {
     serde_wasm_bindgen::from_value(value)
-}
-
-trait OrThrowExt {
-    type Result;
-
-    fn or_throw(self, msg: &str) -> Self::Result;
-    fn or_warn(self, msg: &str);
-}
-
-impl<T, E: std::fmt::Debug> OrThrowExt for Result<T, E> {
-    type Result = T;
-
-    #[track_caller]
-    fn or_throw(self, msg: &str) -> T {
-        let location = std::panic::Location::caller();
-
-        self.unwrap_or_else(|err| {
-            wasm_bindgen::throw_str(&format!("{}: {}: {:?}", location, msg, err));
-        })
-    }
-
-    #[track_caller]
-    fn or_warn(self, msg: &str) {
-        let location = std::panic::Location::caller();
-
-        if let Err(err) = self {
-            web_sys::console::warn_1(&format!("{}: {}: {:?}", location, msg, err).into());
-        }
-    }
 }
 
 lazy_static! {
@@ -105,13 +76,18 @@ async fn run_on_thread<T: Send + 'static, Fut: Future<Output = T>>(
 
     let (tx, rx) = async_channel::unbounded();
 
-    let origin = js_sys::eval("window.location.origin")
-        .or_throw("failed to get origin")
-        .as_string()
-        .expect_throw("origin is not a string");
+    // In production, use the entrypoint copied over to the `public` folder
+    // during build (see `worker_entrypoint.js`)
+    let mut thread = wasm_thread::Builder::new();
+    if !is_dev() {
+        let origin = js_sys::eval("window.location.origin")
+            .or_throw("failed to get origin")
+            .as_string()
+            .expect_throw("origin is not a string");
 
-    let thread = wasm_thread::Builder::new()
-        .wasm_bindgen_shim_url(format!("{origin}/playground/assets/worker_entrypoint.js"));
+        thread = thread
+            .wasm_bindgen_shim_url(format!("{origin}/playground/assets/worker_entrypoint.js"));
+    }
 
     thread
         .spawn_async({

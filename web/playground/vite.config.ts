@@ -6,7 +6,7 @@ import svgr from "vite-plugin-svgr";
 import topLevelAwait from "vite-plugin-top-level-await";
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig((env) => ({
     base: "/playground",
     plugins: [react(), lezer(), svgr(), topLevelAwait()],
     build: {
@@ -35,4 +35,7 @@ export default defineConfig({
             "Cross-Origin-Embedder-Policy": "require-corp",
         },
     },
-});
+    define: {
+        __DEV__: env.mode === "development",
+    },
+}));
