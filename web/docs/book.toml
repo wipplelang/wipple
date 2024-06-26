@@ -9,7 +9,7 @@ title = "Wipple Documentation"
 [output.html]
 site-url = "/docs/"
 no-section-label = true
-curly-quotes = true
+smart-punctuation = true
 additional-js = ["js/custom.js"]
 additional-css = ["style/custom.css"]
 
