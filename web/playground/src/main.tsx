@@ -12,6 +12,7 @@ import {
     persistentMultipleTabManager,
 } from "firebase/firestore";
 import * as Sentry from "@sentry/react";
+import ReactGA from "react-ga4";
 import { HomePage, EditPage, RootPage, LessonPage } from "./pages";
 import { NavbarProvider, AlertProvider } from "./components";
 import { StoreProvider } from "./store";
@@ -32,6 +33,8 @@ if (import.meta.env.PROD) {
         replaysOnErrorSampleRate: 1.0,
     });
 }
+
+ReactGA.initialize(import.meta.env.VITE_GA_MEASUREMENT_ID);
 
 const app = initializeApp({
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
