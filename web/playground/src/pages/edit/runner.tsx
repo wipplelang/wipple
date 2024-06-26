@@ -151,62 +151,75 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                     });
                 }
 
-                return await wipple.run({
-                    id,
-                    executable,
-                    handlers: {
-                        display: async (text: string) => {
-                            appendToOutput({ type: "text", text });
-                            await new Promise(requestAnimationFrame);
-                        },
-                        prompt: async (
-                            prompt: string,
-                            validate: (input: string) => Promise<boolean>,
-                        ) => {
-                            appendToOutput({
-                                type: "prompt",
-                                prompt,
-                                onSubmit: validate,
-                            });
-
-                            showRunAgain = true;
-
-                            await new Promise(requestAnimationFrame);
-                        },
-                        choice: (prompt: string, choices: string[]) =>
-                            new Promise<number>((resolve) => {
+                try {
+                    return await wipple.run({
+                        id,
+                        executable,
+                        handlers: {
+                            display: async (text: string) => {
+                                appendToOutput({ type: "text", text });
+                                await new Promise(requestAnimationFrame);
+                            },
+                            prompt: async (
+                                prompt: string,
+                                validate: (input: string) => Promise<boolean>,
+                            ) => {
                                 appendToOutput({
-                                    type: "choice",
+                                    type: "prompt",
                                     prompt,
-                                    choices,
-                                    onSubmit: resolve,
+                                    onSubmit: validate,
                                 });
 
                                 showRunAgain = true;
-                            }),
-                        ui: async (message: string, value: any) => {
-                            try {
-                                if (!runtimeRef.current) {
-                                    throw new Error("cannot send a UI message without a runtime");
+
+                                await new Promise(requestAnimationFrame);
+                            },
+                            choice: (prompt: string, choices: string[]) =>
+                                new Promise<number>((resolve) => {
+                                    appendToOutput({
+                                        type: "choice",
+                                        prompt,
+                                        choices,
+                                        onSubmit: resolve,
+                                    });
+
+                                    showRunAgain = true;
+                                }),
+                            ui: async (message: string, value: any) => {
+                                try {
+                                    if (!runtimeRef.current) {
+                                        throw new Error(
+                                            "cannot send a UI message without a runtime",
+                                        );
+                                    }
+
+                                    const mutex = runtimeMutexRef.current;
+                                    const runtime = runtimeRef.current;
+
+                                    const result = await mutex.runExclusive(async () => {
+                                        return await runtime.onMessage(message, value);
+                                    });
+
+                                    showRunAgain = true;
+
+                                    return result;
+                                } catch (error) {
+                                    console.warn(error);
+                                    throw error;
                                 }
-
-                                const mutex = runtimeMutexRef.current;
-                                const runtime = runtimeRef.current;
-
-                                const result = await mutex.runExclusive(async () => {
-                                    return await runtime.onMessage(message, value);
-                                });
-
-                                showRunAgain = true;
-
-                                return result;
-                            } catch (error) {
-                                console.warn(error);
-                                throw error;
-                            }
+                            },
                         },
-                    },
-                });
+                    });
+                } finally {
+                    if (runtimeRef.current) {
+                        const mutex = runtimeMutexRef.current;
+                        const runtime = runtimeRef.current;
+
+                        await mutex.runExclusive(async () => {
+                            await runtime.cleanup();
+                        });
+                    }
+                }
             });
 
             if (!runResult) return;
@@ -221,15 +234,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         } finally {
             setShowRunAgain(showRunAgain);
             isCompiling.current = false;
-
-            if (runtimeRef.current) {
-                const mutex = runtimeMutexRef.current;
-                const runtime = runtimeRef.current;
-
-                await mutex.runExclusive(async () => {
-                    await runtime.cleanup();
-                });
-            }
         }
     }, [hasWaitedForLayout, code, props.runtime != null, props.runtime?.settings, props.options]);
 
