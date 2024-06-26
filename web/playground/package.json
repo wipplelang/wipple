@@ -16,6 +16,7 @@
         "@lezer/generator": "^1.6.0",
         "@mui/material": "^5.15.18",
         "@react-spring/web": "^9.7.3",
+        "@sentry/react": "^8.12.0",
         "@uiw/codemirror-theme-github": "^4.21.21",
         "array-move": "^4.0.0",
         "async-mutex": "^0.4.1",
@@ -54,6 +55,7 @@
         "wipple-wasm": "file:wasm"
     },
     "devDependencies": {
+        "@sentry/vite-plugin": "^2.20.1",
         "@tailwindcss/typography": "^0.5.10",
         "@types/color-namer": "^1.3.3",
         "@types/matter-js": "^0.19.6",
