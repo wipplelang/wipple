@@ -43,8 +43,14 @@ tasks:
         deps:
             - base:compile
         cmds:
-            - wipple compile test.wipple --dependency .wipple/base.wippleinterface --interface .wipple/test.wippleinterface --library .wipple/test.wipplelibrary
-            - wipple link .wipple/*.wipplelibrary --output .wipple/out
+            - cargo run --bin wipple -- compile test.wipple --dependency .wipple/base.wippleinterface --interface .wipple/test.wippleinterface --library .wipple/test.wipplelibrary
+            - cargo run --bin wipple -- link .wipple/*.wipplelibrary --output .wipple/out
+
+    cli:install:
+        run: once
+        dir: cli
+        cmds:
+            - cargo install --bin wipple --path . --force
 
     vscode:install:
         run: once
@@ -57,6 +63,7 @@ tasks:
     web:install-dependencies:
         run: once
         deps:
+            - if ! command -v wasm-pack; then cargo install --force wasm-pack; fi
             - web:home:install-dependencies
             - web:login:install-dependencies
             - web:docs:install-dependencies
@@ -159,15 +166,14 @@ tasks:
         run: once
         dir: web/playground
         cmds:
-            - task cli:build
             - task base:compile
-            - wipple compile ../../library/base/*.wipple --interface ../../.wipple/base.wippleinterface --library ../../.wipple/base.wipplelibrary
-            - wipple bundle-for-playground ../../library/base/*.wipple --output ./public/library/base.wipplebundle
-            - wipple bundle-for-playground ../../library/playground/turtle.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/turtle.wipplebundle
-            - wipple bundle-for-playground ../../library/playground/music.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/music.wipplebundle
-            - wipple bundle-for-playground ../../library/playground/math.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/math.wipplebundle
-            - wipple bundle-for-playground ../../library/playground/game.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/game.wipplebundle
-            - wipple bundle-for-playground ../../library/playground/physics.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/physics.wipplebundle
+            - cargo run --bin wipple -- compile ../../library/base/*.wipple --interface ../../.wipple/base.wippleinterface --library ../../.wipple/base.wipplelibrary
+            - cargo run --bin wipple -- bundle-for-playground ../../library/base/*.wipple --output ./public/library/base.wipplebundle
+            - cargo run --bin wipple -- bundle-for-playground ../../library/playground/turtle.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/turtle.wipplebundle
+            - cargo run --bin wipple -- bundle-for-playground ../../library/playground/music.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/music.wipplebundle
+            - cargo run --bin wipple -- bundle-for-playground ../../library/playground/math.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/math.wipplebundle
+            - cargo run --bin wipple -- bundle-for-playground ../../library/playground/game.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/game.wipplebundle
+            - cargo run --bin wipple -- bundle-for-playground ../../library/playground/physics.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/physics.wipplebundle
             - cp -r ../../library/help ./public/library
 
     web:playground:serve:
@@ -192,24 +198,4 @@ tasks:
         run: once
         cmds:
             - rm -rf .wipple
-            - wipple compile library/base/*.wipple --interface .wipple/base.wippleinterface --library .wipple/base.wipplelibrary
-
-    install-dependencies:
-        run: once
-        deps:
-            - web:install-dependencies
-        cmds:
-            - if ! command -v wasm-pack; then cargo install --force wasm-pack; fi
-
-    cli:build:
-        run: once
-        dir: cli
-        cmds:
-            - |
-                if [ -z "$CI" ]; then
-                    PROFILE=dev
-                else
-                    PROFILE=release
-                fi
-
-                cargo install --bin wipple --path . --force --profile=$PROFILE
+            - cargo run --bin wipple -- compile library/base/*.wipple --interface .wipple/base.wippleinterface --library .wipple/base.wipplelibrary

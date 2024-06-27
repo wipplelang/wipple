@@ -1034,10 +1034,10 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                 index: WithInfo<D::Info, usize>,
                 mut expressions: Vec<WithInfo<<D as Driver>::Info, TokenTree<'src, D>>>,
                 diagnostics: &mut Vec<WithInfo<<D as Driver>::Info, Diagnostic<D>>>,
-            ) -> Option<(
+            ) -> (
                 WithInfo<D::Info, TokenTree<'src, D>>,
                 WithInfo<D::Info, TokenTree<'src, D>>,
-            )> {
+            ) {
                 let info = index.info;
                 let index = index.item;
 
@@ -1057,7 +1057,7 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                             right.last().unwrap().info.clone(),
                         );
 
-                        Some((
+                        (
                             WithInfo {
                                 info: left_info,
                                 item: parse_operators::<D>(
@@ -1074,7 +1074,7 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                                     diagnostics,
                                 ),
                             },
-                        ))
+                        )
                     }
                     (true, false) => {
                         expressions.pop().unwrap();
@@ -1085,7 +1085,7 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                             left.last().unwrap().info.clone(),
                         );
 
-                        Some((
+                        (
                             WithInfo {
                                 info: left_info,
                                 item: parse_operators::<D>(
@@ -1098,7 +1098,7 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                                 info,
                                 item: TokenTree::Error,
                             },
-                        ))
+                        )
                     }
                     (false, true) => {
                         let right = expressions.split_off(1);
@@ -1108,7 +1108,7 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                             right.last().unwrap().info.clone(),
                         );
 
-                        Some((
+                        (
                             WithInfo {
                                 info,
                                 item: TokenTree::Error,
@@ -1121,9 +1121,18 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                                     diagnostics,
                                 ),
                             },
-                        ))
+                        )
                     }
-                    (false, false) => None,
+                    (false, false) => (
+                        WithInfo {
+                            info: info.clone(),
+                            item: TokenTree::Error,
+                        },
+                        WithInfo {
+                            info,
+                            item: TokenTree::Error,
+                        },
+                    ),
                 }
             }
 
@@ -1147,17 +1156,16 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                         (WithInfo { info, item: *index }, operator)
                     };
 
-                    match tree(index, expressions, diagnostics) {
-                        Some((left, right)) => TokenTree::Operator(
-                            WithInfo {
-                                info,
-                                item: operator,
-                            },
-                            left.boxed(),
-                            right.boxed(),
-                        ),
-                        None => TokenTree::Error,
-                    }
+                    let (left, right) = tree(index, expressions, diagnostics);
+
+                    TokenTree::Operator(
+                        WithInfo {
+                            info,
+                            item: operator,
+                        },
+                        left.boxed(),
+                        right.boxed(),
+                    )
                 }
                 AnyOperator::VariadicOperator(operator) => {
                     let mut indices = operators.iter().map(|&(index, _)| index).peekable();
@@ -1231,17 +1239,16 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                         }
                     };
 
-                    match tree(index, expressions, diagnostics) {
-                        Some((left, right)) => TokenTree::NonAssociativeOperator(
-                            WithInfo {
-                                info,
-                                item: operator,
-                            },
-                            left.boxed(),
-                            right.boxed(),
-                        ),
-                        None => TokenTree::Error,
-                    }
+                    let (left, right) = tree(index, expressions, diagnostics);
+
+                    TokenTree::NonAssociativeOperator(
+                        WithInfo {
+                            info,
+                            item: operator,
+                        },
+                        left.boxed(),
+                        right.boxed(),
+                    )
                 }
             }
         }
