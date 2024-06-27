@@ -18,6 +18,7 @@ export const SliderAsset = (props: {
                 min={props.min}
                 max={props.max}
                 step={0.01}
+                disabled={props.disabled}
                 onChange={(_, value) => {
                     if (typeof value !== "number") return;
                     setValue(value);
