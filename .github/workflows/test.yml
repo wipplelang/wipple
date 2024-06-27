@@ -22,7 +22,6 @@ jobs:
                   cache-on-failure: true
 
             - run: task install-dependencies
-            - run: task cli:build
             - run: task base:compile
 
             - run: task test-with-coverage
