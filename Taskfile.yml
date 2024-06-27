@@ -63,6 +63,7 @@ tasks:
     web:install-dependencies:
         run: once
         deps:
+            - if ! command -v wasm-pack; then cargo install --force wasm-pack; fi
             - web:home:install-dependencies
             - web:login:install-dependencies
             - web:docs:install-dependencies
@@ -198,10 +199,3 @@ tasks:
         cmds:
             - rm -rf .wipple
             - cargo run --bin wipple -- compile library/base/*.wipple --interface .wipple/base.wippleinterface --library .wipple/base.wipplelibrary
-
-    install-dependencies:
-        run: once
-        deps:
-            - web:install-dependencies
-        cmds:
-            - if ! command -v wasm-pack; then cargo install --force wasm-pack; fi
