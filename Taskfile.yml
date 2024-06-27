@@ -63,11 +63,12 @@ tasks:
     web:install-dependencies:
         run: once
         deps:
-            - if ! command -v wasm-pack; then cargo install --force wasm-pack; fi
             - web:home:install-dependencies
             - web:login:install-dependencies
             - web:docs:install-dependencies
             - web:playground:install-dependencies
+        cmds:
+            - if ! command -v wasm-pack; then cargo install --force wasm-pack; fi
 
     web:serve:
         run: once
