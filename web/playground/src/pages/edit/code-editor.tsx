@@ -28,6 +28,7 @@ import {
     instrumentAsset,
     noteAsset,
     objectAsset,
+    sliderAsset,
 } from "./assets";
 import { defaultPaletteItems, runtimes } from "../../runtimes";
 import { SetupIcon } from "./setup-icon";
@@ -274,6 +275,17 @@ export function CodeEditor<Settings>(props: {
                         }}
                     />
                 ));
+
+                break;
+            }
+            case "slider": {
+                codeMirrorRef.current?.editorView.dispatch({
+                    changes: {
+                        from: start,
+                        to: end,
+                        insert: sliderAsset(asset.value, asset.min, asset.max),
+                    },
+                });
 
                 break;
             }

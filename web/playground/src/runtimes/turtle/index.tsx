@@ -326,7 +326,7 @@ export const paletteItems: PaletteItem[] = [
     },
     {
         title: "speed",
-        code: `speed [Dropdown (very-slow , slow , normal , fast , very-fast) normal]`,
+        code: `speed [Slider 0.5 0 1]`,
     },
     {
         title: "animal",

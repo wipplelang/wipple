@@ -4,6 +4,7 @@ import { DropdownAsset } from "./dropdown";
 import { InstrumentAsset } from "./instrument";
 import { NoteAsset } from "./note";
 import { ObjectAsset } from "./object";
+import { SliderAsset } from "./slider";
 
 export const isAsset = (value: string) =>
     value.startsWith("[") &&
@@ -16,7 +17,8 @@ export type Asset =
     | { type: "dropdown"; selection: string; options: string[] }
     | { type: "note"; note: string }
     | { type: "instrument"; instrument: string }
-    | { type: "object"; object: string };
+    | { type: "object"; object: string }
+    | { type: "slider"; value: number; min: number; max: number };
 
 export const getAsset = (code: string): Asset | undefined => {
     const split = code.split(" ");
@@ -59,6 +61,18 @@ export const getAsset = (code: string): Asset | undefined => {
             value = value.slice(1, value.length - 1); // remove quotes
             return { type: "object", object: value };
         }
+        case "Slider": {
+            const typeMatch = value.match(/(?<current>[\d\.]+) (?<min>[\d\.]+) (?<max>[\d\.]+)/);
+
+            if (!typeMatch?.groups) {
+                return undefined;
+            }
+
+            const current = parseFloat(typeMatch.groups["current"]);
+            const min = parseFloat(typeMatch.groups["min"]);
+            const max = parseFloat(typeMatch.groups["max"]);
+            return { type: "slider", value: current, min, max };
+        }
         default: {
             return undefined;
         }
@@ -77,6 +91,9 @@ export const noteAsset = (note: string) => `[Note "${note}"]`;
 export const instrumentAsset = (instrument: string) => `[Instrument-Name "${instrument}"]`;
 
 export const objectAsset = (object: string) => `[Object "${object}"]`;
+
+export const sliderAsset = (value: number, min: number, max: number) =>
+    `[Slider ${value} ${min} ${max}]`;
 
 export const Asset = (props: {
     children: Asset;
@@ -145,6 +162,18 @@ export const Asset = (props: {
                     disabled={props.disabled}
                     object={asset.object}
                     onClick={() => props.onClick?.(asset)}
+                />
+            );
+            break;
+        }
+        case "slider": {
+            content = (
+                <SliderAsset
+                    disabled={props.disabled}
+                    value={asset.value}
+                    min={asset.min}
+                    max={asset.max}
+                    onChange={(value) => props.onClick?.({ ...asset, value })}
                 />
             );
             break;
