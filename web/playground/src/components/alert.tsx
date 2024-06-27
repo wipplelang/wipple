@@ -45,8 +45,10 @@ export const AlertProvider = (props: React.PropsWithChildren<{}>) => {
                     >
                         {Contents ? (
                             <div className="max-w-3xl p-4">
-                                <div className="bg-white dark:bg-gray-900 rounded-lg p-4">
-                                    <Contents dismiss={() => setContents(undefined)} />
+                                <div className="max-h-screen p-4 overflow-y-scroll">
+                                    <div className="bg-white dark:bg-gray-900 rounded-lg p-4">
+                                        <Contents dismiss={() => setContents(undefined)} />
+                                    </div>
                                 </div>
                             </div>
                         ) : null}

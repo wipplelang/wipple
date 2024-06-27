@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Animated,
+    Button,
     ContextMenuButton,
     ContextMenuItem,
     Markdown,
@@ -40,6 +41,7 @@ import { InstrumentPicker } from "./instrument-picker";
 import { LinesEditor } from "../../components/lines-editor";
 import { arrayMoveMutable } from "array-move";
 import { ObjectPicker } from "./object-picker";
+import { ErrorDoc, docForError } from "../../docs/errors";
 
 export function CodeEditor<Settings>(props: {
     children: string;
@@ -149,7 +151,7 @@ export function CodeEditor<Settings>(props: {
 
     const getHelpForCode = useCallback(
         (position: number, code: string) => runnerRef.current!.help(position, code),
-        []
+        [],
     );
 
     const format = useCallback(async () => {
@@ -158,7 +160,7 @@ export function CodeEditor<Settings>(props: {
         }
 
         const formatted = await runnerRef.current.format(
-            codeMirrorRef.current!.editorView.state.sliceDoc()
+            codeMirrorRef.current!.editorView.state.sliceDoc(),
         );
 
         props.onChange(formatted);
@@ -621,7 +623,7 @@ const PaletteButton = (props: { setup?: string; assets: PaletteItem[]; items: Pa
                             JSON.stringify({
                                 code: item.code,
                                 insertLine: true,
-                            })
+                            }),
                         );
 
                         onDismiss();
@@ -630,7 +632,7 @@ const PaletteButton = (props: { setup?: string; assets: PaletteItem[]; items: Pa
                     <code className="whitespace-nowrap">{item.title}</code>
                 </div>
             ),
-        })
+        }),
     );
 
     return (
@@ -651,7 +653,7 @@ const PaletteButton = (props: { setup?: string; assets: PaletteItem[]; items: Pa
                                                       JSON.stringify({
                                                           code: asset.code,
                                                           insertLine: false,
-                                                      })
+                                                      }),
                                                   );
 
                                                   onDismiss();
@@ -690,6 +692,16 @@ const DiagnosticBubble = (props: {
     onApplyFix: (fix: any, start: number, end: number) => void;
 }) => {
     const [isExpanded, setExpanded] = useState(false);
+
+    const [doc, setDoc] = useState<ErrorDoc>();
+
+    useEffect(() => {
+        if (isExpanded) {
+            setDoc(docForError(props.diagnostic.message));
+        }
+    }, [isExpanded]);
+
+    const { displayAlert } = useAlert();
 
     return (
         <div style={{ maxWidth: isExpanded ? undefined : props.width }}>
@@ -742,7 +754,7 @@ const DiagnosticBubble = (props: {
                             </div>
 
                             {isExpanded ? (
-                                <div className="flex flex-row w-full">
+                                <div className="flex flex-row w-full gap-2.5">
                                     {props.diagnostic.fix ? (
                                         <div className="flex flex-row items-center justify-stretch gap-2 pb-1 text-black dark:text-gray-50">
                                             <div className="flex-1">
@@ -756,7 +768,7 @@ const DiagnosticBubble = (props: {
                                                     props.onApplyFix(
                                                         props.diagnostic.fix!,
                                                         props.diagnostic.location.start.index,
-                                                        props.diagnostic.location.end.index
+                                                        props.diagnostic.location.end.index,
                                                     );
                                                 }}
                                             >
@@ -768,6 +780,21 @@ const DiagnosticBubble = (props: {
                                             No fixes available
                                         </p>
                                     )}
+
+                                    {doc ? (
+                                        <button
+                                            className="px-2 rounded-lg text-blue-500 bg-blue-500 hover:bg-blue-500 hover:text-white bg-opacity-25 transition-colors"
+                                            onClick={() => {
+                                                setExpanded(false);
+
+                                                displayAlert(({ dismiss }) => (
+                                                    <ErrorDocAlert doc={doc} dismiss={dismiss} />
+                                                ));
+                                            }}
+                                        >
+                                            Help
+                                        </button>
+                                    ) : null}
                                 </div>
                             ) : null}
                         </div>
@@ -781,5 +808,21 @@ const DiagnosticBubble = (props: {
 const MenuContainer = (props: React.PropsWithChildren<{}>) => (
     <div className="flex flex-row items-center text-gray-800 dark:text-gray-400 text-opacity-50 h-7">
         {props.children}
+    </div>
+);
+
+const ErrorDocAlert = (props: { doc: ErrorDoc; dismiss: () => void }) => (
+    <div className="flex flex-col w-[650px] gap-4">
+        <div className="max-h-[75vh] overflow-y-scroll">
+            <Markdown className="text-2xl font-semibold mb-4">{`What does "${props.doc.error}" mean?`}</Markdown>
+
+            <div className="help">
+                <Markdown className="prose">{props.doc.doc}</Markdown>
+            </div>
+        </div>
+
+        <Button role="primary" fill onClick={props.dismiss}>
+            Done
+        </Button>
     </div>
 );
