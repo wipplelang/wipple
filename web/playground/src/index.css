@@ -53,7 +53,7 @@ code,
 }
 
 :not(.help) .markdown :not(pre) code {
-    @apply inline-block align-middle mb-0.5 text-gray-700 dark:text-gray-300 text-xs bg-gray-50 dark:bg-gray-800 px-1.5 rounded-md;
+    @apply inline-block align-baseline mb-0.5 text-gray-700 dark:text-gray-300 [font-size:75%] bg-gray-50 dark:bg-gray-800 px-1.5 py-0 rounded-md;
 }
 
 :not(.help) .markdown pre {
@@ -61,7 +61,7 @@ code,
 }
 
 .help .markdown code {
-    @apply my-1 px-2 inline-block bg-gray-50 dark:bg-gray-900 rounded-lg p-1;
+    @apply my-1 px-2 inline-block text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 rounded-lg p-1;
 }
 
 .help .markdown pre:has(code) {

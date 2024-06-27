@@ -4,6 +4,7 @@ import react from "@vitejs/plugin-react-swc";
 import { lezer } from "@lezer/generator/rollup";
 import svgr from "vite-plugin-svgr";
 import topLevelAwait from "vite-plugin-top-level-await";
+import * as markdown from "vite-plugin-markdown";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 // https://vitejs.dev/config/
@@ -17,6 +18,7 @@ export default defineConfig(({ mode }) => {
             lezer(),
             svgr(),
             topLevelAwait(),
+            markdown.plugin({ mode: [markdown.Mode.MARKDOWN] }),
             sentryVitePlugin({
                 disable: !process.env.CI,
                 org: process.env.VITE_SENTRY_ORG,
