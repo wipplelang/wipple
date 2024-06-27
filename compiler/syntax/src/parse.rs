@@ -3023,8 +3023,8 @@ mod base {
                             }))
                         }
                     },
-                    move |parser, tree, stack, _| {
-                        let output = self.parse(parser, tree, stack, None);
+                    move |parser, tree, stack, direction| {
+                        let output = self.parse(parser, tree, stack, direction);
 
                         Some(WithInfo {
                             info: output.info.clone(),
@@ -3049,8 +3049,8 @@ mod base {
                             Some(output.map(|output| output.map(Some)))
                         }
                     },
-                    move |parser, tree, stack, _| {
-                        Some(self.parse_option(parser, tree, stack, None))
+                    move |parser, tree, stack, direction| {
+                        Some(self.parse_option(parser, tree, stack, direction))
                     },
                 ),
             }
@@ -3947,11 +3947,11 @@ mod base {
                 ),
                 || true,
                 ParseFn::new(
-                    move |parser, tree, stack, _| {
+                    move |parser, tree, stack, direction| {
                         for alternative in alternatives {
                             let alternative = alternative();
 
-                            match alternative.try_parse(parser, tree.as_deref(), stack, None) {
+                            match alternative.try_parse(parser, tree.as_deref(), stack, direction) {
                                 Some(Ok(result)) => return Some(Ok(result)),
                                 Some(Err(progress)) if !alternative.backtracks() => {
                                     return Some(Err(progress))
@@ -3962,11 +3962,11 @@ mod base {
 
                         None
                     },
-                    move |parser, tree, stack, _| {
+                    move |parser, tree, stack, direction| {
                         for alternative in alternatives {
                             let alternative = alternative();
 
-                            match alternative.try_parse(parser, tree.as_deref(), stack, None) {
+                            match alternative.try_parse(parser, tree.as_deref(), stack, direction) {
                                 Some(Ok(result)) => return Some(result),
                                 Some(Err(_)) if !alternative.backtracks() => {
                                     // Calling `parse` here should produce a diagnostic
@@ -3987,7 +3987,12 @@ mod base {
                             .filter_map(|alternative| {
                                 let alternative = alternative();
 
-                                match alternative.try_parse(parser, tree.as_deref(), stack, None) {
+                                match alternative.try_parse(
+                                    parser,
+                                    tree.as_deref(),
+                                    stack,
+                                    direction,
+                                ) {
                                     Some(Ok(_)) => panic!("rule was expected to fail"),
                                     Some(Err(progress)) => {
                                         Some((alternative, Some(std::cmp::Reverse(progress))))
