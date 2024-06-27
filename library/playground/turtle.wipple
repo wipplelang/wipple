@@ -70,6 +70,8 @@ fill : (Color color) body -> do {
 -- The speed of the turtle, from `very-slow` to `very-fast`.
 Speed : type Number
 
+instance (As Number Speed) : Speed
+
 -- A very slow speed.
 very-slow :: Speed
 very-slow : Speed 0
