@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { createLesson } from "../../models";
 import { lessons } from "../../lessons";
-import CircularProgress from "@mui/material/CircularProgress";
+import { CircularProgress } from "wipple-playground";
 
 export const LessonPage = () => {
     const params = useParams();

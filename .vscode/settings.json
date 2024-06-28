@@ -1,7 +1,10 @@
 {
     "coverage-gutters.coverageFileNames": ["coverage/lcov.info"],
     "wipple.interface": ".wipple/base.wippleinterface",
-    "wipple.libraries": [".wipple/base.wipplelibrary"]
+    "wipple.libraries": [".wipple/base.wipplelibrary"],
+    "lldb.showDisassembly": "never",
+    "lldb.dereferencePointers": true,
+    "lldb.consoleMode": "evaluate"
 
     // Uncomment this for IDE support in `js`
     // "rust-analyzer.cargo.target": "wasm32-unknown-unknown"

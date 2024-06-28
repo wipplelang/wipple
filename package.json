@@ -1,0 +1,7 @@
+{
+    "name": "wipple-playground",
+    "workspaces": [
+        "playground",
+        "web/playground"
+    ]
+}
