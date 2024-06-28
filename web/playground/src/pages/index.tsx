@@ -5,9 +5,10 @@ export * from "./lesson";
 import { useEffect, useState } from "react";
 import { Outlet, ScrollRestoration } from "react-router-dom";
 import { produce } from "immer";
-import { Button, Navbar, useAlert as useAlert } from "../components";
+import { Button, useAlert } from "wipple-playground";
 import { useStore } from "../store";
 import { getUser, signIn, signInAsGuest, useIsOffline } from "../helpers";
+import { Navbar } from "../components";
 
 export const RootPage = () => {
     const [store, setStore] = useStore();

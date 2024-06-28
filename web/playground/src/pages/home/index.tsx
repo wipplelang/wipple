@@ -7,20 +7,20 @@ import {
     TutorialItem,
     useAlert,
     useNavbar,
-} from "../../components";
+    PlaygroundListItem,
+    TutorialStep,
+    newPlaygroundTutorialItem,
+    startTutorial,
+} from "wipple-playground";
 import { MaterialSymbol } from "react-material-symbols";
 import {
     ListPlaygroundsFilter,
-    PlaygroundListItem,
-    TutorialStep,
     createLesson,
     createPlayground,
     deletePlayground,
     duplicatePlayground,
     listCachedPlaygrounds,
     listPlaygrounds,
-    newPlaygroundTutorialItem,
-    startTutorial,
 } from "../../models";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";

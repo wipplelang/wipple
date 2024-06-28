@@ -11,69 +11,9 @@ import { getUser } from "../helpers";
 import { pureConverter } from "../helpers/database";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { nanoid } from "nanoid";
-import {
-    MathSettings,
-    MusicSettings,
-    TurtleSettings,
-    GameSettings,
-    PhysicsSettings,
-} from "../runtimes";
 import { Lesson } from "../lessons";
 import Dexie from "dexie";
-
-export interface PlaygroundListItem {
-    id: string;
-    owner: string;
-    name: string;
-    lastModified: string;
-}
-
-export interface Playground {
-    id: string;
-    owner: string;
-    collaborators: string[];
-    name: string;
-    lastModified: string;
-    locked?: boolean;
-    pages: PlaygroundPage[];
-}
-
-export interface PlaygroundPage {
-    id: string;
-    name: string;
-    items: PlaygroundPageItem[];
-}
-
-export type PlaygroundPageItem =
-    | PlaygroundPageCodeItem
-    | PlaygroundPageTurtleItem
-    | PlaygroundPageMusicItem
-    | PlaygroundPageMathItem
-    | PlaygroundPageGameItem
-    | PlaygroundPagePhysicsItem
-    | PlaygroundPageTextItem;
-
-interface PlaygroundPageCodeItem {
-    type: "code";
-    code: string;
-}
-
-type RuntimeItem<Name extends string, Settings> = PlaygroundPageCodeItem & {
-    setup: Name;
-    settings?: Settings;
-};
-
-type PlaygroundPageTurtleItem = RuntimeItem<"turtle", TurtleSettings>;
-type PlaygroundPageMusicItem = RuntimeItem<"music", MusicSettings>;
-type PlaygroundPageMathItem = RuntimeItem<"math", MathSettings>;
-type PlaygroundPageGameItem = RuntimeItem<"game", GameSettings>;
-type PlaygroundPagePhysicsItem = RuntimeItem<"physics", PhysicsSettings>;
-
-interface PlaygroundPageTextItem {
-    type: "text";
-    text: string;
-    locked: boolean;
-}
+import { Playground, PlaygroundListItem, PlaygroundPageItem } from "wipple-playground";
 
 const playgroundConverter = pureConverter<Playground>();
 
@@ -137,6 +77,11 @@ export const listPlaygrounds = async (options: { filter: ListPlaygroundsFilter }
 };
 
 export const getPlayground = async (id: string) => {
+    const user = await getUser();
+    if (!user) {
+        throw new Error("must be logged in to open a playground");
+    }
+
     const firestore = getFirestore();
 
     const playground = await getDoc(

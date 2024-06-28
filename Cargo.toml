@@ -4,9 +4,9 @@ members = [
     "cli",
     "compiler/*",
     "interpreter",
-    "web/playground/wasm",
     "render",
     "test",
+    "wasm",
 ]
 
 [workspace.lints.rust]

@@ -1,51 +1,16 @@
-import { createContext, useCallback, useContext, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { useStore } from "../store";
-import { Button, Skeleton, Tooltip, useAlert } from ".";
+import { useCallback, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { signIn, signOut } from "../helpers";
 import { produce } from "immer";
 import { MaterialSymbol } from "react-material-symbols";
 import { User } from "firebase/auth";
-
-export interface Navbar {
-    primaryActions: JSX.Element | null;
-    setPrimaryActions: (actions: JSX.Element | null) => void;
-    secondaryActions: JSX.Element | null;
-    setSecondaryActions: (actions: JSX.Element | null) => void;
-}
-
-const defaultNavbar: Navbar = {
-    primaryActions: null,
-    setPrimaryActions: () => {},
-    secondaryActions: null,
-    setSecondaryActions: () => {},
-};
-
-const NavbarContext = createContext(defaultNavbar);
-
-export const NavbarProvider = (props: React.PropsWithChildren<{}>) => {
-    const [primaryActions, setPrimaryActions] = useState<JSX.Element | null>(null);
-    const [secondaryActions, setSecondaryActions] = useState<JSX.Element | null>(null);
-
-    return (
-        <NavbarContext.Provider
-            value={{ primaryActions, setPrimaryActions, secondaryActions, setSecondaryActions }}
-        >
-            {props.children}
-        </NavbarContext.Provider>
-    );
-};
-
-export const useNavbar = () => useContext(NavbarContext);
+import { Navbar as NavbarBase, Button, useAlert } from "wipple-playground";
+import { useStore } from "../store";
 
 export const Navbar = () => {
-    const location = useLocation();
-    const isHome = /^\/playground\/?$/.test(location.pathname);
+    const [store, _updateStore] = useStore();
 
-    const { primaryActions, secondaryActions } = useNavbar();
     const { displayAlert } = useAlert();
-
-    const [store, setStore] = useStore();
 
     const handleSignIn = useCallback(async () => {
         await signIn();
@@ -55,56 +20,39 @@ export const Navbar = () => {
         displayAlert(UserSettings);
     }, [displayAlert]);
 
+    const navigate = useNavigate();
+
+    const location = useLocation();
+    const isHome = /^\/playground\/?$/.test(location.pathname);
+
     return (
-        <div
-            className={`flex flex-row items-center justify-between px-4 h-20 ${
-                isHome ? "bg-gray-50 dark:bg-gray-900" : ""
-            }`}
-        >
-            <div className="flex flex-row items-center gap-4">
-                <Link to={import.meta.env.BASE_URL}>
-                    <img src="/playground/images/logo.svg" alt="Wipple" className="w-10 h-10" />
-                </Link>
-
-                {primaryActions}
-            </div>
-
-            <div className="flex flex-row items-center gap-4">
-                {secondaryActions}
-
-                {store.offline ?? true ? (
-                    <Tooltip description="You're offline.">
-                        <MaterialSymbol
-                            icon="cloud_off"
-                            className="text-3xl text-gray-400 dark:text-gray-600"
-                        />
-                    </Tooltip>
-                ) : null}
-
-                {store.user?.isAnonymous ?? false ? (
-                    <Button role="primary" onClick={handleSignIn}>
-                        Sign In
-                    </Button>
-                ) : (
-                    <button
-                        onClick={openUserSettings}
-                        className="flex flex-row items-center gap-4 -mx-2 -my-1 px-2 p-1 rounded-lg transition hover:bg-gray-200 dark:hover:bg-gray-800"
-                    >
-                        {store.user ? (
+        <NavbarBase
+            offline={store.offline ?? true}
+            trailingActions={
+                store.user ? (
+                    store.user.isAnonymous ? (
+                        <Button role="primary" onClick={handleSignIn}>
+                            Sign In
+                        </Button>
+                    ) : (
+                        <button
+                            onClick={openUserSettings}
+                            className="flex flex-row items-center gap-4 -mx-2 -my-1 px-2 p-1 rounded-lg transition hover:bg-gray-200 dark:hover:bg-gray-800"
+                        >
                             <MaterialSymbol icon="apps" className="text-3xl text-gray-500" />
-                        ) : null}
 
-                        <div className="w-12 h-12 rounded-full overflow-clip">
-                            {store.user ? (
+                            <div className="w-12 h-12 rounded-full overflow-clip">
                                 <UserPhoto user={store.user} />
-                            ) : (
-                                <Skeleton circle className="w-full h-full" />
-                            )}
-                        </div>
-                    </button>
-                )}
-            </div>
-        </div>
+                            </div>
+                        </button>
+                    )
+                ) : (
+                    <></>
+                )
+            }
+            isHome={isHome}
+            onClickHome={() => navigate(import.meta.env.BASE_URL)}
+        />
     );
 };
 

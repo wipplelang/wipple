@@ -1,4 +1,4 @@
-import { Playground } from "../models";
+import { Playground } from "wipple-playground";
 import { learnToCodeLesson } from "./learn-to-code";
 import { intermediateWippleLesson } from "./intermediate-wipple";
 import { learnPhysicsLesson } from "./learn-physics";

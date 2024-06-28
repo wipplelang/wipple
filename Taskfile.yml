@@ -60,22 +60,61 @@ tasks:
             - code --install-extension wipple-vscode-0.0.0.vsix
             - rm wipple-vscode-0.0.0.vsix
 
+    install-dependencies:
+        run: once
+        deps:
+            - web:install-dependencies
+        cmds:
+            - npm install
+
+    wasm:install-dependencies:
+        run: once
+        dir: wasm
+        cmds:
+            - if ! command -v wasm-pack; then cargo install --force wasm-pack; fi
+
+    wasm:build:
+        run: once
+        dir: wasm
+        cmds:
+            - ./build.sh
+
+    playground:bundle:
+        run: once
+        dir: web/playground
+        cmds:
+            - task base:compile
+            - cargo run --bin wipple -- compile ../../library/base/*.wipple --interface ../../.wipple/base.wippleinterface --library ../../.wipple/base.wipplelibrary
+            - cargo run --bin wipple -- bundle-for-playground ../../library/base/*.wipple --output ./public/library/base.wipplebundle
+            - cargo run --bin wipple -- bundle-for-playground ../../library/playground/turtle.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/turtle.wipplebundle
+            - cargo run --bin wipple -- bundle-for-playground ../../library/playground/music.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/music.wipplebundle
+            - cargo run --bin wipple -- bundle-for-playground ../../library/playground/math.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/math.wipplebundle
+            - cargo run --bin wipple -- bundle-for-playground ../../library/playground/game.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/game.wipplebundle
+            - cargo run --bin wipple -- bundle-for-playground ../../library/playground/physics.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/physics.wipplebundle
+            - cp -r ../../library/help ./public/library
+
+    playground:build:
+        run: once
+        deps:
+            - playground:bundle
+            - wasm:build
+        dir: playground
+        cmds:
+            - npm run build
+
     web:install-dependencies:
         run: once
         deps:
             - web:home:install-dependencies
             - web:login:install-dependencies
             - web:docs:install-dependencies
-            - web:playground:install-dependencies
-        cmds:
-            - if ! command -v wasm-pack; then cargo install --force wasm-pack; fi
 
     web:serve:
         run: once
         deps:
             - web:build
         cmds:
-            - netlify dev
+            - netlify dev --filter wipple-playground-web
 
     web:build:
         run: once
@@ -157,42 +196,20 @@ tasks:
         cmds:
             - mdbook build
 
-    web:playground:install-dependencies:
-        run: once
-        dir: web/playground
-        cmds:
-            - npm install
-
-    web:playground:bundle:
-        run: once
-        dir: web/playground
-        cmds:
-            - task base:compile
-            - cargo run --bin wipple -- compile ../../library/base/*.wipple --interface ../../.wipple/base.wippleinterface --library ../../.wipple/base.wipplelibrary
-            - cargo run --bin wipple -- bundle-for-playground ../../library/base/*.wipple --output ./public/library/base.wipplebundle
-            - cargo run --bin wipple -- bundle-for-playground ../../library/playground/turtle.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/turtle.wipplebundle
-            - cargo run --bin wipple -- bundle-for-playground ../../library/playground/music.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/music.wipplebundle
-            - cargo run --bin wipple -- bundle-for-playground ../../library/playground/math.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/math.wipplebundle
-            - cargo run --bin wipple -- bundle-for-playground ../../library/playground/game.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/game.wipplebundle
-            - cargo run --bin wipple -- bundle-for-playground ../../library/playground/physics.wipple --dependency ../../.wipple/base.wippleinterface --link ../../.wipple/base.wipplelibrary --output ./public/library/physics.wipplebundle
-            - cp -r ../../library/help ./public/library
-
     web:playground:serve:
         run: once
         deps:
-            - web:playground:bundle
+            - playground:build
         dir: web/playground
         cmds:
-            - ./wasm/build.sh
             - npm run dev
 
     web:playground:build:
         run: once
         deps:
-            - web:playground:bundle
+            - playground:build
         dir: web/playground
         cmds:
-            - ./wasm/build.sh
             - npm run build
 
     base:compile:
