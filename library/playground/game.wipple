@@ -144,6 +144,6 @@ button : when (runtime-message "button" ()) {
 frame :: Result => {Result} -> Result
 frame : block -> do {
   result : do block
-  runtime-message "commit" ()
+  () : runtime-message "commit" ()
   result
 }

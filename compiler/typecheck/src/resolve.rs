@@ -862,6 +862,53 @@ fn try_report_custom_mismatch_error<D: Driver>(
     false
 }
 
+fn try_report_custom_unused_error<D: Driver>(
+    driver: &D,
+    info: &D::Info,
+    r#type: &Type<D>,
+    type_context: &mut TypeContext<D>,
+    errors: Option<&mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>>,
+) -> bool {
+    if let Some(unused_trait_path) = driver.path_for_language_trait("unused") {
+        let query = WithInfo {
+            info: info.clone(),
+            item: Instance {
+                r#trait: unused_trait_path,
+                parameters: vec![r#type.clone()],
+            },
+        };
+
+        let mut temp_error_queue = Vec::new();
+        let mut temp_errors = Vec::new();
+        let mut resolve_context = ResolveContext {
+            driver,
+            type_context,
+            error_queue: &mut temp_error_queue,
+            errors: &mut temp_errors,
+            variables: &mut Default::default(),
+            recursion_stack: &mut Default::default(),
+            bound_instances: Default::default(),
+        };
+
+        if resolve_trait(query.as_ref(), &mut resolve_context).is_ok() {
+            let temp_error_queue = temp_error_queue;
+            let mut temp_errors = temp_errors;
+
+            let has_error = !temp_error_queue.is_empty();
+
+            report_queued_errors(driver, type_context, temp_error_queue, &mut temp_errors);
+
+            if let Some(errors) = errors {
+                errors.extend(temp_errors);
+            }
+
+            return has_error;
+        }
+    }
+
+    false
+}
+
 // MARK: Types and type variables
 
 #[derive(Derivative)]
@@ -4730,21 +4777,36 @@ fn finalize_expression<D: Driver>(
                     .map(|(index, statement)| {
                         let is_last_statement = index + 1 == statement_count;
 
+                        let statement_type = statement.item.r#type.clone();
                         let statement = finalize_expression(statement, context);
 
-                        // Disallow statements containing only uncalled functions
+                        // Report errors for unused values in statement position...
                         if top_level || !is_last_statement {
-                            if let crate::Type::Function { inputs, .. } = &statement.item.r#type {
-                                if let crate::TypedExpressionKind::Constant { .. }
-                                | crate::TypedExpressionKind::Trait { .. }
-                                | crate::TypedExpressionKind::Variable { .. } =
-                                    &statement.item.kind
+                            let reported_custom_error = try_report_custom_unused_error(
+                                context.driver,
+                                &statement.info,
+                                &statement_type,
+                                context.type_context,
+                                context.errors.as_deref_mut(),
+                            );
+
+                            // ...as well as uncalled functions
+                            if !reported_custom_error {
+                                if let crate::Type::Function { inputs, .. } = &statement.item.r#type
                                 {
-                                    if let Some(errors) = context.errors.as_deref_mut() {
-                                        errors.push(WithInfo {
-                                            info: statement.info.clone(),
-                                            item: crate::Diagnostic::MissingInputs(inputs.clone()),
-                                        });
+                                    if let crate::TypedExpressionKind::Constant { .. }
+                                    | crate::TypedExpressionKind::Trait { .. }
+                                    | crate::TypedExpressionKind::Variable { .. } =
+                                        &statement.item.kind
+                                    {
+                                        if let Some(errors) = context.errors.as_deref_mut() {
+                                            errors.push(WithInfo {
+                                                info: statement.info.clone(),
+                                                item: crate::Diagnostic::MissingInputs(
+                                                    inputs.clone(),
+                                                ),
+                                            });
+                                        }
                                     }
                                 }
                             }
