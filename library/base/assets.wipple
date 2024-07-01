@@ -3,6 +3,9 @@
 -- directly.
 Color : type Text
 
+() where (Error ("unused color; did you mean to write `color`?" ; Error-Fix "add `color`" ("`color _`" Source))) =>
+    instance (Unused Color)
+
 instance (Random Unit Color) : () -> do {
     red : random (0 to 256)
     green : random (0 to 256)

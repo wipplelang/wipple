@@ -1,0 +1,15 @@
+-- [should error]
+
+Important : type
+
+instance (Describe Important) : _ -> "important"
+
+() where (Error "this is important and must be handled") =>
+  instance (Unused Important)
+
+do-something :: Important
+do-something : Important
+
+show do-something
+_ : do-something
+do-something
