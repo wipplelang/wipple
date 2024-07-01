@@ -61,9 +61,9 @@ color : (Color color) -> runtime-message "color" color
 @(highlight-icon : "colors")
 fill :: Result => Color {Result} -> Result
 fill : (Color color) body -> do {
-    () : runtime-message "begin-path" ()
+    runtime-message "begin-path" ()
     result : do body
-    () : runtime-message "end-path" color
+    runtime-message "end-path" color
     result
 }
 

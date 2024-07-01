@@ -4781,7 +4781,7 @@ fn finalize_expression<D: Driver>(
                         let statement = finalize_expression(statement, context);
 
                         // Report errors for unused values in statement position...
-                        if top_level || !is_last_statement {
+                        if top_level || !is_last_statement && !matches!(statement.item.r#type, crate::Type::Unknown) {
                             let reported_custom_error = try_report_custom_unused_error(
                                 context.driver,
                                 &statement.info,

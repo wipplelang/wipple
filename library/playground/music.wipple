@@ -96,7 +96,7 @@ Instrument : type {
 
 load-instrument :: Text -> Instrument
 load-instrument : name -> do {
-    () : runtime-message "load-instrument" name
+    runtime-message "load-instrument" name
 
     delta : 0
     Instrument {
