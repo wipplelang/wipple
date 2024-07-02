@@ -5,6 +5,7 @@ export * from "./context-menu";
 export * from "./footer";
 export * from "./markdown";
 export * from "./navbar";
+export * from "./resize-handle";
 export * from "./skeleton";
 export * from "./tooltip";
 export * from "./transition";

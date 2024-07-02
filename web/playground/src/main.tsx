@@ -16,11 +16,6 @@ import ReactGA from "react-ga4";
 import { HomePage, EditPage, RootPage, LessonPage } from "./pages";
 import { NavbarProvider, AlertProvider } from "wipple-playground";
 import { StoreProvider } from "./store";
-import "react-material-symbols/rounded";
-import "react-loading-skeleton/dist/skeleton.css";
-import "react-piano/dist/styles.css";
-import "react-resizable/css/styles.css";
-import "katex/dist/katex.min.css";
 import "wipple-playground/dist/style.css";
 import "./index.css";
 

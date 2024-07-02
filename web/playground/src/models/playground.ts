@@ -11,9 +11,8 @@ import { getUser } from "../helpers";
 import { pureConverter } from "../helpers/database";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { nanoid } from "nanoid";
-import { Lesson } from "../lessons";
 import Dexie from "dexie";
-import { Playground, PlaygroundListItem, PlaygroundPageItem } from "wipple-playground";
+import { Playground, PlaygroundListItem, PlaygroundPageItem, Lesson } from "wipple-playground";
 
 const playgroundConverter = pureConverter<Playground>();
 

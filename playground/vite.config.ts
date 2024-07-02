@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react-swc";
 import dts from "vite-plugin-dts";
 import { lezer } from "@lezer/generator/rollup";
 import * as markdown from "vite-plugin-markdown";
+import svgr from "vite-plugin-svgr";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -22,5 +23,6 @@ export default defineConfig({
         dts({ tsconfigPath: "./tsconfig.app.json", rollupTypes: true }),
         lezer(),
         markdown.plugin({ mode: [markdown.Mode.MARKDOWN] }),
+        svgr(),
     ],
 });

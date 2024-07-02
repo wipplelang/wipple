@@ -16,19 +16,13 @@
     font-feature-settings: "liga" 1, "calt" 1; /* fix for Chrome */
 }
 
-@supports (font-variation-settings: normal) {
-    .ui-font {
-        font-family: InterVariable, sans-serif;
-    }
-}
-
-:root {
+body {
     @apply ui-font;
 }
 
 /* Styles */
 
-:root {
+body {
     @apply antialiased scroll-smooth;
 }
 
