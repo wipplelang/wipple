@@ -204,17 +204,14 @@ pub enum Diagnostic<D: Driver> {
     /// type required in its place.
     #[serde(rename_all = "camelCase")]
     Mismatch {
-        /// The roles of the actual type.
-        actual_roles: Vec<WithInfo<D::Info, Role>>,
-
         /// The inferred type of the expression.
         actual: WithInfo<D::Info, Type<D>>,
 
-        /// The roles of the expected type.
-        expected_roles: Vec<WithInfo<D::Info, Role>>,
-
         /// The expected type of the expression.
         expected: WithInfo<D::Info, Type<D>>,
+
+        /// The reasons why the types don't match.
+        reasons: Vec<WithInfo<D::Info, TypeReason<D>>>,
     },
 
     /// A function is missing an input.
@@ -1123,27 +1120,23 @@ pub struct FieldPattern<D: Driver> {
     pub pattern: WithInfo<D::Info, Pattern<D>>,
 }
 
-/// The role of a type.
-#[allow(missing_docs)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum Role {
-    Pattern,
-    Annotation,
-    Trait,
-    Instance,
-    StructureField,
-    VariantElement,
-    WrappedType,
-    FunctionInput,
-    FunctionOutput,
-    Bound,
-    DefaultType,
-    Variable,
-    TypeParameter,
-    EmptyBlock,
-    WhenArm,
-    CollectionElement,
+/// The reason why a type was inferred.
+#[derive(Serialize, Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
+#[serde(bound = "")]
+pub enum TypeReason<D: Driver> {
+    /// The type was inferred because it involved another expression.
+    Expression(WithInfo<D::Info, Type<D>>),
+
+    /// A user-defined reason.
+    Custom(CustomMessage<D>),
 }
 
 /// Traverse an expression.
