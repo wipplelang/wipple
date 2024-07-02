@@ -1,12 +1,12 @@
 import type { RuntimeComponent } from "..";
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import { PaletteItem } from "../../models";
-import { Resizable } from "react-resizable";
+import { Resizable } from "re-resizable";
 import { ColorAsset } from "../../edit/assets/color";
 import * as engine from "./engine";
 import "./assets/style.css";
 import { MaterialSymbol } from "react-material-symbols";
-import { Tooltip } from "../../components";
+import { ResizeHandle, Tooltip } from "../../components";
 
 export interface Settings {
     canvasWidth: number;
@@ -126,26 +126,28 @@ export const Game: RuntimeComponent<Settings> = forwardRef((props, ref) => {
 
     return (
         <Resizable
-            width={containerWidth}
-            height={containerHeight}
-            minConstraints={[200, 150]}
-            maxConstraints={[700, 525]}
+            size={{ width: containerWidth, height: containerHeight }}
+            minWidth={200}
+            minHeight={150}
+            maxWidth={700}
+            maxHeight={525}
             lockAspectRatio
-            onResize={(_event, data) => {
-                setContainerWidth(data.size.width);
-                setContainerHeight(data.size.height);
+            onResize={(_event, _direction, element) => {
+                setContainerWidth(element.clientWidth);
+                setContainerHeight(element.clientHeight);
             }}
-            onResizeStop={(_event, data) => {
+            onResizeStop={(_event, _direction, element) => {
                 if (
-                    data.size.width !== props.settings?.canvasWidth ||
-                    data.size.height !== props.settings?.canvasHeight
+                    element.clientWidth !== props.settings?.canvasWidth ||
+                    element.clientHeight !== props.settings?.canvasHeight
                 ) {
                     props.onChangeSettings({
-                        canvasWidth: data.size.width,
-                        canvasHeight: data.size.height,
+                        canvasWidth: element.clientWidth,
+                        canvasHeight: element.clientHeight,
                     });
                 }
             }}
+            handleComponent={{ bottomRight: <ResizeHandle /> }}
         >
             <div
                 className={`group relative rounded-md overflow-hidden border-2 border-gray-100 dark:border-gray-800`}

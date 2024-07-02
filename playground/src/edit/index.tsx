@@ -505,7 +505,9 @@ const PlaygroundPageList = (props: {
                                             : "hover:bg-gray-100 active:bg-gray-200 dark:hover:bg-gray-900 dark:active:bg-gray-800"
                                     }`}
                                 >
-                                    <p className="text-nowrap lg:text-wrap">{page.name}</p>
+                                    <p className="text-left text-nowrap lg:text-wrap">
+                                        {page.name}
+                                    </p>
 
                                     {isActive && !props.playground!.locked ? (
                                         <ContextMenuButton

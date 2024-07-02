@@ -2,11 +2,11 @@ import type { RuntimeComponent } from "..";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import turtleImage from "./assets/turtle.png";
 import { MaterialSymbol } from "react-material-symbols";
-import { Tooltip } from "../../components";
+import { ResizeHandle, Tooltip } from "../../components";
 import { format } from "date-fns";
 import { PaletteItem } from "../../models";
 import { flushSync } from "react-dom";
-import { Resizable } from "react-resizable";
+import { Resizable } from "re-resizable";
 import { AnimalAsset, animalImageUrl } from "../../edit/assets/animal";
 import { ColorAsset } from "../../edit/assets/color";
 
@@ -81,11 +81,6 @@ export const Turtle: RuntimeComponent<Settings> = forwardRef((props, ref) => {
     const beginResize = ({ width, height }: { width: number; height: number }) => {
         const src = canvasRef.current!.toDataURL();
         setResizingImage({ src, width, height });
-    };
-
-    const onResize = ({ width, height }: { width: number; height: number }) => {
-        setContainerWidth(width);
-        setContainerHeight(height);
     };
 
     const endResize = async ({
@@ -203,14 +198,33 @@ export const Turtle: RuntimeComponent<Settings> = forwardRef((props, ref) => {
 
     return (
         <Resizable
-            handle={resizable ? undefined : <></>}
-            width={containerWidth}
-            height={containerHeight}
-            minConstraints={[200, 200]}
-            maxConstraints={[600, 600]}
-            onResizeStart={resizable ? (_event, data) => beginResize(data.size) : undefined}
-            onResize={resizable ? (_event, data) => onResize(data.size) : undefined}
-            onResizeStop={resizable ? (_event, data) => endResize(data.size) : undefined}
+            size={{ width: containerWidth, height: containerHeight }}
+            minWidth={200}
+            minHeight={200}
+            maxWidth={600}
+            maxHeight={600}
+            lockAspectRatio
+            onResizeStart={
+                resizable
+                    ? (_event, _direction, element) => {
+                          beginResize({
+                              width: element.clientWidth,
+                              height: element.clientHeight,
+                          });
+                      }
+                    : undefined
+            }
+            onResize={(_event, _direction, element) => {
+                setContainerWidth(element.clientWidth);
+                setContainerHeight(element.clientHeight);
+            }}
+            onResizeStop={(_event, _direction, element) => {
+                endResize({
+                    width: element.clientWidth,
+                    height: element.clientHeight,
+                });
+            }}
+            handleComponent={{ bottomRight: <ResizeHandle /> }}
         >
             <div
                 ref={containerRef}
