@@ -2404,8 +2404,6 @@ dependencies = [
 name = "wipple"
 version = "0.0.0"
 dependencies = [
- "annotate-snippets",
- "anstream",
  "anyhow",
  "clap",
  "env_logger",
@@ -2488,6 +2486,7 @@ dependencies = [
 name = "wipple-render"
 version = "0.0.0"
 dependencies = [
+ "annotate-snippets",
  "async-lock 3.4.0",
  "futures",
  "line-index",

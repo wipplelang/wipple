@@ -8,7 +8,7 @@ undefined : intrinsic "undefined-number"
 Add : (Left : Number) (Right : Number) (infer Sum) => trait (Left Right -> Sum)
 instance (Add Number Number Number) : left right -> intrinsic "add-number" left right
 
-Left Right Sum where (Error ("cannot add _ and _" Left Right)) =>
+Left Right Sum where (Because (Left ; Right)) (Error ("cannot add _ and _" Left Right)) =>
     default instance (Add Left Right Sum) : ...
 
 -- Subtract the one value from another, returning the difference.

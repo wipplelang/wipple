@@ -211,7 +211,7 @@ pub enum Diagnostic<D: Driver> {
         expected: WithInfo<D::Info, Type<D>>,
 
         /// The reasons why the types don't match.
-        reasons: Vec<WithInfo<D::Info, TypeReason<D>>>,
+        reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
     },
 
     /// A function is missing an input.
@@ -233,6 +233,9 @@ pub enum Diagnostic<D: Driver> {
         /// Contains the list of instances evaluated before failing to resolve
         /// [`ErrorKind::UnresolvedInstance::trait`].
         stack: Vec<WithInfo<D::Info, Instance<D>>>,
+
+        /// The reasons why the instance couldn't be resolved.
+        reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
     },
 
     /// A trait that doesn't have a value was used in expression position.
@@ -277,6 +280,9 @@ pub enum Diagnostic<D: Driver> {
 
         /// A fix for the error.
         fix: Option<(CustomMessage<D>, CustomMessage<D>)>,
+
+        /// The reasons for the error.
+        reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
     },
 }
 
@@ -1120,7 +1126,7 @@ pub struct FieldPattern<D: Driver> {
     pub pattern: WithInfo<D::Info, Pattern<D>>,
 }
 
-/// The reason why a type was inferred.
+/// The reason why an error occurred.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(
     Debug(bound = ""),
@@ -1131,8 +1137,8 @@ pub struct FieldPattern<D: Driver> {
 )]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound = "")]
-pub enum TypeReason<D: Driver> {
-    /// The type was inferred because it involved another expression.
+pub enum ErrorReason<D: Driver> {
+    /// The error involvs another expression.
     Expression(WithInfo<D::Info, Type<D>>),
 
     /// A user-defined reason.

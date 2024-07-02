@@ -49,10 +49,18 @@ pub struct RenderedSourceLocation {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenderedDiagnostic {
+    pub raw: String,
     pub location: RenderedSourceLocation,
     pub severity: RenderedDiagnosticSeverity,
     pub message: String,
+    pub explanations: Vec<WithInfo<RenderedExplanation>>,
     pub fix: Option<RenderedFix>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RenderedExplanation {
+    pub location: RenderedSourceLocation,
+    pub message: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -468,7 +476,6 @@ impl Render {
                 render: &Render,
                 r#type: WithInfo<&wipple_driver::typecheck::Type<wipple_driver::Driver>>,
                 is_top_level: bool,
-                is_return: bool,
             ) -> String {
                 match &r#type.item {
                     wipple_driver::typecheck::Type::Unknown => String::from("_"),
@@ -493,14 +500,13 @@ impl Render {
                                         render,
                                         parameter.as_ref(),
                                         false,
-                                        false
                                     ))
                                     .collect::<Vec<_>>()
                                     .join(" "),
                             )
                         };
 
-                        if is_top_level || is_return || parameters.is_empty() {
+                        if is_top_level || parameters.is_empty() {
                             rendered
                         } else {
                             format!("({})", rendered)
@@ -509,15 +515,15 @@ impl Render {
                     wipple_driver::typecheck::Type::Function { inputs, output } => {
                         let inputs = inputs
                             .iter()
-                            .map(|input| render_type_inner(render, input.as_ref(), false, false))
+                            .map(|input| render_type_inner(render, input.as_ref(), false))
                             .collect::<Vec<_>>()
                             .join(" ");
 
-                        let output = render_type_inner(render, output.as_deref(), false, true);
+                        let output = render_type_inner(render, output.as_deref(), false);
 
                         let rendered = format!("{} -> {}", inputs, output);
 
-                        if is_top_level || is_return {
+                        if is_top_level {
                             rendered
                         } else {
                             format!("({})", rendered)
@@ -533,30 +539,24 @@ impl Render {
                                     render,
                                     elements.first().unwrap().as_ref(),
                                     false,
-                                    false,
                                 ),
                             )
                         } else {
                             elements
                                 .iter()
-                                .map(|r#type| {
-                                    render_type_inner(render, r#type.as_ref(), false, false)
-                                })
+                                .map(|r#type| render_type_inner(render, r#type.as_ref(), false))
                                 .collect::<Vec<_>>()
                                 .join(" ; ")
                         };
 
-                        if is_top_level || is_return || elements.is_empty() {
+                        if is_top_level || elements.is_empty() {
                             rendered
                         } else {
                             format!("({})", rendered)
                         }
                     }
                     wipple_driver::typecheck::Type::Block(value) => {
-                        format!(
-                            "{{{}}}",
-                            render_type_inner(render, value.as_deref(), true, false)
-                        )
+                        format!("{{{}}}", render_type_inner(render, value.as_deref(), true,))
                     }
                     wipple_driver::typecheck::Type::Intrinsic => String::from("intrinsic"),
                     wipple_driver::typecheck::Type::Message { segments, trailing } => {
@@ -569,7 +569,6 @@ impl Render {
                                 render,
                                 segment.r#type.as_ref(),
                                 true,
-                                true,
                             ));
                         }
 
@@ -580,11 +579,11 @@ impl Render {
                     wipple_driver::typecheck::Type::Equal { left, right } => {
                         let rendered = format!(
                             "{} = {}",
-                            render_type_inner(render, left.as_deref(), false, false),
-                            render_type_inner(render, right.as_deref(), false, false),
+                            render_type_inner(render, left.as_deref(), false),
+                            render_type_inner(render, right.as_deref(), false),
                         );
 
-                        if is_top_level || is_return {
+                        if is_top_level {
                             rendered
                         } else {
                             format!("({})", rendered)
@@ -593,7 +592,7 @@ impl Render {
                 }
             }
 
-            let rendered = render_type_inner(self, r#type.as_ref(), is_top_level, true);
+            let rendered = render_type_inner(self, r#type.as_ref(), is_top_level);
 
             if render_as_code {
                 format!("`{}`", rendered)
@@ -706,6 +705,7 @@ impl Render {
 
         let severity;
         let message;
+        let mut explanations = Vec::new();
         let mut fix = None;
         match &diagnostic.item {
             wipple_driver::Diagnostic::Tokenize(tokenize_diagnostic) => match tokenize_diagnostic {
@@ -919,7 +919,9 @@ impl Render {
                     );
                     }
                     wipple_driver::typecheck::Diagnostic::Mismatch {
-                        actual, expected, ..
+                        actual,
+                        expected,
+                        reasons,
                     } => {
                         severity = RenderedDiagnosticSeverity::Error;
 
@@ -943,6 +945,12 @@ impl Render {
                             "expected {} here, but found {}",
                             expected_message, actual_message,
                         );
+
+                        for reason in reasons {
+                            if let Some(explanation) = self.render_type_reason(reason).await {
+                                explanations.push(reason.replace(explanation));
+                            }
+                        }
                     }
                     wipple_driver::typecheck::Diagnostic::MissingInputs(inputs) => {
                         let code = self.render_code(diagnostic).await.unwrap_or_default();
@@ -974,7 +982,9 @@ impl Render {
                         message = format!("extra input provided to `{}`", code);
                     }
                     wipple_driver::typecheck::Diagnostic::UnresolvedInstance {
-                        instance, ..
+                        instance,
+                        reasons,
+                        ..
                     } => {
                         let code = self.render_code(diagnostic).await.unwrap_or_default();
 
@@ -987,6 +997,12 @@ impl Render {
 
                         severity = RenderedDiagnosticSeverity::Error;
                         message = format!("`{}` requires `{}`", code, rendered_instance);
+
+                        for reason in reasons {
+                            if let Some(explanation) = self.render_type_reason(reason).await {
+                                explanations.push(reason.replace(explanation));
+                            }
+                        }
                     }
                     wipple_driver::typecheck::Diagnostic::TraitHasNoValue(_) => {
                         let code = self.render_code(diagnostic).await.unwrap_or_default();
@@ -1075,6 +1091,7 @@ impl Render {
                     wipple_driver::typecheck::Diagnostic::Custom {
                         message: custom_message,
                         fix: custom_fix,
+                        reasons: custom_reasons,
                     } => {
                         severity = RenderedDiagnosticSeverity::Error;
                         message = self.render_custom_message(custom_message, true).await;
@@ -1089,6 +1106,12 @@ impl Render {
                                 after: None,
                             });
                         }
+
+                        for reason in custom_reasons {
+                            if let Some(explanation) = self.render_type_reason(reason).await {
+                                explanations.push(reason.replace(explanation));
+                            }
+                        }
                     }
                 }
             }
@@ -1098,10 +1121,85 @@ impl Render {
             }
         }
 
+        let raw = {
+            let level = match severity {
+                RenderedDiagnosticSeverity::Warning => annotate_snippets::Level::Warning,
+                RenderedDiagnosticSeverity::Error => annotate_snippets::Level::Error,
+            };
+
+            let mut annotated = level.title("");
+            let mut annotated_explanations = Vec::new();
+            let mut annotated_footer = None;
+
+            let source = self.render_source(diagnostic).await;
+            if let Some(source) = source.as_ref() {
+                annotated = annotated.snippet(
+                    annotate_snippets::Snippet::source(source)
+                        .origin(&diagnostic.info.location.visible_path)
+                        .fold(true)
+                        .annotation(
+                            level
+                                .span(
+                                    (diagnostic.info.location.span.start as usize)
+                                        ..(diagnostic.info.location.span.end as usize),
+                                )
+                                .label(&message),
+                        ),
+                );
+            } else {
+                annotated = level.title(&message);
+            }
+
+            if let Some(fix) = fix.as_ref() {
+                if let Some(replacement) = fix
+                    .replacement
+                    .as_ref()
+                    .or(fix.before.as_ref())
+                    .or(fix.after.as_ref())
+                {
+                    annotated_footer = Some(format!("{}: `{}`", fix.message, replacement));
+                } else {
+                    annotated_footer = Some(fix.message.clone());
+                }
+            }
+
+            for explanation in &explanations {
+                if let Some(source) = self.render_source(explanation).await {
+                    annotated_explanations.push((source, explanation));
+                }
+            }
+
+            for (source, explanation) in &annotated_explanations {
+                annotated = annotated.snippet(
+                    annotate_snippets::Snippet::source(source)
+                        .origin(&explanation.info.location.visible_path)
+                        .fold(true)
+                        .annotation(
+                            annotate_snippets::Level::Note
+                                .span(
+                                    (explanation.info.location.span.start as usize)
+                                        ..(explanation.info.location.span.end as usize),
+                                )
+                                .label(&explanation.item.message),
+                        ),
+                );
+            }
+
+            if let Some(footer) = annotated_footer.as_ref() {
+                annotated = annotated.footer(annotate_snippets::Level::Help.title(footer));
+            }
+
+            let renderer = annotate_snippets::Renderer::styled();
+            let raw = renderer.render(annotated);
+            raw.to_string()
+        };
+
         Some(RenderedDiagnostic {
+            raw,
             location: rendered_source_location,
             severity,
             message,
+            explanations,
             fix,
         })
     }
@@ -1232,6 +1330,30 @@ impl Render {
             SyntaxKind::FunctionInputs => String::from("function inputs"),
             SyntaxKind::Nothing => String::from("nothing"),
         }
+    }
+
+    pub async fn render_type_reason(
+        &self,
+        reason: &WithInfo<wipple_driver::typecheck::ErrorReason<wipple_driver::Driver>>,
+    ) -> Option<RenderedExplanation> {
+        let location = self.render_source_location(reason).await?;
+
+        let message = match &reason.item {
+            wipple_driver::typecheck::ErrorReason::Custom(message) => {
+                self.render_custom_message(message, false).await
+            }
+            wipple_driver::typecheck::ErrorReason::Expression(r#type) => {
+                let code = self.render_code(reason).await?;
+
+                format!(
+                    "`{}` is {}",
+                    code,
+                    self.render_type(r#type, true, true, true).await
+                )
+            }
+        };
+
+        Some(RenderedExplanation { location, message })
     }
 
     pub async fn render_diagnostic_to_debug_string(

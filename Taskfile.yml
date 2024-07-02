@@ -43,7 +43,7 @@ tasks:
         deps:
             - base:compile
         cmds:
-            - cargo run --bin wipple -- compile test.wipple --dependency .wipple/base.wippleinterface --interface .wipple/test.wippleinterface --library .wipple/test.wipplelibrary
+            - cargo run --bin wipple -- compile test.wipple --dependency .wipple/base.wippleinterface --interface .wipple/test.wippleinterface --library .wipple/test.wipplelibrary {{.CLI_ARGS}}
             - cargo run --bin wipple -- link .wipple/*.wipplelibrary --output .wipple/out
 
     cli:install:

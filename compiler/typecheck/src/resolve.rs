@@ -317,7 +317,6 @@ pub fn resolve<D: Driver>(
     }
 }
 
-#[allow(clippy::extra_unused_lifetimes)] // 'src is used in the body
 pub fn instances_overlap<D: Driver>(
     driver: &D,
     r#trait: &D::Path,
@@ -347,7 +346,7 @@ pub fn instances_overlap<D: Driver>(
 
             let info = (
                 path,
-                declaration.info,
+                declaration.info.clone(),
                 declaration.item.parameters,
                 infer_instance(
                     driver,
@@ -578,7 +577,7 @@ pub fn resolve_attribute_like_trait<D: Driver>(
 
     let r#type = infer_type(
         driver,
-        r#type,
+        r#type.clone(),
         &mut type_context,
         &mut error_queue,
         &mut errors,
@@ -654,6 +653,7 @@ enum QueuedError<D: Driver> {
     Mismatch {
         actual: Type<D>,
         expected: Type<D>,
+        reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
     },
 
     MissingInputs(Vec<Type<D>>),
@@ -664,6 +664,7 @@ enum QueuedError<D: Driver> {
         instance: Instance<D>,
         candidates: Vec<D::Info>,
         stack: Vec<WithInfo<D::Info, Instance<D>>>,
+        reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
     },
 
     NotAStructure(Type<D>),
@@ -676,7 +677,20 @@ enum QueuedError<D: Driver> {
         message: FormattedText<Type<D>>,
         fix: Option<(FormattedText<Type<D>>, FormattedText<Type<D>>)>,
         location: Option<Type<D>>,
+        reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
     },
+}
+
+#[derive(Derivative)]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+enum ErrorReason<D: Driver> {
+    Expression(Type<D>),
+    Custom(FormattedText<Type<D>>),
 }
 
 fn report_queued_errors<D: Driver>(
@@ -710,6 +724,7 @@ fn report_queued_errors<D: Driver>(
             QueuedError::Mismatch {
                 mut actual,
                 mut expected,
+                reasons,
             } => (|| {
                 refine_mismatch_error(&mut info, &mut actual, &mut expected, &mut finalize_context);
 
@@ -729,7 +744,14 @@ fn report_queued_errors<D: Driver>(
                 Some(crate::Diagnostic::Mismatch {
                     actual: finalize_type(actual, false, &mut finalize_context),
                     expected: finalize_type(expected, false, &mut finalize_context),
-                    reasons: Vec::new(), // TODO
+                    reasons: reasons
+                        .into_iter()
+                        .filter_map(|reason| {
+                            reason.filter_map(|reason| {
+                                finalize_type_reason(reason, &mut finalize_context)
+                            })
+                        })
+                        .collect(),
                 })
             })(),
             QueuedError::MissingInputs(inputs) => Some(crate::Diagnostic::MissingInputs(
@@ -743,6 +765,7 @@ fn report_queued_errors<D: Driver>(
                 instance,
                 candidates,
                 stack,
+                reasons,
             } => Some(crate::Diagnostic::UnresolvedInstance {
                 instance: finalize_instance(instance, &mut finalize_context),
                 candidates,
@@ -750,6 +773,14 @@ fn report_queued_errors<D: Driver>(
                     .into_iter()
                     .map(|instance| {
                         instance.map(|instance| finalize_instance(instance, &mut finalize_context))
+                    })
+                    .collect(),
+                reasons: reasons
+                    .into_iter()
+                    .filter_map(|reason| {
+                        reason.filter_map(|reason| {
+                            finalize_type_reason(reason, &mut finalize_context)
+                        })
                     })
                     .collect(),
             }),
@@ -762,6 +793,7 @@ fn report_queued_errors<D: Driver>(
                 message,
                 fix,
                 location,
+                reasons,
             } => {
                 fn report_message<D: Driver>(
                     text: FormattedText<Type<D>>,
@@ -794,6 +826,14 @@ fn report_queued_errors<D: Driver>(
                             report_message(code, &mut finalize_context),
                         )
                     }),
+                    reasons: reasons
+                        .into_iter()
+                        .filter_map(|reason| {
+                            reason.filter_map(|reason| {
+                                finalize_type_reason(reason, &mut finalize_context)
+                            })
+                        })
+                        .collect(),
                 })
             }
         };
@@ -909,11 +949,6 @@ struct Type<D: Driver> {
     parent_expression: Option<TrackedExpressionId<D>>,
 }
 
-enum TypeReason<D: Driver> {
-    Expression(WithInfo<D::Info, Type<D>>),
-    Custom(FormattedText<D>),
-}
-
 impl<D: Driver> Type<D> {
     fn new(kind: TypeKind<D>, info: D::Info) -> Self {
         Type {
@@ -986,7 +1021,11 @@ impl<D: Driver> Type<D> {
                 assert!(!r#type.contains_variable(variable), "recursive type");
 
                 self.kind = r#type.kind;
-                self.info = r#type.info;
+
+                if r#type.expression.is_some() {
+                    self.info = r#type.info;
+                }
+
                 self.expression = self.expression.or(r#type.expression);
                 self.parent_expression = self.parent_expression.or(r#type.parent_expression);
                 self.apply_in_context_mut(context);
@@ -1144,6 +1183,7 @@ struct TypeContext<D: Driver> {
     tracked_expressions: Vec<Option<WithInfo<D::Info, Expression<D>>>>,
     substitutions: BTreeMap<u32, Type<D>>,
     defaults: BTreeMap<u32, Type<D>>,
+    reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
 }
 
 impl<D: Driver> TypeContext<D> {
@@ -1151,12 +1191,20 @@ impl<D: Driver> TypeContext<D> {
         self.next_variable = other.next_variable;
         self.substitutions = other.substitutions;
         self.defaults = other.defaults;
+
+        self.reasons = other.reasons;
+        self.reasons.sort_by_key(|reason| reason.info.clone());
+        self.reasons.dedup();
     }
 
     fn tracked_expression(&self, id: TrackedExpressionId<D>) -> &WithInfo<D::Info, Expression<D>> {
         self.tracked_expressions[id.counter as usize]
             .as_ref()
             .expect("uninitialized tracked expression")
+    }
+
+    fn add_reason(&mut self, reason: WithInfo<D::Info, ErrorReason<D>>) {
+        self.reasons.push(reason);
     }
 }
 
@@ -1773,6 +1821,7 @@ fn try_unify_expression<D: Driver>(
             item: QueuedError::Mismatch {
                 actual: expression.item.r#type.clone(),
                 expected: expected_type.clone(),
+                reasons: context.reasons.clone(),
             },
         });
     }
@@ -1793,6 +1842,7 @@ fn try_unify<D: Driver>(
             item: QueuedError::Mismatch {
                 actual: r#type.item.clone(),
                 expected: expected_type.clone(),
+                reasons: context.reasons.clone(),
             },
         });
     }
@@ -2171,11 +2221,13 @@ fn infer_expression<D: Driver>(
                 value.item
             }
             crate::UntypedExpression::Variable(name, variable) => {
-                let r#type = context
+                let mut r#type = context
                     .variables
                     .get(&variable)
                     .cloned()
                     .unwrap_or_else(|| Type::new(TypeKind::Unknown, info.clone()));
+
+                r#type.info = info.clone();
 
                 Expression {
                     r#type,
@@ -3305,11 +3357,14 @@ fn resolve_expression<D: Driver>(
     let kind = match expression.item.kind {
         ExpressionKind::Unknown(path) => ExpressionKind::Unknown(path),
         ExpressionKind::Variable(ref name, ref variable) => {
-            let variable_type = context
+            let mut variable_type = context
                 .variables
                 .get(variable)
                 .cloned()
                 .unwrap_or_else(|| Type::new(TypeKind::Unknown, expression.info.clone()));
+
+            variable_type.apply_in_context_mut(context.type_context);
+            variable_type.info = expression.info.clone();
 
             let name = name.clone();
             let variable = variable.clone();
@@ -3377,7 +3432,16 @@ fn resolve_expression<D: Driver>(
         } => ExpressionKind::Block {
             statements: statements
                 .into_iter()
-                .map(|expression| resolve_expression(expression, context))
+                .map(|expression| {
+                    // Don't persist error reasons across statements; statements
+                    // can't directly influence each other
+                    let prev_reasons = context.type_context.reasons.clone();
+
+                    let expression = resolve_expression(expression, context);
+                    context.type_context.reasons = prev_reasons;
+
+                    expression
+                })
                 .collect(),
             top_level,
             captures,
@@ -3942,6 +4006,7 @@ fn resolve_item<D: Driver>(
                                     item: QueuedError::Mismatch {
                                         actual: use_type.clone(),
                                         expected: instantiated_declared_type.clone(),
+                                        reasons: context.type_context.reasons.clone(),
                                     },
                                 })
                             } else {
@@ -4055,6 +4120,7 @@ fn resolve_trait<D: Driver>(
         mut candidates: Vec<Candidate<D>>,
         query: WithInfo<D::Info, &Instance<D>>,
         stack: &[WithInfo<D::Info, &Instance<D>>],
+        type_context: &mut TypeContext<D>,
     ) -> Result<Option<Candidate<D>>, WithInfo<D::Info, QueuedError<D>>> {
         match candidates.len() {
             0 => Ok(None),
@@ -4069,6 +4135,7 @@ fn resolve_trait<D: Driver>(
                     .iter()
                     .map(|instance| instance.as_deref().map(Instance::clone))
                     .collect(),
+                reasons: type_context.reasons.clone(),
             })),
         }
     }
@@ -4112,7 +4179,7 @@ fn resolve_trait<D: Driver>(
             }
 
             if let Some((new_type_context, candidate, _)) =
-                pick_from_candidates(candidates, query.clone(), stack)?
+                pick_from_candidates(candidates, query.clone(), stack, context.type_context)?
             {
                 context.type_context.replace_with(new_type_context);
                 return Ok(candidate);
@@ -4140,7 +4207,7 @@ fn resolve_trait<D: Driver>(
                     context.driver,
                     instance_declaration.item.parameters,
                     &mut new_type_context,
-                    instance_declaration.info.clone(),
+                    query.info.clone(),
                     context.error_queue,
                     context.errors,
                 );
@@ -4200,7 +4267,7 @@ fn resolve_trait<D: Driver>(
             // If an instance matches, check its bounds
 
             if let Some((new_type_context, mut candidate, bounds)) =
-                pick_from_candidates(candidates, query.clone(), stack)?
+                pick_from_candidates(candidates, query.clone(), stack, context.type_context)?
             {
                 context.type_context.replace_with(new_type_context);
                 candidate.item.set_source_info(context, &query.info);
@@ -4232,6 +4299,17 @@ fn resolve_trait<D: Driver>(
                     }
                 }
 
+                // Special case: If the instance has any `Because` bounds, add
+                // the reason to the type context
+                if let Some(because_trait_path) = context.driver.path_for_language_trait("because")
+                {
+                    if candidate.item.r#trait == because_trait_path {
+                        if let Some(reason) = candidate.item.parameters.first() {
+                            resolve_custom_reason(&query.info, reason, context);
+                        }
+                    }
+                }
+
                 return Ok(candidate);
             }
         }
@@ -4247,6 +4325,7 @@ fn resolve_trait<D: Driver>(
                     .iter()
                     .map(|instance| instance.as_deref().map(Instance::clone))
                     .collect(),
+                reasons: context.type_context.reasons.clone(),
             },
         })
     }
@@ -4333,8 +4412,51 @@ fn resolve_custom_error<D: Driver>(
             message: error_message,
             fix: error_fix_message.zip(error_fix_code),
             location: error_location,
+            reasons: context.type_context.reasons.clone(),
         },
     })
+}
+
+fn resolve_custom_reason<D: Driver>(
+    reason_info: &D::Info,
+    message_type: &Type<D>,
+    context: &mut ResolveContext<'_, D>,
+) {
+    let message_type = message_type.apply_in_context(context.type_context);
+
+    match &message_type.kind {
+        TypeKind::Message { segments, trailing } => {
+            context.type_context.add_reason(WithInfo {
+                info: reason_info.clone(),
+                item: ErrorReason::Custom(FormattedText {
+                    segments: segments.clone(),
+                    trailing: trailing.clone(),
+                }),
+            });
+        }
+        TypeKind::Tuple(elements) => {
+            for element in elements {
+                match &element.kind {
+                    TypeKind::Message { segments, trailing } => {
+                        context.type_context.add_reason(WithInfo {
+                            info: reason_info.clone(),
+                            item: ErrorReason::Custom(FormattedText {
+                                segments: segments.clone(),
+                                trailing: trailing.clone(),
+                            }),
+                        });
+                    }
+                    _ => {
+                        context.type_context.add_reason(WithInfo {
+                            info: element.info.clone(),
+                            item: ErrorReason::Expression(element.clone()),
+                        });
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
 }
 
 fn substitute_defaults_in_expression<D: Driver>(
@@ -4514,6 +4636,35 @@ fn finalize_type<D: Driver>(
     }
 
     finalized_type
+}
+
+fn finalize_type_reason<D: Driver>(
+    reason: ErrorReason<D>,
+    context: &mut FinalizeContext<'_, D>,
+) -> Option<crate::ErrorReason<D>> {
+    Some(match reason {
+        ErrorReason::Expression(mut r#type) => {
+            r#type.apply_in_context_mut(context.type_context);
+            let expression = context.type_context.tracked_expression(r#type.expression?);
+
+            crate::ErrorReason::Expression(finalize_type(
+                expression.item.r#type.clone(),
+                false,
+                context,
+            ))
+        }
+        ErrorReason::Custom(message) => crate::ErrorReason::Custom(crate::CustomMessage {
+            segments: message
+                .segments
+                .into_iter()
+                .map(|segment| crate::MessageTypeFormatSegment {
+                    text: segment.text,
+                    r#type: finalize_type(segment.value, false, context),
+                })
+                .collect(),
+            trailing: message.trailing,
+        }),
+    })
 }
 
 fn finalize_expression<D: Driver>(

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Animated,
+    Ansi,
     Button,
     ContextMenuButton,
     ContextMenuItem,
@@ -764,7 +765,7 @@ const DiagnosticBubble = (props: {
                                             </div>
 
                                             <button
-                                                className="px-2 rounded-lg text-white bg-blue-500 hover:bg-blue-600 transition-colors"
+                                                className="h-[1lh] px-2 rounded-lg text-white bg-blue-500 hover:bg-blue-600 transition-colors"
                                                 onClick={() => {
                                                     setExpanded(false);
                                                     props.onApplyFix(
@@ -783,9 +784,25 @@ const DiagnosticBubble = (props: {
                                         </p>
                                     )}
 
+                                    <button
+                                        className="h-[1lh] px-2 rounded-lg text-blue-500 bg-blue-500 hover:bg-blue-500 hover:text-white bg-opacity-25 transition-colors"
+                                        onClick={() => {
+                                            setExpanded(false);
+
+                                            displayAlert(({ dismiss }) => (
+                                                <RawDiagnosticAlert
+                                                    raw={props.diagnostic.raw}
+                                                    dismiss={dismiss}
+                                                />
+                                            ));
+                                        }}
+                                    >
+                                        More
+                                    </button>
+
                                     {doc ? (
                                         <button
-                                            className="px-2 rounded-lg text-blue-500 bg-blue-500 hover:bg-blue-500 hover:text-white bg-opacity-25 transition-colors"
+                                            className="h-[1lh] px-2 rounded-lg text-blue-500 bg-blue-500 hover:bg-blue-500 hover:text-white bg-opacity-25 transition-colors"
                                             onClick={() => {
                                                 setExpanded(false);
 
@@ -812,6 +829,20 @@ const MenuContainer = (props: React.PropsWithChildren<{}>) => (
         {props.children}
     </div>
 );
+
+const RawDiagnosticAlert = (props: { raw: string; dismiss: () => void }) => {
+    return (
+        <div className="flex flex-col w-[650px] gap-4">
+            <div className="max-h-[75vh] overflow-y-scroll">
+                <Ansi>{props.raw}</Ansi>
+            </div>
+
+            <Button role="primary" fill onClick={props.dismiss}>
+                Done
+            </Button>
+        </div>
+    );
+};
 
 const ErrorDocAlert = (props: { doc: ErrorDoc; dismiss: () => void }) => (
     <div className="flex flex-col w-[650px] gap-4">
