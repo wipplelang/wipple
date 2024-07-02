@@ -132,6 +132,7 @@ impl LanguageServer for Backend {
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 completion_provider: Some(CompletionOptions::default()),
                 definition_provider: Some(OneOf::Left(true)),
+                document_formatting_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
             ..Default::default()
@@ -585,6 +586,36 @@ impl LanguageServer for Backend {
             uri: declaration_uri,
             range,
         })))
+    }
+
+    async fn formatting(&self, params: DocumentFormattingParams) -> Result<Option<Vec<TextEdit>>> {
+        let path = match params.text_document.uri.to_file_path() {
+            Ok(path) => path,
+            Err(_) => return Ok(None),
+        };
+
+        let file = match self.config.lock().unwrap().files.get(&path) {
+            Some(file) => file.clone(),
+            None => return Ok(None),
+        };
+
+        let range = Range {
+            start: Position {
+                line: 0,
+                character: 0,
+            },
+            end: Position {
+                line: file.line_index.len().into(),
+                character: 0,
+            },
+        };
+
+        let code = wipple_driver::format(&file.text);
+
+        Ok(Some(vec![TextEdit {
+            range,
+            new_text: code,
+        }]))
     }
 
     async fn shutdown(&self) -> Result<()> {
