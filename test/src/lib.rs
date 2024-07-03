@@ -183,12 +183,13 @@ async fn tests(#[files("tests/**/*.test.wipple")] file: std::path::PathBuf) {
             output: Vec<String>,
         }
 
-        let snapshot = Snapshot {
-            diagnostics: rendered_diagnostics,
-            output,
-        };
+        let snapshot = [rendered_diagnostics.join("\n"), output.join("\n")]
+            .into_iter()
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n\n");
 
-        insta::assert_yaml_snapshot!(file_name, snapshot);
+        insta::assert_snapshot!(file_name, snapshot);
     };
 
     let mut settings = insta::Settings::clone_current();

@@ -2,6 +2,4 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-diagnostics:
-  - "tests/unused.test.wipple:15:1: error: this is important and must be handled"
-output: []
+tests/unused.test.wipple:15:1: error: this is important and must be handled

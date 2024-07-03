@@ -1360,18 +1360,33 @@ impl Render {
         &self,
         diagnostic: &RenderedDiagnostic,
     ) -> String {
-        let line = diagnostic.location.start.line + 1;
-        let column = diagnostic.location.start.column + 1;
-
         let severity = match diagnostic.severity {
             RenderedDiagnosticSeverity::Warning => "warning",
             RenderedDiagnosticSeverity::Error => "error",
         };
 
-        format!(
-            "{}:{}:{}: {}: {}",
-            diagnostic.location.visible_path, line, column, severity, diagnostic.message
-        )
+        let explanations = diagnostic.explanations.iter().map(|explanation| {
+            (
+                &explanation.item.location,
+                "note",
+                &explanation.item.message,
+            )
+        });
+
+        [(&diagnostic.location, severity, &diagnostic.message)]
+            .into_iter()
+            .chain(explanations)
+            .map(|(location, severity, message)| {
+                let line = location.start.line + 1;
+                let column = location.start.column + 1;
+
+                format!(
+                    "{}:{}:{}: {}: {}",
+                    diagnostic.location.visible_path, line, column, severity, message
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     pub async fn render_documentation(

@@ -2,7 +2,5 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-diagnostics:
-  - "tests/list-mismatched-elements.test.wipple:3:15: error: expected a number here, but found a piece of text"
-  - "tests/list-mismatched-elements.test.wipple:3:22: error: expected a number here, but found unit"
-output: []
+tests/list-mismatched-elements.test.wipple:3:15: error: expected a number here, but found a piece of text
+tests/list-mismatched-elements.test.wipple:3:22: error: expected a number here, but found unit

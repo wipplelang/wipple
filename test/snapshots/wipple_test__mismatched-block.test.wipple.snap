@@ -2,6 +2,4 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-diagnostics:
-  - "tests/mismatched-block.test.wipple:6:5: error: expected a number here, but found a piece of text"
-output: []
+tests/mismatched-block.test.wipple:6:5: error: expected a number here, but found a piece of text
