@@ -327,7 +327,9 @@ impl Render {
                     )
                     .await;
 
-                let instance = self.render_instance(&instance_declaration.instance).await;
+                let instance = self
+                    .render_instance(&instance_declaration.instance, false)
+                    .await;
 
                 Some(format!("{}instance {}", type_function, instance))
             }
@@ -618,10 +620,13 @@ impl Render {
             .collect::<Vec<_>>()
             .join(" ");
 
-        let rendered_bounds =
-            future::join_all(bounds.iter().map(|bound| self.render_instance(bound)))
-                .await
-                .join(" ");
+        let rendered_bounds = future::join_all(
+            bounds
+                .iter()
+                .map(|bound| self.render_instance(bound, false)),
+        )
+        .await
+        .join(" ");
 
         if rendered_bounds.is_empty() {
             format!("{} => ", rendered_parameters)
@@ -633,6 +638,7 @@ impl Render {
     pub async fn render_instance(
         &self,
         instance: &WithInfo<wipple_driver::typecheck::Instance<wipple_driver::Driver>>,
+        is_top_level: bool,
     ) -> String {
         let r#trait = self
             .name_for_path(&instance.item.r#trait)
@@ -649,6 +655,8 @@ impl Render {
 
         if parameters.is_empty() {
             r#trait
+        } else if is_top_level {
+            format!("{} {}", r#trait, parameters.join(" "))
         } else {
             format!("({} {})", r#trait, parameters.join(" "))
         }
@@ -989,10 +997,13 @@ impl Render {
                         let code = self.render_code(diagnostic).await.unwrap_or_default();
 
                         let rendered_instance = self
-                            .render_instance(&WithInfo {
-                                info: diagnostic.info.clone(),
-                                item: instance.clone(),
-                            })
+                            .render_instance(
+                                &WithInfo {
+                                    info: diagnostic.info.clone(),
+                                    item: instance.clone(),
+                                },
+                                true,
+                            )
                             .await;
 
                         severity = RenderedDiagnosticSeverity::Error;

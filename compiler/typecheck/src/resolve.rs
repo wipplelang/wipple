@@ -741,17 +741,22 @@ fn report_queued_errors<D: Driver>(
                     return None;
                 }
 
+                let mut reasons = reasons
+                    .into_iter()
+                    .filter_map(|reason| {
+                        reason.filter_map(|reason| {
+                            finalize_type_reason(reason, &mut finalize_context)
+                        })
+                    })
+                    .collect::<Vec<_>>();
+
+                reasons.sort_by_key(|reason| reason.info.clone());
+                reasons.dedup();
+
                 Some(crate::Diagnostic::Mismatch {
                     actual: finalize_type(actual, false, &mut finalize_context),
                     expected: finalize_type(expected, false, &mut finalize_context),
-                    reasons: reasons
-                        .into_iter()
-                        .filter_map(|reason| {
-                            reason.filter_map(|reason| {
-                                finalize_type_reason(reason, &mut finalize_context)
-                            })
-                        })
-                        .collect(),
+                    reasons,
                 })
             })(),
             QueuedError::MissingInputs(inputs) => Some(crate::Diagnostic::MissingInputs(
@@ -766,24 +771,32 @@ fn report_queued_errors<D: Driver>(
                 candidates,
                 stack,
                 reasons,
-            } => Some(crate::Diagnostic::UnresolvedInstance {
-                instance: finalize_instance(instance, &mut finalize_context),
-                candidates,
-                stack: stack
-                    .into_iter()
-                    .map(|instance| {
-                        instance.map(|instance| finalize_instance(instance, &mut finalize_context))
-                    })
-                    .collect(),
-                reasons: reasons
+            } => {
+                let mut reasons = reasons
                     .into_iter()
                     .filter_map(|reason| {
                         reason.filter_map(|reason| {
                             finalize_type_reason(reason, &mut finalize_context)
                         })
                     })
-                    .collect(),
-            }),
+                    .collect::<Vec<_>>();
+
+                reasons.sort_by_key(|reason| reason.info.clone());
+                reasons.dedup();
+
+                Some(crate::Diagnostic::UnresolvedInstance {
+                    instance: finalize_instance(instance, &mut finalize_context),
+                    candidates,
+                    stack: stack
+                        .into_iter()
+                        .map(|instance| {
+                            instance
+                                .map(|instance| finalize_instance(instance, &mut finalize_context))
+                        })
+                        .collect(),
+                    reasons,
+                })
+            }
             QueuedError::NotAStructure(r#type) => Some(crate::Diagnostic::NotAStructure(
                 finalize_type(r#type, false, &mut finalize_context),
             )),
@@ -818,6 +831,18 @@ fn report_queued_errors<D: Driver>(
                         .info;
                 }
 
+                let mut reasons = reasons
+                    .into_iter()
+                    .filter_map(|reason| {
+                        reason.filter_map(|reason| {
+                            finalize_type_reason(reason, &mut finalize_context)
+                        })
+                    })
+                    .collect::<Vec<_>>();
+
+                reasons.sort_by_key(|reason| reason.info.clone());
+                reasons.dedup();
+
                 Some(crate::Diagnostic::Custom {
                     message: report_message(message, &mut finalize_context),
                     fix: fix.map(|(message, code)| {
@@ -826,14 +851,7 @@ fn report_queued_errors<D: Driver>(
                             report_message(code, &mut finalize_context),
                         )
                     }),
-                    reasons: reasons
-                        .into_iter()
-                        .filter_map(|reason| {
-                            reason.filter_map(|reason| {
-                                finalize_type_reason(reason, &mut finalize_context)
-                            })
-                        })
-                        .collect(),
+                    reasons,
                 })
             }
         };
@@ -1620,14 +1638,27 @@ fn unify_with_options<D: Driver>(
                 true
             }
 
-            // Unify both sides of an equal type, ignoring type parameters
+            // Unify the right side of an equal type, and the left side if it's
+            // a type variable (ie. an instantiated type parameter)
             (TypeKind::Equal { left, right }, _) => {
-                unify_inner(driver, left, &expected_type, context, options, true)
-                    & unify_inner(driver, right, left, context, options, true)
+                let left_context = if let TypeKind::Variable(_) = left.kind {
+                    &mut *context
+                } else {
+                    &mut context.clone()
+                };
+
+                unify_inner(driver, left, &expected_type, left_context, options, true)
+                    & unify_inner(driver, right, &expected_type, context, options, true)
             }
             (_, TypeKind::Equal { left, right }) => {
-                unify_inner(driver, &r#type, left, context, options, true)
-                    & unify_inner(driver, right, left, context, options, true)
+                let left_context = if let TypeKind::Variable(_) = left.kind {
+                    &mut *context
+                } else {
+                    &mut context.clone()
+                };
+
+                unify_inner(driver, &r#type, left, left_context, options, true)
+                    & unify_inner(driver, &r#type, right, context, options, true)
             }
 
             // Type parameters are equal to themselves, but otherwise must be
@@ -4555,8 +4586,17 @@ fn finalize_type<D: Driver>(
     ) -> WithInfo<D::Info, crate::Type<D>> {
         r#type.apply_in_context_mut(context.type_context);
 
+        let info = match r#type.expression {
+            Some(expression_id) => context
+                .type_context
+                .tracked_expression(expression_id)
+                .info
+                .clone(),
+            None => r#type.info,
+        };
+
         WithInfo {
-            info: r#type.info,
+            info,
             item: match r#type.kind {
                 TypeKind::Variable(var) | TypeKind::Opaque(var) => {
                     if let Some(unresolved_variables) = &mut context.unresolved_variables {
