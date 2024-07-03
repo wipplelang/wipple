@@ -47,9 +47,7 @@ struct EditorWebView: UIViewRepresentable {
         }
     }
     
-    class NavigationDelegate: NSObject, WKNavigationDelegate {
-        // TODO
-    }
+    class NavigationDelegate: NSObject, WKNavigationDelegate {}
     
     class UIDelegate: NSObject, WKUIDelegate {
         let onPresentAlert: (_ message: String, _ completion: @escaping () -> Void) -> Void
@@ -73,6 +71,7 @@ struct EditorWebView: UIViewRepresentable {
     
     @Binding var document: PlaygroundDocument
     
+    var webView: WKWebView
     var server: Server
     var requestHandler: RequestHandler
     var navigationDelegate: NavigationDelegate
@@ -82,6 +81,7 @@ struct EditorWebView: UIViewRepresentable {
     init(document: Binding<PlaygroundDocument>, onPresentAlert: @escaping (_ message: String, _ completion: @escaping () -> Void) -> Void, onPresentPrompt: @escaping (_ message: String, _ initialText: String, _ completion: @escaping (String?) -> Void) -> Void) {
         self._document = document
         
+        self.webView = WKWebView()
         self.server = Server()
         self.requestHandler = RequestHandler()
         self.navigationDelegate = NavigationDelegate()
@@ -95,18 +95,21 @@ struct EditorWebView: UIViewRepresentable {
     }
     
     func makeUIView(context: Context) -> WKWebView {
-        let webView = WKWebView()
-        webView.isInspectable = true
-        webView.allowsLinkPreview = false
-        webView.navigationDelegate = self.navigationDelegate
-        webView.uiDelegate = self.uiDelegate
+        self.webView.isInspectable = true
+        self.webView.allowsLinkPreview = false
+        self.webView.navigationDelegate = self.navigationDelegate
+        self.webView.uiDelegate = self.uiDelegate
+        
+        // Hide web view until page is loaded to prevent flash (isHidden is set
+        // to true in 'GET /.bridge/loaded')
+        self.webView.isHidden = true
         
         let request = URLRequest(url: URL(string: "http://localhost:\(self.server.port)/playground")!)
-        webView.load(request)
+        self.webView.load(request)
         
-        self.proxy?.webView = webView
+        self.proxy?.webView = self.webView
         
-        return webView
+        return self.webView
     }
     
     func updateUIView(_ webView: WKWebView, context: Context) {
@@ -114,6 +117,14 @@ struct EditorWebView: UIViewRepresentable {
     }
     
     private func setUp() {
+        server.route(.POST, "/.bridge/loaded") { request in
+            DispatchQueue.main.async {
+                self.webView.isHidden = false
+            }
+            
+            return HTTPResponse(.ok)
+        }
+        
         server.route(.GET, "/.bridge/playground") { request in
             HTTPResponse(
                 headers: ["Content-Type": "application/json"],
@@ -146,58 +157,62 @@ struct EditorView: View {
     @State private var showLessonPicker = false
     
     var body: some View {
-        EditorWebViewReader { editorWebView in
-            EditorWebView(
-                document: self.$document,
-                onPresentAlert: { message, completion in
-                    self.alertMessage = message
-                    self.alertAction = AnyView(Button("OK") { completion() })
-                    self.showAlert = true
-                },
-                onPresentPrompt: { message, initialText, completion in
-                    self.alertMessage = message
-                    self.alertAction = AnyView(Prompt(initialText: initialText, onSubmit: completion))
-                    self.showAlert = true
-                }
-            )
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button {
-                            editorWebView.reload()
-                        } label: {
-                            Label("Reload", systemImage: "arrow.counterclockwise")
-                        }
-                        
-                        Button {
-                            self.showJSON = true
-                        } label: {
-                            Label("Export JSON", systemImage: "curlybraces.square")
-                        }
-                        
-                        if #unavailable(iOS 18.0) {
+        ZStack {
+            ProgressView()
+            
+            EditorWebViewReader { editorWebView in
+                EditorWebView(
+                    document: self.$document,
+                    onPresentAlert: { message, completion in
+                        self.alertMessage = message
+                        self.alertAction = AnyView(Button("OK") { completion() })
+                        self.showAlert = true
+                    },
+                    onPresentPrompt: { message, initialText, completion in
+                        self.alertMessage = message
+                        self.alertAction = AnyView(Prompt(initialText: initialText, onSubmit: completion))
+                        self.showAlert = true
+                    }
+                )
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Menu {
                             Button {
-                                self.showLessonPicker = true
+                                editorWebView.reload()
                             } label: {
-                                Label("Browse Lessons", systemImage: "graduationcap")
+                                Label("Reload", systemImage: "arrow.counterclockwise")
+                            }
+                            
+                            Button {
+                                self.showJSON = true
+                            } label: {
+                                Label("Export JSON", systemImage: "curlybraces.square")
+                            }
+                            
+                            if #unavailable(iOS 18.0) {
+                                Button {
+                                    self.showLessonPicker = true
+                                } label: {
+                                    Label("Browse Lessons", systemImage: "graduationcap")
+                                }
+                            }
+                        } label: {
+                            Label("Options", systemImage: "ellipsis")
+                        }
+                    }
+                }
+                .sheet(isPresented: self.$showLessonPicker) {
+                    LessonPicker { document in
+                        if let document {
+                            self.document = document
+                            
+                            DispatchQueue.main.async {
+                                editorWebView.reload()
                             }
                         }
-                    } label: {
-                        Label("Options", systemImage: "ellipsis")
-                    }
-                }
-            }
-            .sheet(isPresented: self.$showLessonPicker) {
-                LessonPicker { document in
-                    if let document {
-                        self.document = document
                         
-                        DispatchQueue.main.async {
-                            editorWebView.reload()
-                        }
+                        self.showLessonPicker = false
                     }
-                    
-                    self.showLessonPicker = false
                 }
             }
         }

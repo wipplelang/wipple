@@ -28,8 +28,12 @@ const EditPage = () => {
 
     useEffect(() => {
         (async () => {
-            console.log("fetching playground");
+            await fetch("/.bridge/loaded", { method: "POST" });
+        })();
+    }, []);
 
+    useEffect(() => {
+        (async () => {
             const result = await getPlayground();
             if (!result) {
                 console.error("no such playground");
