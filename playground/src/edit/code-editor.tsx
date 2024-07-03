@@ -42,6 +42,7 @@ import { AnimalPicker } from "./animal-picker";
 import { InstrumentPicker } from "./instrument-picker";
 import { ObjectPicker } from "./object-picker";
 import { ErrorDoc, docForError } from "../docs/errors";
+import { FloatingPortal } from "@floating-ui/react";
 
 export function CodeEditor<Settings>(props: {
     children: string;
@@ -123,7 +124,8 @@ export function CodeEditor<Settings>(props: {
 
             return [
                 {
-                    top: top - editorRect.top,
+                    top,
+                    right: windowSize.width - editorRect.right,
                     width: Math.max(editorRect.width - width - 48, 32),
                     height,
                     diagnostic,
@@ -439,32 +441,35 @@ export function CodeEditor<Settings>(props: {
 
                     {!animationsSettled
                         ? null
-                        : lineDiagnostics.map(({ top, width, height, diagnostic }, index) => (
-                              <div
-                                  key={index}
-                                  className="absolute right-4 w-fit"
-                                  style={{
-                                      top: top + props.theme.fontSize / 4 - 1,
-                                      height,
-                                  }}
-                              >
-                                  <Transition
-                                      in={!lookUpEnabled}
-                                      animateOnMount
-                                      inStyle={{ opacity: 1, x: 0 }}
-                                      outStyle={{ opacity: 0.5, x: "1rem" }}
-                                  >
-                                      <DiagnosticBubble
-                                          top={top}
-                                          width={width}
-                                          height={height}
-                                          theme={props.theme}
-                                          diagnostic={diagnostic}
-                                          onApplyFix={applyFix}
-                                      />
-                                  </Transition>
-                              </div>
-                          ))}
+                        : lineDiagnostics.map(
+                              ({ top, right, width, height, diagnostic }, index) => (
+                                  <FloatingPortal key={index}>
+                                      <div
+                                          className="absolute w-fit pr-4"
+                                          style={{
+                                              top: top + props.theme.fontSize / 4 - 1,
+                                              right,
+                                              height,
+                                          }}
+                                      >
+                                          <Transition
+                                              in={!lookUpEnabled}
+                                              animateOnMount
+                                              inStyle={{ opacity: 1, x: 0 }}
+                                              outStyle={{ opacity: 0.5, x: "1rem" }}
+                                          >
+                                              <DiagnosticBubble
+                                                  width={width}
+                                                  height={height}
+                                                  theme={props.theme}
+                                                  diagnostic={diagnostic}
+                                                  onApplyFix={applyFix}
+                                              />
+                                          </Transition>
+                                      </div>
+                                  </FloatingPortal>
+                              ),
+                          )}
                 </div>
 
                 <AddLineButton
@@ -687,7 +692,6 @@ const PaletteButton = (props: { setup?: string; assets: PaletteItem[]; items: Pa
 };
 
 const DiagnosticBubble = (props: {
-    top: number;
     width: number;
     height: number;
     theme: ThemeConfig;
@@ -708,10 +712,7 @@ const DiagnosticBubble = (props: {
 
     return (
         <div style={{ maxWidth: isExpanded ? undefined : props.width }}>
-            <div
-                className="flex flex-row items-center justify-end"
-                style={{ height: props.height }}
-            >
+            <div className="flex flex-row items-start justify-end" style={{ height: props.height }}>
                 <button
                     className={`flex flex-row items-center gap-1.5 px-2 rounded-lg overflow-x-scroll no-scrollbar whitespace-nowrap transition-colors ${
                         props.diagnostic.severity === "error"
@@ -728,9 +729,13 @@ const DiagnosticBubble = (props: {
                     }`}
                     onClick={isExpanded ? undefined : () => setExpanded(true)}
                 >
-                    <Animated direction={["horizontal", "vertical"]} unsized>
-                        <div className="flex flex-col gap-1 py-1">
-                            <div className="flex flex-row items-center justify-stretch gap-2">
+                    <Animated
+                        key={isExpanded ? "active" : "inactive"}
+                        direction={["horizontal", "vertical"]}
+                        unsized
+                    >
+                        <div className="flex flex-col items-start gap-1 py-1">
+                            <div className="flex flex-row items-center justify-stretch gap-2 w-full">
                                 <div className="flex flex-row items-center gap-1.5 flex-1">
                                     {isExpanded ? null : (
                                         <MaterialSymbol
@@ -755,6 +760,16 @@ const DiagnosticBubble = (props: {
                                     </button>
                                 ) : null}
                             </div>
+
+                            {isExpanded ? (
+                                <div className="flex flex-col items-start gap-1">
+                                    {props.diagnostic.explanations.map((explanation: any) => (
+                                        <Markdown className="text-gray-600 dark:text-gray-400">
+                                            {explanation.item.message}
+                                        </Markdown>
+                                    ))}
+                                </div>
+                            ) : null}
 
                             {isExpanded ? (
                                 <div className="flex flex-row w-full gap-2.5">
