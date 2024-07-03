@@ -2,6 +2,4 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-diagnostics:
-  - "tests/equal-type.test.wipple:16:10: error: try putting `valid` before this number"
-output: []
+tests/equal-type.test.wipple:16:10: error: try putting `valid` before this number

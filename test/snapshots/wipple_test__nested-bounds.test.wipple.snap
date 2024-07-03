@@ -2,6 +2,4 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-diagnostics:
-  - "tests/nested-bounds.test.wipple:12:1: error: `T` requires `(W _)`"
-output: []
+tests/nested-bounds.test.wipple:12:1: error: `T` requires `W _`

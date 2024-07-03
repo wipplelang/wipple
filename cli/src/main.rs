@@ -224,57 +224,9 @@ async fn print_diagnostics(
     let render = wipple_render::Render::new();
     render.update(interface, Vec::new(), None).await;
 
-    let renderer = annotate_snippets::Renderer::styled();
-
     for diagnostic in diagnostics {
         if let Some(rendered_diagnostic) = render.render_diagnostic(diagnostic).await {
-            let level = match rendered_diagnostic.severity {
-                wipple_render::RenderedDiagnosticSeverity::Warning => {
-                    annotate_snippets::Level::Warning
-                }
-                wipple_render::RenderedDiagnosticSeverity::Error => annotate_snippets::Level::Error,
-            };
-
-            let mut message = level.title("");
-            let mut footer = None;
-
-            let source = render.render_source(diagnostic).await;
-            if let Some(source) = source.as_ref() {
-                message = message.snippet(
-                    annotate_snippets::Snippet::source(source)
-                        .origin(&diagnostic.info.location.visible_path)
-                        .fold(true)
-                        .annotation(
-                            level
-                                .span(
-                                    (diagnostic.info.location.span.start as usize)
-                                        ..(diagnostic.info.location.span.end as usize),
-                                )
-                                .label(&rendered_diagnostic.message),
-                        ),
-                );
-            } else {
-                message = level.title(&rendered_diagnostic.message);
-            }
-
-            if let Some(fix) = rendered_diagnostic.fix.as_ref() {
-                if let Some(replacement) = fix
-                    .replacement
-                    .as_ref()
-                    .or(fix.before.as_ref())
-                    .or(fix.after.as_ref())
-                {
-                    footer = Some(format!("{}: `{}`", fix.message, replacement));
-                } else {
-                    footer = Some(fix.message.clone());
-                }
-            }
-
-            if let Some(footer) = footer.as_ref() {
-                message = message.footer(annotate_snippets::Level::Help.title(footer));
-            }
-
-            anstream::eprintln!("{}", renderer.render(message));
+            eprintln!("{}", rendered_diagnostic.raw);
         }
     }
 }

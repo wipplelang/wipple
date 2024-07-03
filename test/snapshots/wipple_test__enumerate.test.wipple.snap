@@ -2,8 +2,6 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-diagnostics: []
-output:
-  - "0: a"
-  - "1: b"
-  - "2: c"
+0: a
+1: b
+2: c

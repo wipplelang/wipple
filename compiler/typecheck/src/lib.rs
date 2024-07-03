@@ -204,17 +204,14 @@ pub enum Diagnostic<D: Driver> {
     /// type required in its place.
     #[serde(rename_all = "camelCase")]
     Mismatch {
-        /// The roles of the actual type.
-        actual_roles: Vec<WithInfo<D::Info, Role>>,
-
         /// The inferred type of the expression.
         actual: WithInfo<D::Info, Type<D>>,
 
-        /// The roles of the expected type.
-        expected_roles: Vec<WithInfo<D::Info, Role>>,
-
         /// The expected type of the expression.
         expected: WithInfo<D::Info, Type<D>>,
+
+        /// The reasons why the types don't match.
+        reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
     },
 
     /// A function is missing an input.
@@ -236,6 +233,9 @@ pub enum Diagnostic<D: Driver> {
         /// Contains the list of instances evaluated before failing to resolve
         /// [`ErrorKind::UnresolvedInstance::trait`].
         stack: Vec<WithInfo<D::Info, Instance<D>>>,
+
+        /// The reasons why the instance couldn't be resolved.
+        reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
     },
 
     /// A trait that doesn't have a value was used in expression position.
@@ -280,6 +280,9 @@ pub enum Diagnostic<D: Driver> {
 
         /// A fix for the error.
         fix: Option<(CustomMessage<D>, CustomMessage<D>)>,
+
+        /// The reasons for the error.
+        reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
     },
 }
 
@@ -1123,27 +1126,23 @@ pub struct FieldPattern<D: Driver> {
     pub pattern: WithInfo<D::Info, Pattern<D>>,
 }
 
-/// The role of a type.
-#[allow(missing_docs)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum Role {
-    Pattern,
-    Annotation,
-    Trait,
-    Instance,
-    StructureField,
-    VariantElement,
-    WrappedType,
-    FunctionInput,
-    FunctionOutput,
-    Bound,
-    DefaultType,
-    Variable,
-    TypeParameter,
-    EmptyBlock,
-    WhenArm,
-    CollectionElement,
+/// The reason why an error occurred.
+#[derive(Serialize, Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
+#[serde(bound = "")]
+pub enum ErrorReason<D: Driver> {
+    /// The error involvs another expression.
+    Expression(WithInfo<D::Info, Type<D>>),
+
+    /// A user-defined reason.
+    Custom(CustomMessage<D>),
 }
 
 /// Traverse an expression.

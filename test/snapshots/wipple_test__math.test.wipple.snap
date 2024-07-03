@@ -2,9 +2,7 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-diagnostics: []
-output:
-  - "3"
-  - "3"
-  - "15"
-  - "2.50"
+3
+3
+15
+2.50

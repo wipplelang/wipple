@@ -2,17 +2,15 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-diagnostics: []
-output:
-  - "True"
-  - "True"
-  - "True"
-  - "True"
-  - "True"
-  - "True"
-  - "True"
-  - "False"
-  - "True"
-  - "True"
-  - "False"
-  - "True"
+True
+True
+True
+True
+True
+True
+True
+False
+True
+True
+False
+True

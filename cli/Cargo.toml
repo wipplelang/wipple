@@ -7,8 +7,6 @@ edition = "2021"
 workspace = true
 
 [dependencies]
-annotate-snippets = "0.11"
-anstream = "0.6"
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 env_logger = "0.11"
