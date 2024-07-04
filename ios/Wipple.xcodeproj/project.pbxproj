@@ -22,6 +22,7 @@
 
 /* Begin PBXFileReference section */
 		C85461912C30A8CA0037F487 /* icon-playground.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon-playground.png"; sourceTree = "<group>"; };
+		C85A1EAA2C36BD2B00B1B43C /* Wipple.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Wipple.entitlements; sourceTree = "<group>"; };
 		C8D6CEFF2C3397AF003F42A4 /* WelcomeScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeScene.swift; sourceTree = "<group>"; };
 		C8D6CF012C3397C3003F42A4 /* LessonPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LessonPicker.swift; sourceTree = "<group>"; };
 		C8DA52E22C2F1B17007D0ACB /* Wipple.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Wipple.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -84,6 +85,7 @@
 			isa = PBXGroup;
 			children = (
 				C8E583D22C2F26A200BF5825 /* dist */,
+				C85A1EAA2C36BD2B00B1B43C /* Wipple.entitlements */,
 				C8DA52F02C2F1B18007D0ACB /* Info.plist */,
 				C854618F2C30A8B80037F487 /* Assets */,
 				C8DA52E52C2F1B17007D0ACB /* App.swift */,
@@ -311,6 +313,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Wipple/Wipple.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = D42D4S8LQX;
@@ -331,7 +334,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = org.wipple.playground.ios;
+				PRODUCT_BUNDLE_IDENTIFIER = org.wipple.playground;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -348,6 +351,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Wipple/Wipple.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = D42D4S8LQX;
@@ -368,7 +372,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = org.wipple.playground.ios;
+				PRODUCT_BUNDLE_IDENTIFIER = org.wipple.playground;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;

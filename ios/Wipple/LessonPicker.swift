@@ -38,11 +38,10 @@ struct LessonPicker: View {
                             
                             Image(systemName: "chevron.forward")
                         }
-                        .padding(10)
+                        .padding()
+                        .background(Color.accentColor.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
-                    .buttonStyle(.bordered)
-                    .buttonBorderShape(.roundedRectangle)
-                    .tint(.accentColor)
                 }
             }
             .contentMargins(20, for: .scrollContent)
