@@ -1,4 +1,4 @@
-#if swift(>=6.0)
+#if compiler(>=6.0)
 import SwiftUI
 
 @available(iOS 18.0, *)
