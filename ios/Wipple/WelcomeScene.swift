@@ -16,12 +16,18 @@ struct WelcomeScene: Scene {
                    self.showLessons = true
                }
             }
-            .popover(isPresented: self.$showLessons) {
+            .sheet(isPresented: self.$showLessons) {
                 LessonPicker { lesson in
                     self.onSelectLesson?.resume(returning: lesson)
                     self.onSelectLesson = nil
+                    self.showLessons = false
                 }
                 .presentationSizing(.form)
+                .onDisappear {
+                    self.onSelectLesson?.resume(returning: nil)
+                    self.onSelectLesson = nil
+                    self.showLessons = false
+                }
             }
         } background: {
             ZStack {
