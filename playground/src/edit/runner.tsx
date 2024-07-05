@@ -52,7 +52,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     const id = useId();
     const [code, setCode] = useDebounceValue(props.children, 500);
 
-    const runtimeMutexRef = useRef(new Mutex());
     const runtimeRef = useRef<Runtime | null>(null);
 
     useEffect(() => {
@@ -142,14 +141,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                     setShowOutput(props.runtime != null);
                 });
 
-                if (runtimeRef.current) {
-                    const mutex = runtimeMutexRef.current;
-                    const runtime = runtimeRef.current;
-
-                    await mutex.runExclusive(async () => {
-                        await runtime.initialize();
-                    });
-                }
+                await runtimeRef.current?.initialize();
 
                 try {
                     return await props.wipple.run({
@@ -193,12 +185,10 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                                         );
                                     }
 
-                                    const mutex = runtimeMutexRef.current;
-                                    const runtime = runtimeRef.current;
-
-                                    const result = await mutex.runExclusive(async () => {
-                                        return await runtime.onMessage(message, value);
-                                    });
+                                    const result = await runtimeRef.current.onMessage(
+                                        message,
+                                        value,
+                                    );
 
                                     showRunAgain = true;
 
@@ -211,14 +201,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                         },
                     });
                 } finally {
-                    if (runtimeRef.current) {
-                        const mutex = runtimeMutexRef.current;
-                        const runtime = runtimeRef.current;
-
-                        await mutex.runExclusive(async () => {
-                            await runtime.cleanup();
-                        });
-                    }
+                    await runtimeRef.current?.cleanup();
                 }
             });
 
