@@ -520,9 +520,15 @@ export const assetItems: PaletteItem[] = [
 
 export const paletteItems: PaletteItem[] = [
     {
-        title: "repeat",
-        code: `repeat ([Dropdown (1 , 2 , 3 , 4 , 5 , 10 , 20 , 50 , 100) 1] times) {\n  _\n}`,
+        title: "position",
+        code: `position [Object "Block 1"] x y`,
     },
-
-    // TODO
+    {
+        title: "force",
+        code: `force [Object "Block 1"] fx fy`,
+    },
+    {
+        title: "observe",
+        code: `observe (1 seconds) {\n\n}`,
+    },
 ];
