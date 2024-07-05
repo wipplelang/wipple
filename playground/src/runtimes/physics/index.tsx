@@ -134,12 +134,15 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
     };
 
     const reset = async () => {
-        for (const canvas of [backgroundRef.current, canvasRef.current]) {
+        for (const [canvas, fillStyle] of [
+            [backgroundRef.current, "white"],
+            [canvasRef.current, "transparent"],
+        ] as const) {
             if (!canvas) continue;
 
             resizeCanvas(canvas);
             const ctx = canvas.getContext("2d")!;
-            ctx.fillStyle = "transparent";
+            ctx.fillStyle = fillStyle;
             ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         }
 
@@ -209,21 +212,37 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
 
     const updateTrail = useCallback(() => {
         const ctx = backgroundRef.current!.getContext("2d")!;
-        ctx.fillStyle = "transparent";
+        ctx.fillStyle = "white";
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
+        const dotSize = 3;
+        const dotInterval = 2;
         for (const { matterBody, trail } of Object.values(bodiesRef.current)) {
             if (trail.length <= 1) continue;
 
+            ctx.globalAlpha = 0.125;
             ctx.strokeStyle = matterBody.render.fillStyle!;
-            ctx.lineWidth = 2;
-
+            ctx.lineWidth = dotSize;
             ctx.beginPath();
             ctx.moveTo(trail[0].x * pixelRatio, trail[0].y * pixelRatio);
             for (const { x, y } of trail.slice(1)) {
                 ctx.lineTo(x * pixelRatio, y * pixelRatio);
             }
             ctx.stroke();
+            ctx.globalAlpha = 1;
+
+            ctx.fillStyle = matterBody.render.fillStyle!;
+
+            trail.forEach(({ x, y }, i) => {
+                if (i % dotInterval === 0) {
+                    ctx.fillRect(
+                        x * pixelRatio - dotSize / 2,
+                        y * pixelRatio - dotSize / 2,
+                        dotSize,
+                        dotSize,
+                    );
+                }
+            });
         }
     }, []);
 
@@ -286,10 +305,6 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                                         body.matterBody.position.y)
                             ) {
                                 body.trail.push({ ...body.matterBody.position });
-                            }
-
-                            if (body.trail.length > 100) {
-                                body.trail.shift();
                             }
 
                             body.hasUpdated.current = true;
