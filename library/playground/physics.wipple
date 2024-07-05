@@ -42,7 +42,7 @@ instance (Describe Velocity) : (Velocity mps) -> "_ m/s" mps
 
 instance (Divide (Number -> Distance) (Number -> Time) (Number -> Velocity)) : _ _ -> Velocity
 
-() where (Error ("missing unit for velocity" ; Error-Fix "add `(meters / second)`" ("`(_ (meters / second))`" Source))) =>
+() where (Error ("missing unit for velocity" ; Error-Fix "add `(meters / seconds)`" ("`(_ (meters / seconds))`" Source))) =>
     instance (Mismatch Number Velocity)
 
 -- An acceleration in meters per second, per second.
@@ -56,7 +56,7 @@ instance (Describe Acceleration) : (Acceleration mpsps) -> "_ m/s/s" mpsps
 
 instance (Divide (Number -> Velocity) (Number -> Time) (Number -> Acceleration)) : _ _ -> Acceleration
 
-() where (Error ("missing unit for acceleration" ; Error-Fix "add `(meters / second / second)`" ("`(_ (meters / second / second))`" Source))) =>
+() where (Error ("missing unit for acceleration" ; Error-Fix "add `(meters / seconds / seconds)`" ("`(_ (meters / seconds / seconds))`" Source))) =>
     instance (Mismatch Number Acceleration)
 
 -- A mass in kilograms.
@@ -82,7 +82,7 @@ instance (Describe-Type Force "force")
 instance (Empty Force) : 0 newtons
 instance (Equal Force) : (Force a) (Force b) -> a = b
 instance (Order Force) : (Force a) (Force b) -> Order a b
-instance (Describe Force) : (Force kgmpsps) -> "_ kg*m/s/s" kgmpsps
+instance (Describe Force) : (Force n) -> "_ N" n
 
 () where (Error ("missing unit for force" ; Error-Fix "add `newtons`" ("`(_ newtons)`" Source))) =>
     instance (Mismatch Number Force)
@@ -93,6 +93,20 @@ instance (Multiply (Number -> Mass) (Number -> Acceleration) (Number -> Force)) 
 @(highlight-category : "unit")
 newtons :: Number -> Force
 newtons : kilograms * (meters / seconds / seconds)
+
+-- A stiffness in newtons per meter.
+Stiffness : type Number
+instance (Describe-Type Stiffness "stiffness")
+
+instance (Empty Stiffness) : 0 (newtons / meters)
+instance (Equal Stiffness) : (Stiffness a) (Stiffness b) -> a = b
+instance (Order Stiffness) : (Stiffness a) (Stiffness b) -> Order a b
+instance (Describe Stiffness) : (Stiffness npm) -> "_ N/m" npm
+
+() where (Error ("missing unit for stiffness" ; Error-Fix "add `(newtons / meters)`" ("`(_ (newtons / meters))`" Source))) =>
+    instance (Mismatch Number Stiffness)
+
+instance (Divide (Number -> Force) (Number -> Distance) (Number -> Stiffness)) : _ _ -> Stiffness
 
 instance (Add Time Time Time) : (Time a) (Time b) -> Time (a + b)
 instance (Subtract Time Time Time) : (Time a) (Time b) -> Time (a - b)
@@ -127,6 +141,13 @@ instance (Multiply Acceleration Mass Force) : (Acceleration a) (Mass m) -> Force
 instance (Divide Force Mass Acceleration) : (Force f) (Mass m) -> Acceleration (f / m)
 Left Right where (Because (Left ; Right ; ("multiplying _ by _ produces _; are you missing a unit?" Left Right Force))) => instance (Multiply (Left = Force) (Right = Number) Force) : (Force a) b -> Force (a * b)
 Left Right where (Because (Left ; Right ; ("multiplying _ by _ produces _; are you missing a unit?" Left Right Force))) => instance (Multiply (Left = Number) (Right = Force) Force) : a (Force b) -> Force (a * b)
+
+instance (Add Stiffness Stiffness Stiffness) : (Stiffness a) (Stiffness b) -> Stiffness (a + b)
+instance (Subtract Stiffness Stiffness Stiffness) : (Stiffness a) (Stiffness b) -> Stiffness (a - b)
+instance (Multiply Stiffness Distance Force) : (Stiffness k) (Distance x) -> Force (k * x)
+instance (Multiply Distance Stiffness Force) : (Distance x) (Stiffness k) -> Force (x * k)
+Left Right where (Because (Left ; Right ; ("multiplying _ by _ produces _; are you missing a unit?" Left Right Stiffness))) => instance (Multiply (Left = Stiffness) (Right = Number) Stiffness) : (Stiffness a) b -> Stiffness (a * b)
+Left Right where (Because (Left ; Right ; ("multiplying _ by _ produces _; are you missing a unit?" Left Right Stiffness))) => instance (Multiply (Left = Number) (Right = Stiffness) Stiffness) : a (Stiffness b) -> Stiffness (a * b)
 
 -- A direction represented as `x` and `y` components between 0 and 1. In
 -- addition to the preset directions like `top` and `center`, you can create a

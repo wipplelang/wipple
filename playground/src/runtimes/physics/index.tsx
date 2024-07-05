@@ -93,6 +93,7 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
             string,
             {
                 matterBody: matter.Body;
+                force: (t: number) => Promise<matter.Vector>;
                 measurements?: {
                     t: number;
                     m: number;
@@ -176,6 +177,7 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                 name,
                 {
                     matterBody,
+                    force: async () => ({ x: 0, y: 0 }),
                     prevMeasurements: {
                         t: 0,
                         m: matterBody.mass,
@@ -261,7 +263,17 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
 
                         await new Promise(requestAnimationFrame);
 
-                        matter.Engine.update(engine, delta, 0);
+                        for (const body of Object.values(bodiesRef.current)) {
+                            const force = await body.force(t);
+
+                            matter.Body.applyForce(
+                                body.matterBody,
+                                body.matterBody.position,
+                                force,
+                            );
+                        }
+
+                        matter.Engine.update(engine, delta, 1);
 
                         t = engine.timing.timestamp / ms;
 
@@ -327,18 +339,21 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                     const body = bodies[bodyName];
                     if (!body) return;
 
-                    matter.Events.on(engine, "beforeUpdate", async () => {
-                        await mutexRef.current?.runExclusive(async () => {
-                            const t = engine.timing.timestamp / ms;
+                    body.force = async (t) => {
+                        if (!mutexRef.current) {
+                            return { x: 0, y: 0 };
+                        }
+
+                        return mutexRef.current!.runExclusive(async () => {
                             const x = await fx([t]);
                             const y = await fy([t]);
 
-                            matter.Body.applyForce(body.matterBody, body.matterBody.position, {
-                                x: x / (ms * ms),
-                                y: -y / (ms * ms),
-                            });
+                            return {
+                                x: isNaN(x) ? 0 : x / (ms * ms),
+                                y: isNaN(y) ? 0 : -y / (ms * ms),
+                            };
                         });
-                    });
+                    };
 
                     break;
                 }
