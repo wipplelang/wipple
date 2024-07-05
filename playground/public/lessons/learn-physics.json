@@ -215,7 +215,7 @@
                 {
                     "locked": true,
                     "type": "text",
-                    "text": "It's twice the velocity! That means to make our kinematic equation accurate, we need to multiply our acceleration term by $\\frac{1}{2}$. (This has to do with the squaring of $t$.)"
+                    "text": "It's twice the velocity! That means to make our kinematic equation accurate, we need to multiply our acceleration term by $\frac{1}{2}$. (If you're curious why, please see [this visual explanation](https://physics.stackexchange.com/a/89597) from Physics Stack Exchange!)"
                 },
                 {
                     "settings": {

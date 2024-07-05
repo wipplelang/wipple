@@ -216,7 +216,7 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
         const dotSize = 3;
-        const dotInterval = 2;
+        const dotInterval = 4;
         for (const { matterBody, trail } of Object.values(bodiesRef.current)) {
             if (trail.length <= 1) continue;
 

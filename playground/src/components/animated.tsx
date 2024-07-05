@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { animated, useSpring, useSpringValue } from "@react-spring/web";
 import { defaultAnimationDuration } from ".";
-import { useInView } from "framer-motion";
 
 const config = { tension: 300, friction: 30, bounce: 0 };
 
@@ -20,14 +19,11 @@ export const Animated = (
     const [initialIsOpen, setInitialIsOpen] = useState(() => isOpen);
 
     const ref = useRef<HTMLDivElement>(null);
-    const isInView = useInView(ref);
 
     const width = useSpringValue(0, { config });
     const height = useSpringValue(0, { config });
 
     useEffect(() => {
-        if (!isInView) return;
-
         const handler = () => {
             if (!ref.current) return;
 
@@ -49,7 +45,7 @@ export const Animated = (
         return () => {
             clearInterval(poll);
         };
-    }, [isInView]);
+    }, []);
 
     const expandHorizontal =
         (Array.isArray(props.direction) && props.direction.includes("horizontal")) ||
