@@ -231,6 +231,43 @@
                     "text": "Perfect! And with that, we have the **first kinematic equation**:\n\n$$$\nx = x_0 + vt + \\frac{1}{2}at^2\n$$$"
                 }
             ]
+        },
+        {
+            "items": [
+                {
+                    "type": "text",
+                    "locked": true,
+                    "text": "## Collisions\n\nNow that we have an understanding of forces and acceleration, let's take a look at one more concept in physics: momentum and how it's transferred between objects when they collide.\n\nThe **momentum** of an object is its resistance to an opposing force, and depends on its mass and its speed. This makes intuitive sense — it's difficult to stop a moving object if it's heavy or moving quickly. That means we can use an equation to model momentum!\n\n$$$\np = mv\n$$$\n\nHere, $p$ is momentum, $m$ is the object's mass, and $v$ is its velocity. Let's write some code to measure the momentum of each block:"
+                },
+                {
+                    "type": "code",
+                    "code": "fx : constant (0 newtons)\nfy : between (0 seconds to 1 seconds) (constant (1 newtons))\n\nforce [Object \"Block 1\"] fx fy\nforce [Object \"Block 2\"] fx fy\n\ny-momentum-of : object -> (mass-of object) * (y-velocity-of object)\n\nobserve (1 seconds) {\n  show (\"p1 = _\" (y-momentum-of [Object \"Block 1\"]))\n  show (\"p2 = _\" (y-momentum-of [Object \"Block 2\"]))\n}",
+                    "setup": "physics",
+                    "settings": {
+                        "demonstration": "Two Blocks"
+                    }
+                },
+                {
+                    "type": "text",
+                    "text": "Hmm, they're both the same! Let's think about why that is. It takes more effort to move the heavier block, so for the same amount of force in the same amount of time, it speeds up less. It turns out that a **change in momentum** measures the amount of force applied over a period of time!\n\n$$$\n\\Delta p = F \\Delta t = m \\Delta v\n$$$\n\nThis means if you know the force you're applying and the mass of the object you're applying the force to, you can solve for $v$, the object's velocity after exerting the force for $t$ seconds. Or if you know how much an object speeds up or slows down, you can calculate the force that object experiences.\n\nNow let's take a look at how momentum is **transferred** between a stationary object and a moving object. We know that when two objects collide, they exert forces on each other — the stationary object resists the moving object's motion, and the moving object pushes the stationary object out of the way.",
+                    "locked": true
+                },
+                {
+                    "type": "code",
+                    "code": "fx : between (0 seconds to 1 seconds) (constant (1 newtons))\nfy : constant (0 newtons)\n\nforce [Object \"Block 1\"] fx fy\n\nx-momentum-of : object -> (mass-of object) * (x-velocity-of object)\n\nobserve (1 seconds) {\n  show (\"Before the collision, p1 = _\" (x-momentum-of [Object \"Block 1\"]))\n  show (\"Before the collision, p2 = _\" (x-momentum-of [Object \"Block 2\"]))\n}\n\nobserve (2 seconds) {\n  show (\"After the collision, p1 = _\" (x-momentum-of [Object \"Block 1\"]))\n  show (\"After the collision, p2 = _\" (x-momentum-of [Object \"Block 2\"]))\n}",
+                    "setup": "physics",
+                    "settings": {
+                        "demonstration": "Two Blocks"
+                    }
+                },
+                {
+                    "type": "text",
+                    "text": "After the collision, the total momentum is the same as before the collision! Momentum is what's called a **conserved quantity**: it cannot be created or destroyed, only transferred between objects. In other words, the total momentum of a **closed system** — one with no outside forces or objects — remains constant.\n\nAll three of these equations describe the conservation of momentum:\n\n$$$\n\\Delta p = 0\n$$$\n\n$$$\np_{\\text{initial}} = p_{\\text{final}}\n$$$\n\n$$$\nm_1 v_{1_\\text{initial}} + m_2 v_{2_\\text{initial}} = m_1 v_{1_\\text{final}} + m_2 v_{2_\\text{final}}\n$$$",
+                    "locked": true
+                }
+            ],
+            "id": "Oq6BQBMeSP4wb1gi_U-G",
+            "name": "Collisions"
         }
     ]
 }

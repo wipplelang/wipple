@@ -125,7 +125,7 @@ export const Physics: RuntimeComponent<Settings> = forwardRef((props, ref) => {
         const dt = (t - body.measurements.t) * ms;
 
         const vx = ((x - body.measurements.x) / dt) * ms;
-        const vy = (-(y - body.measurements.y) / dt) * ms;
+        const vy = ((y - body.measurements.y) / dt) * ms;
 
         const fx = body.measurements?.vx && ((vx - body.measurements.vx) / dt) * ms * m;
         const fy = body.measurements?.vy && ((vy - body.measurements.vy) / dt) * ms * m;

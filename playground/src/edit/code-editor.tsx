@@ -124,7 +124,7 @@ export function CodeEditor<Settings>(props: {
 
             return [
                 {
-                    top,
+                    top: top + window.scrollY,
                     right: windowSize.width - editorRect.right,
                     width: Math.max(editorRect.width - width - 48, 32),
                     height,

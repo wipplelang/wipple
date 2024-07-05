@@ -94,6 +94,20 @@ instance (Multiply (Number -> Mass) (Number -> Acceleration) (Number -> Force)) 
 newtons :: Number -> Force
 newtons : kilograms * (meters / seconds / seconds)
 
+-- A momentum in kilogram-meters per second.
+Momentum : type Number
+instance (Describe-Type Momentum "momentum")
+
+instance (Empty Momentum) : 0 (kilograms * (meters / seconds))
+instance (Equal Momentum) : (Momentum a) (Momentum b) -> a = b
+instance (Order Momentum) : (Momentum a) (Momentum b) -> Order a b
+instance (Describe Momentum) : (Momentum kgmps) -> "_ kg*m/s" kgmps
+
+() where (Error ("missing unit for momentum" ; Error-Fix "add `(kilograms * (meters / seconds))`" ("`(_ (kilograms * (meters / seconds)))`" Source))) =>
+    instance (Mismatch Number Momentum)
+
+instance (Multiply (Number -> Mass) (Number -> Velocity) (Number -> Momentum)) : _ _ -> Momentum
+
 -- A stiffness in newtons per meter.
 Stiffness : type Number
 instance (Describe-Type Stiffness "stiffness")
@@ -141,6 +155,13 @@ instance (Multiply Acceleration Mass Force) : (Acceleration a) (Mass m) -> Force
 instance (Divide Force Mass Acceleration) : (Force f) (Mass m) -> Acceleration (f / m)
 Left Right where (Because (Left ; Right ; ("multiplying _ by _ produces _; are you missing a unit?" Left Right Force))) => instance (Multiply (Left = Force) (Right = Number) Force) : (Force a) b -> Force (a * b)
 Left Right where (Because (Left ; Right ; ("multiplying _ by _ produces _; are you missing a unit?" Left Right Force))) => instance (Multiply (Left = Number) (Right = Force) Force) : a (Force b) -> Force (a * b)
+
+instance (Add Momentum Momentum Momentum) : (Momentum a) (Momentum b) -> Momentum (a + b)
+instance (Subtract Momentum Momentum Momentum) : (Momentum a) (Momentum b) -> Momentum (a - b)
+instance (Multiply Mass Velocity Momentum) : (Mass m) (Velocity v) -> Momentum (m * v)
+instance (Multiply Velocity Mass Momentum) : (Velocity v) (Mass m) -> Momentum (v * m)
+Left Right where (Because (Left ; Right ; ("multiplying _ by _ produces _; are you missing a unit?" Left Right Momentum))) => instance (Multiply (Left = Momentum) (Right = Number) Momentum) : (Momentum a) b -> Momentum (a * b)
+Left Right where (Because (Left ; Right ; ("multiplying _ by _ produces _; are you missing a unit?" Left Right Momentum))) => instance (Multiply (Left = Number) (Right = Momentum) Momentum) : a (Momentum b) -> Momentum (a * b)
 
 instance (Add Stiffness Stiffness Stiffness) : (Stiffness a) (Stiffness b) -> Stiffness (a + b)
 instance (Subtract Stiffness Stiffness Stiffness) : (Stiffness a) (Stiffness b) -> Stiffness (a - b)
