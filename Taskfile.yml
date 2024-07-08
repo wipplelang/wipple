@@ -182,6 +182,7 @@ tasks:
         cmds:
             - if ! command -v mdbook; then cargo install --force mdbook; fi
             - if ! command -v mdbook-template; then cargo install --force mdbook-template; fi
+            - if ! command -v mdbook-mermaid; then cargo install --force mdbook-mermaid; fi
 
     web:docs:prepare:
         run: once
