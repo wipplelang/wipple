@@ -44,7 +44,6 @@ flowchart TD
 2.  **[Lexing (tokenization)](./lexing.md):** The string is split into a list of tokens, where each token represents a single piece of syntax, like a name, number, or symbol.
 3.  **[Parsing](./parsing.md):** Wipple converts this list of tokens into a structured tree that it can traverse.
     -   **[Concrete syntax tree (CST) construction](./parsing.md#cst-construction):** The tokens are split and grouped by punctuation and newlines.
-        -   When you click **Format** in the Wipple Playground, this CST is converted back into a string with appropriate whitespace and indentation.
     -   **[Abstract syntax tree (AST) construction](./parsing.md#ast-construction):** "Concrete" syntax is transformed into "abstract" Wipple constructs based on context.
         -   For example, the `A -> B` represents a function type in `x :: A -> B`, but it represents a function expression in `x : A -> B`. Similarly, `_` is a valid type or pattern, but not a valid expression.
 4.  **[Lowering](./lowering.md):** The structure of the program defines scope, and definitions are brought into scope and names resolved according to their position within the tree. At this point, names are represented using unique identifiers rather than strings.

@@ -129,6 +129,7 @@ tasks:
             - web:login:build
             - web:docs:build
             - web:doc-template:build
+            - web:api:build
             - web:playground:build
         dir: web
         cmds:
@@ -217,6 +218,13 @@ tasks:
         dir: web/doc-template
         cmds:
             - npm run build
+
+    web:api:build:
+        run: once
+        cmds:
+            - cargo doc
+            - rm -rf web/dist/api && mkdir -p web/dist/api
+            - cp -r target/doc/* web/dist/api
 
     web:playground:serve:
         run: once
