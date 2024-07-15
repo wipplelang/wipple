@@ -490,7 +490,7 @@ impl Render {
                         .collect::<Vec<_>>()
                         .join(" ");
 
-                    let output = render_type_inner(render, output.as_deref(), false);
+                    let output = render_type_inner(render, output.as_deref(), true);
 
                     let rendered = format!("{} -> {}", inputs, output);
 
