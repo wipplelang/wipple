@@ -860,10 +860,19 @@ pub enum TypedExpressionKind<D: Driver> {
         /// The types of the constant's parameters. This is used in case the
         /// constant's type doesn't reference all type parameters.
         parameters: Vec<Type<D>>,
+
+        /// The resolved bounds.
+        bounds: Vec<WithInfo<D::Info, std::result::Result<D::Path, Instance<D>>>>,
     },
 
     /// A trait.
-    Trait(D::Path),
+    Trait {
+        /// The path to the trait declaration.
+        path: D::Path,
+
+        /// The path to the resolved instance, or a bound.
+        instance: WithInfo<D::Info, std::result::Result<D::Path, Instance<D>>>,
+    },
 
     /// A number literal.
     Number(String),
@@ -1223,7 +1232,7 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a TypedExpress
             TypedExpressionKind::Unknown(_)
             | TypedExpressionKind::Variable(_, _)
             | TypedExpressionKind::Constant { .. }
-            | TypedExpressionKind::Trait(_)
+            | TypedExpressionKind::Trait { .. }
             | TypedExpressionKind::Marker(_)
             | TypedExpressionKind::Number(_)
             | TypedExpressionKind::Text(_) => {}

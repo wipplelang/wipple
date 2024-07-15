@@ -402,6 +402,57 @@ impl LanguageServer for Backend {
                         content.push(format!("```wipple\n{code}\n```"));
                     }
 
+                    // If the expression is a trait, also render the resolved instance
+                    if let Some(expression) = render.get_expression_at_cursor(&path, position) {
+                        eprintln!("expression: {expression:#?}");
+
+                        if let wipple_driver::typecheck::TypedExpressionKind::Constant {
+                            path,
+                            bounds,
+                            ..
+                        } = expression.item.kind
+                        {
+                            if let Some(declaration) = render.get_declaration_from_path(&path) {
+                                if let wipple_render::AnyDeclarationKind::Trait(_) =
+                                    declaration.item.kind
+                                {
+                                    // The constructor for a trait mentions the trait in its first
+                                    // bound (traits themselves may not directly have bounds; if
+                                    // that changes, this will need to be updated)
+                                    if let Some(instance) = bounds.into_iter().next() {
+                                        match &instance.item {
+                                            Ok(path) => {
+                                                if let Some(declaration) =
+                                                    render.get_declaration_from_path(path)
+                                                {
+                                                    if let Some(code) =
+                                                        render.render_declaration(&declaration)
+                                                    {
+                                                        content.push(format!(
+                                                            "```wipple\n{code}\n```"
+                                                        ));
+                                                    }
+                                                }
+                                            }
+                                            Err(bound) => {
+                                                let bound = wipple_driver::util::WithInfo {
+                                                    info: instance.info.clone(),
+                                                    item: bound.clone(),
+                                                };
+
+                                                let code = render.render_instance(&bound, false);
+
+                                                content.push(format!(
+                                                    "```wipple\ninstance {code} -- from bound\n```"
+                                                ));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     if let Some(rendered_documentation) = render.render_documentation(&declaration)
                     {
                         content.push(rendered_documentation.docs);

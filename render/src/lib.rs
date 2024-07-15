@@ -206,12 +206,19 @@ impl Render {
         &self,
         path: &wipple_driver::lower::Path,
     ) -> Option<WithInfo<AnyDeclaration>> {
+        let mut path = path.clone();
+
+        // Resolve the actual declaration the constructor is for
+        if let Some(wipple_driver::lower::PathComponent::Constructor(_)) = path.last() {
+            path.pop();
+        }
+
         self.0
             .read()
             .unwrap()
             .declarations
             .iter()
-            .find(|declaration| declaration.item.path == *path)
+            .find(|declaration| declaration.item.path == path)
             .cloned()
     }
 
@@ -227,6 +234,27 @@ impl Render {
             .iter()
             .find(|declaration| self.compare_info(&declaration.info, info, between))
             .cloned()
+    }
+
+    pub fn get_instances_for_trait(
+        &self,
+        r#trait: &wipple_driver::lower::Path,
+    ) -> Vec<WithInfo<AnyDeclaration>> {
+        let inner = self.0.read().unwrap();
+
+        inner
+            .declarations
+            .iter()
+            .filter(|declaration| {
+                let instance = match &declaration.item.kind {
+                    AnyDeclarationKind::Instance(instance) => instance,
+                    _ => return false,
+                };
+
+                instance.instance.item.r#trait == *r#trait
+            })
+            .cloned()
+            .collect()
     }
 
     pub fn render_source<T>(&self, value: &WithInfo<T>) -> Option<String> {
