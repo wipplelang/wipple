@@ -2,4 +2,4 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/mismatched-inferred-params.test.wipple:3:15: error: expected `(Number -> Text) -> ((List Number) -> (Sequence Text))` here, but found `(Text -> Text) -> ((List Number) -> (Sequence Text))`
+tests/mismatched-inferred-params.test.wipple:3:15: error: expected `(Number -> Text) -> (List Number) -> Sequence Text` here, but found `(Text -> Text) -> (List Number) -> Sequence Text`

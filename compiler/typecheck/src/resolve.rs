@@ -1956,8 +1956,12 @@ enum ExpressionKind<D: Driver> {
     ResolvedConstant {
         path: D::Path,
         parameters: Vec<Type<D>>,
+        bounds: Vec<WithInfo<D::Info, Result<D::Path, Instance<D>>>>,
     },
-    ResolvedTrait(D::Path),
+    ResolvedTrait {
+        path: D::Path,
+        instance: WithInfo<D::Info, Result<D::Path, Instance<D>>>,
+    },
     Number(String),
     Text(String),
     Block {
@@ -2017,7 +2021,7 @@ impl<D: Driver> ExpressionKind<D> {
             ExpressionKind::UnresolvedConstant(_)
                 | ExpressionKind::UnresolvedTrait(_)
                 | ExpressionKind::ResolvedConstant { .. }
-                | ExpressionKind::ResolvedTrait(_)
+                | ExpressionKind::ResolvedTrait { .. }
         )
     }
 }
@@ -3414,7 +3418,11 @@ fn resolve_expression<D: Driver>(
             let path = path.clone();
 
             match resolve_item(&path, expression.as_mut(), true, context) {
-                Ok(Some(parameters)) => ExpressionKind::ResolvedConstant { path, parameters },
+                Ok(Some((parameters, bounds))) => ExpressionKind::ResolvedConstant {
+                    path,
+                    parameters,
+                    bounds,
+                },
                 Ok(None) => ExpressionKind::UnresolvedConstant(path), // try again with more type information
                 Err(error) => {
                     context.error_queue.push(error);
@@ -3433,7 +3441,10 @@ fn resolve_expression<D: Driver>(
                     });
 
                     match resolve_trait(query.as_ref(), context) {
-                        Ok(()) => ExpressionKind::ResolvedTrait(query.item.r#trait),
+                        Ok(instance) => ExpressionKind::ResolvedTrait {
+                            path: query.item.r#trait,
+                            instance,
+                        },
                         Err(error) => {
                             context.error_queue.push(error);
                             ExpressionKind::Unknown(Some(query.item.r#trait))
@@ -3450,10 +3461,18 @@ fn resolve_expression<D: Driver>(
                 }
             }
         }
-        ExpressionKind::ResolvedConstant { path, parameters } => {
-            ExpressionKind::ResolvedConstant { path, parameters }
+        ExpressionKind::ResolvedConstant {
+            path,
+            parameters,
+            bounds,
+        } => ExpressionKind::ResolvedConstant {
+            path,
+            parameters,
+            bounds,
+        },
+        ExpressionKind::ResolvedTrait { path, instance } => {
+            ExpressionKind::ResolvedTrait { path, instance }
         }
-        ExpressionKind::ResolvedTrait(path) => ExpressionKind::ResolvedTrait(path),
         ExpressionKind::Number(number) => ExpressionKind::Number(number),
         ExpressionKind::Text(text) => ExpressionKind::Text(text),
         ExpressionKind::Block {
@@ -3938,7 +3957,13 @@ fn resolve_item<D: Driver>(
     mut use_expression: WithInfo<D::Info, &mut Expression<D>>,
     allow_unresolved_bounds: bool,
     context: &mut ResolveContext<'_, D>,
-) -> Result<Option<Vec<Type<D>>>, WithInfo<D::Info, QueuedError<D>>> {
+) -> Result<
+    Option<(
+        Vec<Type<D>>,
+        Vec<WithInfo<D::Info, Result<D::Path, Instance<D>>>>,
+    )>,
+    WithInfo<D::Info, QueuedError<D>>,
+> {
     let item_declaration = context.driver.get_constant_declaration(path);
 
     let use_info = use_expression.info.clone();
@@ -4017,11 +4042,14 @@ fn resolve_item<D: Driver>(
                     };
 
                     match resolve_trait(query.as_ref(), context) {
-                        Ok(()) => Ok(()),
+                        Ok(candidate) => Ok(candidate),
                         Err(WithInfo {
-                            item: QueuedError::UnresolvedInstance { .. },
-                            ..
-                        }) if allow_unresolved => Ok(()),
+                            info,
+                            item: QueuedError::UnresolvedInstance { instance, .. },
+                        }) if allow_unresolved => Ok(WithInfo {
+                            info,
+                            item: Err(instance),
+                        }),
                         Err(error) => {
                             // Attempt to get a better error message by unifying the
                             // declared type with the use type again, now that the
@@ -4046,7 +4074,7 @@ fn resolve_item<D: Driver>(
                         }
                     }
                 })
-                .collect::<Vec<Result<(), _>>>()
+                .collect::<Vec<Result<_, _>>>()
         }
     };
 
@@ -4072,13 +4100,20 @@ fn resolve_item<D: Driver>(
     // Now that we've determined the types of the non-inferred parameters from the bounds,
     // determine the types of the inferred parameters by re-evaluating the bounds
 
-    let mut success = true;
+    let mut bounds = Some(Vec::new());
     for result in evaluate_bounds(&instantiated_bounds, false, context) {
-        if let Err(error) = result {
-            if allow_unresolved_bounds {
-                success = false;
-            } else {
-                return Err(error);
+        match result {
+            Ok(bound) => {
+                if let Some(bounds) = bounds.as_mut() {
+                    bounds.push(bound);
+                }
+            }
+            Err(error) => {
+                if allow_unresolved_bounds {
+                    bounds = None;
+                } else {
+                    return Err(error);
+                }
             }
         }
     }
@@ -4091,11 +4126,14 @@ fn resolve_item<D: Driver>(
         context.error_queue,
     );
 
-    Ok(success.then(|| {
-        parameters
-            .into_iter()
-            .map(|parameter| parameter.instantiate_opaque_in_context(context.type_context))
-            .collect()
+    Ok(bounds.map(|bounds| {
+        (
+            parameters
+                .into_iter()
+                .map(|parameter| parameter.instantiate_opaque_in_context(context.type_context))
+                .collect(),
+            bounds,
+        )
     }))
 }
 
@@ -4140,10 +4178,10 @@ fn resolve_trait_parameters_from_type<D: Driver>(
 fn resolve_trait<D: Driver>(
     query: WithInfo<D::Info, &Instance<D>>,
     context: &mut ResolveContext<'_, D>,
-) -> Result<(), WithInfo<D::Info, QueuedError<D>>> {
+) -> Result<WithInfo<D::Info, Result<D::Path, Instance<D>>>, WithInfo<D::Info, QueuedError<D>>> {
     type Candidate<D> = (
         TypeContext<D>,
-        WithInfo<<D as Driver>::Info, Instance<D>>,
+        WithInfo<<D as Driver>::Info, (Option<<D as Driver>::Path>, Instance<D>)>,
         Vec<WithInfo<<D as Driver>::Info, Instance<D>>>,
     );
 
@@ -4175,7 +4213,8 @@ fn resolve_trait<D: Driver>(
         query: WithInfo<D::Info, &Instance<D>>,
         context: &mut ResolveContext<'_, D>,
         stack: &[WithInfo<D::Info, &Instance<D>>],
-    ) -> Result<WithInfo<D::Info, Instance<D>>, WithInfo<D::Info, QueuedError<D>>> {
+    ) -> Result<WithInfo<D::Info, Result<D::Path, Instance<D>>>, WithInfo<D::Info, QueuedError<D>>>
+    {
         let r#trait = query.item.r#trait.clone();
 
         let recursion_limit = context.driver.recursion_limit();
@@ -4205,7 +4244,11 @@ fn resolve_trait<D: Driver>(
                         ..Default::default()
                     },
                 ) {
-                    candidates.push((new_type_context, bound, Vec::new()));
+                    candidates.push((
+                        new_type_context,
+                        bound.map(|bound| (None, bound)),
+                        Vec::new(),
+                    ));
                 }
             }
 
@@ -4213,7 +4256,7 @@ fn resolve_trait<D: Driver>(
                 pick_from_candidates(candidates, query.clone(), stack, context.type_context)?
             {
                 context.type_context.replace_with(new_type_context);
-                return Ok(candidate);
+                return Ok(candidate.map(|(path, instance)| path.ok_or(instance)));
             }
         }
 
@@ -4224,12 +4267,12 @@ fn resolve_trait<D: Driver>(
             .driver
             .get_instances_for_trait(&r#trait)
             .into_iter()
-            .map(|path| context.driver.get_instance_declaration(&path))
-            .partition(|instance| instance.item.default);
+            .map(|path| (context.driver.get_instance_declaration(&path), path))
+            .partition(|(instance, _)| instance.item.default);
 
         for instance_declarations in [instances, default_instances] {
             let mut candidates = Vec::new();
-            for instance_declaration in instance_declarations {
+            for (instance_declaration, instance_path) in instance_declarations {
                 let mut new_type_context = context.type_context.clone();
 
                 let query = query.as_deref().map(Clone::clone);
@@ -4291,7 +4334,11 @@ fn resolve_trait<D: Driver>(
                     instance.as_ref(),
                     &mut new_type_context,
                 ) {
-                    candidates.push((new_type_context, instance, bounds));
+                    candidates.push((
+                        new_type_context,
+                        instance.map(|instance| (Some(instance_path), instance)),
+                        bounds,
+                    ));
                 }
             }
 
@@ -4301,7 +4348,7 @@ fn resolve_trait<D: Driver>(
                 pick_from_candidates(candidates, query.clone(), stack, context.type_context)?
             {
                 context.type_context.replace_with(new_type_context);
-                candidate.item.set_source_info(context, &query.info);
+                candidate.item.1.set_source_info(context, &query.info);
 
                 for bound in bounds {
                     let mut stack = stack.to_vec();
@@ -4319,8 +4366,8 @@ fn resolve_trait<D: Driver>(
                 // Special case: If the instance resolves to `Error`, display
                 // the user-provided message
                 if let Some(error_trait_path) = context.driver.path_for_language_trait("error") {
-                    if candidate.item.r#trait == error_trait_path {
-                        if let Some(message_type) = candidate.item.parameters.first() {
+                    if candidate.item.1.r#trait == error_trait_path {
+                        if let Some(message_type) = candidate.item.1.parameters.first() {
                             if let Some(error) =
                                 resolve_custom_error(&query.info, message_type, context)
                             {
@@ -4334,14 +4381,14 @@ fn resolve_trait<D: Driver>(
                 // the reason to the type context
                 if let Some(because_trait_path) = context.driver.path_for_language_trait("because")
                 {
-                    if candidate.item.r#trait == because_trait_path {
-                        if let Some(reason) = candidate.item.parameters.first() {
+                    if candidate.item.1.r#trait == because_trait_path {
+                        if let Some(reason) = candidate.item.1.parameters.first() {
                             resolve_custom_reason(&query.info, reason, context);
                         }
                     }
                 }
 
-                return Ok(candidate);
+                return Ok(candidate.map(|(path, instance)| path.ok_or(instance)));
             }
         }
 
@@ -4361,9 +4408,7 @@ fn resolve_trait<D: Driver>(
         })
     }
 
-    resolve_trait_inner(query.clone(), context, &[query])?;
-
-    Ok(())
+    resolve_trait_inner(query.clone(), context, &[query])
 }
 
 fn resolve_custom_error<D: Driver>(
@@ -4551,7 +4596,7 @@ fn substitute_defaults_in_expression<D: Driver>(
         | ExpressionKind::Variable(_, _)
         | ExpressionKind::UnresolvedConstant(_)
         | ExpressionKind::UnresolvedTrait(_)
-        | ExpressionKind::ResolvedTrait(_)
+        | ExpressionKind::ResolvedTrait { .. }
         | ExpressionKind::Marker(_)
         | ExpressionKind::Number(_)
         | ExpressionKind::Text(_) => false,
@@ -4739,7 +4784,7 @@ fn finalize_expression<D: Driver>(
                 };
 
                 match resolve_item(&path, expression.as_mut(), false, &mut resolve_context) {
-                    Ok(Some(parameters)) => {
+                    Ok(Some((parameters, bounds))) => {
                         finalize_type(expression.item.r#type.clone(), true, context);
 
                         crate::TypedExpressionKind::Constant {
@@ -4747,6 +4792,16 @@ fn finalize_expression<D: Driver>(
                             parameters: parameters
                                 .into_iter()
                                 .map(|r#type| finalize_type(r#type, true, context).item)
+                                .collect(),
+                            bounds: bounds
+                                .into_iter()
+                                .map(|bound| {
+                                    bound.map(|bound| {
+                                        bound.map_err(|instance| {
+                                            finalize_instance(instance, context)
+                                        })
+                                    })
+                                })
                                 .collect(),
                         }
                     }
@@ -4774,16 +4829,29 @@ fn finalize_expression<D: Driver>(
 
             crate::TypedExpressionKind::Unknown(Some(path))
         }
-        ExpressionKind::ResolvedConstant { path, parameters } => {
-            crate::TypedExpressionKind::Constant {
-                path,
-                parameters: parameters
-                    .iter()
-                    .map(|r#type| finalize_type(r#type.clone(), true, context).item)
-                    .collect(),
-            }
-        }
-        ExpressionKind::ResolvedTrait(path) => crate::TypedExpressionKind::Trait(path),
+        ExpressionKind::ResolvedConstant {
+            path,
+            parameters,
+            bounds,
+        } => crate::TypedExpressionKind::Constant {
+            path,
+            parameters: parameters
+                .into_iter()
+                .map(|r#type| finalize_type(r#type, true, context).item)
+                .collect(),
+            bounds: bounds
+                .into_iter()
+                .map(|bound| {
+                    bound
+                        .map(|bound| bound.map_err(|instance| finalize_instance(instance, context)))
+                })
+                .collect(),
+        },
+        ExpressionKind::ResolvedTrait { path, instance } => crate::TypedExpressionKind::Trait {
+            path,
+            instance: instance
+                .map(|instance| instance.map_err(|bound| finalize_instance(bound, context))),
+        },
         ExpressionKind::Number(number) => crate::TypedExpressionKind::Number(number),
         ExpressionKind::Text(text) => crate::TypedExpressionKind::Text(text),
         ExpressionKind::Block {

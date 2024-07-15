@@ -165,18 +165,15 @@ pub async fn compile(options: JsValue) -> JsValue {
 
         let result = wipple_driver::compile(sources, options.interface.map(|interface| *interface));
 
-        render_for(options.id.clone())
-            .await
-            .update(
-                result.interface,
-                [&result.library]
-                    .into_iter()
-                    .chain(&options.libraries)
-                    .cloned()
-                    .collect(),
-                Some(result.ide),
-            )
-            .await;
+        render_for(options.id.clone()).await.update(
+            result.interface,
+            [&result.library]
+                .into_iter()
+                .chain(&options.libraries)
+                .cloned()
+                .collect(),
+            Some(result.ide),
+        );
 
         let compiled = Mutex::new(true);
         let rendered_diagnostics =
@@ -186,8 +183,7 @@ pub async fn compile(options: JsValue) -> JsValue {
                 async move {
                     let rendered_diagnostic = render_for(id.clone())
                         .await
-                        .render_diagnostic(&diagnostic)
-                        .await?;
+                        .render_diagnostic(&diagnostic)?;
 
                     if let wipple_render::RenderedDiagnosticSeverity::Error =
                         rendered_diagnostic.severity
@@ -264,17 +260,17 @@ pub async fn highlights(options: JsValue) -> JsValue {
         from_value::<HighlightsOptions>(options).or_throw("failed to deserialize options");
 
     let render = wipple_render::Render::new();
-    render.update(*options.interface, Vec::new(), None).await;
+    render.update(*options.interface, Vec::new(), None);
 
     let mut highlights = HashMap::new();
-    for (name, paths) in render.get_interface().await.unwrap().top_level {
+    for (name, paths) in render.get_interface().unwrap().top_level {
         if paths.len() > 1 {
             continue;
         }
 
         for path in paths {
-            if let Some(declaration) = render.get_declaration_from_path(&path.item).await {
-                if let Some(highlight) = render.render_highlight(&declaration).await {
+            if let Some(declaration) = render.get_declaration_from_path(&path.item) {
+                if let Some(highlight) = render.render_highlight(&declaration) {
                     highlights.insert(name, highlight);
                     break; // needed to move `name` into `highlights` above
                 }
@@ -314,18 +310,14 @@ pub async fn help(options: JsValue) -> JsValue {
     let result = run_on_thread(format!("help-{}", options.id), move || async move {
         let render = render_for(options.id).await;
 
-        let help = async move {
-            let declaration_path = render
-                .get_path_at_cursor(&options.path, options.position)
-                .await?;
+        let help = (|| {
+            let declaration_path = render.get_path_at_cursor(&options.path, options.position)?;
 
-            let declaration = render
-                .get_declaration_from_path(&declaration_path.item)
-                .await?;
+            let declaration = render.get_declaration_from_path(&declaration_path.item)?;
 
-            let documentation = render.render_documentation(&declaration).await?;
+            let documentation = render.render_documentation(&declaration)?;
 
-            let declaration_string = render.render_declaration(&declaration).await;
+            let declaration_string = render.render_declaration(&declaration);
 
             Some(Help {
                 name: declaration.item.name,
@@ -333,8 +325,7 @@ pub async fn help(options: JsValue) -> JsValue {
                 docs: documentation.docs,
                 example: documentation.example,
             })
-        }
-        .await;
+        })();
 
         HelpResult { help }
     })

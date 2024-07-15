@@ -195,7 +195,14 @@ fn compile_expression<D: crate::Driver>(
             let variable = info.context.variables.iter().position(|p| p == path)? as u32;
             info.push_instruction(crate::Instruction::Variable(variable));
         }
-        wipple_typecheck::TypedExpressionKind::Constant { path, parameters } => {
+        wipple_typecheck::TypedExpressionKind::Constant {
+            path,
+            parameters,
+            bounds,
+        } => {
+            // TODO: Use statically resolved bounds instead of looking up at runtime
+            let _ = bounds;
+
             info.push_instruction(crate::Instruction::Typed(
                 type_descriptor(&expression.item.r#type)?,
                 crate::TypedInstruction::Constant(
@@ -207,7 +214,10 @@ fn compile_expression<D: crate::Driver>(
                 ),
             ));
         }
-        wipple_typecheck::TypedExpressionKind::Trait(path) => {
+        wipple_typecheck::TypedExpressionKind::Trait { path, instance } => {
+            // TODO: Use statically resolved instance instead of looking up at runtime
+            let _ = instance;
+
             info.push_instruction(crate::Instruction::Typed(
                 type_descriptor(&expression.item.r#type)?,
                 crate::TypedInstruction::Instance(path.clone()),

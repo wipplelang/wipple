@@ -400,7 +400,7 @@ Element where (Equal Element) => instance (Container (List Element) Element) : t
     }
 }
 
-instance (Add Text Text Text) : b a -> "__" a b
+instance (Add Text Text Text) : a b -> "__" a b
 
 instance (As-Sequence Text Text) : text ->
     As-Sequence (intrinsic "text-characters" text :: List Text)
