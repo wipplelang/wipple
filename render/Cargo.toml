@@ -8,8 +8,6 @@ workspace = true
 
 [dependencies]
 annotate-snippets = "0.11"
-async-lock = { version = "3", default-features = false }
 line-index = "0.1"
-futures = "0.3"
 serde = { version = "1", features = ["derive"] }
 wipple-driver = { path = "../compiler/driver" }

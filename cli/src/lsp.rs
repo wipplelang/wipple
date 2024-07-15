@@ -1,4 +1,3 @@
-use futures::future;
 use line_index::{LineCol, LineIndex};
 use serde::Deserialize;
 use std::{
@@ -394,19 +393,16 @@ impl LanguageServer for Backend {
             let render = self.config.lock().unwrap().render.clone();
 
             let path = wipple_driver::util::get_visible_path(&path);
-            if let Some(declaration_path) = render.get_path_at_cursor(&path, position).await {
-                if let Some(declaration) = render
-                    .get_declaration_from_path(&declaration_path.item)
-                    .await
+            if let Some(declaration_path) = render.get_path_at_cursor(&path, position) {
+                if let Some(declaration) = render.get_declaration_from_path(&declaration_path.item)
                 {
                     range = Some(range_from_info(&declaration_path.info, &file));
 
-                    if let Some(code) = render.render_declaration(&declaration).await {
+                    if let Some(code) = render.render_declaration(&declaration) {
                         content.push(format!("```wipple\n{code}\n```"));
                     }
 
-                    if let Some(rendered_documentation) =
-                        render.render_documentation(&declaration).await
+                    if let Some(rendered_documentation) = render.render_documentation(&declaration)
                     {
                         content.push(rendered_documentation.docs);
 
@@ -415,13 +411,12 @@ impl LanguageServer for Backend {
                         }
                     }
                 }
-            } else if let Some(expression) = render.get_expression_at_cursor(&path, position).await
-            {
+            } else if let Some(expression) = render.get_expression_at_cursor(&path, position) {
                 range = Some(range_from_info(&expression.info, &file));
 
                 let r#type = expression.map(|expression| expression.r#type);
 
-                let code = render.render_type(&r#type, true, false, false).await;
+                let code = render.render_type(&r#type, true, false, false);
                 content.push(format!("```wipple\n{code}\n```"));
             }
         }
@@ -466,7 +461,7 @@ impl LanguageServer for Backend {
         let path = wipple_driver::util::get_visible_path(&path);
 
         let render = self.config.lock().unwrap().render.clone();
-        let suggestions = render.render_suggestions_at_cursor(&path, position).await;
+        let suggestions = render.render_suggestions_at_cursor(&path, position);
 
         let completions = suggestions
             .into_iter()
@@ -538,15 +533,12 @@ impl LanguageServer for Backend {
 
         let render = self.config.lock().unwrap().render.clone();
 
-        let declaration_path = match render.get_path_at_cursor(&path, position).await {
+        let declaration_path = match render.get_path_at_cursor(&path, position) {
             Some(declaration) => declaration,
             None => return Ok(None),
         };
 
-        let declaration = match render
-            .get_declaration_from_path(&declaration_path.item)
-            .await
-        {
+        let declaration = match render.get_declaration_from_path(&declaration_path.item) {
             Some(declaration) => declaration,
             None => return Ok(None),
         };
@@ -650,24 +642,17 @@ impl Backend {
             (result, render, libraries)
         };
 
-        render
-            .update(
-                result.interface,
-                [result.library].into_iter().chain(libraries).collect(),
-                Some(result.ide),
-            )
-            .await;
+        render.update(
+            result.interface,
+            [result.library].into_iter().chain(libraries).collect(),
+            Some(result.ide),
+        );
 
-        future::join_all(
-            result
-                .diagnostics
-                .iter()
-                .map(|diagnostic| render.render_diagnostic(diagnostic)),
-        )
-        .await
-        .into_iter()
-        .flatten()
-        .collect()
+        result
+            .diagnostics
+            .iter()
+            .flat_map(|diagnostic| render.render_diagnostic(diagnostic))
+            .collect()
     }
 }
 
