@@ -69,12 +69,25 @@ pub fn json(
                 });
 
             let declaration_string = render.render_declaration(&declaration)?;
+
+            let instances = render
+                .get_instances_for_trait(path)
+                .into_iter()
+                .filter_map(|declaration| {
+                    Some(format!("\n{}", render.render_declaration(&declaration)?))
+                })
+                .collect::<String>();
+
             let documentation = render.render_documentation(&declaration)?;
 
             Some(serde_json::json!({
                 "type": "trait",
                 "name": name,
-                "declaration": declaration_string,
+                "declaration": if instances.is_empty() {
+                    declaration_string
+                } else {
+                    format!("{declaration_string}\n{instances}")
+                },
                 "documentation": markdown::to_html(&documentation.docs),
                 "example": documentation.example,
             }))

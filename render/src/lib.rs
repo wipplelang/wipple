@@ -245,13 +245,11 @@ impl Render {
         inner
             .declarations
             .iter()
-            .filter(|declaration| {
-                let instance = match &declaration.item.kind {
-                    AnyDeclarationKind::Instance(instance) => instance,
-                    _ => return false,
-                };
-
-                instance.instance.item.r#trait == *r#trait
+            .filter(|declaration| match &declaration.item.kind {
+                AnyDeclarationKind::Instance(instance) => {
+                    instance.instance.item.r#trait == *r#trait && !instance.default
+                }
+                _ => false,
             })
             .cloned()
             .collect()
@@ -556,16 +554,23 @@ impl Render {
                 wipple_driver::typecheck::Type::Intrinsic => String::from("intrinsic"),
                 wipple_driver::typecheck::Type::Message { segments, trailing } => {
                     let mut message = String::new();
+                    let mut inputs = Vec::new();
 
                     for segment in segments {
                         message.push_str(&segment.text);
-
-                        message.push_str(&render_type_inner(render, segment.r#type.as_ref(), true));
+                        message.push('_');
+                        inputs.push(render_type_inner(render, segment.r#type.as_ref(), false));
                     }
 
                     message.push_str(trailing);
 
-                    message
+                    let inputs = inputs.join(" ");
+
+                    if is_top_level {
+                        format!("{:?} {}", message, inputs)
+                    } else {
+                        format!("({:?} {})", message, inputs)
+                    }
                 }
                 wipple_driver::typecheck::Type::Equal { left, right } => {
                     let rendered = format!(
