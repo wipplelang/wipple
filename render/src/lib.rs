@@ -575,7 +575,27 @@ impl Render {
 
         let rendered_parameters = parameters
             .iter()
-            .filter_map(|parameter| self.name_for_path(parameter))
+            .filter_map(|parameter| {
+                let name = self.name_for_path(parameter)?;
+
+                let declaration = match self.get_declaration_from_path(parameter)?.item.kind {
+                    AnyDeclarationKind::TypeParameter(declaration) => declaration,
+                    _ => return Some(name),
+                };
+
+                Some(match (declaration.infer, declaration.default) {
+                    (Some(_), Some(default)) => {
+                        let default = self.render_type(&default, true, false, false);
+                        format!("(infer {name} : {default})")
+                    }
+                    (Some(_), None) => format!("(infer {name})"),
+                    (None, Some(default)) => {
+                        let default = self.render_type(&default, true, false, false);
+                        format!("({name} : {default})")
+                    }
+                    (None, None) => name,
+                })
+            })
             .collect::<Vec<_>>()
             .join(" ");
 
