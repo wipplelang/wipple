@@ -403,52 +403,28 @@ impl LanguageServer for Backend {
                     }
 
                     // If the expression is a trait, also render the resolved instance
-                    if let Some(expression) = render.get_expression_at_cursor(&path, position) {
-                        eprintln!("expression: {expression:#?}");
+                    if let Some(instance) = instance_at_cursor(&render, &path, position) {
+                        match instance.item {
+                            Ok(declaration) => {
+                                let declaration = wipple_driver::util::WithInfo {
+                                    info: instance.info,
+                                    item: declaration,
+                                };
 
-                        if let wipple_driver::typecheck::TypedExpressionKind::Constant {
-                            path,
-                            bounds,
-                            ..
-                        } = expression.item.kind
-                        {
-                            if let Some(declaration) = render.get_declaration_from_path(&path) {
-                                if let wipple_render::AnyDeclarationKind::Trait(_) =
-                                    declaration.item.kind
-                                {
-                                    // The constructor for a trait mentions the trait in its first
-                                    // bound (traits themselves may not directly have bounds; if
-                                    // that changes, this will need to be updated)
-                                    if let Some(instance) = bounds.into_iter().next() {
-                                        match &instance.item {
-                                            Ok(path) => {
-                                                if let Some(declaration) =
-                                                    render.get_declaration_from_path(path)
-                                                {
-                                                    if let Some(code) =
-                                                        render.render_declaration(&declaration)
-                                                    {
-                                                        content.push(format!(
-                                                            "```wipple\n{code}\n```"
-                                                        ));
-                                                    }
-                                                }
-                                            }
-                                            Err(bound) => {
-                                                let bound = wipple_driver::util::WithInfo {
-                                                    info: instance.info.clone(),
-                                                    item: bound.clone(),
-                                                };
-
-                                                let code = render.render_instance(&bound, false);
-
-                                                content.push(format!(
-                                                    "```wipple\ninstance {code} -- from bound\n```"
-                                                ));
-                                            }
-                                        }
-                                    }
+                                if let Some(code) = render.render_declaration(&declaration) {
+                                    content.push(format!("```wipple\n{code}\n```"));
                                 }
+                            }
+                            Err(bound) => {
+                                let bound = wipple_driver::util::WithInfo {
+                                    info: instance.info,
+                                    item: bound,
+                                };
+
+                                let code = render.render_instance(&bound, false);
+
+                                content
+                                    .push(format!("```wipple\ninstance {code} -- from bound\n```"));
                             }
                         }
                     }
@@ -594,40 +570,21 @@ impl LanguageServer for Backend {
             None => return Ok(None),
         };
 
-        let declaration_uri = match Url::from_file_path(declaration.info.location.path.as_ref()) {
-            Ok(uri) => uri,
-            Err(_) => return Ok(None),
+        let location = match location_from_info(&declaration.info) {
+            Some(location) => location,
+            None => return Ok(None),
         };
 
-        let declaration_file =
-            match fs::read_to_string(declaration.info.location.path.as_ref()).ok() {
-                Some(text) => File::new(text),
-                None => return Ok(None),
-            };
+        let mut locations = vec![location];
 
-        let start = declaration_file
-            .line_index
-            .line_col(declaration.info.location.span.start.into());
+        // If the expression is a trait, also show the resolved instance
+        if let Some(instance) = instance_at_cursor(&render, &path, position) {
+            if let Some(location) = location_from_info(&instance.info) {
+                locations.push(location);
+            }
+        }
 
-        let end = declaration_file
-            .line_index
-            .line_col(declaration.info.location.span.end.into());
-
-        let range = Range {
-            start: Position {
-                line: start.line,
-                character: start.col,
-            },
-            end: Position {
-                line: end.line,
-                character: end.col,
-            },
-        };
-
-        Ok(Some(GotoDefinitionResponse::Scalar(Location {
-            uri: declaration_uri,
-            range,
-        })))
+        Ok(Some(GotoDefinitionResponse::Array(locations)))
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -738,4 +695,70 @@ fn range_from_info(info: &wipple_driver::Info, file: &File) -> Range {
             character: end.col,
         },
     }
+}
+
+fn location_from_info(info: &wipple_driver::Info) -> Option<Location> {
+    let uri = Url::from_file_path(info.location.path.as_ref()).ok()?;
+
+    let file = File::new(fs::read_to_string(info.location.path.as_ref()).ok()?);
+    let start = file.line_index.line_col(info.location.span.start.into());
+    let end = file.line_index.line_col(info.location.span.end.into());
+
+    let range = Range {
+        start: Position {
+            line: start.line,
+            character: start.col,
+        },
+        end: Position {
+            line: end.line,
+            character: end.col,
+        },
+    };
+
+    Some(Location { uri, range })
+}
+
+fn instance_at_cursor(
+    render: &wipple_render::Render,
+    path: &str,
+    position: u32,
+) -> Option<
+    wipple_driver::util::WithInfo<
+        wipple_driver::Info,
+        std::result::Result<
+            wipple_render::AnyDeclaration,
+            wipple_driver::typecheck::Instance<wipple_driver::Driver>,
+        >,
+    >,
+> {
+    if let Some(expression) = render.get_expression_at_cursor(path, position) {
+        if let wipple_driver::typecheck::TypedExpressionKind::Constant { path, bounds, .. } =
+            expression.item.kind
+        {
+            if let Some(declaration) = render.get_declaration_from_path(&path) {
+                if let wipple_render::AnyDeclarationKind::Trait(_) = declaration.item.kind {
+                    // The constructor for a trait mentions the trait in its first
+                    // bound (traits themselves may not directly have bounds; if
+                    // that changes, this will need to be updated)
+                    if let Some(instance) = bounds.into_iter().next() {
+                        match instance.item {
+                            Ok(path) => {
+                                if let Some(declaration) = render.get_declaration_from_path(&path) {
+                                    return Some(declaration.map(Ok));
+                                }
+                            }
+                            Err(bound) => {
+                                return Some(wipple_driver::util::WithInfo {
+                                    info: instance.info,
+                                    item: Err(bound),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }
