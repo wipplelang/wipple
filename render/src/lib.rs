@@ -602,10 +602,6 @@ impl Render {
         parameters: &[wipple_driver::lower::Path],
         bounds: &[WithInfo<wipple_driver::typecheck::Instance<wipple_driver::Driver>>],
     ) -> String {
-        if parameters.is_empty() {
-            return String::new();
-        }
-
         let rendered_parameters = parameters
             .iter()
             .filter_map(|parameter| {
@@ -638,10 +634,11 @@ impl Render {
             .collect::<Vec<_>>()
             .join(" ");
 
-        if rendered_bounds.is_empty() {
-            format!("{} => ", rendered_parameters)
-        } else {
-            format!("{} where {} => ", rendered_parameters, rendered_bounds)
+        match (rendered_parameters.is_empty(), rendered_bounds.is_empty()) {
+            (true, true) => String::new(),
+            (true, false) => format!("() where {} => ", rendered_bounds),
+            (false, true) => format!("{} => ", rendered_parameters),
+            (false, false) => format!("{} where {} => ", rendered_parameters, rendered_bounds),
         }
     }
 
