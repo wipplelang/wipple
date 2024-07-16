@@ -554,22 +554,22 @@ impl Render {
                 wipple_driver::typecheck::Type::Intrinsic => String::from("intrinsic"),
                 wipple_driver::typecheck::Type::Message { segments, trailing } => {
                     let mut message = String::new();
-                    let mut inputs = Vec::new();
+                    let mut inputs = String::new();
 
                     for segment in segments {
                         message.push_str(&segment.text);
                         message.push('_');
-                        inputs.push(render_type_inner(render, segment.r#type.as_ref(), false));
+
+                        inputs.push(' ');
+                        inputs.push_str(&render_type_inner(render, segment.r#type.as_ref(), false));
                     }
 
                     message.push_str(trailing);
 
-                    let inputs = inputs.join(" ");
-
-                    if is_top_level {
-                        format!("{:?} {}", message, inputs)
+                    if is_top_level || inputs.is_empty() {
+                        format!("{:?}{}", message, inputs)
                     } else {
-                        format!("({:?} {})", message, inputs)
+                        format!("({:?}{})", message, inputs)
                     }
                 }
                 wipple_driver::typecheck::Type::Equal { left, right } => {
