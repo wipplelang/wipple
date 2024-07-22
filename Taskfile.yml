@@ -138,6 +138,7 @@ tasks:
             - cp -r login/dist/. dist/login
             - cp -r docs/book/. dist/docs
             - cp doc-template/dist/index.html dist/doc-template.html
+            - mkdir -p dist/api && cp -r ../target/doc/* dist/api
             - cp -r playground/dist/. dist/playground
             - task: web:library:docs:build
 
@@ -223,8 +224,6 @@ tasks:
         run: once
         cmds:
             - cargo doc
-            - rm -rf web/dist/api && mkdir -p web/dist/api
-            - cp -r target/doc/* web/dist/api
 
     web:playground:serve:
         run: once
