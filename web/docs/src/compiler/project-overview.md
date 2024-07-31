@@ -4,7 +4,7 @@ When you write Wipple code, you're essentially typing text into a text field. Bu
 
 The Wipple compiler and related programs, including the interpreter that runs the compiled code and the functionality for displaying error messages, operate in several stages and are split across many folders in the [Wipple repository](https://github.com/wipplelang/wipple). The majority of the project is written in the [Rust programming language](https://www.rust-lang.org); if you aren't familiar with Rust, please visit [Learn Rust](https://www.rust-lang.org/learn).
 
-> It's interesting and maybe slightly confusing that the Wipple programming language is itself written in a different programming language. The Wipple compiler is essentially a program that takes text as input and tries to convert that text into computer instructions according to Wipple's rules. This program is _not_ Wipple itself!
+> It's good to know that the Wipple programming language is itself written in a different programming language. The Wipple compiler is essentially a program that takes text as input and tries to convert that text into computer instructions according to Wipple's rules. This program is _not_ Wipple itself!
 >
 > Think of it like writing the user interface for a mobile app: the interface doesn't know what order the user will navigate through the app, but the app must be able to handle all possible valid ways of interacting with the app, and disallow invalid interactions so that the app doesn't end up in an incorrect state. The Wipple compiler has a similar goal — it must accept all "valid" programs and reject all "invalid" programs. The _Rust_ code is what determines what _Wipple_ code is valid.
 
