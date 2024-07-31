@@ -28,4 +28,10 @@
 
 # Compiler documentation
 
+-   [Project overview](./compiler/project-overview.md)
+-   [Lexing](./compiler/lexing.md)
+-   [Parsing](./compiler/parsing.md)
+-   [Lowering](./compiler/lowering.md)
 -   [Typechecking](./compiler/typechecking.md)
+-   [IR generation](./compiler/ir-generation.md)
+-   [The driver](./compiler/driver.md)
