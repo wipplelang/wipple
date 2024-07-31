@@ -554,22 +554,22 @@ impl Render {
                 wipple_driver::typecheck::Type::Intrinsic => String::from("intrinsic"),
                 wipple_driver::typecheck::Type::Message { segments, trailing } => {
                     let mut message = String::new();
-                    let mut inputs = Vec::new();
+                    let mut inputs = String::new();
 
                     for segment in segments {
                         message.push_str(&segment.text);
                         message.push('_');
-                        inputs.push(render_type_inner(render, segment.r#type.as_ref(), false));
+
+                        inputs.push(' ');
+                        inputs.push_str(&render_type_inner(render, segment.r#type.as_ref(), false));
                     }
 
                     message.push_str(trailing);
 
-                    let inputs = inputs.join(" ");
-
-                    if is_top_level {
-                        format!("{:?} {}", message, inputs)
+                    if is_top_level || inputs.is_empty() {
+                        format!("{:?}{}", message, inputs)
                     } else {
-                        format!("({:?} {})", message, inputs)
+                        format!("({:?}{})", message, inputs)
                     }
                 }
                 wipple_driver::typecheck::Type::Equal { left, right } => {
@@ -602,10 +602,6 @@ impl Render {
         parameters: &[wipple_driver::lower::Path],
         bounds: &[WithInfo<wipple_driver::typecheck::Instance<wipple_driver::Driver>>],
     ) -> String {
-        if parameters.is_empty() {
-            return String::new();
-        }
-
         let rendered_parameters = parameters
             .iter()
             .filter_map(|parameter| {
@@ -638,10 +634,11 @@ impl Render {
             .collect::<Vec<_>>()
             .join(" ");
 
-        if rendered_bounds.is_empty() {
-            format!("{} => ", rendered_parameters)
-        } else {
-            format!("{} where {} => ", rendered_parameters, rendered_bounds)
+        match (rendered_parameters.is_empty(), rendered_bounds.is_empty()) {
+            (true, true) => String::new(),
+            (true, false) => format!("() where {} => ", rendered_bounds),
+            (false, true) => format!("{} => ", rendered_parameters),
+            (false, false) => format!("{} where {} => ", rendered_parameters, rendered_bounds),
         }
     }
 
