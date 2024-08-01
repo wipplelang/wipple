@@ -1593,32 +1593,52 @@ impl<'src, D: Driver> TokenTree<'src, D> {
             }
         }
 
-        let mut tree = match stack.pop() {
+        // The bottom of the stack is the top level
+        let mut stack = stack.into_iter();
+        let mut tree = match stack.next() {
             Some((begin_info, tree)) => {
-                if let Some((begin_info, tree)) = stack.pop() {
-                    let end_token = match tree {
-                        TokenTree::List(delimiter, _) => delimiter.end(),
-                        TokenTree::Block(_) => Token::RightBrace,
-                        TokenTree::Attribute(_, _) => {
-                            // FIXME: Technically any token is allowed after a `@`
-                            Token::LeftParenthesis
+                // Report errors for items remaining on the stack
+                for (begin_info, tree) in stack {
+                    let (begin_token, end_token, end_info) = match tree {
+                        TokenTree::List(delimiter, mut tokens) => (
+                            delimiter.start(),
+                            delimiter.end(),
+                            tokens
+                                .pop()
+                                .map_or_else(|| begin_info.clone(), |token| token.info),
+                        ),
+                        TokenTree::Block(mut tokens) => (
+                            Token::LeftBrace,
+                            Token::RightBrace,
+                            // Get the last token in the last statement
+                            tokens
+                                .pop()
+                                .and_then(|token| match token.item {
+                                    TokenTree::List(_, mut tokens) => tokens.pop(),
+                                    _ => None,
+                                })
+                                .map_or_else(|| begin_info.clone(), |token| token.info),
+                        ),
+                        TokenTree::Attribute(_, value_tokens) => {
+                            // FIXME: Technically any token is allowed after a `@`, not just a left
+                            // parenthesis
+                            (
+                                Token::Keyword(Keyword::Attribute),
+                                Token::LeftParenthesis,
+                                value_tokens.info,
+                            )
                         }
                         _ => unreachable!(),
                     };
 
-                    let (info, token) = match tokens.next() {
-                        Some(token) => (token.info, Some(token.item.into_owned())),
-                        None => (first_info, None),
-                    };
-
                     diagnostics.push(WithInfo {
-                        info,
+                        info: end_info.clone(),
                         item: Diagnostic::Mismatch {
-                            expected: None,
-                            found: token,
+                            expected: Some(end_token),
+                            found: None,
                             matching: Some(WithInfo {
-                                info: begin_info,
-                                item: end_token,
+                                info: begin_info.clone(),
+                                item: begin_token,
                             }),
                         },
                     });
