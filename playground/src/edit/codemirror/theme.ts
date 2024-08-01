@@ -12,7 +12,7 @@ export interface ThemeConfig {
 
 export const defaultThemeConfig = (): ThemeConfig => ({
     fontSize: 16,
-    fontFamily: "JetBrains Mono",
+    fontFamily: "JetBrains Mono Variable",
     lineHeight: 1.75,
     highlight: true,
 });
