@@ -12,7 +12,7 @@
 /* Inter */
 
 .ui-font {
-    font-family: Inter, system-ui, sans-serif;
+    font-family: "Inter Variable", system-ui, sans-serif;
     font-feature-settings: "liga" 1, "calt" 1; /* fix for Chrome */
 }
 
@@ -36,7 +36,7 @@ body {
 
 code,
 .markdown code {
-    font-family: "JetBrains Mono", monospace;
+    font-family: "JetBrains Mono Variable", monospace;
     font-feature-settings: normal;
     font-variation-settings: normal;
     font-variant-ligatures: none;
