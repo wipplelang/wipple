@@ -17,6 +17,7 @@
 
 # Advanced guides
 
+-   [How `repeat` works](./guides/how-repeat-works.md)
 -   [Interactive elements in the playground](./guides/interactive-elements.md)
 -   [Custom error messages](./guides/custom-error-messages.md)
 
