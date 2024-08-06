@@ -334,7 +334,7 @@ async fn run_executable(executable: wipple_driver::Executable) {
         }
     }
 
-    let options = wipple_interpreter::Options::<Runtime>::with_io(wipple_interpreter::Io {
+    let mut options = wipple_interpreter::Options::<Runtime>::with_io(wipple_interpreter::Io {
         display: Arc::new(|message| {
             async move {
                 println!("{}", message);
@@ -346,15 +346,18 @@ async fn run_executable(executable: wipple_driver::Executable) {
         choice: Arc::new(|_, _| todo!()),
         ui: Arc::new(|_, _| todo!()),
         sleep: Arc::new(|_| todo!()),
-    })
-    .with_debug(|s| {
-        async move {
-            if std::env::var("WIPPLE_DEBUG_INTERPRETER").is_ok() {
-                eprintln!("{}\n", s);
-            }
-        }
-        .boxed()
     });
+
+    if std::env::var("WIPPLE_DEBUG_INTERPRETER").is_ok() {
+        options = options.with_debug(|s| {
+            async move {
+                if std::env::var("WIPPLE_DEBUG_INTERPRETER").is_ok() {
+                    eprintln!("{}\n", s);
+                }
+            }
+            .boxed()
+        });
+    }
 
     if let Err(error) = wipple_interpreter::evaluate(executable, options).await {
         eprintln!("error: {}", error.0);
