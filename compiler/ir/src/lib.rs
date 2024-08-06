@@ -58,6 +58,13 @@ pub fn layout_descriptor<D: crate::Driver>(
     compile::layout_descriptor(type_declaration)
 }
 
+/// Generate a bound descriptor from a bound.
+pub fn instance_descriptor<D: crate::Driver>(
+    bound: &wipple_typecheck::Instance<D>,
+) -> Option<crate::InstanceDescriptor<D>> {
+    compile::instance_descriptor(bound)
+}
+
 /// The result of [`compile`].
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""))]
@@ -163,7 +170,7 @@ pub enum Instruction<D: Driver> {
     /// A function (or block) expression that can capture variables.
     Function(Vec<u32>, D::Path),
 
-    /// A constant.
+    /// A constant with resolved parameters and bounds.
     Constant(D::Path, Vec<TypeDescriptor<D>>),
 
     /// An instance of a trait.
@@ -257,6 +264,25 @@ pub enum LayoutDescriptor<D: Driver> {
 
     /// An intrinsic.
     Intrinsic, // TODO: Remove 'intrinsic' and specify layout with attribute
+}
+
+/// Used to store the available traits resolved from bounds at runtime.
+#[derive(Serialize, Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
+#[serde(rename_all = "camelCase")]
+#[serde(bound = "")]
+pub struct InstanceDescriptor<D: Driver> {
+    /// The path to the trait.
+    pub trait_path: D::Path,
+
+    /// The type parameters provided to the trait.
+    pub parameters: Vec<TypeDescriptor<D>>,
 }
 
 impl<D: Driver> std::fmt::Display for Instruction<D>

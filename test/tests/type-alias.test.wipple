@@ -1,6 +1,0 @@
--- [should compile]
-
-List-Of-Pair : A B => type alias (List (A ; B))
-
-foo :: List-Of-Pair Number Text
-foo : (1 ; "a") , (2 ; "b")

@@ -196,37 +196,25 @@ fn compile_expression<D: crate::Driver>(
             info.push_instruction(crate::Instruction::Variable(variable));
         }
         wipple_typecheck::TypedExpressionKind::Constant {
-            path,
-            parameters,
-            bounds,
+            path, parameters, ..
         } => {
-            // TODO: Use statically resolved bounds instead of looking up at runtime
-            let _ = bounds;
-
             info.push_instruction(crate::Instruction::Constant(
                 path.clone(),
                 parameters
                     .iter()
-                    .map(|parameter| type_descriptor(parameter))
+                    .map(type_descriptor)
                     .collect::<Option<_>>()?,
             ));
         }
         wipple_typecheck::TypedExpressionKind::Trait {
-            path,
-            parameters,
-            instance,
-        } => {
-            // TODO: Use statically resolved instance instead of looking up at runtime
-            let _ = instance;
-
-            info.push_instruction(crate::Instruction::Instance(
-                path.clone(),
-                parameters
-                    .iter()
-                    .map(|parameter| type_descriptor(parameter))
-                    .collect::<Option<_>>()?,
-            ))
-        }
+            path, parameters, ..
+        } => info.push_instruction(crate::Instruction::Instance(
+            path.clone(),
+            parameters
+                .iter()
+                .map(|parameter| type_descriptor(parameter))
+                .collect::<Option<_>>()?,
+        )),
         wipple_typecheck::TypedExpressionKind::Number(number) => {
             info.push_instruction(crate::Instruction::Number(number.clone()));
         }
@@ -762,4 +750,17 @@ pub fn layout_descriptor<D: crate::Driver>(
             Some(crate::LayoutDescriptor::Wrapper(Box::new(r#type)))
         }
     }
+}
+
+pub fn instance_descriptor<D: crate::Driver>(
+    instance: &wipple_typecheck::Instance<D>,
+) -> Option<crate::InstanceDescriptor<D>> {
+    Some(crate::InstanceDescriptor {
+        trait_path: instance.r#trait.clone(),
+        parameters: instance
+            .parameters
+            .iter()
+            .map(|r#type| type_descriptor(&r#type.item))
+            .collect::<Option<_>>()?,
+    })
 }

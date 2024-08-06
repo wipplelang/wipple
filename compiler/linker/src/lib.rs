@@ -55,6 +55,9 @@ pub struct UnlinkedItem<D: Driver> {
     /// The list of type parameters declared by the item.
     pub parameters: Vec<D::Path>,
 
+    /// The list of bounds required by this item.
+    pub bounds: Vec<wipple_ir::InstanceDescriptor<D>>,
+
     /// The analyzed expression.
     pub expression: WithInfo<D::Info, wipple_typecheck::TypedExpression<D>>,
 
@@ -79,10 +82,10 @@ pub struct Executable<D: Driver> {
     pub layouts: HashMap<D::Path, wipple_ir::LayoutDescriptor<D>>,
 
     /// The list of instances for each trait.
-    pub instances: HashMap<D::Path, Vec<LinkedInstance<D>>>,
+    pub instances: HashMap<D::Path, HashMap<D::Path, LinkedInstance<D>>>,
 
     /// The default instances for each trait.
-    pub default_instances: HashMap<D::Path, Vec<LinkedInstance<D>>>,
+    pub default_instances: HashMap<D::Path, HashMap<D::Path, LinkedInstance<D>>>,
 
     /// The items to run when the program starts.
     pub entrypoints: Vec<D::Path>,
@@ -94,7 +97,7 @@ pub struct Executable<D: Driver> {
 /// An instance in an [`Executable`].
 #[non_exhaustive]
 #[derive(Serialize, Deserialize, Derivative)]
-#[derivative(Debug(bound = ""))]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub struct LinkedInstance<D: Driver> {
@@ -114,6 +117,9 @@ pub struct LinkedInstance<D: Driver> {
 pub struct LinkedItem<D: Driver> {
     /// The list of type parameters declared by the item.
     pub parameters: Vec<D::Path>,
+
+    /// The list of bounds required by this item.
+    pub bounds: Vec<wipple_ir::InstanceDescriptor<D>>,
 
     /// The compiled IR.
     pub ir: Vec<wipple_ir::Instruction<D>>,
@@ -154,8 +160,11 @@ pub fn link<D: Driver>(
                 executable.instances.entry(r#trait).or_default().extend(
                     instances
                         .into_iter()
-                        .map(convert_instance)
-                        .collect::<Result<Vec<_>, D>>()?,
+                        .map(|instance| {
+                            let instance = convert_instance(instance)?;
+                            Ok((instance.path.clone(), instance))
+                        })
+                        .collect::<Result<HashMap<_, _>, D>>()?,
                 );
             }
 
@@ -167,8 +176,11 @@ pub fn link<D: Driver>(
                     .extend(
                         instances
                             .into_iter()
-                            .map(convert_instance)
-                            .collect::<Result<Vec<_>, D>>()?,
+                            .map(|instance| {
+                                let instance = convert_instance(instance)?;
+                                Ok((instance.path.clone(), instance))
+                            })
+                            .collect::<Result<HashMap<_, _>, D>>()?,
                     );
             }
 
@@ -201,6 +213,7 @@ fn convert_instance<D: Driver>(instance: UnlinkedInstance<D>) -> Result<LinkedIn
 fn convert_item<D: Driver>(item: UnlinkedItem<D>) -> Result<LinkedItem<D>, D> {
     Ok(LinkedItem {
         parameters: item.parameters,
+        bounds: item.bounds,
         ir: item.ir,
         evaluate_once: item.evaluate_once,
     })

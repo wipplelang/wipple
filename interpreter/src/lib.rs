@@ -29,6 +29,7 @@ pub type Executable = wipple_driver::Executable;
 pub type Item = wipple_driver::Item;
 pub type TypeDescriptor = wipple_driver::ir::TypeDescriptor<wipple_driver::Driver>;
 pub type Instruction = wipple_driver::ir::Instruction<wipple_driver::Driver>;
+pub type Bounds = Vec<Path>;
 
 pub trait Runtime
 where
@@ -65,6 +66,7 @@ pub enum Value<R: Runtime + ?Sized> {
     Function {
         path: Path,
         substitutions: HashMap<Path, TypeDescriptor>,
+        bounds: Bounds,
         captures: Vec<Arc<Mutex<Value<R>>>>,
     },
     NativeFunction(
@@ -158,6 +160,7 @@ pub struct Context<R: Runtime + ?Sized> {
         dyn Fn(
                 Path,
                 std::result::Result<HashMap<Path, TypeDescriptor>, Vec<TypeDescriptor>>,
+                Bounds,
                 TaskLocals<R>,
                 Context<R>,
             ) -> BoxFuture<'static, Result<Value<R>>>
@@ -219,6 +222,7 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
             Value::Function {
                 path,
                 substitutions,
+                bounds,
                 captures,
             } => {
                 inputs.reverse();
@@ -231,6 +235,7 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
                     inputs,
                     captures.into_iter().enumerate().collect(),
                     substitutions,
+                    bounds,
                     task,
                     context,
                 )
@@ -240,7 +245,7 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
             _ => panic!("expected function"),
         }),
         item_cache: Default::default(),
-        get_item: Arc::new(|path, substitutions, task, context| {
+        get_item: Arc::new(|path, substitutions, bounds, task, context| {
             async move {
                 let item = context
                     .executable
@@ -261,7 +266,7 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
                     }
                 }
 
-                let substitutions = substitutions.unwrap_or_else(|parameters| {
+                let mut substitutions = substitutions.unwrap_or_else(|parameters| {
                     item.parameters
                         .iter()
                         .enumerate()
@@ -269,10 +274,36 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
                         .collect()
                 });
 
+                // Any type parameters not mentioned in the item's type must be
+                // inserted into the substitutions by resolving the bounds
+                let bounds = item
+                    .bounds
+                    .iter()
+                    .map(|bound| {
+                        let parameters = bound
+                            .parameters
+                            .iter()
+                            .cloned()
+                            .map(|mut parameter| {
+                                substitute_type_descriptor(&mut parameter, &substitutions);
+                                parameter
+                            })
+                            .collect::<Vec<_>>();
+
+                        find_instance(
+                            &bound.trait_path,
+                            &parameters,
+                            &bounds,
+                            &context.executable,
+                            &mut substitutions,
+                        )
+                    })
+                    .collect();
+
                 context
                     .debug(|| {
                         format!(
-                            "initializing constant {path:?} with substitutions {substitutions:#?}"
+                            "initializing constant {path:?} with substitutions {substitutions:#?} and bounds {bounds:#?}",
                         )
                     })
                     .await;
@@ -283,6 +314,7 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
                     Vec::new(),
                     HashMap::new(),
                     substitutions,
+                    bounds,
                     task.clone(),
                     context.clone(),
                 )
@@ -312,6 +344,7 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
             Vec::new(),
             HashMap::new(),
             HashMap::new(),
+            Bounds::new(),
             task.clone(),
             context.clone(),
         )
@@ -333,6 +366,7 @@ async fn evaluate_item<R: Runtime>(
     mut stack: Vec<Value<R>>,
     mut scope: HashMap<usize, Arc<Mutex<Value<R>>>>,
     mut substitutions: HashMap<Path, TypeDescriptor>,
+    mut bounds: Bounds,
     task: TaskLocals<R>,
     context: Context<R>,
 ) -> Result<Value<R>> {
@@ -526,6 +560,7 @@ async fn evaluate_item<R: Runtime>(
                     stack.push(Value::Function {
                         path: path.clone(),
                         substitutions: substitutions.clone(),
+                        bounds: bounds.clone(),
                         captures,
                     });
                 }
@@ -540,7 +575,7 @@ async fn evaluate_item<R: Runtime>(
                         .collect::<Vec<_>>();
 
                     let value = context
-                        .get_item(path.clone(), Err(parameters), task.clone())
+                        .get_item(path.clone(), Err(parameters), &bounds, task.clone())
                         .await?;
 
                     stack.push(value);
@@ -555,11 +590,18 @@ async fn evaluate_item<R: Runtime>(
                         })
                         .collect::<Vec<_>>();
 
-                    let (path, substitutions) =
-                        find_instance(r#trait, &parameters, &context.executable);
+                    let mut substitutions = HashMap::new();
+
+                    let path = find_instance(
+                        r#trait,
+                        &parameters,
+                        &bounds,
+                        &context.executable,
+                        &mut substitutions,
+                    );
 
                     let value = context
-                        .get_item(path, Ok(substitutions), task.clone())
+                        .get_item(path, Ok(substitutions), &bounds, task.clone())
                         .await?;
 
                     stack.push(value);
@@ -594,6 +636,7 @@ async fn evaluate_item<R: Runtime>(
                     if let Value::Function {
                         path: func_path,
                         substitutions: func_substitutions,
+                        bounds: func_bounds,
                         captures: func_captures,
                     } = func
                     {
@@ -613,6 +656,7 @@ async fn evaluate_item<R: Runtime>(
                         scope = func_captures.into_iter().enumerate().collect();
 
                         substitutions = func_substitutions;
+                        bounds = func_bounds;
 
                         continue;
                     } else {
@@ -630,6 +674,7 @@ async fn evaluate_item<R: Runtime>(
                     if let Value::Function {
                         path: block_path,
                         substitutions: block_substitutions,
+                        bounds: block_bounds,
                         captures: block_captures,
                     } = block
                     {
@@ -647,6 +692,7 @@ async fn evaluate_item<R: Runtime>(
                         scope = block_captures.into_iter().enumerate().collect();
 
                         substitutions = block_substitutions;
+                        bounds = block_bounds;
 
                         continue;
                     } else {
@@ -666,26 +712,23 @@ async fn evaluate_item<R: Runtime>(
 fn find_instance(
     r#trait: &Path,
     parameters: &[TypeDescriptor],
+    bounds: &Bounds,
     executable: &Executable,
-) -> (Path, HashMap<Path, TypeDescriptor>) {
-    for instances in executable
-        .instances
-        .get(r#trait)
-        .into_iter()
-        .chain(executable.default_instances.get(r#trait))
-    {
-        for instance in instances {
-            let mut substitutions = HashMap::new();
+    substitutions: &mut HashMap<Path, TypeDescriptor>,
+) -> Path {
+    macro_rules! try_instance {
+        ($instance:expr) => {
+            let mut instance_substitutions = HashMap::new();
             let mut unified = true;
             for (type_descriptor, (trait_parameter, instance_type_descriptor)) in
-                parameters.iter().zip(&instance.trait_parameters)
+                parameters.iter().zip(&$instance.trait_parameters)
             {
                 if unify(
                     type_descriptor,
                     instance_type_descriptor,
-                    &mut substitutions,
+                    &mut instance_substitutions,
                 ) {
-                    substitutions.insert(trait_parameter.clone(), type_descriptor.clone());
+                    instance_substitutions.insert(trait_parameter.clone(), type_descriptor.clone());
                 } else {
                     unified = false;
                     break;
@@ -693,8 +736,41 @@ fn find_instance(
             }
 
             if unified {
-                return (instance.path.clone(), substitutions);
+                // Important: don't override existing parameters -- that would
+                // prevent recursive instances from being resolved properly
+                for (parameter, type_descriptor) in instance_substitutions {
+                    substitutions.entry(parameter).or_insert(type_descriptor);
+                }
+
+                return $instance.path.clone();
             }
+        };
+    }
+
+    for bound in bounds {
+        if let Some(instance) = executable
+            .instances
+            .get(r#trait)
+            .and_then(|instances| instances.get(bound))
+            .or_else(|| {
+                executable
+                    .default_instances
+                    .get(r#trait)
+                    .and_then(|instances| instances.get(bound))
+            })
+        {
+            try_instance!(instance);
+        }
+    }
+
+    for instances in executable
+        .instances
+        .get(r#trait)
+        .into_iter()
+        .chain(executable.default_instances.get(r#trait))
+    {
+        for instance in instances.values() {
+            try_instance!(instance);
         }
     }
 
@@ -712,6 +788,13 @@ fn unify(
         }
         (left, TypeDescriptor::Equal(a, b)) => {
             unify(left, a, substitutions) && unify(b, a, substitutions)
+        }
+
+        (TypeDescriptor::Parameter(_), _) => {
+            // This occurs when bounds are being resolved that involve type
+            // parameters not mentioned in the item's type descriptor; no
+            // value's type will ever contain a `Parameter`
+            true
         }
 
         (left, TypeDescriptor::Parameter(right)) => {
@@ -783,7 +866,9 @@ fn substitute_type_descriptor(
             if let Some(substitution) = substitutions.get(parameter) {
                 *type_descriptor = substitution.clone();
             } else {
-                panic!("no substitution for type parameter {parameter:#?} in {substitutions:#?}");
+                // This occurs when bounds are being resolved that involve type
+                // parameters not mentioned in the item's type descriptor; no
+                // value's type will ever contain a `Parameter`
             }
         }
         wipple_driver::ir::TypeDescriptor::Named(_, parameters) => {
@@ -834,8 +919,12 @@ impl<R: Runtime> Context<R> {
         &self,
         path: Path,
         substitutions: std::result::Result<HashMap<Path, TypeDescriptor>, Vec<TypeDescriptor>>,
+        bounds: &Bounds,
         task: TaskLocals<R>,
     ) -> Result<Value<R>> {
-        (self.get_item)(path, substitutions, task, self.clone()).await
+        // TODO: Don't clone `bounds` once async closures are stable
+        let bounds = bounds.clone();
+
+        (self.get_item)(path, substitutions, bounds, task, self.clone()).await
     }
 }

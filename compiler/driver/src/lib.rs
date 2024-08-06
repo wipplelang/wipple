@@ -399,6 +399,13 @@ impl Driver {
                         path,
                         Item {
                             parameters: declaration.item.parameters.clone(),
+                            bounds: declaration
+                                .item
+                                .bounds
+                                .clone()
+                                .into_iter()
+                                .filter_map(|bound| ir::instance_descriptor(&bound.item))
+                                .collect(),
                             expression: item.expression,
                             ir: item.instructions,
                             evaluate_once: item.evaluate_once,
@@ -461,6 +468,13 @@ impl Driver {
                         path,
                         Item {
                             parameters: declaration.item.parameters.clone(),
+                            bounds: declaration
+                                .item
+                                .bounds
+                                .clone()
+                                .into_iter()
+                                .filter_map(|bound| ir::instance_descriptor(&bound.item))
+                                .collect(),
                             expression: item.expression,
                             ir: item.instructions,
                             evaluate_once: item.evaluate_once,
@@ -505,6 +519,7 @@ impl Driver {
                             path,
                             Item {
                                 parameters: Vec::new(),
+                                bounds: Vec::new(),
                                 expression: item.expression,
                                 ir: item.instructions,
                                 evaluate_once: item.evaluate_once,

@@ -1,0 +1,11 @@
+-- [should compile]
+
+T1 : A B => trait (A -> B)
+instance (T1 Unit Unit) : () -> ()
+
+T2 : A => trait (A -> Unit)
+A B where (T1 A B) => instance (T2 A) : x -> do {_ : T1 x}
+
+T2 () -- shouldn't crash; `B` should be inferred as `Unit`
+
+show "done"
