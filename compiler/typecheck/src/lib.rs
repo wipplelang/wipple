@@ -44,12 +44,6 @@ pub trait Driver: Sized + 'static {
         path: &Self::Path,
     ) -> WithInfo<Self::Info, TypeDeclaration<Self>>;
 
-    /// Retrieve the type alias declaration at the given path.
-    fn get_type_alias_declaration(
-        &self,
-        path: &Self::Path,
-    ) -> WithInfo<Self::Info, TypeAliasDeclaration<Self>>;
-
     /// Retrieve the trait declaration at the given path.
     fn get_trait_declaration(
         &self,
@@ -333,16 +327,6 @@ pub enum Type<D: Driver> {
         parameters: Vec<WithInfo<D::Info, Type<D>>>,
     },
 
-    /// An aliased type.
-    #[serde(rename_all = "camelCase")]
-    Alias {
-        /// The path to the type alias.
-        path: D::Path,
-
-        /// The type alias's parameters.
-        parameters: Vec<WithInfo<D::Info, Type<D>>>,
-    },
-
     /// A function type.
     #[serde(rename_all = "camelCase")]
     Function {
@@ -477,22 +461,6 @@ pub struct TypeDeclaration<D: Driver> {
 
     /// The type's representation (opaque, structure or enumeration).
     pub representation: WithInfo<D::Info, TypeRepresentation<D>>,
-}
-
-/// A type alias declaration.
-#[derive(Serialize, Deserialize, Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase")]
-#[serde(bound(serialize = "", deserialize = ""))]
-pub struct TypeAliasDeclaration<D: Driver> {
-    /// The type's attributes.
-    pub attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
-
-    /// The type's parameters.
-    pub parameters: Vec<D::Path>,
-
-    /// The aliased type.
-    pub r#type: WithInfo<D::Info, Type<D>>,
 }
 
 /// A trait declaration.
@@ -869,6 +837,10 @@ pub enum TypedExpressionKind<D: Driver> {
     Trait {
         /// The path to the trait declaration.
         path: D::Path,
+
+        /// The types of the instance's parameters. This is used in case the
+        /// instance's type doesn't reference all type parameters.
+        parameters: Vec<Type<D>>,
 
         /// The path to the resolved instance, or a bound.
         instance: WithInfo<D::Info, std::result::Result<D::Path, Instance<D>>>,

@@ -532,11 +532,6 @@ pub fn substitute_defaults_in_parameters<D: Driver>(
                 substitute_defaults_in_parameters(driver, parameter.as_mut());
             }
         }
-        crate::Type::Alias { parameters, .. } => {
-            for parameter in parameters {
-                substitute_defaults_in_parameters(driver, parameter.as_mut());
-            }
-        }
         crate::Type::Function { inputs, output } => {
             for input in inputs {
                 substitute_defaults_in_parameters(driver, input.as_mut());
@@ -1959,7 +1954,8 @@ enum ExpressionKind<D: Driver> {
         bounds: Vec<WithInfo<D::Info, Result<D::Path, Instance<D>>>>,
     },
     ResolvedTrait {
-        path: D::Path,
+        trait_path: D::Path,
+        parameters: Vec<Type<D>>,
         instance: WithInfo<D::Info, Result<D::Path, Instance<D>>>,
     },
     Number(String),
@@ -2081,6 +2077,11 @@ fn infer_type<D: Driver>(
     error_queue: &mut Vec<WithInfo<D::Info, QueuedError<D>>>,
     errors: &mut Vec<WithInfo<D::Info, crate::Diagnostic<D>>>,
 ) -> Type<D> {
+    // In case we want to use these in the future
+    let _ = driver;
+    let _ = error_queue;
+    let _ = errors;
+
     Type::new(
         match r#type.item {
             crate::Type::Parameter(path) => TypeKind::Parameter(path.clone()),
@@ -2093,54 +2094,6 @@ fn infer_type<D: Driver>(
                     })
                     .collect(),
             },
-            crate::Type::Alias { path, parameters } => {
-                let type_alias_declaration = driver.get_type_alias_declaration(path);
-
-                let mut instantiation_context = InstantiationContext::from_parameters(
-                    driver,
-                    type_alias_declaration.item.parameters,
-                    type_context,
-                    r#type.info.clone(),
-                    error_queue,
-                    errors,
-                );
-
-                let r#type = infer_type(
-                    driver,
-                    type_alias_declaration.item.r#type.as_ref(),
-                    instantiation_context.type_context,
-                    instantiation_context.error_queue,
-                    instantiation_context.errors,
-                )
-                .instantiate(driver, &mut instantiation_context);
-
-                for (r#type, parameter) in instantiation_context
-                    .into_types_for_parameters()
-                    .into_iter()
-                    .zip(parameters)
-                {
-                    let parameter = WithInfo {
-                        info: parameter.info.clone(),
-                        item: infer_type(
-                            driver,
-                            parameter.as_ref(),
-                            type_context,
-                            error_queue,
-                            errors,
-                        ),
-                    };
-
-                    try_unify(
-                        driver,
-                        parameter.as_ref(),
-                        &r#type,
-                        type_context,
-                        &mut Vec::new(),
-                    );
-                }
-
-                r#type.kind
-            }
             crate::Type::Function { inputs, output } => TypeKind::Function {
                 inputs: inputs
                     .iter()
@@ -3442,7 +3395,8 @@ fn resolve_expression<D: Driver>(
 
                     match resolve_trait(query.as_ref(), context) {
                         Ok(instance) => ExpressionKind::ResolvedTrait {
-                            path: query.item.r#trait,
+                            trait_path: query.item.r#trait,
+                            parameters: query.item.parameters,
                             instance,
                         },
                         Err(error) => {
@@ -3470,9 +3424,15 @@ fn resolve_expression<D: Driver>(
             parameters,
             bounds,
         },
-        ExpressionKind::ResolvedTrait { path, instance } => {
-            ExpressionKind::ResolvedTrait { path, instance }
-        }
+        ExpressionKind::ResolvedTrait {
+            trait_path,
+            parameters,
+            instance,
+        } => ExpressionKind::ResolvedTrait {
+            trait_path,
+            parameters,
+            instance,
+        },
         ExpressionKind::Number(number) => ExpressionKind::Number(number),
         ExpressionKind::Text(text) => ExpressionKind::Text(text),
         ExpressionKind::Block {
@@ -4847,8 +4807,16 @@ fn finalize_expression<D: Driver>(
                 })
                 .collect(),
         },
-        ExpressionKind::ResolvedTrait { path, instance } => crate::TypedExpressionKind::Trait {
-            path,
+        ExpressionKind::ResolvedTrait {
+            trait_path,
+            parameters,
+            instance,
+        } => crate::TypedExpressionKind::Trait {
+            path: trait_path,
+            parameters: parameters
+                .into_iter()
+                .map(|r#type| finalize_type(r#type, true, context).item)
+                .collect(),
             instance: instance
                 .map(|instance| instance.map_err(|bound| finalize_instance(bound, context))),
         },

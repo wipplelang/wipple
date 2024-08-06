@@ -27,7 +27,7 @@ impl<R: Runtime + ?Sized> Value<R> {
     pub fn to_number(self) -> Option<Decimal> {
         match self {
             Value::Number(number) => number,
-            _ => panic!("expected number"),
+            _ => panic!("expected number; found {self:#?}"),
         }
     }
 

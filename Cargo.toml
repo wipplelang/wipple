@@ -18,6 +18,7 @@ dbg_macro = "warn"
 new_without_default = "allow"
 print_stderr = "warn"
 redundant_clone = "warn"
+too_many_arguments = "allow"
 type_complexity = "allow"
 
 [profile.dev.package]
