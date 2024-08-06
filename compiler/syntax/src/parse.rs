@@ -134,13 +134,6 @@ pub(crate) enum Statement<D: Driver> {
         representation: WithInfo<D::Info, TypeRepresentation<D>>,
     },
     #[serde(rename_all = "camelCase")]
-    TypeAliasDeclaration {
-        attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
-        name: WithInfo<D::Info, Option<String>>,
-        parameters: WithInfo<D::Info, TypeFunction<D>>,
-        r#type: WithInfo<D::Info, Type<D>>,
-    },
-    #[serde(rename_all = "camelCase")]
     TraitDeclaration {
         attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
         name: WithInfo<D::Info, Option<String>>,
@@ -668,7 +661,6 @@ pub enum SyntaxKind {
     TypeFunction,
     TypeRepresentation,
     TypeDeclaration,
-    TypeAliasDeclaration,
     TraitDeclaration,
     InstanceDeclaration,
     ConstantDeclaration,
@@ -918,7 +910,6 @@ mod rules {
             top_level::<D>().render(),
             statement::<D>().render(),
             type_declaration::<D>().render(),
-            type_alias_declaration::<D>().render(),
             trait_declaration::<D>().render(),
             default_instance_declaration::<D>().render(),
             instance_declaration::<D>().render(),
@@ -1041,7 +1032,6 @@ mod rules {
             SyntaxKind::Statement,
             [
                 type_declaration,
-                type_alias_declaration,
                 trait_declaration,
                 default_instance_declaration,
                 instance_declaration,
@@ -1136,95 +1126,6 @@ mod rules {
             },
         )
         .named("A type declaration.")
-    }
-
-    pub fn type_alias_declaration<D: Driver>() -> Rule<D, Statement<D>> {
-        Rule::non_associative_operator(
-            SyntaxKind::TypeAliasDeclaration,
-            NonAssociativeOperator::Assign,
-            || name().wrapped().attributed_with(attribute()).in_list(),
-            || {
-                Rule::switch(
-                    SyntaxKind::TypeAliasDeclaration,
-                    [
-                        || {
-                            Rule::keyword2(
-                                SyntaxKind::TypeAliasDeclaration,
-                                Keyword::Type,
-                                || {
-                                    Rule::match_terminal(
-                                        SyntaxKind::InstanceDeclaration,
-                                        RuleToRender::Keyword(String::from("alias")),
-                                        |_, tree, _| match tree.item {
-                                            TokenTree::Name(name) if name == "alias" => {
-                                                Some(WithInfo {
-                                                    info: tree.info,
-                                                    item: (),
-                                                })
-                                            }
-                                            _ => None,
-                                        },
-                                    )
-                                },
-                                r#type,
-                                |_, info: D::Info, _, r#type, _| WithInfo {
-                                    info: info.clone(),
-                                    item: (TypeFunction::default_from_info(info), r#type),
-                                },
-                            )
-                        },
-                        || {
-                            Rule::non_associative_operator(
-                                SyntaxKind::TypeAliasDeclaration,
-                                NonAssociativeOperator::TypeFunction,
-                                type_function,
-                                || {
-                                    Rule::keyword2(
-                                        SyntaxKind::Type,
-                                        Keyword::Type,
-                                        || {
-                                            Rule::match_terminal(
-                                                SyntaxKind::InstanceDeclaration,
-                                                RuleToRender::Keyword(String::from("alias")),
-                                                |_, tree, _| match tree.item {
-                                                    TokenTree::Name(name) if name == "alias" => {
-                                                        Some(WithInfo {
-                                                            info: tree.info,
-                                                            item: (),
-                                                        })
-                                                    }
-                                                    _ => None,
-                                                },
-                                            )
-                                        },
-                                        r#type,
-                                        |_, _, _, r#type, _| r#type,
-                                    )
-                                },
-                                |_, info, type_function, r#type, _| WithInfo {
-                                    info,
-                                    item: (type_function, r#type),
-                                },
-                            )
-                        },
-                    ],
-                )
-            },
-            |_, info, name, r#type, _| {
-                let (parameters, r#type) = r#type.item;
-
-                WithInfo {
-                    info,
-                    item: Statement::TypeAliasDeclaration {
-                        attributes: name.item.attributes,
-                        name: name.item.value,
-                        parameters,
-                        r#type,
-                    },
-                }
-            },
-        )
-        .named("A type alias declaration.")
     }
 
     pub fn trait_declaration<D: Driver>() -> Rule<D, Statement<D>> {
@@ -1686,23 +1587,43 @@ mod rules {
                     })
                 },
                 || {
-                    name()
-                        .wrapped()
-                        .map(SyntaxKind::DeclaredType, |name| Type::Declared {
-                            name,
-                            parameters: Vec::new(),
-                        })
+                    name().wrapped().map(SyntaxKind::DeclaredType, |name| {
+                        // Special case: `Unit` is equivalent to `()`
+                        if name.item.as_deref() == Some("Unit") {
+                            Type::Unit
+                        } else {
+                            Type::Declared {
+                                name,
+                                parameters: Vec::new(),
+                            }
+                        }
+                    })
                 },
                 || {
                     Rule::list_prefix(
                         SyntaxKind::DeclaredType,
                         || name().wrapped(),
                         r#type,
-                        |_, info, name, types, _| WithInfo {
+                        |parser, info, name, types, stack| WithInfo {
                             info,
-                            item: Type::Declared {
-                                name,
-                                parameters: types,
+                            // Special case: `Unit` is equivalent to `()` and
+                            // does not accept parameters
+                            item: if name.item.as_deref() == Some("Unit") {
+                                for r#type in types {
+                                    parser.add_diagnostic(
+                                        stack.error_expected(
+                                            r#type.replace(SyntaxKind::Nothing),
+                                            None,
+                                        ),
+                                    );
+                                }
+
+                                Type::Unit
+                            } else {
+                                Type::Declared {
+                                    name,
+                                    parameters: types,
+                                }
                             },
                         },
                     )

@@ -4,8 +4,6 @@ Number : type intrinsic
 @(language : "text")
 Text : type intrinsic
 
-Unit : type alias ()
-
 @(language : "maybe")
 Maybe : Value => type {
     @(language : "none")

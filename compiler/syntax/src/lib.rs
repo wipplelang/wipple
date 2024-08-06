@@ -256,22 +256,6 @@ pub enum Statement<D: Driver> {
         representation: WithInfo<D::Info, TypeRepresentation<D>>,
     },
 
-    /// A type alias declaration.
-    #[serde(rename_all = "camelCase")]
-    TypeAlias {
-        /// The type alias's attributes.
-        attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
-
-        /// The name of the type alias.
-        name: WithInfo<D::Info, String>,
-
-        /// The type alias's parameters.
-        parameters: Vec<WithInfo<D::Info, TypeParameter<D>>>,
-
-        /// The aliased type.
-        r#type: WithInfo<D::Info, Type<D>>,
-    },
-
     /// A trait declaration.
     #[serde(rename_all = "camelCase")]
     Trait {

@@ -479,8 +479,7 @@ impl Render {
                 wipple_driver::typecheck::Type::Parameter(parameter) => render
                     .name_for_path(parameter)
                     .unwrap_or_else(|| String::from("<unknown>")),
-                wipple_driver::typecheck::Type::Declared { path, parameters }
-                | wipple_driver::typecheck::Type::Alias { path, parameters } => {
+                wipple_driver::typecheck::Type::Declared { path, parameters } => {
                     let name = render
                         .name_for_path(path)
                         .unwrap_or_else(|| String::from("<unknown>"));
@@ -1297,7 +1296,6 @@ impl Render {
             SyntaxKind::TypeFunction => String::from("type function"),
             SyntaxKind::TypeRepresentation => String::from("type representation"),
             SyntaxKind::TypeDeclaration => String::from("type declaration"),
-            SyntaxKind::TypeAliasDeclaration => String::from("type alias declaration"),
             SyntaxKind::TraitDeclaration => String::from("trait declaration"),
             SyntaxKind::InstanceDeclaration => String::from("instance declaration"),
             SyntaxKind::ConstantDeclaration => String::from("constant declaration"),
