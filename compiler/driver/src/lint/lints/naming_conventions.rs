@@ -47,6 +47,7 @@ fn convert_case(s: &str, case: Case) -> Option<String> {
         .set_boundaries(&[
             convert_case::Boundary::Acronym,
             convert_case::Boundary::Hyphen,
+            convert_case::Boundary::Underscore,
             convert_case::Boundary::LowerUpper,
         ])
         .set_delim('-')
