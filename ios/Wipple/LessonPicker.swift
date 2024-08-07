@@ -18,7 +18,19 @@ struct LessonPicker: View {
                             "collaborators": [],
                             "name": lessonJSON["name"],
                             "lastModified": Date().formatted(.iso8601),
-                            "pages": lessonJSON["pages"],
+                            "pages": lessonJSON["pages"].arrayValue.map { page in
+                                var page = page
+                                page["items"] = JSON(page["items"].arrayValue.map { item in
+                                    var item = item
+                                    if item["type"] == "code" && item["originalCode"] == .null {
+                                        item["originalCode"] = item["code"]
+                                    }
+                                    
+                                    return item
+                                })
+                                
+                                return page
+                            },
                             "locked": true,
                         ]
                         

@@ -13,6 +13,7 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import { nanoid } from "nanoid";
 import Dexie from "dexie";
 import { Playground, PlaygroundListItem, PlaygroundPageItem, Lesson } from "wipple-playground";
+import { produce } from "immer";
 
 const playgroundConverter = pureConverter<Playground>();
 
@@ -167,7 +168,15 @@ export const createLesson = async (lesson: Lesson) => {
         collaborators: [],
         name: lesson.name,
         lastModified: new Date().toISOString(),
-        pages: lesson.pages,
+        pages: lesson.pages.map(
+            produce((page) => {
+                for (const item of page.items) {
+                    if (item.type === "code" && item.originalCode == null) {
+                        item.originalCode = item.code;
+                    }
+                }
+            }),
+        ),
         locked: true,
     };
 

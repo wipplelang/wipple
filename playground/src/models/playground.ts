@@ -41,6 +41,7 @@ export type PlaygroundPageItem =
 interface PlaygroundPageCodeItem {
     type: "code";
     code: string;
+    originalCode?: string;
 }
 
 type RuntimeItem<Name extends string, Settings> = PlaygroundPageCodeItem & {
