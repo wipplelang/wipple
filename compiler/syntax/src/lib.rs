@@ -297,6 +297,9 @@ pub enum Statement<D: Driver> {
     /// An instance declaration.
     #[serde(rename_all = "camelCase")]
     Instance {
+        /// The info belonging to the left-hand side of the assignment.
+        pattern: WithInfo<D::Info, ()>,
+
         /// The instance's parameters.
         parameters: Vec<WithInfo<D::Info, TypeParameter<D>>>,
 

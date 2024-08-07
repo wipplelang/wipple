@@ -356,7 +356,7 @@ fn split_executable_statements<D: Driver>(
                     match info.$declarations.entry(path.clone()) {
                         Entry::Occupied(entry) => {
                             info.errors.push(
-                                statement.replace(crate::Diagnostic::AlreadyDefined(
+                                $name.replace(crate::Diagnostic::AlreadyDefined(
                                     entry.key().clone(),
                                 )),
                             );
@@ -364,9 +364,10 @@ fn split_executable_statements<D: Driver>(
                             None
                         }
                         Entry::Vacant(entry) => {
-                            entry.insert(statement.replace($default));
+                            entry.insert($name.replace($default));
 
-                            info.scopes.define($name.clone(), statement.replace(path));
+                            info.scopes.define($name.item.clone(), $name.replace(path));
+
                             Some(statement)
                         }
                     }
@@ -378,7 +379,7 @@ fn split_executable_statements<D: Driver>(
                     name, parameters, ..
                 } => insert_declaration!(
                     type_declarations,
-                    &name.item,
+                    name,
                     info.make_path(crate::PathComponent::Type(name.item.clone())),
                     (
                         EagerTypeDeclarationInfo {
@@ -391,7 +392,7 @@ fn split_executable_statements<D: Driver>(
                     name, parameters, ..
                 } => insert_declaration!(
                     trait_declarations,
-                    &name.item,
+                    name,
                     info.make_path(crate::PathComponent::Trait(name.item.clone())),
                     (
                         EagerTraitDeclarationInfo {
@@ -402,7 +403,7 @@ fn split_executable_statements<D: Driver>(
                 ),
                 crate::UnresolvedStatement::Constant { name, .. } => insert_declaration!(
                     constant_declarations,
-                    &name.item,
+                    name,
                     info.make_path(crate::PathComponent::Constant(name.item.clone())),
                     None,
                 ),
@@ -653,6 +654,7 @@ fn resolve_statements<D: Driver>(
                 None
             }
             crate::UnresolvedStatement::Instance {
+                pattern,
                 parameters,
                 bounds,
                 instance,
@@ -697,15 +699,12 @@ fn resolve_statements<D: Driver>(
 
                 info.instance_declarations.insert(
                     info.path.clone(),
-                    WithInfo {
-                        info: statement.info,
-                        item: Some(crate::InstanceDeclaration {
-                            parameters,
-                            bounds,
-                            instance,
-                            default,
-                        }),
-                    },
+                    pattern.replace(Some(crate::InstanceDeclaration {
+                        parameters,
+                        bounds,
+                        instance,
+                        default,
+                    })),
                 );
 
                 info.library.items.insert(
@@ -730,7 +729,7 @@ fn resolve_statements<D: Driver>(
                             Some(name) => name,
                             None => {
                                 return Some(WithInfo {
-                                    info: statement.info,
+                                    info: name.info.clone(),
                                     item: crate::Expression::Assign {
                                         pattern: name.replace(crate::Pattern::Error),
                                         value: value.boxed(),
@@ -751,7 +750,7 @@ fn resolve_statements<D: Driver>(
                                 .collect::<Vec<_>>()
                         }) {
                             Some(path) => Some(WithInfo {
-                                info: statement.info,
+                                info: name.info.clone(),
                                 item: crate::Expression::Mutate {
                                     name,
                                     path,
@@ -759,7 +758,7 @@ fn resolve_statements<D: Driver>(
                                 },
                             }),
                             None => Some(WithInfo {
-                                info: statement.info,
+                                info: name.info.clone(),
                                 item: crate::Expression::Assign {
                                     pattern: name.replace(crate::Pattern::Error),
                                     value: value.boxed(),
@@ -771,7 +770,7 @@ fn resolve_statements<D: Driver>(
                         let pattern = resolve_pattern(pattern, info);
 
                         Some(WithInfo {
-                            info: statement.info,
+                            info: pattern.info.clone(),
                             item: crate::Expression::Assign {
                                 pattern,
                                 value: value.boxed(),

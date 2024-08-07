@@ -476,6 +476,7 @@ fn statements<D: Driver>(
                                     })
                                 }
                                 parse::Statement::DefaultInstanceDeclaration {
+                                    pattern: pattern_syntax,
                                     parameters: type_function_syntax,
                                     instance: instance_syntax,
                                     body: body_syntax,
@@ -492,6 +493,7 @@ fn statements<D: Driver>(
                                     let body = body_syntax.map(|body_syntax| expression(body_syntax, info));
 
                                     Some(crate::Statement::Instance {
+                                        pattern: pattern_syntax,
                                         parameters,
                                         bounds,
                                         instance,
@@ -500,6 +502,7 @@ fn statements<D: Driver>(
                                     })
                                 }
                                 parse::Statement::InstanceDeclaration {
+                                    pattern: pattern_syntax,
                                     parameters: type_function_syntax,
                                     instance: instance_syntax,
                                     body: body_syntax,
@@ -516,6 +519,7 @@ fn statements<D: Driver>(
                                     let body = body_syntax.map(|body_syntax| expression(body_syntax, info));
 
                                     Some(crate::Statement::Instance {
+                                        pattern: pattern_syntax,
                                         parameters,
                                         bounds,
                                         instance,
